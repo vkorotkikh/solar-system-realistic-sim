@@ -52,6 +52,7 @@ const dom = {
   toggleOrbits: document.getElementById('toggle-orbits'),
   toggleLabels: document.getElementById('toggle-labels'),
   toggleMoons: document.getElementById('toggle-moons'),
+  toggleAsteroids: document.getElementById('toggle-asteroids'),
   toggleKuiper: document.getElementById('toggle-kuiper'),
   toggleOort: document.getElementById('toggle-oort'),
   bodySearch: document.getElementById('body-search'),
@@ -71,7 +72,11 @@ const dom = {
   plannerOutput: document.getElementById('planner-output'),
   statusFocus: document.getElementById('status-focus'),
   statusBodies: document.getElementById('status-bodies'),
-  statusRoute: document.getElementById('status-route')
+  statusRoute: document.getElementById('status-route'),
+  simBackend: document.getElementById('sim-backend'),
+  simConnect: document.getElementById('sim-connect'),
+  simStatus: document.getElementById('sim-status'),
+  toggleRealisticScale: document.getElementById('toggle-realistic-scale')
 };
 
 // ── Data & State ─────────────────────────────────────────────────────────────
@@ -86,7 +91,10 @@ const simState = {
   paused: false,
   followBodyId: null,
   focusedBodyId: 'sun',
-  route: null
+  route: null,
+  backend: 'local',
+  useRealisticScale: false,
+  serverConnected: false
 };
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
@@ -135,7 +143,7 @@ const routeGroup = new Group();
 scene.add(routeGroup);
 
 const majorNodeIds = new Set(
-  catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf').map((body) => body.id)
+  catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'asteroid').map((body) => body.id)
 );
 
 // ── Geometry & Material Caches ───────────────────────────────────────────────
@@ -348,12 +356,12 @@ function createOrbitLine(body) {
   }
 
   const geometry = new BufferGeometry().setFromPoints(points);
-  const color = body.type === 'moon' ? '#5e7183' : body.type === 'dwarf' ? '#6e8a7c' : '#7fa2bc';
+  const color = body.type === 'moon' ? '#5e7183' : body.type === 'dwarf' ? '#6e8a7c' : body.type === 'asteroid' ? '#8a7e6e' : '#7fa2bc';
 
   const material = new LineBasicMaterial({
     color: new Color(color),
     transparent: true,
-    opacity: body.type === 'moon' ? 0.22 : body.type === 'dwarf' ? 0.28 : 0.36
+    opacity: body.type === 'moon' ? 0.22 : body.type === 'dwarf' ? 0.28 : body.type === 'asteroid' ? 0.25 : 0.36
   });
 
   const line = new Line(geometry, material);
@@ -420,6 +428,154 @@ function createStars(count, radius, color, size) {
       depthWrite: false
     })
   );
+}
+
+// ── Asteroid Belt (2.1–3.3 AU with Kirkwood gaps) ────────────────────────────
+
+function createAsteroidBelt(count = 12_000) {
+  const geometry = new BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  // Kirkwood gaps — orbital resonances with Jupiter
+  const gaps = [
+    { center: 2.06, halfWidth: 0.02 },   // 4:1
+    { center: 2.50, halfWidth: 0.035 },   // 3:1 (major gap)
+    { center: 2.82, halfWidth: 0.025 },   // 5:2
+    { center: 2.95, halfWidth: 0.02 },    // 7:3
+    { center: 3.28, halfWidth: 0.025 }    // 2:1
+  ];
+
+  function inGap(r) {
+    for (const g of gaps) {
+      if (Math.abs(r - g.center) < g.halfWidth) return true;
+    }
+    return false;
+  }
+
+  let idx = 0;
+  while (idx < count) {
+    // Uniform in area ∝ r, so sample r with sqrt bias for uniform surface density
+    const r = 2.1 + Math.random() * 1.2;
+
+    // Reject particles inside Kirkwood gaps
+    if (inGap(r)) continue;
+
+    const theta = Math.random() * Math.PI * 2;
+    // Inclination: Rayleigh-distributed, most < 15°
+    const inc = (Math.random() - 0.5) * 0.26 * (1 + Math.random());
+    // Small eccentricity scatter in position
+    const eccScatter = 1 + (Math.random() - 0.5) * 0.15;
+    const rScattered = r * eccScatter;
+
+    positions[idx * 3] = rScattered * Math.cos(theta);
+    positions[idx * 3 + 1] = rScattered * Math.sin(theta);
+    positions[idx * 3 + 2] = r * Math.sin(inc);
+
+    // Color: inner belt S-type (brighter, slight red-brown) vs outer belt C-type (darker, gray)
+    const t = (r - 2.1) / 1.2;   // 0 = inner, 1 = outer
+    const bBase = 0.45 + Math.random() * 0.15;
+    if (t < 0.4) {
+      // S-type: brighter, warm gray
+      colors[idx * 3] = bBase * 1.1;
+      colors[idx * 3 + 1] = bBase * 0.95;
+      colors[idx * 3 + 2] = bBase * 0.8;
+    } else if (t < 0.7) {
+      // Mixed
+      colors[idx * 3] = bBase * 0.95;
+      colors[idx * 3 + 1] = bBase * 0.92;
+      colors[idx * 3 + 2] = bBase * 0.88;
+    } else {
+      // C-type: darker, neutral gray
+      const bDark = bBase * 0.8;
+      colors[idx * 3] = bDark * 0.9;
+      colors[idx * 3 + 1] = bDark * 0.9;
+      colors[idx * 3 + 2] = bDark * 0.92;
+    }
+
+    idx++;
+  }
+
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+
+  return new Points(
+    geometry,
+    new PointsMaterial({
+      size: 0.006,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.65,
+      sizeAttenuation: true,
+      depthWrite: false
+    })
+  );
+}
+
+// ── Asteroid Belt LOD Detail Layer ───────────────────────────────────────────
+
+const ASTEROID_DETAIL_COUNT = 20_000;
+const asteroidDetailGeometry = new BufferGeometry();
+const asteroidDetailPositions = new Float32Array(ASTEROID_DETAIL_COUNT * 3);
+asteroidDetailGeometry.setAttribute('position', new Float32BufferAttribute(asteroidDetailPositions, 3));
+
+const asteroidDetailPoints = new Points(
+  asteroidDetailGeometry,
+  new PointsMaterial({
+    color: new Color('#c0b8a8'),
+    size: 0.0015,
+    transparent: true,
+    opacity: 0.55,
+    sizeAttenuation: true,
+    depthWrite: false
+  })
+);
+asteroidDetailPoints.visible = false;
+asteroidDetailPoints.frustumCulled = false;
+
+const lastAsteroidDetailCenter = new Vector3(Infinity, Infinity, Infinity);
+
+function updateAsteroidDetail() {
+  if (!dom.toggleAsteroids.checked) {
+    asteroidDetailPoints.visible = false;
+    return;
+  }
+
+  const target = controls.target;
+  const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
+  const height = Math.abs(target.z);
+  const cameraDist = camera.position.distanceTo(target);
+
+  // Only show detail when zoomed into the asteroid belt region
+  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 3.6 && height < 2 && cameraDist < 3;
+
+  if (!inBeltRegion) {
+    asteroidDetailPoints.visible = false;
+    return;
+  }
+
+  // Regenerate particles when view center moves significantly
+  if (target.distanceTo(lastAsteroidDetailCenter) > cameraDist * 0.12 + 0.1) {
+    const spread = Math.max(0.3, cameraDist * 0.5);
+
+    for (let i = 0; i < ASTEROID_DETAIL_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const rnd = Math.max(1e-10, Math.random());
+      const r = Math.sqrt(-2 * Math.log(rnd)) * spread * 0.25;
+
+      asteroidDetailPositions[i * 3] = target.x + Math.cos(angle) * r;
+      asteroidDetailPositions[i * 3 + 1] = target.y + Math.sin(angle) * r;
+      asteroidDetailPositions[i * 3 + 2] = target.z + (Math.random() - 0.5) * spread * 0.08;
+    }
+
+    asteroidDetailGeometry.attributes.position.needsUpdate = true;
+    asteroidDetailGeometry.computeBoundingSphere();
+    lastAsteroidDetailCenter.copy(target);
+  }
+
+  // Slow orbital rotation (faster than Kuiper belt — inner solar system)
+  asteroidDetailPoints.rotation.z += 0.00015;
+  asteroidDetailPoints.visible = true;
 }
 
 // ── Kuiper Belt (enhanced with realistic distribution) ───────────────────────
@@ -609,6 +765,11 @@ function createOortCloud(count = 9_000) {
 const backgroundStars = createStars(8_000, 5_000, '#d5f0ff', 0.95);
 scene.add(backgroundStars);
 
+const asteroidBelt = createAsteroidBelt();
+scene.add(asteroidBelt);
+
+scene.add(asteroidDetailPoints);
+
 const kuiperBelt = createKuiperBelt();
 scene.add(kuiperBelt);
 
@@ -618,6 +779,231 @@ const oortCloud = createOortCloud();
 scene.add(oortCloud);
 
 mountSceneGraph();
+
+// ── WebSocket Simulation Client ──────────────────────────────────────────
+
+class SimulationClient {
+  constructor() {
+    this.ws = null;
+    this.connected = false;
+    this.latestState = null;
+    this.latestKuiper = null;
+    this.kuiperActive = false;
+    this.onConnected = null;
+    this.onDisconnected = null;
+  }
+
+  connect(backend = 'rebound', port = 8042) {
+    if (this.ws) this.disconnect();
+    const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
+    this.ws = new WebSocket(`ws://localhost:${port}/ws/sim?engine=${backend}&integrator=${integrator}`);
+
+    this.ws.onopen = () => {
+      this.connected = true;
+      if (this.onConnected) this.onConnected();
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'state_update') {
+          this.latestState = msg;
+          if (msg.kuiper) {
+            this.latestKuiper = msg.kuiper;
+          }
+        } else if (msg.type === 'connected') {
+          this.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
+          if (simState.paused) this.send({ type: 'pause' });
+        }
+      } catch { /* ignore parse errors */ }
+    };
+
+    this.ws.onclose = () => {
+      this.connected = false;
+      this.latestState = null;
+      if (this.onDisconnected) this.onDisconnected();
+    };
+
+    this.ws.onerror = () => {
+      this.connected = false;
+      if (this.onDisconnected) this.onDisconnected();
+    };
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.connected = false;
+    this.latestState = null;
+    this.latestKuiper = null;
+  }
+
+  send(msg) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  activateKuiper(center, spread) {
+    if (!this.kuiperActive) {
+      this.send({ type: 'activate_kuiper', center: [center.x, center.y, center.z], spread });
+      this.kuiperActive = true;
+    }
+  }
+
+  deactivateKuiper() {
+    if (this.kuiperActive) {
+      this.send({ type: 'deactivate_kuiper' });
+      this.kuiperActive = false;
+      this.latestKuiper = null;
+    }
+  }
+}
+
+const simClient = new SimulationClient();
+
+simClient.onConnected = () => {
+  simState.serverConnected = true;
+  dom.simStatus.textContent = 'Connected';
+  dom.simConnect.textContent = 'Disconnect';
+};
+
+simClient.onDisconnected = () => {
+  simState.serverConnected = false;
+  dom.simStatus.textContent = 'Offline';
+  dom.simConnect.textContent = 'Connect';
+};
+
+// Server Kuiper belt particles (separate from local detail layer)
+const SERVER_KUIPER_MAX = 5_000;
+const serverKuiperGeometry = new BufferGeometry();
+const serverKuiperPositions = new Float32Array(SERVER_KUIPER_MAX * 3);
+serverKuiperGeometry.setAttribute('position', new Float32BufferAttribute(serverKuiperPositions, 3));
+const serverKuiperPoints = new Points(
+  serverKuiperGeometry,
+  new PointsMaterial({
+    color: new Color('#e0d8c0'),
+    size: 0.005,
+    transparent: true,
+    opacity: 0.65,
+    sizeAttenuation: true,
+    depthWrite: false
+  })
+);
+serverKuiperPoints.visible = false;
+serverKuiperPoints.frustumCulled = false;
+scene.add(serverKuiperPoints);
+
+function applyServerState(state) {
+  if (!state || !state.bodies) return;
+
+  simState.julianDate = state.jd;
+
+  for (const body of catalog.bodies) {
+    const serverBody = state.bodies[body.id];
+    const node = bodyNodes.get(body.id);
+    if (!node) continue;
+
+    if (serverBody) {
+      // Server provides world coordinates — convert to parent-relative for scene graph
+      if (body.parentId) {
+        const parentServer = state.bodies[body.parentId];
+        if (parentServer) {
+          node.position.set(
+            serverBody.pos[0] - parentServer.pos[0],
+            serverBody.pos[1] - parentServer.pos[1],
+            serverBody.pos[2] - parentServer.pos[2]
+          );
+        }
+      } else {
+        node.position.set(serverBody.pos[0], serverBody.pos[1], serverBody.pos[2]);
+      }
+    } else if (body.parentId && body.orbit) {
+      // Moons without server data: local Keplerian relative to parent
+      const elapsedDays = state.jd - body.orbit.epochJd;
+      propagateKeplerOrbit(body.orbit, elapsedDays, node.position);
+    }
+
+    if (body.type === 'moon') {
+      node.visible = dom.toggleMoons.checked;
+    }
+  }
+}
+
+function applyServerKuiper(particles) {
+  if (!particles || particles.length === 0) {
+    serverKuiperPoints.visible = false;
+    return;
+  }
+
+  const count = Math.min(particles.length, SERVER_KUIPER_MAX);
+  for (let i = 0; i < count; i++) {
+    serverKuiperPositions[i * 3] = particles[i][0];
+    serverKuiperPositions[i * 3 + 1] = particles[i][1];
+    serverKuiperPositions[i * 3 + 2] = particles[i][2];
+  }
+  // Zero out unused positions
+  for (let i = count * 3; i < SERVER_KUIPER_MAX * 3; i++) {
+    serverKuiperPositions[i] = 0;
+  }
+
+  serverKuiperGeometry.attributes.position.needsUpdate = true;
+  serverKuiperGeometry.setDrawRange(0, count);
+  serverKuiperGeometry.computeBoundingSphere();
+  serverKuiperPoints.visible = dom.toggleKuiper.checked;
+}
+
+// ── Scale Mode ───────────────────────────────────────────────────────────
+
+function applyScaleMode() {
+  const realistic = simState.useRealisticScale;
+
+  for (const body of catalog.bodies) {
+    const mesh = bodyMeshes.get(body.id);
+    if (!mesh) continue;
+
+    const targetRadius = realistic ? body.realRadiusAu : body.displayRadiusAu;
+    mesh.scale.setScalar(targetRadius);
+  }
+
+  // Rescale Saturn and Uranus ring children proportionally
+  for (const bodyId of ['saturn', 'uranus']) {
+    const body = bodyById.get(bodyId);
+    const node = bodyNodes.get(bodyId);
+    if (!body || !node) continue;
+
+    const factor = realistic
+      ? body.realRadiusAu / body.displayRadiusAu
+      : 1.0;
+
+    for (const child of node.children) {
+      if (child.geometry && child.geometry.type === 'RingGeometry') {
+        child.scale.setScalar(factor);
+      }
+    }
+  }
+
+  // Adjust labels
+  for (const body of catalog.bodies) {
+    if (!majorNodeIds.has(body.id)) continue;
+    const node = bodyNodes.get(body.id);
+    if (!node) continue;
+
+    const radius = realistic ? body.realRadiusAu : body.displayRadiusAu;
+    for (const child of node.children) {
+      if (child.isSprite && child.material.map) {
+        child.position.set(0, radius * 2.5 + (realistic ? 0.0001 : 0.03), 0);
+        child.scale.set(
+          realistic ? 0.015 : 0.9,
+          realistic ? 0.004 : 0.23,
+          1
+        );
+      }
+    }
+  }
+}
 
 // ── Resize ───────────────────────────────────────────────────────────────────
 
@@ -678,6 +1064,7 @@ function applyRenderVisibility() {
     label.visible = dom.toggleLabels.checked;
   }
 
+  asteroidBelt.visible = dom.toggleAsteroids.checked;
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
 }
@@ -937,7 +1324,7 @@ function setupUiEvents() {
     simState.timeScaleDaysPerSec = Number(dom.timeScale.value);
   });
 
-  for (const toggle of [dom.toggleOrbits, dom.toggleLabels, dom.toggleMoons, dom.toggleKuiper, dom.toggleOort]) {
+  for (const toggle of [dom.toggleOrbits, dom.toggleLabels, dom.toggleMoons, dom.toggleAsteroids, dom.toggleKuiper, dom.toggleOort]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
 
@@ -975,6 +1362,40 @@ function setupUiEvents() {
     clearRouteVisualization();
     dom.plannerOutput.textContent = 'No plotted route.';
   });
+
+  // ── Simulation backend controls ──────────────────────────────────
+  dom.simConnect.addEventListener('click', () => {
+    if (simState.serverConnected) {
+      simClient.disconnect();
+      simState.backend = 'local';
+      dom.simStatus.textContent = 'Local';
+    } else {
+      const backend = dom.simBackend.value;
+      if (backend === 'local') {
+        dom.simStatus.textContent = 'Local';
+        return;
+      }
+      simState.backend = backend;
+      dom.simStatus.textContent = 'Connecting...';
+      simClient.connect(backend);
+    }
+  });
+
+  dom.simBackend.addEventListener('change', () => {
+    if (dom.simBackend.value === 'local' && simState.serverConnected) {
+      simClient.disconnect();
+      simState.backend = 'local';
+      dom.simStatus.textContent = 'Local';
+    }
+  });
+
+  // ── Realistic scale toggle ───────────────────────────────────────
+  if (dom.toggleRealisticScale) {
+    dom.toggleRealisticScale.addEventListener('change', () => {
+      simState.useRealisticScale = dom.toggleRealisticScale.checked;
+      applyScaleMode();
+    });
+  }
 }
 
 // ── Initialize ───────────────────────────────────────────────────────────────
@@ -996,15 +1417,31 @@ function animate(timestamp) {
   const deltaSeconds = Math.max(0, (timestamp - previousTimestamp) / 1_000);
   previousTimestamp = timestamp;
 
-  if (!simState.paused) {
-    simState.julianDate += deltaSeconds * simState.timeScaleDaysPerSec;
-  }
+  if (simState.serverConnected && simClient.latestState) {
+    // ── Server-driven simulation ─────────────────────────────────
+    applyServerState(simClient.latestState);
 
-  model.update(simState.julianDate);
-  updateSceneBodies();
+    // Apply server Kuiper particles if available
+    if (simClient.latestKuiper) {
+      applyServerKuiper(simClient.latestKuiper);
+    }
+
+    // Sync time controls to server
+    simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
+  } else {
+    // ── Local Keplerian simulation ───────────────────────────────
+    if (!simState.paused) {
+      simState.julianDate += deltaSeconds * simState.timeScaleDaysPerSec;
+    }
+    model.update(simState.julianDate);
+    updateSceneBodies();
+  }
 
   // Dynamic route update — keeps trajectory curves attached to moving planets
   updateRouteVisualization();
+
+  // Asteroid belt LOD — shows detail when zoomed into the main belt
+  updateAsteroidDetail();
 
   // Kuiper belt LOD — shows detail particles when zoomed into the belt region
   updateKuiperDetail();

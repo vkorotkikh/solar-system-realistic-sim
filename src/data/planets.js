@@ -249,6 +249,100 @@ export const MAJOR_MOONS = new Set([
   'Charon'
 ]);
 
+// Major asteroid belt objects with J2000 orbital elements.
+export const ASTEROID_BELT_OBJECTS = [
+  {
+    id: 'ceres',
+    name: 'Ceres',
+    type: 'dwarf',
+    massKg: 9.393e20,
+    radiusKm: 469.7,
+    color: '#8a8a82',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.7691651,
+      e: 0.0760090,
+      iDeg: 10.59351,
+      ascendingNodeDeg: 80.30553,
+      argPeriapsisDeg: 73.59769,
+      meanAnomalyDeg: 77.37209,
+      periodDays: 1_681.63
+    }
+  },
+  {
+    id: 'vesta',
+    name: 'Vesta',
+    type: 'asteroid',
+    massKg: 2.59076e20,
+    radiusKm: 262.7,
+    color: '#a0998e',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.3615126,
+      e: 0.0887459,
+      iDeg: 7.14170,
+      ascendingNodeDeg: 103.85141,
+      argPeriapsisDeg: 149.85773,
+      meanAnomalyDeg: 212.82215,
+      periodDays: 1_325.75
+    }
+  },
+  {
+    id: 'pallas',
+    name: 'Pallas',
+    type: 'asteroid',
+    massKg: 2.04e20,
+    radiusKm: 256,
+    color: '#7a7a72',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.7716515,
+      e: 0.2312736,
+      iDeg: 34.84099,
+      ascendingNodeDeg: 173.08940,
+      argPeriapsisDeg: 310.20237,
+      meanAnomalyDeg: 259.88584,
+      periodDays: 1_686.04
+    }
+  },
+  {
+    id: 'hygiea',
+    name: 'Hygiea',
+    type: 'asteroid',
+    massKg: 8.32e19,
+    radiusKm: 217,
+    color: '#606058',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 3.1415207,
+      e: 0.1175540,
+      iDeg: 3.84168,
+      ascendingNodeDeg: 283.20102,
+      argPeriapsisDeg: 312.32860,
+      meanAnomalyDeg: 156.51580,
+      periodDays: 2_033.81
+    }
+  },
+  {
+    id: 'juno',
+    name: 'Juno',
+    type: 'asteroid',
+    massKg: 2.67e19,
+    radiusKm: 123.3,
+    color: '#9a9080',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.6700936,
+      e: 0.2579316,
+      iDeg: 12.98211,
+      ascendingNodeDeg: 169.91137,
+      argPeriapsisDeg: 248.41004,
+      meanAnomalyDeg: 115.41562,
+      periodDays: 1_592.66
+    }
+  }
+];
+
 // Known Kuiper Belt Objects / trans-Neptunian dwarf planets.
 // Orbital elements referenced to J2000 epoch (approximate).
 export const KUIPER_BELT_OBJECTS = [

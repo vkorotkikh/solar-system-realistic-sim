@@ -1,6 +1,6 @@
 import moons from '../data/moons.json';
 import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants.js';
-import { KUIPER_BELT_OBJECTS, MAJOR_MOON_RADII_KM, MAJOR_MOONS, PLANETS, SUN } from '../data/planets.js';
+import { ASTEROID_BELT_OBJECTS, KUIPER_BELT_OBJECTS, MAJOR_MOON_RADII_KM, MAJOR_MOONS, PLANETS, SUN } from '../data/planets.js';
 
 const PARENT_TINTS = {
   Earth: '#d2d8e3',
@@ -55,6 +55,10 @@ function displayRadiusAu(radiusKm, type) {
     return Math.max(0.008, Math.sqrt(radiusKm) * 0.00042);
   }
 
+  if (type === 'asteroid') {
+    return Math.max(0.005, Math.sqrt(radiusKm) * 0.00035);
+  }
+
   return Math.max(0.00055, Math.sqrt(radiusKm) * 0.00018);
 }
 
@@ -88,6 +92,7 @@ export function createSolarSystemCatalog() {
     parentId: null,
     isMajor: true,
     displayRadiusAu: displayRadiusAu(SUN.radiusKm, SUN.type),
+    realRadiusAu: SUN.radiusKm / AU_KM,
     orbit: null
   };
 
@@ -101,9 +106,25 @@ export function createSolarSystemCatalog() {
       parentId: 'sun',
       isMajor: true,
       displayRadiusAu: displayRadiusAu(planet.radiusKm, planet.type),
+      realRadiusAu: planet.radiusKm / AU_KM,
       orbit: {
         ...planet.orbit,
         epochJd: planet.orbit.epochJd
+      }
+    });
+  }
+
+  for (const ast of ASTEROID_BELT_OBJECTS) {
+    usedIds.add(ast.id);
+    bodies.push({
+      ...ast,
+      parentId: 'sun',
+      isMajor: true,
+      displayRadiusAu: displayRadiusAu(ast.radiusKm, ast.type === 'dwarf' ? 'dwarf' : 'planet'),
+      realRadiusAu: ast.radiusKm / AU_KM,
+      orbit: {
+        ...ast.orbit,
+        epochJd: ast.orbit.epochJd
       }
     });
   }
@@ -115,6 +136,7 @@ export function createSolarSystemCatalog() {
       parentId: 'sun',
       isMajor: true,
       displayRadiusAu: displayRadiusAu(kbo.radiusKm, kbo.type),
+      realRadiusAu: kbo.radiusKm / AU_KM,
       orbit: {
         ...kbo.orbit,
         epochJd: kbo.orbit.epochJd
@@ -149,6 +171,7 @@ export function createSolarSystemCatalog() {
       massKg: null,
       radiusKm,
       displayRadiusAu: displayRadiusAu(radiusKm, 'moon'),
+      realRadiusAu: radiusKm / AU_KM,
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
       reference: moon.reference,
@@ -165,10 +188,12 @@ export function createSolarSystemCatalog() {
     });
   }
 
+  const asteroidIds = ASTEROID_BELT_OBJECTS.map((a) => a.id);
   const kboIds = KUIPER_BELT_OBJECTS.map((k) => k.id);
 
   const jumpBodyIds = [
     ...MAJOR_BODY_IDS,
+    ...asteroidIds,
     ...kboIds,
     ...bodies
       .filter((body) => body.type === 'moon' && body.isMajor)
