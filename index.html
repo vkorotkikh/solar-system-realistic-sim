@@ -29,12 +29,27 @@
         </section>
 
         <section class="panel-section">
+          <h2>Simulation Engine</h2>
+          <label for="sim-backend">Backend</label>
+          <select id="sim-backend">
+            <option value="local">Local (Keplerian)</option>
+            <option value="rebound">REBOUND N-body (Python)</option>
+            <option value="tudatpy" disabled>TudatPy (Python) [future]</option>
+          </select>
+          <div class="row row-inline">
+            <button id="sim-connect" type="button">Connect</button>
+            <span id="sim-status">Local</span>
+          </div>
+        </section>
+
+        <section class="panel-section">
           <h2>Display</h2>
           <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
           <label><input id="toggle-labels" type="checkbox" checked /> Show major labels</label>
           <label><input id="toggle-moons" type="checkbox" checked /> Show moons</label>
           <label><input id="toggle-kuiper" type="checkbox" checked /> Show Kuiper belt</label>
           <label><input id="toggle-oort" type="checkbox" checked /> Show Oort cloud shell</label>
+          <label><input id="toggle-realistic-scale" type="checkbox" /> Realistic scale</label>
         </section>
 
         <section class="panel-section">
