@@ -248,3 +248,134 @@ export const MAJOR_MOONS = new Set([
   'Triton',
   'Charon'
 ]);
+
+// Known Kuiper Belt Objects / trans-Neptunian dwarf planets.
+// Orbital elements referenced to J2000 epoch (approximate).
+export const KUIPER_BELT_OBJECTS = [
+  {
+    id: 'eris',
+    name: 'Eris',
+    type: 'dwarf',
+    massKg: 1.66e22,
+    radiusKm: 1_163,
+    color: '#c7c0b7',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 67.864,
+      e: 0.4366,
+      iDeg: 44.04,
+      ascendingNodeDeg: 35.951,
+      argPeriapsisDeg: 151.639,
+      meanAnomalyDeg: 205.989,
+      periodDays: 203_830
+    }
+  },
+  {
+    id: 'makemake',
+    name: 'Makemake',
+    type: 'dwarf',
+    massKg: 3.1e21,
+    radiusKm: 715,
+    color: '#c9b8a0',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 45.43,
+      e: 0.1613,
+      iDeg: 28.984,
+      ascendingNodeDeg: 79.382,
+      argPeriapsisDeg: 297.24,
+      meanAnomalyDeg: 153.27,
+      periodDays: 111_845
+    }
+  },
+  {
+    id: 'haumea',
+    name: 'Haumea',
+    type: 'dwarf',
+    massKg: 4.006e21,
+    radiusKm: 816,
+    color: '#d5cdc3',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 43.218,
+      e: 0.1951,
+      iDeg: 28.213,
+      ascendingNodeDeg: 122.167,
+      argPeriapsisDeg: 239.041,
+      meanAnomalyDeg: 205.22,
+      periodDays: 103_774
+    }
+  },
+  {
+    id: 'sedna',
+    name: 'Sedna',
+    type: 'dwarf',
+    massKg: null,
+    radiusKm: 498,
+    color: '#d4735e',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 506.8,
+      e: 0.8496,
+      iDeg: 11.929,
+      ascendingNodeDeg: 144.514,
+      argPeriapsisDeg: 311.122,
+      meanAnomalyDeg: 358.117,
+      periodDays: 4_163_000
+    }
+  },
+  {
+    id: 'quaoar',
+    name: 'Quaoar',
+    type: 'dwarf',
+    massKg: 1.2e21,
+    radiusKm: 555,
+    color: '#b8a090',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 43.694,
+      e: 0.0389,
+      iDeg: 7.985,
+      ascendingNodeDeg: 188.927,
+      argPeriapsisDeg: 147.48,
+      meanAnomalyDeg: 282.48,
+      periodDays: 105_480
+    }
+  },
+  {
+    id: 'orcus',
+    name: 'Orcus',
+    type: 'dwarf',
+    massKg: 6.32e20,
+    radiusKm: 458,
+    color: '#a0a0a0',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 39.419,
+      e: 0.2271,
+      iDeg: 20.573,
+      ascendingNodeDeg: 268.799,
+      argPeriapsisDeg: 73.1,
+      meanAnomalyDeg: 181.735,
+      periodDays: 90_470
+    }
+  },
+  {
+    id: 'gonggong',
+    name: 'Gonggong',
+    type: 'dwarf',
+    massKg: 1.75e21,
+    radiusKm: 615,
+    color: '#c47060',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 67.485,
+      e: 0.501,
+      iDeg: 30.739,
+      ascendingNodeDeg: 336.859,
+      argPeriapsisDeg: 207.667,
+      meanAnomalyDeg: 107.46,
+      periodDays: 202_370
+    }
+  }
+];

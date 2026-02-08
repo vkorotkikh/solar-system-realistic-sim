@@ -1,6 +1,6 @@
 import moons from '../data/moons.json';
 import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants.js';
-import { MAJOR_MOON_RADII_KM, MAJOR_MOONS, PLANETS, SUN } from '../data/planets.js';
+import { KUIPER_BELT_OBJECTS, MAJOR_MOON_RADII_KM, MAJOR_MOONS, PLANETS, SUN } from '../data/planets.js';
 
 const PARENT_TINTS = {
   Earth: '#d2d8e3',
@@ -108,6 +108,20 @@ export function createSolarSystemCatalog() {
     });
   }
 
+  for (const kbo of KUIPER_BELT_OBJECTS) {
+    usedIds.add(kbo.id);
+    bodies.push({
+      ...kbo,
+      parentId: 'sun',
+      isMajor: true,
+      displayRadiusAu: displayRadiusAu(kbo.radiusKm, kbo.type),
+      orbit: {
+        ...kbo.orbit,
+        epochJd: kbo.orbit.epochJd
+      }
+    });
+  }
+
   const planetNameToId = new Map([
     ['Earth', 'earth'],
     ['Mars', 'mars'],
@@ -151,8 +165,11 @@ export function createSolarSystemCatalog() {
     });
   }
 
+  const kboIds = KUIPER_BELT_OBJECTS.map((k) => k.id);
+
   const jumpBodyIds = [
     ...MAJOR_BODY_IDS,
+    ...kboIds,
     ...bodies
       .filter((body) => body.type === 'moon' && body.isMajor)
       .map((body) => body.id)
@@ -168,7 +185,8 @@ export function createSolarSystemCatalog() {
     'saturn',
     'uranus',
     'neptune',
-    'pluto'
+    'pluto',
+    ...kboIds
   ];
 
   return {

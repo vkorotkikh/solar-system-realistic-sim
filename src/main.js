@@ -14,6 +14,7 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
+  PointLight,
   Points,
   PointsMaterial,
   RingGeometry,
@@ -37,6 +38,9 @@ import { buildTransferCurvePoints, describeRoute, planInterplanetaryRoute } from
 import { createSolarSystemCatalog } from './sim/catalog.js';
 import { propagateKeplerOrbit } from './sim/orbitMath.js';
 import { SolarSystemModel } from './sim/solarSystemModel.js';
+import { generatePlanetTexture } from './textures.js';
+
+// ── DOM References ───────────────────────────────────────────────────────────
 
 const dom = {
   canvas: document.getElementById('space-canvas'),
@@ -70,6 +74,8 @@ const dom = {
   statusRoute: document.getElementById('status-route')
 };
 
+// ── Data & State ─────────────────────────────────────────────────────────────
+
 const catalog = createSolarSystemCatalog();
 const model = new SolarSystemModel(catalog);
 const bodyById = new Map(catalog.bodies.map((body) => [body.id, body]));
@@ -82,6 +88,8 @@ const simState = {
   focusedBodyId: 'sun',
   route: null
 };
+
+// ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
 const renderer = new WebGLRenderer({
   canvas: dom.canvas,
@@ -103,11 +111,21 @@ controls.maxDistance = 8_000;
 controls.minDistance = 0.0002;
 controls.target.set(0, 0, 0);
 
-const ambientLight = new AmbientLight('#3a4a57', 0.4);
+// ── Lighting ─────────────────────────────────────────────────────────────────
+
+// Reduced ambient so directional sun light is visible
+const ambientLight = new AmbientLight('#2a3a47', 0.3);
 scene.add(ambientLight);
 
-const hemisphereLight = new HemisphereLight('#7eb5db', '#21190f', 0.17);
+const hemisphereLight = new HemisphereLight('#5a8aab', '#1a0f08', 0.12);
 scene.add(hemisphereLight);
+
+// Point light at the Sun for realistic directional lighting
+const sunLight = new PointLight('#fff5e0', 1.8, 0, 0);
+sunLight.position.set(0, 0, 0);
+scene.add(sunLight);
+
+// ── Collections ──────────────────────────────────────────────────────────────
 
 const bodyNodes = new Map();
 const bodyMeshes = new Map();
@@ -120,38 +138,59 @@ const majorNodeIds = new Set(
   catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf').map((body) => body.id)
 );
 
+// ── Geometry & Material Caches ───────────────────────────────────────────────
+
 const geometryCache = {
   sun: new SphereGeometry(1, 48, 32),
-  planet: new SphereGeometry(1, 26, 20),
+  planet: new SphereGeometry(1, 32, 24),
   moon: new SphereGeometry(1, 12, 10)
 };
 
 const materialCache = new Map();
 
-function getMaterial(colorHex, isSun = false) {
-  const key = `${colorHex}:${isSun ? 'sun' : 'body'}`;
-  if (!materialCache.has(key)) {
-    if (isSun) {
-      materialCache.set(
-        key,
-        new MeshBasicMaterial({
-          color: new Color(colorHex)
-        })
-      );
-    } else {
-      materialCache.set(
-        key,
-        new MeshStandardMaterial({
-          color: new Color(colorHex),
-          roughness: 0.95,
-          metalness: 0.03
-        })
-      );
-    }
+// Generate procedural textures for planets at startup
+const planetTextures = new Map();
+for (const bodyId of ['sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto']) {
+  const canvas = generatePlanetTexture(bodyId);
+  if (canvas) {
+    planetTextures.set(bodyId, new CanvasTexture(canvas));
+  }
+}
+
+function getMaterial(body) {
+  const cacheKey = body.id;
+
+  if (materialCache.has(cacheKey)) {
+    return materialCache.get(cacheKey);
   }
 
-  return materialCache.get(key);
+  const texture = planetTextures.get(body.id);
+  let material;
+
+  if (body.type === 'star') {
+    material = new MeshBasicMaterial({
+      map: texture ?? undefined,
+      color: texture ? undefined : new Color(body.color)
+    });
+  } else if (texture) {
+    material = new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+  } else {
+    material = new MeshStandardMaterial({
+      color: new Color(body.color),
+      roughness: 0.95,
+      metalness: 0.03
+    });
+  }
+
+  materialCache.set(cacheKey, material);
+  return material;
 }
+
+// ── Label Sprites ────────────────────────────────────────────────────────────
 
 function createLabelSprite(text) {
   const canvas = document.createElement('canvas');
@@ -159,18 +198,24 @@ function createLabelSprite(text) {
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = 'rgba(8, 20, 28, 0.72)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Transparent background - no fill, no border
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = 'rgba(225, 239, 245, 0.55)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+  // Subtle text shadow for readability against dark space
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 2;
 
-  ctx.fillStyle = '#e8f6ff';
-  ctx.font = '600 48px Rajdhani';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '600 48px Rajdhani, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 4);
+
+  // Draw text twice for stronger glow
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  ctx.shadowBlur = 4;
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
   const texture = new CanvasTexture(canvas);
   const material = new SpriteMaterial({ map: texture, transparent: true, depthTest: false });
@@ -179,29 +224,91 @@ function createLabelSprite(text) {
   return sprite;
 }
 
+// ── Sun Glow ─────────────────────────────────────────────────────────────────
+
+function createSunGlow(sunDisplayRadius) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gradient.addColorStop(0, 'rgba(255, 240, 150, 0.45)');
+  gradient.addColorStop(0.12, 'rgba(255, 210, 90, 0.22)');
+  gradient.addColorStop(0.35, 'rgba(255, 160, 50, 0.08)');
+  gradient.addColorStop(0.65, 'rgba(255, 110, 30, 0.02)');
+  gradient.addColorStop(1, 'rgba(255, 80, 20, 0.0)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 256, 256);
+
+  const texture = new CanvasTexture(canvas);
+  const material = new SpriteMaterial({
+    map: texture,
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    depthTest: false
+  });
+
+  const glow = new Sprite(material);
+  glow.scale.setScalar(sunDisplayRadius * 14);
+  return glow;
+}
+
+// ── Body Nodes ───────────────────────────────────────────────────────────────
+
 function createBodyNode(body) {
   const node = new Group();
   node.name = body.name;
 
   const geometry = body.type === 'star' ? geometryCache.sun : body.type === 'moon' ? geometryCache.moon : geometryCache.planet;
-  const material = getMaterial(body.color, body.type === 'star');
+  const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
   mesh.scale.setScalar(body.displayRadiusAu);
   mesh.userData.bodyId = body.id;
   node.add(mesh);
 
+  // Saturn ring system with multiple bands and Cassini Division gap
   if (body.id === 'saturn') {
-    const inner = body.displayRadiusAu * 1.45;
-    const outer = body.displayRadiusAu * 2.35;
+    const ringBands = [
+      { innerMul: 1.24, outerMul: 1.52, color: '#a09580', opacity: 0.12 },  // C ring (faint)
+      { innerMul: 1.52, outerMul: 1.94, color: '#d4c8a4', opacity: 0.48 },  // B ring (brightest)
+      { innerMul: 2.02, outerMul: 2.27, color: '#c8bb95', opacity: 0.36 },  // A ring
+      { innerMul: 2.33, outerMul: 2.36, color: '#b5a880', opacity: 0.18 }   // F ring
+    ];
+    for (const band of ringBands) {
+      const inner = body.displayRadiusAu * band.innerMul;
+      const outer = body.displayRadiusAu * band.outerMul;
+      const ring = new Mesh(
+        new RingGeometry(inner, outer, 96),
+        new MeshBasicMaterial({ color: new Color(band.color), transparent: true, opacity: band.opacity, side: 2 })
+      );
+      ring.rotation.x = Math.PI * 0.36;
+      node.add(ring);
+    }
+  }
+
+  // Uranus has faint rings too
+  if (body.id === 'uranus') {
+    const inner = body.displayRadiusAu * 1.65;
+    const outer = body.displayRadiusAu * 1.95;
     const ring = new Mesh(
-      new RingGeometry(inner, outer, 84),
-      new MeshBasicMaterial({ color: new Color('#bcab83'), transparent: true, opacity: 0.43, side: 2 })
+      new RingGeometry(inner, outer, 64),
+      new MeshBasicMaterial({ color: new Color('#7a9aa8'), transparent: true, opacity: 0.08, side: 2 })
     );
-    ring.rotation.x = Math.PI * 0.36;
+    ring.rotation.x = Math.PI * 0.48;
     node.add(ring);
   }
 
+  // Sun corona glow
+  if (body.type === 'star') {
+    const glow = createSunGlow(body.displayRadiusAu);
+    node.add(glow);
+  }
+
+  // Labels for major bodies only
   if (majorNodeIds.has(body.id)) {
     const label = createLabelSprite(body.name);
     label.position.set(0, body.displayRadiusAu * 2.5 + 0.03, 0);
@@ -214,12 +321,23 @@ function createBodyNode(body) {
   return node;
 }
 
+// ── Orbit Lines ──────────────────────────────────────────────────────────────
+
 function createOrbitLine(body) {
   if (!body.orbit) {
     return null;
   }
 
-  const segments = body.type === 'moon' ? 64 : 220;
+  // More segments for very long-period orbits (KBOs) and eccentric orbits
+  let segments;
+  if (body.type === 'moon') {
+    segments = 64;
+  } else if (body.orbit.periodDays > 50_000) {
+    segments = 400;
+  } else {
+    segments = 220;
+  }
+
   const points = [];
   const point = new Vector3();
 
@@ -230,12 +348,12 @@ function createOrbitLine(body) {
   }
 
   const geometry = new BufferGeometry().setFromPoints(points);
-  const color = body.type === 'moon' ? '#5e7183' : '#7fa2bc';
+  const color = body.type === 'moon' ? '#5e7183' : body.type === 'dwarf' ? '#6e8a7c' : '#7fa2bc';
 
   const material = new LineBasicMaterial({
     color: new Color(color),
     transparent: true,
-    opacity: body.type === 'moon' ? 0.22 : 0.36
+    opacity: body.type === 'moon' ? 0.22 : body.type === 'dwarf' ? 0.28 : 0.36
   });
 
   const line = new Line(geometry, material);
@@ -244,6 +362,8 @@ function createOrbitLine(body) {
   orbitLines.push(line);
   return line;
 }
+
+// ── Scene Graph ──────────────────────────────────────────────────────────────
 
 function mountSceneGraph() {
   for (const body of catalog.bodies) {
@@ -269,6 +389,8 @@ function mountSceneGraph() {
     }
   }
 }
+
+// ── Background Stars ─────────────────────────────────────────────────────────
 
 function createStars(count, radius, color, size) {
   const geometry = new BufferGeometry();
@@ -300,33 +422,158 @@ function createStars(count, radius, color, size) {
   );
 }
 
-function createKuiperBelt(count = 7_500) {
+// ── Kuiper Belt (enhanced with realistic distribution) ───────────────────────
+
+function createKuiperBelt(count = 15_000) {
   const geometry = new BufferGeometry();
   const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
 
-  for (let i = 0; i < count; i += 1) {
-    const radius = 30 + Math.random() * 24;
+  let idx = 0;
+
+  // Classical Kuiper Belt (42–47.5 AU, low inclination) — ~55%
+  const classicalEnd = Math.floor(count * 0.55);
+  for (; idx < classicalEnd; idx++) {
+    const r = 42 + Math.random() * 5.5;
     const theta = Math.random() * Math.PI * 2;
-    const inclination = (Math.random() - 0.5) * 0.35;
+    const inc = (Math.random() - 0.5) * 0.18;
+    positions[idx * 3] = r * Math.cos(theta);
+    positions[idx * 3 + 1] = r * Math.sin(theta);
+    positions[idx * 3 + 2] = r * Math.sin(inc);
+    const b = 0.55 + Math.random() * 0.2;
+    colors[idx * 3] = b * 0.85;
+    colors[idx * 3 + 1] = b * 0.9;
+    colors[idx * 3 + 2] = b;
+  }
 
-    positions[i * 3 + 0] = radius * Math.cos(theta);
-    positions[i * 3 + 1] = radius * Math.sin(theta);
-    positions[i * 3 + 2] = radius * Math.sin(inclination);
+  // Plutinos — 3:2 resonance with Neptune (~39.4 AU) — ~15%
+  const plutinoEnd = Math.floor(count * 0.7);
+  for (; idx < plutinoEnd; idx++) {
+    const r = 39 + (Math.random() - 0.5) * 1.5;
+    const theta = Math.random() * Math.PI * 2;
+    const inc = (Math.random() - 0.5) * 0.35;
+    positions[idx * 3] = r * Math.cos(theta);
+    positions[idx * 3 + 1] = r * Math.sin(theta);
+    positions[idx * 3 + 2] = r * Math.sin(inc);
+    const b = 0.5 + Math.random() * 0.2;
+    colors[idx * 3] = b * 0.9;
+    colors[idx * 3 + 1] = b * 0.85;
+    colors[idx * 3 + 2] = b * 0.8;
+  }
+
+  // 2:1 resonance (~47.7 AU) — ~10%
+  const resonanceEnd = Math.floor(count * 0.8);
+  for (; idx < resonanceEnd; idx++) {
+    const r = 47 + Math.random() * 1.5;
+    const theta = Math.random() * Math.PI * 2;
+    const inc = (Math.random() - 0.5) * 0.22;
+    positions[idx * 3] = r * Math.cos(theta);
+    positions[idx * 3 + 1] = r * Math.sin(theta);
+    positions[idx * 3 + 2] = r * Math.sin(inc);
+    const b = 0.5 + Math.random() * 0.15;
+    colors[idx * 3] = b * 0.8;
+    colors[idx * 3 + 1] = b * 0.85;
+    colors[idx * 3 + 2] = b;
+  }
+
+  // Scattered disk (30–100 AU, higher eccentricity / inclination) — remaining ~20%
+  for (; idx < count; idx++) {
+    const r = 30 + Math.pow(Math.random(), 1.5) * 70;
+    const theta = Math.random() * Math.PI * 2;
+    const inc = (Math.random() - 0.5) * 0.7;
+    positions[idx * 3] = r * Math.cos(theta);
+    positions[idx * 3 + 1] = r * Math.sin(theta);
+    positions[idx * 3 + 2] = r * Math.sin(inc);
+    const b = 0.4 + Math.random() * 0.2;
+    colors[idx * 3] = b * 0.85;
+    colors[idx * 3 + 1] = b * 0.88;
+    colors[idx * 3 + 2] = b * 0.95;
   }
 
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
 
   return new Points(
     geometry,
     new PointsMaterial({
-      color: new Color('#96a8b8'),
-      size: 0.018,
+      size: 0.015,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.6,
+      sizeAttenuation: true,
       depthWrite: false
     })
   );
 }
+
+// ── Kuiper Belt LOD Detail Layer ─────────────────────────────────────────────
+
+const KUIPER_DETAIL_COUNT = 25_000;
+const kuiperDetailGeometry = new BufferGeometry();
+const kuiperDetailPositions = new Float32Array(KUIPER_DETAIL_COUNT * 3);
+kuiperDetailGeometry.setAttribute('position', new Float32BufferAttribute(kuiperDetailPositions, 3));
+
+const kuiperDetailPoints = new Points(
+  kuiperDetailGeometry,
+  new PointsMaterial({
+    color: new Color('#b8c8d8'),
+    size: 0.003,
+    transparent: true,
+    opacity: 0.55,
+    sizeAttenuation: true,
+    depthWrite: false
+  })
+);
+kuiperDetailPoints.visible = false;
+kuiperDetailPoints.frustumCulled = false;
+
+const lastDetailCenter = new Vector3(Infinity, Infinity, Infinity);
+
+function updateKuiperDetail() {
+  if (!dom.toggleKuiper.checked) {
+    kuiperDetailPoints.visible = false;
+    return;
+  }
+
+  const target = controls.target;
+  const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
+  const height = Math.abs(target.z);
+  const cameraDist = camera.position.distanceTo(target);
+
+  // Only show detail when zoomed into the Kuiper belt region
+  const inKuiperRegion = distFromSun >= 28 && distFromSun <= 65 && height < 10 && cameraDist < 18;
+
+  if (!inKuiperRegion) {
+    kuiperDetailPoints.visible = false;
+    return;
+  }
+
+  // Regenerate particles when view center moves significantly
+  if (target.distanceTo(lastDetailCenter) > cameraDist * 0.15 + 0.3) {
+    const spread = Math.max(0.8, cameraDist * 0.7);
+
+    for (let i = 0; i < KUIPER_DETAIL_COUNT; i++) {
+      // Gaussian-like distribution around camera target
+      const angle = Math.random() * Math.PI * 2;
+      const rnd = Math.max(1e-10, Math.random());
+      const r = Math.sqrt(-2 * Math.log(rnd)) * spread * 0.35;
+
+      kuiperDetailPositions[i * 3] = target.x + Math.cos(angle) * r;
+      kuiperDetailPositions[i * 3 + 1] = target.y + Math.sin(angle) * r;
+      kuiperDetailPositions[i * 3 + 2] = target.z + (Math.random() - 0.5) * spread * 0.06;
+    }
+
+    kuiperDetailGeometry.attributes.position.needsUpdate = true;
+    kuiperDetailGeometry.computeBoundingSphere();
+    lastDetailCenter.copy(target);
+  }
+
+  // Slow orbital rotation for visual realism
+  kuiperDetailPoints.rotation.z += 0.00004;
+  kuiperDetailPoints.visible = true;
+}
+
+// ── Oort Cloud ───────────────────────────────────────────────────────────────
 
 function createOortCloud(count = 9_000) {
   const geometry = new BufferGeometry();
@@ -357,16 +604,22 @@ function createOortCloud(count = 9_000) {
   );
 }
 
+// ── Scene Assembly ───────────────────────────────────────────────────────────
+
 const backgroundStars = createStars(8_000, 5_000, '#d5f0ff', 0.95);
 scene.add(backgroundStars);
 
 const kuiperBelt = createKuiperBelt();
 scene.add(kuiperBelt);
 
+scene.add(kuiperDetailPoints);
+
 const oortCloud = createOortCloud();
 scene.add(oortCloud);
 
 mountSceneGraph();
+
+// ── Resize ───────────────────────────────────────────────────────────────────
 
 function resizeRenderer() {
   const width = dom.canvas.clientWidth;
@@ -385,6 +638,8 @@ function resizeRenderer() {
 
 window.addEventListener('resize', resizeRenderer);
 resizeRenderer();
+
+// ── Scene Updates ────────────────────────────────────────────────────────────
 
 const tempVecA = new Vector3();
 const tempVecB = new Vector3();
@@ -426,6 +681,8 @@ function applyRenderVisibility() {
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
 }
+
+// ── Focus & Follow ───────────────────────────────────────────────────────────
 
 function focusBody(bodyId, hardSnap = false) {
   const body = bodyById.get(bodyId);
@@ -474,6 +731,8 @@ function updateBodyInfoPanel(bodyId) {
   ].join('\n');
 }
 
+// ── Body List & Search ───────────────────────────────────────────────────────
+
 const allBodiesSorted = [...catalog.bodies].sort((a, b) => {
   if (a.type === b.type) return a.name.localeCompare(b.name);
   return a.type.localeCompare(b.type);
@@ -504,6 +763,8 @@ function refillBodyList(searchValue = '') {
   }
 }
 
+// ── Planner Selects ──────────────────────────────────────────────────────────
+
 function fillPlannerSelects() {
   dom.plannerFrom.innerHTML = '';
   dom.plannerTo.innerHTML = '';
@@ -527,6 +788,10 @@ function fillPlannerSelects() {
   dom.plannerDate.value = formatJulianAsDate(simState.julianDate);
 }
 
+// ── Route Visualization (dynamic, updates each frame) ────────────────────────
+
+const ROUTE_SEGMENTS = 90;
+
 function clearRouteVisualization() {
   routeGroup.clear();
   simState.route = null;
@@ -537,8 +802,19 @@ function plotRoute(route) {
   routeGroup.clear();
 
   route.legs.forEach((leg, index) => {
-    const points = buildTransferCurvePoints(leg, 90);
-    const geometry = new BufferGeometry().setFromPoints(points);
+    // Compute initial curve
+    const points = buildTransferCurvePoints(leg, ROUTE_SEGMENTS);
+    const positions = new Float32Array((ROUTE_SEGMENTS + 1) * 3);
+
+    for (let i = 0; i < points.length; i++) {
+      positions[i * 3] = points[i].x;
+      positions[i * 3 + 1] = points[i].y;
+      positions[i * 3 + 2] = points[i].z;
+    }
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+
     const material = new LineBasicMaterial({
       color: new Color(index % 2 === 0 ? '#ffcc85' : '#e98c5a'),
       linewidth: 1.5,
@@ -547,6 +823,7 @@ function plotRoute(route) {
     });
 
     const line = new Line(geometry, material);
+    line.frustumCulled = false;
     routeGroup.add(line);
   });
 
@@ -554,6 +831,46 @@ function plotRoute(route) {
   const routeNames = route.bodyRoute.map((bodyId) => bodyById.get(bodyId)?.name ?? bodyId).join(' -> ');
   dom.statusRoute.textContent = `Route: ${routeNames}`;
 }
+
+function updateRouteVisualization() {
+  if (!simState.route) return;
+
+  const route = simState.route;
+  const legs = route.legs;
+
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
+    const line = routeGroup.children[i];
+    if (!line) continue;
+
+    // Get current world positions of departure and arrival bodies
+    const fromNode = bodyNodes.get(leg.fromId);
+    const toNode = bodyNodes.get(leg.toId);
+    if (!fromNode || !toNode) continue;
+
+    fromNode.getWorldPosition(tempVecA);
+    toNode.getWorldPosition(tempVecB);
+
+    // Create updated leg data with current positions
+    const updatedLeg = {
+      startPosition: tempVecA.clone(),
+      endPosition: tempVecB.clone()
+    };
+
+    // Recompute the Bézier curve with updated endpoints
+    const points = buildTransferCurvePoints(updatedLeg, ROUTE_SEGMENTS);
+
+    // Update vertex positions in the buffer
+    const posAttr = line.geometry.attributes.position;
+    for (let j = 0; j < points.length && j < posAttr.count; j++) {
+      posAttr.setXYZ(j, points[j].x, points[j].y, points[j].z);
+    }
+    posAttr.needsUpdate = true;
+    line.geometry.computeBoundingSphere();
+  }
+}
+
+// ── Planner Execution ────────────────────────────────────────────────────────
 
 function runPlanner({ directOnly }) {
   const fromId = dom.plannerFrom.value;
@@ -586,6 +903,8 @@ function runPlanner({ directOnly }) {
   dom.plannerOutput.textContent = describeRoute(result.best, bodyById);
 }
 
+// ── Follow Target ────────────────────────────────────────────────────────────
+
 function updateFollowTarget() {
   if (!simState.followBodyId) {
     return;
@@ -597,6 +916,8 @@ function updateFollowTarget() {
   node.getWorldPosition(tempVecA);
   controls.target.lerp(tempVecA, 0.25);
 }
+
+// ── UI Event Setup ───────────────────────────────────────────────────────────
 
 function setupUiEvents() {
   dom.togglePlay.addEventListener('click', () => {
@@ -656,6 +977,8 @@ function setupUiEvents() {
   });
 }
 
+// ── Initialize ───────────────────────────────────────────────────────────────
+
 setupUiEvents();
 fillPlannerSelects();
 refillBodyList();
@@ -663,6 +986,8 @@ applyRenderVisibility();
 
 dom.statusBodies.textContent = `Bodies: ${catalog.bodies.length}`;
 dom.plannerOutput.textContent = 'No plotted route.';
+
+// ── Animation Loop ───────────────────────────────────────────────────────────
 
 const tmpFollow = new Vector3();
 let previousTimestamp = performance.now();
@@ -677,6 +1002,12 @@ function animate(timestamp) {
 
   model.update(simState.julianDate);
   updateSceneBodies();
+
+  // Dynamic route update — keeps trajectory curves attached to moving planets
+  updateRouteVisualization();
+
+  // Kuiper belt LOD — shows detail particles when zoomed into the belt region
+  updateKuiperDetail();
 
   updateFollowTarget();
 
