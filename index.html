@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar System Mission Lab</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="control-panel">
+        <header class="panel-header">
+          <p class="eyebrow">3D Mission Sandbox</p>
+          <h1>Solar System Mission Lab</h1>
+          <p class="subtitle">Real-time planetary and moon dynamics with route planning and gravity-assist previews.</p>
+        </header>
+
+        <section class="panel-section">
+          <h2>Time</h2>
+          <div class="row row-inline">
+            <button id="toggle-play" type="button">Pause</button>
+            <button id="now-time" type="button">Now</button>
+          </div>
+          <label for="time-scale">Simulation speed (days/sec)</label>
+          <input id="time-scale" type="range" min="-120" max="120" step="1" value="4" />
+          <div class="row row-inline">
+            <span id="time-scale-value">4.0</span>
+            <span id="time-date">--</span>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Display</h2>
+          <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
+          <label><input id="toggle-labels" type="checkbox" checked /> Show major labels</label>
+          <label><input id="toggle-moons" type="checkbox" checked /> Show moons</label>
+          <label><input id="toggle-kuiper" type="checkbox" checked /> Show Kuiper belt</label>
+          <label><input id="toggle-oort" type="checkbox" checked /> Show Oort cloud shell</label>
+        </section>
+
+        <section class="panel-section">
+          <h2>Explorer</h2>
+          <label for="body-search">Body search</label>
+          <input id="body-search" type="search" placeholder="Type body name" />
+          <select id="body-list" size="12"></select>
+          <div class="row row-inline">
+            <button id="focus-body" type="button">Focus</button>
+            <button id="follow-body" type="button">Follow</button>
+            <button id="clear-follow" type="button">Free Cam</button>
+          </div>
+          <pre id="body-info" class="info-box"></pre>
+        </section>
+
+        <section class="panel-section">
+          <h2>Trajectory Planner</h2>
+          <label for="planner-from">From</label>
+          <select id="planner-from"></select>
+
+          <label for="planner-to">To</label>
+          <select id="planner-to"></select>
+
+          <label for="planner-date">Departure date (UTC)</label>
+          <input id="planner-date" type="date" />
+
+          <label for="planner-objective">Objective</label>
+          <select id="planner-objective">
+            <option value="min_distance">Minimize travel path</option>
+            <option value="max_assist">Maximize gravity-assist gain</option>
+          </select>
+
+          <label for="planner-assists">Max assist flybys</label>
+          <select id="planner-assists">
+            <option value="0">0</option>
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+          </select>
+
+          <div class="row row-inline">
+            <button id="plan-direct" type="button">Direct</button>
+            <button id="plan-optimal" type="button">Plan Route</button>
+            <button id="clear-route" type="button">Clear</button>
+          </div>
+
+          <pre id="planner-output" class="info-box"></pre>
+        </section>
+      </aside>
+
+      <main id="viewport-shell">
+        <canvas id="space-canvas"></canvas>
+        <div id="status-bar">
+          <span id="status-focus">Focus: Sun</span>
+          <span id="status-bodies">Bodies: --</span>
+          <span id="status-route">Route: none</span>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
