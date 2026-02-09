@@ -54,6 +54,19 @@
         </section>
 
         <section class="panel-section">
+          <h2>Navigation</h2>
+          <label for="zoom-sensitivity">Zoom sensitivity</label>
+          <input id="zoom-sensitivity" type="range" min="0.2" max="4" step="0.05" value="1" />
+          <div class="row row-inline">
+            <span id="zoom-sensitivity-value">x1.00</span>
+            <span id="zoom-distance-value">Range: --</span>
+          </div>
+          <div class="row">
+            <span id="view-scale-value" class="stat-chip">View span: --</span>
+          </div>
+        </section>
+
+        <section class="panel-section">
           <h2>Explorer</h2>
           <label for="body-search">Body search</label>
           <input id="body-search" type="search" placeholder="Type body name" />
@@ -106,6 +119,8 @@
           <span id="status-focus">Focus: Sun</span>
           <span id="status-bodies">Bodies: --</span>
           <span id="status-route">Route: none</span>
+          <span id="status-zoom">Zoom: x1.00</span>
+          <span id="status-scale">Scale: --</span>
         </div>
       </main>
     </div>

@@ -29,6 +29,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
+  AU_KM,
   DEFAULT_TIME_SCALE_DAYS_PER_SEC,
   MIN_TIME_SCALE_DAYS_PER_SEC,
   MAX_TIME_SCALE_DAYS_PER_SEC,
@@ -78,10 +79,16 @@ const dom = {
   statusFocus: document.getElementById('status-focus'),
   statusBodies: document.getElementById('status-bodies'),
   statusRoute: document.getElementById('status-route'),
+  statusZoom: document.getElementById('status-zoom'),
+  statusScale: document.getElementById('status-scale'),
   simBackend: document.getElementById('sim-backend'),
   simConnect: document.getElementById('sim-connect'),
   simStatus: document.getElementById('sim-status'),
-  toggleRealisticScale: document.getElementById('toggle-realistic-scale')
+  toggleRealisticScale: document.getElementById('toggle-realistic-scale'),
+  zoomSensitivity: document.getElementById('zoom-sensitivity'),
+  zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
+  zoomDistanceValue: document.getElementById('zoom-distance-value'),
+  viewScaleValue: document.getElementById('view-scale-value')
 };
 
 // ── Data & State ─────────────────────────────────────────────────────────────
@@ -99,8 +106,61 @@ const simState = {
   route: null,
   backend: 'local',
   useRealisticScale: false,
+  zoomSensitivity: 1.0,
   serverConnected: false
 };
+
+const AU_PER_LIGHT_YEAR = 63_241.077;
+
+function formatAu(au) {
+  if (au >= 1_000) return `${au.toFixed(1)} AU`;
+  if (au >= 10) return `${au.toFixed(2)} AU`;
+  if (au >= 1) return `${au.toFixed(3)} AU`;
+  if (au >= 0.01) return `${au.toFixed(4)} AU`;
+  return `${au.toFixed(6)} AU`;
+}
+
+function formatDistanceScale(au, realisticMode) {
+  const safeAu = Math.max(0, au);
+  const ly = safeAu / AU_PER_LIGHT_YEAR;
+  const km = safeAu * AU_KM;
+  const auText = formatAu(safeAu);
+
+  if (!realisticMode) {
+    if (ly >= 0.02) {
+      return `${ly.toFixed(3)} ly (${auText})`;
+    }
+    return auText;
+  }
+
+  if (ly >= 0.02) {
+    return `${ly.toFixed(3)} ly (${auText})`;
+  }
+  if (km >= 1_000) {
+    const kiloKm = km / 1_000;
+    const decimals = kiloKm >= 10_000 ? 0 : kiloKm >= 1_000 ? 1 : 2;
+    return `${kiloKm.toFixed(decimals)}k km (${auText})`;
+  }
+  return `${km.toFixed(0)} km (${auText})`;
+}
+
+function updateZoomMetricsUI() {
+  const rangeAu = camera.position.distanceTo(controls.target);
+  const halfFovRad = (camera.fov * Math.PI) / 360;
+  const viewHeightAu = 2 * rangeAu * Math.tan(halfFovRad);
+  const viewWidthAu = viewHeightAu * camera.aspect;
+
+  const rangeText = formatDistanceScale(rangeAu, simState.useRealisticScale);
+  const widthText = formatDistanceScale(viewWidthAu, simState.useRealisticScale);
+  const heightText = formatDistanceScale(viewHeightAu, simState.useRealisticScale);
+  const zoomText = `x${simState.zoomSensitivity.toFixed(2)}`;
+
+  if (dom.zoomSensitivityValue) dom.zoomSensitivityValue.textContent = zoomText;
+  if (dom.zoomDistanceValue) dom.zoomDistanceValue.textContent = `Range: ${rangeText}`;
+  if (dom.viewScaleValue) dom.viewScaleValue.textContent = `View span: ${widthText} x ${heightText}`;
+  if (dom.statusZoom) dom.statusZoom.textContent = `Zoom: ${zoomText}`;
+  if (dom.statusScale) dom.statusScale.textContent = `Scale: ${widthText} x ${heightText}`;
+}
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
@@ -122,6 +182,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxDistance = 8_000;
 controls.minDistance = 0.0002;
+controls.zoomSpeed = simState.zoomSensitivity;
 controls.target.set(0, 0, 0);
 
 // ── Lighting ─────────────────────────────────────────────────────────────────
@@ -1058,6 +1119,8 @@ function applyScaleMode() {
   if (simState.focusedBodyId) {
     focusBody(simState.focusedBodyId, true);
   }
+
+  updateZoomMetricsUI();
 }
 
 // ── Resize ───────────────────────────────────────────────────────────────────
@@ -1074,6 +1137,7 @@ function resizeRenderer() {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    updateZoomMetricsUI();
   }
 }
 
@@ -1392,6 +1456,18 @@ function setupUiEvents() {
     simState.timeScaleDaysPerSec = Number(dom.timeScale.value);
   });
 
+  if (dom.zoomSensitivity) {
+    dom.zoomSensitivity.value = `${simState.zoomSensitivity}`;
+    dom.zoomSensitivity.addEventListener('input', () => {
+      simState.zoomSensitivity = Number(dom.zoomSensitivity.value);
+      if (!Number.isFinite(simState.zoomSensitivity)) {
+        simState.zoomSensitivity = 1.0;
+      }
+      controls.zoomSpeed = simState.zoomSensitivity;
+      updateZoomMetricsUI();
+    });
+  }
+
   for (const toggle of [dom.toggleOrbits, dom.toggleLabels, dom.toggleMoons, dom.toggleAsteroids, dom.toggleKuiper, dom.toggleOort]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
@@ -1480,6 +1556,7 @@ setupUiEvents();
 fillPlannerSelects();
 refillBodyList();
 applyRenderVisibility();
+updateZoomMetricsUI();
 
 dom.statusBodies.textContent = `Bodies: ${catalog.bodies.length}`;
 dom.plannerOutput.textContent = 'No plotted route.';
@@ -1532,6 +1609,7 @@ function animate(timestamp) {
 
   controls.update();
   resizeRenderer();
+  updateZoomMetricsUI();
   renderer.render(scene, camera);
 
   dom.timeScaleValue.textContent = simState.timeScaleDaysPerSec.toFixed(1);
@@ -1541,4 +1619,5 @@ function animate(timestamp) {
 }
 
 focusBody('sun', true);
+updateZoomMetricsUI();
 requestAnimationFrame(animate);
