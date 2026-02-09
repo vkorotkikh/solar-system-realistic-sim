@@ -1358,11 +1358,18 @@ function updateFollowTarget() {
     return;
   }
 
+  const body = bodyById.get(simState.followBodyId);
   const node = bodyNodes.get(simState.followBodyId);
-  if (!node) return;
+  if (!body || !node) return;
 
   node.getWorldPosition(tempVecA);
-  controls.target.lerp(tempVecA, 0.25);
+
+  // Preserve the current camera-to-target offset (viewing angle + distance)
+  const offset = tempVecB.copy(camera.position).sub(controls.target);
+
+  // Move both target and camera in lockstep so the view stays constant
+  controls.target.copy(tempVecA);
+  camera.position.copy(tempVecA).add(offset);
 }
 
 // ── UI Event Setup ───────────────────────────────────────────────────────────
@@ -1410,10 +1417,15 @@ function setupUiEvents() {
     if (!id) return;
     simState.followBodyId = id;
     focusBody(id, true);
+    updateBodyInfoPanel(id);
+    const body = bodyById.get(id);
+    if (body) dom.statusFocus.textContent = `Following: ${body.name}`;
   });
 
   dom.clearFollow.addEventListener('click', () => {
     simState.followBodyId = null;
+    const body = bodyById.get(simState.focusedBodyId);
+    dom.statusFocus.textContent = `Focus: ${body?.name ?? 'None'}`;
   });
 
   dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
@@ -1512,13 +1524,10 @@ function animate(timestamp) {
 
   updateFollowTarget();
 
-  // Keep the selected focus body status synchronized even when not hard-snapping.
+  // Keep the selected follow body status synchronized
   if (simState.followBodyId) {
-    const followNode = bodyNodes.get(simState.followBodyId);
-    if (followNode) {
-      followNode.getWorldPosition(tmpFollow);
-      dom.statusFocus.textContent = `Focus: ${bodyById.get(simState.followBodyId)?.name ?? simState.followBodyId}`;
-    }
+    const followBody = bodyById.get(simState.followBodyId);
+    dom.statusFocus.textContent = `Following: ${followBody?.name ?? simState.followBodyId}`;
   }
 
   controls.update();
