@@ -18,10 +18,12 @@ import {
   Points,
   PointsMaterial,
   RingGeometry,
+  SRGBColorSpace,
   Scene,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
+  TextureLoader,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -39,6 +41,9 @@ import { createSolarSystemCatalog } from './sim/catalog.js';
 import { propagateKeplerOrbit } from './sim/orbitMath.js';
 import { SolarSystemModel } from './sim/solarSystemModel.js';
 import { generatePlanetTexture } from './textures.js';
+import earthDayTextureUrl from './assets/textures/earth_day_4096.jpg';
+import earthNormalTextureUrl from './assets/textures/earth_normal_2048.jpg';
+import moonDayTextureUrl from './assets/textures/moon_1024.jpg';
 
 // ── DOM References ───────────────────────────────────────────────────────────
 
@@ -155,6 +160,35 @@ const geometryCache = {
 };
 
 const materialCache = new Map();
+const textureLoader = new TextureLoader();
+const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+function configureLoadedTexture(texture, { isColorMap = true } = {}) {
+  texture.anisotropy = maxAnisotropy;
+  texture.generateMipmaps = true;
+  if (isColorMap) {
+    texture.colorSpace = SRGBColorSpace;
+  }
+}
+
+function loadHiResTexture(url, options = {}) {
+  const texture = textureLoader.load(
+    url,
+    (loaded) => configureLoadedTexture(loaded, options),
+    undefined,
+    () => {
+      // Keep procedural fallback material behavior if a texture fails to load.
+    }
+  );
+  configureLoadedTexture(texture, options);
+  return texture;
+}
+
+const hiResTextures = {
+  earthDay: loadHiResTexture(earthDayTextureUrl),
+  earthNormal: loadHiResTexture(earthNormalTextureUrl, { isColorMap: false }),
+  moonDay: loadHiResTexture(moonDayTextureUrl)
+};
 
 // Generate procedural textures for planets at startup
 const planetTextures = new Map();
@@ -173,12 +207,28 @@ function getMaterial(body) {
   }
 
   const texture = planetTextures.get(body.id);
+  const isEarthMoon = body.type === 'moon' && body.parentId === 'earth' && body.name === 'Moon';
   let material;
 
   if (body.type === 'star') {
     material = new MeshBasicMaterial({
       map: texture ?? undefined,
       color: texture ? undefined : new Color(body.color)
+    });
+  } else if (body.id === 'earth') {
+    material = new MeshStandardMaterial({
+      color: new Color('#ffffff'),
+      map: hiResTextures.earthDay,
+      normalMap: hiResTextures.earthNormal,
+      roughness: 0.9,
+      metalness: 0.0
+    });
+  } else if (isEarthMoon) {
+    material = new MeshStandardMaterial({
+      color: new Color('#f2f2f2'),
+      map: hiResTextures.moonDay,
+      roughness: 0.95,
+      metalness: 0.0
     });
   } else if (texture) {
     material = new MeshStandardMaterial({
@@ -959,6 +1009,7 @@ function applyServerKuiper(particles) {
 
 function applyScaleMode() {
   const realistic = simState.useRealisticScale;
+  controls.minDistance = realistic ? 0.000003 : 0.0002;
 
   for (const body of catalog.bodies) {
     const mesh = bodyMeshes.get(body.id);
@@ -1002,6 +1053,10 @@ function applyScaleMode() {
         );
       }
     }
+  }
+
+  if (simState.focusedBodyId) {
+    focusBody(simState.focusedBodyId, true);
   }
 }
 
@@ -1078,7 +1133,13 @@ function focusBody(bodyId, hardSnap = false) {
 
   node.getWorldPosition(tempVecA);
   const offset = camera.position.clone().sub(controls.target);
-  const preferredDistance = Math.max(body.displayRadiusAu * 18, body.type === 'star' ? 2.6 : 0.08);
+  const renderedRadius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+  const minDistance = simState.useRealisticScale
+    ? (body.type === 'moon' ? 0.00001 : 0.00003)
+    : (body.type === 'moon' ? 0.002 : 0.01);
+  const preferredDistance = body.type === 'star'
+    ? (simState.useRealisticScale ? 0.14 : 2.6)
+    : Math.max(renderedRadius * (simState.useRealisticScale ? 26 : 18), minDistance);
 
   if (offset.lengthSq() < 1e-9) {
     offset.set(0, -preferredDistance, preferredDistance * 0.6);
@@ -1394,6 +1455,9 @@ function setupUiEvents() {
     dom.toggleRealisticScale.addEventListener('change', () => {
       simState.useRealisticScale = dom.toggleRealisticScale.checked;
       applyScaleMode();
+      if (simState.focusedBodyId) {
+        updateBodyInfoPanel(simState.focusedBodyId);
+      }
     });
   }
 }

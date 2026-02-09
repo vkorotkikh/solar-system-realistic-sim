@@ -83,6 +83,39 @@ function makeMoonId(moon, usedIds) {
   return id;
 }
 
+function applyDisplayScaleConstraints(bodies) {
+  const minMoonOrbitByParent = new Map();
+
+  for (const body of bodies) {
+    if (body.type !== 'moon' || !body.orbit || !Number.isFinite(body.orbit.aAu)) {
+      continue;
+    }
+
+    // Keep moons smaller than their parent-relative orbit scale so they remain distinct objects.
+    const moonMaxRadius = body.orbit.aAu * 0.18;
+    const moonMinRadius = body.realRadiusAu * 2.5;
+    body.displayRadiusAu = Math.max(moonMinRadius, Math.min(body.displayRadiusAu, moonMaxRadius));
+
+    const parentId = body.parentId;
+    const currentMin = minMoonOrbitByParent.get(parentId);
+    if (currentMin === undefined || body.orbit.aAu < currentMin) {
+      minMoonOrbitByParent.set(parentId, body.orbit.aAu);
+    }
+  }
+
+  for (const body of bodies) {
+    const closestMoonOrbit = minMoonOrbitByParent.get(body.id);
+    if (closestMoonOrbit === undefined) {
+      continue;
+    }
+
+    // Prevent inflated planet radii from swallowing inner moons in display mode.
+    const parentMaxRadius = closestMoonOrbit * 0.65;
+    const parentMinRadius = body.realRadiusAu * 1.1;
+    body.displayRadiusAu = Math.max(parentMinRadius, Math.min(body.displayRadiusAu, parentMaxRadius));
+  }
+}
+
 export function createSolarSystemCatalog() {
   const usedIds = new Set();
   const bodies = [];
@@ -187,6 +220,8 @@ export function createSolarSystemCatalog() {
       }
     });
   }
+
+  applyDisplayScaleConstraints(bodies);
 
   const asteroidIds = ASTEROID_BELT_OBJECTS.map((a) => a.id);
   const kboIds = KUIPER_BELT_OBJECTS.map((k) => k.id);
