@@ -2,6 +2,7 @@ import './style.css';
 import {
   AdditiveBlending,
   AmbientLight,
+  ArrowHelper,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -33,6 +34,7 @@ import {
   DEFAULT_TIME_SCALE_DAYS_PER_SEC,
   MIN_TIME_SCALE_DAYS_PER_SEC,
   MAX_TIME_SCALE_DAYS_PER_SEC,
+  MU_SUN_AU3_DAY2,
   currentJulianDate,
   formatJulianAsDate,
   parseDateInputToJulian
@@ -45,6 +47,16 @@ import { generatePlanetTexture } from './textures.js';
 import earthDayTextureUrl from './assets/textures/earth_day_4096.jpg';
 import earthNormalTextureUrl from './assets/textures/earth_normal_2048.jpg';
 import moonDayTextureUrl from './assets/textures/moon_1024.jpg';
+import mercuryDayTextureUrl from './assets/textures/mercury_day_2048.jpg';
+import venusDayTextureUrl from './assets/textures/venus_day_2048.jpg';
+import marsDayTextureUrl from './assets/textures/mars_day_2048.jpg';
+import jupiterDayTextureUrl from './assets/textures/jupiter_day_2048.jpg';
+import saturnDayTextureUrl from './assets/textures/saturn_day_2048.jpg';
+import uranusDayTextureUrl from './assets/textures/uranus_day_2048.jpg';
+import neptuneDayTextureUrl from './assets/textures/neptune_day_2048.jpg';
+import earthCloudsTextureUrl from './assets/textures/earth_clouds_2048.jpg';
+import venusAtmosphereTextureUrl from './assets/textures/venus_atmosphere_2048.jpg';
+import starsCatalog from './data/stars_catalog.json';
 
 // ── DOM References ───────────────────────────────────────────────────────────
 
@@ -57,6 +69,8 @@ const dom = {
   timeDate: document.getElementById('time-date'),
   toggleOrbits: document.getElementById('toggle-orbits'),
   toggleLabels: document.getElementById('toggle-labels'),
+  toggleLocators: document.getElementById('toggle-locators'),
+  toggleGravityVectors: document.getElementById('toggle-gravity-vectors'),
   toggleMoons: document.getElementById('toggle-moons'),
   toggleAsteroids: document.getElementById('toggle-asteroids'),
   toggleKuiper: document.getElementById('toggle-kuiper'),
@@ -111,6 +125,12 @@ const simState = {
 };
 
 const AU_PER_LIGHT_YEAR = 63_241.077;
+const MSUN_KG = 1.98847e30;
+
+function bodyMuAu3Day2(massKg) {
+  if (!massKg || !Number.isFinite(massKg) || massKg <= 0) return 0;
+  return MU_SUN_AU3_DAY2 * (massKg / MSUN_KG);
+}
 
 function formatAu(au) {
   if (au >= 1_000) return `${au.toFixed(1)} AU`;
@@ -203,10 +223,16 @@ scene.add(sunLight);
 
 const bodyNodes = new Map();
 const bodyMeshes = new Map();
+const bodySpinGroups = new Map();
 const orbitLines = [];
 const labels = [];
+const locatorHalos = [];
+const gravityArrowByBodyId = new Map();
 const routeGroup = new Group();
 scene.add(routeGroup);
+const gravityVectorGroup = new Group();
+gravityVectorGroup.visible = false;
+scene.add(gravityVectorGroup);
 
 const majorNodeIds = new Set(
   catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'asteroid').map((body) => body.id)
@@ -248,7 +274,16 @@ function loadHiResTexture(url, options = {}) {
 const hiResTextures = {
   earthDay: loadHiResTexture(earthDayTextureUrl),
   earthNormal: loadHiResTexture(earthNormalTextureUrl, { isColorMap: false }),
-  moonDay: loadHiResTexture(moonDayTextureUrl)
+  earthClouds: loadHiResTexture(earthCloudsTextureUrl),
+  moonDay: loadHiResTexture(moonDayTextureUrl),
+  mercuryDay: loadHiResTexture(mercuryDayTextureUrl),
+  venusDay: loadHiResTexture(venusDayTextureUrl),
+  venusAtmosphere: loadHiResTexture(venusAtmosphereTextureUrl),
+  marsDay: loadHiResTexture(marsDayTextureUrl),
+  jupiterDay: loadHiResTexture(jupiterDayTextureUrl),
+  saturnDay: loadHiResTexture(saturnDayTextureUrl),
+  uranusDay: loadHiResTexture(uranusDayTextureUrl),
+  neptuneDay: loadHiResTexture(neptuneDayTextureUrl)
 };
 
 // Generate procedural textures for planets at startup
@@ -269,6 +304,16 @@ function getMaterial(body) {
 
   const texture = planetTextures.get(body.id);
   const isEarthMoon = body.type === 'moon' && body.parentId === 'earth' && body.name === 'Moon';
+  const hiResDayMaps = {
+    mercury: hiResTextures.mercuryDay,
+    venus: hiResTextures.venusDay,
+    mars: hiResTextures.marsDay,
+    jupiter: hiResTextures.jupiterDay,
+    saturn: hiResTextures.saturnDay,
+    uranus: hiResTextures.uranusDay,
+    neptune: hiResTextures.neptuneDay
+  };
+  const hiResDay = hiResDayMaps[body.id];
   let material;
 
   if (body.type === 'star') {
@@ -281,7 +326,14 @@ function getMaterial(body) {
       color: new Color('#ffffff'),
       map: hiResTextures.earthDay,
       normalMap: hiResTextures.earthNormal,
-      roughness: 0.9,
+      roughness: 0.84,
+      metalness: 0.0
+    });
+  } else if (hiResDay) {
+    material = new MeshStandardMaterial({
+      color: new Color('#ffffff'),
+      map: hiResDay,
+      roughness: body.id === 'jupiter' || body.id === 'saturn' ? 0.78 : 0.88,
       metalness: 0.0
     });
   } else if (isEarthMoon) {
@@ -313,33 +365,79 @@ function getMaterial(body) {
 
 function createLabelSprite(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
+  canvas.width = 768;
+  canvas.height = 192;
   const ctx = canvas.getContext('2d');
 
-  // Transparent background - no fill, no border
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Subtle text shadow for readability against dark space
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-  ctx.shadowBlur = 10;
+  // Downward locator arrow.
+  const cx = canvas.width * 0.5;
+  const yBase = canvas.height * 0.78;
+  ctx.strokeStyle = 'rgba(255, 188, 82, 0.95)';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, yBase - 38);
+  ctx.lineTo(cx, yBase);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255, 170, 58, 0.95)';
+  ctx.beginPath();
+  ctx.moveTo(cx - 20, yBase - 4);
+  ctx.lineTo(cx + 20, yBase - 4);
+  ctx.lineTo(cx, yBase + 24);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
+  ctx.shadowBlur = 14;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 2;
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '600 48px Rajdhani, sans-serif';
+  ctx.fillStyle = '#ffbe64';
+  ctx.font = '700 62px Oxanium, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  // Draw text twice for stronger glow
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  ctx.shadowBlur = 4;
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height * 0.34);
+  ctx.shadowBlur = 5;
+  ctx.fillStyle = '#ffd79f';
+  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height * 0.34);
 
   const texture = new CanvasTexture(canvas);
   const material = new SpriteMaterial({ map: texture, transparent: true, depthTest: false });
   const sprite = new Sprite(material);
-  sprite.scale.set(0.9, 0.23, 1);
+  sprite.scale.set(1.2, 0.32, 1);
+  sprite.userData.aspect = canvas.width / canvas.height;
+  sprite.renderOrder = 11;
+  return sprite;
+}
+
+function createLocatorHaloSprite() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 160;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+
+  const c = canvas.width / 2;
+  const outer = 62;
+  const inner = 42;
+  const gradient = ctx.createRadialGradient(c, c, inner - 16, c, c, outer + 8);
+  gradient.addColorStop(0, 'rgba(255, 185, 66, 0.0)');
+  gradient.addColorStop(0.55, 'rgba(255, 185, 66, 0.16)');
+  gradient.addColorStop(1, 'rgba(255, 185, 66, 0.0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(255, 185, 66, 0.92)';
+  ctx.beginPath();
+  ctx.arc(c, c, inner, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const texture = new CanvasTexture(canvas);
+  const material = new SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+  const sprite = new Sprite(material);
+  sprite.visible = false;
+  sprite.renderOrder = 10;
   return sprite;
 }
 
@@ -381,13 +479,55 @@ function createBodyNode(body) {
   const node = new Group();
   node.name = body.name;
 
+  const spinGroup = new Group();
+  const axialTiltDeg = Number.isFinite(body.axialTiltDeg) ? body.axialTiltDeg : 0;
+  spinGroup.rotation.z = (axialTiltDeg * Math.PI) / 180;
+  node.add(spinGroup);
+  bodySpinGroups.set(body.id, spinGroup);
+
   const geometry = body.type === 'star' ? geometryCache.sun : body.type === 'moon' ? geometryCache.moon : geometryCache.planet;
   const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
   mesh.scale.setScalar(body.displayRadiusAu);
   mesh.userData.bodyId = body.id;
-  node.add(mesh);
+  mesh.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
+  mesh.userData.axialTiltDeg = axialTiltDeg;
+  spinGroup.add(mesh);
+
+  // Earth cloud layer for depth cues.
+  if (body.id === 'earth') {
+    const cloudMaterial = new MeshStandardMaterial({
+      map: hiResTextures.earthClouds,
+      transparent: true,
+      opacity: 0.34,
+      roughness: 0.8,
+      metalness: 0.0,
+      depthWrite: false
+    });
+    const cloudMesh = new Mesh(geometryCache.planet, cloudMaterial);
+    cloudMesh.scale.setScalar(body.displayRadiusAu * 1.01);
+    cloudMesh.userData.bodyId = `${body.id}-clouds`;
+    cloudMesh.userData.rotationPeriodHours = 22.4;
+    spinGroup.add(cloudMesh);
+  }
+
+  // Venus upper-atmosphere shell.
+  if (body.id === 'venus') {
+    const atmosphereMaterial = new MeshStandardMaterial({
+      map: hiResTextures.venusAtmosphere,
+      transparent: true,
+      opacity: 0.2,
+      roughness: 0.86,
+      metalness: 0.0,
+      depthWrite: false
+    });
+    const atmosphereMesh = new Mesh(geometryCache.planet, atmosphereMaterial);
+    atmosphereMesh.scale.setScalar(body.displayRadiusAu * 1.012);
+    atmosphereMesh.userData.bodyId = `${body.id}-atmosphere`;
+    atmosphereMesh.userData.rotationPeriodHours = -90;
+    spinGroup.add(atmosphereMesh);
+  }
 
   // Saturn ring system with multiple bands and Cassini Division gap
   if (body.id === 'saturn') {
@@ -404,8 +544,8 @@ function createBodyNode(body) {
         new RingGeometry(inner, outer, 96),
         new MeshBasicMaterial({ color: new Color(band.color), transparent: true, opacity: band.opacity, side: 2 })
       );
-      ring.rotation.x = Math.PI * 0.36;
-      node.add(ring);
+      ring.rotation.x = Math.PI * 0.5;
+      spinGroup.add(ring);
     }
   }
 
@@ -417,8 +557,8 @@ function createBodyNode(body) {
       new RingGeometry(inner, outer, 64),
       new MeshBasicMaterial({ color: new Color('#7a9aa8'), transparent: true, opacity: 0.08, side: 2 })
     );
-    ring.rotation.x = Math.PI * 0.48;
-    node.add(ring);
+    ring.rotation.x = Math.PI * 0.5;
+    spinGroup.add(ring);
   }
 
   // Sun corona glow
@@ -432,7 +572,18 @@ function createBodyNode(body) {
     const label = createLabelSprite(body.name);
     label.position.set(0, body.displayRadiusAu * 2.5 + 0.03, 0);
     node.add(label);
-    labels.push(label);
+    labels.push({ bodyId: body.id, sprite: label });
+
+    const halo = createLocatorHaloSprite();
+    node.add(halo);
+    locatorHalos.push({ bodyId: body.id, sprite: halo });
+  }
+
+  if (body.massKg && body.massKg > 0 && majorNodeIds.has(body.id)) {
+    const arrow = new ArrowHelper(new Vector3(0, 1, 0), new Vector3(0, 0, 0), 0.15, new Color('#77d0ff'));
+    arrow.visible = false;
+    gravityVectorGroup.add(arrow);
+    gravityArrowByBodyId.set(body.id, arrow);
   }
 
   bodyNodes.set(body.id, node);
@@ -511,132 +662,254 @@ function mountSceneGraph() {
 
 // ── Background Stars ─────────────────────────────────────────────────────────
 
-function createStars(count, radius, color, size) {
-  const geometry = new BufferGeometry();
-  const positions = new Float32Array(count * 3);
+function bvToRgbUnit(bvValue) {
+  const bv = Math.min(2.2, Math.max(-0.4, Number.isFinite(bvValue) ? bvValue : 0.65));
+  let t;
+  if (bv < 0.0) t = (bv + 0.4) / 0.4;
+  else if (bv < 0.4) t = bv / 0.4;
+  else if (bv < 1.5) t = (bv - 0.4) / 1.1;
+  else t = (bv - 1.5) / 0.7;
 
-  for (let i = 0; i < count; i += 1) {
-    const r = radius * (0.35 + Math.random() * 0.65);
-    const theta = Math.random() * Math.PI * 2;
-    const u = Math.random() * 2 - 1;
-    const phi = Math.acos(u);
+  if (bv < 0.0) return [0.62 + 0.1 * t, 0.74 + 0.1 * t, 1.0];
+  if (bv < 0.4) return [0.72 + 0.23 * t, 0.84 + 0.14 * t, 1.0];
+  if (bv < 1.5) return [1.0, 0.98 - 0.3 * t, 0.95 - 0.62 * t];
+  return [1.0, 0.68 - 0.2 * t, 0.33 - 0.08 * t];
+}
 
-    positions[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-    positions[i * 3 + 2] = r * Math.cos(phi);
+function equatorialDegToCartesian(raDeg, decDeg, radius) {
+  const ra = (raDeg * Math.PI) / 180;
+  const dec = (decDeg * Math.PI) / 180;
+  const cosDec = Math.cos(dec);
+  return [
+    radius * cosDec * Math.cos(ra),
+    radius * cosDec * Math.sin(ra),
+    radius * Math.sin(dec)
+  ];
+}
+
+function galacticToCartesian(lRad, bRad, radius) {
+  const cosB = Math.cos(bRad);
+  const xg = cosB * Math.cos(lRad);
+  const yg = cosB * Math.sin(lRad);
+  const zg = Math.sin(bRad);
+
+  // Galactic -> Equatorial (J2000) via transpose of standard IAU matrix.
+  const x = -0.0548755604 * xg - 0.8734370902 * yg - 0.4838350155 * zg;
+  const y = 0.4941094279 * xg - 0.44482963 * yg + 0.7469822445 * zg;
+  const z = -0.867666149 * xg - 0.1980763734 * yg + 0.4559837762 * zg;
+  return [x * radius, y * radius, z * radius];
+}
+
+function createCatalogStarField(radius = 5_000) {
+  const layers = [
+    { maxMag: 2.0, size: 1.2, opacity: 0.92 },
+    { maxMag: 4.2, size: 0.92, opacity: 0.78 },
+    { maxMag: Infinity, size: 0.6, opacity: 0.52 }
+  ];
+
+  const groupedPositions = layers.map(() => []);
+  const groupedColors = layers.map(() => []);
+
+  for (const entry of starsCatalog) {
+    const [raDeg, decDeg, mag, bv] = entry;
+    if (!Number.isFinite(raDeg) || !Number.isFinite(decDeg) || !Number.isFinite(mag)) continue;
+
+    const layerIndex = layers.findIndex((layer) => mag <= layer.maxMag);
+    if (layerIndex < 0) continue;
+
+    const r = radius * (0.92 + Math.random() * 0.08);
+    const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, r);
+    const [cr, cg, cb] = bvToRgbUnit(bv);
+
+    groupedPositions[layerIndex].push(x, y, z);
+    groupedColors[layerIndex].push(cr, cg, cb);
   }
 
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  const group = new Group();
+  for (let i = 0; i < layers.length; i++) {
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(groupedPositions[i], 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(groupedColors[i], 3));
+    const points = new Points(
+      geometry,
+      new PointsMaterial({
+        size: layers[i].size,
+        vertexColors: true,
+        transparent: true,
+        opacity: layers[i].opacity,
+        blending: AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    group.add(points);
+  }
 
-  return new Points(
-    geometry,
+  // Milky Way enhancement: dense faint stellar band in galactic coordinates.
+  const milkyCount = 30_000;
+  const milkyPositions = new Float32Array(milkyCount * 3);
+  const milkyColors = new Float32Array(milkyCount * 3);
+  for (let i = 0; i < milkyCount; i++) {
+    const l = Math.random() * Math.PI * 2;
+    const sigma = 0.12;
+    const b = (Math.random() - 0.5) * sigma * 2 + (Math.random() - 0.5) * sigma;
+    const r = radius * (0.88 + Math.random() * 0.12);
+    const [x, y, z] = galacticToCartesian(l, b, r);
+    milkyPositions[i * 3] = x;
+    milkyPositions[i * 3 + 1] = y;
+    milkyPositions[i * 3 + 2] = z;
+
+    const glow = 0.55 + Math.random() * 0.35;
+    milkyColors[i * 3] = glow * 0.88;
+    milkyColors[i * 3 + 1] = glow * 0.93;
+    milkyColors[i * 3 + 2] = glow;
+  }
+  const milkyGeometry = new BufferGeometry();
+  milkyGeometry.setAttribute('position', new Float32BufferAttribute(milkyPositions, 3));
+  milkyGeometry.setAttribute('color', new Float32BufferAttribute(milkyColors, 3));
+  const milkyPoints = new Points(
+    milkyGeometry,
     new PointsMaterial({
-      size,
-      color: new Color(color),
+      size: 0.42,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.42,
       blending: AdditiveBlending,
       depthWrite: false
     })
   );
+  group.add(milkyPoints);
+  group.userData.starCount = starsCatalog.length;
+  return group;
 }
 
-// ── Asteroid Belt (2.1–3.3 AU with Kirkwood gaps) ────────────────────────────
+// ── Asteroid Belt (element-driven + adaptive LOD refinement) ──────────────────
 
-function createAsteroidBelt(count = 12_000) {
-  const geometry = new BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
+const ASTEROID_EPOCH_JD = 2_451_545.0;
+const ASTEROID_BASE_COUNT = 12_000;
+const ASTEROID_DETAIL_MAX = 50_000;
+const ASTEROID_DETAIL_MIN = 4_000;
+const ASTEROID_DETAIL_TARGET_MAX = 45_000;
+const ASTEROID_GAPS = [
+  { center: 2.06, halfWidth: 0.02 },
+  { center: 2.50, halfWidth: 0.035 },
+  { center: 2.82, halfWidth: 0.025 },
+  { center: 2.95, halfWidth: 0.02 },
+  { center: 3.28, halfWidth: 0.025 }
+];
 
-  // Kirkwood gaps — orbital resonances with Jupiter
-  const gaps = [
-    { center: 2.06, halfWidth: 0.02 },   // 4:1
-    { center: 2.50, halfWidth: 0.035 },   // 3:1 (major gap)
-    { center: 2.82, halfWidth: 0.025 },   // 5:2
-    { center: 2.95, halfWidth: 0.02 },    // 7:3
-    { center: 3.28, halfWidth: 0.025 }    // 2:1
-  ];
-
-  function inGap(r) {
-    for (const g of gaps) {
-      if (Math.abs(r - g.center) < g.halfWidth) return true;
+function isInsideAsteroidGap(radiusAu) {
+  for (const gap of ASTEROID_GAPS) {
+    if (Math.abs(radiusAu - gap.center) < gap.halfWidth) {
+      return true;
     }
-    return false;
   }
+  return false;
+}
 
-  let idx = 0;
-  while (idx < count) {
-    // Uniform in area ∝ r, so sample r with sqrt bias for uniform surface density
-    const r = 2.1 + Math.random() * 1.2;
+function randomGaussian() {
+  const u = Math.max(1e-8, Math.random());
+  const v = Math.max(1e-8, Math.random());
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
 
-    // Reject particles inside Kirkwood gaps
-    if (inGap(r)) continue;
-
-    const theta = Math.random() * Math.PI * 2;
-    // Inclination: Rayleigh-distributed, most < 15°
-    const inc = (Math.random() - 0.5) * 0.26 * (1 + Math.random());
-    // Small eccentricity scatter in position
-    const eccScatter = 1 + (Math.random() - 0.5) * 0.15;
-    const rScattered = r * eccScatter;
-
-    positions[idx * 3] = rScattered * Math.cos(theta);
-    positions[idx * 3 + 1] = rScattered * Math.sin(theta);
-    positions[idx * 3 + 2] = r * Math.sin(inc);
-
-    // Color: inner belt S-type (brighter, slight red-brown) vs outer belt C-type (darker, gray)
-    const t = (r - 2.1) / 1.2;   // 0 = inner, 1 = outer
-    const bBase = 0.45 + Math.random() * 0.15;
-    if (t < 0.4) {
-      // S-type: brighter, warm gray
-      colors[idx * 3] = bBase * 1.1;
-      colors[idx * 3 + 1] = bBase * 0.95;
-      colors[idx * 3 + 2] = bBase * 0.8;
-    } else if (t < 0.7) {
-      // Mixed
-      colors[idx * 3] = bBase * 0.95;
-      colors[idx * 3 + 1] = bBase * 0.92;
-      colors[idx * 3 + 2] = bBase * 0.88;
+function createAsteroidOrbitElement({
+  minA = 2.1,
+  maxA = 3.3,
+  centerA = null,
+  sigmaA = 0.35,
+  enforceGaps = true
+} = {}) {
+  let a = 0;
+  for (let attempts = 0; attempts < 20; attempts++) {
+    if (centerA === null) {
+      const minSq = minA * minA;
+      const maxSq = maxA * maxA;
+      a = Math.sqrt(minSq + (maxSq - minSq) * Math.random());
     } else {
-      // C-type: darker, neutral gray
-      const bDark = bBase * 0.8;
-      colors[idx * 3] = bDark * 0.9;
-      colors[idx * 3 + 1] = bDark * 0.9;
-      colors[idx * 3 + 2] = bDark * 0.92;
+      a = Math.max(minA, Math.min(maxA, centerA + randomGaussian() * sigmaA));
     }
-
-    idx++;
+    if (!enforceGaps || !isInsideAsteroidGap(a)) {
+      break;
+    }
   }
 
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-
-  return new Points(
-    geometry,
-    new PointsMaterial({
-      size: 0.006,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.65,
-      sizeAttenuation: true,
-      depthWrite: false
-    })
-  );
+  const e = Math.min(0.32, Math.abs(0.07 + randomGaussian() * 0.045));
+  const iDeg = Math.min(24, Math.abs(randomGaussian() * 5.2));
+  const ascendingNodeDeg = Math.random() * 360;
+  const argPeriapsisDeg = Math.random() * 360;
+  const meanAnomalyDeg = Math.random() * 360;
+  return {
+    aAu: a,
+    e,
+    iDeg,
+    ascendingNodeDeg,
+    argPeriapsisDeg,
+    meanAnomalyDeg,
+    periodDays: 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN_AU3_DAY2)
+  };
 }
 
-// ── Asteroid Belt LOD Detail Layer ───────────────────────────────────────────
+function computeOrbitStateFromElement(element, jd, outPos, outVel = null) {
+  const elapsedDays = jd - ASTEROID_EPOCH_JD;
+  propagateKeplerOrbit(element, elapsedDays, outPos, outVel);
+}
 
-const ASTEROID_DETAIL_COUNT = 20_000;
+const asteroidBaseElements = new Array(ASTEROID_BASE_COUNT);
+const asteroidBaseGeometry = new BufferGeometry();
+const asteroidBasePositions = new Float32Array(ASTEROID_BASE_COUNT * 3);
+const asteroidBaseColors = new Float32Array(ASTEROID_BASE_COUNT * 3);
+const asteroidTmpPos = new Vector3();
+const asteroidTmpVel = new Vector3();
+
+for (let i = 0; i < ASTEROID_BASE_COUNT; i++) {
+  const element = createAsteroidOrbitElement();
+  asteroidBaseElements[i] = element;
+  const t = (element.aAu - 2.1) / 1.2;
+  const brightness = 0.44 + Math.random() * 0.16;
+  if (t < 0.4) {
+    asteroidBaseColors[i * 3] = brightness * 1.12;
+    asteroidBaseColors[i * 3 + 1] = brightness * 0.98;
+    asteroidBaseColors[i * 3 + 2] = brightness * 0.82;
+  } else if (t < 0.7) {
+    asteroidBaseColors[i * 3] = brightness * 0.98;
+    asteroidBaseColors[i * 3 + 1] = brightness * 0.94;
+    asteroidBaseColors[i * 3 + 2] = brightness * 0.89;
+  } else {
+    const darker = brightness * 0.8;
+    asteroidBaseColors[i * 3] = darker * 0.9;
+    asteroidBaseColors[i * 3 + 1] = darker * 0.9;
+    asteroidBaseColors[i * 3 + 2] = darker * 0.94;
+  }
+}
+
+asteroidBaseGeometry.setAttribute('position', new Float32BufferAttribute(asteroidBasePositions, 3));
+asteroidBaseGeometry.setAttribute('color', new Float32BufferAttribute(asteroidBaseColors, 3));
+
+const asteroidBelt = new Points(
+  asteroidBaseGeometry,
+  new PointsMaterial({
+    size: 0.006,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.68,
+    sizeAttenuation: true,
+    depthWrite: false
+  })
+);
+
 const asteroidDetailGeometry = new BufferGeometry();
-const asteroidDetailPositions = new Float32Array(ASTEROID_DETAIL_COUNT * 3);
+const asteroidDetailPositions = new Float32Array(ASTEROID_DETAIL_MAX * 3);
+const asteroidDetailVelocities = new Float32Array(ASTEROID_DETAIL_MAX * 3);
+const asteroidDetailElements = new Array(ASTEROID_DETAIL_MAX);
 asteroidDetailGeometry.setAttribute('position', new Float32BufferAttribute(asteroidDetailPositions, 3));
 
 const asteroidDetailPoints = new Points(
   asteroidDetailGeometry,
   new PointsMaterial({
-    color: new Color('#c0b8a8'),
-    size: 0.0015,
+    color: new Color('#d0c5af'),
+    size: 0.0016,
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.62,
     sizeAttenuation: true,
     depthWrite: false
   })
@@ -644,9 +917,134 @@ const asteroidDetailPoints = new Points(
 asteroidDetailPoints.visible = false;
 asteroidDetailPoints.frustumCulled = false;
 
+let asteroidDetailCount = 0;
 const lastAsteroidDetailCenter = new Vector3(Infinity, Infinity, Infinity);
 
-function updateAsteroidDetail() {
+function regenerateAsteroidDetail(target, cameraDist, jd, targetCount) {
+  const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
+  const centerA = Math.max(2.15, Math.min(3.25, distFromSun));
+  const sigmaA = Math.max(0.08, Math.min(0.42, cameraDist * 0.12));
+  asteroidDetailCount = Math.max(ASTEROID_DETAIL_MIN, Math.min(ASTEROID_DETAIL_MAX, targetCount));
+
+  for (let i = 0; i < asteroidDetailCount; i++) {
+    const element = createAsteroidOrbitElement({
+      minA: 2.02,
+      maxA: 3.45,
+      centerA,
+      sigmaA,
+      enforceGaps: true
+    });
+    asteroidDetailElements[i] = element;
+    computeOrbitStateFromElement(element, jd, asteroidTmpPos, asteroidTmpVel);
+    asteroidDetailPositions[i * 3] = asteroidTmpPos.x;
+    asteroidDetailPositions[i * 3 + 1] = asteroidTmpPos.y;
+    asteroidDetailPositions[i * 3 + 2] = asteroidTmpPos.z;
+    asteroidDetailVelocities[i * 3] = asteroidTmpVel.x;
+    asteroidDetailVelocities[i * 3 + 1] = asteroidTmpVel.y;
+    asteroidDetailVelocities[i * 3 + 2] = asteroidTmpVel.z;
+  }
+
+  asteroidDetailGeometry.setDrawRange(0, asteroidDetailCount);
+  asteroidDetailGeometry.attributes.position.needsUpdate = true;
+  asteroidDetailGeometry.computeBoundingSphere();
+  lastAsteroidDetailCenter.copy(target);
+}
+
+function updateAsteroidBelt(jd) {
+  if (!dom.toggleAsteroids.checked) {
+    return;
+  }
+
+  for (let i = 0; i < ASTEROID_BASE_COUNT; i++) {
+    computeOrbitStateFromElement(asteroidBaseElements[i], jd, asteroidTmpPos);
+    asteroidBasePositions[i * 3] = asteroidTmpPos.x;
+    asteroidBasePositions[i * 3 + 1] = asteroidTmpPos.y;
+    asteroidBasePositions[i * 3 + 2] = asteroidTmpPos.z;
+  }
+
+  asteroidBaseGeometry.attributes.position.needsUpdate = true;
+  asteroidBaseGeometry.computeBoundingSphere();
+}
+
+function integrateAsteroidDetailPerturbations(dtDays) {
+  if (!Number.isFinite(dtDays) || Math.abs(dtDays) < 1e-8 || asteroidDetailCount === 0) return;
+
+  const sunPos = new Vector3();
+  const jupiterPos = new Vector3();
+  const saturnPos = new Vector3();
+  bodyNodes.get('sun')?.getWorldPosition(sunPos);
+  bodyNodes.get('jupiter')?.getWorldPosition(jupiterPos);
+  bodyNodes.get('saturn')?.getWorldPosition(saturnPos);
+
+  const muSun = bodyMuAu3Day2(bodyById.get('sun')?.massKg);
+  const muJupiter = bodyMuAu3Day2(bodyById.get('jupiter')?.massKg);
+  const muSaturn = bodyMuAu3Day2(bodyById.get('saturn')?.massKg);
+
+  const subSteps = Math.max(1, Math.ceil(Math.abs(dtDays) / 0.4));
+  const h = dtDays / subSteps;
+
+  for (let step = 0; step < subSteps; step++) {
+    for (let i = 0; i < asteroidDetailCount; i++) {
+      const i3 = i * 3;
+      let px = asteroidDetailPositions[i3];
+      let py = asteroidDetailPositions[i3 + 1];
+      let pz = asteroidDetailPositions[i3 + 2];
+      let vx = asteroidDetailVelocities[i3];
+      let vy = asteroidDetailVelocities[i3 + 1];
+      let vz = asteroidDetailVelocities[i3 + 2];
+
+      let ax = 0;
+      let ay = 0;
+      let az = 0;
+
+      const sx = sunPos.x - px;
+      const sy = sunPos.y - py;
+      const sz = sunPos.z - pz;
+      const sr2 = sx * sx + sy * sy + sz * sz + 1e-9;
+      const sr = Math.sqrt(sr2);
+      const sInvR3 = 1 / (sr2 * sr);
+      ax += muSun * sx * sInvR3;
+      ay += muSun * sy * sInvR3;
+      az += muSun * sz * sInvR3;
+
+      const jx = jupiterPos.x - px;
+      const jy = jupiterPos.y - py;
+      const jz = jupiterPos.z - pz;
+      const jr2 = jx * jx + jy * jy + jz * jz + 1e-8;
+      const jr = Math.sqrt(jr2);
+      const jInvR3 = 1 / (jr2 * jr);
+      ax += muJupiter * jx * jInvR3;
+      ay += muJupiter * jy * jInvR3;
+      az += muJupiter * jz * jInvR3;
+
+      const tx = saturnPos.x - px;
+      const ty = saturnPos.y - py;
+      const tz = saturnPos.z - pz;
+      const tr2 = tx * tx + ty * ty + tz * tz + 1e-8;
+      const tr = Math.sqrt(tr2);
+      const tInvR3 = 1 / (tr2 * tr);
+      ax += muSaturn * tx * tInvR3;
+      ay += muSaturn * ty * tInvR3;
+      az += muSaturn * tz * tInvR3;
+
+      vx += ax * h;
+      vy += ay * h;
+      vz += az * h;
+      px += vx * h;
+      py += vy * h;
+      pz += vz * h;
+
+      asteroidDetailPositions[i3] = px;
+      asteroidDetailPositions[i3 + 1] = py;
+      asteroidDetailPositions[i3 + 2] = pz;
+      asteroidDetailVelocities[i3] = vx;
+      asteroidDetailVelocities[i3 + 1] = vy;
+      asteroidDetailVelocities[i3 + 2] = vz;
+    }
+  }
+}
+
+function updateAsteroidDetail(jd, deltaSimDays = 0) {
   if (!dom.toggleAsteroids.checked) {
     asteroidDetailPoints.visible = false;
     return;
@@ -656,36 +1054,38 @@ function updateAsteroidDetail() {
   const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
   const height = Math.abs(target.z);
   const cameraDist = camera.position.distanceTo(target);
-
-  // Only show detail when zoomed into the asteroid belt region
-  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 3.6 && height < 2 && cameraDist < 3;
-
+  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 3.6 && height < 2.2 && cameraDist < 4.2;
   if (!inBeltRegion) {
     asteroidDetailPoints.visible = false;
     return;
   }
 
-  // Regenerate particles when view center moves significantly
-  if (target.distanceTo(lastAsteroidDetailCenter) > cameraDist * 0.12 + 0.1) {
-    const spread = Math.max(0.3, cameraDist * 0.5);
+  const zoomFactor = Math.max(0, Math.min(1, 1 - cameraDist / 3.8));
+  const targetCount = Math.round(ASTEROID_DETAIL_MIN + zoomFactor * (ASTEROID_DETAIL_TARGET_MAX - ASTEROID_DETAIL_MIN));
 
-    for (let i = 0; i < ASTEROID_DETAIL_COUNT; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const rnd = Math.max(1e-10, Math.random());
-      const r = Math.sqrt(-2 * Math.log(rnd)) * spread * 0.25;
-
-      asteroidDetailPositions[i * 3] = target.x + Math.cos(angle) * r;
-      asteroidDetailPositions[i * 3 + 1] = target.y + Math.sin(angle) * r;
-      asteroidDetailPositions[i * 3 + 2] = target.z + (Math.random() - 0.5) * spread * 0.08;
-    }
-
-    asteroidDetailGeometry.attributes.position.needsUpdate = true;
-    asteroidDetailGeometry.computeBoundingSphere();
-    lastAsteroidDetailCenter.copy(target);
+  const centerMoved = target.distanceTo(lastAsteroidDetailCenter) > cameraDist * 0.1 + 0.08;
+  const countDrift = Math.abs(targetCount - asteroidDetailCount) > Math.max(600, asteroidDetailCount * 0.12);
+  if (centerMoved || countDrift || asteroidDetailCount === 0) {
+    regenerateAsteroidDetail(target, cameraDist, jd, targetCount);
   }
 
-  // Slow orbital rotation (faster than Kuiper belt — inner solar system)
-  asteroidDetailPoints.rotation.z += 0.00015;
+  const refinementActive = cameraDist < 1.2;
+  if (refinementActive) {
+    integrateAsteroidDetailPerturbations(deltaSimDays);
+  } else {
+    for (let i = 0; i < asteroidDetailCount; i++) {
+      computeOrbitStateFromElement(asteroidDetailElements[i], jd, asteroidTmpPos, asteroidTmpVel);
+      asteroidDetailPositions[i * 3] = asteroidTmpPos.x;
+      asteroidDetailPositions[i * 3 + 1] = asteroidTmpPos.y;
+      asteroidDetailPositions[i * 3 + 2] = asteroidTmpPos.z;
+      asteroidDetailVelocities[i * 3] = asteroidTmpVel.x;
+      asteroidDetailVelocities[i * 3 + 1] = asteroidTmpVel.y;
+      asteroidDetailVelocities[i * 3 + 2] = asteroidTmpVel.z;
+    }
+  }
+
+  asteroidDetailGeometry.attributes.position.needsUpdate = true;
+  asteroidDetailGeometry.computeBoundingSphere();
   asteroidDetailPoints.visible = true;
 }
 
@@ -873,10 +1273,9 @@ function createOortCloud(count = 9_000) {
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
-const backgroundStars = createStars(8_000, 5_000, '#d5f0ff', 0.95);
+const backgroundStars = createCatalogStarField(5_000);
 scene.add(backgroundStars);
 
-const asteroidBelt = createAsteroidBelt();
 scene.add(asteroidBelt);
 
 scene.add(asteroidDetailPoints);
@@ -1074,44 +1473,23 @@ function applyScaleMode() {
 
   for (const body of catalog.bodies) {
     const mesh = bodyMeshes.get(body.id);
+    const spinGroup = bodySpinGroups.get(body.id);
     if (!mesh) continue;
 
     const targetRadius = realistic ? body.realRadiusAu : body.displayRadiusAu;
     mesh.scale.setScalar(targetRadius);
-  }
 
-  // Rescale Saturn and Uranus ring children proportionally
-  for (const bodyId of ['saturn', 'uranus']) {
-    const body = bodyById.get(bodyId);
-    const node = bodyNodes.get(bodyId);
-    if (!body || !node) continue;
-
-    const factor = realistic
-      ? body.realRadiusAu / body.displayRadiusAu
-      : 1.0;
-
-    for (const child of node.children) {
-      if (child.geometry && child.geometry.type === 'RingGeometry') {
-        child.scale.setScalar(factor);
-      }
-    }
-  }
-
-  // Adjust labels
-  for (const body of catalog.bodies) {
-    if (!majorNodeIds.has(body.id)) continue;
-    const node = bodyNodes.get(body.id);
-    if (!node) continue;
-
-    const radius = realistic ? body.realRadiusAu : body.displayRadiusAu;
-    for (const child of node.children) {
-      if (child.isSprite && child.material.map) {
-        child.position.set(0, radius * 2.5 + (realistic ? 0.0001 : 0.03), 0);
-        child.scale.set(
-          realistic ? 0.015 : 0.9,
-          realistic ? 0.004 : 0.23,
-          1
-        );
+    if (spinGroup) {
+      const ringFactor = realistic ? body.realRadiusAu / body.displayRadiusAu : 1.0;
+      for (const child of spinGroup.children) {
+        if (child === mesh) continue;
+        if (child.geometry && child.geometry.type === 'RingGeometry') {
+          child.scale.setScalar(ringFactor);
+        } else if (child.userData.bodyId === `${body.id}-clouds`) {
+          child.scale.setScalar(targetRadius * 1.01);
+        } else if (child.userData.bodyId === `${body.id}-atmosphere`) {
+          child.scale.setScalar(targetRadius * 1.012);
+        }
       }
     }
   }
@@ -1120,6 +1498,7 @@ function applyScaleMode() {
     focusBody(simState.focusedBodyId, true);
   }
 
+  updateLocatorOverlays();
   updateZoomMetricsUI();
 }
 
@@ -1168,6 +1547,139 @@ function updateSceneBodies() {
   }
 }
 
+function worldUnitsPerPixelAt(distanceToCamera) {
+  const canvasHeight = Math.max(1, renderer.domElement.clientHeight || window.innerHeight);
+  return (2 * distanceToCamera * Math.tan((camera.fov * Math.PI) / 360)) / canvasHeight;
+}
+
+function updateLocatorOverlays() {
+  const locatorMode = Boolean(dom.toggleLocators?.checked);
+  const labelsEnabled = Boolean(dom.toggleLabels?.checked);
+
+  for (const entry of labels) {
+    const body = bodyById.get(entry.bodyId);
+    const node = bodyNodes.get(entry.bodyId);
+    if (!body || !node) continue;
+
+    node.getWorldPosition(tempVecA);
+    const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
+    const unitPerPixel = worldUnitsPerPixelAt(distance);
+    const radius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+    const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
+
+    const forceLocatorInRealistic = locatorMode && simState.useRealisticScale;
+    const shouldShowLabel = labelsEnabled || forceLocatorInRealistic;
+
+    const labelHeightPx = shouldShowLabel
+      ? (forceLocatorInRealistic ? 28 : 21)
+      : 0;
+    const labelHeightWorld = labelHeightPx * unitPerPixel;
+    const minHeightWorld = radius * (forceLocatorInRealistic ? 1.45 : 1.1);
+    const maxHeightWorld = simState.useRealisticScale ? 0.16 : 2.0;
+    const clampedHeight = Math.max(minHeightWorld, Math.min(maxHeightWorld, labelHeightWorld));
+    const aspect = entry.sprite.userData.aspect ?? 4.0;
+
+    entry.sprite.visible = shouldShowLabel;
+    entry.sprite.scale.set(clampedHeight * aspect, clampedHeight, 1);
+
+    const clearancePx = shouldShowLabel ? 16 : 8;
+    const yOffset = Math.max(radius * 2.25, unitPerPixel * (clearancePx + pixelRadius * 1.2));
+    entry.sprite.position.set(0, yOffset, 0);
+  }
+
+  const halosByBodyId = new Map(locatorHalos.map((item) => [item.bodyId, item.sprite]));
+  for (const [bodyId, haloSprite] of halosByBodyId.entries()) {
+    const body = bodyById.get(bodyId);
+    const node = bodyNodes.get(bodyId);
+    if (!body || !node) continue;
+
+    node.getWorldPosition(tempVecA);
+    const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
+    const unitPerPixel = worldUnitsPerPixelAt(distance);
+    const radius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+    const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
+
+    const haloVisible = Boolean(dom.toggleLocators?.checked) && pixelRadius < 1.35;
+    haloSprite.visible = haloVisible;
+    if (haloVisible) {
+      const haloWorldSize = Math.max(unitPerPixel * 22, radius * 4.5);
+      haloSprite.scale.set(haloWorldSize, haloWorldSize, 1);
+      haloSprite.position.set(0, 0, 0);
+    }
+  }
+}
+
+function updateBodyRotations(deltaSeconds) {
+  if (deltaSeconds <= 0) return;
+  for (const body of catalog.bodies) {
+    const spinGroup = bodySpinGroups.get(body.id);
+    if (!spinGroup) continue;
+
+    for (const child of spinGroup.children) {
+      const rotationPeriodHours = child.userData.rotationPeriodHours ?? body.rotationPeriodHours;
+      if (!Number.isFinite(rotationPeriodHours) || Math.abs(rotationPeriodHours) < 0.01) continue;
+      const angularSpeed = (2 * Math.PI) / (rotationPeriodHours * 3_600);
+      child.rotation.y += angularSpeed * deltaSeconds;
+    }
+  }
+}
+
+function updateGravityVectors() {
+  const enabled = Boolean(dom.toggleGravityVectors?.checked);
+  gravityVectorGroup.visible = enabled;
+  if (!enabled) return;
+
+  const massiveBodies = [];
+  for (const body of catalog.bodies) {
+    if (!body.massKg || body.massKg <= 0 || !majorNodeIds.has(body.id)) continue;
+    const node = bodyNodes.get(body.id);
+    if (!node) continue;
+    node.getWorldPosition(tempVecA);
+    massiveBodies.push({
+      id: body.id,
+      mu: bodyMuAu3Day2(body.massKg),
+      pos: tempVecA.clone()
+    });
+  }
+
+  for (const target of massiveBodies) {
+    const arrow = gravityArrowByBodyId.get(target.id);
+    if (!arrow) continue;
+
+    let ax = 0;
+    let ay = 0;
+    let az = 0;
+    for (const source of massiveBodies) {
+      if (source.id === target.id || source.mu <= 0) continue;
+      const dx = source.pos.x - target.pos.x;
+      const dy = source.pos.y - target.pos.y;
+      const dz = source.pos.z - target.pos.z;
+      const r2 = dx * dx + dy * dy + dz * dz + 1e-12;
+      const r = Math.sqrt(r2);
+      const invR3 = 1 / (r2 * r);
+      ax += source.mu * dx * invR3;
+      ay += source.mu * dy * invR3;
+      az += source.mu * dz * invR3;
+    }
+
+    const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    if (magnitude < 1e-12) {
+      arrow.visible = false;
+      continue;
+    }
+
+    const renderedRadius = simState.useRealisticScale
+      ? (bodyById.get(target.id)?.realRadiusAu ?? 0.0002)
+      : (bodyById.get(target.id)?.displayRadiusAu ?? 0.01);
+    const baseLength = 0.04 + 0.018 * Math.log10(1 + magnitude * 1e8);
+    const length = Math.max(renderedRadius * 1.4, Math.min(0.42, baseLength));
+    arrow.position.copy(target.pos);
+    arrow.setDirection(new Vector3(ax, ay, az).normalize());
+    arrow.setLength(length, Math.max(0.01, length * 0.3), Math.max(0.008, length * 0.2));
+    arrow.visible = true;
+  }
+}
+
 function applyRenderVisibility() {
   for (const line of orbitLines) {
     if (!dom.toggleOrbits.checked) {
@@ -1179,13 +1691,21 @@ function applyRenderVisibility() {
     line.visible = isMoonOrbit ? dom.toggleMoons.checked : true;
   }
 
-  for (const label of labels) {
-    label.visible = dom.toggleLabels.checked;
+  const shouldShowLabels = Boolean(dom.toggleLabels?.checked) || (Boolean(dom.toggleLocators?.checked) && simState.useRealisticScale);
+  for (const entry of labels) {
+    entry.sprite.visible = shouldShowLabels;
+  }
+  for (const entry of locatorHalos) {
+    entry.sprite.visible = false;
   }
 
   asteroidBelt.visible = dom.toggleAsteroids.checked;
+  asteroidDetailPoints.visible = dom.toggleAsteroids.checked && asteroidDetailPoints.visible;
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
+  gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
+
+  updateLocatorOverlays();
 }
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
@@ -1468,7 +1988,16 @@ function setupUiEvents() {
     });
   }
 
-  for (const toggle of [dom.toggleOrbits, dom.toggleLabels, dom.toggleMoons, dom.toggleAsteroids, dom.toggleKuiper, dom.toggleOort]) {
+  for (const toggle of [
+    dom.toggleOrbits,
+    dom.toggleLabels,
+    dom.toggleLocators,
+    dom.toggleGravityVectors,
+    dom.toggleMoons,
+    dom.toggleAsteroids,
+    dom.toggleKuiper,
+    dom.toggleOort
+  ]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
 
@@ -1555,7 +2084,11 @@ function setupUiEvents() {
 setupUiEvents();
 fillPlannerSelects();
 refillBodyList();
+model.update(simState.julianDate);
+updateSceneBodies();
+updateAsteroidBelt(simState.julianDate);
 applyRenderVisibility();
+updateLocatorOverlays();
 updateZoomMetricsUI();
 
 dom.statusBodies.textContent = `Bodies: ${catalog.bodies.length}`;
@@ -1563,12 +2096,12 @@ dom.plannerOutput.textContent = 'No plotted route.';
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
-const tmpFollow = new Vector3();
 let previousTimestamp = performance.now();
 
 function animate(timestamp) {
   const deltaSeconds = Math.max(0, (timestamp - previousTimestamp) / 1_000);
   previousTimestamp = timestamp;
+  const previousJd = simState.julianDate;
 
   if (simState.serverConnected && simClient.latestState) {
     // ── Server-driven simulation ─────────────────────────────────
@@ -1589,12 +2122,16 @@ function animate(timestamp) {
     model.update(simState.julianDate);
     updateSceneBodies();
   }
+  const deltaSimDays = simState.julianDate - previousJd;
+
+  updateBodyRotations(deltaSeconds);
+  updateAsteroidBelt(simState.julianDate);
 
   // Dynamic route update — keeps trajectory curves attached to moving planets
   updateRouteVisualization();
 
-  // Asteroid belt LOD — shows detail when zoomed into the main belt
-  updateAsteroidDetail();
+  // Asteroid belt LOD with adaptive count and optional local perturbation refinement.
+  updateAsteroidDetail(simState.julianDate, deltaSimDays);
 
   // Kuiper belt LOD — shows detail particles when zoomed into the belt region
   updateKuiperDetail();
@@ -1609,6 +2146,8 @@ function animate(timestamp) {
 
   controls.update();
   resizeRenderer();
+  updateLocatorOverlays();
+  updateGravityVectors();
   updateZoomMetricsUI();
   renderer.render(scene, camera);
 
