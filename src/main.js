@@ -128,6 +128,7 @@ const simState = {
 const AU_PER_LIGHT_YEAR = 63_241.077;
 const MSUN_KG = 1.98847e30;
 const TWO_PI = Math.PI * 2;
+const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 
 function bodyMuAu3Day2(massKg) {
   if (!massKg || !Number.isFinite(massKg) || massKg <= 0) return 0;
@@ -488,7 +489,11 @@ function createBodyNode(body) {
 
   const spinGroup = new Group();
   const axialTiltDeg = Number.isFinite(body.axialTiltDeg) ? body.axialTiltDeg : 0;
-  spinGroup.rotation.z = (axialTiltDeg * Math.PI) / 180;
+  const axialTiltRad = (axialTiltDeg * Math.PI) / 180;
+  // Orbit propagation uses x-y as the ecliptic plane and +z as the plane normal.
+  // Build a spin axis that is tilted from +z by the body's obliquity.
+  const spinAxisWorld = new Vector3(Math.sin(axialTiltRad), 0, Math.cos(axialTiltRad)).normalize();
+  spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
@@ -709,11 +714,11 @@ function galacticToCartesian(lRad, bRad, radius) {
   return [x * radius, y * radius, z * radius];
 }
 
-function createCatalogStarField(radius = 5_000) {
+function createCatalogStarField(radius = 18_000) {
   const layers = [
-    { maxMag: 2.0, size: 1.2, opacity: 0.92 },
-    { maxMag: 4.2, size: 0.92, opacity: 0.78 },
-    { maxMag: Infinity, size: 0.6, opacity: 0.52 }
+    { maxMag: 2.0, size: 2.2, opacity: 0.96 },
+    { maxMag: 4.2, size: 1.45, opacity: 0.82 },
+    { maxMag: Infinity, size: 0.95, opacity: 0.56 }
   ];
 
   const groupedPositions = layers.map(() => []);
@@ -747,6 +752,7 @@ function createCatalogStarField(radius = 5_000) {
         transparent: true,
         opacity: layers[i].opacity,
         blending: AdditiveBlending,
+        sizeAttenuation: false,
         depthWrite: false
       })
     );
@@ -754,13 +760,13 @@ function createCatalogStarField(radius = 5_000) {
   }
 
   // Milky Way enhancement: dense faint stellar band in galactic coordinates.
-  const milkyCount = 30_000;
+  const milkyCount = 60_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
   const milkyColors = new Float32Array(milkyCount * 3);
   for (let i = 0; i < milkyCount; i++) {
     const l = Math.random() * Math.PI * 2;
-    const sigma = 0.12;
-    const b = (Math.random() - 0.5) * sigma * 2 + (Math.random() - 0.5) * sigma;
+    const sigma = 0.09;
+    const b = (Math.random() - 0.5) * sigma * 2 + (Math.random() - 0.5) * sigma * 0.9;
     const r = radius * (0.88 + Math.random() * 0.12);
     const [x, y, z] = galacticToCartesian(l, b, r);
     milkyPositions[i * 3] = x;
@@ -778,15 +784,34 @@ function createCatalogStarField(radius = 5_000) {
   const milkyPoints = new Points(
     milkyGeometry,
     new PointsMaterial({
-      size: 0.42,
+      size: 1.35,
       vertexColors: true,
       transparent: true,
-      opacity: 0.42,
+      opacity: 0.72,
       blending: AdditiveBlending,
+      sizeAttenuation: false,
+      depthTest: true,
       depthWrite: false
     })
   );
   group.add(milkyPoints);
+
+  // Soft haze layer to make the galactic band perceptible at a glance.
+  const milkyHaze = new Points(
+    milkyGeometry,
+    new PointsMaterial({
+      color: new Color('#d6deea'),
+      size: 3.4,
+      transparent: true,
+      opacity: 0.12,
+      blending: AdditiveBlending,
+      sizeAttenuation: false,
+      depthTest: true,
+      depthWrite: false
+    })
+  );
+  group.add(milkyHaze);
+
   group.userData.starCount = starsCatalog.length;
   return group;
 }
@@ -1251,38 +1276,63 @@ function updateKuiperDetail() {
 
 // ── Oort Cloud ───────────────────────────────────────────────────────────────
 
-function createOortCloud(count = 9_000) {
+function createOortComponent(count, innerRadius, outerRadius, zScale = 1) {
   const geometry = new BufferGeometry();
   const positions = new Float32Array(count * 3);
 
   for (let i = 0; i < count; i += 1) {
-    const radius = 420 + Math.random() * 2_000;
+    const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
     const theta = Math.random() * Math.PI * 2;
     const u = Math.random() * 2 - 1;
     const phi = Math.acos(u);
+    const sinPhi = Math.sin(phi);
 
-    positions[i * 3 + 0] = radius * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-    positions[i * 3 + 2] = radius * Math.cos(phi);
+    positions[i * 3 + 0] = radius * sinPhi * Math.cos(theta);
+    positions[i * 3 + 1] = radius * sinPhi * Math.sin(theta);
+    positions[i * 3 + 2] = radius * Math.cos(phi) * zScale;
   }
 
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  return geometry;
+}
 
-  return new Points(
-    geometry,
+function createOortCloud() {
+  const group = new Group();
+
+  // A more realistic approximation: a denser inner Hills cloud + broader outer shell.
+  const innerGeometry = createOortComponent(12_000, 2_000, 7_500, 0.7);
+  const outerGeometry = createOortComponent(22_000, 7_500, 18_000, 1.0);
+
+  const innerCloud = new Points(
+    innerGeometry,
     new PointsMaterial({
-      color: new Color('#7a8f9d'),
-      size: 0.022,
+      color: new Color('#9eb4c2'),
+      size: 0.024,
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.28,
       depthWrite: false
     })
   );
+  const outerCloud = new Points(
+    outerGeometry,
+    new PointsMaterial({
+      color: new Color('#7f96a5'),
+      size: 0.02,
+      transparent: true,
+      opacity: 0.18,
+      depthWrite: false
+    })
+  );
+
+  group.add(outerCloud);
+  group.add(innerCloud);
+  group.userData.particleCount = 34_000;
+  return group;
 }
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
-const backgroundStars = createCatalogStarField(5_000);
+const backgroundStars = createCatalogStarField(18_000);
 scene.add(backgroundStars);
 
 scene.add(asteroidBelt);
@@ -2147,6 +2197,8 @@ function animate(timestamp) {
 
   // Kuiper belt LOD — shows detail particles when zoomed into the belt region
   updateKuiperDetail();
+  // Keep deep-space layer visibility synchronized with UI toggles.
+  oortCloud.visible = Boolean(dom.toggleOort?.checked);
 
   updateFollowTarget();
 
