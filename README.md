@@ -21,6 +21,31 @@ npm run dev
 
 Open the local Vite URL shown in the terminal.
 
+## Backend variants
+
+The UI supports three simulation modes in the `Simulation Engine` dropdown:
+
+- `Local (Keplerian)`: no Python backend required.
+- `REBOUND N-body (Python)`: high-fidelity N-body server via FastAPI/WebSocket.
+- `TudatPy (Python, normal fidelity)`: optional conda-based engine; if unavailable, the server falls back to REBOUND.
+
+Start backend server:
+
+```bash
+cd backend
+python -m pip install -r requirements.txt
+python -m uvicorn server:app --host 0.0.0.0 --port 8042 --reload
+```
+
+Optional health checks:
+
+```bash
+curl http://127.0.0.1:8042/health
+curl http://127.0.0.1:8042/info
+```
+
+Then in the frontend, choose `REBOUND` or `TudatPy` and click `Connect`.
+
 ## Data model
 
 - Planetary orbital elements use J2000 mean element values.
