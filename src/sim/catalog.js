@@ -12,6 +12,83 @@ const PARENT_TINTS = {
   Pluto: '#b8aca4'
 };
 
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+const PARENT_AXIAL_TILT_DEG = Object.fromEntries(
+  PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
+);
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeDegrees(value) {
+  const mod = value % 360;
+  return mod < 0 ? mod + 360 : mod;
+}
+
+function orbitNormalFromElements(iDeg, ascendingNodeDeg) {
+  const i = (iDeg ?? 0) * DEG_TO_RAD;
+  const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
+  const sinI = Math.sin(i);
+
+  // Angular-momentum direction for Rz(Omega) * Rx(i) perifocal transform.
+  return {
+    x: -Math.sin(omega) * sinI,
+    y: Math.cos(omega) * sinI,
+    z: Math.cos(i)
+  };
+}
+
+function rotateVectorAroundX(vector, angleDeg) {
+  const angle = angleDeg * DEG_TO_RAD;
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  return {
+    x: vector.x,
+    y: vector.y * cosA - vector.z * sinA,
+    z: vector.y * sinA + vector.z * cosA
+  };
+}
+
+function elementsFromOrbitNormal(normal) {
+  const z = clamp(normal.z, -1, 1);
+  const iRad = Math.acos(z);
+  const ascendingNodeRad = Math.atan2(-normal.x, normal.y);
+  return {
+    iDeg: iRad * RAD_TO_DEG,
+    ascendingNodeDeg: normalizeDegrees(ascendingNodeRad * RAD_TO_DEG)
+  };
+}
+
+function normalizeMoonOrbitFrame(moon, parentId) {
+  const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
+  if (sourceFrame === 'ecliptic' || sourceFrame.length === 0) {
+    return {
+      iDeg: moon.inclinationDeg,
+      ascendingNodeDeg: normalizeDegrees(moon.ascendingNodeDeg ?? 0),
+      sourceFrame: sourceFrame || 'ecliptic'
+    };
+  }
+
+  // JPL moon elements are not consistently published in one frame.
+  // Convert equatorial/Laplace entries into a common ecliptic approximation.
+  const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
+  const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? Math.abs(moon.poleTiltDeg) : null;
+  const frameTiltDeg = sourceFrame === 'laplace'
+    ? (laplaceTilt ?? parentTilt)
+    : parentTilt;
+
+  const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
+  const eclipticNormal = rotateVectorAroundX(sourceNormal, frameTiltDeg);
+  const converted = elementsFromOrbitNormal(eclipticNormal);
+  return {
+    iDeg: converted.iDeg,
+    ascendingNodeDeg: converted.ascendingNodeDeg,
+    sourceFrame
+  };
+}
+
 function stableHash(input) {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -195,6 +272,7 @@ export function createSolarSystemCatalog() {
 
     const radiusKm = estimateMoonRadiusKm(moon);
     const id = makeMoonId(moon, usedIds);
+    const frameNormalized = normalizeMoonOrbitFrame(moon, parentId);
 
     bodies.push({
       id,
@@ -208,12 +286,13 @@ export function createSolarSystemCatalog() {
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
       reference: moon.reference,
+      orbitFrameSource: frameNormalized.sourceFrame,
       orbit: {
         epochJd: parseEpochDateToJulian(moon.epochTdb),
         aAu: moon.aKm / AU_KM,
         e: moon.e,
-        iDeg: moon.inclinationDeg,
-        ascendingNodeDeg: moon.ascendingNodeDeg,
+        iDeg: frameNormalized.iDeg,
+        ascendingNodeDeg: frameNormalized.ascendingNodeDeg,
         argPeriapsisDeg: moon.argPeriapsisDeg,
         meanAnomalyDeg: moon.meanAnomalyDeg,
         periodDays: moon.periodDays
