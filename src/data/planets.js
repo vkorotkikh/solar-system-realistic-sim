@@ -62,6 +62,8 @@ export const PLANETS = [
     color: '#4f8fdb',
     axialTiltDeg: 23.439281,
     rotationPeriodHours: 23.9344696,
+    // Align Earth day-map prime meridian with the orbital frame used in the scene.
+    rotationPhaseDeg: -90,
     orbit: {
       epochJd: J2000_JD,
       aAu: 1.00000261,

@@ -32,6 +32,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   AU_KM,
   DEFAULT_TIME_SCALE_DAYS_PER_SEC,
+  J2000_JD,
   MIN_TIME_SCALE_DAYS_PER_SEC,
   MAX_TIME_SCALE_DAYS_PER_SEC,
   MU_SUN_AU3_DAY2,
@@ -126,10 +127,16 @@ const simState = {
 
 const AU_PER_LIGHT_YEAR = 63_241.077;
 const MSUN_KG = 1.98847e30;
+const TWO_PI = Math.PI * 2;
 
 function bodyMuAu3Day2(massKg) {
   if (!massKg || !Number.isFinite(massKg) || massKg <= 0) return 0;
   return MU_SUN_AU3_DAY2 * (massKg / MSUN_KG);
+}
+
+function normalizeRadians(angle) {
+  const wrapped = angle % TWO_PI;
+  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
 }
 
 function formatAu(au) {
@@ -492,6 +499,7 @@ function createBodyNode(body) {
   mesh.scale.setScalar(body.displayRadiusAu);
   mesh.userData.bodyId = body.id;
   mesh.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
+  mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
   mesh.userData.axialTiltDeg = axialTiltDeg;
   spinGroup.add(mesh);
 
@@ -509,6 +517,7 @@ function createBodyNode(body) {
     cloudMesh.scale.setScalar(body.displayRadiusAu * 1.01);
     cloudMesh.userData.bodyId = `${body.id}-clouds`;
     cloudMesh.userData.rotationPeriodHours = 22.4;
+    cloudMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(cloudMesh);
   }
 
@@ -1609,8 +1618,8 @@ function updateLocatorOverlays() {
   }
 }
 
-function updateBodyRotations(deltaSeconds) {
-  if (deltaSeconds <= 0) return;
+function updateBodyRotations(julianDate) {
+  const elapsedSeconds = (julianDate - J2000_JD) * 86_400;
   for (const body of catalog.bodies) {
     const spinGroup = bodySpinGroups.get(body.id);
     if (!spinGroup) continue;
@@ -1618,8 +1627,11 @@ function updateBodyRotations(deltaSeconds) {
     for (const child of spinGroup.children) {
       const rotationPeriodHours = child.userData.rotationPeriodHours ?? body.rotationPeriodHours;
       if (!Number.isFinite(rotationPeriodHours) || Math.abs(rotationPeriodHours) < 0.01) continue;
-      const angularSpeed = (2 * Math.PI) / (rotationPeriodHours * 3_600);
-      child.rotation.y += angularSpeed * deltaSeconds;
+      const rotationOffset = Number.isFinite(child.userData.rotationOffsetRad)
+        ? child.userData.rotationOffsetRad
+        : (((body.rotationPhaseDeg ?? 0) * Math.PI) / 180);
+      const angularSpeed = TWO_PI / (rotationPeriodHours * 3_600);
+      child.rotation.y = normalizeRadians(rotationOffset + angularSpeed * elapsedSeconds);
     }
   }
 }
@@ -2124,7 +2136,7 @@ function animate(timestamp) {
   }
   const deltaSimDays = simState.julianDate - previousJd;
 
-  updateBodyRotations(deltaSeconds);
+  updateBodyRotations(simState.julianDate);
   updateAsteroidBelt(simState.julianDate);
 
   // Dynamic route update — keeps trajectory curves attached to moving planets
