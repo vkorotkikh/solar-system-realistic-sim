@@ -6,7 +6,9 @@ export const SUN = {
   type: 'star',
   massKg: 1.98847e30,
   radiusKm: 696_340,
-  color: '#f6d165'
+  color: '#f6d165',
+  axialTiltDeg: 7.25,
+  rotationPeriodHours: 609.12
 };
 
 // J2000 mean elements from NASA/JPL planetary theory values.
@@ -18,6 +20,8 @@ export const PLANETS = [
     massKg: 3.3011e23,
     radiusKm: 2_439.7,
     color: '#a89a86',
+    axialTiltDeg: 0.034,
+    rotationPeriodHours: 1_407.6,
     orbit: {
       epochJd: J2000_JD,
       aAu: 0.38709927,
@@ -36,6 +40,8 @@ export const PLANETS = [
     massKg: 4.8675e24,
     radiusKm: 6_051.8,
     color: '#d6b481',
+    axialTiltDeg: 177.36,
+    rotationPeriodHours: -5_832.5,
     orbit: {
       epochJd: J2000_JD,
       aAu: 0.72333566,
@@ -54,6 +60,8 @@ export const PLANETS = [
     massKg: 5.97237e24,
     radiusKm: 6_371.0,
     color: '#4f8fdb',
+    axialTiltDeg: 23.439281,
+    rotationPeriodHours: 23.9344696,
     orbit: {
       epochJd: J2000_JD,
       aAu: 1.00000261,
@@ -72,6 +80,8 @@ export const PLANETS = [
     massKg: 6.4171e23,
     radiusKm: 3_389.5,
     color: '#d16f54',
+    axialTiltDeg: 25.19,
+    rotationPeriodHours: 24.6229,
     orbit: {
       epochJd: J2000_JD,
       aAu: 1.52371034,
@@ -90,6 +100,8 @@ export const PLANETS = [
     massKg: 1.8982e27,
     radiusKm: 69_911,
     color: '#c7a06b',
+    axialTiltDeg: 3.13,
+    rotationPeriodHours: 9.925,
     orbit: {
       epochJd: J2000_JD,
       aAu: 5.202887,
@@ -108,6 +120,8 @@ export const PLANETS = [
     massKg: 5.6834e26,
     radiusKm: 58_232,
     color: '#d4bf89',
+    axialTiltDeg: 26.73,
+    rotationPeriodHours: 10.656,
     orbit: {
       epochJd: J2000_JD,
       aAu: 9.53667594,
@@ -126,6 +140,8 @@ export const PLANETS = [
     massKg: 8.681e25,
     radiusKm: 25_362,
     color: '#8fd7de',
+    axialTiltDeg: 97.77,
+    rotationPeriodHours: -17.24,
     orbit: {
       epochJd: J2000_JD,
       aAu: 19.18916464,
@@ -144,6 +160,8 @@ export const PLANETS = [
     massKg: 1.02413e26,
     radiusKm: 24_622,
     color: '#4a76d9',
+    axialTiltDeg: 28.32,
+    rotationPeriodHours: 16.11,
     orbit: {
       epochJd: J2000_JD,
       aAu: 30.06992276,
@@ -162,6 +180,8 @@ export const PLANETS = [
     massKg: 1.303e22,
     radiusKm: 1_188.3,
     color: '#b7a38d',
+    axialTiltDeg: 122.53,
+    rotationPeriodHours: -153.2928,
     orbit: {
       epochJd: J2000_JD,
       aAu: 39.48211675,
