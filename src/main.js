@@ -3,6 +3,7 @@ import {
   AdditiveBlending,
   AmbientLight,
   ArrowHelper,
+  BackSide,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -14,10 +15,12 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  Matrix4,
   PerspectiveCamera,
   PointLight,
   Points,
   PointsMaterial,
+  RepeatWrapping,
   RingGeometry,
   SRGBColorSpace,
   Scene,
@@ -57,6 +60,7 @@ import uranusDayTextureUrl from './assets/textures/uranus_day_2048.jpg';
 import neptuneDayTextureUrl from './assets/textures/neptune_day_2048.jpg';
 import earthCloudsTextureUrl from './assets/textures/earth_clouds_2048.jpg';
 import venusAtmosphereTextureUrl from './assets/textures/venus_atmosphere_2048.jpg';
+import milkyWaySurveyTextureUrl from './assets/textures/milky_way_2mass_equirect_2048.jpg';
 import starsCatalog from './data/stars_catalog.json';
 
 // ── DOM References ───────────────────────────────────────────────────────────
@@ -77,6 +81,7 @@ const dom = {
   toggleKuiper: document.getElementById('toggle-kuiper'),
   toggleOort: document.getElementById('toggle-oort'),
   toggleEnhancedMilky: document.getElementById('toggle-enhanced-milky'),
+  toggleSurveyMilky: document.getElementById('toggle-survey-milky'),
   bodySearch: document.getElementById('body-search'),
   bodyList: document.getElementById('body-list'),
   focusBody: document.getElementById('focus-body'),
@@ -122,7 +127,7 @@ const simState = {
   route: null,
   backend: 'local',
   useRealisticScale: false,
-  enhancedMilkyWay: false,
+  milkyWayMode: 'standard',
   zoomSensitivity: 1.0,
   serverConnected: false
 };
@@ -293,7 +298,8 @@ const hiResTextures = {
   jupiterDay: loadHiResTexture(jupiterDayTextureUrl),
   saturnDay: loadHiResTexture(saturnDayTextureUrl),
   uranusDay: loadHiResTexture(uranusDayTextureUrl),
-  neptuneDay: loadHiResTexture(neptuneDayTextureUrl)
+  neptuneDay: loadHiResTexture(neptuneDayTextureUrl),
+  milkyWaySurvey: loadHiResTexture(milkyWaySurveyTextureUrl)
 };
 
 // Generate procedural textures for planets at startup
@@ -946,6 +952,7 @@ function createCatalogStarField(radius = 18_000) {
   }
 
   const group = new Group();
+  const baseLayerPoints = [];
   for (let i = 0; i < baseLayers.length; i++) {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(groupedPositions[i], 3));
@@ -962,6 +969,7 @@ function createCatalogStarField(radius = 18_000) {
         depthWrite: false
       })
     );
+    baseLayerPoints.push(points);
     group.add(points);
   }
 
@@ -972,9 +980,40 @@ function createCatalogStarField(radius = 18_000) {
   group.add(enhancedMilky);
 
   group.userData.starCount = starsCatalog.length;
+  group.userData.baseLayers = baseLayerPoints;
   group.userData.standardMilky = standardMilky;
   group.userData.enhancedMilky = enhancedMilky;
   return group;
+}
+
+function createSurveyMilkyWaySphere(radius = 19_000) {
+  const texture = hiResTextures.milkyWaySurvey;
+  texture.wrapS = RepeatWrapping;
+  texture.repeat.x = -1;
+  texture.offset.x = 1;
+  texture.needsUpdate = true;
+
+  const geometry = new SphereGeometry(radius, 72, 48);
+  const material = new MeshBasicMaterial({
+    map: texture,
+    color: new Color('#f2f6ff'),
+    side: BackSide,
+    transparent: true,
+    opacity: 0.9
+  });
+
+  const sphere = new Mesh(geometry, material);
+  // Galactic -> Equatorial (J2000) orientation match for the survey map.
+  const galacticToEquatorialMatrix = new Matrix4().set(
+    -0.0548755604, -0.8734370902, -0.4838350155, 0,
+    0.4941094279, -0.44482963, 0.7469822445, 0,
+    -0.867666149, -0.1980763734, 0.4559837762, 0,
+    0, 0, 0, 1
+  );
+  sphere.setRotationFromMatrix(galacticToEquatorialMatrix);
+  sphere.visible = false;
+  sphere.renderOrder = -50;
+  return sphere;
 }
 
 // ── Asteroid Belt (element-driven + adaptive LOD refinement) ──────────────────
@@ -1495,18 +1534,29 @@ function createOortCloud() {
 
 const backgroundStars = createCatalogStarField(18_000);
 scene.add(backgroundStars);
+const surveyMilkySphere = createSurveyMilkyWaySphere(19_000);
+scene.add(surveyMilkySphere);
 
 function applyMilkyWayAppearance() {
-  const useEnhanced = Boolean(dom.toggleEnhancedMilky?.checked);
-  simState.enhancedMilkyWay = useEnhanced;
+  const useSurvey = Boolean(dom.toggleSurveyMilky?.checked);
+  const useEnhanced = !useSurvey && Boolean(dom.toggleEnhancedMilky?.checked);
+  const mode = useSurvey ? 'survey' : useEnhanced ? 'enhanced' : 'standard';
+  simState.milkyWayMode = mode;
 
+  const baseLayers = backgroundStars.userData.baseLayers ?? [];
   const standardMilky = backgroundStars.userData.standardMilky;
   const enhancedMilky = backgroundStars.userData.enhancedMilky;
+  for (const layer of baseLayers) {
+    layer.visible = mode !== 'survey';
+  }
   if (standardMilky) {
-    standardMilky.visible = !useEnhanced;
+    standardMilky.visible = mode === 'standard';
   }
   if (enhancedMilky) {
-    enhancedMilky.visible = useEnhanced;
+    enhancedMilky.visible = mode === 'enhanced';
+  }
+  if (surveyMilkySphere) {
+    surveyMilkySphere.visible = mode === 'survey';
   }
 }
 
@@ -2235,7 +2285,8 @@ function setupUiEvents() {
     dom.toggleAsteroids,
     dom.toggleKuiper,
     dom.toggleOort,
-    dom.toggleEnhancedMilky
+    dom.toggleEnhancedMilky,
+    dom.toggleSurveyMilky
   ]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
@@ -2384,6 +2435,10 @@ function animate(timestamp) {
     const followBody = bodyById.get(simState.followBodyId);
     dom.statusFocus.textContent = `Following: ${followBody?.name ?? simState.followBodyId}`;
   }
+
+  // Keep sky layers centered on camera to emulate an effectively infinite backdrop.
+  backgroundStars.position.copy(camera.position);
+  surveyMilkySphere.position.copy(camera.position);
 
   controls.update();
   resizeRenderer();
