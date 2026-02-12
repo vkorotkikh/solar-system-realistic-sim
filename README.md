@@ -63,6 +63,7 @@ npm run update:moons
 - `Time` panel: pause/resume, reverse/forward time, jump to present date.
 - `Display` panel:
   - toggle orbit lines, labels, moons, asteroid belt, Kuiper belt, Oort cloud
+  - switch Milky Way appearance between standard and enhanced mode
   - toggle realism locators (gold/orange label + down-arrow + halo for tiny bodies)
   - toggle gravity vectors (combined gravitational acceleration direction per massive body)
 - `Explorer` panel: search all bodies and focus/follow any selected object.

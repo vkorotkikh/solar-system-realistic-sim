@@ -76,6 +76,7 @@ const dom = {
   toggleAsteroids: document.getElementById('toggle-asteroids'),
   toggleKuiper: document.getElementById('toggle-kuiper'),
   toggleOort: document.getElementById('toggle-oort'),
+  toggleEnhancedMilky: document.getElementById('toggle-enhanced-milky'),
   bodySearch: document.getElementById('body-search'),
   bodyList: document.getElementById('body-list'),
   focusBody: document.getElementById('focus-body'),
@@ -121,6 +122,7 @@ const simState = {
   route: null,
   backend: 'local',
   useRealisticScale: false,
+  enhancedMilkyWay: false,
   zoomSensitivity: 1.0,
   serverConnected: false
 };
@@ -745,52 +747,72 @@ function galacticLongitudeWeight(lRad) {
   return Math.max(0.16, Math.min(1, density));
 }
 
-function createCatalogStarField(radius = 18_000) {
-  const layers = [
-    { maxMag: 2.0, size: 2.2, opacity: 0.96 },
-    { maxMag: 4.2, size: 1.45, opacity: 0.82 },
-    { maxMag: Infinity, size: 0.95, opacity: 0.56 }
-  ];
+function createStandardMilkyWayLayer(radius) {
+  const milkyCount = 34_000;
+  const milkyPositions = new Float32Array(milkyCount * 3);
+  const milkyColors = new Float32Array(milkyCount * 3);
 
-  const groupedPositions = layers.map(() => []);
-  const groupedColors = layers.map(() => []);
+  for (let i = 0; i < milkyCount; i++) {
+    const l = Math.random() * TWO_PI;
+    let b = sampleGaussian(0.095);
+    b += 0.012 * Math.sin(2.1 * l + 0.4);
+    b = Math.max(-0.52, Math.min(0.52, b));
 
-  for (const entry of starsCatalog) {
-    const [raDeg, decDeg, mag, bv] = entry;
-    if (!Number.isFinite(raDeg) || !Number.isFinite(decDeg) || !Number.isFinite(mag)) continue;
+    const r = radius * (0.9 + Math.random() * 0.1);
+    const [x, y, z] = galacticToCartesian(l, b, r);
+    milkyPositions[i * 3] = x;
+    milkyPositions[i * 3 + 1] = y;
+    milkyPositions[i * 3 + 2] = z;
 
-    const layerIndex = layers.findIndex((layer) => mag <= layer.maxMag);
-    if (layerIndex < 0) continue;
-
-    const r = radius * (0.92 + Math.random() * 0.08);
-    const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, r);
-    const [cr, cg, cb] = bvToRgbUnit(bv);
-
-    groupedPositions[layerIndex].push(x, y, z);
-    groupedColors[layerIndex].push(cr, cg, cb);
+    const laneDark = gaussianByDistance(Math.abs(b), 0.034);
+    const latFalloff = Math.exp(-Math.abs(b) / 0.25);
+    const intensity = (0.28 + 0.72 * Math.random()) * latFalloff * (1 - 0.35 * laneDark);
+    milkyColors[i * 3] = intensity * 0.84;
+    milkyColors[i * 3 + 1] = intensity * 0.89;
+    milkyColors[i * 3 + 2] = intensity * 0.98;
   }
 
-  const group = new Group();
-  for (let i = 0; i < layers.length; i++) {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(groupedPositions[i], 3));
-    geometry.setAttribute('color', new Float32BufferAttribute(groupedColors[i], 3));
-    const points = new Points(
-      geometry,
-      new PointsMaterial({
-        size: layers[i].size,
-        vertexColors: true,
-        transparent: true,
-        opacity: layers[i].opacity,
-        blending: AdditiveBlending,
-        sizeAttenuation: false,
-        depthWrite: false
-      })
-    );
-    group.add(points);
-  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(milkyPositions, 3));
+  geometry.setAttribute('color', new Float32BufferAttribute(milkyColors, 3));
 
-  // Milky Way enhancement: dense faint stellar band in galactic coordinates.
+  const layerGroup = new Group();
+  const points = new Points(
+    geometry,
+    new PointsMaterial({
+      size: 0.55,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.33,
+      blending: AdditiveBlending,
+      sizeAttenuation: true,
+      depthTest: true,
+      depthWrite: false
+    })
+  );
+  const haze = new Points(
+    geometry,
+    new PointsMaterial({
+      color: new Color('#cad5e2'),
+      size: 1.5,
+      transparent: true,
+      opacity: 0.045,
+      blending: AdditiveBlending,
+      sizeAttenuation: true,
+      depthTest: true,
+      depthWrite: false
+    })
+  );
+
+  layerGroup.add(points);
+  layerGroup.add(haze);
+  layerGroup.userData.mode = 'standard';
+  return layerGroup;
+}
+
+function createEnhancedMilkyWayLayer(radius) {
+  const layerGroup = new Group();
+  // Enhanced mode: structured model with bulge/arm weighting and dust lanes.
   const milkyCount = 82_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
   const milkyColors = new Float32Array(milkyCount * 3);
@@ -877,7 +899,7 @@ function createCatalogStarField(radius = 18_000) {
       depthWrite: false
     })
   );
-  group.add(milkyPoints);
+  layerGroup.add(milkyPoints);
 
   // Soft haze layer to make the galactic band perceptible at a glance.
   const milkyHaze = new Points(
@@ -893,9 +915,65 @@ function createCatalogStarField(radius = 18_000) {
       depthWrite: false
     })
   );
-  group.add(milkyHaze);
+  layerGroup.add(milkyHaze);
+
+  layerGroup.userData.mode = 'enhanced';
+  return layerGroup;
+}
+
+function createCatalogStarField(radius = 18_000) {
+  const baseLayers = [
+    { maxMag: 2.0, size: 2.2, opacity: 0.96 },
+    { maxMag: 4.2, size: 1.45, opacity: 0.82 },
+    { maxMag: Infinity, size: 0.95, opacity: 0.56 }
+  ];
+
+  const groupedPositions = baseLayers.map(() => []);
+  const groupedColors = baseLayers.map(() => []);
+
+  for (const entry of starsCatalog) {
+    const [raDeg, decDeg, mag, bv] = entry;
+    if (!Number.isFinite(raDeg) || !Number.isFinite(decDeg) || !Number.isFinite(mag)) continue;
+
+    const layerIndex = baseLayers.findIndex((layer) => mag <= layer.maxMag);
+    if (layerIndex < 0) continue;
+
+    const r = radius * (0.92 + Math.random() * 0.08);
+    const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, r);
+    const [cr, cg, cb] = bvToRgbUnit(bv);
+    groupedPositions[layerIndex].push(x, y, z);
+    groupedColors[layerIndex].push(cr, cg, cb);
+  }
+
+  const group = new Group();
+  for (let i = 0; i < baseLayers.length; i++) {
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(groupedPositions[i], 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(groupedColors[i], 3));
+    const points = new Points(
+      geometry,
+      new PointsMaterial({
+        size: baseLayers[i].size,
+        vertexColors: true,
+        transparent: true,
+        opacity: baseLayers[i].opacity,
+        blending: AdditiveBlending,
+        sizeAttenuation: false,
+        depthWrite: false
+      })
+    );
+    group.add(points);
+  }
+
+  const standardMilky = createStandardMilkyWayLayer(radius);
+  const enhancedMilky = createEnhancedMilkyWayLayer(radius);
+  enhancedMilky.visible = false;
+  group.add(standardMilky);
+  group.add(enhancedMilky);
 
   group.userData.starCount = starsCatalog.length;
+  group.userData.standardMilky = standardMilky;
+  group.userData.enhancedMilky = enhancedMilky;
   return group;
 }
 
@@ -1418,6 +1496,20 @@ function createOortCloud() {
 const backgroundStars = createCatalogStarField(18_000);
 scene.add(backgroundStars);
 
+function applyMilkyWayAppearance() {
+  const useEnhanced = Boolean(dom.toggleEnhancedMilky?.checked);
+  simState.enhancedMilkyWay = useEnhanced;
+
+  const standardMilky = backgroundStars.userData.standardMilky;
+  const enhancedMilky = backgroundStars.userData.enhancedMilky;
+  if (standardMilky) {
+    standardMilky.visible = !useEnhanced;
+  }
+  if (enhancedMilky) {
+    enhancedMilky.visible = useEnhanced;
+  }
+}
+
 scene.add(asteroidBelt);
 
 scene.add(asteroidDetailPoints);
@@ -1849,6 +1941,7 @@ function applyRenderVisibility() {
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
   gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
+  applyMilkyWayAppearance();
 
   updateLocatorOverlays();
 }
@@ -2141,7 +2234,8 @@ function setupUiEvents() {
     dom.toggleMoons,
     dom.toggleAsteroids,
     dom.toggleKuiper,
-    dom.toggleOort
+    dom.toggleOort,
+    dom.toggleEnhancedMilky
   ]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
