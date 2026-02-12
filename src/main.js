@@ -60,7 +60,7 @@ import uranusDayTextureUrl from './assets/textures/uranus_day_2048.jpg';
 import neptuneDayTextureUrl from './assets/textures/neptune_day_2048.jpg';
 import earthCloudsTextureUrl from './assets/textures/earth_clouds_2048.jpg';
 import venusAtmosphereTextureUrl from './assets/textures/venus_atmosphere_2048.jpg';
-import milkyWaySurveyTextureUrl from './assets/textures/milky_way_2mass_equirect_2048.jpg';
+import milkyWaySurveyTextureUrl from './assets/textures/milky_way_2mass_equirect_4096.jpg';
 import starsCatalog from './data/stars_catalog.json';
 
 // ── DOM References ───────────────────────────────────────────────────────────
@@ -993,24 +993,36 @@ function createSurveyMilkyWaySphere(radius = 19_000) {
   texture.offset.x = 1;
   texture.needsUpdate = true;
 
-  const geometry = new SphereGeometry(radius, 72, 48);
+  const geometry = new SphereGeometry(radius, 96, 64);
   const material = new MeshBasicMaterial({
     map: texture,
-    color: new Color('#f2f6ff'),
+    color: new Color('#ffffff'),
     side: BackSide,
     transparent: true,
-    opacity: 0.9
+    opacity: 0.82
   });
 
   const sphere = new Mesh(geometry, material);
-  // Galactic -> Equatorial (J2000) orientation match for the survey map.
+  // Galactic -> Equatorial (J2000) matrix used by the procedural Milky Way model.
   const galacticToEquatorialMatrix = new Matrix4().set(
     -0.0548755604, -0.8734370902, -0.4838350155, 0,
     0.4941094279, -0.44482963, 0.7469822445, 0,
     -0.867666149, -0.1980763734, 0.4559837762, 0,
     0, 0, 0, 1
   );
-  sphere.setRotationFromMatrix(galacticToEquatorialMatrix);
+  // Sphere UVs encode longitude in local X/Z and latitude in local Y.
+  // Convert that texture-local basis into the galactic basis first, then to equatorial.
+  const textureLocalToGalacticMatrix = new Matrix4().set(
+    1, 0, 0, 0,
+    0, 0, 1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1
+  );
+  const surveyToEquatorialMatrix = new Matrix4().multiplyMatrices(
+    galacticToEquatorialMatrix,
+    textureLocalToGalacticMatrix
+  );
+  sphere.setRotationFromMatrix(surveyToEquatorialMatrix);
   sphere.visible = false;
   sphere.renderOrder = -50;
   return sphere;

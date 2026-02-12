@@ -63,7 +63,7 @@ npm run update:moons
 - `Time` panel: pause/resume, reverse/forward time, jump to present date.
 - `Display` panel:
   - toggle orbit lines, labels, moons, asteroid belt, Kuiper belt, Oort cloud
-  - switch Milky Way appearance between standard and enhanced mode
+  - switch Milky Way appearance between standard, enhanced, and survey-texture mode
   - toggle realism locators (gold/orange label + down-arrow + halo for tiny bodies)
   - toggle gravity vectors (combined gravitational acceleration direction per massive body)
 - `Explorer` panel: search all bodies and focus/follow any selected object.
@@ -96,6 +96,7 @@ npm run update:moons
 - Planet textures (2K set): Solar System Scope texture pack (used for local assets in `src/assets/textures`).
 - Earth/Moon base textures: three.js planetary texture set.
 - Star catalog (`src/data/stars_catalog.json`): reduced dataset derived from d3-celestial star catalog data.
+- Survey Milky Way texture (`src/assets/textures/milky_way_2mass_equirect_4096.jpg`): derived from NASA/JPL 2MASS all-sky data (PIA04250), remapped from Mollweide to equirectangular for sky-sphere rendering.
 
 ## Build
 
