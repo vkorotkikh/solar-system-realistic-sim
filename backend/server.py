@@ -37,6 +37,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from data.bodies import ALL_BODIES
+from sim.base import SimulationEngine
 from sim.rebound_nbody import REBOUNDEngine
 from sim.kuiper import KuiperBeltEngine
 
@@ -94,7 +95,7 @@ def info():
 class SimulationRunner:
     """Manages a simulation engine in a background thread at target FPS."""
 
-    def __init__(self, engine: REBOUNDEngine, target_fps: int = 60):
+    def __init__(self, engine: SimulationEngine, target_fps: int = 60):
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
         self.command_queue: queue.Queue = queue.Queue()
@@ -134,11 +135,12 @@ class SimulationRunner:
             t0 = time.perf_counter()
 
             # ── Process commands ──────────────────────────────────────
-            while not self.command_queue.empty():
+            while True:
                 try:
-                    self._handle_command(self.command_queue.get_nowait())
+                    cmd = self.command_queue.get_nowait()
                 except queue.Empty:
                     break
+                self._handle_command(cmd)
 
             # ── Step simulation ───────────────────────────────────────
             if not self.paused:
@@ -223,6 +225,54 @@ class SimulationRunner:
                     })
 
 
+# ── WebSocket task helpers ────────────────────────────────────────────────────
+
+async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
+    while True:
+        raw = await websocket.receive_text()
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Invalid JSON payload",
+            }))
+            continue
+        runner.send_command(msg)
+
+
+async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_hz: float):
+    interval = 1.0 / max(1.0, stream_hz)
+    last_jd: Optional[float] = None
+    idle_frames = 0
+    idle_send_interval = max(1, int(stream_hz // 3))
+
+    while True:
+        resp = runner.get_response()
+        while resp is not None:
+            await websocket.send_text(json.dumps(resp))
+            resp = runner.get_response()
+
+        state = runner.get_latest_state()
+        if state:
+            jd = float(state.get("jd", 0.0))
+            has_kuiper_payload = "kuiper" in state
+            should_send = (
+                has_kuiper_payload
+                or last_jd is None
+                or abs(jd - last_jd) > 1e-12
+                or idle_frames >= idle_send_interval
+            )
+            if should_send:
+                await websocket.send_text(json.dumps(state))
+                last_jd = jd
+                idle_frames = 0
+            else:
+                idle_frames += 1
+
+        await asyncio.sleep(interval)
+
+
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
 
 @app.websocket("/ws/sim")
@@ -241,7 +291,18 @@ async def simulation_websocket(websocket: WebSocket):
         engine = REBOUNDEngine(integrator=integrator)
     engine.initialize(ALL_BODIES)
 
-    runner = SimulationRunner(engine)
+    target_fps_raw = websocket.query_params.get("fps", "60")
+    stream_hz_raw = websocket.query_params.get("stream_hz", "60")
+    try:
+        target_fps = max(10, min(240, int(float(target_fps_raw))))
+    except Exception:
+        target_fps = 60
+    try:
+        stream_hz = max(5.0, min(240.0, float(stream_hz_raw)))
+    except Exception:
+        stream_hz = float(target_fps)
+
+    runner = SimulationRunner(engine, target_fps=target_fps)
     runner.start()
 
     # Notify client of connection
@@ -252,36 +313,38 @@ async def simulation_websocket(websocket: WebSocket):
         "fidelity": engine.fidelity_level,
         "bodies": engine.body_ids,
         "jd": engine.get_julian_date(),
+        "fps": target_fps,
+        "stream_hz": stream_hz,
     }))
 
     try:
-        while True:
-            # ── Receive client messages (non-blocking) ────────────────
-            try:
-                raw = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=0.014
-                )
-                msg = json.loads(raw)
-                runner.send_command(msg)
-            except asyncio.TimeoutError:
-                pass
+        receive_task = asyncio.create_task(_ws_receive_loop(websocket, runner))
+        send_task = asyncio.create_task(_ws_send_loop(websocket, runner, stream_hz=stream_hz))
+        done, pending = await asyncio.wait(
+            {receive_task, send_task},
+            return_when=asyncio.FIRST_EXCEPTION,
+        )
 
-            # ── Send any queued responses ─────────────────────────────
-            resp = runner.get_response()
-            while resp is not None:
-                await websocket.send_text(json.dumps(resp))
-                resp = runner.get_response()
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
-            # ── Send latest simulation state ──────────────────────────
-            state = runner.get_latest_state()
-            if state:
-                await websocket.send_text(json.dumps(state))
-
+        for task in done:
+            if task.cancelled():
+                continue
+            exc = task.exception()
+            if exc is None:
+                continue
+            if isinstance(exc, WebSocketDisconnect):
+                raise exc
+            raise exc
     except WebSocketDisconnect:
-        runner.stop()
+        pass
     except Exception as exc:
-        runner.stop()
         print(f"[ws/sim] error: {exc}")
+    finally:
+        runner.stop()
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import {
   BufferGeometry,
   CanvasTexture,
   Color,
+  DoubleSide,
   Float32BufferAttribute,
   Group,
   HemisphereLight,
@@ -21,6 +22,7 @@ import {
   Points,
   PointsMaterial,
   RepeatWrapping,
+  Raycaster,
   RingGeometry,
   SRGBColorSpace,
   Scene,
@@ -28,6 +30,7 @@ import {
   Sprite,
   SpriteMaterial,
   TextureLoader,
+  Vector2,
   Vector3,
   WebGLRenderer
 } from 'three';
@@ -109,7 +112,9 @@ const dom = {
   zoomSensitivity: document.getElementById('zoom-sensitivity'),
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   zoomDistanceValue: document.getElementById('zoom-distance-value'),
-  viewScaleValue: document.getElementById('view-scale-value')
+  viewScaleValue: document.getElementById('view-scale-value'),
+  viewportShell: document.getElementById('viewport-shell'),
+  statusRender: document.getElementById('status-render')
 };
 
 // ── Data & State ─────────────────────────────────────────────────────────────
@@ -136,6 +141,64 @@ const AU_PER_LIGHT_YEAR = 63_241.077;
 const MSUN_KG = 1.98847e30;
 const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
+const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
+
+function clampRuntimeNumber(value, min, max) {
+  if (!Number.isFinite(value)) return null;
+  return Math.min(max, Math.max(min, value));
+}
+
+function readRuntimeNumber(searchParams, paramKey, envKey, fallback, min, max) {
+  const fromQuery = searchParams.get(paramKey);
+  if (fromQuery !== null && fromQuery.trim() !== '') {
+    const parsed = Number(fromQuery);
+    const clamped = clampRuntimeNumber(parsed, min, max);
+    if (clamped !== null) return clamped;
+  }
+
+  const fromEnv = import.meta.env?.[envKey];
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
+    const parsed = Number(fromEnv);
+    const clamped = clampRuntimeNumber(parsed, min, max);
+    if (clamped !== null) return clamped;
+  }
+
+  return fallback;
+}
+
+function buildRuntimeUiConfig() {
+  const params = new URLSearchParams(window.location.search);
+  const uiWidth = readRuntimeNumber(params, 'uiWidth', 'VITE_UI_WIDTH', null, 640, 10_000);
+  const uiHeight = readRuntimeNumber(params, 'uiHeight', 'VITE_UI_HEIGHT', null, 360, 10_000);
+  const renderScale = readRuntimeNumber(params, 'renderScale', 'VITE_RENDER_SCALE', 1, 0.5, 3);
+  const maxPixelRatio = readRuntimeNumber(params, 'maxPixelRatio', 'VITE_MAX_PIXEL_RATIO', 2, 1, 4);
+  return {
+    uiWidth,
+    uiHeight,
+    renderScale,
+    maxPixelRatio
+  };
+}
+
+const runtimeUiConfig = buildRuntimeUiConfig();
+
+function applyViewportSizeOverride() {
+  if (!dom.viewportShell) return;
+  if (!runtimeUiConfig.uiWidth || !runtimeUiConfig.uiHeight) return;
+  dom.viewportShell.style.width = `${runtimeUiConfig.uiWidth}px`;
+  dom.viewportShell.style.height = `${runtimeUiConfig.uiHeight}px`;
+  dom.viewportShell.style.maxWidth = '100%';
+  dom.viewportShell.style.maxHeight = '100vh';
+  dom.viewportShell.style.margin = '0 auto';
+  dom.viewportShell.style.alignSelf = 'center';
+}
+
+function updateRenderResolutionStatus(renderWidth, renderHeight, viewportWidth, viewportHeight) {
+  if (!dom.statusRender) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, runtimeUiConfig.maxPixelRatio);
+  dom.statusRender.textContent =
+    `Render: ${renderWidth}x${renderHeight} (view ${viewportWidth}x${viewportHeight}, DPR ${dpr.toFixed(2)} cap)`;
+}
 
 function bodyMuAu3Day2(massKg) {
   if (!massKg || !Number.isFinite(massKg) || massKg <= 0) return 0;
@@ -204,7 +267,7 @@ const renderer = new WebGLRenderer({
   antialias: true,
   alpha: false
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio));
 
 const scene = new Scene();
 scene.background = new Color('#03070c');
@@ -219,6 +282,7 @@ controls.maxDistance = 8_000;
 controls.minDistance = 0.0002;
 controls.zoomSpeed = simState.zoomSensitivity;
 controls.target.set(0, 0, 0);
+applyViewportSizeOverride();
 
 // ── Lighting ─────────────────────────────────────────────────────────────────
 
@@ -263,7 +327,7 @@ const geometryCache = {
 
 const materialCache = new Map();
 const textureLoader = new TextureLoader();
-const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const maxAnisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
 
 function configureLoadedTexture(texture, { isColorMap = true } = {}) {
   texture.anisotropy = maxAnisotropy;
@@ -423,6 +487,7 @@ function createLabelSprite(text) {
   const sprite = new Sprite(material);
   sprite.scale.set(1.2, 0.32, 1);
   sprite.userData.aspect = canvas.width / canvas.height;
+  sprite.userData.pointerTipOffsetNorm = LABEL_POINTER_TIP_OFFSET_NORM;
   sprite.renderOrder = 11;
   return sprite;
 }
@@ -592,7 +657,8 @@ function createBodyNode(body) {
   // Labels for major bodies only
   if (majorNodeIds.has(body.id)) {
     const label = createLabelSprite(body.name);
-    label.position.set(0, body.displayRadiusAu * 2.5 + 0.03, 0);
+    const pointerTipOffset = label.scale.y * (label.userData.pointerTipOffsetNorm ?? LABEL_POINTER_TIP_OFFSET_NORM);
+    label.position.set(0, body.displayRadiusAu * 2.5 + 0.03 + pointerTipOffset, 0);
     node.add(label);
     labels.push({ bodyId: body.id, sprite: label });
 
@@ -819,7 +885,7 @@ function createStandardMilkyWayLayer(radius) {
 function createEnhancedMilkyWayLayer(radius) {
   const layerGroup = new Group();
   // Enhanced mode: structured model with bulge/arm weighting and dust lanes.
-  const milkyCount = 82_000;
+  const milkyCount = 76_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
   const milkyColors = new Float32Array(milkyCount * 3);
   const componentThresholdA = 0.57; // thin disk
@@ -876,7 +942,7 @@ function createEnhancedMilkyWayLayer(radius) {
     milkyPositions[i * 3 + 2] = z;
 
     const latFalloff = Math.exp(-Math.abs(b) / 0.22);
-    const intensity = (0.22 + 0.78 * Math.random()) * (0.35 + 0.65 * lonWeight) * latFalloff * dustFactor;
+    const intensity = (0.14 + 0.52 * Math.random()) * (0.3 + 0.54 * lonWeight) * latFalloff * dustFactor;
 
     // Bulge skews warmer/yellower; outer disk remains cooler.
     const warmMix = Math.min(1, 0.15 + 0.78 * bulgeWeight + 0.4 * bulgeMix);
@@ -895,10 +961,10 @@ function createEnhancedMilkyWayLayer(radius) {
   const milkyPoints = new Points(
     milkyGeometry,
     new PointsMaterial({
-      size: 1.25,
+      size: 1.05,
       vertexColors: true,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.48,
       blending: AdditiveBlending,
       sizeAttenuation: false,
       depthTest: true,
@@ -912,9 +978,9 @@ function createEnhancedMilkyWayLayer(radius) {
     milkyGeometry,
     new PointsMaterial({
       color: new Color('#cfd8e6'),
-      size: 2.9,
+      size: 2.45,
       transparent: true,
-      opacity: 0.1,
+      opacity: 0.045,
       blending: AdditiveBlending,
       sizeAttenuation: false,
       depthTest: true,
@@ -1031,10 +1097,10 @@ function createSurveyMilkyWaySphere(radius = 19_000) {
 // ── Asteroid Belt (element-driven + adaptive LOD refinement) ──────────────────
 
 const ASTEROID_EPOCH_JD = 2_451_545.0;
-const ASTEROID_BASE_COUNT = 12_000;
-const ASTEROID_DETAIL_MAX = 50_000;
-const ASTEROID_DETAIL_MIN = 4_000;
-const ASTEROID_DETAIL_TARGET_MAX = 45_000;
+const ASTEROID_BASE_COUNT = 22_000;
+const ASTEROID_DETAIL_MAX = 90_000;
+const ASTEROID_DETAIL_MIN = 7_000;
+const ASTEROID_DETAIL_TARGET_MAX = 78_000;
 const ASTEROID_GAPS = [
   { center: 2.06, halfWidth: 0.02 },
   { center: 2.50, halfWidth: 0.035 },
@@ -1042,6 +1108,14 @@ const ASTEROID_GAPS = [
   { center: 2.95, halfWidth: 0.02 },
   { center: 3.28, halfWidth: 0.025 }
 ];
+const ASTEROID_FAMILY_COMPONENTS = [
+  { centerA: 2.28, sigmaA: 0.09, weight: 0.2 },
+  { centerA: 2.41, sigmaA: 0.08, weight: 0.24 },
+  { centerA: 2.66, sigmaA: 0.1, weight: 0.2 },
+  { centerA: 2.9, sigmaA: 0.1, weight: 0.2 },
+  { centerA: 3.15, sigmaA: 0.09, weight: 0.16 }
+];
+const ASTEROID_FAMILY_TOTAL_WEIGHT = ASTEROID_FAMILY_COMPONENTS.reduce((sum, comp) => sum + comp.weight, 0);
 
 function isInsideAsteroidGap(radiusAu) {
   for (const gap of ASTEROID_GAPS) {
@@ -1058,6 +1132,19 @@ function randomGaussian() {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
+function sampleAsteroidFamilySemimajorAxis(minA, maxA) {
+  let selector = Math.random() * ASTEROID_FAMILY_TOTAL_WEIGHT;
+  let picked = ASTEROID_FAMILY_COMPONENTS[ASTEROID_FAMILY_COMPONENTS.length - 1];
+  for (const component of ASTEROID_FAMILY_COMPONENTS) {
+    selector -= component.weight;
+    if (selector <= 0) {
+      picked = component;
+      break;
+    }
+  }
+  return Math.max(minA, Math.min(maxA, picked.centerA + randomGaussian() * picked.sigmaA));
+}
+
 function createAsteroidOrbitElement({
   minA = 2.1,
   maxA = 3.3,
@@ -1068,9 +1155,13 @@ function createAsteroidOrbitElement({
   let a = 0;
   for (let attempts = 0; attempts < 20; attempts++) {
     if (centerA === null) {
-      const minSq = minA * minA;
-      const maxSq = maxA * maxA;
-      a = Math.sqrt(minSq + (maxSq - minSq) * Math.random());
+      if (Math.random() < 0.68) {
+        a = sampleAsteroidFamilySemimajorAxis(minA, maxA);
+      } else {
+        const minSq = minA * minA;
+        const maxSq = maxA * maxA;
+        a = Math.sqrt(minSq + (maxSq - minSq) * Math.random());
+      }
     } else {
       a = Math.max(minA, Math.min(maxA, centerA + randomGaussian() * sigmaA));
     }
@@ -1134,14 +1225,31 @@ asteroidBaseGeometry.setAttribute('color', new Float32BufferAttribute(asteroidBa
 const asteroidBelt = new Points(
   asteroidBaseGeometry,
   new PointsMaterial({
-    size: 0.006,
+    size: 0.0085,
     vertexColors: true,
     transparent: true,
-    opacity: 0.68,
+    opacity: 0.74,
     sizeAttenuation: true,
     depthWrite: false
   })
 );
+
+function createAsteroidBeltWaypoint(innerRadiusAu = 2.02, outerRadiusAu = 3.36) {
+  const ring = new Mesh(
+    new RingGeometry(innerRadiusAu, outerRadiusAu, 192, 1),
+    new MeshBasicMaterial({
+      color: new Color('#7e745f'),
+      transparent: true,
+      opacity: 0.11,
+      side: DoubleSide,
+      depthWrite: false
+    })
+  );
+  ring.renderOrder = -5;
+  return ring;
+}
+
+const asteroidBeltWaypoint = createAsteroidBeltWaypoint();
 
 const asteroidDetailGeometry = new BufferGeometry();
 const asteroidDetailPositions = new Float32Array(ASTEROID_DETAIL_MAX * 3);
@@ -1153,9 +1261,9 @@ const asteroidDetailPoints = new Points(
   asteroidDetailGeometry,
   new PointsMaterial({
     color: new Color('#d0c5af'),
-    size: 0.0016,
+    size: 0.0022,
     transparent: true,
-    opacity: 0.62,
+    opacity: 0.68,
     sizeAttenuation: true,
     depthWrite: false
   })
@@ -1519,9 +1627,10 @@ function createOortCloud() {
     innerGeometry,
     new PointsMaterial({
       color: new Color('#9eb4c2'),
-      size: 0.024,
+      size: 1.08,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.15,
+      sizeAttenuation: false,
       depthWrite: false
     })
   );
@@ -1529,15 +1638,29 @@ function createOortCloud() {
     outerGeometry,
     new PointsMaterial({
       color: new Color('#7f96a5'),
-      size: 0.02,
+      size: 0.92,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.11,
+      sizeAttenuation: false,
+      depthWrite: false
+    })
+  );
+  const waypointGeometry = createOortComponent(5_400, 7_300, 7_900, 1.0);
+  const waypointShell = new Points(
+    waypointGeometry,
+    new PointsMaterial({
+      color: new Color('#8fb1c7'),
+      size: 1.35,
+      transparent: true,
+      opacity: 0.12,
+      sizeAttenuation: false,
       depthWrite: false
     })
   );
 
   group.add(outerCloud);
   group.add(innerCloud);
+  group.add(waypointShell);
   group.userData.particleCount = 34_000;
   return group;
 }
@@ -1573,6 +1696,7 @@ function applyMilkyWayAppearance() {
 }
 
 scene.add(asteroidBelt);
+scene.add(asteroidBeltWaypoint);
 
 scene.add(asteroidDetailPoints);
 
@@ -1801,19 +1925,24 @@ function applyScaleMode() {
 // ── Resize ───────────────────────────────────────────────────────────────────
 
 function resizeRenderer() {
-  const width = dom.canvas.clientWidth;
-  const height = dom.canvas.clientHeight;
+  const viewportWidth = dom.canvas.clientWidth;
+  const viewportHeight = dom.canvas.clientHeight;
 
-  if (width <= 0 || height <= 0) {
+  if (viewportWidth <= 0 || viewportHeight <= 0) {
     return;
   }
 
-  if (dom.canvas.width !== width || dom.canvas.height !== height) {
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
+  const renderWidth = Math.max(1, Math.round(viewportWidth * runtimeUiConfig.renderScale));
+  const renderHeight = Math.max(1, Math.round(viewportHeight * runtimeUiConfig.renderScale));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio));
+
+  if (dom.canvas.width !== renderWidth || dom.canvas.height !== renderHeight) {
+    renderer.setSize(renderWidth, renderHeight, false);
+    camera.aspect = viewportWidth / viewportHeight;
     camera.updateProjectionMatrix();
     updateZoomMetricsUI();
   }
+  updateRenderResolutionStatus(renderWidth, renderHeight, viewportWidth, viewportHeight);
 }
 
 window.addEventListener('resize', resizeRenderer);
@@ -1823,6 +1952,8 @@ resizeRenderer();
 
 const tempVecA = new Vector3();
 const tempVecB = new Vector3();
+const pickRaycaster = new Raycaster();
+const pickPointerNdc = new Vector2();
 
 function updateSceneBodies() {
   for (const body of catalog.bodies) {
@@ -1874,13 +2005,15 @@ function updateLocatorOverlays() {
     const maxHeightWorld = simState.useRealisticScale ? 0.16 : 2.0;
     const clampedHeight = Math.max(minHeightWorld, Math.min(maxHeightWorld, labelHeightWorld));
     const aspect = entry.sprite.userData.aspect ?? 4.0;
+    const pointerTipOffsetNorm = entry.sprite.userData.pointerTipOffsetNorm ?? LABEL_POINTER_TIP_OFFSET_NORM;
 
     entry.sprite.visible = shouldShowLabel;
     entry.sprite.scale.set(clampedHeight * aspect, clampedHeight, 1);
 
     const clearancePx = shouldShowLabel ? 16 : 8;
-    const yOffset = Math.max(radius * 2.25, unitPerPixel * (clearancePx + pixelRadius * 1.2));
-    entry.sprite.position.set(0, yOffset, 0);
+    const pointerTipWorld = clampedHeight * pointerTipOffsetNorm;
+    const pointerTipTargetY = Math.max(radius * 2.25, unitPerPixel * (clearancePx + pixelRadius * 1.2));
+    entry.sprite.position.set(0, pointerTipTargetY + pointerTipWorld, 0);
   }
 
   const halosByBodyId = new Map(locatorHalos.map((item) => [item.bodyId, item.sprite]));
@@ -1999,6 +2132,7 @@ function applyRenderVisibility() {
   }
 
   asteroidBelt.visible = dom.toggleAsteroids.checked;
+  asteroidBeltWaypoint.visible = dom.toggleAsteroids.checked;
   asteroidDetailPoints.visible = dom.toggleAsteroids.checked && asteroidDetailPoints.visible;
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
