@@ -2229,6 +2229,68 @@ function refillBodyList(searchValue = '') {
   }
 }
 
+function bodyListContainsOption(bodyId) {
+  if (!dom.bodyList) return false;
+  for (const option of dom.bodyList.options) {
+    if (option.value === bodyId) return true;
+  }
+  return false;
+}
+
+function syncBodyListSelection(bodyId) {
+  if (!dom.bodyList) return;
+  if (!bodyListContainsOption(bodyId)) {
+    if (dom.bodySearch) {
+      dom.bodySearch.value = '';
+    }
+    refillBodyList('');
+  }
+  if (bodyListContainsOption(bodyId)) {
+    dom.bodyList.value = bodyId;
+  }
+}
+
+function selectBodyAndTrack(bodyId, { hardSnap = true, follow = true } = {}) {
+  const body = bodyById.get(bodyId);
+  if (!body) return;
+
+  if (follow) {
+    simState.followBodyId = bodyId;
+  }
+  focusBody(bodyId, hardSnap);
+  updateBodyInfoPanel(bodyId);
+  syncBodyListSelection(bodyId);
+  if (follow) {
+    dom.statusFocus.textContent = `Following: ${body.name}`;
+  }
+}
+
+function pickBodyAtClientPosition(clientX, clientY) {
+  const rect = dom.canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
+
+  pickPointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pickPointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  pickRaycaster.setFromCamera(pickPointerNdc, camera);
+
+  const pickTargets = [];
+  for (const mesh of bodyMeshes.values()) {
+    if (!mesh.visible) continue;
+    pickTargets.push(mesh);
+  }
+  if (pickTargets.length === 0) return null;
+
+  const intersections = pickRaycaster.intersectObjects(pickTargets, false);
+  for (const hit of intersections) {
+    const bodyId = hit.object?.userData?.bodyId;
+    if (typeof bodyId === 'string' && bodyById.has(bodyId)) {
+      return bodyId;
+    }
+  }
+  return null;
+}
+
 // ── Planner Selects ──────────────────────────────────────────────────────────
 
 function fillPlannerSelects() {

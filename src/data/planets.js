@@ -362,6 +362,114 @@ export const ASTEROID_BELT_OBJECTS = [
       meanAnomalyDeg: 115.41562,
       periodDays: 1_592.66
     }
+  },
+  {
+    id: 'psyche',
+    name: 'Psyche',
+    type: 'asteroid',
+    massKg: 2.72e19,
+    radiusKm: 111,
+    color: '#9f978d',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.92187,
+      e: 0.1398,
+      iDeg: 3.095,
+      ascendingNodeDeg: 150.03,
+      argPeriapsisDeg: 228.15,
+      meanAnomalyDeg: 33.56,
+      periodDays: 1_824.5
+    }
+  },
+  {
+    id: 'eunomia',
+    name: 'Eunomia',
+    type: 'asteroid',
+    massKg: 3.12e19,
+    radiusKm: 127,
+    color: '#9a8d7f',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.64385,
+      e: 0.1868,
+      iDeg: 11.75,
+      ascendingNodeDeg: 293.19,
+      argPeriapsisDeg: 98.39,
+      meanAnomalyDeg: 157.43,
+      periodDays: 1_571.3
+    }
+  },
+  {
+    id: 'europa52',
+    name: 'Europa (52)',
+    type: 'asteroid',
+    massKg: 2.41e19,
+    radiusKm: 156,
+    color: '#8b847b',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 3.09695,
+      e: 0.0985,
+      iDeg: 7.48,
+      ascendingNodeDeg: 128.62,
+      argPeriapsisDeg: 260.12,
+      meanAnomalyDeg: 313.21,
+      periodDays: 1_991.0
+    }
+  },
+  {
+    id: 'interamnia704',
+    name: 'Interamnia (704)',
+    type: 'asteroid',
+    massKg: 3.39e19,
+    radiusKm: 166,
+    color: '#7e756a',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 3.0627,
+      e: 0.154,
+      iDeg: 17.29,
+      ascendingNodeDeg: 282.89,
+      argPeriapsisDeg: 95.78,
+      meanAnomalyDeg: 349.6,
+      periodDays: 1_958.0
+    }
+  },
+  {
+    id: 'davida511',
+    name: 'Davida (511)',
+    type: 'asteroid',
+    massKg: 3.8e19,
+    radiusKm: 163,
+    color: '#7f756b',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 3.1662,
+      e: 0.1889,
+      iDeg: 15.94,
+      ascendingNodeDeg: 108.58,
+      argPeriapsisDeg: 333.04,
+      meanAnomalyDeg: 102.44,
+      periodDays: 2_057.4
+    }
+  },
+  {
+    id: 'iris7',
+    name: 'Iris (7)',
+    type: 'asteroid',
+    massKg: 1.29e19,
+    radiusKm: 107,
+    color: '#8f8578',
+    orbit: {
+      epochJd: J2000_JD,
+      aAu: 2.3866,
+      e: 0.231,
+      iDeg: 5.52,
+      ascendingNodeDeg: 259.58,
+      argPeriapsisDeg: 145.4,
+      meanAnomalyDeg: 185.6,
+      periodDays: 1_345.4
+    }
   }
 ];
 

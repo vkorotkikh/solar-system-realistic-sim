@@ -329,7 +329,7 @@ input[type='checkbox'] {
   bottom: 1rem;
   z-index: 3;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.5rem;
   font-size: 0.72rem;
   color: #d7ece7;

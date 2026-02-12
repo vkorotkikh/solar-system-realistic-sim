@@ -315,18 +315,14 @@ export function createSolarSystemCatalog() {
       .sort((a, b) => a.localeCompare(b))
   ];
 
-  const plannerBodyIds = [
-    'mercury',
-    'venus',
-    'earth',
-    'mars',
-    'jupiter',
-    'saturn',
-    'uranus',
-    'neptune',
-    'pluto',
-    ...kboIds
-  ];
+  const plannerBodyIds = bodies
+    .filter((body) => body.parentId === 'sun' && body.id !== 'sun' && body.type !== 'star')
+    .sort((a, b) => {
+      const aOrbit = a.orbit?.aAu ?? Number.POSITIVE_INFINITY;
+      const bOrbit = b.orbit?.aAu ?? Number.POSITIVE_INFINITY;
+      return aOrbit - bOrbit;
+    })
+    .map((body) => body.id);
 
   return {
     bodies,
