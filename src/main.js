@@ -714,6 +714,37 @@ function galacticToCartesian(lRad, bRad, radius) {
   return [x * radius, y * radius, z * radius];
 }
 
+function wrapRadians(angle) {
+  const wrapped = angle % TWO_PI;
+  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
+}
+
+function circularDistanceRadians(a, b) {
+  const d = Math.abs(a - b) % TWO_PI;
+  return Math.min(d, TWO_PI - d);
+}
+
+function gaussianByDistance(distance, sigma) {
+  if (sigma <= 0) return 0;
+  return Math.exp(-(distance * distance) / (2 * sigma * sigma));
+}
+
+function sampleGaussian(sigma = 1) {
+  const u1 = Math.max(1e-8, Math.random());
+  const u2 = Math.max(1e-8, Math.random());
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(TWO_PI * u2) * sigma;
+}
+
+function galacticLongitudeWeight(lRad) {
+  const bulge = gaussianByDistance(circularDistanceRadians(lRad, 0), 0.33);
+  const scutumCentaurus = gaussianByDistance(circularDistanceRadians(lRad, 0.42), 0.27);
+  const cygnus = gaussianByDistance(circularDistanceRadians(lRad, 1.45), 0.31);
+  const carina = gaussianByDistance(circularDistanceRadians(lRad, 5.05), 0.3);
+  const anticenter = gaussianByDistance(circularDistanceRadians(lRad, Math.PI), 0.5);
+  const density = 0.18 + bulge * 0.95 + scutumCentaurus * 0.48 + cygnus * 0.44 + carina * 0.4 + anticenter * 0.25;
+  return Math.max(0.16, Math.min(1, density));
+}
+
 function createCatalogStarField(radius = 18_000) {
   const layers = [
     { maxMag: 2.0, size: 2.2, opacity: 0.96 },
@@ -760,23 +791,75 @@ function createCatalogStarField(radius = 18_000) {
   }
 
   // Milky Way enhancement: dense faint stellar band in galactic coordinates.
-  const milkyCount = 60_000;
+  const milkyCount = 82_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
   const milkyColors = new Float32Array(milkyCount * 3);
+  const componentThresholdA = 0.57; // thin disk
+  const componentThresholdB = 0.87; // thick disk; remainder is bulge
+
   for (let i = 0; i < milkyCount; i++) {
-    const l = Math.random() * Math.PI * 2;
-    const sigma = 0.09;
-    const b = (Math.random() - 0.5) * sigma * 2 + (Math.random() - 0.5) * sigma * 0.9;
+    const selector = Math.random();
+
+    let l;
+    let b;
+    let bulgeMix = 0;
+
+    if (selector > componentThresholdB) {
+      // Central bulge concentration around galactic center (l ~= 0).
+      l = wrapRadians(sampleGaussian(0.24));
+      b = sampleGaussian(0.17);
+      bulgeMix = 1;
+    } else {
+      const latSigma = selector < componentThresholdA ? 0.055 : 0.125;
+      let accepted = false;
+      l = Math.random() * TWO_PI;
+      for (let attempts = 0; attempts < 8; attempts++) {
+        l = Math.random() * TWO_PI;
+        if (Math.random() <= galacticLongitudeWeight(l)) {
+          accepted = true;
+          break;
+        }
+      }
+      if (!accepted) {
+        l = Math.random() * TWO_PI;
+      }
+
+      b = sampleGaussian(latSigma);
+    }
+
+    // Galactic warp and flare approximation for a less perfectly flat band.
+    b += 0.021 * Math.sin(2.0 * l + 0.45);
+    b += 0.009 * Math.sin(5.0 * l - 1.05);
+    b = Math.max(-0.62, Math.min(0.62, b));
+
+    const lonWeight = galacticLongitudeWeight(l);
+    const bulgeWeight = gaussianByDistance(circularDistanceRadians(l, 0), 0.36);
+
+    // Dark dust lane: strongest close to the plane and near dense longitudes.
+    const laneCenter = 0.012 * Math.sin(1.35 * l + 0.6);
+    const laneWidth = 0.026 + 0.017 * bulgeWeight;
+    const laneAbsorption = gaussianByDistance(Math.abs(b - laneCenter), laneWidth);
+    const dustFactor = 1 - 0.62 * laneAbsorption * (0.32 + 0.68 * lonWeight);
+
     const r = radius * (0.88 + Math.random() * 0.12);
     const [x, y, z] = galacticToCartesian(l, b, r);
     milkyPositions[i * 3] = x;
     milkyPositions[i * 3 + 1] = y;
     milkyPositions[i * 3 + 2] = z;
 
-    const glow = 0.55 + Math.random() * 0.35;
-    milkyColors[i * 3] = glow * 0.88;
-    milkyColors[i * 3 + 1] = glow * 0.93;
-    milkyColors[i * 3 + 2] = glow;
+    const latFalloff = Math.exp(-Math.abs(b) / 0.22);
+    const intensity = (0.22 + 0.78 * Math.random()) * (0.35 + 0.65 * lonWeight) * latFalloff * dustFactor;
+
+    // Bulge skews warmer/yellower; outer disk remains cooler.
+    const warmMix = Math.min(1, 0.15 + 0.78 * bulgeWeight + 0.4 * bulgeMix);
+    const coolMix = 1 - warmMix;
+    const rCol = intensity * (0.86 + 0.3 * warmMix);
+    const gCol = intensity * (0.88 + 0.16 * warmMix);
+    const bCol = intensity * (0.95 - 0.28 * warmMix + 0.12 * coolMix);
+
+    milkyColors[i * 3] = rCol;
+    milkyColors[i * 3 + 1] = gCol;
+    milkyColors[i * 3 + 2] = bCol;
   }
   const milkyGeometry = new BufferGeometry();
   milkyGeometry.setAttribute('position', new Float32BufferAttribute(milkyPositions, 3));
@@ -784,10 +867,10 @@ function createCatalogStarField(radius = 18_000) {
   const milkyPoints = new Points(
     milkyGeometry,
     new PointsMaterial({
-      size: 1.35,
+      size: 1.25,
       vertexColors: true,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.8,
       blending: AdditiveBlending,
       sizeAttenuation: false,
       depthTest: true,
@@ -800,10 +883,10 @@ function createCatalogStarField(radius = 18_000) {
   const milkyHaze = new Points(
     milkyGeometry,
     new PointsMaterial({
-      color: new Color('#d6deea'),
-      size: 3.4,
+      color: new Color('#cfd8e6'),
+      size: 2.9,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.1,
       blending: AdditiveBlending,
       sizeAttenuation: false,
       depthTest: true,
