@@ -21,6 +21,12 @@ npm run dev
 
 Open the local Vite URL shown in the terminal.
 
+Optional UI/render resolution control via CLI args:
+
+```bash
+npm run dev:ui -- --width 2560 --height 1440 --render-scale 1.25 --max-pixel-ratio 2.5
+```
+
 ## Backend variants
 
 The UI supports three simulation modes in the `Simulation Engine` dropdown:
@@ -36,6 +42,10 @@ cd backend
 python -m pip install -r requirements.txt
 python -m uvicorn server:app --host 0.0.0.0 --port 8042 --reload
 ```
+
+Optional backend stream tuning from frontend WebSocket query:
+- `fps` (simulation thread target rate)
+- `stream_hz` (outbound state update rate)
 
 Optional health checks:
 

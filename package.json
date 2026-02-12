@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "update:moons": "node ./scripts/update-moons-data.mjs"
