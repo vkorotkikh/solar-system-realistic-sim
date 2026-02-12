@@ -2503,26 +2503,61 @@ function setupUiEvents() {
     refillBodyList(dom.bodySearch.value);
   });
 
+  let dragPickPointerId = null;
+  let dragPickStartX = 0;
+  let dragPickStartY = 0;
+  let dragPickMoved = false;
+  const dragPickThresholdPx = 7;
+
+  dom.canvas.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    dragPickPointerId = event.pointerId;
+    dragPickStartX = event.clientX;
+    dragPickStartY = event.clientY;
+    dragPickMoved = false;
+  });
+
+  dom.canvas.addEventListener('pointermove', (event) => {
+    if (dragPickPointerId !== event.pointerId) return;
+    const dx = event.clientX - dragPickStartX;
+    const dy = event.clientY - dragPickStartY;
+    if (dx * dx + dy * dy > dragPickThresholdPx * dragPickThresholdPx) {
+      dragPickMoved = true;
+    }
+  });
+
+  dom.canvas.addEventListener('pointerup', (event) => {
+    if (dragPickPointerId !== event.pointerId) return;
+    const shouldPick = !dragPickMoved && event.button === 0;
+    dragPickPointerId = null;
+    dragPickMoved = false;
+    if (!shouldPick) return;
+
+    const pickedBodyId = pickBodyAtClientPosition(event.clientX, event.clientY);
+    if (!pickedBodyId) return;
+    selectBodyAndTrack(pickedBodyId, { hardSnap: true, follow: true });
+  });
+
+  dom.canvas.addEventListener('pointercancel', () => {
+    dragPickPointerId = null;
+    dragPickMoved = false;
+  });
+
   dom.bodyList.addEventListener('change', () => {
     if (!dom.bodyList.value) return;
-    updateBodyInfoPanel(dom.bodyList.value);
+    selectBodyAndTrack(dom.bodyList.value, { hardSnap: true, follow: true });
   });
 
   dom.focusBody.addEventListener('click', () => {
     const id = dom.bodyList.value;
     if (!id) return;
-    focusBody(id, true);
-    updateBodyInfoPanel(id);
+    selectBodyAndTrack(id, { hardSnap: true, follow: true });
   });
 
   dom.followBody.addEventListener('click', () => {
     const id = dom.bodyList.value;
     if (!id) return;
-    simState.followBodyId = id;
-    focusBody(id, true);
-    updateBodyInfoPanel(id);
-    const body = bodyById.get(id);
-    if (body) dom.statusFocus.textContent = `Following: ${body.name}`;
+    selectBodyAndTrack(id, { hardSnap: true, follow: true });
   });
 
   dom.clearFollow.addEventListener('click', () => {
