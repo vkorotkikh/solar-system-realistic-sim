@@ -30,6 +30,11 @@ class SimulationEngine(ABC):
         ...
 
     @abstractmethod
+    def list_body_ids(self) -> List[str]:
+        """Return body IDs currently tracked by the engine."""
+        ...
+
+    @abstractmethod
     def step(self, dt_days: float) -> None:
         """Advance simulation by dt_days."""
         ...
