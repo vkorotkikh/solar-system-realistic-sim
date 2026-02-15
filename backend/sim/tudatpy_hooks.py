@@ -172,6 +172,9 @@ class TudatPyEngine(SimulationEngine):
     def available(self) -> bool:
         return _load_tudatpy()
 
+    def list_body_ids(self) -> List[str]:
+        return list(self._body_ids)
+
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
         if not _load_tudatpy():
             raise RuntimeError(
