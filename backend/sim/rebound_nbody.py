@@ -9,7 +9,10 @@ import math
 from typing import Any, Dict, List
 
 import numpy as np
-import rebound
+try:
+    import rebound
+except ImportError:
+    rebound = None  # type: ignore
 
 from .base import SimulationEngine
 
@@ -22,7 +25,7 @@ class REBOUNDEngine(SimulationEngine):
     """Full N-body gravitational simulation using REBOUND."""
 
     def __init__(self, integrator: str = "ias15"):
-        self.sim: rebound.Simulation | None = None
+        self.sim: Any | None = None
         self.body_ids: List[str] = []
         self.start_jd: float = J2000_JD
         self._stored_bodies: List[Dict] = []
@@ -37,10 +40,19 @@ class REBOUNDEngine(SimulationEngine):
     def fidelity_level(self) -> str:
         return "high"
 
+    @property
+    def available(self) -> bool:
+        return rebound is not None
+
     def list_body_ids(self) -> List[str]:
         return list(self.body_ids)
 
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
+        if rebound is None:
+            raise RuntimeError(
+                "REBOUND is not installed. Install backend dependencies:\n"
+                "  python -m pip install -r requirements.txt"
+            )
         self._stored_bodies = bodies
         self.start_jd = start_jd
         self.body_ids = []

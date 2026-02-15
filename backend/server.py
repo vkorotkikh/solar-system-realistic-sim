@@ -75,17 +75,32 @@ MAX_COMMANDS_PER_FRAME = 128
 TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist")
 
 
+def _rebound_available() -> bool:
+    try:
+        return REBOUNDEngine().available
+    except Exception:
+        return False
+
+
+def _tudatpy_available() -> bool:
+    if not _TUDATPY_AVAILABLE or TudatPyEngine is None:
+        return False
+    try:
+        return TudatPyEngine().available
+    except Exception:
+        return False
+
+
 # ── Health / Info ─────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
-    tudatpy_ready = False
-    if _TUDATPY_AVAILABLE and TudatPyEngine is not None:
-        tudatpy_ready = TudatPyEngine().available
+    rebound_ready = _rebound_available()
+    tudatpy_ready = _tudatpy_available()
     return {
         "status": "ok",
         "engines": {
-            "rebound": {"available": True, "fidelity": "high"},
+            "rebound": {"available": rebound_ready, "fidelity": "high"},
             "tudatpy": {"available": tudatpy_ready, "fidelity": "normal"},
         },
     }
@@ -545,18 +560,54 @@ async def simulation_websocket(websocket: WebSocket):
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    if engine_requested == "tudatpy" and TudatPyEngine is not None and TudatPyEngine().available:
-        enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-        engine = TudatPyEngine(enable_j2=enable_j2)
-        engine_type = "tudatpy"
+    rebound_ready = _rebound_available()
+    tudatpy_ready = _tudatpy_available()
+
+    engine: Optional[SimulationEngine] = None
+    if engine_requested == "tudatpy":
+        if tudatpy_ready and TudatPyEngine is not None:
+            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+            engine = TudatPyEngine(enable_j2=enable_j2)
+        elif rebound_ready:
+            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
+            engine = REBOUNDEngine(integrator=integrator)
+    elif engine_requested == "rebound":
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
+            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+            engine = TudatPyEngine(enable_j2=enable_j2)
     else:
-        engine_type = "rebound"
-        if engine_requested != "rebound":
-            warnings.append(
-                f"Engine `{engine_requested}` unavailable; using `rebound`"
-            )
-        engine = REBOUNDEngine(integrator=integrator)
-    engine.initialize(ALL_BODIES)
+        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+            engine = TudatPyEngine(enable_j2=enable_j2)
+
+    if engine is None:
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "code": "engine_unavailable",
+            "message": (
+                "No simulation engines are available. Install backend dependencies, "
+                "for REBOUND run: python -m pip install -r requirements.txt"
+            ),
+        }))
+        await websocket.close(code=1013)
+        return
+
+    try:
+        engine.initialize(ALL_BODIES)
+    except Exception as exc:
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "code": "engine_init_failed",
+            "message": str(exc),
+        }))
+        await websocket.close(code=1011)
+        return
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
