@@ -46,7 +46,7 @@ import {
   formatJulianAsDate,
   parseDateInputToJulian
 } from './constants.js';
-import { buildTransferCurvePoints, describeRoute, planInterplanetaryRoute } from './planner/trajectoryPlanner.js';
+import { buildTransferCurvePoints, describeRoute, planInterplanetaryRoute } from './frontend/features/trajectory/index.js';
 import { createSolarSystemCatalog } from './sim/catalog.js';
 import { propagateKeplerOrbit } from './sim/orbitMath.js';
 import { SolarSystemModel } from './sim/solarSystemModel.js';
@@ -2466,7 +2466,7 @@ function updateRouteVisualization() {
 
 // ── Planner Execution ────────────────────────────────────────────────────────
 
-function runPlanner({ directOnly }) {
+async function runPlanner({ directOnly }) {
   const fromId = dom.plannerFrom.value;
   const toId = dom.plannerTo.value;
   const departureJd = parseDateInputToJulian(dom.plannerDate.value) ?? simState.julianDate;
@@ -2479,13 +2479,22 @@ function runPlanner({ directOnly }) {
   const maxAssists = directOnly ? 0 : Number(dom.plannerAssists.value);
   const objective = directOnly ? 'min_distance' : dom.plannerObjective.value;
 
-  const result = planInterplanetaryRoute(model, bodyById, {
-    fromId,
-    toId,
-    departureJd,
-    objective,
-    maxAssists
-  });
+  dom.plannerOutput.textContent = 'Planning route...';
+
+  let result = null;
+  try {
+    result = await planInterplanetaryRoute(model, bodyById, {
+      fromId,
+      toId,
+      departureJd,
+      objective,
+      maxAssists
+    });
+  } catch {
+    dom.plannerOutput.textContent = 'Planner request failed.';
+    clearRouteVisualization();
+    return;
+  }
 
   if (!result.best) {
     dom.plannerOutput.textContent = 'Planner could not find a route with current settings.';
@@ -2494,7 +2503,8 @@ function runPlanner({ directOnly }) {
   }
 
   plotRoute(result.best);
-  dom.plannerOutput.textContent = describeRoute(result.best, bodyById);
+  const solver = result.source === 'backend' ? 'Backend trajectory solver' : 'Local fallback solver';
+  dom.plannerOutput.textContent = `${describeRoute(result.best, bodyById)}\nSolver: ${solver}`;
 }
 
 // ── Follow Target ────────────────────────────────────────────────────────────
