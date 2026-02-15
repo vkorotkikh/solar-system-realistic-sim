@@ -62,6 +62,8 @@ curl http://127.0.0.1:8042/health
 curl http://127.0.0.1:8042/info
 curl http://127.0.0.1:8042/bodies
 curl http://127.0.0.1:8042/trajectory/capabilities
+curl http://127.0.0.1:8042/mission/capabilities
+curl http://127.0.0.1:8042/benchmark/accuracy
 ```
 
 Then in the frontend, choose `REBOUND` or `TudatPy` and click `Connect`.
@@ -86,10 +88,16 @@ npm run update:moons
   - switch Milky Way appearance between standard, enhanced, and survey-texture mode
   - toggle realism locators (gold/orange label + down-arrow + halo for tiny bodies)
   - toggle gravity vectors (combined gravitational acceleration direction per massive body)
+  - toggle Earth satellite layer (ISS + sampled GEO satellites) and optional J2 perturbation model
 - `Explorer` panel: search all bodies and focus/follow any selected object.
 - Planet visuals:
   - Earth uses 4K day map + 2K normal map + cloud shell
   - Mercury/Venus/Mars/Jupiter/Saturn/Uranus/Neptune use 2K day textures
+  - Earth now supports:
+    - near-real-time cloud mosaic ingest (NASA GIBS WMS tiled pipeline with cache)
+    - Earth orbit quick views (atmosphere, LEO, GEO)
+    - LEO/GEO guide rings
+    - synthetic terrain displacement + distance-based surface LOD for close flyovers
 - Planet orientation:
   - axial tilt and spin rates are now applied to the rendered bodies
 - `Trajectory Planner`:
@@ -99,19 +107,39 @@ npm run update:moons
     - minimize total travel path
     - maximize gravity-assist gain
   - Planner solver path:
-    - primary: backend `POST /trajectory/plan`
+    - primary: backend `POST /trajectory/plan` (Lambert + MGA with hard flyby feasibility constraints)
     - fallback: frontend local patched-conic approximation when backend is unavailable
+  - Additional backend trajectory tools:
+    - `POST /trajectory/lambert`
+    - `POST /trajectory/porkchop`
+- `Mission Planner API`:
+  - `POST /mission/plan` orchestrates `MissionPlannerAgent`, `TrajectoryAgent`, `MiningAgent`, `LogisticsAgent`, and `VerifierAgent`
+  - Includes explainability/decision logs, payload-return closure, and Monte Carlo risk envelopes
+- `Benchmark API`:
+  - `GET /benchmark/accuracy` runs configured reference scenarios
+  - `POST /benchmark/accuracy/report` writes a markdown report file
 
 ## Physics notes and limitations
 
 - Orbital propagation uses Keplerian two-body elements (parent-body centered), not a full N-body integrator.
 - Optional backend REBOUND/TudatPy modes provide higher-fidelity integrations for major bodies.
+- Earth satellite layer uses TLE-derived Kepler propagation with optional J2 secular perturbations (RAAN/arg-periapsis/mean-anomaly rates).
+- Real-time Earth cloud mode currently uses daily cloud products from NASA GIBS; this is near-real-time visualization, not full NWP assimilation.
 - Gravity vectors are computed from currently modeled massive bodies (objects without mass data are excluded).
 - Moon frame normalization for `equatorial`/`Laplace` inputs is an approximation for a unified ecliptic frame.
 - Asteroid close-up refinement uses massless test-particle dynamics under Sun/Jupiter/Saturn perturbations.
-- Gravity-assist planning uses patched-conic style approximations for route scoring and assist turn feasibility.
-- Transfer arcs are visualized as smooth trajectory curves for exploration; they are not full Lambert-optimized trajectories.
+- Backend gravity-assist planning now uses Lambert legs with hard-constrained flyby turn feasibility; frontend local fallback remains patched-conic.
+- Transfer arcs in the UI are still drawn as smooth visual curves and are not numerically integrated finite-burn trajectories.
 - Oort cloud is an approximate synthetic shell population intended for navigation context.
+
+## Planetary appearance architecture
+
+Reusable planetary appearance/satellite modules are under:
+
+- `src/frontend/features/planetary/visualProfiles.js`: per-planet profile config (Earth/Moon/Mars scaffold)
+- `src/frontend/features/planetary/cloudDataPipeline.js`: tile ingest + geographic reprojection + cache
+- `src/frontend/features/planetary/terrainSynthesis.js`: procedural displacement map synthesis
+- `src/frontend/features/planetary/satelliteSystem.js`: TLE ingest + optional J2 satellite propagation layer
 
 ## Data Sources
 
