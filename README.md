@@ -12,6 +12,14 @@ A standalone 3D solar system simulator with:
 - Realism locator overlays and gravity-force vector arrows
 - Interplanetary route planner for direct and gravity-assist trajectories
 
+## Architecture scaffold
+
+- Frontend app source is under `src/`.
+- Frontend feature modules are grouped under `src/frontend/features/`.
+- Backend Python server lives under `backend/`.
+- Backend simulation engines are grouped under `backend/sim/`.
+- Backend mission/course planning modules are grouped under `backend/trajectory/`.
+
 ## Quick start
 
 ```bash
@@ -52,6 +60,8 @@ Optional health checks:
 ```bash
 curl http://127.0.0.1:8042/health
 curl http://127.0.0.1:8042/info
+curl http://127.0.0.1:8042/bodies
+curl http://127.0.0.1:8042/trajectory/capabilities
 ```
 
 Then in the frontend, choose `REBOUND` or `TudatPy` and click `Connect`.
@@ -88,6 +98,9 @@ npm run update:moons
   - Objective options:
     - minimize total travel path
     - maximize gravity-assist gain
+  - Planner solver path:
+    - primary: backend `POST /trajectory/plan`
+    - fallback: frontend local patched-conic approximation when backend is unavailable
 
 ## Physics notes and limitations
 
