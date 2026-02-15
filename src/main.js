@@ -26,6 +26,7 @@ import {
   RingGeometry,
   SRGBColorSpace,
   Scene,
+  ShaderMaterial,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
@@ -113,6 +114,9 @@ const dom = {
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   zoomDistanceValue: document.getElementById('zoom-distance-value'),
   viewScaleValue: document.getElementById('view-scale-value'),
+  focusEarthAtmo: document.getElementById('focus-earth-atmo'),
+  focusEarthLeo: document.getElementById('focus-earth-leo'),
+  focusEarthGeo: document.getElementById('focus-earth-geo'),
   viewportShell: document.getElementById('viewport-shell'),
   statusRender: document.getElementById('status-render')
 };
@@ -156,6 +160,77 @@ const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
 const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
+const EARTH_ATMOSPHERE_ALTITUDE_KM = 35;
+const EARTH_LEO_ALTITUDE_KM = 408;
+const EARTH_GEO_ALTITUDE_KM = 35_786;
+const EARTH_ORBIT_GUIDE_ALTITUDES_KM = [EARTH_LEO_ALTITUDE_KM, EARTH_GEO_ALTITUDE_KM];
+
+function bodyEquatorialRadiusKm(body) {
+  if (!body) return 0;
+  return Number.isFinite(body.equatorialRadiusKm) ? body.equatorialRadiusKm : body.radiusKm;
+}
+
+function bodyPolarRadiusKm(body) {
+  if (!body) return 0;
+  return Number.isFinite(body.polarRadiusKm) ? body.polarRadiusKm : body.radiusKm;
+}
+
+function bodyShapeScale(body) {
+  const meanRadiusKm = Math.max(1e-9, body?.radiusKm ?? 1);
+  return {
+    equatorial: bodyEquatorialRadiusKm(body) / meanRadiusKm,
+    polar: bodyPolarRadiusKm(body) / meanRadiusKm
+  };
+}
+
+function bodyBaseRadiusAu(body, realisticMode = simState.useRealisticScale) {
+  return realisticMode ? body.realRadiusAu : body.displayRadiusAu;
+}
+
+function bodyRenderScaleAu(body, realisticMode = simState.useRealisticScale, scaleMultiplier = 1) {
+  const baseRadius = bodyBaseRadiusAu(body, realisticMode);
+  const shape = bodyShapeScale(body);
+  const equatorial = baseRadius * shape.equatorial * scaleMultiplier;
+  const polar = baseRadius * shape.polar * scaleMultiplier;
+  return {
+    x: equatorial,
+    y: polar,
+    z: equatorial
+  };
+}
+
+function setBodyMeshScale(mesh, body, realisticMode = simState.useRealisticScale, scaleMultiplier = 1) {
+  const axisScale = bodyRenderScaleAu(body, realisticMode, scaleMultiplier);
+  mesh.scale.set(axisScale.x, axisScale.y, axisScale.z);
+}
+
+function bodyRenderRadiusAu(body, realisticMode = simState.useRealisticScale) {
+  const axisScale = bodyRenderScaleAu(body, realisticMode, 1);
+  return Math.max(axisScale.x, axisScale.y, axisScale.z);
+}
+
+function bodyDistanceAuAtAltitude(body, altitudeKm) {
+  const safeAltitudeKm = Math.max(0, altitudeKm);
+  return (bodyEquatorialRadiusKm(body) + safeAltitudeKm) / AU_KM;
+}
+
+function bodyDefaultCameraClearanceKm(body) {
+  if (!body) return 1;
+  if (body.id === 'earth') return 2;
+  if (body.type === 'moon') return 1;
+  if (body.type === 'star') return 25;
+  return Math.max(2, body.radiusKm * 0.0008);
+}
+
+function bodyMinimumCameraDistanceAu(body, clearanceKm = null) {
+  const minClearanceKm = Number.isFinite(clearanceKm) ? clearanceKm : bodyDefaultCameraClearanceKm(body);
+  return bodyDistanceAuAtAltitude(body, Math.max(0.1, minClearanceKm));
+}
+
+function wrapUnitInterval(value) {
+  const wrapped = value % 1;
+  return wrapped >= 0 ? wrapped : wrapped + 1;
+}
 
 function clampRuntimeNumber(value, min, max) {
   if (!Number.isFinite(value)) return null;
@@ -274,6 +349,25 @@ function updateZoomMetricsUI() {
   if (dom.statusScale) dom.statusScale.textContent = `Scale: ${widthText} x ${heightText}`;
 }
 
+function updateCameraClipPlanes() {
+  const rangeAu = Math.max(1e-9, camera.position.distanceTo(controls.target));
+  let near = 0.0001;
+  let far = 20_000;
+
+  if (simState.useRealisticScale && rangeAu < 0.08) {
+    near = Math.max(5e-9, Math.min(5e-5, rangeAu * 0.00035));
+    far = Math.max(0.45, Math.min(120, rangeAu * 4_200));
+  }
+
+  const nearDelta = Math.abs(camera.near - near);
+  const farDelta = Math.abs(camera.far - far);
+  if (nearDelta > near * 0.02 || farDelta > far * 0.02) {
+    camera.near = near;
+    camera.far = far;
+    camera.updateProjectionMatrix();
+  }
+}
+
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
 const renderer = new WebGLRenderer({
@@ -326,6 +420,9 @@ scene.add(routeGroup);
 const gravityVectorGroup = new Group();
 gravityVectorGroup.visible = false;
 scene.add(gravityVectorGroup);
+const earthOrbitGuides = [];
+let earthCloudLayerMaterial = null;
+let earthCloudDetailTexture = null;
 
 const majorNodeIds = new Set(
   catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'asteroid').map((body) => body.id)
@@ -335,8 +432,9 @@ const majorNodeIds = new Set(
 
 const geometryCache = {
   sun: new SphereGeometry(1, 48, 32),
-  planet: new SphereGeometry(1, 32, 24),
-  moon: new SphereGeometry(1, 12, 10)
+  planet: new SphereGeometry(1, 48, 36),
+  moon: new SphereGeometry(1, 12, 10),
+  majorMoon: new SphereGeometry(1, 36, 28)
 };
 
 const materialCache = new Map();
@@ -364,6 +462,97 @@ function loadHiResTexture(url, options = {}) {
   return texture;
 }
 
+function fract(value) {
+  return value - Math.floor(value);
+}
+
+function hashNoise2D(x, y) {
+  const dot = x * 127.1 + y * 311.7;
+  return fract(Math.sin(dot) * 43_758.5453123);
+}
+
+function smoothInterpolation(t) {
+  return t * t * (3 - 2 * t);
+}
+
+function valueNoise2D(x, y) {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = x0 + 1;
+  const y1 = y0 + 1;
+  const tx = smoothInterpolation(x - x0);
+  const ty = smoothInterpolation(y - y0);
+
+  const n00 = hashNoise2D(x0, y0);
+  const n10 = hashNoise2D(x1, y0);
+  const n01 = hashNoise2D(x0, y1);
+  const n11 = hashNoise2D(x1, y1);
+
+  const nx0 = n00 + (n10 - n00) * tx;
+  const nx1 = n01 + (n11 - n01) * tx;
+  return nx0 + (nx1 - nx0) * ty;
+}
+
+function fbmNoise2D(x, y, octaves = 5) {
+  let frequency = 1;
+  let amplitude = 0.5;
+  let sum = 0;
+  let norm = 0;
+  for (let i = 0; i < octaves; i += 1) {
+    sum += valueNoise2D(x * frequency, y * frequency) * amplitude;
+    norm += amplitude;
+    frequency *= 2;
+    amplitude *= 0.5;
+  }
+  return norm > 0 ? sum / norm : 0;
+}
+
+function createEarthCloudDetailTexture(size = 512) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = x / size;
+      const v = y / size;
+      const lat = (v - 0.5) * Math.PI;
+      const tropicalBoost = Math.max(0, Math.cos(lat * 1.6));
+      const polarSuppression = 1 - Math.min(1, Math.abs(lat) / (Math.PI * 0.5));
+
+      const base = fbmNoise2D(u * 7.0 + 11.1, v * 4.6 - 3.7);
+      const detail = fbmNoise2D(u * 24.0 - 5.2, v * 18.0 + 2.9, 4);
+      const stormBand = fbmNoise2D(u * 2.8 + 0.4, v * 1.3 + 7.2, 3);
+
+      const coverage = Math.max(
+        0,
+        Math.min(
+          1,
+          base * 0.64 + detail * 0.36 + stormBand * 0.18 + tropicalBoost * 0.12 + polarSuppression * 0.04 - 0.52
+        )
+      );
+      const alpha = Math.pow(coverage, 1.25);
+      const value = Math.round(alpha * 255);
+      const index = (y * size + x) * 4;
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+  const texture = new CanvasTexture(canvas);
+  configureLoadedTexture(texture);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 const hiResTextures = {
   earthDay: loadHiResTexture(earthDayTextureUrl),
   earthNormal: loadHiResTexture(earthNormalTextureUrl, { isColorMap: false }),
@@ -379,6 +568,11 @@ const hiResTextures = {
   neptuneDay: loadHiResTexture(neptuneDayTextureUrl),
   milkyWaySurvey: loadHiResTexture(milkyWaySurveyTextureUrl)
 };
+
+hiResTextures.earthClouds.wrapS = RepeatWrapping;
+hiResTextures.earthClouds.wrapT = RepeatWrapping;
+hiResTextures.earthClouds.needsUpdate = true;
+earthCloudDetailTexture = createEarthCloudDetailTexture(512);
 
 // Generate procedural textures for planets at startup
 const planetTextures = new Map();
@@ -420,7 +614,8 @@ function getMaterial(body) {
       color: new Color('#ffffff'),
       map: hiResTextures.earthDay,
       normalMap: hiResTextures.earthNormal,
-      roughness: 0.84,
+      normalScale: new Vector2(0.9, 0.9),
+      roughness: 0.64,
       metalness: 0.0
     });
   } else if (hiResDay) {
@@ -568,6 +763,53 @@ function createSunGlow(sunDisplayRadius) {
   return glow;
 }
 
+const EARTH_ATMOSPHERE_VERTEX_SHADER = `
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+void main() {
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const EARTH_ATMOSPHERE_FRAGMENT_SHADER = `
+uniform vec3 atmosphereColor;
+uniform vec3 sunsetColor;
+uniform vec3 sunPosition;
+uniform float intensity;
+
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+void main() {
+  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+  vec3 normalDir = normalize(vWorldNormal);
+  vec3 sunDir = normalize(sunPosition - vWorldPosition);
+
+  float horizon = pow(max(0.0, 1.0 - max(dot(viewDir, normalDir), 0.0)), 2.9);
+  float dayLit = max(dot(normalDir, sunDir), 0.0);
+  float twilight = pow(1.0 - dayLit, 2.1);
+  float rim = smoothstep(0.0, 1.0, horizon);
+
+  vec3 scatterColor = mix(atmosphereColor, sunsetColor, twilight * 0.75);
+  float alpha = rim * (0.1 + 0.9 * pow(dayLit + 0.08, 0.45));
+
+  gl_FragColor = vec4(scatterColor * intensity, alpha);
+}
+`;
+
+function setEarthOrbitGuideScale(guideMesh, earthBody, realisticMode = simState.useRealisticScale) {
+  const altitudeKm = Number(guideMesh?.userData?.orbitAltitudeKm);
+  if (!Number.isFinite(altitudeKm) || !earthBody) return;
+  const orbitRadiusAu = realisticMode
+    ? bodyDistanceAuAtAltitude(earthBody, altitudeKm)
+    : bodyRenderRadiusAu(earthBody, false) * (1 + altitudeKm / Math.max(1, bodyEquatorialRadiusKm(earthBody)));
+  guideMesh.scale.setScalar(orbitRadiusAu);
+}
+
 // ── Body Nodes ───────────────────────────────────────────────────────────────
 
 function createBodyNode(body) {
@@ -584,33 +826,89 @@ function createBodyNode(body) {
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
-  const geometry = body.type === 'star' ? geometryCache.sun : body.type === 'moon' ? geometryCache.moon : geometryCache.planet;
+  const geometry = body.type === 'star'
+    ? geometryCache.sun
+    : body.type === 'moon'
+      ? (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
+      : geometryCache.planet;
   const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
-  mesh.scale.setScalar(body.displayRadiusAu);
+  setBodyMeshScale(mesh, body, simState.useRealisticScale);
   mesh.userData.bodyId = body.id;
   mesh.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
   mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
   mesh.userData.axialTiltDeg = axialTiltDeg;
   spinGroup.add(mesh);
 
-  // Earth cloud layer for depth cues.
+  // Earth cloud layer with animated detail modulation for weather-like evolution.
   if (body.id === 'earth') {
     const cloudMaterial = new MeshStandardMaterial({
       map: hiResTextures.earthClouds,
+      alphaMap: earthCloudDetailTexture ?? undefined,
+      color: new Color('#f4f7ff'),
       transparent: true,
-      opacity: 0.34,
-      roughness: 0.8,
+      opacity: 0.42,
+      alphaTest: 0.015,
+      roughness: 0.78,
       metalness: 0.0,
       depthWrite: false
     });
     const cloudMesh = new Mesh(geometryCache.planet, cloudMaterial);
-    cloudMesh.scale.setScalar(body.displayRadiusAu * 1.01);
+    cloudMesh.userData.surfaceScale = 1.011;
+    setBodyMeshScale(cloudMesh, body, simState.useRealisticScale, cloudMesh.userData.surfaceScale);
     cloudMesh.userData.bodyId = `${body.id}-clouds`;
     cloudMesh.userData.rotationPeriodHours = 22.4;
     cloudMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(cloudMesh);
+
+    earthCloudLayerMaterial = cloudMaterial;
+
+    const atmosphereMaterial = new ShaderMaterial({
+      vertexShader: EARTH_ATMOSPHERE_VERTEX_SHADER,
+      fragmentShader: EARTH_ATMOSPHERE_FRAGMENT_SHADER,
+      uniforms: {
+        atmosphereColor: { value: new Color('#68a9ff') },
+        sunsetColor: { value: new Color('#ff9f5e') },
+        sunPosition: { value: new Vector3(0, 0, 0) },
+        intensity: { value: 1.0 }
+      },
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      side: BackSide
+    });
+    const atmosphereMesh = new Mesh(geometryCache.planet, atmosphereMaterial);
+    atmosphereMesh.userData.bodyId = `${body.id}-atmosphere`;
+    atmosphereMesh.userData.surfaceScale = 1.028;
+    setBodyMeshScale(atmosphereMesh, body, simState.useRealisticScale, atmosphereMesh.userData.surfaceScale);
+    spinGroup.add(atmosphereMesh);
+
+    const orbitGuideStyles = new Map([
+      [EARTH_LEO_ALTITUDE_KM, { color: '#73d0ff', opacity: 0.45 }],
+      [EARTH_GEO_ALTITUDE_KM, { color: '#ffd28a', opacity: 0.38 }]
+    ]);
+    for (const altitudeKm of EARTH_ORBIT_GUIDE_ALTITUDES_KM) {
+      const style = orbitGuideStyles.get(altitudeKm) ?? { color: '#b8d6ff', opacity: 0.35 };
+      const ring = new Mesh(
+        new RingGeometry(0.9982, 1.0018, 192),
+        new MeshBasicMaterial({
+          color: new Color(style.color),
+          transparent: true,
+          opacity: style.opacity,
+          side: DoubleSide,
+          depthWrite: false
+        })
+      );
+      ring.rotation.x = Math.PI * 0.5;
+      ring.userData.bodyId = `${body.id}-orbit-guide-${altitudeKm}`;
+      ring.userData.orbitAltitudeKm = altitudeKm;
+      ring.userData.isEarthOrbitGuide = true;
+      setEarthOrbitGuideScale(ring, body, simState.useRealisticScale);
+      ring.visible = false;
+      spinGroup.add(ring);
+      earthOrbitGuides.push(ring);
+    }
   }
 
   // Venus upper-atmosphere shell.
@@ -624,7 +922,8 @@ function createBodyNode(body) {
       depthWrite: false
     });
     const atmosphereMesh = new Mesh(geometryCache.planet, atmosphereMaterial);
-    atmosphereMesh.scale.setScalar(body.displayRadiusAu * 1.012);
+    atmosphereMesh.userData.surfaceScale = 1.012;
+    setBodyMeshScale(atmosphereMesh, body, simState.useRealisticScale, atmosphereMesh.userData.surfaceScale);
     atmosphereMesh.userData.bodyId = `${body.id}-atmosphere`;
     atmosphereMesh.userData.rotationPeriodHours = -90;
     spinGroup.add(atmosphereMesh);
@@ -1962,19 +2261,18 @@ function applyScaleMode() {
     const spinGroup = bodySpinGroups.get(body.id);
     if (!mesh) continue;
 
-    const targetRadius = realistic ? body.realRadiusAu : body.displayRadiusAu;
-    mesh.scale.setScalar(targetRadius);
+    setBodyMeshScale(mesh, body, realistic);
 
     if (spinGroup) {
-      const ringFactor = realistic ? body.realRadiusAu / body.displayRadiusAu : 1.0;
+      const ringFactor = realistic ? body.realRadiusAu / Math.max(body.displayRadiusAu, 1e-12) : 1.0;
       for (const child of spinGroup.children) {
         if (child === mesh) continue;
-        if (child.geometry && child.geometry.type === 'RingGeometry') {
+        if (Number.isFinite(child.userData.orbitAltitudeKm)) {
+          setEarthOrbitGuideScale(child, body, realistic);
+        } else if (Number.isFinite(child.userData.surfaceScale)) {
+          setBodyMeshScale(child, body, realistic, child.userData.surfaceScale);
+        } else if (child.geometry && child.geometry.type === 'RingGeometry') {
           child.scale.setScalar(ringFactor);
-        } else if (child.userData.bodyId === `${body.id}-clouds`) {
-          child.scale.setScalar(targetRadius * 1.01);
-        } else if (child.userData.bodyId === `${body.id}-atmosphere`) {
-          child.scale.setScalar(targetRadius * 1.012);
         }
       }
     }
@@ -1984,6 +2282,7 @@ function applyScaleMode() {
     focusBody(simState.focusedBodyId, true);
   }
 
+  updateEarthOrbitGuidesVisibility();
   updateLocatorOverlays();
   updateZoomMetricsUI();
 }
@@ -2057,7 +2356,7 @@ function updateLocatorOverlays() {
     node.getWorldPosition(tempVecA);
     const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
     const unitPerPixel = worldUnitsPerPixelAt(distance);
-    const radius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+    const radius = bodyRenderRadiusAu(body, simState.useRealisticScale);
     const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
 
     const forceLocatorInRealistic = locatorMode && simState.useRealisticScale;
@@ -2091,7 +2390,7 @@ function updateLocatorOverlays() {
     node.getWorldPosition(tempVecA);
     const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
     const unitPerPixel = worldUnitsPerPixelAt(distance);
-    const radius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+    const radius = bodyRenderRadiusAu(body, simState.useRealisticScale);
     const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
 
     const haloVisible = Boolean(dom.toggleLocators?.checked) && pixelRadius < 1.35;
@@ -2120,6 +2419,25 @@ function updateBodyRotations(julianDate) {
       child.rotation.y = normalizeRadians(rotationOffset + angularSpeed * elapsedSeconds);
     }
   }
+}
+
+function updateEarthWeather(julianDate) {
+  if (!earthCloudLayerMaterial || !hiResTextures.earthClouds) return;
+
+  const elapsedHours = (julianDate - J2000_JD) * 24;
+  const cloudMap = hiResTextures.earthClouds;
+
+  cloudMap.offset.x = wrapUnitInterval(elapsedHours * 0.00052 + Math.sin(elapsedHours * 0.0017) * 0.03);
+  cloudMap.offset.y = wrapUnitInterval(elapsedHours * -0.00008 + Math.cos(elapsedHours * 0.0013) * 0.018);
+
+  if (earthCloudDetailTexture) {
+    earthCloudDetailTexture.offset.x = wrapUnitInterval(elapsedHours * 0.00125 + Math.sin(elapsedHours * 0.006) * 0.07);
+    earthCloudDetailTexture.offset.y = wrapUnitInterval(elapsedHours * -0.00061 + Math.cos(elapsedHours * 0.0042) * 0.05);
+  }
+
+  const longWave = Math.sin(elapsedHours * 0.022);
+  const shortWave = Math.sin(elapsedHours * 0.11);
+  earthCloudLayerMaterial.opacity = 0.38 + longWave * 0.05 + shortWave * 0.02;
 }
 
 function updateGravityVectors() {
@@ -2166,15 +2484,23 @@ function updateGravityVectors() {
       continue;
     }
 
-    const renderedRadius = simState.useRealisticScale
-      ? (bodyById.get(target.id)?.realRadiusAu ?? 0.0002)
-      : (bodyById.get(target.id)?.displayRadiusAu ?? 0.01);
+    const targetBody = bodyById.get(target.id);
+    const renderedRadius = targetBody ? bodyRenderRadiusAu(targetBody, simState.useRealisticScale) : 0.0002;
     const baseLength = 0.04 + 0.018 * Math.log10(1 + magnitude * 1e8);
     const length = Math.max(renderedRadius * 1.4, Math.min(0.42, baseLength));
     arrow.position.copy(target.pos);
     arrow.setDirection(new Vector3(ax, ay, az).normalize());
     arrow.setLength(length, Math.max(0.01, length * 0.3), Math.max(0.008, length * 0.2));
     arrow.visible = true;
+  }
+}
+
+function updateEarthOrbitGuidesVisibility() {
+  const shouldShow = simState.useRealisticScale
+    && Boolean(dom.toggleOrbits?.checked)
+    && (simState.focusedBodyId === 'earth' || simState.followBodyId === 'earth');
+  for (const guide of earthOrbitGuides) {
+    guide.visible = shouldShow;
   }
 }
 
@@ -2204,6 +2530,7 @@ function applyRenderVisibility() {
   oortCloud.visible = dom.toggleOort.checked;
   gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
   applyMilkyWayAppearance();
+  updateEarthOrbitGuidesVisibility();
 
   updateLocatorOverlays();
 }
@@ -2217,10 +2544,11 @@ function focusBody(bodyId, hardSnap = false) {
 
   node.getWorldPosition(tempVecA);
   const offset = camera.position.clone().sub(controls.target);
-  const renderedRadius = simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+  const renderedRadius = bodyRenderRadiusAu(body, simState.useRealisticScale);
   const minDistance = simState.useRealisticScale
-    ? (body.type === 'moon' ? 0.00001 : 0.00003)
+    ? bodyMinimumCameraDistanceAu(body)
     : (body.type === 'moon' ? 0.002 : 0.01);
+  controls.minDistance = minDistance;
   const preferredDistance = body.type === 'star'
     ? (simState.useRealisticScale ? 0.14 : 2.6)
     : Math.max(renderedRadius * (simState.useRealisticScale ? 26 : 18), minDistance);
@@ -2239,7 +2567,51 @@ function focusBody(bodyId, hardSnap = false) {
   }
 
   simState.focusedBodyId = bodyId;
+  updateEarthOrbitGuidesVisibility();
   dom.statusFocus.textContent = `Focus: ${body.name}`;
+}
+
+function ensureRealisticScaleEnabled() {
+  if (simState.useRealisticScale) return;
+  simState.useRealisticScale = true;
+  if (dom.toggleRealisticScale) {
+    dom.toggleRealisticScale.checked = true;
+  }
+  applyScaleMode();
+}
+
+function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
+  const body = bodyById.get(bodyId);
+  const node = bodyNodes.get(bodyId);
+  if (!body || !node || !Number.isFinite(altitudeKm)) return;
+
+  ensureRealisticScaleEnabled();
+
+  node.getWorldPosition(tempVecA);
+  const offset = camera.position.clone().sub(controls.target);
+  if (offset.lengthSq() < 1e-9) {
+    offset.set(0, -1, 0.55);
+  }
+
+  const centerDistance = bodyDistanceAuAtAltitude(body, altitudeKm);
+  controls.minDistance = bodyMinimumCameraDistanceAu(body);
+  controls.target.copy(tempVecA);
+  camera.position.copy(tempVecA).add(offset.setLength(Math.max(centerDistance, controls.minDistance)));
+
+  simState.focusedBodyId = bodyId;
+  if (follow) {
+    simState.followBodyId = bodyId;
+  }
+
+  updateEarthOrbitGuidesVisibility();
+  updateBodyInfoPanel(bodyId);
+  syncBodyListSelection(bodyId);
+  updateZoomMetricsUI();
+
+  const altitudeText = `${altitudeKm.toLocaleString('en-US')} km`;
+  dom.statusFocus.textContent = follow
+    ? `Following: ${body.name} @ ${altitudeText}`
+    : `Focus: ${body.name} @ ${altitudeText}`;
 }
 
 function updateBodyInfoPanel(bodyId) {
@@ -2258,6 +2630,7 @@ function updateBodyInfoPanel(bodyId) {
     `Type: ${body.type}`,
     `Parent: ${parentName}`,
     `Radius: ${body.radiusKm.toFixed(2)} km`,
+    `Shape: equatorial ${bodyEquatorialRadiusKm(body).toFixed(2)} km, polar ${bodyPolarRadiusKm(body).toFixed(2)} km`,
     `Distance from Sun: ${sunDistance.toFixed(4)} AU`,
     body.orbit ? `Orbital period: ${body.orbit.periodDays.toFixed(3)} days` : 'Orbital period: N/A'
   ].join('\n');
@@ -2560,6 +2933,16 @@ function setupUiEvents() {
     });
   }
 
+  dom.focusEarthAtmo?.addEventListener('click', () => {
+    focusBodyAtAltitude('earth', EARTH_ATMOSPHERE_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusEarthLeo?.addEventListener('click', () => {
+    focusBodyAtAltitude('earth', EARTH_LEO_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusEarthGeo?.addEventListener('click', () => {
+    focusBodyAtAltitude('earth', EARTH_GEO_ALTITUDE_KM, { follow: true });
+  });
+
   for (const toggle of [
     dom.toggleOrbits,
     dom.toggleLabels,
@@ -2640,6 +3023,7 @@ function setupUiEvents() {
     simState.followBodyId = null;
     const body = bodyById.get(simState.focusedBodyId);
     dom.statusFocus.textContent = `Focus: ${body?.name ?? 'None'}`;
+    updateEarthOrbitGuidesVisibility();
   });
 
   dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
@@ -2734,6 +3118,7 @@ function animate(timestamp) {
   const deltaSimDays = simState.julianDate - previousJd;
 
   updateBodyRotations(simState.julianDate);
+  updateEarthWeather(simState.julianDate);
   updateAsteroidBelt(simState.julianDate);
 
   // Dynamic route update — keeps trajectory curves attached to moving planets
@@ -2761,6 +3146,7 @@ function animate(timestamp) {
 
   controls.update();
   resizeRenderer();
+  updateCameraClipPlanes();
   updateLocatorOverlays();
   updateGravityVectors();
   updateZoomMetricsUI();
@@ -2773,5 +3159,6 @@ function animate(timestamp) {
 }
 
 focusBody('sun', true);
+updateCameraClipPlanes();
 updateZoomMetricsUI();
 requestAnimationFrame(animate);

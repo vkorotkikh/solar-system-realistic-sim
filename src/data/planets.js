@@ -59,6 +59,8 @@ export const PLANETS = [
     type: 'planet',
     massKg: 5.97237e24,
     radiusKm: 6_371.0,
+    equatorialRadiusKm: 6_378.137,
+    polarRadiusKm: 6_356.752,
     color: '#4f8fdb',
     axialTiltDeg: 23.439281,
     rotationPeriodHours: 23.9344696,
@@ -245,6 +247,13 @@ export const MAJOR_MOON_RADII_KM = {
   Hydra: 31,
   Kerberos: 9,
   Styx: 5
+};
+
+export const MAJOR_MOON_SHAPE_KM = {
+  Moon: {
+    equatorialRadiusKm: 1_738.1,
+    polarRadiusKm: 1_736.0
+  }
 };
 
 export const MAJOR_MOONS = new Set([
