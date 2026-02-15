@@ -140,6 +140,20 @@ const simState = {
 const AU_PER_LIGHT_YEAR = 63_241.077;
 const MSUN_KG = 1.98847e30;
 const TWO_PI = Math.PI * 2;
+const DEG_TO_RAD = Math.PI / 180;
+const J2000_ECLIPTIC_OBLIQUITY_RAD = 23.439291111 * DEG_TO_RAD;
+const COS_J2000_ECLIPTIC_OBLIQUITY = Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD);
+const SIN_J2000_ECLIPTIC_OBLIQUITY = Math.sin(J2000_ECLIPTIC_OBLIQUITY_RAD);
+// IAU 1958 galactic frame in J2000/ICRS realization (Hipparcos/ERFA constants).
+const GALACTIC_TO_EQUATORIAL_M11 = -0.0548755604;
+const GALACTIC_TO_EQUATORIAL_M12 = 0.4941094279;
+const GALACTIC_TO_EQUATORIAL_M13 = -0.867666149;
+const GALACTIC_TO_EQUATORIAL_M21 = -0.8734370902;
+const GALACTIC_TO_EQUATORIAL_M22 = -0.44482963;
+const GALACTIC_TO_EQUATORIAL_M23 = -0.1980763734;
+const GALACTIC_TO_EQUATORIAL_M31 = -0.4838350155;
+const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
+const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
 
@@ -764,14 +778,48 @@ function bvToRgbUnit(bvValue) {
   return [1.0, 0.68 - 0.2 * t, 0.33 - 0.08 * t];
 }
 
-function equatorialDegToCartesian(raDeg, decDeg, radius) {
-  const ra = (raDeg * Math.PI) / 180;
-  const dec = (decDeg * Math.PI) / 180;
+function equatorialDegToUnit(raDeg, decDeg) {
+  const ra = raDeg * DEG_TO_RAD;
+  const dec = decDeg * DEG_TO_RAD;
   const cosDec = Math.cos(dec);
   return [
-    radius * cosDec * Math.cos(ra),
-    radius * cosDec * Math.sin(ra),
-    radius * Math.sin(dec)
+    cosDec * Math.cos(ra),
+    cosDec * Math.sin(ra),
+    Math.sin(dec)
+  ];
+}
+
+function galacticUnitToEquatorial(xg, yg, zg) {
+  return [
+    GALACTIC_TO_EQUATORIAL_M11 * xg + GALACTIC_TO_EQUATORIAL_M12 * yg + GALACTIC_TO_EQUATORIAL_M13 * zg,
+    GALACTIC_TO_EQUATORIAL_M21 * xg + GALACTIC_TO_EQUATORIAL_M22 * yg + GALACTIC_TO_EQUATORIAL_M23 * zg,
+    GALACTIC_TO_EQUATORIAL_M31 * xg + GALACTIC_TO_EQUATORIAL_M32 * yg + GALACTIC_TO_EQUATORIAL_M33 * zg
+  ];
+}
+
+function equatorialUnitToEcliptic(xEq, yEq, zEq) {
+  return [
+    xEq,
+    COS_J2000_ECLIPTIC_OBLIQUITY * yEq + SIN_J2000_ECLIPTIC_OBLIQUITY * zEq,
+    -SIN_J2000_ECLIPTIC_OBLIQUITY * yEq + COS_J2000_ECLIPTIC_OBLIQUITY * zEq
+  ];
+}
+
+function eclipticUnitToEquatorial(xEcl, yEcl, zEcl) {
+  return [
+    xEcl,
+    COS_J2000_ECLIPTIC_OBLIQUITY * yEcl - SIN_J2000_ECLIPTIC_OBLIQUITY * zEcl,
+    SIN_J2000_ECLIPTIC_OBLIQUITY * yEcl + COS_J2000_ECLIPTIC_OBLIQUITY * zEcl
+  ];
+}
+
+function equatorialDegToCartesian(raDeg, decDeg, radius) {
+  const [xEq, yEq, zEq] = equatorialDegToUnit(raDeg, decDeg);
+  const [x, y, z] = equatorialUnitToEcliptic(xEq, yEq, zEq);
+  return [
+    x * radius,
+    y * radius,
+    z * radius
   ];
 }
 
@@ -780,12 +828,37 @@ function galacticToCartesian(lRad, bRad, radius) {
   const xg = cosB * Math.cos(lRad);
   const yg = cosB * Math.sin(lRad);
   const zg = Math.sin(bRad);
-
-  // Galactic -> Equatorial (J2000) via transpose of standard IAU matrix.
-  const x = -0.0548755604 * xg - 0.8734370902 * yg - 0.4838350155 * zg;
-  const y = 0.4941094279 * xg - 0.44482963 * yg + 0.7469822445 * zg;
-  const z = -0.867666149 * xg - 0.1980763734 * yg + 0.4559837762 * zg;
+  const [xEq, yEq, zEq] = galacticUnitToEquatorial(xg, yg, zg);
+  const [x, y, z] = equatorialUnitToEcliptic(xEq, yEq, zEq);
   return [x * radius, y * radius, z * radius];
+}
+
+function angularSeparationDeg(ax, ay, az, bx, by, bz) {
+  const dot = Math.min(1, Math.max(-1, ax * bx + ay * by + az * bz));
+  return (Math.acos(dot) * 180) / Math.PI;
+}
+
+function validateGalacticFrame() {
+  const [gcX, gcY, gcZ] = galacticToCartesian(0, 0, 1);
+  const [gcEqX, gcEqY, gcEqZ] = eclipticUnitToEquatorial(gcX, gcY, gcZ);
+  const [gcExpectedX, gcExpectedY, gcExpectedZ] = equatorialDegToUnit(266.4051, -28.936175);
+  const gcErrorDeg = angularSeparationDeg(gcEqX, gcEqY, gcEqZ, gcExpectedX, gcExpectedY, gcExpectedZ);
+
+  const [ngpX, ngpY, ngpZ] = galacticToCartesian(0, Math.PI * 0.5, 1);
+  const [ngpEqX, ngpEqY, ngpEqZ] = eclipticUnitToEquatorial(ngpX, ngpY, ngpZ);
+  const [ngpExpectedX, ngpExpectedY, ngpExpectedZ] = equatorialDegToUnit(192.85948, 27.12825);
+  const ngpErrorDeg = angularSeparationDeg(ngpEqX, ngpEqY, ngpEqZ, ngpExpectedX, ngpExpectedY, ngpExpectedZ);
+
+  if (gcErrorDeg > 1e-2 || ngpErrorDeg > 1e-2) {
+    console.warn(
+      `[Milky Way frame] Verification failed: GC error ${gcErrorDeg.toExponential(2)} deg, ` +
+      `NGP error ${ngpErrorDeg.toExponential(2)} deg`
+    );
+  }
+}
+
+if (import.meta.env?.DEV) {
+  validateGalacticFrame();
 }
 
 function wrapRadians(angle) {
@@ -1054,6 +1127,8 @@ function createCatalogStarField(radius = 18_000) {
 
 function createSurveyMilkyWaySphere(radius = 19_000) {
   const texture = hiResTextures.milkyWaySurvey;
+  // 2MASS all-sky maps are distributed in sky-view orientation where galactic longitude
+  // increases to the left; mirror U so the map follows the right-handed galactic basis.
   texture.wrapS = RepeatWrapping;
   texture.repeat.x = -1;
   texture.offset.x = 1;
@@ -1069,26 +1144,17 @@ function createSurveyMilkyWaySphere(radius = 19_000) {
   });
 
   const sphere = new Mesh(geometry, material);
-  // Galactic -> Equatorial (J2000) matrix used by the procedural Milky Way model.
-  const galacticToEquatorialMatrix = new Matrix4().set(
-    -0.0548755604, -0.8734370902, -0.4838350155, 0,
-    0.4941094279, -0.44482963, 0.7469822445, 0,
-    -0.867666149, -0.1980763734, 0.4559837762, 0,
-    0, 0, 0, 1
+  // Sphere local basis mapping after horizontal texture mirror:
+  // local +x -> l=0,b=0 ; local +y -> b=+90 ; local +z -> l=270,b=0.
+  const localXAxisWorld = new Vector3(...galacticToCartesian(0, 0, 1));
+  const localYAxisWorld = new Vector3(...galacticToCartesian(0, Math.PI * 0.5, 1));
+  const localZAxisWorld = new Vector3(...galacticToCartesian(-Math.PI * 0.5, 0, 1));
+  const surveyToWorldMatrix = new Matrix4().makeBasis(
+    localXAxisWorld,
+    localYAxisWorld,
+    localZAxisWorld
   );
-  // Sphere UVs encode longitude in local X/Z and latitude in local Y.
-  // Convert that texture-local basis into the galactic basis first, then to equatorial.
-  const textureLocalToGalacticMatrix = new Matrix4().set(
-    1, 0, 0, 0,
-    0, 0, 1, 0,
-    0, 1, 0, 0,
-    0, 0, 0, 1
-  );
-  const surveyToEquatorialMatrix = new Matrix4().multiplyMatrices(
-    galacticToEquatorialMatrix,
-    textureLocalToGalacticMatrix
-  );
-  sphere.setRotationFromMatrix(surveyToEquatorialMatrix);
+  sphere.setRotationFromMatrix(surveyToWorldMatrix);
   sphere.visible = false;
   sphere.renderOrder = -50;
   return sphere;
