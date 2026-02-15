@@ -68,6 +68,9 @@ app.add_middleware(
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
 DEFAULT_ENGINE = "rebound"
+MAX_COMMAND_QUEUE = 1_024
+MAX_RESPONSE_QUEUE = 1_024
+MAX_COMMANDS_PER_FRAME = 128
 
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
@@ -129,14 +132,17 @@ class SimulationRunner:
     def __init__(self, engine: SimulationEngine, target_fps: int = 60):
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
-        self.command_queue: queue.Queue = queue.Queue()
-        self.response_queue: queue.Queue = queue.Queue()
+        self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
+        self.response_queue: queue.Queue = queue.Queue(maxsize=MAX_RESPONSE_QUEUE)
         self._state_lock = threading.Lock()
         self._latest_state: Optional[dict] = None
         self.time_scale: float = 4.0  # days per second
         self.paused: bool = False
         self.running: bool = True
         self.target_fps = target_fps
+        self._frame_index: int = 0
+        self._dropped_responses: int = 0
+        self._runtime_error: Optional[str] = None
         self._thread = threading.Thread(target=self._loop, daemon=True)
 
     def start(self):
@@ -146,8 +152,16 @@ class SimulationRunner:
         self.running = False
         self._thread.join(timeout=3)
 
-    def send_command(self, cmd: dict):
-        self.command_queue.put(cmd)
+    def send_command(self, cmd: dict) -> bool:
+        try:
+            self.command_queue.put_nowait(cmd)
+            return True
+        except queue.Full:
+            self._push_error(
+                "Command queue is full; command dropped",
+                code="queue_overflow",
+            )
+            return False
 
     def get_latest_state(self) -> Optional[dict]:
         with self._state_lock:
@@ -181,44 +195,93 @@ class SimulationRunner:
             out.append(scalar)
         return out
 
+    def _push_response(self, payload: dict) -> None:
+        try:
+            self.response_queue.put_nowait(payload)
+        except queue.Full:
+            self._dropped_responses += 1
+
     def _push_error(self, message: str, *, action: str = "", code: str = "bad_request") -> None:
         payload = {"type": "error", "message": message, "code": code}
         if action:
             payload["action"] = action
-        self.response_queue.put(payload)
+        self._push_response(payload)
 
     def _loop(self):
         frame_time = 1.0 / self.target_fps
 
         while self.running:
+            self._frame_index += 1
             t0 = time.perf_counter()
 
             # ── Process commands ──────────────────────────────────────
-            while True:
+            processed_commands = 0
+            while processed_commands < MAX_COMMANDS_PER_FRAME:
                 try:
                     cmd = self.command_queue.get_nowait()
                 except queue.Empty:
                     break
-                self._handle_command(cmd)
+                processed_commands += 1
+                try:
+                    self._handle_command(cmd)
+                except Exception as exc:
+                    self._runtime_error = f"Command handling failed: {exc}"
+                    self.paused = True
+                    self._push_error(self._runtime_error, code="runtime_error")
+
+            if (not self.command_queue.empty()) and (self._frame_index % 60 == 0):
+                self._push_error(
+                    "Command throughput saturated; backend is applying backpressure",
+                    code="queue_backpressure",
+                )
 
             # ── Step simulation ───────────────────────────────────────
-            if not self.paused:
-                dt_days = self.time_scale * frame_time
-                self.engine.step(dt_days)
+            if not self.paused and self._runtime_error is None:
+                try:
+                    dt_days = self.time_scale * frame_time
+                    self.engine.step(dt_days)
 
-                if self.kuiper.active:
-                    self.kuiper.step(dt_days)
+                    if self.kuiper.active:
+                        self.kuiper.step(dt_days)
+                except Exception as exc:
+                    self._runtime_error = f"Simulation step failed: {exc}"
+                    self.paused = True
+                    self._push_error(self._runtime_error, code="runtime_error")
 
             # ── Build state ───────────────────────────────────────────
-            state = self.engine.get_state()
+            try:
+                state = self.engine.get_state()
+            except Exception as exc:
+                self._runtime_error = f"State generation failed: {exc}"
+                self.paused = True
+                self._push_error(self._runtime_error, code="runtime_error")
+                state = {
+                    "type": "state_update",
+                    "engine": self.engine.engine_name,
+                    "jd": self.engine.get_julian_date(),
+                    "bodies": {},
+                }
             state["paused"] = self.paused
             state["time_scale"] = self.time_scale
             state["energy_error"] = self.engine.get_energy_error()
+            state["backend"] = {
+                "target_fps": self.target_fps,
+                "command_queue_depth": self.command_queue.qsize(),
+                "response_queue_depth": self.response_queue.qsize(),
+                "kuiper_active": self.kuiper.active,
+                "dropped_responses": self._dropped_responses,
+                "runtime_error": self._runtime_error,
+            }
 
             if self.kuiper.active and self.kuiper.should_send():
-                kuiper_particles = self.kuiper.get_state()
-                if kuiper_particles:
-                    state["kuiper"] = kuiper_particles
+                try:
+                    kuiper_particles = self.kuiper.get_state()
+                    if kuiper_particles:
+                        state["kuiper"] = kuiper_particles
+                except Exception as exc:
+                    self._runtime_error = f"Kuiper state failed: {exc}"
+                    self.paused = True
+                    self._push_error(self._runtime_error, code="runtime_error")
 
             with self._state_lock:
                 self._latest_state = state
@@ -304,7 +367,7 @@ class SimulationRunner:
                 body_lookup = canonical_ids.get(body_id.lower(), body_id)
                 elems = self.engine.get_orbital_elements(body_lookup)
                 if elems:
-                    self.response_queue.put({
+                    self._push_response({
                         "type": "orbital_elements",
                         "body_id": body_lookup,
                         "elements": elems,
@@ -340,7 +403,12 @@ async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
                 "message": "Payload must be a JSON object",
             }))
             continue
-        runner.send_command(msg)
+        if not runner.send_command(msg):
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Command queue is full; retry shortly",
+                "code": "queue_overflow",
+            }))
 
 
 async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_hz: float):
