@@ -45,6 +45,17 @@ function hydrateRoute(route) {
   };
 }
 
+function hydrateLeg(leg) {
+  if (!leg) return null;
+  return {
+    ...leg,
+    startPosition: vec3FromArray(leg.startPosition),
+    endPosition: vec3FromArray(leg.endPosition),
+    departureVelocityApprox: vec3FromArray(leg.departureVelocityApprox),
+    arrivalVelocityApprox: vec3FromArray(leg.arrivalVelocityApprox)
+  };
+}
+
 async function requestBackendRoute(options) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -59,7 +70,9 @@ async function requestBackendRoute(options) {
         departure_jd: options.departureJd,
         objective: options.objective,
         max_assists: options.maxAssists,
-        assist_pool: options.assistPool
+        assist_pool: options.assistPool,
+        ephemeris_provider: options.ephemerisProvider ?? 'auto',
+        prograde: options.prograde ?? true
       }),
       signal: controller.signal
     });
@@ -80,6 +93,118 @@ async function requestBackendRoute(options) {
   }
 }
 
+async function requestBackendLambert(options) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${backendBaseUrl()}/trajectory/lambert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_id: options.fromId,
+        to_id: options.toId,
+        departure_jd: options.departureJd,
+        arrival_jd: options.arrivalJd,
+        ephemeris_provider: options.ephemerisProvider ?? 'auto',
+        prograde: options.prograde ?? true
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lambert API error (${response.status})`);
+    }
+
+    const payload = await response.json();
+    return {
+      ...payload,
+      source: 'backend',
+      solution: hydrateLeg(payload.solution)
+    };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function requestBackendPorkchop(options) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 3);
+
+  try {
+    const response = await fetch(`${backendBaseUrl()}/trajectory/porkchop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_id: options.fromId,
+        to_id: options.toId,
+        departure_start_jd: options.departureStartJd,
+        departure_end_jd: options.departureEndJd,
+        departure_step_days: options.departureStepDays,
+        tof_min_days: options.tofMinDays,
+        tof_max_days: options.tofMaxDays,
+        tof_step_days: options.tofStepDays,
+        ephemeris_provider: options.ephemerisProvider ?? 'auto',
+        prograde: options.prograde ?? true
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Porkchop API error (${response.status})`);
+    }
+
+    return {
+      ...(await response.json()),
+      source: 'backend'
+    };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function requestMissionPlan(options) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 4);
+
+  try {
+    const response = await fetch(`${backendBaseUrl()}/mission/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_id: options.fromId,
+        target_id: options.targetId,
+        return_id: options.returnId,
+        departure_jd: options.departureJd,
+        objective: options.objective,
+        max_assists: options.maxAssists,
+        ephemeris_provider: options.ephemerisProvider ?? 'auto',
+        payload_mass_kg: options.payloadMassKg,
+        prograde: options.prograde ?? true
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Mission API error (${response.status})`);
+    }
+
+    const payload = await response.json();
+    if (payload?.recommendation?.outbound) {
+      payload.recommendation.outbound = hydrateRoute(payload.recommendation.outbound);
+    }
+    if (payload?.recommendation?.return) {
+      payload.recommendation.return = hydrateRoute(payload.recommendation.return);
+    }
+    return {
+      ...payload,
+      source: 'backend'
+    };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export async function planInterplanetaryRoute(model, bodyById, options) {
   try {
     return await requestBackendRoute(options);
@@ -92,5 +217,16 @@ export async function planInterplanetaryRoute(model, bodyById, options) {
   }
 }
 
-export { buildTransferCurvePoints, describeRoute };
+export async function solveLambertTransfer(options) {
+  return requestBackendLambert(options);
+}
 
+export async function scanPorkchopWindow(options) {
+  return requestBackendPorkchop(options);
+}
+
+export async function planMissionProfile(options) {
+  return requestMissionPlan(options);
+}
+
+export { buildTransferCurvePoints, describeRoute };
