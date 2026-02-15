@@ -137,7 +137,9 @@ class EphemerisService:
 
     def _provider_chain(self) -> List[str]:
         if self._provider == "auto":
-            return ["spice", "horizons", "kepler"]
+            # Keep default mission planning deterministic/offline-friendly while
+            # still preferring high-fidelity SPICE when available.
+            return ["spice", "kepler", "horizons"]
         return [self._provider]
 
     def _sample_kepler(self, body_id: str, jd: float) -> EphemerisSample:
