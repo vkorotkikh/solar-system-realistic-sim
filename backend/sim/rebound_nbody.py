@@ -134,7 +134,7 @@ class REBOUNDEngine(SimulationEngine):
     def get_julian_date(self) -> float:
         if self.sim is None:
             return self.start_jd
-        return self.sim.t * DAYS_PER_YEAR + self.start_jd
+        return self.sim.t * DAYS_PER_YEAR + J2000_JD
 
     def set_julian_date(self, jd: float) -> None:
         """Jump to a specific JD by reinitializing from J2000 and integrating."""
