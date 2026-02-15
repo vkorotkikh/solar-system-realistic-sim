@@ -470,6 +470,150 @@ export const ASTEROID_BELT_OBJECTS = [
       meanAnomalyDeg: 185.6,
       periodDays: 1_345.4
     }
+  },
+  {
+    id: 'hebe',
+    name: 'Hebe (6)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 92.59,
+    color: '#8f877d',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 2.425469295605402,
+      e: 0.2022300641713704,
+      iDeg: 14.73615054649163,
+      ascendingNodeDeg: 138.6147295218171,
+      argPeriapsisDeg: 239.6962153510471,
+      meanAnomalyDeg: 352.5636680689065,
+      periodDays: 1_379.723618278942
+    }
+  },
+  {
+    id: 'flora',
+    name: 'Flora (8)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 73.75,
+    color: '#a49a8f',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 2.201307162677431,
+      e: 0.1563337133955282,
+      iDeg: 5.890326395333704,
+      ascendingNodeDeg: 110.8433741767689,
+      argPeriapsisDeg: 285.4267388865241,
+      meanAnomalyDeg: 198.9007844696565,
+      periodDays: 1_192.942186357289
+    }
+  },
+  {
+    id: 'metis',
+    name: 'Metis (9)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 95.0,
+    color: '#8e8276',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 2.3865665442279,
+      e: 0.1225644945880542,
+      iDeg: 5.577707856670986,
+      ascendingNodeDeg: 68.86978123290572,
+      argPeriapsisDeg: 5.895913019112819,
+      meanAnomalyDeg: 199.1964699805467,
+      periodDays: 1_346.662445922346
+    }
+  },
+  {
+    id: 'amphitrite',
+    name: 'Amphitrite (29)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 94.78,
+    color: '#9b9184',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 2.554121108737986,
+      e: 0.07335027403054248,
+      iDeg: 6.077438247546309,
+      ascendingNodeDeg: 356.2547012430243,
+      argPeriapsisDeg: 61.90579763914975,
+      meanAnomalyDeg: 145.1081740584724,
+      periodDays: 1_490.941681968144
+    }
+  },
+  {
+    id: 'euphrosyne',
+    name: 'Euphrosyne (31)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 133.54,
+    color: '#6c6b65',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 3.161505296070994,
+      e: 0.2159206687541511,
+      iDeg: 26.3122353347305,
+      ascendingNodeDeg: 30.79587827581202,
+      argPeriapsisDeg: 61.97076102357662,
+      meanAnomalyDeg: 147.8931223815032,
+      periodDays: 2_053.238019240071
+    }
+  },
+  {
+    id: 'cybele',
+    name: 'Cybele (65)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 118.63,
+    color: '#7f776d',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 3.407667304335468,
+      e: 0.1277298484525094,
+      iDeg: 3.564948573195629,
+      ascendingNodeDeg: 155.0988086384028,
+      argPeriapsisDeg: 104.1394103577884,
+      meanAnomalyDeg: 272.6326811780436,
+      periodDays: 2_297.651769051524
+    }
+  },
+  {
+    id: 'sylvia',
+    name: 'Sylvia (87)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 126.53,
+    color: '#7c756c',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 3.484518782251748,
+      e: 0.09433757216253168,
+      iDeg: 10.87247390257978,
+      ascendingNodeDeg: 73.01146029932147,
+      argPeriapsisDeg: 265.8265584696771,
+      meanAnomalyDeg: 94.95962367758351,
+      periodDays: 2_375.815118103395
+    }
+  },
+  {
+    id: 'camilla',
+    name: 'Camilla (107)',
+    type: 'asteroid',
+    massKg: null,
+    radiusKm: 105.19,
+    color: '#7b7268',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 3.493091091231003,
+      e: 0.0664513680975773,
+      iDeg: 9.998659770883721,
+      ascendingNodeDeg: 172.5062650612664,
+      argPeriapsisDeg: 303.7382556571125,
+      meanAnomalyDeg: 332.5445461614998,
+      periodDays: 2_384.587667433313
+    }
   }
 ];
 
@@ -600,6 +744,100 @@ export const KUIPER_BELT_OBJECTS = [
       argPeriapsisDeg: 207.667,
       meanAnomalyDeg: 107.46,
       periodDays: 202_370
+    }
+  },
+  {
+    id: 'varuna',
+    name: 'Varuna (20000)',
+    type: 'dwarf',
+    massKg: null,
+    radiusKm: 450.0,
+    color: '#b9a7a0',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 43.17823437208563,
+      e: 0.05254516459334936,
+      iDeg: 17.13812404484431,
+      ascendingNodeDeg: 97.21030234100793,
+      argPeriapsisDeg: 273.2206220996139,
+      meanAnomalyDeg: 115.0289798413239,
+      periodDays: 103_632.4453155141
+    }
+  },
+  {
+    id: 'ixion',
+    name: 'Ixion (28978)',
+    type: 'dwarf',
+    massKg: null,
+    // Estimated from absolute magnitude H with assumed albedo 0.09.
+    radiusKm: 448.1,
+    color: '#c2b0a4',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 39.35053706213409,
+      e: 0.2442328489971719,
+      iDeg: 19.67041190191546,
+      ascendingNodeDeg: 71.09295825377649,
+      argPeriapsisDeg: 300.6585723831106,
+      meanAnomalyDeg: 294.2004612799266,
+      periodDays: 90_162.18397151395
+    }
+  },
+  {
+    id: 'salacia',
+    name: 'Salacia (120347)',
+    type: 'dwarf',
+    massKg: null,
+    // Estimated from absolute magnitude H with assumed albedo 0.09.
+    radiusKm: 332.18,
+    color: '#b2a6a0',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 42.11465003230769,
+      e: 0.1033787261230713,
+      iDeg: 23.92712613400163,
+      ascendingNodeDeg: 280.2626295339988,
+      argPeriapsisDeg: 309.4776964357308,
+      meanAnomalyDeg: 133.4611617235804,
+      periodDays: 99_827.04623325469
+    }
+  },
+  {
+    id: 'varda',
+    name: 'Varda (174567)',
+    type: 'dwarf',
+    massKg: null,
+    // Estimated from absolute magnitude H with assumed albedo 0.09.
+    radiusKm: 450.17,
+    color: '#bfb4aa',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 45.53806201400563,
+      e: 0.1430078809328084,
+      iDeg: 21.51403329578455,
+      ascendingNodeDeg: 184.1214782264865,
+      argPeriapsisDeg: 184.9743325694585,
+      meanAnomalyDeg: 276.5587616814524,
+      periodDays: 112_243.2525750103
+    }
+  },
+  {
+    id: 'ms4',
+    name: '2002 MS4 (307261)',
+    type: 'dwarf',
+    massKg: null,
+    // Estimated from absolute magnitude H with assumed albedo 0.09.
+    radiusKm: 414.36,
+    color: '#b7aba1',
+    orbit: {
+      epochJd: 2_461_000.5,
+      aAu: 41.59530825444364,
+      e: 0.1486943469086431,
+      iDeg: 17.70394926111006,
+      ascendingNodeDeg: 216.1862229438626,
+      argPeriapsisDeg: 215.2160852937352,
+      meanAnomalyDeg: 229.8810349241941,
+      periodDays: 97_986.20719954059
     }
   }
 ];

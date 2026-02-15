@@ -64,6 +64,11 @@ class REBOUNDEngine(SimulationEngine):
                 orbit = body["orbit"]
                 mass_kg = body["mass_kg"] or 0
                 mass_msun = mass_kg / MSUN_KG
+                mean_anomaly_deg = orbit["mean_anomaly_deg"]
+                epoch_jd = orbit.get("epoch_jd")
+                if epoch_jd is not None and orbit.get("period_days"):
+                    delta_days = start_jd - epoch_jd
+                    mean_anomaly_deg = (mean_anomaly_deg + 360.0 * (delta_days / orbit["period_days"])) % 360.0
 
                 self.sim.add(
                     m=mass_msun,
@@ -72,7 +77,7 @@ class REBOUNDEngine(SimulationEngine):
                     inc=math.radians(orbit["i_deg"]),
                     Omega=math.radians(orbit["ascending_node_deg"]),
                     omega=math.radians(orbit["arg_periapsis_deg"]),
-                    M=math.radians(orbit["mean_anomaly_deg"]),
+                    M=math.radians(mean_anomaly_deg),
                     primary=self.sim.particles[0],
                 )
                 self.body_ids.append(body["id"])
