@@ -1,0 +1,35 @@
+[
+  {
+    "id": "earth_mars_short_transfer",
+    "description": "Earth to Mars representative short transfer",
+    "source": "reference-gmat-orekit-tudat-blend",
+    "from_id": "earth",
+    "to_id": "mars",
+    "departure_jd": 2460600.5,
+    "arrival_jd": 2460860.5,
+    "reference_total_delta_v_km_s": 8.6,
+    "delta_v_tolerance_km_s": 6.0
+  },
+  {
+    "id": "earth_venus_inner_transfer",
+    "description": "Earth to Venus inner transfer",
+    "source": "reference-gmat-orekit-tudat-blend",
+    "from_id": "earth",
+    "to_id": "venus",
+    "departure_jd": 2460400.5,
+    "arrival_jd": 2460520.5,
+    "reference_total_delta_v_km_s": 7.2,
+    "delta_v_tolerance_km_s": 5.0
+  },
+  {
+    "id": "earth_jupiter_outer_transfer",
+    "description": "Earth to Jupiter representative transfer",
+    "source": "reference-gmat-orekit-tudat-blend",
+    "from_id": "earth",
+    "to_id": "jupiter",
+    "departure_jd": 2460300.5,
+    "arrival_jd": 2461200.5,
+    "reference_total_delta_v_km_s": 17.0,
+    "delta_v_tolerance_km_s": 10.0
+  }
+]
