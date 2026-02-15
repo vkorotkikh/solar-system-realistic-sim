@@ -52,6 +52,10 @@ import { createSolarSystemCatalog } from './sim/catalog.js';
 import { propagateKeplerOrbit } from './sim/orbitMath.js';
 import { SolarSystemModel } from './sim/solarSystemModel.js';
 import { generatePlanetTexture } from './textures.js';
+import { PlanetCloudDataPipeline } from './frontend/features/planetary/cloudDataPipeline.js';
+import { createPlanetHeightTexture } from './frontend/features/planetary/terrainSynthesis.js';
+import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem.js';
+import { planetVisualProfile } from './frontend/features/planetary/visualProfiles.js';
 import earthDayTextureUrl from './assets/textures/earth_day_4096.jpg';
 import earthNormalTextureUrl from './assets/textures/earth_normal_2048.jpg';
 import moonDayTextureUrl from './assets/textures/moon_1024.jpg';
@@ -86,6 +90,8 @@ const dom = {
   toggleOort: document.getElementById('toggle-oort'),
   toggleEnhancedMilky: document.getElementById('toggle-enhanced-milky'),
   toggleSurveyMilky: document.getElementById('toggle-survey-milky'),
+  toggleEarthSatellites: document.getElementById('toggle-earth-satellites'),
+  toggleSatelliteJ2: document.getElementById('toggle-satellite-j2'),
   bodySearch: document.getElementById('body-search'),
   bodyList: document.getElementById('body-list'),
   focusBody: document.getElementById('focus-body'),
@@ -160,9 +166,11 @@ const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
 const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
-const EARTH_ATMOSPHERE_ALTITUDE_KM = 35;
-const EARTH_LEO_ALTITUDE_KM = 408;
-const EARTH_GEO_ALTITUDE_KM = 35_786;
+const EARTH_VISUAL_PROFILE = planetVisualProfile('earth') ?? {};
+const EARTH_SATELLITE_PROFILE = EARTH_VISUAL_PROFILE.satelliteLayer ?? {};
+const EARTH_ATMOSPHERE_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.atmosphere ?? 35;
+const EARTH_LEO_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.leo ?? 408;
+const EARTH_GEO_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.geo ?? 35_786;
 const EARTH_ORBIT_GUIDE_ALTITUDES_KM = [EARTH_LEO_ALTITUDE_KM, EARTH_GEO_ALTITUDE_KM];
 
 function bodyEquatorialRadiusKm(body) {
@@ -421,6 +429,15 @@ const gravityVectorGroup = new Group();
 gravityVectorGroup.visible = false;
 scene.add(gravityVectorGroup);
 const earthOrbitGuides = [];
+let earthSurfaceMesh = null;
+let earthCloudMesh = null;
+let earthAtmosphereMesh = null;
+let earthCloudDataPipeline = null;
+let earthCloudRefreshInFlight = false;
+let earthCloudNextRefreshMs = 0;
+let earthTerrainDisplacementTexture = null;
+let earthLodCurrentLevel = 'low';
+let earthSatelliteSystem = null;
 let earthCloudLayerMaterial = null;
 let earthCloudDetailTexture = null;
 
@@ -434,7 +451,17 @@ const geometryCache = {
   sun: new SphereGeometry(1, 48, 32),
   planet: new SphereGeometry(1, 48, 36),
   moon: new SphereGeometry(1, 12, 10),
-  majorMoon: new SphereGeometry(1, 36, 28)
+  majorMoon: new SphereGeometry(1, 36, 28),
+  earthSurfaceLod: (() => {
+    const low = EARTH_VISUAL_PROFILE.lod?.geometry?.low ?? [48, 36];
+    const medium = EARTH_VISUAL_PROFILE.lod?.geometry?.medium ?? [96, 72];
+    const high = EARTH_VISUAL_PROFILE.lod?.geometry?.high ?? [192, 144];
+    return {
+      low: new SphereGeometry(1, low[0], low[1]),
+      medium: new SphereGeometry(1, medium[0], medium[1]),
+      high: new SphereGeometry(1, high[0], high[1])
+    };
+  })()
 };
 
 const materialCache = new Map();
@@ -573,6 +600,17 @@ hiResTextures.earthClouds.wrapS = RepeatWrapping;
 hiResTextures.earthClouds.wrapT = RepeatWrapping;
 hiResTextures.earthClouds.needsUpdate = true;
 earthCloudDetailTexture = createEarthCloudDetailTexture(512);
+earthTerrainDisplacementTexture = createPlanetHeightTexture({
+  size: EARTH_VISUAL_PROFILE.terrain?.textureSize ?? 1024,
+  seed: EARTH_VISUAL_PROFILE.terrain?.synthSeed ?? 17
+});
+earthCloudDataPipeline = new PlanetCloudDataPipeline({
+  provider: {
+    ...(EARTH_VISUAL_PROFILE.clouds?.provider ?? {}),
+    refreshMinutes: EARTH_VISUAL_PROFILE.clouds?.refreshMinutes ?? 30
+  },
+  fallbackTexture: hiResTextures.earthClouds
+});
 
 // Generate procedural textures for planets at startup
 const planetTextures = new Map();
@@ -615,6 +653,9 @@ function getMaterial(body) {
       map: hiResTextures.earthDay,
       normalMap: hiResTextures.earthNormal,
       normalScale: new Vector2(0.9, 0.9),
+      displacementMap: earthTerrainDisplacementTexture ?? undefined,
+      displacementScale: EARTH_VISUAL_PROFILE.terrain?.displacementScale ?? 0.00135,
+      displacementBias: EARTH_VISUAL_PROFILE.terrain?.displacementBias ?? -0.00035,
       roughness: 0.64,
       metalness: 0.0
     });
@@ -830,7 +871,7 @@ function createBodyNode(body) {
     ? geometryCache.sun
     : body.type === 'moon'
       ? (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
-      : geometryCache.planet;
+      : (body.id === 'earth' ? geometryCache.earthSurfaceLod.low : geometryCache.planet);
   const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
@@ -843,24 +884,31 @@ function createBodyNode(body) {
 
   // Earth cloud layer with animated detail modulation for weather-like evolution.
   if (body.id === 'earth') {
+    const cloudShellScale = EARTH_VISUAL_PROFILE.clouds?.shellScale ?? 1.011;
+    const cloudBaseOpacity = EARTH_VISUAL_PROFILE.clouds?.baseOpacity ?? 0.42;
+    const atmosphereShellScale = EARTH_VISUAL_PROFILE.atmosphere?.shellScale ?? 1.028;
+    const atmosphereColor = EARTH_VISUAL_PROFILE.atmosphere?.color ?? '#68a9ff';
+    const sunsetColor = EARTH_VISUAL_PROFILE.atmosphere?.sunsetColor ?? '#ff9f5e';
+
     const cloudMaterial = new MeshStandardMaterial({
       map: hiResTextures.earthClouds,
       alphaMap: earthCloudDetailTexture ?? undefined,
       color: new Color('#f4f7ff'),
       transparent: true,
-      opacity: 0.42,
+      opacity: cloudBaseOpacity,
       alphaTest: 0.015,
       roughness: 0.78,
       metalness: 0.0,
       depthWrite: false
     });
-    const cloudMesh = new Mesh(geometryCache.planet, cloudMaterial);
-    cloudMesh.userData.surfaceScale = 1.011;
+    const cloudMesh = new Mesh(geometry, cloudMaterial);
+    cloudMesh.userData.surfaceScale = cloudShellScale;
     setBodyMeshScale(cloudMesh, body, simState.useRealisticScale, cloudMesh.userData.surfaceScale);
     cloudMesh.userData.bodyId = `${body.id}-clouds`;
     cloudMesh.userData.rotationPeriodHours = 22.4;
     cloudMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(cloudMesh);
+    earthCloudMesh = cloudMesh;
 
     earthCloudLayerMaterial = cloudMaterial;
 
@@ -868,8 +916,8 @@ function createBodyNode(body) {
       vertexShader: EARTH_ATMOSPHERE_VERTEX_SHADER,
       fragmentShader: EARTH_ATMOSPHERE_FRAGMENT_SHADER,
       uniforms: {
-        atmosphereColor: { value: new Color('#68a9ff') },
-        sunsetColor: { value: new Color('#ff9f5e') },
+        atmosphereColor: { value: new Color(atmosphereColor) },
+        sunsetColor: { value: new Color(sunsetColor) },
         sunPosition: { value: new Vector3(0, 0, 0) },
         intensity: { value: 1.0 }
       },
@@ -878,11 +926,12 @@ function createBodyNode(body) {
       blending: AdditiveBlending,
       side: BackSide
     });
-    const atmosphereMesh = new Mesh(geometryCache.planet, atmosphereMaterial);
+    const atmosphereMesh = new Mesh(geometry, atmosphereMaterial);
     atmosphereMesh.userData.bodyId = `${body.id}-atmosphere`;
-    atmosphereMesh.userData.surfaceScale = 1.028;
+    atmosphereMesh.userData.surfaceScale = atmosphereShellScale;
     setBodyMeshScale(atmosphereMesh, body, simState.useRealisticScale, atmosphereMesh.userData.surfaceScale);
     spinGroup.add(atmosphereMesh);
+    earthAtmosphereMesh = atmosphereMesh;
 
     const orbitGuideStyles = new Map([
       [EARTH_LEO_ALTITUDE_KM, { color: '#73d0ff', opacity: 0.45 }],
@@ -909,6 +958,8 @@ function createBodyNode(body) {
       spinGroup.add(ring);
       earthOrbitGuides.push(ring);
     }
+
+    earthSurfaceMesh = mesh;
   }
 
   // Venus upper-atmosphere shell.
@@ -2073,7 +2124,33 @@ scene.add(kuiperDetailPoints);
 const oortCloud = createOortCloud();
 scene.add(oortCloud);
 
+async function initializeEarthSatelliteLayer() {
+  if (!EARTH_SATELLITE_PROFILE.enabled) return;
+  const earthNode = bodyNodes.get('earth');
+  if (!earthNode) return;
+
+  earthSatelliteSystem = new OrbitalSatelliteSystem({
+    maxGeoCount: EARTH_SATELLITE_PROFILE.maxGeoCount ?? 28,
+    showOrbits: EARTH_SATELLITE_PROFILE.defaultShowOrbits ?? true,
+    useJ2: EARTH_SATELLITE_PROFILE.defaultUseJ2 ?? true
+  });
+
+  earthSatelliteSystem.attachTo(earthNode);
+  earthSatelliteSystem.applyScaleMode(simState.useRealisticScale);
+
+  try {
+    await earthSatelliteSystem.initialize();
+  } catch {
+    // Fallback dataset is loaded inside the system on fetch failures.
+  }
+
+  earthSatelliteSystem.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
+  earthSatelliteSystem.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
+  earthSatelliteSystem.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
+}
+
 mountSceneGraph();
+void initializeEarthSatelliteLayer();
 
 // ── WebSocket Simulation Client ──────────────────────────────────────────
 
@@ -2278,6 +2355,10 @@ function applyScaleMode() {
     }
   }
 
+  if (earthSatelliteSystem) {
+    earthSatelliteSystem.applyScaleMode(realistic);
+  }
+
   if (simState.focusedBodyId) {
     focusBody(simState.focusedBodyId, true);
   }
@@ -2422,10 +2503,11 @@ function updateBodyRotations(julianDate) {
 }
 
 function updateEarthWeather(julianDate) {
-  if (!earthCloudLayerMaterial || !hiResTextures.earthClouds) return;
+  if (!earthCloudLayerMaterial) return;
 
   const elapsedHours = (julianDate - J2000_JD) * 24;
-  const cloudMap = hiResTextures.earthClouds;
+  const cloudMap = earthCloudLayerMaterial.map;
+  if (!cloudMap) return;
 
   cloudMap.offset.x = wrapUnitInterval(elapsedHours * 0.00052 + Math.sin(elapsedHours * 0.0017) * 0.03);
   cloudMap.offset.y = wrapUnitInterval(elapsedHours * -0.00008 + Math.cos(elapsedHours * 0.0013) * 0.018);
@@ -2437,7 +2519,63 @@ function updateEarthWeather(julianDate) {
 
   const longWave = Math.sin(elapsedHours * 0.022);
   const shortWave = Math.sin(elapsedHours * 0.11);
-  earthCloudLayerMaterial.opacity = 0.38 + longWave * 0.05 + shortWave * 0.02;
+  const baseOpacity = EARTH_VISUAL_PROFILE.clouds?.baseOpacity ?? 0.42;
+  earthCloudLayerMaterial.opacity = baseOpacity - 0.04 + longWave * 0.05 + shortWave * 0.02;
+}
+
+function maybeRefreshEarthCloudCoverage(nowMs = Date.now(), force = false) {
+  if (!earthCloudDataPipeline || earthCloudRefreshInFlight) return;
+  if (!force && nowMs < earthCloudNextRefreshMs) return;
+
+  earthCloudRefreshInFlight = true;
+  const nowDate = new Date(nowMs);
+
+  void earthCloudDataPipeline.maybeRefresh(nowDate, force)
+    .then((updated) => {
+      if (updated && earthCloudLayerMaterial) {
+        earthCloudLayerMaterial.map = earthCloudDataPipeline.texture;
+        earthCloudLayerMaterial.needsUpdate = true;
+      }
+      const status = earthCloudDataPipeline.status();
+      const nextDelayMs = status.lastError ? 5 * 60_000 : (EARTH_VISUAL_PROFILE.clouds?.refreshMinutes ?? 30) * 60_000;
+      earthCloudNextRefreshMs = nowMs + nextDelayMs;
+    })
+    .finally(() => {
+      earthCloudRefreshInFlight = false;
+    });
+}
+
+function updateEarthSurfaceLod() {
+  if (!earthSurfaceMesh) return;
+
+  const earthNode = bodyNodes.get('earth');
+  if (!earthNode) return;
+
+  earthNode.getWorldPosition(tempVecA);
+  const distanceToEarth = camera.position.distanceTo(tempVecA);
+  const highThreshold = EARTH_VISUAL_PROFILE.lod?.thresholdsAu?.high ?? 0.00025;
+  const mediumThreshold = EARTH_VISUAL_PROFILE.lod?.thresholdsAu?.medium ?? 0.0012;
+
+  let targetLevel = 'low';
+  if (distanceToEarth < highThreshold) {
+    targetLevel = 'high';
+  } else if (distanceToEarth < mediumThreshold) {
+    targetLevel = 'medium';
+  }
+
+  if (targetLevel === earthLodCurrentLevel) return;
+
+  const targetGeometry = geometryCache.earthSurfaceLod[targetLevel] ?? geometryCache.earthSurfaceLod.low;
+  earthSurfaceMesh.geometry = targetGeometry;
+
+  if (earthCloudMesh) {
+    earthCloudMesh.geometry = targetGeometry;
+  }
+  if (earthAtmosphereMesh) {
+    earthAtmosphereMesh.geometry = targetGeometry;
+  }
+
+  earthLodCurrentLevel = targetLevel;
 }
 
 function updateGravityVectors() {
@@ -2529,6 +2667,11 @@ function applyRenderVisibility() {
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
   gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
+  if (earthSatelliteSystem) {
+    earthSatelliteSystem.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
+    earthSatelliteSystem.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
+    earthSatelliteSystem.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
+  }
   applyMilkyWayAppearance();
   updateEarthOrbitGuidesVisibility();
 
@@ -2624,8 +2767,7 @@ function updateBodyInfoPanel(bodyId) {
   const state = model.getState(bodyId);
   const parentName = body.parentId ? bodyById.get(body.parentId)?.name ?? body.parentId : 'None';
   const sunDistance = state?.worldPosition.length() ?? 0;
-
-  dom.bodyInfo.textContent = [
+  const lines = [
     `Name: ${body.name}`,
     `Type: ${body.type}`,
     `Parent: ${parentName}`,
@@ -2633,7 +2775,20 @@ function updateBodyInfoPanel(bodyId) {
     `Shape: equatorial ${bodyEquatorialRadiusKm(body).toFixed(2)} km, polar ${bodyPolarRadiusKm(body).toFixed(2)} km`,
     `Distance from Sun: ${sunDistance.toFixed(4)} AU`,
     body.orbit ? `Orbital period: ${body.orbit.periodDays.toFixed(3)} days` : 'Orbital period: N/A'
-  ].join('\n');
+  ];
+
+  if (body.id === 'earth' && earthCloudDataPipeline) {
+    const cloudStatus = earthCloudDataPipeline.status();
+    const cloudMode = cloudStatus.hasLiveData ? 'live tile mosaic' : 'fallback texture';
+    lines.push(`Cloud source: ${cloudMode}`);
+  }
+  if (body.id === 'earth' && earthSatelliteSystem) {
+    const satStatus = earthSatelliteSystem.status();
+    lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
+    lines.push(`Satellite perturbation: ${satStatus.useJ2 ? 'J2 on' : 'J2 off'}`);
+  }
+
+  dom.bodyInfo.textContent = lines.join('\n');
 }
 
 // ── Body List & Search ───────────────────────────────────────────────────────
@@ -2953,7 +3108,9 @@ function setupUiEvents() {
     dom.toggleKuiper,
     dom.toggleOort,
     dom.toggleEnhancedMilky,
-    dom.toggleSurveyMilky
+    dom.toggleSurveyMilky,
+    dom.toggleEarthSatellites,
+    dom.toggleSatelliteJ2
   ]) {
     toggle.addEventListener('change', applyRenderVisibility);
   }
@@ -3119,6 +3276,11 @@ function animate(timestamp) {
 
   updateBodyRotations(simState.julianDate);
   updateEarthWeather(simState.julianDate);
+  maybeRefreshEarthCloudCoverage(Date.now());
+  updateEarthSurfaceLod();
+  if (earthSatelliteSystem) {
+    earthSatelliteSystem.update(simState.julianDate);
+  }
   updateAsteroidBelt(simState.julianDate);
 
   // Dynamic route update — keeps trajectory curves attached to moving planets
@@ -3161,4 +3323,5 @@ function animate(timestamp) {
 focusBody('sun', true);
 updateCameraClipPlanes();
 updateZoomMetricsUI();
+maybeRefreshEarthCloudCoverage(Date.now(), true);
 requestAnimationFrame(animate);

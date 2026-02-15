@@ -33,16 +33,27 @@ import queue
 import threading
 import time
 from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from benchmark import benchmark_against_references, generate_accuracy_report
 from data.bodies import ALL_BODIES
+from mission import MissionPlannerAgent
 from sim.base import SimulationEngine
-from sim.rebound_nbody import REBOUNDEngine
+from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperBeltEngine
-from trajectory import plan_interplanetary_route
+from sim.rebound_nbody import REBOUNDEngine
+from trajectory import (
+    DEFAULT_ASSIST_POOL,
+    TRAJECTORY_OBJECTIVES,
+    plan_interplanetary_route,
+    run_porkchop_scan,
+    solve_direct_lambert,
+)
 
 # TudatPy is optional (conda-only package)
 try:
@@ -72,7 +83,6 @@ DEFAULT_ENGINE = "rebound"
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
-TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist")
 
 
 def _rebound_available() -> bool:
@@ -152,7 +162,8 @@ def trajectory_capabilities():
         "objectives": list(TRAJECTORY_OBJECTIVES),
         "default_objective": "min_distance",
         "max_assists": 3,
-        "default_assist_pool": ["mercury", "venus", "earth", "mars", "jupiter", "saturn"],
+        "default_assist_pool": list(DEFAULT_ASSIST_POOL),
+        "ephemeris_providers": ["auto", "spice", "horizons", "kepler"],
         "planner_body_ids": planner_body_ids,
     }
 
@@ -168,6 +179,8 @@ def trajectory_plan(payload: dict):
     departure_jd = payload.get("departure_jd")
     max_assists = payload.get("max_assists", 1)
     assist_pool = payload.get("assist_pool")
+    ephemeris_provider = payload.get("ephemeris_provider", "auto")
+    prograde = payload.get("prograde", True)
 
     if not isinstance(from_id, str) or not from_id:
         raise HTTPException(status_code=400, detail="`from_id` must be a non-empty string")
@@ -196,6 +209,10 @@ def trajectory_plan(payload: dict):
         if not isinstance(assist_pool, list) or not all(isinstance(item, str) and item for item in assist_pool):
             raise HTTPException(status_code=400, detail="`assist_pool` must be a list of strings")
         assist_pool = list(dict.fromkeys(assist_pool))
+    if not isinstance(ephemeris_provider, str):
+        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
+    if not isinstance(prograde, bool):
+        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
 
     body_ids = {body["id"] for body in ALL_BODIES}
     if from_id not in body_ids:
@@ -211,6 +228,8 @@ def trajectory_plan(payload: dict):
         objective=objective,
         max_assists=max_assists,
         assist_pool=assist_pool,
+        ephemeris_provider=ephemeris_provider,
+        prograde=prograde,
     )
     if result.get("best") is None:
         raise HTTPException(status_code=422, detail="No feasible route could be evaluated")
@@ -219,8 +238,159 @@ def trajectory_plan(payload: dict):
     result["constraints"] = {
         "objective": objective,
         "max_assists": max_assists,
+        "ephemeris_provider": ephemeris_provider,
+        "prograde": prograde,
     }
     return result
+
+
+@app.post("/trajectory/lambert")
+def trajectory_lambert(payload: dict):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be an object")
+
+    from_id = payload.get("from_id")
+    to_id = payload.get("to_id")
+    departure_jd = payload.get("departure_jd")
+    arrival_jd = payload.get("arrival_jd")
+    ephemeris_provider = payload.get("ephemeris_provider", "auto")
+    prograde = payload.get("prograde", True)
+
+    if not isinstance(from_id, str) or not isinstance(to_id, str):
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must be strings")
+    if from_id == to_id:
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+    try:
+        departure_jd = float(departure_jd)
+        arrival_jd = float(arrival_jd)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="`departure_jd` and `arrival_jd` must be numeric") from exc
+    if not math.isfinite(departure_jd) or not math.isfinite(arrival_jd):
+        raise HTTPException(status_code=400, detail="`departure_jd` and `arrival_jd` must be finite")
+    if arrival_jd <= departure_jd:
+        raise HTTPException(status_code=400, detail="`arrival_jd` must be greater than `departure_jd`")
+    if not isinstance(ephemeris_provider, str):
+        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
+    if not isinstance(prograde, bool):
+        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
+
+    result = solve_direct_lambert(
+        ALL_BODIES,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        arrival_jd=arrival_jd,
+        ephemeris_provider=ephemeris_provider,
+        prograde=prograde,
+    )
+    if result.get("solution") is None:
+        raise HTTPException(status_code=422, detail=result.get("error", "No Lambert solution"))
+    return result
+
+
+@app.post("/trajectory/porkchop")
+def trajectory_porkchop(payload: dict):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be an object")
+
+    from_id = payload.get("from_id")
+    to_id = payload.get("to_id")
+    ephemeris_provider = payload.get("ephemeris_provider", "auto")
+    prograde = payload.get("prograde", True)
+
+    try:
+        departure_start_jd = float(payload.get("departure_start_jd"))
+        departure_end_jd = float(payload.get("departure_end_jd"))
+        departure_step_days = float(payload.get("departure_step_days", 10.0))
+        tof_min_days = float(payload.get("tof_min_days", 60.0))
+        tof_max_days = float(payload.get("tof_max_days", 700.0))
+        tof_step_days = float(payload.get("tof_step_days", 20.0))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Porkchop bounds must be numeric") from exc
+
+    if not isinstance(from_id, str) or not isinstance(to_id, str):
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must be strings")
+    if from_id == to_id:
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+    if departure_end_jd <= departure_start_jd:
+        raise HTTPException(status_code=400, detail="`departure_end_jd` must be greater than `departure_start_jd`")
+    if tof_max_days <= tof_min_days:
+        raise HTTPException(status_code=400, detail="`tof_max_days` must be greater than `tof_min_days`")
+    if departure_step_days <= 0.0 or tof_step_days <= 0.0:
+        raise HTTPException(status_code=400, detail="Step sizes must be positive")
+    if not isinstance(ephemeris_provider, str):
+        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
+    if not isinstance(prograde, bool):
+        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
+
+    return run_porkchop_scan(
+        ALL_BODIES,
+        from_id=from_id,
+        to_id=to_id,
+        departure_start_jd=departure_start_jd,
+        departure_end_jd=departure_end_jd,
+        departure_step_days=departure_step_days,
+        tof_min_days=tof_min_days,
+        tof_max_days=tof_max_days,
+        tof_step_days=tof_step_days,
+        ephemeris_provider=ephemeris_provider,
+        prograde=prograde,
+    )
+
+
+@app.get("/mission/capabilities")
+def mission_capabilities():
+    return {
+        "agents": [
+            "MissionPlannerAgent",
+            "TrajectoryAgent",
+            "MiningAgent",
+            "LogisticsAgent",
+            "VerifierAgent",
+        ],
+        "objective": "maximize(returned_payload_kg - propellant_used_kg - risk_penalty - time_penalty)",
+        "services": [
+            "ephemeris_service",
+            "vehicle_service",
+            "mining_service",
+            "risk_service",
+        ],
+    }
+
+
+@app.post("/mission/plan")
+def mission_plan(payload: dict):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be an object")
+    planner = MissionPlannerAgent(ALL_BODIES)
+    result = planner.plan(payload)
+    if result.get("recommendation") is None:
+        raise HTTPException(status_code=422, detail=result.get("status", "No feasible mission recommendation"))
+    return result
+
+
+@app.get("/benchmark/accuracy")
+def benchmark_accuracy(ephemeris_provider: str = "auto"):
+    return benchmark_against_references(ALL_BODIES, ephemeris_provider=ephemeris_provider)
+
+
+@app.post("/benchmark/accuracy/report")
+def benchmark_accuracy_report(payload: dict):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be an object")
+    ephemeris_provider = payload.get("ephemeris_provider", "auto")
+    if not isinstance(ephemeris_provider, str):
+        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    default_path = Path("my-notes") / f"ACCURACY_REPORT_{timestamp}.md"
+    output_path = Path(payload.get("output_path", str(default_path)))
+    report = generate_accuracy_report(
+        ALL_BODIES,
+        output_path=output_path,
+        ephemeris_provider=ephemeris_provider,
+    )
+    return report
 
 
 # ── Simulation Runner (background thread) ────────────────────────────────────
@@ -349,28 +519,39 @@ class SimulationRunner:
 
             # ── Build state ───────────────────────────────────────────
             try:
-                state = self.engine.get_state()
+                raw_state = self.engine.get_state()
             except Exception as exc:
                 self._runtime_error = f"State generation failed: {exc}"
                 self.paused = True
                 self._push_error(self._runtime_error, code="runtime_error")
-                state = {
+                raw_state = {
                     "type": "state_update",
                     "engine": self.engine.engine_name,
+                    "fidelity": self.engine.fidelity_level,
                     "jd": self.engine.get_julian_date(),
+                    "force_models": {},
                     "bodies": {},
                 }
-            state["paused"] = self.paused
-            state["time_scale"] = self.time_scale
-            state["energy_error"] = self.engine.get_energy_error()
-            state["backend"] = {
-                "target_fps": self.target_fps,
-                "command_queue_depth": self.command_queue.qsize(),
-                "response_queue_depth": self.response_queue.qsize(),
-                "kuiper_active": self.kuiper.active,
-                "dropped_responses": self._dropped_responses,
-                "runtime_error": self._runtime_error,
-            }
+            normalized_state = normalize_state_update(
+                raw_state,
+                engine_name=self.engine.engine_name,
+                fidelity=self.engine.fidelity_level,
+                jd_fallback=self.engine.get_julian_date(),
+            )
+            state = attach_runtime_telemetry(
+                normalized_state,
+                paused=self.paused,
+                time_scale=self.time_scale,
+                energy_error=self.engine.get_energy_error(),
+                backend={
+                    "target_fps": self.target_fps,
+                    "command_queue_depth": self.command_queue.qsize(),
+                    "response_queue_depth": self.response_queue.qsize(),
+                    "kuiper_active": self.kuiper.active,
+                    "dropped_responses": self._dropped_responses,
+                    "runtime_error": self._runtime_error,
+                },
+            )
 
             if self.kuiper.active and self.kuiper.should_send():
                 try:
