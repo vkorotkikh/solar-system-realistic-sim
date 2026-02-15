@@ -1,11 +1,17 @@
-"""
-Trajectory planning package for mission/course computations.
+"""Trajectory planning package for mission/course computations."""
 
-This package centralizes route-planning logic so mission design flows
-live in backend services instead of frontend rendering code.
-"""
+from .planner import (
+    DEFAULT_ASSIST_POOL,
+    TRAJECTORY_OBJECTIVES,
+    plan_interplanetary_route,
+    run_porkchop_scan,
+    solve_direct_lambert,
+)
 
-from .planner import plan_interplanetary_route
-
-__all__ = ["plan_interplanetary_route"]
-
+__all__ = [
+    "DEFAULT_ASSIST_POOL",
+    "TRAJECTORY_OBJECTIVES",
+    "plan_interplanetary_route",
+    "run_porkchop_scan",
+    "solve_direct_lambert",
+]
