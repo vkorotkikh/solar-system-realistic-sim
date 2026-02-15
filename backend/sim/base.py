@@ -43,8 +43,15 @@ class SimulationEngine(ABC):
     def get_state(self) -> Dict[str, Any]:
         """
         Return current state of all bodies.
-        Format: {"type": "state_update", "engine": str, "jd": float,
-                 "bodies": {id: {"pos": [x,y,z], "vel": [vx,vy,vz]}, ...}}
+        Format:
+            {
+              "type": "state_update",
+              "engine": str,
+              "fidelity": str,
+              "jd": float,
+              "force_models": {...},
+              "bodies": {id: {"pos": [x,y,z], "vel": [vx,vy,vz]}, ...},
+            }
         """
         ...
 
@@ -61,4 +68,14 @@ class SimulationEngine(ABC):
     @abstractmethod
     def get_energy(self) -> float:
         """Return total energy of the system (for conservation monitoring)."""
+        ...
+
+    @abstractmethod
+    def get_energy_error(self) -> float:
+        """Return relative energy error since initialization."""
+        ...
+
+    @abstractmethod
+    def get_orbital_elements(self, body_id: str) -> Dict | None:
+        """Return osculating orbital elements for a tracked body, if available."""
         ...

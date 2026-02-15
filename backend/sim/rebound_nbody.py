@@ -114,7 +114,14 @@ class REBOUNDEngine(SimulationEngine):
 
     def get_state(self) -> Dict[str, Any]:
         if self.sim is None:
-            return {"type": "state_update", "engine": self.engine_name, "jd": 0, "bodies": {}}
+            return {
+                "type": "state_update",
+                "engine": self.engine_name,
+                "fidelity": self.fidelity_level,
+                "jd": 0,
+                "force_models": {"n_body_point_mass": True, "integrator": self._integrator},
+                "bodies": {},
+            }
 
         bodies: Dict[str, Dict] = {}
         for i, body_id in enumerate(self.body_ids):
@@ -127,7 +134,12 @@ class REBOUNDEngine(SimulationEngine):
         return {
             "type": "state_update",
             "engine": self.engine_name,
+            "fidelity": self.fidelity_level,
             "jd": self.get_julian_date(),
+            "force_models": {
+                "n_body_point_mass": True,
+                "integrator": self._integrator,
+            },
             "bodies": bodies,
         }
 
@@ -152,7 +164,7 @@ class REBOUNDEngine(SimulationEngine):
 
     def get_energy_error(self) -> float:
         """Relative energy error since initialization."""
-        if self._initial_energy == 0:
+        if self.sim is None or self._initial_energy == 0:
             return 0.0
         return abs((self.sim.energy() - self._initial_energy) / self._initial_energy)
 

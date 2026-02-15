@@ -157,6 +157,7 @@ class TudatPyEngine(SimulationEngine):
         # TudatPy objects
         self._body_system: Any = None
         self._acceleration_models: Any = None
+        self._initial_energy: float = 0.0
 
     # ── SimulationEngine interface ────────────────────────────────────
 
@@ -248,6 +249,7 @@ class TudatPyEngine(SimulationEngine):
         start_s = _jd_to_seconds(start_jd)
         self._propagate_chunk(start_s)
         self._current_state = self._interpolate_at(start_s)
+        self._initial_energy = self.get_energy()
 
         logger.info(
             "TudatPyEngine ready: %d bodies, J2=%s (deg %d), SRP=%s",
@@ -343,6 +345,11 @@ class TudatPyEngine(SimulationEngine):
                     pe -= G_SI * masses[i] * masses[j] / dist
 
         return ke + pe
+
+    def get_energy_error(self) -> float:
+        if abs(self._initial_energy) < 1e-18:
+            return 0.0
+        return abs((self.get_energy() - self._initial_energy) / self._initial_energy)
 
     # ── Optional: orbital elements from state vector ──────────────────
 
