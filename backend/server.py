@@ -35,13 +35,14 @@ import time
 from collections import Counter
 from typing import Any, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from data.bodies import ALL_BODIES
 from sim.base import SimulationEngine
 from sim.rebound_nbody import REBOUNDEngine
 from sim.kuiper import KuiperBeltEngine
+from trajectory import plan_interplanetary_route
 
 # TudatPy is optional (conda-only package)
 try:
@@ -71,6 +72,7 @@ DEFAULT_ENGINE = "rebound"
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist")
 
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
@@ -122,6 +124,88 @@ def bodies():
         "type_counts": type_counts,
         "bodies": catalog,
     }
+
+
+@app.get("/trajectory/capabilities")
+def trajectory_capabilities():
+    planner_body_ids = [
+        body["id"]
+        for body in ALL_BODIES
+        if body.get("orbit") is not None and body.get("type") != "moon"
+    ]
+    return {
+        "objectives": list(TRAJECTORY_OBJECTIVES),
+        "default_objective": "min_distance",
+        "max_assists": 3,
+        "default_assist_pool": ["mercury", "venus", "earth", "mars", "jupiter", "saturn"],
+        "planner_body_ids": planner_body_ids,
+    }
+
+
+@app.post("/trajectory/plan")
+def trajectory_plan(payload: dict):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be an object")
+
+    from_id = payload.get("from_id")
+    to_id = payload.get("to_id")
+    objective = payload.get("objective", "min_distance")
+    departure_jd = payload.get("departure_jd")
+    max_assists = payload.get("max_assists", 1)
+    assist_pool = payload.get("assist_pool")
+
+    if not isinstance(from_id, str) or not from_id:
+        raise HTTPException(status_code=400, detail="`from_id` must be a non-empty string")
+    if not isinstance(to_id, str) or not to_id:
+        raise HTTPException(status_code=400, detail="`to_id` must be a non-empty string")
+    if from_id == to_id:
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+    try:
+        departure_jd = float(departure_jd)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="`departure_jd` must be numeric") from exc
+    if not math.isfinite(departure_jd):
+        raise HTTPException(status_code=400, detail="`departure_jd` must be finite")
+    if objective not in TRAJECTORY_OBJECTIVES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`objective` must be one of {list(TRAJECTORY_OBJECTIVES)}",
+        )
+    try:
+        max_assists = int(max_assists)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="`max_assists` must be an integer") from exc
+    max_assists = max(0, min(3, max_assists))
+
+    if assist_pool is not None:
+        if not isinstance(assist_pool, list) or not all(isinstance(item, str) and item for item in assist_pool):
+            raise HTTPException(status_code=400, detail="`assist_pool` must be a list of strings")
+        assist_pool = list(dict.fromkeys(assist_pool))
+
+    body_ids = {body["id"] for body in ALL_BODIES}
+    if from_id not in body_ids:
+        raise HTTPException(status_code=404, detail=f"Unknown departure body `{from_id}`")
+    if to_id not in body_ids:
+        raise HTTPException(status_code=404, detail=f"Unknown destination body `{to_id}`")
+
+    result = plan_interplanetary_route(
+        ALL_BODIES,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        objective=objective,
+        max_assists=max_assists,
+        assist_pool=assist_pool,
+    )
+    if result.get("best") is None:
+        raise HTTPException(status_code=422, detail="No feasible route could be evaluated")
+
+    result["source"] = "backend"
+    result["constraints"] = {
+        "objective": objective,
+        "max_assists": max_assists,
+    }
+    return result
 
 
 # ── Simulation Runner (background thread) ────────────────────────────────────
