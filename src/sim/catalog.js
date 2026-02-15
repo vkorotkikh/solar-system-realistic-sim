@@ -1,6 +1,14 @@
 import moons from '../data/moons.json';
 import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants.js';
-import { ASTEROID_BELT_OBJECTS, KUIPER_BELT_OBJECTS, MAJOR_MOON_RADII_KM, MAJOR_MOONS, PLANETS, SUN } from '../data/planets.js';
+import {
+  ASTEROID_BELT_OBJECTS,
+  KUIPER_BELT_OBJECTS,
+  MAJOR_MOON_RADII_KM,
+  MAJOR_MOON_SHAPE_KM,
+  MAJOR_MOONS,
+  PLANETS,
+  SUN
+} from '../data/planets.js';
 
 const PARENT_TINTS = {
   Earth: '#d2d8e3',
@@ -201,6 +209,8 @@ export function createSolarSystemCatalog() {
     ...SUN,
     parentId: null,
     isMajor: true,
+    equatorialRadiusKm: SUN.radiusKm,
+    polarRadiusKm: SUN.radiusKm,
     displayRadiusAu: displayRadiusAu(SUN.radiusKm, SUN.type),
     realRadiusAu: SUN.radiusKm / AU_KM,
     orbit: null
@@ -210,11 +220,15 @@ export function createSolarSystemCatalog() {
   bodies.push(sunBody);
 
   for (const planet of PLANETS) {
+    const equatorialRadiusKm = Number.isFinite(planet.equatorialRadiusKm) ? planet.equatorialRadiusKm : planet.radiusKm;
+    const polarRadiusKm = Number.isFinite(planet.polarRadiusKm) ? planet.polarRadiusKm : planet.radiusKm;
     usedIds.add(planet.id);
     bodies.push({
       ...planet,
       parentId: 'sun',
       isMajor: true,
+      equatorialRadiusKm,
+      polarRadiusKm,
       displayRadiusAu: displayRadiusAu(planet.radiusKm, planet.type),
       realRadiusAu: planet.radiusKm / AU_KM,
       orbit: {
@@ -230,6 +244,8 @@ export function createSolarSystemCatalog() {
       ...ast,
       parentId: 'sun',
       isMajor: true,
+      equatorialRadiusKm: ast.radiusKm,
+      polarRadiusKm: ast.radiusKm,
       displayRadiusAu: displayRadiusAu(ast.radiusKm, ast.type === 'dwarf' ? 'dwarf' : 'planet'),
       realRadiusAu: ast.radiusKm / AU_KM,
       orbit: {
@@ -245,6 +261,8 @@ export function createSolarSystemCatalog() {
       ...kbo,
       parentId: 'sun',
       isMajor: true,
+      equatorialRadiusKm: kbo.radiusKm,
+      polarRadiusKm: kbo.radiusKm,
       displayRadiusAu: displayRadiusAu(kbo.radiusKm, kbo.type),
       realRadiusAu: kbo.radiusKm / AU_KM,
       orbit: {
@@ -271,6 +289,9 @@ export function createSolarSystemCatalog() {
     }
 
     const radiusKm = estimateMoonRadiusKm(moon);
+    const moonShape = MAJOR_MOON_SHAPE_KM[moon.name];
+    const equatorialRadiusKm = Number.isFinite(moonShape?.equatorialRadiusKm) ? moonShape.equatorialRadiusKm : radiusKm;
+    const polarRadiusKm = Number.isFinite(moonShape?.polarRadiusKm) ? moonShape.polarRadiusKm : radiusKm;
     const id = makeMoonId(moon, usedIds);
     const frameNormalized = normalizeMoonOrbitFrame(moon, parentId);
 
@@ -281,6 +302,8 @@ export function createSolarSystemCatalog() {
       parentId,
       massKg: null,
       radiusKm,
+      equatorialRadiusKm,
+      polarRadiusKm,
       displayRadiusAu: displayRadiusAu(radiusKm, 'moon'),
       realRadiusAu: radiusKm / AU_KM,
       color: moonColor(moon.planet),
