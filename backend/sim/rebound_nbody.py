@@ -37,6 +37,9 @@ class REBOUNDEngine(SimulationEngine):
     def fidelity_level(self) -> str:
         return "high"
 
+    def list_body_ids(self) -> List[str]:
+        return list(self.body_ids)
+
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
         self._stored_bodies = bodies
         self.start_jd = start_jd
