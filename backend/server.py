@@ -42,6 +42,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from benchmark import benchmark_against_references, generate_accuracy_report
 from data.bodies import ALL_BODIES
+from data.nearby_systems import CATALOG_PATH, load_nearby_systems_catalog, query_nearby_systems
 from mission import MissionPlannerAgent
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
@@ -148,6 +149,31 @@ def bodies():
         "count": len(catalog),
         "type_counts": type_counts,
         "bodies": catalog,
+    }
+
+
+@app.get("/nearby-systems")
+def nearby_systems(limit: int = 354, max_distance_ly: float = 20.0):
+    """
+    Nearby stellar-system catalog for interstellar marker rendering.
+    """
+    safe_limit = max(1, min(5_000, int(limit)))
+    safe_max_distance_ly = max(0.1, min(100.0, float(max_distance_ly)))
+    all_rows = load_nearby_systems_catalog()
+    rows = query_nearby_systems(
+        limit=safe_limit,
+        max_distance_ly=safe_max_distance_ly,
+    )
+    return {
+        "count": len(rows),
+        "total_available": len(all_rows),
+        "limit": safe_limit,
+        "max_distance_ly": safe_max_distance_ly,
+        "source": {
+            "catalog_path": str(CATALOG_PATH),
+            "catalog_name": "J/A+A/650/A201 tablea1",
+        },
+        "systems": rows,
     }
 
 
