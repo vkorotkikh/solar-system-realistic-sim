@@ -1,0 +1,24 @@
+# Trajectory Accuracy Benchmark Report
+
+Generated: 2026-02-15T08:30:54.764694Z
+
+## Summary
+
+- Scenarios: 3
+- Solved: 3
+- Passed tolerance: 1
+- Pass rate: 33.3%
+- Mean |delta-v error|: 22.788 km/s
+
+## Scenario Results
+
+| Scenario | Source | Status | Model dV (km/s) | Reference dV (km/s) | |Error| (km/s) | Tolerance | Pass |
+|---|---|---:|---:|---:|---:|---:|---:|
+| earth_mars_short_transfer | reference-gmat-orekit-tudat-blend | ok | 7.637 | 8.600 | 0.963 | 6.000 | yes |
+| earth_venus_inner_transfer | reference-gmat-orekit-tudat-blend | ok | 39.983 | 7.200 | 32.783 | 5.000 | no |
+| earth_jupiter_outer_transfer | reference-gmat-orekit-tudat-blend | ok | 51.620 | 17.000 | 34.620 | 10.000 | no |
+
+## Notes
+
+- This report compares current Lambert outputs against configured reference scenarios.
+- Reference rows are stored in `backend/benchmark/reference_scenarios.json` and can be replaced with stricter GMAT/Orekit/Tudat baselines.
