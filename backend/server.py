@@ -28,10 +28,12 @@ Protocol (WebSocket /ws/sim):
 
 import asyncio
 import json
+import math
 import queue
 import threading
 import time
-from typing import Optional
+from collections import Counter
+from typing import Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,6 +65,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
+DEFAULT_INTEGRATOR = "ias15"
+DEFAULT_ENGINE = "rebound"
+
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
 
@@ -85,8 +91,33 @@ def info():
     return {
         "bodies": [b["id"] for b in ALL_BODIES],
         "body_count": len(ALL_BODIES),
-        "integrators": ["ias15", "whfast", "mercurius"],
-        "default_integrator": "ias15",
+        "integrators": list(SUPPORTED_INTEGRATORS),
+        "default_integrator": DEFAULT_INTEGRATOR,
+        "engines": {
+            "default": DEFAULT_ENGINE,
+            "supported": ["rebound", "tudatpy"],
+        },
+    }
+
+
+@app.get("/bodies")
+def bodies():
+    type_counts = dict(Counter(body.get("type", "unknown") for body in ALL_BODIES))
+    catalog = [
+        {
+            "id": body.get("id"),
+            "name": body.get("name"),
+            "type": body.get("type"),
+            "mass_kg": body.get("mass_kg"),
+            "radius_km": body.get("radius_km"),
+            "has_orbit": body.get("orbit") is not None,
+        }
+        for body in ALL_BODIES
+    ]
+    return {
+        "count": len(catalog),
+        "type_counts": type_counts,
+        "bodies": catalog,
     }
 
 
@@ -127,6 +158,34 @@ class SimulationRunner:
             return self.response_queue.get_nowait()
         except queue.Empty:
             return None
+
+    @staticmethod
+    def _coerce_finite_float(value: Any) -> Optional[float]:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(parsed):
+            return None
+        return parsed
+
+    @staticmethod
+    def _coerce_vec3(value: Any) -> Optional[list[float]]:
+        if not isinstance(value, (list, tuple)) or len(value) != 3:
+            return None
+        out = []
+        for coord in value:
+            scalar = SimulationRunner._coerce_finite_float(coord)
+            if scalar is None:
+                return None
+            out.append(scalar)
+        return out
+
+    def _push_error(self, message: str, *, action: str = "", code: str = "bad_request") -> None:
+        payload = {"type": "error", "message": message, "code": code}
+        if action:
+            payload["action"] = action
+        self.response_queue.put(payload)
 
     def _loop(self):
         frame_time = 1.0 / self.target_fps
@@ -171,10 +230,23 @@ class SimulationRunner:
                 time.sleep(remaining)
 
     def _handle_command(self, cmd: dict):
-        action = cmd.get("type", "")
+        if not isinstance(cmd, dict):
+            self._push_error("Command payload must be a JSON object")
+            return
+
+        action_raw = cmd.get("type", "")
+        action = action_raw.strip() if isinstance(action_raw, str) else ""
+        if not action:
+            self._push_error("Command requires a non-empty string `type` field")
+            return
 
         if action == "set_time_scale":
-            self.time_scale = float(cmd.get("days_per_sec", 4.0))
+            days_per_sec = self._coerce_finite_float(cmd.get("days_per_sec"))
+            if days_per_sec is None:
+                self._push_error("`set_time_scale` requires numeric `days_per_sec`", action=action)
+                return
+            # Keep bounded values to avoid accidental instability.
+            self.time_scale = max(-365.0, min(365.0, days_per_sec))
 
         elif action == "pause":
             self.paused = True
@@ -183,15 +255,24 @@ class SimulationRunner:
             self.paused = False
 
         elif action == "set_julian_date":
-            jd = cmd.get("jd")
-            if jd is not None:
-                self.engine.set_julian_date(float(jd))
-                if self.kuiper.active:
-                    self.kuiper.deactivate()
+            jd = self._coerce_finite_float(cmd.get("jd"))
+            if jd is None:
+                self._push_error("`set_julian_date` requires numeric `jd`", action=action)
+                return
+            self.engine.set_julian_date(jd)
+            if self.kuiper.active:
+                self.kuiper.deactivate()
 
         elif action == "activate_kuiper":
-            center = cmd.get("center", [42.0, 0.0, 0.0])
-            spread = float(cmd.get("spread", 5.0))
+            center = self._coerce_vec3(cmd.get("center", [42.0, 0.0, 0.0]))
+            if center is None:
+                self._push_error("`activate_kuiper` requires `center` as [x,y,z] numbers", action=action)
+                return
+            spread = self._coerce_finite_float(cmd.get("spread", 5.0))
+            if spread is None or spread <= 0:
+                self._push_error("`activate_kuiper` requires positive numeric `spread`", action=action)
+                return
+            spread = max(0.25, min(40.0, spread))
             main_state = self.engine.get_state()
             bodies = main_state.get("bodies", {})
 
@@ -216,13 +297,28 @@ class SimulationRunner:
         elif action == "get_orbital_elements":
             body_id = cmd.get("body_id")
             if body_id:
-                elems = self.engine.get_orbital_elements(body_id)
+                if not isinstance(body_id, str):
+                    self._push_error("`get_orbital_elements` requires string `body_id`", action=action)
+                    return
+                canonical_ids = {body.lower(): body for body in self.engine.list_body_ids()}
+                body_lookup = canonical_ids.get(body_id.lower(), body_id)
+                elems = self.engine.get_orbital_elements(body_lookup)
                 if elems:
                     self.response_queue.put({
                         "type": "orbital_elements",
-                        "body_id": body_id,
+                        "body_id": body_lookup,
                         "elements": elems,
                     })
+                else:
+                    self._push_error(
+                        f"No orbital elements available for `{body_lookup}`",
+                        action=action,
+                        code="not_available",
+                    )
+            else:
+                self._push_error("`get_orbital_elements` requires `body_id`", action=action)
+        else:
+            self._push_error(f"Unsupported command type `{action}`", action=action, code="unsupported_command")
 
 
 # ── WebSocket task helpers ────────────────────────────────────────────────────
@@ -236,6 +332,12 @@ async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
             await websocket.send_text(json.dumps({
                 "type": "error",
                 "message": "Invalid JSON payload",
+            }))
+            continue
+        if not isinstance(msg, dict):
+            await websocket.send_text(json.dumps({
+                "type": "error",
+                "message": "Payload must be a JSON object",
             }))
             continue
         runner.send_command(msg)
@@ -280,14 +382,27 @@ async def simulation_websocket(websocket: WebSocket):
     await websocket.accept()
 
     # Select engine and integrator from query params
-    engine_type = websocket.query_params.get("engine", "rebound")
-    integrator = websocket.query_params.get("integrator", "ias15")
+    engine_requested = websocket.query_params.get("engine", DEFAULT_ENGINE).lower()
+    integrator_requested = websocket.query_params.get("integrator", DEFAULT_INTEGRATOR).lower()
+    integrator = integrator_requested if integrator_requested in SUPPORTED_INTEGRATORS else DEFAULT_INTEGRATOR
 
     # Initialize requested engine
-    if engine_type == "tudatpy" and TudatPyEngine is not None and TudatPyEngine().available:
+    warnings = []
+    if integrator != integrator_requested:
+        warnings.append(
+            f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
+        )
+
+    if engine_requested == "tudatpy" and TudatPyEngine is not None and TudatPyEngine().available:
         enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
         engine = TudatPyEngine(enable_j2=enable_j2)
+        engine_type = "tudatpy"
     else:
+        engine_type = "rebound"
+        if engine_requested != "rebound":
+            warnings.append(
+                f"Engine `{engine_requested}` unavailable; using `rebound`"
+            )
         engine = REBOUNDEngine(integrator=integrator)
     engine.initialize(ALL_BODIES)
 
@@ -309,12 +424,15 @@ async def simulation_websocket(websocket: WebSocket):
     await websocket.send_text(json.dumps({
         "type": "connected",
         "engine": engine.engine_name,
+        "engine_requested": engine_requested,
         "integrator": integrator,
+        "integrator_requested": integrator_requested,
         "fidelity": engine.fidelity_level,
-        "bodies": engine.body_ids,
+        "bodies": engine.list_body_ids(),
         "jd": engine.get_julian_date(),
         "fps": target_fps,
         "stream_hz": stream_hz,
+        "warnings": warnings,
     }))
 
     try:
