@@ -107,6 +107,7 @@
           <select id="planner-objective">
             <option value="min_distance">Minimize travel path</option>
             <option value="max_assist">Maximize gravity-assist gain</option>
+            <option value="min_time">Minimize total time</option>
           </select>
 
           <label for="planner-assists">Max assist flybys</label>
@@ -114,11 +115,34 @@
             <option value="0">0</option>
             <option value="1" selected>1</option>
             <option value="2">2</option>
+            <option value="3">3</option>
           </select>
+
+          <label for="planner-ephemeris">Ephemeris source</label>
+          <select id="planner-ephemeris">
+            <option value="auto" selected>Auto (SPICE / Kepler / HORIZONS)</option>
+            <option value="kepler">Kepler fallback</option>
+            <option value="spice">SPICE (TudatPy)</option>
+            <option value="horizons">JPL HORIZONS</option>
+          </select>
+
+          <label><input id="planner-prograde" type="checkbox" checked /> Prograde transfer</label>
+
+          <label for="planner-arrival-date">Lambert arrival date (UTC)</label>
+          <input id="planner-arrival-date" type="date" />
+
+          <label for="planner-payload-mass">Mission payload mass (kg)</label>
+          <input id="planner-payload-mass" type="number" min="100" step="100" value="6500" />
 
           <div class="row row-inline">
             <button id="plan-direct" type="button">Direct</button>
             <button id="plan-optimal" type="button">Plan Route</button>
+            <button id="plan-lambert" type="button">Lambert</button>
+          </div>
+
+          <div class="row row-inline">
+            <button id="plan-porkchop" type="button">Porkchop Best</button>
+            <button id="plan-mission" type="button">Mission Plan</button>
             <button id="clear-route" type="button">Clear</button>
           </div>
 
