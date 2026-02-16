@@ -51,6 +51,8 @@ function fbm2D(x, y, seed, octaves = 6) {
 export function createPlanetHeightTexture({
   size = 1024,
   seed = 17,
+  mode = 'default',
+  craterDensity = 0.5,
   ridgeStrength = 0.65,
   mountainStrength = 0.45
 } = {}) {
@@ -64,7 +66,7 @@ export function createPlanetHeightTexture({
   for (let y = 0; y < size; y += 1) {
     const v = y / size;
     const latitude = (v - 0.5) * Math.PI;
-    const latitudeFade = Math.pow(Math.max(0.12, Math.cos(latitude)), 0.5);
+    const latitudeFade = Math.pow(Math.max(0.12, Math.cos(latitude)), mode === 'eolian' ? 0.75 : 0.5);
 
     for (let x = 0; x < size; x += 1) {
       const u = x / size;
@@ -72,12 +74,24 @@ export function createPlanetHeightTexture({
       const continental = fbm2D(u * 2.3 + 1.9, v * 1.7 - 0.6, seed, 5);
       const detail = fbm2D(u * 18.0 - 3.7, v * 12.0 + 2.1, seed + 31, 4);
       const ridged = 1 - Math.abs(fbm2D(u * 8.0 + 1.2, v * 6.0 - 2.8, seed + 59, 5) * 2 - 1);
+      const dunes = fbm2D(u * 34.0 + 1.5, v * 10.0 - 2.3, seed + 211, 4);
+      const craterMacro = fbm2D(u * 6.5 + 0.2, v * 6.5 + 0.3, seed + 97, 4);
+      const craterMicro = fbm2D(u * 38.0 + 0.9, v * 38.0 - 0.4, seed + 193, 3);
+      const craterSignal = Math.max(0, 1 - Math.abs(craterMacro * 2 - 1) * 1.5) * 0.72
+        + Math.max(0, 1 - Math.abs(craterMicro * 2 - 1) * 2.0) * 0.28;
+
+      let modeTerm = 0;
+      if (mode === 'cratered') {
+        modeTerm = -craterSignal * (0.55 + craterDensity * 0.45);
+      } else if (mode === 'eolian') {
+        modeTerm = dunes * 0.22 - Math.abs(dunes - 0.5) * 0.18;
+      }
 
       const h = Math.max(
         0,
         Math.min(
           1,
-          continental * 0.56 + detail * mountainStrength * 0.34 + ridged * ridgeStrength * 0.26
+          continental * 0.56 + detail * mountainStrength * 0.34 + ridged * ridgeStrength * 0.26 + modeTerm
         )
       ) * latitudeFade;
 

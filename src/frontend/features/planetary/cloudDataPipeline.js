@@ -43,6 +43,15 @@ function configureTexture(texture) {
   texture.needsUpdate = true;
 }
 
+function closeBitmapIfPossible(bitmap) {
+  if (!bitmap || typeof bitmap.close !== 'function') return;
+  try {
+    bitmap.close();
+  } catch {
+    // Ignore browser-specific close errors.
+  }
+}
+
 export class PlanetCloudDataPipeline {
   constructor({ provider, fallbackTexture = null }) {
     this.provider = provider;
@@ -183,13 +192,22 @@ export class PlanetCloudDataPipeline {
   }
 
   putCache(url, bitmap) {
+    const existing = this.tileCache.get(url);
+    if (existing && existing !== bitmap) {
+      closeBitmapIfPossible(existing);
+    }
+
     this.tileCache.set(url, bitmap);
-    this.cacheOrder.push(url);
+    if (!existing) {
+      this.cacheOrder.push(url);
+    }
 
     while (this.cacheOrder.length > this.maxCacheEntries) {
       const key = this.cacheOrder.shift();
       if (!key) continue;
+      const evicted = this.tileCache.get(key);
       this.tileCache.delete(key);
+      closeBitmapIfPossible(evicted);
     }
   }
 }

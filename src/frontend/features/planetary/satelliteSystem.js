@@ -1,12 +1,18 @@
 import {
   BufferGeometry,
+  CanvasTexture,
   Color,
+  DynamicDrawUsage,
   Float32BufferAttribute,
   Group,
+  InstancedMesh,
   Line,
   LineBasicMaterial,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
+  Sprite,
+  SpriteMaterial,
   SphereGeometry,
   Vector3
 } from 'three';
@@ -16,17 +22,43 @@ const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
 const DAY_SECONDS = 86_400;
 
-const EARTH_MU_KM3_S2 = 398_600.4418;
-const EARTH_J2 = 1.08262668e-3;
-const EARTH_EQUATORIAL_RADIUS_KM = 6_378.137;
-const EARTH_OBLIQUITY_RAD = 23.439291111 * DEG_TO_RAD;
-const COS_OBLIQUITY = Math.cos(EARTH_OBLIQUITY_RAD);
-const SIN_OBLIQUITY = Math.sin(EARTH_OBLIQUITY_RAD);
+const PRIMARY_MODELS = {
+  earth: {
+    id: 'earth',
+    muKm3S2: 398_600.4418,
+    j2: 1.08262668e-3,
+    equatorialRadiusKm: 6_378.137,
+    obliquityRad: 23.439291111 * DEG_TO_RAD
+  },
+  moon: {
+    id: 'moon',
+    muKm3S2: 4_902.800066,
+    j2: 2.032e-4,
+    equatorialRadiusKm: 1_738.1,
+    obliquityRad: 1.5424 * DEG_TO_RAD
+  },
+  mars: {
+    id: 'mars',
+    muKm3S2: 42_828.375214,
+    j2: 1.96045e-3,
+    equatorialRadiusKm: 3_396.19,
+    obliquityRad: 25.19 * DEG_TO_RAD
+  }
+};
 
-const SAT_TLE_SOURCES = {
+const DEFAULT_TLE_SOURCES_EARTH = {
   stations: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
   geo: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle'
 };
+const SATELLITE_ICON_TEXTURES = new Map();
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function nowMs() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
 
 function normalizeRadians(angle) {
   const wrapped = angle % TWO_PI;
@@ -62,7 +94,67 @@ function sanitizeId(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function parseTleElements(name, line1, line2, category) {
+function meanMotionFromSemimajorAxis(aKm, muKm3S2) {
+  const nRadSec = Math.sqrt(muKm3S2 / (aKm * aKm * aKm));
+  return (nRadSec * DAY_SECONDS) / TWO_PI;
+}
+
+function semimajorAxisFromMeanMotion(meanMotionRevDay, muKm3S2) {
+  const nRadSec = (meanMotionRevDay * TWO_PI) / DAY_SECONDS;
+  return Math.cbrt(muKm3S2 / (nRadSec * nRadSec));
+}
+
+function normalizeCatalogSatellite(entry, primaryModel) {
+  const name = `${entry.name ?? 'Satellite'}`.trim();
+  const id = entry.id ? `${entry.id}` : `sat-${sanitizeId(name)}`;
+  const category = `${entry.category ?? 'science'}`;
+
+  const meanMotionRevDay = Number.isFinite(entry.meanMotionRevDay)
+    ? entry.meanMotionRevDay
+    : Number.isFinite(entry.periodHours)
+      ? 24 / entry.periodHours
+      : Number.isFinite(entry.periodDays)
+        ? 1 / entry.periodDays
+        : null;
+
+  const aKm = Number.isFinite(entry.aKm)
+    ? entry.aKm
+    : Number.isFinite(entry.altitudeKm)
+      ? primaryModel.equatorialRadiusKm + entry.altitudeKm
+      : meanMotionRevDay
+        ? semimajorAxisFromMeanMotion(meanMotionRevDay, primaryModel.muKm3S2)
+        : null;
+
+  if (!Number.isFinite(aKm) || aKm <= 0) {
+    return null;
+  }
+
+  const resolvedMeanMotion = Number.isFinite(meanMotionRevDay)
+    ? meanMotionRevDay
+    : meanMotionFromSemimajorAxis(aKm, primaryModel.muKm3S2);
+
+  if (!Number.isFinite(resolvedMeanMotion) || resolvedMeanMotion <= 0) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    category,
+    epochJd: Number.isFinite(entry.epochJd) ? entry.epochJd : J2000_JD,
+    aKm,
+    e: Number.isFinite(entry.e) ? Math.max(0, Math.min(0.9999, entry.e)) : 0,
+    iRad: (Number.isFinite(entry.iDeg) ? entry.iDeg : 0) * DEG_TO_RAD,
+    raanRad: (Number.isFinite(entry.ascendingNodeDeg) ? entry.ascendingNodeDeg : 0) * DEG_TO_RAD,
+    argPeriapsisRad: (Number.isFinite(entry.argPeriapsisDeg) ? entry.argPeriapsisDeg : 0) * DEG_TO_RAD,
+    meanAnomalyRad: (Number.isFinite(entry.meanAnomalyDeg) ? entry.meanAnomalyDeg : 0) * DEG_TO_RAD,
+    meanMotionRevDay: resolvedMeanMotion,
+    meanMotionRadSec: (resolvedMeanMotion * TWO_PI) / DAY_SECONDS,
+    frame: `${entry.frame ?? 'ecliptic'}`.toLowerCase()
+  };
+}
+
+function parseTleElements(name, line1, line2, category, primaryModel) {
   const epochYear = Number(line1.slice(18, 20));
   const epochDay = Number(line1.slice(20, 32));
   const iDeg = Number(line2.slice(8, 16));
@@ -87,7 +179,7 @@ function parseTleElements(name, line1, line2, category) {
   }
 
   const meanMotionRadSec = (meanMotionRevDay * TWO_PI) / DAY_SECONDS;
-  const aKm = Math.cbrt(EARTH_MU_KM3_S2 / (meanMotionRadSec * meanMotionRadSec));
+  const aKm = Math.cbrt(primaryModel.muKm3S2 / (meanMotionRadSec * meanMotionRadSec));
 
   return {
     id: `sat-${sanitizeId(name)}`,
@@ -101,11 +193,12 @@ function parseTleElements(name, line1, line2, category) {
     argPeriapsisRad: argPerigeeDeg * DEG_TO_RAD,
     meanAnomalyRad: meanAnomalyDeg * DEG_TO_RAD,
     meanMotionRevDay,
-    meanMotionRadSec
+    meanMotionRadSec,
+    frame: 'equatorial'
   };
 }
 
-function parseTleBlock(tleText, category) {
+function parseTleBlock(tleText, category, primaryModel) {
   const lines = tleText
     .split('\n')
     .map((line) => line.trim())
@@ -129,7 +222,7 @@ function parseTleBlock(tleText, category) {
       continue;
     }
 
-    const parsed = parseTleElements(name, line1, line2, category);
+    const parsed = parseTleElements(name, line1, line2, category, primaryModel);
     if (parsed) {
       satellites.push(parsed);
     }
@@ -140,14 +233,22 @@ function parseTleBlock(tleText, category) {
   return satellites;
 }
 
-function eciToEcliptic(xEq, yEq, zEq, out) {
-  const y = COS_OBLIQUITY * yEq + SIN_OBLIQUITY * zEq;
-  const z = -SIN_OBLIQUITY * yEq + COS_OBLIQUITY * zEq;
-  out.set(xEq / AU_KM, y / AU_KM, z / AU_KM);
+function toEcliptic(primaryModel, frame, xPrimary, yPrimary, zPrimary, out) {
+  if (frame === 'ecliptic') {
+    out.set(xPrimary / AU_KM, yPrimary / AU_KM, zPrimary / AU_KM);
+    return out;
+  }
+
+  const obliquity = Number.isFinite(primaryModel.obliquityRad) ? primaryModel.obliquityRad : 0;
+  const cosOb = Math.cos(obliquity);
+  const sinOb = Math.sin(obliquity);
+  const y = cosOb * yPrimary + sinOb * zPrimary;
+  const z = -sinOb * yPrimary + cosOb * zPrimary;
+  out.set(xPrimary / AU_KM, y / AU_KM, z / AU_KM);
   return out;
 }
 
-function propagateEarthOrbit(satellite, jd, applyJ2, outPositionAu) {
+function propagateAroundPrimary(satellite, jd, applyJ2, primaryModel, outPositionAu) {
   const dtSec = (jd - satellite.epochJd) * DAY_SECONDS;
 
   const e = satellite.e;
@@ -159,10 +260,10 @@ function propagateEarthOrbit(satellite, jd, applyJ2, outPositionAu) {
   let argPeriapsis = satellite.argPeriapsisRad;
   let meanAnomaly = satellite.meanAnomalyRad + n * dtSec;
 
-  if (applyJ2) {
+  if (applyJ2 && Number.isFinite(primaryModel.j2) && primaryModel.j2 > 0) {
     const p = a * (1 - e * e);
-    const pRatio2 = (EARTH_EQUATORIAL_RADIUS_KM * EARTH_EQUATORIAL_RADIUS_KM) / (p * p);
-    const j2Factor = 1.5 * EARTH_J2 * pRatio2 * n;
+    const pRatio2 = (primaryModel.equatorialRadiusKm * primaryModel.equatorialRadiusKm) / (p * p);
+    const j2Factor = 1.5 * primaryModel.j2 * pRatio2 * n;
     const cosI = Math.cos(i);
     const cosI2 = cosI * cosI;
 
@@ -198,60 +299,85 @@ function propagateEarthOrbit(satellite, jd, applyJ2, outPositionAu) {
   const r31 = sinW * sinI;
   const r32 = cosW * sinI;
 
-  const xEq = r11 * xPerifocal + r12 * yPerifocal;
-  const yEq = r21 * xPerifocal + r22 * yPerifocal;
-  const zEq = r31 * xPerifocal + r32 * yPerifocal;
+  const xPrimary = r11 * xPerifocal + r12 * yPerifocal;
+  const yPrimary = r21 * xPerifocal + r22 * yPerifocal;
+  const zPrimary = r31 * xPerifocal + r32 * yPerifocal;
 
-  return eciToEcliptic(xEq, yEq, zEq, outPositionAu);
+  return toEcliptic(primaryModel, satellite.frame, xPrimary, yPrimary, zPrimary, outPositionAu);
 }
 
-function buildFallbackSatellites() {
-  const fallback = [
+function fallbackByPrimary(primaryId) {
+  if (primaryId === 'moon') {
+    return [
+      {
+        name: 'LRO (fallback)',
+        category: 'science',
+        aKm: 1_837.4,
+        e: 0.012,
+        iDeg: 89.7,
+        ascendingNodeDeg: 125,
+        argPeriapsisDeg: 80,
+        meanAnomalyDeg: 40,
+        meanMotionRevDay: 12.7,
+        frame: 'ecliptic'
+      }
+    ];
+  }
+  if (primaryId === 'mars') {
+    return [
+      {
+        name: 'MRO (fallback)',
+        category: 'science',
+        aKm: 3_789.5,
+        e: 0.01,
+        iDeg: 93.0,
+        ascendingNodeDeg: 250,
+        argPeriapsisDeg: 90,
+        meanAnomalyDeg: 35,
+        meanMotionRevDay: 11.4,
+        frame: 'equatorial'
+      }
+    ];
+  }
+
+  return [
     {
       name: 'ISS (fallback)',
       category: 'leo',
-      epochJd: J2000_JD,
       aKm: 6_788,
       e: 0.00057,
-      iRad: 51.64 * DEG_TO_RAD,
-      raanRad: 31.2 * DEG_TO_RAD,
-      argPeriapsisRad: 145.3 * DEG_TO_RAD,
-      meanAnomalyRad: 325.7 * DEG_TO_RAD,
+      iDeg: 51.64,
+      ascendingNodeDeg: 31.2,
+      argPeriapsisDeg: 145.3,
+      meanAnomalyDeg: 325.7,
       meanMotionRevDay: 15.49,
-      meanMotionRadSec: (15.49 * TWO_PI) / DAY_SECONDS
+      frame: 'equatorial'
     },
     {
       name: 'GOES-16 (fallback)',
       category: 'geo',
-      epochJd: J2000_JD,
       aKm: 42_164,
       e: 0.0002,
-      iRad: 0.02 * DEG_TO_RAD,
-      raanRad: 75.3 * DEG_TO_RAD,
-      argPeriapsisRad: 90.0 * DEG_TO_RAD,
-      meanAnomalyRad: 10.0 * DEG_TO_RAD,
+      iDeg: 0.02,
+      ascendingNodeDeg: 75.3,
+      argPeriapsisDeg: 90,
+      meanAnomalyDeg: 10,
       meanMotionRevDay: 1.0027,
-      meanMotionRadSec: (1.0027 * TWO_PI) / DAY_SECONDS
+      frame: 'equatorial'
     },
     {
       name: 'GOES-18 (fallback)',
       category: 'geo',
-      epochJd: J2000_JD,
       aKm: 42_164,
       e: 0.00025,
-      iRad: 0.03 * DEG_TO_RAD,
-      raanRad: 95.1 * DEG_TO_RAD,
-      argPeriapsisRad: 85.0 * DEG_TO_RAD,
-      meanAnomalyRad: 186.0 * DEG_TO_RAD,
+      iDeg: 0.03,
+      ascendingNodeDeg: 95.1,
+      argPeriapsisDeg: 85,
+      meanAnomalyDeg: 186,
       meanMotionRevDay: 1.0027,
-      meanMotionRadSec: (1.0027 * TWO_PI) / DAY_SECONDS
+      frame: 'equatorial'
     }
   ];
-
-  return fallback.map((sat) => ({
-    ...sat,
-    id: `sat-${sanitizeId(sat.name)}`
-  }));
 }
 
 async function fetchTleText(url) {
@@ -280,32 +406,160 @@ function pickEarthSatellites(stationSatellites, geoSatellites, maxGeoCount) {
   ];
 }
 
-function markerColor(category) {
+function markerColor(category, colorOverrides = null) {
+  if (colorOverrides && typeof colorOverrides === 'object') {
+    if (typeof colorOverrides[category] === 'string') return colorOverrides[category];
+    if (typeof colorOverrides.default === 'string') return colorOverrides.default;
+  }
   if (category === 'leo') return '#9ce7ff';
   if (category === 'geo') return '#ffc488';
+  if (category === 'nrho') return '#b9a2ff';
+  if (category === 'relay') return '#ffde98';
   return '#d8dde6';
 }
 
-function markerScaleAu(realisticMode) {
-  return realisticMode ? 3.2e-7 : 0.00062;
+function markerScaleAu(realisticMode, primaryModel, markerBaseScaleAu = null) {
+  if (Number.isFinite(markerBaseScaleAu) && markerBaseScaleAu > 0) {
+    return markerBaseScaleAu;
+  }
+  if (!realisticMode) return 0.00062;
+  const basedOnPrimary = (primaryModel.equatorialRadiusKm / AU_KM) * 0.03;
+  return Math.max(2.2e-7, basedOnPrimary);
+}
+
+function normalizeMarkerPixelSize(markerPixelSize) {
+  if (!markerPixelSize || typeof markerPixelSize !== 'object') return null;
+  const preferred = Number(markerPixelSize.preferred);
+  const min = Number(markerPixelSize.min);
+  const max = Number(markerPixelSize.max);
+  const resolvedPreferred = Number.isFinite(preferred) && preferred > 0 ? preferred : 2.0;
+  const resolvedMin = Number.isFinite(min) && min > 0 ? min : Math.min(1.2, resolvedPreferred);
+  const resolvedMax = Number.isFinite(max) && max > 0 ? max : Math.max(2.6, resolvedPreferred);
+  if (!Number.isFinite(resolvedPreferred) || resolvedPreferred <= 0) return null;
+  return {
+    min: Math.min(resolvedMin, resolvedPreferred),
+    preferred: resolvedPreferred,
+    max: Math.max(resolvedMax, resolvedPreferred)
+  };
+}
+
+function createSatelliteSpriteTexture(category, colorOverrides = null) {
+  const paletteKey = markerColor(category, colorOverrides);
+  const cacheKey = `${category}:${paletteKey}`;
+  if (SATELLITE_ICON_TEXTURES.has(cacheKey)) {
+    return SATELLITE_ICON_TEXTURES.get(cacheKey);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const tone = new Color(paletteKey);
+  const cx = canvas.width * 0.5;
+  const cy = canvas.height * 0.5;
+
+  // Soft halo that keeps the sprite readable when it becomes 1-2 pixels.
+  const halo = ctx.createRadialGradient(cx, cy, 5, cx, cy, 48);
+  halo.addColorStop(0, `rgba(${Math.round(tone.r * 255)}, ${Math.round(tone.g * 255)}, ${Math.round(tone.b * 255)}, 0.88)`);
+  halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 48, 0, TWO_PI);
+  ctx.fill();
+
+  const busColor = `rgba(${Math.round((0.6 + tone.r * 0.4) * 255)}, ${Math.round((0.6 + tone.g * 0.4) * 255)}, ${Math.round((0.6 + tone.b * 0.4) * 255)}, 0.98)`;
+  const panelColor = `rgba(${Math.round((0.35 + tone.r * 0.35) * 255)}, ${Math.round((0.35 + tone.g * 0.35) * 255)}, ${Math.round((0.35 + tone.b * 0.35) * 255)}, 0.9)`;
+
+  // Simple spacecraft icon silhouette (bus + two side panels).
+  ctx.fillStyle = panelColor;
+  ctx.fillRect(cx - 34, cy - 6, 22, 12);
+  ctx.fillRect(cx + 12, cy - 6, 22, 12);
+  ctx.fillStyle = busColor;
+  ctx.fillRect(cx - 11, cy - 9, 22, 18);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, cy - 16);
+  ctx.lineTo(cx + 6, cy - 16);
+  ctx.stroke();
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  SATELLITE_ICON_TEXTURES.set(cacheKey, texture);
+  return texture;
 }
 
 export class OrbitalSatelliteSystem {
-  constructor({ maxGeoCount = 28, showOrbits = true, useJ2 = true } = {}) {
+  constructor({
+    primaryId = 'earth',
+    maxGeoCount = 28,
+    showOrbits = true,
+    useJ2 = true,
+    tleSources = null,
+    catalogSatellites = [],
+    useInstancing = primaryId === 'earth',
+    useWorkerPropagation = false,
+    workerLeadSeconds = 0.4,
+    workerCadenceMs = 120,
+    maxOrbitLines = 1_200,
+    markerStyle = 'sphere',
+    markerPixelSize = null,
+    markerBaseScaleAu = null,
+    markerColorOverrides = null
+  } = {}) {
+    this.primaryId = primaryId;
+    this.primaryModel = PRIMARY_MODELS[primaryId] ?? PRIMARY_MODELS.earth;
     this.maxGeoCount = maxGeoCount;
     this.showOrbits = showOrbits;
     this.useJ2 = useJ2;
+    this.tleSources = tleSources ?? (primaryId === 'earth' ? DEFAULT_TLE_SOURCES_EARTH : null);
+    this.catalogSatellites = Array.isArray(catalogSatellites) ? catalogSatellites : [];
 
     this.group = new Group();
-    this.group.name = 'satellite-layer';
+    this.group.name = `satellite-layer-${primaryId}`;
 
     this.markerGeometry = new SphereGeometry(1, 10, 8);
+    this.markerStyle = `${markerStyle ?? 'sphere'}`.toLowerCase();
+    this.markerPixelSize = normalizeMarkerPixelSize(markerPixelSize);
+    this.markerBaseScaleAu = Number.isFinite(markerBaseScaleAu) ? markerBaseScaleAu : null;
+    this.markerColorOverrides = markerColorOverrides && typeof markerColorOverrides === 'object'
+      ? markerColorOverrides
+      : null;
+    this.currentMarkerScaleAu = markerScaleAu(false, this.primaryModel, this.markerBaseScaleAu);
     this.satellites = [];
     this.meshById = new Map();
+    this.meshByIndex = [];
     this.orbitLineById = new Map();
+
+    this.useInstancing = Boolean(useInstancing);
+    this.markerInstancedMesh = null;
+    this.markerIndexById = new Map();
+    this.currentPositionsAu = new Float32Array(0);
+    this.matrixScratch = new Matrix4();
+    this.markerColorScratch = new Color();
+    this.positionScratch = new Vector3();
+    this.markerWorldPositionScratch = new Vector3();
+
+    this.useWorkerPropagation = Boolean(useWorkerPropagation);
+    this.workerLeadSeconds = Math.max(0.15, Number(workerLeadSeconds) || 0.4);
+    this.workerCadenceMs = Math.max(33, Number(workerCadenceMs) || 120);
+    this.maxOrbitLines = Math.max(0, Number(maxOrbitLines) || 1_200);
+
+    this.worker = null;
+    this.workerReady = false;
+    this.workerBusy = false;
+    this.workerSnapshot = null;
+    this.workerLastRequestAtMs = 0;
+    this.lastJdSample = null;
+    this.lastPerfSampleMs = null;
+    this.estimatedJdRate = 0;
 
     this.initialized = false;
     this.lastError = null;
+    this.orbitLinesClamped = false;
   }
 
   attachTo(parentNode) {
@@ -316,52 +570,165 @@ export class OrbitalSatelliteSystem {
   status() {
     return {
       initialized: this.initialized,
+      primaryId: this.primaryId,
       satelliteCount: this.satellites.length,
       lastError: this.lastError,
       useJ2: this.useJ2,
-      showOrbits: this.showOrbits
+      showOrbits: this.showOrbits,
+      useInstancing: this.useInstancing,
+      useWorkerPropagation: this.useWorkerPropagation,
+      workerReady: this.workerReady,
+      orbitLinesClamped: this.orbitLinesClamped,
+      markerStyle: this.markerStyle,
+      markerPixelSize: this.markerPixelSize
     };
   }
 
   async initialize() {
     if (this.initialized) return;
 
+    let loaded = [];
     try {
-      const [stationsText, geoText] = await Promise.all([
-        fetchTleText(SAT_TLE_SOURCES.stations),
-        fetchTleText(SAT_TLE_SOURCES.geo)
-      ]);
+      if (this.tleSources && Object.keys(this.tleSources).length > 0) {
+        const entries = Object.entries(this.tleSources);
+        const texts = await Promise.all(entries.map(([, url]) => fetchTleText(url)));
+        const parsedByGroup = texts.map((text, i) => parseTleBlock(text, entries[i][0], this.primaryModel));
 
-      const stations = parseTleBlock(stationsText, 'leo');
-      const geo = parseTleBlock(geoText, 'geo');
-      this.satellites = pickEarthSatellites(stations, geo, this.maxGeoCount);
-
-      if (this.satellites.length === 0) {
-        this.satellites = buildFallbackSatellites();
+        if (this.primaryId === 'earth') {
+          const stations = parsedByGroup.find((_, i) => entries[i][0] === 'stations') ?? [];
+          const geo = parsedByGroup.find((_, i) => entries[i][0] === 'geo') ?? [];
+          loaded = pickEarthSatellites(stations, geo, this.maxGeoCount);
+        } else {
+          loaded = parsedByGroup.flat();
+        }
       }
     } catch (error) {
       this.lastError = error?.message ?? String(error);
-      this.satellites = buildFallbackSatellites();
+      loaded = [];
+    }
+
+    const catalog = this.catalogSatellites
+      .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
+      .filter(Boolean);
+
+    const merged = [...loaded, ...catalog];
+    const deduped = [];
+    const seen = new Set();
+    for (const sat of merged) {
+      if (seen.has(sat.id)) continue;
+      seen.add(sat.id);
+      deduped.push(sat);
+    }
+
+    this.satellites = deduped;
+
+    if (this.satellites.length === 0) {
+      this.satellites = fallbackByPrimary(this.primaryId)
+        .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
+        .filter(Boolean);
     }
 
     this.buildSceneObjects();
+    if (this.useWorkerPropagation) {
+      this.initializeWorker();
+    }
     this.initialized = true;
+  }
+
+  initializeWorker() {
+    if (!this.useWorkerPropagation || typeof Worker === 'undefined' || this.worker) {
+      return;
+    }
+
+    try {
+      this.worker = new Worker(new URL('./satellitePropagationWorker.js', import.meta.url), { type: 'module' });
+    } catch (error) {
+      this.lastError = `Satellite worker unavailable: ${error?.message ?? String(error)}`;
+      this.useWorkerPropagation = false;
+      this.worker = null;
+      return;
+    }
+
+    this.worker.onmessage = (event) => {
+      const message = event?.data;
+      if (!message || typeof message !== 'object') return;
+
+      if (message.type === 'ready') {
+        this.workerReady = true;
+        this.workerBusy = false;
+        return;
+      }
+
+      if (message.type === 'snapshot') {
+        const count = Number.isFinite(message.count) ? message.count : this.satellites.length;
+        const positions0 = message.positions0 instanceof Float32Array
+          ? message.positions0
+          : new Float32Array(message.positions0 ?? 0);
+        const positions1 = message.positions1 instanceof Float32Array
+          ? message.positions1
+          : new Float32Array(message.positions1 ?? 0);
+
+        if (positions0.length !== count * 3 || positions1.length !== count * 3) {
+          this.workerBusy = false;
+          return;
+        }
+
+        this.workerSnapshot = {
+          jd0: Number(message.jd0),
+          jd1: Number(message.jd1),
+          positions0,
+          positions1,
+          count
+        };
+        this.workerBusy = false;
+      }
+    };
+
+    this.worker.onerror = () => {
+      this.lastError = 'Satellite propagation worker failed; reverted to main-thread propagation.';
+      this.disableWorker();
+    };
+
+    this.worker.postMessage({
+      type: 'init',
+      primaryId: this.primaryId,
+      satellites: this.satellites
+    });
+  }
+
+  disableWorker() {
+    if (this.worker) {
+      this.worker.terminate();
+    }
+    this.worker = null;
+    this.workerReady = false;
+    this.workerBusy = false;
+    this.workerSnapshot = null;
+    this.useWorkerPropagation = false;
   }
 
   buildSceneObjects() {
     this.group.clear();
     this.meshById.clear();
+    this.meshByIndex.length = 0;
     this.orbitLineById.clear();
+    this.markerIndexById.clear();
+    this.markerInstancedMesh = null;
+    this.currentPositionsAu = new Float32Array(this.satellites.length * 3);
 
-    for (const sat of this.satellites) {
-      const mesh = new Mesh(
-        this.markerGeometry,
-        new MeshBasicMaterial({ color: new Color(markerColor(sat.category)) })
-      );
-      mesh.userData.satelliteId = sat.id;
-      this.group.add(mesh);
-      this.meshById.set(sat.id, mesh);
+    if (this.useInstancing && this.satellites.length > 0) {
+      this.buildInstancedMarkers();
+    } else {
+      this.buildIndividualMarkers();
+    }
 
+    const lineCandidates = this.satellites.length > this.maxOrbitLines
+      ? this.satellites.slice(0, this.maxOrbitLines)
+      : this.satellites;
+
+    this.orbitLinesClamped = lineCandidates.length < this.satellites.length;
+
+    for (const sat of lineCandidates) {
       const orbitLine = this.createOrbitLine(sat);
       orbitLine.visible = this.showOrbits;
       this.group.add(orbitLine);
@@ -369,15 +736,76 @@ export class OrbitalSatelliteSystem {
     }
   }
 
+  buildInstancedMarkers() {
+    const material = new MeshBasicMaterial({
+      color: new Color('#ffffff'),
+      vertexColors: true
+    });
+    const instancedMesh = new InstancedMesh(this.markerGeometry, material, this.satellites.length);
+    instancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    instancedMesh.frustumCulled = false;
+
+    for (let i = 0; i < this.satellites.length; i += 1) {
+      const satellite = this.satellites[i];
+      this.markerIndexById.set(satellite.id, i);
+      this.currentPositionsAu[i * 3] = 0;
+      this.currentPositionsAu[i * 3 + 1] = 0;
+      this.currentPositionsAu[i * 3 + 2] = 0;
+      this.matrixScratch.makeScale(this.currentMarkerScaleAu, this.currentMarkerScaleAu, this.currentMarkerScaleAu);
+      this.matrixScratch.setPosition(0, 0, 0);
+      instancedMesh.setMatrixAt(i, this.matrixScratch);
+      this.markerColorScratch.set(markerColor(satellite.category, this.markerColorOverrides));
+      instancedMesh.setColorAt(i, this.markerColorScratch);
+    }
+
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    if (instancedMesh.instanceColor) {
+      instancedMesh.instanceColor.needsUpdate = true;
+    }
+
+    this.group.add(instancedMesh);
+    this.markerInstancedMesh = instancedMesh;
+  }
+
+  buildIndividualMarkers() {
+    for (let i = 0; i < this.satellites.length; i += 1) {
+      const sat = this.satellites[i];
+      let marker;
+      if (this.markerStyle === 'sprite') {
+        const spriteTexture = createSatelliteSpriteTexture(sat.category, this.markerColorOverrides);
+        marker = new Sprite(
+          new SpriteMaterial({
+            map: spriteTexture ?? null,
+            color: new Color('#ffffff'),
+            transparent: true,
+            depthWrite: false
+          })
+        );
+      } else {
+        marker = new Mesh(
+          this.markerGeometry,
+          new MeshBasicMaterial({ color: new Color(markerColor(sat.category, this.markerColorOverrides)) })
+        );
+      }
+
+      marker.scale.setScalar(this.currentMarkerScaleAu);
+      marker.userData.satelliteId = sat.id;
+      this.group.add(marker);
+      this.meshById.set(sat.id, marker);
+      this.meshByIndex[i] = marker;
+      this.markerIndexById.set(sat.id, i);
+    }
+  }
+
   createOrbitLine(satellite) {
-    const segments = satellite.category === 'geo' ? 220 : 180;
+    const segments = satellite.category === 'geo' ? 220 : satellite.category === 'nrho' ? 280 : 180;
     const positions = new Float32Array((segments + 1) * 3);
     const point = new Vector3();
     const periodDays = satellite.meanMotionRevDay > 0 ? 1 / satellite.meanMotionRevDay : 1;
 
     for (let i = 0; i <= segments; i += 1) {
       const tJd = satellite.epochJd + (periodDays * i) / segments;
-      propagateEarthOrbit(satellite, tJd, false, point);
+      propagateAroundPrimary(satellite, tJd, false, this.primaryModel, point);
       positions[i * 3] = point.x;
       positions[i * 3 + 1] = point.y;
       positions[i * 3 + 2] = point.z;
@@ -389,7 +817,7 @@ export class OrbitalSatelliteSystem {
     return new Line(
       geometry,
       new LineBasicMaterial({
-        color: new Color(satellite.category === 'geo' ? '#ffb56f' : '#7eceff'),
+        color: new Color(markerColor(satellite.category, this.markerColorOverrides)),
         transparent: true,
         opacity: satellite.category === 'geo' ? 0.34 : 0.42
       })
@@ -412,21 +840,162 @@ export class OrbitalSatelliteSystem {
   }
 
   applyScaleMode(realisticMode) {
-    const scale = markerScaleAu(Boolean(realisticMode));
+    this.currentMarkerScaleAu = markerScaleAu(Boolean(realisticMode), this.primaryModel, this.markerBaseScaleAu);
+    if (this.markerInstancedMesh) {
+      this.rebuildInstancedMatricesFromPositions();
+      return;
+    }
     for (const mesh of this.meshById.values()) {
-      mesh.scale.setScalar(scale);
+      mesh.scale.setScalar(this.currentMarkerScaleAu);
     }
   }
 
-  update(jd) {
-    if (!this.initialized) return;
-    const position = new Vector3();
+  rebuildInstancedMatricesFromPositions() {
+    if (!this.markerInstancedMesh) return;
 
-    for (const satellite of this.satellites) {
-      const mesh = this.meshById.get(satellite.id);
-      if (!mesh) continue;
-      propagateEarthOrbit(satellite, jd, this.useJ2, position);
-      mesh.position.copy(position);
+    for (let i = 0; i < this.satellites.length; i += 1) {
+      const base = i * 3;
+      this.matrixScratch.makeScale(this.currentMarkerScaleAu, this.currentMarkerScaleAu, this.currentMarkerScaleAu);
+      this.matrixScratch.setPosition(
+        this.currentPositionsAu[base],
+        this.currentPositionsAu[base + 1],
+        this.currentPositionsAu[base + 2]
+      );
+      this.markerInstancedMesh.setMatrixAt(i, this.matrixScratch);
     }
+
+    this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  updateJdRateEstimate(jd) {
+    const now = nowMs();
+    if (Number.isFinite(this.lastJdSample) && Number.isFinite(this.lastPerfSampleMs)) {
+      const dtSeconds = Math.max(1e-6, (now - this.lastPerfSampleMs) / 1_000);
+      const rawRate = (jd - this.lastJdSample) / dtSeconds;
+      this.estimatedJdRate = this.estimatedJdRate * 0.75 + rawRate * 0.25;
+    }
+    this.lastJdSample = jd;
+    this.lastPerfSampleMs = now;
+  }
+
+  applyWorkerSnapshot(jd) {
+    if (!this.workerSnapshot) return false;
+    const snapshot = this.workerSnapshot;
+    if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
+    if (snapshot.count !== this.satellites.length) return false;
+
+    const span = snapshot.jd1 - snapshot.jd0;
+    const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
+
+    for (let i = 0; i < this.satellites.length; i += 1) {
+      const base = i * 3;
+      const x = snapshot.positions0[base] + (snapshot.positions1[base] - snapshot.positions0[base]) * alpha;
+      const y = snapshot.positions0[base + 1] + (snapshot.positions1[base + 1] - snapshot.positions0[base + 1]) * alpha;
+      const z = snapshot.positions0[base + 2] + (snapshot.positions1[base + 2] - snapshot.positions0[base + 2]) * alpha;
+      this.applyMarkerPositionByIndex(i, x, y, z);
+    }
+
+    this.flushMarkerPositionUpdates();
+    return true;
+  }
+
+  shouldRequestWorkerSnapshot(jd) {
+    if (!this.workerSnapshot) return true;
+
+    const minJd = Math.min(this.workerSnapshot.jd0, this.workerSnapshot.jd1);
+    const maxJd = Math.max(this.workerSnapshot.jd0, this.workerSnapshot.jd1);
+
+    if (jd < minJd || jd > maxJd) return true;
+
+    const span = Math.max(1e-10, maxJd - minJd);
+    const margin = span * 0.35;
+    return jd <= minJd + margin || jd >= maxJd - margin;
+  }
+
+  requestWorkerSnapshot(jd) {
+    if (!this.worker || !this.workerReady || this.workerBusy) return;
+
+    const now = nowMs();
+    if (now - this.workerLastRequestAtMs < this.workerCadenceMs) return;
+    if (!this.shouldRequestWorkerSnapshot(jd)) return;
+
+    const speed = Math.abs(this.estimatedJdRate);
+    const leadDays = Math.max(2 / DAY_SECONDS, speed * this.workerLeadSeconds);
+    const direction = this.estimatedJdRate < -1e-9 ? -1 : 1;
+
+    this.worker.postMessage({
+      type: 'snapshot',
+      jd0: jd,
+      jd1: jd + direction * leadDays,
+      applyJ2: this.useJ2
+    });
+
+    this.workerBusy = true;
+    this.workerLastRequestAtMs = now;
+  }
+
+  applyMarkerPositionByIndex(index, x, y, z) {
+    const base = index * 3;
+    this.currentPositionsAu[base] = x;
+    this.currentPositionsAu[base + 1] = y;
+    this.currentPositionsAu[base + 2] = z;
+
+    if (this.markerInstancedMesh) {
+      this.matrixScratch.makeScale(this.currentMarkerScaleAu, this.currentMarkerScaleAu, this.currentMarkerScaleAu);
+      this.matrixScratch.setPosition(x, y, z);
+      this.markerInstancedMesh.setMatrixAt(index, this.matrixScratch);
+      return;
+    }
+
+    const mesh = this.meshByIndex[index];
+    if (!mesh) return;
+    mesh.position.set(x, y, z);
+  }
+
+  flushMarkerPositionUpdates() {
+    if (!this.markerInstancedMesh) return;
+    this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  applyScreenSpaceMarkerScaling(viewState) {
+    if (this.markerInstancedMesh || !this.markerPixelSize) return;
+    const camera = viewState?.camera ?? null;
+    const viewportHeight = Number(viewState?.viewportHeight ?? 0);
+    if (!camera || !Number.isFinite(camera.fov) || viewportHeight <= 0) return;
+
+    const tanHalfFov = Math.tan((camera.fov * Math.PI) / 360);
+    for (const marker of this.meshByIndex) {
+      if (!marker) continue;
+      marker.getWorldPosition(this.markerWorldPositionScratch);
+      const distance = Math.max(1e-9, camera.position.distanceTo(this.markerWorldPositionScratch));
+      const worldUnitsPerPixel = (2 * distance * tanHalfFov) / viewportHeight;
+      const minScale = worldUnitsPerPixel * this.markerPixelSize.min;
+      const maxScale = worldUnitsPerPixel * this.markerPixelSize.max;
+      const preferredScale = worldUnitsPerPixel * this.markerPixelSize.preferred;
+      marker.scale.setScalar(Math.max(minScale, Math.min(maxScale, preferredScale)));
+    }
+  }
+
+  update(jd, viewState = null) {
+    if (!this.initialized) return;
+
+    this.updateJdRateEstimate(jd);
+
+    let usedWorkerSnapshot = false;
+    if (this.useWorkerPropagation && this.workerReady) {
+      usedWorkerSnapshot = this.applyWorkerSnapshot(jd);
+      this.requestWorkerSnapshot(jd);
+    }
+
+    if (!usedWorkerSnapshot) {
+      for (let i = 0; i < this.satellites.length; i += 1) {
+        const satellite = this.satellites[i];
+        propagateAroundPrimary(satellite, jd, this.useJ2, this.primaryModel, this.positionScratch);
+        this.applyMarkerPositionByIndex(i, this.positionScratch.x, this.positionScratch.y, this.positionScratch.z);
+      }
+      this.flushMarkerPositionUpdates();
+    }
+
+    this.applyScreenSpaceMarkerScaling(viewState);
   }
 }
