@@ -73,9 +73,9 @@ function lerpRGB(r1, g1, b1, r2, g2, b2, t) {
   return [lerp(r1, r2, t), lerp(g1, g2, t), lerp(b1, b2, t)];
 }
 
-function sphereCoords(px, py) {
-  const colat = (py / H) * Math.PI;
-  const lon = (px / W) * Math.PI * 2;
+function sphereCoords(px, py, width = W, height = H) {
+  const colat = (py / height) * Math.PI;
+  const lon = (px / width) * Math.PI * 2;
   const sc = Math.sin(colat);
   return {
     x: sc * Math.cos(lon),
@@ -86,18 +86,18 @@ function sphereCoords(px, py) {
   };
 }
 
-function fillPixels(colorFn) {
+function fillPixelsSized(width, height, colorFn) {
   const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(W, H);
+  const img = ctx.createImageData(width, height);
   const d = img.data;
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
-      const s = sphereCoords(px, py);
+  for (let py = 0; py < height; py++) {
+    for (let px = 0; px < width; px++) {
+      const s = sphereCoords(px, py, width, height);
       const [r, g, b] = colorFn(s);
-      const i = (py * W + px) * 4;
+      const i = (py * width + px) * 4;
       d[i] = clamp01(r) * 255;
       d[i + 1] = clamp01(g) * 255;
       d[i + 2] = clamp01(b) * 255;
@@ -106,6 +106,10 @@ function fillPixels(colorFn) {
   }
   ctx.putImageData(img, 0, 0);
   return canvas;
+}
+
+function fillPixels(colorFn) {
+  return fillPixelsSized(W, H, colorFn);
 }
 
 // ── Planet Textures ──────────────────────────────────────────────────────────
@@ -333,6 +337,101 @@ function plutoTexture() {
   });
 }
 
+function hashString(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function moonParentPalette(parentId, variant) {
+  const palettes = {
+    earth: [0.79, 0.78, 0.75],
+    mars: [0.72, 0.64, 0.56],
+    jupiter: [0.68, 0.63, 0.57],
+    saturn: [0.72, 0.69, 0.62],
+    uranus: [0.6, 0.68, 0.72],
+    neptune: [0.58, 0.64, 0.7],
+    pluto: [0.66, 0.61, 0.56],
+    default: [0.69, 0.66, 0.62]
+  };
+  const base = palettes[parentId] ?? palettes.default;
+  const warmShift = (variant - 0.5) * 0.12;
+  const coolShift = (0.5 - variant) * 0.08;
+  return [
+    clamp01(base[0] + warmShift),
+    clamp01(base[1] - warmShift * 0.3 + coolShift * 0.2),
+    clamp01(base[2] + coolShift)
+  ];
+}
+
+function moonTexture(seedKey, parentId = 'default', width = 256, height = 128) {
+  const seed = hashString(`${parentId}:${seedKey}`);
+  const variantA = ((seed % 9_973) + 1) / 9_973;
+  const variantB = (((seed >> 7) % 8_191) + 1) / 8_191;
+  const base = moonParentPalette(parentId, variantA);
+
+  const largeScale = 3.5 + (seed % 5);
+  const mediumScale = 10 + (seed % 7);
+  const craterScale = 18 + (seed % 11);
+  const streakScale = 26 + ((seed >> 4) % 9);
+  const craterThreshold = 0.57 + variantB * 0.08;
+
+  return fillPixelsSized(width, height, (s) => {
+    const nLarge = fbm(
+      s.x * largeScale + variantA * 7.0,
+      s.y * largeScale + variantB * 11.0,
+      s.z * largeScale - variantA * 5.0,
+      5,
+      2.0,
+      0.5
+    );
+    const nMedium = fbm(
+      s.x * mediumScale - variantB * 13.0,
+      s.y * mediumScale + variantA * 9.0,
+      s.z * mediumScale + variantB * 3.0,
+      4,
+      2.0,
+      0.48
+    );
+    const craters = fbm(
+      s.x * craterScale + variantA * 19.0,
+      s.y * craterScale - variantB * 17.0,
+      s.z * craterScale + variantA * 23.0,
+      4,
+      2.0,
+      0.5
+    );
+    const streaks = fbm(
+      s.x * streakScale + variantB * 29.0,
+      s.y * streakScale - variantA * 31.0,
+      s.z * streakScale + variantA * 5.0,
+      3,
+      2.0,
+      0.45
+    );
+
+    let luminance = 0.38 + nLarge * 0.34 + nMedium * 0.18 + streaks * 0.12;
+    if (craters > craterThreshold) {
+      luminance -= (craters - craterThreshold) * (1.0 + variantA * 0.8);
+    } else if (craters < 0.28) {
+      luminance += (0.28 - craters) * 0.14;
+    }
+
+    const weatheringBand = 0.88 + 0.18 * Math.pow(Math.max(0.0, Math.cos(s.lat * (1.0 + variantB * 0.6))), 0.7);
+    const tintDrift = 0.95 + 0.1 * Math.sin(s.lon * (2.0 + variantA * 1.5));
+    const final = clamp01(luminance * weatheringBand);
+
+    return [
+      clamp01(base[0] * final * tintDrift),
+      clamp01(base[1] * final),
+      clamp01(base[2] * final * (1.02 - variantB * 0.08))
+    ];
+  });
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function generatePlanetTexture(bodyId) {
@@ -351,4 +450,8 @@ export function generatePlanetTexture(bodyId) {
 
   const gen = generators[bodyId];
   return gen ? gen() : null;
+}
+
+export function generateMoonTexture(moonId, parentId = 'default', { width = 256, height = 128 } = {}) {
+  return moonTexture(moonId, parentId, width, height);
 }

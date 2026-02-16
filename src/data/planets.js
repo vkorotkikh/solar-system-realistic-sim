@@ -125,6 +125,8 @@ export const PLANETS = [
     radiusKm: 58_232,
     color: '#d4bf89',
     axialTiltDeg: 26.73,
+    // Approximate north-pole direction in ecliptic longitude (deg).
+    spinAxisLongitudeDeg: 79.53,
     rotationPeriodHours: 10.656,
     orbit: {
       epochJd: J2000_JD,
@@ -145,6 +147,8 @@ export const PLANETS = [
     radiusKm: 25_362,
     color: '#8fd7de',
     axialTiltDeg: 97.77,
+    // Approximate north-pole direction in ecliptic longitude (deg).
+    spinAxisLongitudeDeg: 257.65,
     rotationPeriodHours: -17.24,
     orbit: {
       epochJd: J2000_JD,
@@ -254,6 +258,12 @@ export const MAJOR_MOON_SHAPE_KM = {
     equatorialRadiusKm: 1_738.1,
     polarRadiusKm: 1_736.0
   }
+};
+
+export const MOON_ROTATION_PERIOD_HOURS = {
+  // Tidally locked to Mars with period matching each moon's mean orbital period.
+  Phobos: 7.6488,
+  Deimos: 30.3
 };
 
 export const MAJOR_MOONS = new Set([

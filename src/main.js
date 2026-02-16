@@ -58,17 +58,23 @@ import {
 import { createSolarSystemCatalog } from './sim/catalog.js';
 import { propagateKeplerOrbit } from './sim/orbitMath.js';
 import { SolarSystemModel } from './sim/solarSystemModel.js';
-import { generatePlanetTexture } from './textures.js';
+import { generateMoonTexture, generatePlanetTexture } from './textures.js';
 import { PlanetCloudDataPipeline } from './frontend/features/planetary/cloudDataPipeline.js';
 import { createPlanetHeightTexture } from './frontend/features/planetary/terrainSynthesis.js';
 import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem.js';
 import { planetVisualProfile } from './frontend/features/planetary/visualProfiles.js';
 import earthDayTextureUrl from './assets/textures/earth_day_4096.jpg';
 import earthNormalTextureUrl from './assets/textures/earth_normal_2048.jpg';
+import earthTopobathyTextureUrl from './assets/textures/earth_topobathy_8192.jpg';
+import earthWaterMaskTextureUrl from './assets/textures/earth_watermask_2048.jpg';
 import moonDayTextureUrl from './assets/textures/moon_1024.jpg';
+import moonAlbedoLrocTextureUrl from './assets/textures/moon_albedo_lroc_8192.jpg';
+import moonReliefLolaTextureUrl from './assets/textures/moon_relief_ldem16_5760.png';
 import mercuryDayTextureUrl from './assets/textures/mercury_day_2048.jpg';
 import venusDayTextureUrl from './assets/textures/venus_day_2048.jpg';
 import marsDayTextureUrl from './assets/textures/mars_day_2048.jpg';
+import marsAlbedoUsgsTextureUrl from './assets/textures/mars_albedo_usgs_4096.jpg';
+import marsReliefMolaTextureUrl from './assets/textures/mars_relief_mola_4096.png';
 import jupiterDayTextureUrl from './assets/textures/jupiter_day_2048.jpg';
 import saturnDayTextureUrl from './assets/textures/saturn_day_2048.jpg';
 import uranusDayTextureUrl from './assets/textures/uranus_day_2048.jpg';
@@ -138,6 +144,13 @@ const dom = {
   focusEarthAtmo: document.getElementById('focus-earth-atmo'),
   focusEarthLeo: document.getElementById('focus-earth-leo'),
   focusEarthGeo: document.getElementById('focus-earth-geo'),
+  focusMoonSkim: document.getElementById('focus-moon-skim'),
+  focusMoonLlo: document.getElementById('focus-moon-llo'),
+  focusMoonNrho: document.getElementById('focus-moon-nrho'),
+  focusMarsAtmo: document.getElementById('focus-mars-atmo'),
+  focusMarsSkim: document.getElementById('focus-mars-skim'),
+  focusMarsLmo: document.getElementById('focus-mars-lmo'),
+  focusMarsAreo: document.getElementById('focus-mars-areostationary'),
   viewportShell: document.getElementById('viewport-shell'),
   statusRender: document.getElementById('status-render')
 };
@@ -147,6 +160,35 @@ const dom = {
 const catalog = createSolarSystemCatalog();
 const model = new SolarSystemModel(catalog);
 const bodyById = new Map(catalog.bodies.map((body) => [body.id, body]));
+
+function resolveEarthMoonBodyId() {
+  for (const body of catalog.bodies) {
+    if (body.type === 'moon' && body.parentId === 'earth' && body.name === 'Moon') {
+      return body.id;
+    }
+  }
+  return 'moon';
+}
+
+const CANONICAL_BODY_IDS = Object.freeze({
+  moon: resolveEarthMoonBodyId()
+});
+
+const BODY_ID_ALIASES = new Map([
+  ['moon', CANONICAL_BODY_IDS.moon]
+]);
+
+function resolveBodyId(bodyId) {
+  if (typeof bodyId !== 'string') return bodyId;
+  return BODY_ID_ALIASES.get(bodyId) ?? bodyId;
+}
+
+function isEarthMoonBody(body) {
+  return Boolean(body)
+    && body.type === 'moon'
+    && body.parentId === 'earth'
+    && body.id === CANONICAL_BODY_IDS.moon;
+}
 
 const simState = {
   julianDate: currentJulianDate(),
@@ -193,11 +235,38 @@ const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
 const EARTH_VISUAL_PROFILE = planetVisualProfile('earth') ?? {};
+const MOON_VISUAL_PROFILE = planetVisualProfile('moon') ?? {};
+const MARS_VISUAL_PROFILE = planetVisualProfile('mars') ?? {};
 const EARTH_SATELLITE_PROFILE = EARTH_VISUAL_PROFILE.satelliteLayer ?? {};
+const MOON_SATELLITE_PROFILE = MOON_VISUAL_PROFILE.satelliteLayer ?? {};
+const MARS_SATELLITE_PROFILE = MARS_VISUAL_PROFILE.satelliteLayer ?? {};
 const EARTH_ATMOSPHERE_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.atmosphere ?? 35;
 const EARTH_LEO_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.leo ?? 408;
 const EARTH_GEO_ALTITUDE_KM = EARTH_VISUAL_PROFILE.orbitalPresetsKm?.geo ?? 35_786;
-const EARTH_ORBIT_GUIDE_ALTITUDES_KM = [EARTH_LEO_ALTITUDE_KM, EARTH_GEO_ALTITUDE_KM];
+const MOON_SKIM_ALTITUDE_KM = MOON_VISUAL_PROFILE.orbitalPresetsKm?.skim ?? 15;
+const MOON_LLO_ALTITUDE_KM = MOON_VISUAL_PROFILE.orbitalPresetsKm?.llo ?? 100;
+const MOON_NRHO_ALTITUDE_KM = MOON_VISUAL_PROFILE.orbitalPresetsKm?.nrho ?? 30_000;
+const MARS_ATMOSPHERE_ALTITUDE_KM = MARS_VISUAL_PROFILE.orbitalPresetsKm?.atmosphere ?? 45;
+const MARS_SKIM_ALTITUDE_KM = MARS_VISUAL_PROFILE.orbitalPresetsKm?.skim ?? 25;
+const MARS_LMO_ALTITUDE_KM = MARS_VISUAL_PROFILE.orbitalPresetsKm?.lmo ?? 400;
+const MARS_AREOSTATIONARY_ALTITUDE_KM = MARS_VISUAL_PROFILE.orbitalPresetsKm?.areostationary ?? 17_000;
+const ADAPTIVE_ZOOM_PROFILES = Object.freeze({
+  earth: {
+    minClearanceKm: 0.12,
+    dampingBandKm: 7_500,
+    minSpeedFactor: 0.06
+  },
+  [CANONICAL_BODY_IDS.moon]: {
+    minClearanceKm: 0.06,
+    dampingBandKm: 2_100,
+    minSpeedFactor: 0.05
+  },
+  mars: {
+    minClearanceKm: 0.1,
+    dampingBandKm: 4_800,
+    minSpeedFactor: 0.06
+  }
+});
 
 function bodyEquatorialRadiusKm(body) {
   if (!body) return 0;
@@ -250,15 +319,16 @@ function bodyDistanceAuAtAltitude(body, altitudeKm) {
 
 function bodyDefaultCameraClearanceKm(body) {
   if (!body) return 1;
-  if (body.id === 'earth') return 2;
-  if (body.type === 'moon') return 1;
+  if (body.id === 'earth') return 0.12;
+  if (body.id === 'mars') return 0.1;
+  if (body.type === 'moon') return body.id === CANONICAL_BODY_IDS.moon ? 0.06 : 0.25;
   if (body.type === 'star') return 25;
-  return Math.max(2, body.radiusKm * 0.0008);
+  return Math.max(0.35, body.radiusKm * 0.0005);
 }
 
 function bodyMinimumCameraDistanceAu(body, clearanceKm = null) {
   const minClearanceKm = Number.isFinite(clearanceKm) ? clearanceKm : bodyDefaultCameraClearanceKm(body);
-  return bodyDistanceAuAtAltitude(body, Math.max(0.1, minClearanceKm));
+  return bodyDistanceAuAtAltitude(body, Math.max(0.01, minClearanceKm));
 }
 
 function wrapUnitInterval(value) {
@@ -309,6 +379,13 @@ function backendBaseUrl() {
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
   const host = window.location.hostname || DEFAULT_BACKEND_HOST;
   return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
+}
+
+function backendWebSocketUrl({ port = DEFAULT_BACKEND_PORT, params = {} } = {}) {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = window.location.hostname || DEFAULT_BACKEND_HOST;
+  const query = new URLSearchParams(params).toString();
+  return `${protocol}://${host}:${port}/ws/sim${query ? `?${query}` : ''}`;
 }
 
 function julianDateToJulianYear(julianDate) {
@@ -384,13 +461,49 @@ function updateZoomMetricsUI() {
   const rangeText = formatDistanceScale(rangeAu, simState.useRealisticScale);
   const widthText = formatDistanceScale(viewWidthAu, simState.useRealisticScale);
   const heightText = formatDistanceScale(viewHeightAu, simState.useRealisticScale);
-  const zoomText = `x${simState.zoomSensitivity.toFixed(2)}`;
+  const baseZoomText = `x${simState.zoomSensitivity.toFixed(2)}`;
+  const effectiveZoom = Number.isFinite(controls.zoomSpeed) ? controls.zoomSpeed : simState.zoomSensitivity;
+  const zoomText = `x${effectiveZoom.toFixed(2)}`;
 
-  if (dom.zoomSensitivityValue) dom.zoomSensitivityValue.textContent = zoomText;
+  if (dom.zoomSensitivityValue) dom.zoomSensitivityValue.textContent = baseZoomText;
   if (dom.zoomDistanceValue) dom.zoomDistanceValue.textContent = `Range: ${rangeText}`;
   if (dom.viewScaleValue) dom.viewScaleValue.textContent = `View span: ${widthText} x ${heightText}`;
   if (dom.statusZoom) dom.statusZoom.textContent = `Zoom: ${zoomText}`;
   if (dom.statusScale) dom.statusScale.textContent = `Scale: ${widthText} x ${heightText}`;
+}
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function updateAdaptiveZoomBehavior() {
+  const baseZoom = Math.max(0.01, simState.zoomSensitivity);
+  controls.zoomSpeed = baseZoom;
+
+  if (!simState.useRealisticScale) return;
+
+  const activeBodyId = resolveBodyId(simState.followBodyId ?? simState.focusedBodyId);
+  if (!activeBodyId) return;
+
+  const body = bodyById.get(activeBodyId);
+  const profile = ADAPTIVE_ZOOM_PROFILES[activeBodyId];
+  if (!body || !profile) return;
+
+  const node = bodyNodes.get(activeBodyId);
+  if (!node) return;
+
+  node.getWorldPosition(tempVecA);
+  const distanceToBodyAu = camera.position.distanceTo(tempVecA);
+  const minCenterDistanceAu = bodyDistanceAuAtAltitude(body, profile.minClearanceKm);
+  const dampingBandAu = Math.max(1e-9, profile.dampingBandKm / AU_KM);
+  const normalized = clamp01((distanceToBodyAu - minCenterDistanceAu) / dampingBandAu);
+  const eased = Math.pow(normalized, 0.72);
+  const speedFactor = profile.minSpeedFactor + (1 - profile.minSpeedFactor) * eased;
+  controls.zoomSpeed = baseZoom * speedFactor;
+
+  if (controls.minDistance > minCenterDistanceAu) {
+    controls.minDistance = minCenterDistanceAu;
+  }
 }
 
 function updateCameraClipPlanes() {
@@ -484,9 +597,12 @@ let nearbySystemsMaxDistanceAu = 0;
 let nearbySystemsLoaded = false;
 let nearbySystemsLastUpdateJd = Number.NaN;
 const earthOrbitGuides = [];
+const moonOrbitGuides = [];
+const marsOrbitGuides = [];
 let earthSurfaceMesh = null;
 let earthCloudMesh = null;
 let earthAtmosphereMesh = null;
+let earthOceanMesh = null;
 let earthCloudDataPipeline = null;
 let earthCloudRefreshInFlight = false;
 let earthCloudNextRefreshMs = 0;
@@ -495,6 +611,28 @@ let earthLodCurrentLevel = 'low';
 let earthSatelliteSystem = null;
 let earthCloudLayerMaterial = null;
 let earthCloudDetailTexture = null;
+let moonSurfaceMesh = null;
+let moonExosphereMesh = null;
+let moonTerrainDisplacementTexture = null;
+let moonLodCurrentLevel = 'low';
+let moonSatelliteSystem = null;
+let moonSurfaceMaterial = null;
+let marsSurfaceMesh = null;
+let marsCloudMesh = null;
+let marsAtmosphereMesh = null;
+let marsCloudDataPipeline = null;
+let marsCloudRefreshInFlight = false;
+let marsCloudNextRefreshMs = 0;
+let marsTerrainDisplacementTexture = null;
+let marsLodCurrentLevel = 'low';
+let marsSatelliteSystem = null;
+let marsCloudLayerMaterial = null;
+let marsCloudDetailTexture = null;
+let marsCloudFallbackTexture = null;
+let marsPolarNorthMesh = null;
+let marsPolarSouthMesh = null;
+let marsPolarNorthMaterial = null;
+let marsPolarSouthMaterial = null;
 
 const majorNodeIds = new Set(
   catalog.bodies.filter((body) => body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'asteroid').map((body) => body.id)
@@ -511,6 +649,26 @@ const geometryCache = {
     const low = EARTH_VISUAL_PROFILE.lod?.geometry?.low ?? [48, 36];
     const medium = EARTH_VISUAL_PROFILE.lod?.geometry?.medium ?? [96, 72];
     const high = EARTH_VISUAL_PROFILE.lod?.geometry?.high ?? [192, 144];
+    return {
+      low: new SphereGeometry(1, low[0], low[1]),
+      medium: new SphereGeometry(1, medium[0], medium[1]),
+      high: new SphereGeometry(1, high[0], high[1])
+    };
+  })(),
+  moonSurfaceLod: (() => {
+    const low = MOON_VISUAL_PROFILE.lod?.geometry?.low ?? [40, 30];
+    const medium = MOON_VISUAL_PROFILE.lod?.geometry?.medium ?? [88, 66];
+    const high = MOON_VISUAL_PROFILE.lod?.geometry?.high ?? [172, 132];
+    return {
+      low: new SphereGeometry(1, low[0], low[1]),
+      medium: new SphereGeometry(1, medium[0], medium[1]),
+      high: new SphereGeometry(1, high[0], high[1])
+    };
+  })(),
+  marsSurfaceLod: (() => {
+    const low = MARS_VISUAL_PROFILE.lod?.geometry?.low ?? [48, 36];
+    const medium = MARS_VISUAL_PROFILE.lod?.geometry?.medium ?? [104, 76];
+    const high = MARS_VISUAL_PROFILE.lod?.geometry?.high ?? [184, 136];
     return {
       low: new SphereGeometry(1, low[0], low[1]),
       medium: new SphereGeometry(1, medium[0], medium[1]),
@@ -635,15 +793,137 @@ function createEarthCloudDetailTexture(size = 512) {
   return texture;
 }
 
+function createMarsDustDetailTexture(size = 512) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = x / size;
+      const v = y / size;
+      const lat = (v - 0.5) * Math.PI;
+      const equatorialBoost = Math.pow(Math.max(0, Math.cos(lat)), 0.65);
+      const synoptic = fbmNoise2D(u * 4.2 + 2.3, v * 2.2 - 1.1, 4);
+      const streaks = fbmNoise2D(u * 28.0 - 1.9, v * 7.8 + 3.4, 3);
+      const fronts = fbmNoise2D(u * 1.7 + 0.3, v * 0.9 - 0.2, 4);
+      const dust = Math.max(
+        0,
+        Math.min(1, synoptic * 0.52 + streaks * 0.28 + fronts * 0.35 + equatorialBoost * 0.18 - 0.44)
+      );
+      const value = Math.round(Math.pow(dust, 1.15) * 255);
+      const index = (y * size + x) * 4;
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+  const texture = new CanvasTexture(canvas);
+  configureLoadedTexture(texture);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createMarsCloudFallbackTexture(size = 1024) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+  const tint = new Color('#d9a98c');
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = x / size;
+      const v = y / size;
+      const lat = (v - 0.5) * Math.PI;
+      const polarFade = 0.35 + 0.65 * Math.pow(Math.max(0.04, Math.cos(lat)), 0.8);
+      const primary = fbmNoise2D(u * 3.7 + 4.1, v * 2.1 - 2.0, 5);
+      const detail = fbmNoise2D(u * 26.0 - 5.4, v * 8.5 + 1.8, 4);
+      const blend = Math.max(0, Math.min(1, primary * 0.74 + detail * 0.26 - 0.23));
+      const brightness = Math.max(0.08, Math.min(1, blend * polarFade));
+      const alpha = Math.round(brightness * 205);
+      const i = (y * size + x) * 4;
+      data[i] = Math.round(tint.r * 255 * brightness);
+      data[i + 1] = Math.round(tint.g * 255 * brightness);
+      data[i + 2] = Math.round(tint.b * 255 * brightness);
+      data[i + 3] = alpha;
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+  const texture = new CanvasTexture(canvas);
+  configureLoadedTexture(texture);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createPolarCapMaskTexture(size = 1024, hemisphere = 'north') {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+
+  for (let y = 0; y < size; y += 1) {
+    const v = y / Math.max(1, size - 1);
+    const lat = 90 - v * 180;
+    const signedLat = hemisphere === 'north' ? lat : -lat;
+    const capStart = 62;
+    const capEnd = 88;
+    for (let x = 0; x < size; x += 1) {
+      let alphaNorm = 0;
+      if (signedLat > capStart) {
+        const t = Math.min(1, (signedLat - capStart) / Math.max(1e-6, capEnd - capStart));
+        const lon = x / Math.max(1, size - 1);
+        const edgeNoise = fbmNoise2D(lon * 8.2 + v * 3.3 + 0.7, v * 5.0 - lon * 1.4 - 1.2, 3);
+        alphaNorm = Math.max(0, Math.min(1, t * (0.8 + edgeNoise * 0.4)));
+      }
+      const alpha = Math.round(alphaNorm * 255);
+      const idx = (y * size + x) * 4;
+      data[idx] = 255;
+      data[idx + 1] = 255;
+      data[idx + 2] = 255;
+      data[idx + 3] = alpha;
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+  const texture = new CanvasTexture(canvas);
+  configureLoadedTexture(texture);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 const hiResTextures = {
   earthDay: loadHiResTexture(earthDayTextureUrl),
   earthNormal: loadHiResTexture(earthNormalTextureUrl, { isColorMap: false }),
+  earthTopobathy: loadHiResTexture(earthTopobathyTextureUrl),
+  earthWaterMask: loadHiResTexture(earthWaterMaskTextureUrl, { isColorMap: false }),
   earthClouds: loadHiResTexture(earthCloudsTextureUrl),
   moonDay: loadHiResTexture(moonDayTextureUrl),
+  moonAlbedoLroc: loadHiResTexture(moonAlbedoLrocTextureUrl),
+  moonReliefLola: loadHiResTexture(moonReliefLolaTextureUrl, { isColorMap: false }),
   mercuryDay: loadHiResTexture(mercuryDayTextureUrl),
   venusDay: loadHiResTexture(venusDayTextureUrl),
   venusAtmosphere: loadHiResTexture(venusAtmosphereTextureUrl),
   marsDay: loadHiResTexture(marsDayTextureUrl),
+  marsAlbedoUsgs: loadHiResTexture(marsAlbedoUsgsTextureUrl),
+  marsReliefMola: loadHiResTexture(marsReliefMolaTextureUrl, { isColorMap: false }),
   jupiterDay: loadHiResTexture(jupiterDayTextureUrl),
   saturnDay: loadHiResTexture(saturnDayTextureUrl),
   uranusDay: loadHiResTexture(uranusDayTextureUrl),
@@ -651,11 +931,30 @@ const hiResTextures = {
   milkyWaySurvey: loadHiResTexture(milkyWaySurveyTextureUrl)
 };
 
+const SURFACE_TEXTURE_REGISTRY = new Map([
+  ['earth_topobathy_8192', hiResTextures.earthTopobathy],
+  ['earth_watermask_2048', hiResTextures.earthWaterMask],
+  ['moon_albedo_lroc_8192', hiResTextures.moonAlbedoLroc],
+  ['moon_relief_ldem16_5760', hiResTextures.moonReliefLola],
+  ['mars_albedo_usgs_4096', hiResTextures.marsAlbedoUsgs],
+  ['mars_relief_mola_4096', hiResTextures.marsReliefMola]
+]);
+
+function profileSurfaceTexture(profile, mapType) {
+  const mapId = profile?.surfaceData?.maps?.[mapType];
+  if (!mapId) return null;
+  return SURFACE_TEXTURE_REGISTRY.get(mapId) ?? null;
+}
+
 hiResTextures.earthClouds.wrapS = RepeatWrapping;
 hiResTextures.earthClouds.wrapT = RepeatWrapping;
 hiResTextures.earthClouds.needsUpdate = true;
+hiResTextures.earthTopobathy.wrapS = RepeatWrapping;
+hiResTextures.earthTopobathy.wrapT = RepeatWrapping;
+hiResTextures.marsReliefMola.wrapS = RepeatWrapping;
+hiResTextures.marsReliefMola.wrapT = RepeatWrapping;
 earthCloudDetailTexture = createEarthCloudDetailTexture(512);
-earthTerrainDisplacementTexture = createPlanetHeightTexture({
+earthTerrainDisplacementTexture = profileSurfaceTexture(EARTH_VISUAL_PROFILE, 'relief') ?? createPlanetHeightTexture({
   size: EARTH_VISUAL_PROFILE.terrain?.textureSize ?? 1024,
   seed: EARTH_VISUAL_PROFILE.terrain?.synthSeed ?? 17
 });
@@ -666,6 +965,29 @@ earthCloudDataPipeline = new PlanetCloudDataPipeline({
   },
   fallbackTexture: hiResTextures.earthClouds
 });
+moonTerrainDisplacementTexture = profileSurfaceTexture(MOON_VISUAL_PROFILE, 'relief') ?? createPlanetHeightTexture({
+  size: MOON_VISUAL_PROFILE.terrain?.textureSize ?? 1024,
+  seed: MOON_VISUAL_PROFILE.terrain?.synthSeed ?? 43,
+  mode: MOON_VISUAL_PROFILE.terrain?.mode ?? 'cratered',
+  craterDensity: MOON_VISUAL_PROFILE.terrain?.craterDensity ?? 0.92
+});
+marsTerrainDisplacementTexture = profileSurfaceTexture(MARS_VISUAL_PROFILE, 'relief') ?? createPlanetHeightTexture({
+  size: MARS_VISUAL_PROFILE.terrain?.textureSize ?? 1024,
+  seed: MARS_VISUAL_PROFILE.terrain?.synthSeed ?? 29,
+  mode: MARS_VISUAL_PROFILE.terrain?.mode ?? 'eolian'
+});
+marsCloudDetailTexture = createMarsDustDetailTexture(512);
+marsCloudFallbackTexture = createMarsCloudFallbackTexture(1024);
+
+if (MARS_VISUAL_PROFILE.clouds?.enabled && MARS_VISUAL_PROFILE.clouds?.provider?.wmsEndpoint && MARS_VISUAL_PROFILE.clouds?.provider?.layer) {
+  marsCloudDataPipeline = new PlanetCloudDataPipeline({
+    provider: {
+      ...(MARS_VISUAL_PROFILE.clouds?.provider ?? {}),
+      refreshMinutes: MARS_VISUAL_PROFILE.clouds?.refreshMinutes ?? 90
+    },
+    fallbackTexture: marsCloudFallbackTexture
+  });
+}
 
 // Generate procedural textures for planets at startup
 const planetTextures = new Map();
@@ -674,6 +996,38 @@ for (const bodyId of ['sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'sa
   if (canvas) {
     planetTextures.set(bodyId, new CanvasTexture(canvas));
   }
+}
+const proceduralMoonTextures = new Map();
+
+function stableHash(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function proceduralMoonTextureVariant(body) {
+  const bodyKey = `${body?.parentId ?? 'moon'}:${body?.name ?? body?.id ?? 'moon'}`;
+  const bucket = stableHash(bodyKey) % 36;
+  return `${body?.parentId ?? 'moon'}:${bucket}`;
+}
+
+function proceduralMoonTexture(body) {
+  const variant = proceduralMoonTextureVariant(body);
+  if (proceduralMoonTextures.has(variant)) {
+    return proceduralMoonTextures.get(variant);
+  }
+
+  const canvas = generateMoonTexture(variant, body?.parentId ?? 'default', { width: 256, height: 128 });
+  const texture = new CanvasTexture(canvas);
+  configureLoadedTexture(texture);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.needsUpdate = true;
+  proceduralMoonTextures.set(variant, texture);
+  return texture;
 }
 
 function getMaterial(body) {
@@ -684,7 +1038,7 @@ function getMaterial(body) {
   }
 
   const texture = planetTextures.get(body.id);
-  const isEarthMoon = body.type === 'moon' && body.parentId === 'earth' && body.name === 'Moon';
+  const isEarthMoon = isEarthMoonBody(body);
   const hiResDayMaps = {
     mercury: hiResTextures.mercuryDay,
     venus: hiResTextures.venusDay,
@@ -703,15 +1057,47 @@ function getMaterial(body) {
       color: texture ? undefined : new Color(body.color)
     });
   } else if (body.id === 'earth') {
+    const earthDisplacementScale = EARTH_VISUAL_PROFILE.terrain?.displacementScale ?? 0.00235;
+    const earthSeaLevel = EARTH_VISUAL_PROFILE.terrain?.seaLevel;
+    const earthDisplacementBias = Number.isFinite(earthSeaLevel)
+      ? -earthDisplacementScale * earthSeaLevel
+      : (EARTH_VISUAL_PROFILE.terrain?.displacementBias ?? -0.00115);
     material = new MeshStandardMaterial({
       color: new Color('#ffffff'),
-      map: hiResTextures.earthDay,
+      map: profileSurfaceTexture(EARTH_VISUAL_PROFILE, 'albedo') ?? hiResTextures.earthDay,
       normalMap: hiResTextures.earthNormal,
       normalScale: new Vector2(0.9, 0.9),
       displacementMap: earthTerrainDisplacementTexture ?? undefined,
-      displacementScale: EARTH_VISUAL_PROFILE.terrain?.displacementScale ?? 0.00135,
-      displacementBias: EARTH_VISUAL_PROFILE.terrain?.displacementBias ?? -0.00035,
-      roughness: 0.64,
+      displacementScale: earthDisplacementScale,
+      displacementBias: earthDisplacementBias,
+      roughness: 0.72,
+      metalness: 0.0
+    });
+  } else if (body.id === 'mars') {
+    material = new MeshStandardMaterial({
+      color: new Color('#ffffff'),
+      map: profileSurfaceTexture(MARS_VISUAL_PROFILE, 'albedo') ?? hiResTextures.marsDay,
+      displacementMap: marsTerrainDisplacementTexture ?? undefined,
+      displacementScale: MARS_VISUAL_PROFILE.terrain?.displacementScale ?? 0.0031,
+      displacementBias: MARS_VISUAL_PROFILE.terrain?.displacementBias ?? -0.0015,
+      roughness: 0.86,
+      metalness: 0.0
+    });
+  } else if (isEarthMoon) {
+    material = new MeshStandardMaterial({
+      color: new Color('#f2f2f2'),
+      map: profileSurfaceTexture(MOON_VISUAL_PROFILE, 'albedo') ?? hiResTextures.moonDay,
+      displacementMap: moonTerrainDisplacementTexture ?? undefined,
+      displacementScale: MOON_VISUAL_PROFILE.terrain?.displacementScale ?? 0.0029,
+      displacementBias: MOON_VISUAL_PROFILE.terrain?.displacementBias ?? -0.00145,
+      roughness: 0.95,
+      metalness: 0.0
+    });
+  } else if (body.type === 'moon') {
+    material = new MeshStandardMaterial({
+      color: new Color('#ffffff'),
+      map: proceduralMoonTexture(body),
+      roughness: 0.93,
       metalness: 0.0
     });
   } else if (hiResDay) {
@@ -719,13 +1105,6 @@ function getMaterial(body) {
       color: new Color('#ffffff'),
       map: hiResDay,
       roughness: body.id === 'jupiter' || body.id === 'saturn' ? 0.78 : 0.88,
-      metalness: 0.0
-    });
-  } else if (isEarthMoon) {
-    material = new MeshStandardMaterial({
-      color: new Color('#f2f2f2'),
-      map: hiResTextures.moonDay,
-      roughness: 0.95,
       metalness: 0.0
     });
   } else if (texture) {
@@ -1194,13 +1573,55 @@ void main() {
 }
 `;
 
-function setEarthOrbitGuideScale(guideMesh, earthBody, realisticMode = simState.useRealisticScale) {
+const ORBIT_GUIDE_STYLE_BY_PRESET = {
+  atmosphere: { color: '#86c8ff', opacity: 0.36 },
+  leo: { color: '#73d0ff', opacity: 0.45 },
+  geo: { color: '#ffd28a', opacity: 0.38 },
+  llo: { color: '#d6dce7', opacity: 0.46 },
+  nrho: { color: '#9fa7ff', opacity: 0.4 },
+  skim: { color: '#9ec7ff', opacity: 0.4 },
+  lmo: { color: '#f9c08d', opacity: 0.42 },
+  areostationary: { color: '#ffde95', opacity: 0.35 }
+};
+
+function setOrbitGuideScale(guideMesh, body, realisticMode = simState.useRealisticScale) {
   const altitudeKm = Number(guideMesh?.userData?.orbitAltitudeKm);
-  if (!Number.isFinite(altitudeKm) || !earthBody) return;
+  if (!Number.isFinite(altitudeKm) || !body) return;
   const orbitRadiusAu = realisticMode
-    ? bodyDistanceAuAtAltitude(earthBody, altitudeKm)
-    : bodyRenderRadiusAu(earthBody, false) * (1 + altitudeKm / Math.max(1, bodyEquatorialRadiusKm(earthBody)));
+    ? bodyDistanceAuAtAltitude(body, altitudeKm)
+    : bodyRenderRadiusAu(body, false) * (1 + altitudeKm / Math.max(1, bodyEquatorialRadiusKm(body)));
   guideMesh.scale.setScalar(orbitRadiusAu);
+}
+
+function addOrbitGuideRing({
+  body,
+  spinGroup,
+  guideCollection,
+  presetKey,
+  altitudeKm,
+  geometrySegments = 192
+}) {
+  if (!Number.isFinite(altitudeKm) || altitudeKm < 0) return;
+  const style = ORBIT_GUIDE_STYLE_BY_PRESET[presetKey] ?? { color: '#b8d6ff', opacity: 0.35 };
+  const ring = new Mesh(
+    new RingGeometry(0.9982, 1.0018, geometrySegments),
+    new MeshBasicMaterial({
+      color: new Color(style.color),
+      transparent: true,
+      opacity: style.opacity,
+      side: DoubleSide,
+      depthWrite: false
+    })
+  );
+  ring.rotation.x = Math.PI * 0.5;
+  ring.userData.bodyId = `${body.id}-orbit-guide-${presetKey}-${altitudeKm}`;
+  ring.userData.orbitAltitudeKm = altitudeKm;
+  ring.userData.orbitPresetKey = presetKey;
+  ring.userData.lockBodySpin = true;
+  setOrbitGuideScale(ring, body, simState.useRealisticScale);
+  ring.visible = false;
+  spinGroup.add(ring);
+  guideCollection.push(ring);
 }
 
 // ── Body Nodes ───────────────────────────────────────────────────────────────
@@ -1211,19 +1632,36 @@ function createBodyNode(body) {
 
   const spinGroup = new Group();
   const axialTiltDeg = Number.isFinite(body.axialTiltDeg) ? body.axialTiltDeg : 0;
+  const spinAxisLongitudeDeg = Number.isFinite(body.spinAxisLongitudeDeg) ? body.spinAxisLongitudeDeg : 0;
   const axialTiltRad = (axialTiltDeg * Math.PI) / 180;
+  const spinAxisLongitudeRad = (spinAxisLongitudeDeg * Math.PI) / 180;
   // Orbit propagation uses x-y as the ecliptic plane and +z as the plane normal.
-  // Build a spin axis that is tilted from +z by the body's obliquity.
-  const spinAxisWorld = new Vector3(Math.sin(axialTiltRad), 0, Math.cos(axialTiltRad)).normalize();
+  // Build a spin axis tilted from +z by obliquity with an ecliptic-longitude azimuth.
+  const spinAxisWorld = new Vector3(
+    Math.sin(axialTiltRad) * Math.cos(spinAxisLongitudeRad),
+    Math.sin(axialTiltRad) * Math.sin(spinAxisLongitudeRad),
+    Math.cos(axialTiltRad)
+  ).normalize();
   spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
+  const isEarthMoon = isEarthMoonBody(body);
   const geometry = body.type === 'star'
     ? geometryCache.sun
     : body.type === 'moon'
-      ? (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
-      : (body.id === 'earth' ? geometryCache.earthSurfaceLod.low : geometryCache.planet);
+      ? (
+          isEarthMoon
+            ? geometryCache.moonSurfaceLod.low
+            : (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
+        )
+      : (
+          body.id === 'earth'
+            ? geometryCache.earthSurfaceLod.low
+            : body.id === 'mars'
+              ? geometryCache.marsSurfaceLod.low
+              : geometryCache.planet
+        );
   const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
@@ -1261,7 +1699,6 @@ function createBodyNode(body) {
     cloudMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(cloudMesh);
     earthCloudMesh = cloudMesh;
-
     earthCloudLayerMaterial = cloudMaterial;
 
     const atmosphereMaterial = new ShaderMaterial({
@@ -1285,33 +1722,193 @@ function createBodyNode(body) {
     spinGroup.add(atmosphereMesh);
     earthAtmosphereMesh = atmosphereMesh;
 
-    const orbitGuideStyles = new Map([
-      [EARTH_LEO_ALTITUDE_KM, { color: '#73d0ff', opacity: 0.45 }],
-      [EARTH_GEO_ALTITUDE_KM, { color: '#ffd28a', opacity: 0.38 }]
-    ]);
-    for (const altitudeKm of EARTH_ORBIT_GUIDE_ALTITUDES_KM) {
-      const style = orbitGuideStyles.get(altitudeKm) ?? { color: '#b8d6ff', opacity: 0.35 };
-      const ring = new Mesh(
-        new RingGeometry(0.9982, 1.0018, 192),
-        new MeshBasicMaterial({
-          color: new Color(style.color),
-          transparent: true,
-          opacity: style.opacity,
-          side: DoubleSide,
-          depthWrite: false
-        })
-      );
-      ring.rotation.x = Math.PI * 0.5;
-      ring.userData.bodyId = `${body.id}-orbit-guide-${altitudeKm}`;
-      ring.userData.orbitAltitudeKm = altitudeKm;
-      ring.userData.isEarthOrbitGuide = true;
-      setEarthOrbitGuideScale(ring, body, simState.useRealisticScale);
-      ring.visible = false;
-      spinGroup.add(ring);
-      earthOrbitGuides.push(ring);
+    if (EARTH_VISUAL_PROFILE.water?.enabled) {
+      const oceanMaterial = new MeshStandardMaterial({
+        color: new Color(EARTH_VISUAL_PROFILE.water?.color ?? '#3a6f9c'),
+        alphaMap: profileSurfaceTexture(EARTH_VISUAL_PROFILE, 'waterMask') ?? undefined,
+        transparent: true,
+        opacity: EARTH_VISUAL_PROFILE.water?.opacity ?? 0.68,
+        alphaTest: 0.08,
+        roughness: EARTH_VISUAL_PROFILE.water?.roughness ?? 0.28,
+        metalness: EARTH_VISUAL_PROFILE.water?.metalness ?? 0.08,
+        depthWrite: false
+      });
+      const oceanMesh = new Mesh(geometry, oceanMaterial);
+      oceanMesh.userData.bodyId = `${body.id}-ocean`;
+      oceanMesh.userData.surfaceScale = EARTH_VISUAL_PROFILE.water?.shellScale ?? 1.00045;
+      oceanMesh.userData.rotationPeriodHours = mesh.userData.rotationPeriodHours;
+      oceanMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
+      setBodyMeshScale(oceanMesh, body, simState.useRealisticScale, oceanMesh.userData.surfaceScale);
+      spinGroup.add(oceanMesh);
+      earthOceanMesh = oceanMesh;
+    }
+
+    const earthGuideKeys = Array.isArray(EARTH_VISUAL_PROFILE.orbitGuidePresets) && EARTH_VISUAL_PROFILE.orbitGuidePresets.length > 0
+      ? EARTH_VISUAL_PROFILE.orbitGuidePresets
+      : ['leo', 'geo'];
+    for (const presetKey of earthGuideKeys) {
+      const altitudeKm = Number(EARTH_VISUAL_PROFILE.orbitalPresetsKm?.[presetKey]);
+      addOrbitGuideRing({
+        body,
+        spinGroup,
+        guideCollection: earthOrbitGuides,
+        presetKey,
+        altitudeKm
+      });
     }
 
     earthSurfaceMesh = mesh;
+  }
+
+  if (isEarthMoon) {
+    moonSurfaceMesh = mesh;
+    if (material?.isMeshStandardMaterial) {
+      moonSurfaceMaterial = material;
+      moonSurfaceMaterial.emissive = new Color(MOON_VISUAL_PROFILE.earthshine?.color ?? '#d9e3ff');
+      moonSurfaceMaterial.emissiveIntensity = 0;
+    }
+
+    if (MOON_VISUAL_PROFILE.exosphere?.enabled) {
+      const exosphereMaterial = new ShaderMaterial({
+        vertexShader: EARTH_ATMOSPHERE_VERTEX_SHADER,
+        fragmentShader: EARTH_ATMOSPHERE_FRAGMENT_SHADER,
+        uniforms: {
+          atmosphereColor: { value: new Color(MOON_VISUAL_PROFILE.exosphere?.color ?? '#acc0db') },
+          sunsetColor: { value: new Color(MOON_VISUAL_PROFILE.exosphere?.sunsetColor ?? '#d7e3f4') },
+          sunPosition: { value: new Vector3(0, 0, 0) },
+          intensity: { value: MOON_VISUAL_PROFILE.exosphere?.intensity ?? 0.14 }
+        },
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+        side: BackSide
+      });
+      moonExosphereMesh = new Mesh(geometry, exosphereMaterial);
+      moonExosphereMesh.userData.bodyId = `${body.id}-exosphere`;
+      moonExosphereMesh.userData.surfaceScale = MOON_VISUAL_PROFILE.exosphere?.shellScale ?? 1.006;
+      setBodyMeshScale(moonExosphereMesh, body, simState.useRealisticScale, moonExosphereMesh.userData.surfaceScale);
+      spinGroup.add(moonExosphereMesh);
+    }
+
+    const moonGuideKeys = Array.isArray(MOON_VISUAL_PROFILE.orbitGuidePresets) && MOON_VISUAL_PROFILE.orbitGuidePresets.length > 0
+      ? MOON_VISUAL_PROFILE.orbitGuidePresets
+      : ['llo', 'nrho'];
+    for (const presetKey of moonGuideKeys) {
+      const altitudeKm = Number(MOON_VISUAL_PROFILE.orbitalPresetsKm?.[presetKey]);
+      addOrbitGuideRing({
+        body,
+        spinGroup,
+        guideCollection: moonOrbitGuides,
+        presetKey,
+        altitudeKm,
+        geometrySegments: presetKey === 'nrho' ? 256 : 192
+      });
+    }
+  }
+
+  if (body.id === 'mars') {
+    marsSurfaceMesh = mesh;
+
+    if (MARS_VISUAL_PROFILE.clouds?.enabled) {
+      const cloudShellScale = MARS_VISUAL_PROFILE.clouds?.shellScale ?? 1.008;
+      const cloudBaseOpacity = MARS_VISUAL_PROFILE.clouds?.baseOpacity ?? 0.24;
+      const cloudMaterial = new MeshStandardMaterial({
+        map: marsCloudDataPipeline?.texture ?? marsCloudFallbackTexture ?? undefined,
+        alphaMap: marsCloudDetailTexture ?? undefined,
+        color: new Color('#d9b59f'),
+        transparent: true,
+        opacity: cloudBaseOpacity,
+        alphaTest: 0.02,
+        roughness: 0.88,
+        metalness: 0.0,
+        depthWrite: false
+      });
+      const cloudMesh = new Mesh(geometry, cloudMaterial);
+      cloudMesh.userData.surfaceScale = cloudShellScale;
+      setBodyMeshScale(cloudMesh, body, simState.useRealisticScale, cloudMesh.userData.surfaceScale);
+      cloudMesh.userData.bodyId = `${body.id}-clouds`;
+      cloudMesh.userData.rotationPeriodHours = 24.9;
+      cloudMesh.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
+      spinGroup.add(cloudMesh);
+      marsCloudMesh = cloudMesh;
+      marsCloudLayerMaterial = cloudMaterial;
+    }
+
+    if (MARS_VISUAL_PROFILE.atmosphere?.enabled) {
+      const atmosphereShellScale = MARS_VISUAL_PROFILE.atmosphere?.shellScale ?? 1.018;
+      const atmosphereColor = MARS_VISUAL_PROFILE.atmosphere?.color ?? '#d3916e';
+      const sunsetColor = MARS_VISUAL_PROFILE.atmosphere?.sunsetColor ?? '#f0b58f';
+      const intensity = MARS_VISUAL_PROFILE.atmosphere?.intensity ?? 0.72;
+      const atmosphereMaterial = new ShaderMaterial({
+        vertexShader: EARTH_ATMOSPHERE_VERTEX_SHADER,
+        fragmentShader: EARTH_ATMOSPHERE_FRAGMENT_SHADER,
+        uniforms: {
+          atmosphereColor: { value: new Color(atmosphereColor) },
+          sunsetColor: { value: new Color(sunsetColor) },
+          sunPosition: { value: new Vector3(0, 0, 0) },
+          intensity: { value: intensity }
+        },
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+        side: BackSide
+      });
+      const atmosphereMesh = new Mesh(geometry, atmosphereMaterial);
+      atmosphereMesh.userData.bodyId = `${body.id}-atmosphere`;
+      atmosphereMesh.userData.surfaceScale = atmosphereShellScale;
+      setBodyMeshScale(atmosphereMesh, body, simState.useRealisticScale, atmosphereMesh.userData.surfaceScale);
+      spinGroup.add(atmosphereMesh);
+      marsAtmosphereMesh = atmosphereMesh;
+    }
+
+    const marsGuideKeys = Array.isArray(MARS_VISUAL_PROFILE.orbitGuidePresets) && MARS_VISUAL_PROFILE.orbitGuidePresets.length > 0
+      ? MARS_VISUAL_PROFILE.orbitGuidePresets
+      : ['lmo', 'areostationary'];
+    for (const presetKey of marsGuideKeys) {
+      const altitudeKm = Number(MARS_VISUAL_PROFILE.orbitalPresetsKm?.[presetKey]);
+      addOrbitGuideRing({
+        body,
+        spinGroup,
+        guideCollection: marsOrbitGuides,
+        presetKey,
+        altitudeKm
+      });
+    }
+
+    if (MARS_VISUAL_PROFILE.seasonal?.polarCaps?.enabled) {
+      const northMask = createPolarCapMaskTexture(1024, 'north');
+      const southMask = createPolarCapMaskTexture(1024, 'south');
+      marsPolarNorthMaterial = new MeshStandardMaterial({
+        color: new Color('#f2eee4'),
+        transparent: true,
+        opacity: 0.12,
+        alphaMap: northMask,
+        roughness: 0.96,
+        metalness: 0.0,
+        depthWrite: false
+      });
+      marsPolarSouthMaterial = new MeshStandardMaterial({
+        color: new Color('#f2eee4'),
+        transparent: true,
+        opacity: 0.12,
+        alphaMap: southMask,
+        roughness: 0.96,
+        metalness: 0.0,
+        depthWrite: false
+      });
+
+      marsPolarNorthMesh = new Mesh(geometry, marsPolarNorthMaterial);
+      marsPolarNorthMesh.userData.bodyId = `${body.id}-polar-north`;
+      marsPolarNorthMesh.userData.surfaceScale = 1.0018;
+      setBodyMeshScale(marsPolarNorthMesh, body, simState.useRealisticScale, marsPolarNorthMesh.userData.surfaceScale);
+      spinGroup.add(marsPolarNorthMesh);
+
+      marsPolarSouthMesh = new Mesh(geometry, marsPolarSouthMaterial);
+      marsPolarSouthMesh.userData.bodyId = `${body.id}-polar-south`;
+      marsPolarSouthMesh.userData.surfaceScale = 1.0018;
+      setBodyMeshScale(marsPolarSouthMesh, body, simState.useRealisticScale, marsPolarSouthMesh.userData.surfaceScale);
+      spinGroup.add(marsPolarSouthMesh);
+    }
   }
 
   // Venus upper-atmosphere shell.
@@ -1348,6 +1945,7 @@ function createBodyNode(body) {
         new MeshBasicMaterial({ color: new Color(band.color), transparent: true, opacity: band.opacity, side: 2 })
       );
       ring.rotation.x = Math.PI * 0.5;
+      ring.userData.lockBodySpin = true;
       spinGroup.add(ring);
     }
   }
@@ -1361,6 +1959,7 @@ function createBodyNode(body) {
       new MeshBasicMaterial({ color: new Color('#7a9aa8'), transparent: true, opacity: 0.08, side: 2 })
     );
     ring.rotation.x = Math.PI * 0.5;
+    ring.userData.lockBodySpin = true;
     spinGroup.add(ring);
   }
 
@@ -2477,28 +3076,50 @@ const oortCloud = createOortCloud();
 scene.add(oortCloud);
 
 async function initializeEarthSatelliteLayer() {
-  if (!EARTH_SATELLITE_PROFILE.enabled) return;
-  const earthNode = bodyNodes.get('earth');
-  if (!earthNode) return;
+  const entries = [
+    { bodyId: 'earth', profile: EARTH_SATELLITE_PROFILE },
+    { bodyId: CANONICAL_BODY_IDS.moon, profile: MOON_SATELLITE_PROFILE },
+    { bodyId: 'mars', profile: MARS_SATELLITE_PROFILE }
+  ];
 
-  earthSatelliteSystem = new OrbitalSatelliteSystem({
-    maxGeoCount: EARTH_SATELLITE_PROFILE.maxGeoCount ?? 28,
-    showOrbits: EARTH_SATELLITE_PROFILE.defaultShowOrbits ?? true,
-    useJ2: EARTH_SATELLITE_PROFILE.defaultUseJ2 ?? true
-  });
+  for (const entry of entries) {
+    const profile = entry.profile ?? {};
+    if (!profile.enabled) continue;
 
-  earthSatelliteSystem.attachTo(earthNode);
-  earthSatelliteSystem.applyScaleMode(simState.useRealisticScale);
+    const node = bodyNodes.get(entry.bodyId);
+    if (!node) continue;
 
-  try {
-    await earthSatelliteSystem.initialize();
-  } catch {
-    // Fallback dataset is loaded inside the system on fetch failures.
+    const system = new OrbitalSatelliteSystem({
+      primaryId: profile.primaryId ?? entry.bodyId,
+      maxGeoCount: profile.maxGeoCount ?? 28,
+      showOrbits: profile.defaultShowOrbits ?? true,
+      useJ2: profile.defaultUseJ2 ?? true,
+      tleSources: profile.tleSources ?? null,
+      catalogSatellites: profile.catalog ?? []
+    });
+
+    system.attachTo(node);
+    system.applyScaleMode(simState.useRealisticScale);
+
+    try {
+      await system.initialize();
+    } catch {
+      // Fallback dataset is loaded inside the system on fetch failures.
+    }
+    system.applyScaleMode(simState.useRealisticScale);
+
+    system.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
+    system.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
+    system.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
+
+    if (entry.bodyId === 'earth') {
+      earthSatelliteSystem = system;
+    } else if (entry.bodyId === CANONICAL_BODY_IDS.moon) {
+      moonSatelliteSystem = system;
+    } else if (entry.bodyId === 'mars') {
+      marsSatelliteSystem = system;
+    }
   }
-
-  earthSatelliteSystem.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
-  earthSatelliteSystem.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
-  earthSatelliteSystem.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
 }
 
 mountSceneGraph();
@@ -2521,7 +3142,13 @@ class SimulationClient {
   connect(backend = 'rebound', port = 8042) {
     if (this.ws) this.disconnect();
     const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
-    this.ws = new WebSocket(`ws://localhost:${port}/ws/sim?engine=${backend}&integrator=${integrator}`);
+    this.ws = new WebSocket(backendWebSocketUrl({
+      port,
+      params: {
+        engine: backend,
+        integrator
+      }
+    }));
 
     this.ws.onopen = () => {
       this.connected = true;
@@ -2538,7 +3165,7 @@ class SimulationClient {
           }
         } else if (msg.type === 'connected') {
           this.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
-          if (simState.paused) this.send({ type: 'pause' });
+          this.send({ type: simState.paused ? 'pause' : 'resume' });
         }
       } catch { /* ignore parse errors */ }
     };
@@ -2698,7 +3325,7 @@ function applyScaleMode() {
       for (const child of spinGroup.children) {
         if (child === mesh) continue;
         if (Number.isFinite(child.userData.orbitAltitudeKm)) {
-          setEarthOrbitGuideScale(child, body, realistic);
+          setOrbitGuideScale(child, body, realistic);
         } else if (Number.isFinite(child.userData.surfaceScale)) {
           setBodyMeshScale(child, body, realistic, child.userData.surfaceScale);
         } else if (child.geometry && child.geometry.type === 'RingGeometry') {
@@ -2708,8 +3335,9 @@ function applyScaleMode() {
     }
   }
 
-  if (earthSatelliteSystem) {
-    earthSatelliteSystem.applyScaleMode(realistic);
+  for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
+    if (!system) continue;
+    system.applyScaleMode(realistic);
   }
 
   if (simState.focusedBodyId) {
@@ -2844,6 +3472,7 @@ function updateBodyRotations(julianDate) {
     if (!spinGroup) continue;
 
     for (const child of spinGroup.children) {
+      if (child.userData.lockBodySpin) continue;
       const rotationPeriodHours = child.userData.rotationPeriodHours ?? body.rotationPeriodHours;
       if (!Number.isFinite(rotationPeriodHours) || Math.abs(rotationPeriodHours) < 0.01) continue;
       const rotationOffset = Number.isFinite(child.userData.rotationOffsetRad)
@@ -2876,6 +3505,27 @@ function updateEarthWeather(julianDate) {
   earthCloudLayerMaterial.opacity = baseOpacity - 0.04 + longWave * 0.05 + shortWave * 0.02;
 }
 
+function updateMarsWeather(julianDate) {
+  if (!marsCloudLayerMaterial) return;
+
+  const elapsedHours = (julianDate - J2000_JD) * 24;
+  const cloudMap = marsCloudLayerMaterial.map;
+  if (cloudMap) {
+    cloudMap.offset.x = wrapUnitInterval(elapsedHours * 0.00029 + Math.sin(elapsedHours * 0.0013) * 0.02);
+    cloudMap.offset.y = wrapUnitInterval(elapsedHours * -0.00009 + Math.cos(elapsedHours * 0.0011) * 0.015);
+  }
+
+  if (marsCloudDetailTexture) {
+    marsCloudDetailTexture.offset.x = wrapUnitInterval(elapsedHours * 0.00145 + Math.sin(elapsedHours * 0.0049) * 0.08);
+    marsCloudDetailTexture.offset.y = wrapUnitInterval(elapsedHours * -0.00072 + Math.cos(elapsedHours * 0.0035) * 0.05);
+  }
+
+  const longWave = Math.sin(elapsedHours * 0.014);
+  const shortWave = Math.sin(elapsedHours * 0.064);
+  const baseOpacity = MARS_VISUAL_PROFILE.clouds?.baseOpacity ?? 0.24;
+  marsCloudLayerMaterial.opacity = Math.max(0.08, baseOpacity - 0.03 + longWave * 0.06 + shortWave * 0.03);
+}
+
 function maybeRefreshEarthCloudCoverage(nowMs = Date.now(), force = false) {
   if (!earthCloudDataPipeline || earthCloudRefreshInFlight) return;
   if (!force && nowMs < earthCloudNextRefreshMs) return;
@@ -2898,37 +3548,142 @@ function maybeRefreshEarthCloudCoverage(nowMs = Date.now(), force = false) {
     });
 }
 
-function updateEarthSurfaceLod() {
-  if (!earthSurfaceMesh) return;
+function maybeRefreshMarsCloudCoverage(nowMs = Date.now(), force = false) {
+  if (!marsCloudDataPipeline || marsCloudRefreshInFlight) return;
+  if (!force && nowMs < marsCloudNextRefreshMs) return;
 
+  marsCloudRefreshInFlight = true;
+  const nowDate = new Date(nowMs);
+
+  void marsCloudDataPipeline.maybeRefresh(nowDate, force)
+    .then((updated) => {
+      if (updated && marsCloudLayerMaterial) {
+        marsCloudLayerMaterial.map = marsCloudDataPipeline.texture;
+        marsCloudLayerMaterial.needsUpdate = true;
+      }
+      const status = marsCloudDataPipeline.status();
+      const nextDelayMs = status.lastError ? 7 * 60_000 : (MARS_VISUAL_PROFILE.clouds?.refreshMinutes ?? 90) * 60_000;
+      marsCloudNextRefreshMs = nowMs + nextDelayMs;
+    })
+    .finally(() => {
+      marsCloudRefreshInFlight = false;
+    });
+}
+
+function updateMoonEarthshine() {
+  if (!moonSurfaceMaterial || !MOON_VISUAL_PROFILE.earthshine?.enabled) return;
+
+  const moonNode = bodyNodes.get(CANONICAL_BODY_IDS.moon);
   const earthNode = bodyNodes.get('earth');
-  if (!earthNode) return;
+  if (!moonNode || !earthNode) return;
 
-  earthNode.getWorldPosition(tempVecA);
-  const distanceToEarth = camera.position.distanceTo(tempVecA);
-  const highThreshold = EARTH_VISUAL_PROFILE.lod?.thresholdsAu?.high ?? 0.00025;
-  const mediumThreshold = EARTH_VISUAL_PROFILE.lod?.thresholdsAu?.medium ?? 0.0012;
+  moonNode.getWorldPosition(tempVecA);
+  earthNode.getWorldPosition(tempVecB);
+
+  const moonToEarthX = tempVecB.x - tempVecA.x;
+  const moonToEarthY = tempVecB.y - tempVecA.y;
+  const moonToEarthZ = tempVecB.z - tempVecA.z;
+  const moonToEarthLen = Math.hypot(moonToEarthX, moonToEarthY, moonToEarthZ);
+  const moonToSunX = -tempVecA.x;
+  const moonToSunY = -tempVecA.y;
+  const moonToSunZ = -tempVecA.z;
+  const moonToSunLen = Math.hypot(moonToSunX, moonToSunY, moonToSunZ);
+  if (moonToEarthLen < 1e-12 || moonToSunLen < 1e-12) return;
+
+  const dot = (
+    (moonToEarthX / moonToEarthLen) * (moonToSunX / moonToSunLen)
+    + (moonToEarthY / moonToEarthLen) * (moonToSunY / moonToSunLen)
+    + (moonToEarthZ / moonToEarthLen) * (moonToSunZ / moonToSunLen)
+  );
+  const earthPhaseFromMoon = Math.max(0, Math.min(1, (1 - dot) * 0.5));
+  const maxIntensity = MOON_VISUAL_PROFILE.earthshine?.maxIntensity ?? 0.22;
+  moonSurfaceMaterial.emissiveIntensity = maxIntensity * earthPhaseFromMoon;
+}
+
+function updateMarsSeasonalAppearance(julianDate) {
+  if (!MARS_VISUAL_PROFILE.seasonal?.polarCaps?.enabled) return;
+  if (!marsPolarNorthMaterial || !marsPolarSouthMaterial) return;
+
+  const maxOpacity = MARS_VISUAL_PROFILE.seasonal?.polarCaps?.maxOpacity ?? 0.46;
+  const martianYearDays = 686.98;
+  const phase = ((julianDate - J2000_JD) / martianYearDays) * TWO_PI;
+  const northBlend = 0.2 + 0.8 * (0.5 + 0.5 * Math.cos(phase));
+  const southBlend = 0.2 + 0.8 * (0.5 + 0.5 * Math.cos(phase + Math.PI));
+  marsPolarNorthMaterial.opacity = maxOpacity * northBlend;
+  marsPolarSouthMaterial.opacity = maxOpacity * southBlend;
+}
+
+function updateBodySurfaceLod({
+  bodyId,
+  profile,
+  lodGeometries,
+  currentLevel,
+  surfaceMesh,
+  cloudMesh = null,
+  atmosphereMesh = null,
+  extraMeshes = []
+}) {
+  if (!surfaceMesh || !lodGeometries) return currentLevel;
+
+  const node = bodyNodes.get(bodyId);
+  if (!node) return currentLevel;
+
+  node.getWorldPosition(tempVecA);
+  const distanceToBody = camera.position.distanceTo(tempVecA);
+  const highThreshold = profile?.lod?.thresholdsAu?.high ?? 0.00025;
+  const mediumThreshold = profile?.lod?.thresholdsAu?.medium ?? 0.0012;
 
   let targetLevel = 'low';
-  if (distanceToEarth < highThreshold) {
+  if (distanceToBody < highThreshold) {
     targetLevel = 'high';
-  } else if (distanceToEarth < mediumThreshold) {
+  } else if (distanceToBody < mediumThreshold) {
     targetLevel = 'medium';
   }
 
-  if (targetLevel === earthLodCurrentLevel) return;
+  if (targetLevel === currentLevel) return currentLevel;
 
-  const targetGeometry = geometryCache.earthSurfaceLod[targetLevel] ?? geometryCache.earthSurfaceLod.low;
-  earthSurfaceMesh.geometry = targetGeometry;
-
-  if (earthCloudMesh) {
-    earthCloudMesh.geometry = targetGeometry;
+  const targetGeometry = lodGeometries[targetLevel] ?? lodGeometries.low;
+  surfaceMesh.geometry = targetGeometry;
+  if (cloudMesh) cloudMesh.geometry = targetGeometry;
+  if (atmosphereMesh) atmosphereMesh.geometry = targetGeometry;
+  for (const mesh of extraMeshes) {
+    if (mesh) {
+      mesh.geometry = targetGeometry;
+    }
   }
-  if (earthAtmosphereMesh) {
-    earthAtmosphereMesh.geometry = targetGeometry;
-  }
 
-  earthLodCurrentLevel = targetLevel;
+  return targetLevel;
+}
+
+function updateEarthSurfaceLod() {
+  earthLodCurrentLevel = updateBodySurfaceLod({
+    bodyId: 'earth',
+    profile: EARTH_VISUAL_PROFILE,
+    lodGeometries: geometryCache.earthSurfaceLod,
+    currentLevel: earthLodCurrentLevel,
+    surfaceMesh: earthSurfaceMesh,
+    cloudMesh: earthCloudMesh,
+    atmosphereMesh: earthAtmosphereMesh,
+    extraMeshes: [earthOceanMesh]
+  });
+  moonLodCurrentLevel = updateBodySurfaceLod({
+    bodyId: CANONICAL_BODY_IDS.moon,
+    profile: MOON_VISUAL_PROFILE,
+    lodGeometries: geometryCache.moonSurfaceLod,
+    currentLevel: moonLodCurrentLevel,
+    surfaceMesh: moonSurfaceMesh,
+    atmosphereMesh: moonExosphereMesh
+  });
+  marsLodCurrentLevel = updateBodySurfaceLod({
+    bodyId: 'mars',
+    profile: MARS_VISUAL_PROFILE,
+    lodGeometries: geometryCache.marsSurfaceLod,
+    currentLevel: marsLodCurrentLevel,
+    surfaceMesh: marsSurfaceMesh,
+    cloudMesh: marsCloudMesh,
+    atmosphereMesh: marsAtmosphereMesh,
+    extraMeshes: [marsPolarNorthMesh, marsPolarSouthMesh]
+  });
 }
 
 function updateGravityVectors() {
@@ -2987,11 +3742,18 @@ function updateGravityVectors() {
 }
 
 function updateEarthOrbitGuidesVisibility() {
-  const shouldShow = simState.useRealisticScale
-    && Boolean(dom.toggleOrbits?.checked)
-    && (simState.focusedBodyId === 'earth' || simState.followBodyId === 'earth');
-  for (const guide of earthOrbitGuides) {
-    guide.visible = shouldShow;
+  const guideSets = [
+    ['earth', earthOrbitGuides],
+    [CANONICAL_BODY_IDS.moon, moonOrbitGuides],
+    ['mars', marsOrbitGuides]
+  ];
+  for (const [bodyId, guides] of guideSets) {
+    const shouldShow = simState.useRealisticScale
+      && Boolean(dom.toggleOrbits?.checked)
+      && (simState.focusedBodyId === bodyId || simState.followBodyId === bodyId);
+    for (const guide of guides) {
+      guide.visible = shouldShow;
+    }
   }
 }
 
@@ -3020,10 +3782,11 @@ function applyRenderVisibility() {
   kuiperBelt.visible = dom.toggleKuiper.checked;
   oortCloud.visible = dom.toggleOort.checked;
   gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
-  if (earthSatelliteSystem) {
-    earthSatelliteSystem.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
-    earthSatelliteSystem.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
-    earthSatelliteSystem.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
+  for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
+    if (!system) continue;
+    system.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
+    system.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
+    system.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
   }
   applyMilkyWayAppearance();
   applyNearbySystemsVisibility();
@@ -3035,8 +3798,9 @@ function applyRenderVisibility() {
 // ── Focus & Follow ───────────────────────────────────────────────────────────
 
 function focusBody(bodyId, hardSnap = false) {
-  const body = bodyById.get(bodyId);
-  const node = bodyNodes.get(bodyId);
+  const resolvedBodyId = resolveBodyId(bodyId);
+  const body = bodyById.get(resolvedBodyId);
+  const node = bodyNodes.get(resolvedBodyId);
   if (!body || !node) return;
 
   node.getWorldPosition(tempVecA);
@@ -3064,7 +3828,7 @@ function focusBody(bodyId, hardSnap = false) {
   }
 
   simState.focusedNearbySystemId = null;
-  simState.focusedBodyId = bodyId;
+  simState.focusedBodyId = resolvedBodyId;
   updateEarthOrbitGuidesVisibility();
   dom.statusFocus.textContent = `Focus: ${body.name}`;
 }
@@ -3079,8 +3843,9 @@ function ensureRealisticScaleEnabled() {
 }
 
 function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
-  const body = bodyById.get(bodyId);
-  const node = bodyNodes.get(bodyId);
+  const resolvedBodyId = resolveBodyId(bodyId);
+  const body = bodyById.get(resolvedBodyId);
+  const node = bodyNodes.get(resolvedBodyId);
   if (!body || !node || !Number.isFinite(altitudeKm)) return;
 
   ensureRealisticScaleEnabled();
@@ -3097,14 +3862,14 @@ function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
   camera.position.copy(tempVecA).add(offset.setLength(Math.max(centerDistance, controls.minDistance)));
 
   simState.focusedNearbySystemId = null;
-  simState.focusedBodyId = bodyId;
+  simState.focusedBodyId = resolvedBodyId;
   if (follow) {
-    simState.followBodyId = bodyId;
+    simState.followBodyId = resolvedBodyId;
   }
 
   updateEarthOrbitGuidesVisibility();
-  updateBodyInfoPanel(bodyId);
-  syncBodyListSelection(bodyId);
+  updateBodyInfoPanel(resolvedBodyId);
+  syncBodyListSelection(resolvedBodyId);
   updateZoomMetricsUI();
 
   const altitudeText = `${altitudeKm.toLocaleString('en-US')} km`;
@@ -3137,9 +3902,38 @@ function updateBodyInfoPanel(bodyId) {
     const cloudStatus = earthCloudDataPipeline.status();
     const cloudMode = cloudStatus.hasLiveData ? 'live tile mosaic' : 'fallback texture';
     lines.push(`Cloud source: ${cloudMode}`);
+    if (EARTH_VISUAL_PROFILE.surfaceData?.maps?.relief) {
+      lines.push(`Surface relief: ${EARTH_VISUAL_PROFILE.surfaceData.maps.relief} (topobathy)`);
+    }
+  } else if (body.id === 'mars') {
+    if (marsCloudDataPipeline) {
+      const cloudStatus = marsCloudDataPipeline.status();
+      const cloudMode = cloudStatus.hasLiveData ? 'live tile mosaic' : 'procedural dust fallback';
+      lines.push(`Cloud source: ${cloudMode}`);
+    } else if (MARS_VISUAL_PROFILE.clouds?.enabled) {
+      lines.push('Cloud source: procedural dust fronts');
+    }
+    if (MARS_VISUAL_PROFILE.surfaceData?.maps?.relief) {
+      lines.push(`Surface relief: ${MARS_VISUAL_PROFILE.surfaceData.maps.relief}`);
+    }
+  } else if (isEarthMoonBody(body) && MOON_VISUAL_PROFILE.dataProviders) {
+    const elev = MOON_VISUAL_PROFILE.dataProviders.elevation?.source ?? 'USGS/LOLA';
+    const albedo = MOON_VISUAL_PROFILE.dataProviders.albedo?.source ?? 'USGS/LROC';
+    lines.push(`Surface data profile: elevation ${elev}, albedo ${albedo}`);
+    if (MOON_VISUAL_PROFILE.surfaceData?.maps?.relief) {
+      lines.push(`Relief map: ${MOON_VISUAL_PROFILE.surfaceData.maps.relief}`);
+    }
   }
   if (body.id === 'earth' && earthSatelliteSystem) {
     const satStatus = earthSatelliteSystem.status();
+    lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
+    lines.push(`Satellite perturbation: ${satStatus.useJ2 ? 'J2 on' : 'J2 off'}`);
+  } else if (isEarthMoonBody(body) && moonSatelliteSystem) {
+    const satStatus = moonSatelliteSystem.status();
+    lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
+    lines.push(`Satellite perturbation: ${satStatus.useJ2 ? 'J2 on' : 'J2 off'}`);
+  } else if (body.id === 'mars' && marsSatelliteSystem) {
+    const satStatus = marsSatelliteSystem.status();
     lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
     lines.push(`Satellite perturbation: ${satStatus.useJ2 ? 'J2 on' : 'J2 off'}`);
   }
@@ -3201,15 +3995,16 @@ function syncBodyListSelection(bodyId) {
 }
 
 function selectBodyAndTrack(bodyId, { hardSnap = true, follow = true } = {}) {
-  const body = bodyById.get(bodyId);
+  const resolvedBodyId = resolveBodyId(bodyId);
+  const body = bodyById.get(resolvedBodyId);
   if (!body) return;
 
   if (follow) {
-    simState.followBodyId = bodyId;
+    simState.followBodyId = resolvedBodyId;
   }
-  focusBody(bodyId, hardSnap);
-  updateBodyInfoPanel(bodyId);
-  syncBodyListSelection(bodyId);
+  focusBody(resolvedBodyId, hardSnap);
+  updateBodyInfoPanel(resolvedBodyId);
+  syncBodyListSelection(resolvedBodyId);
   if (follow) {
     dom.statusFocus.textContent = `Following: ${body.name}`;
   }
@@ -3274,13 +4069,37 @@ function fillPlannerSelects() {
 
 const ROUTE_SEGMENTS = 90;
 
+function disposeThreeMaterial(material) {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    material.forEach(disposeThreeMaterial);
+    return;
+  }
+  if (typeof material.dispose === 'function') {
+    material.dispose();
+  }
+}
+
+function disposeRouteVisualizationResources() {
+  for (const child of routeGroup.children) {
+    child.traverse((node) => {
+      if (node.geometry && typeof node.geometry.dispose === 'function') {
+        node.geometry.dispose();
+      }
+      disposeThreeMaterial(node.material);
+    });
+  }
+}
+
 function clearRouteVisualization() {
+  disposeRouteVisualizationResources();
   routeGroup.clear();
   simState.route = null;
   dom.statusRoute.textContent = 'Route: none';
 }
 
 function plotRoute(route) {
+  disposeRouteVisualizationResources();
   routeGroup.clear();
 
   route.legs.forEach((leg, index) => {
@@ -3629,6 +4448,9 @@ function setupUiEvents() {
   dom.togglePlay.addEventListener('click', () => {
     simState.paused = !simState.paused;
     dom.togglePlay.textContent = simState.paused ? 'Resume' : 'Pause';
+    if (simState.serverConnected) {
+      simClient.send({ type: simState.paused ? 'pause' : 'resume' });
+    }
   });
 
   dom.nowTime.addEventListener('click', () => {
@@ -3664,6 +4486,27 @@ function setupUiEvents() {
   });
   dom.focusEarthGeo?.addEventListener('click', () => {
     focusBodyAtAltitude('earth', EARTH_GEO_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMoonSkim?.addEventListener('click', () => {
+    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_SKIM_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMoonLlo?.addEventListener('click', () => {
+    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_LLO_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMoonNrho?.addEventListener('click', () => {
+    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_NRHO_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMarsAtmo?.addEventListener('click', () => {
+    focusBodyAtAltitude('mars', MARS_ATMOSPHERE_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMarsSkim?.addEventListener('click', () => {
+    focusBodyAtAltitude('mars', MARS_SKIM_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMarsLmo?.addEventListener('click', () => {
+    focusBodyAtAltitude('mars', MARS_LMO_ALTITUDE_KM, { follow: true });
+  });
+  dom.focusMarsAreo?.addEventListener('click', () => {
+    focusBodyAtAltitude('mars', MARS_AREOSTATIONARY_ALTITUDE_KM, { follow: true });
   });
 
   for (const toggle of [
@@ -3855,10 +4698,15 @@ function animate(timestamp) {
 
   updateBodyRotations(simState.julianDate);
   updateEarthWeather(simState.julianDate);
+  updateMarsWeather(simState.julianDate);
   maybeRefreshEarthCloudCoverage(Date.now());
+  maybeRefreshMarsCloudCoverage(Date.now());
   updateEarthSurfaceLod();
-  if (earthSatelliteSystem) {
-    earthSatelliteSystem.update(simState.julianDate);
+  updateMoonEarthshine();
+  updateMarsSeasonalAppearance(simState.julianDate);
+  for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
+    if (!system) continue;
+    system.update(simState.julianDate);
   }
   updateAsteroidBelt(simState.julianDate);
 
@@ -3887,6 +4735,7 @@ function animate(timestamp) {
   updateNearbySystemsPositions(simState.julianDate);
   applyNearbySystemsVisibility();
 
+  updateAdaptiveZoomBehavior();
   controls.update();
   resizeRenderer();
   updateCameraClipPlanes();
@@ -3905,4 +4754,5 @@ focusBody('sun', true);
 updateCameraClipPlanes();
 updateZoomMetricsUI();
 maybeRefreshEarthCloudCoverage(Date.now(), true);
+maybeRefreshMarsCloudCoverage(Date.now(), true);
 requestAnimationFrame(animate);
