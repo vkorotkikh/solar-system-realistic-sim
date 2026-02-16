@@ -8,12 +8,16 @@ Phase 1 source of truth:
 from __future__ import annotations
 
 import csv
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = PROJECT_ROOT / "solar-systems" / "nearby_star_systems_ranked_full.csv"
+CATALOG_NAME = "J/A+A/650/A201 tablea1"
+NEARBY_SYSTEMS_SCHEMA_NAME = "nearby_systems_catalog"
+NEARBY_SYSTEMS_SCHEMA_VERSION = "1.2.0"
 
 
 def _to_int(value: str | None) -> int | None:
@@ -110,3 +114,71 @@ def query_nearby_systems(
 
     return systems
 
+
+def _normalize_lookup_token(value: str) -> str:
+    text = value.strip().lower().replace("_", " ").replace("-", " ")
+    text = re.sub(r"[^a-z0-9\s]+", " ", text)
+    return " ".join(text.split())
+
+
+def nearby_system_aliases(system: dict[str, Any]) -> list[str]:
+    aliases = []
+    for candidate in (
+        str(system.get("sys_id", "")).strip(),
+        str(system.get("identifier", "")).strip(),
+        str(system.get("catalog_name", "")).strip(),
+    ):
+        if not candidate:
+            continue
+        if candidate not in aliases:
+            aliases.append(candidate)
+    return aliases
+
+
+@lru_cache(maxsize=1)
+def _nearby_system_lookup_index() -> tuple[dict[int, dict[str, Any]], dict[str, dict[str, Any]]]:
+    by_sys_id: dict[int, dict[str, Any]] = {}
+    by_alias: dict[str, dict[str, Any]] = {}
+
+    for system in load_nearby_systems_catalog():
+        sys_id = system.get("sys_id")
+        if isinstance(sys_id, int):
+            by_sys_id[sys_id] = system
+
+        alias_values = nearby_system_aliases(system)
+        for alias in alias_values:
+            normalized = _normalize_lookup_token(alias)
+            if not normalized:
+                continue
+            # Keep first match (lowest rank) for deterministic lookup.
+            if normalized not in by_alias:
+                by_alias[normalized] = system
+
+    return by_sys_id, by_alias
+
+
+def get_nearby_system(system_key: str | int) -> dict[str, Any] | None:
+    by_sys_id, by_alias = _nearby_system_lookup_index()
+
+    if isinstance(system_key, int):
+        system = by_sys_id.get(system_key)
+        return dict(system) if system is not None else None
+
+    key_text = str(system_key).strip()
+    if not key_text:
+        return None
+
+    try:
+        key_int = int(key_text)
+    except ValueError:
+        key_int = None
+    if key_int is not None:
+        system = by_sys_id.get(key_int)
+        if system is not None:
+            return dict(system)
+
+    normalized = _normalize_lookup_token(key_text)
+    if not normalized:
+        return None
+    system = by_alias.get(normalized)
+    return dict(system) if system is not None else None
