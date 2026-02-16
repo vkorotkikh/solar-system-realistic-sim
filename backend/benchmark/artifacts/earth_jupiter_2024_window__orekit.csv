@@ -1,0 +1,2 @@
+scenario_id,tool,tool_version,run_id,captured_utc,departure_jd,arrival_jd,total_delta_v_km_s
+earth_jupiter_2024_window,orekit,13.1,earth_jupiter_2024_window-orekit-run-01,2026-02-15T10:27:25Z,2460300.5,2461200.5,16.90054000
