@@ -10,6 +10,7 @@ from trajectory import plan_interplanetary_route
 from .explainability import DecisionLog
 from .mining_service import MiningService
 from .risk_service import RiskService
+from .schemas import MissionRequestSchema, parse_mission_request
 from .vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 
 
@@ -38,6 +39,7 @@ class TrajectoryAgent:
         max_assists: int,
         assist_pool: Sequence[str] | None,
         ephemeris_provider: str,
+        prograde: bool,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
         decision_log.add(
@@ -50,6 +52,7 @@ class TrajectoryAgent:
                 "departureJd": departure_jd,
                 "maxAssists": max_assists,
                 "objective": objective,
+                "prograde": prograde,
             },
         )
         return plan_interplanetary_route(
@@ -61,6 +64,7 @@ class TrajectoryAgent:
             max_assists=max_assists,
             assist_pool=list(assist_pool) if assist_pool is not None else None,
             ephemeris_provider=ephemeris_provider,
+            prograde=prograde,
         )
 
 
@@ -123,7 +127,24 @@ class LogisticsAgent:
     def __init__(self) -> None:
         self._vehicle_service = VehicleService()
 
-    def build_vehicle(self, payload: Dict[str, Any]) -> VehicleDefinition:
+    def build_vehicle(self, payload: Dict[str, Any] | MissionRequestSchema) -> VehicleDefinition:
+        if isinstance(payload, MissionRequestSchema):
+            mission_vehicle = payload.vehicle
+            if mission_vehicle is None:
+                return default_vehicle()
+            return VehicleDefinition(
+                name=mission_vehicle.name,
+                stages=[
+                    StageDefinition(
+                        name=stage.name,
+                        dry_mass_kg=stage.dry_mass_kg,
+                        propellant_mass_kg=stage.propellant_mass_kg,
+                        isp_s=stage.isp_s,
+                    )
+                    for stage in mission_vehicle.stages
+                ],
+            )
+
         raw_vehicle = payload.get("vehicle")
         if not isinstance(raw_vehicle, dict):
             return default_vehicle()
@@ -217,29 +238,8 @@ class MissionPlannerAgent:
         self._verifier_agent = VerifierAgent()
 
     def plan(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        mission_inputs = {
-            "from_id": str(payload.get("from_id", "earth")),
-            "target_id": str(payload.get("target_id", payload.get("to_id", "psyche"))),
-            "return_id": str(payload.get("return_id", payload.get("from_id", "earth"))),
-            "departure_jd": float(payload.get("departure_jd", 2_460_400.5)),
-            "objective": str(payload.get("objective", "min_distance")),
-            "max_assists": int(payload.get("max_assists", 1)),
-            "assist_pool": payload.get("assist_pool"),
-            "ephemeris_provider": str(payload.get("ephemeris_provider", "auto")),
-            "payload_mass_kg": float(payload.get("payload_mass_kg", 6_500.0)),
-            "reserve_fraction": float(payload.get("reserve_fraction", 0.06)),
-            "handling_loss_fraction": float(payload.get("handling_loss_fraction", 0.04)),
-            "risk_samples": int(payload.get("risk_samples", 240)),
-            "risk_seed": int(payload.get("risk_seed", 17)),
-            "risk_failure_probability_threshold": float(payload.get("risk_failure_probability_threshold", 0.45)),
-            "mining_days": float(payload.get("mining_days", 180.0)),
-            "ore_grade": float(payload.get("ore_grade", 0.18)),
-            "extraction_rate_kg_day": float(payload.get("extraction_rate_kg_day", 1200.0)),
-            "refining_yield": float(payload.get("refining_yield", 0.82)),
-            "storage_loss_rate_per_day": float(payload.get("storage_loss_rate_per_day", 0.0015)),
-            "available_power_kw": float(payload.get("available_power_kw", 320.0)),
-            "power_required_kw_per_kg_day": float(payload.get("power_required_kw_per_kg_day", 0.24)),
-        }
+        mission_request = parse_mission_request(payload)
+        mission_inputs = mission_request.to_dict()
 
         decision_log = DecisionLog()
         decision_log.add(
@@ -262,6 +262,7 @@ class MissionPlannerAgent:
             max_assists=mission_inputs["max_assists"],
             assist_pool=mission_inputs["assist_pool"],
             ephemeris_provider=mission_inputs["ephemeris_provider"],
+            prograde=mission_inputs["prograde"],
             decision_log=decision_log,
         )
 
@@ -281,7 +282,7 @@ class MissionPlannerAgent:
                 "status": "no_trajectory",
             }
 
-        vehicle = self._logistics_agent.build_vehicle(payload)
+        vehicle = self._logistics_agent.build_vehicle(mission_request)
         candidates: List[Dict[str, Any]] = []
 
         for idx, outbound in enumerate(outbound_candidates[:4]):
@@ -307,6 +308,7 @@ class MissionPlannerAgent:
                 max_assists=max(0, mission_inputs["max_assists"] - 1),
                 assist_pool=mission_inputs["assist_pool"],
                 ephemeris_provider=mission_inputs["ephemeris_provider"],
+                prograde=mission_inputs["prograde"],
                 decision_log=candidate_log,
             )
             return_route = return_routes.get("best")
@@ -416,9 +418,27 @@ class MissionPlannerAgent:
             reverse=True,
         )
 
+        best_candidate = candidates[0]
+        if not bool(best_candidate.get("verification", {}).get("valid", False)):
+            return {
+                "status": "no_verified_candidate",
+                "recommendation": None,
+                "alternatives": candidates[:4],
+                "model": {
+                    "objective": "maximize(returned_payload_kg - propellant_used_kg - risk_penalty - time_penalty)",
+                    "agents": [
+                        "MissionPlannerAgent",
+                        "TrajectoryAgent",
+                        "MiningAgent",
+                        "LogisticsAgent",
+                        "VerifierAgent",
+                    ],
+                },
+            }
+
         return {
             "status": "ok",
-            "recommendation": candidates[0],
+            "recommendation": best_candidate,
             "alternatives": candidates[1:4],
             "model": {
                 "objective": "maximize(returned_payload_kg - propellant_used_kg - risk_penalty - time_penalty)",

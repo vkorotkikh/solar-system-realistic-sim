@@ -3,6 +3,7 @@
 from .ephemeris_service import EphemerisService
 from .mining_service import MiningService
 from .risk_service import RiskService
+from .schemas import MissionRequestSchema, StageSchema, VehicleSchema, parse_mission_request
 from .vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 
 __all__ = [
@@ -13,11 +14,15 @@ __all__ = [
     "MissionPlannerAgent",
     "RiskService",
     "StageDefinition",
+    "StageSchema",
     "TrajectoryAgent",
     "VehicleDefinition",
+    "VehicleSchema",
     "VehicleService",
     "VerifierAgent",
     "default_vehicle",
+    "parse_mission_request",
+    "MissionRequestSchema",
 ]
 
 
