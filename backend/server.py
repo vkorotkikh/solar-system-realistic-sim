@@ -39,10 +39,20 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
 
 from benchmark import benchmark_against_references, generate_accuracy_report
 from data.bodies import ALL_BODIES
-from data.nearby_systems import CATALOG_PATH, load_nearby_systems_catalog, query_nearby_systems
+from data.nearby_systems import (
+    CATALOG_NAME,
+    CATALOG_PATH,
+    NEARBY_SYSTEMS_SCHEMA_NAME,
+    NEARBY_SYSTEMS_SCHEMA_VERSION,
+    get_nearby_system,
+    load_nearby_systems_catalog,
+    nearby_system_aliases,
+    query_nearby_systems,
+)
 from mission import MissionPlannerAgent
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
@@ -84,6 +94,14 @@ DEFAULT_ENGINE = "rebound"
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+EPHEMERIS_PROVIDERS = ("auto", "spice", "horizons", "kepler")
+KNOWN_BODY_IDS = {body["id"] for body in ALL_BODIES}
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BENCHMARK_REPORTS_DIR = (PROJECT_ROOT / "my-notes").resolve()
+NEARBY_SYSTEMS_SCHEMA = {
+    "name": NEARBY_SYSTEMS_SCHEMA_NAME,
+    "version": NEARBY_SYSTEMS_SCHEMA_VERSION,
+}
 
 
 def _rebound_available() -> bool:
@@ -100,6 +118,229 @@ def _tudatpy_available() -> bool:
         return TudatPyEngine().available
     except Exception:
         return False
+
+
+class StrictRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+def _normalize_body_id(value: str) -> str:
+    cleaned = value.strip().lower()
+    if not cleaned:
+        raise ValueError("must be a non-empty string")
+    return cleaned
+
+
+def _normalize_objective(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned not in TRAJECTORY_OBJECTIVES:
+        raise ValueError(f"must be one of {list(TRAJECTORY_OBJECTIVES)}")
+    return cleaned
+
+
+def _normalize_ephemeris_provider(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned not in EPHEMERIS_PROVIDERS:
+        raise ValueError(f"must be one of {list(EPHEMERIS_PROVIDERS)}")
+    return cleaned
+
+
+def _normalize_assist_pool(value: list[str] | None) -> list[str] | None:
+    if value is None:
+        return None
+    cleaned: list[str] = []
+    for item in value:
+        body_id = item.strip().lower()
+        if not body_id:
+            raise ValueError("must contain non-empty string values")
+        cleaned.append(body_id)
+    return list(dict.fromkeys(cleaned))
+
+
+def _ensure_bodies_known(*body_ids: tuple[str, str]) -> None:
+    for body_id, label in body_ids:
+        if body_id not in KNOWN_BODY_IDS:
+            raise HTTPException(status_code=404, detail=f"Unknown {label} body `{body_id}`")
+
+
+def _resolve_benchmark_report_path(output_path: str | None, default_filename: str) -> Path:
+    requested = output_path if output_path is not None else default_filename
+    candidate = Path(requested)
+
+    if candidate.is_absolute():
+        resolved = candidate.resolve(strict=False)
+    else:
+        if candidate.parts and candidate.parts[0] == BENCHMARK_REPORTS_DIR.name:
+            resolved = (PROJECT_ROOT / candidate).resolve(strict=False)
+        else:
+            resolved = (BENCHMARK_REPORTS_DIR / candidate).resolve(strict=False)
+
+    try:
+        resolved.relative_to(BENCHMARK_REPORTS_DIR)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`output_path` must resolve under `{BENCHMARK_REPORTS_DIR}`",
+        ) from exc
+
+    if resolved.suffix.lower() != ".md":
+        raise HTTPException(status_code=400, detail="`output_path` must use a `.md` extension")
+
+    return resolved
+
+
+class TrajectoryBodyPairRequest(StrictRequestModel):
+    from_id: StrictStr
+    to_id: StrictStr
+    ephemeris_provider: StrictStr = "auto"
+    prograde: StrictBool = True
+
+    @field_validator("from_id", "to_id")
+    @classmethod
+    def _validate_body_id(cls, value: str) -> str:
+        return _normalize_body_id(value)
+
+    @field_validator("ephemeris_provider")
+    @classmethod
+    def _validate_ephemeris_provider(cls, value: str) -> str:
+        return _normalize_ephemeris_provider(value)
+
+
+class TrajectoryPlanRequest(TrajectoryBodyPairRequest):
+    objective: StrictStr = "min_distance"
+    departure_jd: FiniteFloat
+    max_assists: int = Field(default=1, ge=0, le=3)
+    assist_pool: list[StrictStr] | None = None
+
+    @field_validator("objective")
+    @classmethod
+    def _validate_objective(cls, value: str) -> str:
+        return _normalize_objective(value)
+
+    @field_validator("assist_pool")
+    @classmethod
+    def _validate_assist_pool(cls, value: list[str] | None) -> list[str] | None:
+        return _normalize_assist_pool(value)
+
+
+class TrajectoryLambertRequest(TrajectoryBodyPairRequest):
+    departure_jd: FiniteFloat
+    arrival_jd: FiniteFloat
+
+
+class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
+    departure_start_jd: FiniteFloat
+    departure_end_jd: FiniteFloat
+    departure_step_days: FiniteFloat = Field(default=10.0, gt=0.0)
+    tof_min_days: FiniteFloat = 60.0
+    tof_max_days: FiniteFloat = 700.0
+    tof_step_days: FiniteFloat = Field(default=20.0, gt=0.0)
+
+
+class MissionStageRequest(StrictRequestModel):
+    name: StrictStr | None = None
+    dry_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
+    propellant_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
+    isp_s: FiniteFloat = Field(default=0.0, ge=0.0)
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("must be a non-empty string when provided")
+        return cleaned
+
+
+class MissionVehicleRequest(StrictRequestModel):
+    name: StrictStr = "custom_vehicle"
+    stages: list[MissionStageRequest]
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("must be a non-empty string")
+        return cleaned
+
+    @field_validator("stages")
+    @classmethod
+    def _validate_stages(cls, value: list[MissionStageRequest]) -> list[MissionStageRequest]:
+        if not value:
+            raise ValueError("must contain at least one stage")
+        return value
+
+
+class MissionPlanRequest(StrictRequestModel):
+    from_id: StrictStr = "earth"
+    target_id: StrictStr | None = None
+    to_id: StrictStr | None = None
+    return_id: StrictStr | None = None
+    departure_jd: FiniteFloat = 2_460_400.5
+    objective: StrictStr = "min_distance"
+    max_assists: int = Field(default=1, ge=0, le=3)
+    assist_pool: list[StrictStr] | None = None
+    ephemeris_provider: StrictStr = "auto"
+    payload_mass_kg: FiniteFloat = Field(default=6_500.0, gt=0.0)
+    reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=1.0)
+    handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=1.0)
+    risk_samples: int = Field(default=240, ge=1)
+    risk_seed: int = 17
+    risk_failure_probability_threshold: FiniteFloat = Field(default=0.45, ge=0.0, le=1.0)
+    mining_days: FiniteFloat = Field(default=180.0, ge=0.0)
+    ore_grade: FiniteFloat = Field(default=0.18, ge=0.0, le=1.0)
+    extraction_rate_kg_day: FiniteFloat = Field(default=1_200.0, ge=0.0)
+    refining_yield: FiniteFloat = Field(default=0.82, ge=0.0, le=1.0)
+    storage_loss_rate_per_day: FiniteFloat = Field(default=0.0015, ge=0.0)
+    available_power_kw: FiniteFloat = Field(default=320.0, ge=0.0)
+    power_required_kw_per_kg_day: FiniteFloat = Field(default=0.24, gt=0.0)
+    vehicle: MissionVehicleRequest | None = None
+    prograde: StrictBool = True
+
+    @field_validator("from_id", "target_id", "to_id", "return_id")
+    @classmethod
+    def _validate_body_ids(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _normalize_body_id(value)
+
+    @field_validator("objective")
+    @classmethod
+    def _validate_objective(cls, value: str) -> str:
+        return _normalize_objective(value)
+
+    @field_validator("assist_pool")
+    @classmethod
+    def _validate_assist_pool(cls, value: list[str] | None) -> list[str] | None:
+        return _normalize_assist_pool(value)
+
+    @field_validator("ephemeris_provider")
+    @classmethod
+    def _validate_ephemeris_provider(cls, value: str) -> str:
+        return _normalize_ephemeris_provider(value)
+
+
+class AccuracyReportRequest(StrictRequestModel):
+    ephemeris_provider: StrictStr = "auto"
+    output_path: StrictStr | None = None
+
+    @field_validator("ephemeris_provider")
+    @classmethod
+    def _validate_ephemeris_provider(cls, value: str) -> str:
+        return _normalize_ephemeris_provider(value)
+
+    @field_validator("output_path")
+    @classmethod
+    def _validate_output_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("must be a non-empty string when provided")
+        return cleaned
 
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
@@ -165,15 +406,38 @@ def nearby_systems(limit: int = 354, max_distance_ly: float = 20.0):
         max_distance_ly=safe_max_distance_ly,
     )
     return {
+        "schema": NEARBY_SYSTEMS_SCHEMA,
         "count": len(rows),
         "total_available": len(all_rows),
         "limit": safe_limit,
         "max_distance_ly": safe_max_distance_ly,
         "source": {
             "catalog_path": str(CATALOG_PATH),
-            "catalog_name": "J/A+A/650/A201 tablea1",
+            "catalog_name": CATALOG_NAME,
         },
         "systems": rows,
+    }
+
+
+@app.get("/nearby-systems/{system_ref}")
+def nearby_system_detail(system_ref: str):
+    system = get_nearby_system(system_ref)
+    if system is None:
+        raise HTTPException(status_code=404, detail=f"Nearby system `{system_ref}` not found")
+
+    aliases = nearby_system_aliases(system)
+    return {
+        "schema": NEARBY_SYSTEMS_SCHEMA,
+        "source": {
+            "catalog_path": str(CATALOG_PATH),
+            "catalog_name": CATALOG_NAME,
+        },
+        "match": {
+            "query": system_ref,
+            "match_type": "sys_id" if system_ref.strip().isdigit() else "alias",
+        },
+        "aliases": aliases,
+        "system": system,
     }
 
 
@@ -195,173 +459,94 @@ def trajectory_capabilities():
 
 
 @app.post("/trajectory/plan")
-def trajectory_plan(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Payload must be an object")
-
-    from_id = payload.get("from_id")
-    to_id = payload.get("to_id")
-    objective = payload.get("objective", "min_distance")
-    departure_jd = payload.get("departure_jd")
-    max_assists = payload.get("max_assists", 1)
-    assist_pool = payload.get("assist_pool")
-    ephemeris_provider = payload.get("ephemeris_provider", "auto")
-    prograde = payload.get("prograde", True)
-
-    if not isinstance(from_id, str) or not from_id:
-        raise HTTPException(status_code=400, detail="`from_id` must be a non-empty string")
-    if not isinstance(to_id, str) or not to_id:
-        raise HTTPException(status_code=400, detail="`to_id` must be a non-empty string")
-    if from_id == to_id:
+def trajectory_plan(payload: TrajectoryPlanRequest):
+    if payload.from_id == payload.to_id:
         raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+
+    _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
+
     try:
-        departure_jd = float(departure_jd)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="`departure_jd` must be numeric") from exc
-    if not math.isfinite(departure_jd):
-        raise HTTPException(status_code=400, detail="`departure_jd` must be finite")
-    if objective not in TRAJECTORY_OBJECTIVES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"`objective` must be one of {list(TRAJECTORY_OBJECTIVES)}",
+        result = plan_interplanetary_route(
+            ALL_BODIES,
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_jd=float(payload.departure_jd),
+            objective=payload.objective,
+            max_assists=payload.max_assists,
+            assist_pool=payload.assist_pool,
+            ephemeris_provider=payload.ephemeris_provider,
+            prograde=payload.prograde,
         )
-    try:
-        max_assists = int(max_assists)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="`max_assists` must be an integer") from exc
-    max_assists = max(0, min(3, max_assists))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if assist_pool is not None:
-        if not isinstance(assist_pool, list) or not all(isinstance(item, str) and item for item in assist_pool):
-            raise HTTPException(status_code=400, detail="`assist_pool` must be a list of strings")
-        assist_pool = list(dict.fromkeys(assist_pool))
-    if not isinstance(ephemeris_provider, str):
-        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
-    if not isinstance(prograde, bool):
-        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
-
-    body_ids = {body["id"] for body in ALL_BODIES}
-    if from_id not in body_ids:
-        raise HTTPException(status_code=404, detail=f"Unknown departure body `{from_id}`")
-    if to_id not in body_ids:
-        raise HTTPException(status_code=404, detail=f"Unknown destination body `{to_id}`")
-
-    result = plan_interplanetary_route(
-        ALL_BODIES,
-        from_id=from_id,
-        to_id=to_id,
-        departure_jd=departure_jd,
-        objective=objective,
-        max_assists=max_assists,
-        assist_pool=assist_pool,
-        ephemeris_provider=ephemeris_provider,
-        prograde=prograde,
-    )
     if result.get("best") is None:
         raise HTTPException(status_code=422, detail="No feasible route could be evaluated")
 
     result["source"] = "backend"
     result["constraints"] = {
-        "objective": objective,
-        "max_assists": max_assists,
-        "ephemeris_provider": ephemeris_provider,
-        "prograde": prograde,
+        "objective": payload.objective,
+        "max_assists": payload.max_assists,
+        "ephemeris_provider": payload.ephemeris_provider,
+        "prograde": payload.prograde,
     }
     return result
 
 
 @app.post("/trajectory/lambert")
-def trajectory_lambert(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Payload must be an object")
-
-    from_id = payload.get("from_id")
-    to_id = payload.get("to_id")
-    departure_jd = payload.get("departure_jd")
-    arrival_jd = payload.get("arrival_jd")
-    ephemeris_provider = payload.get("ephemeris_provider", "auto")
-    prograde = payload.get("prograde", True)
-
-    if not isinstance(from_id, str) or not isinstance(to_id, str):
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must be strings")
-    if from_id == to_id:
+def trajectory_lambert(payload: TrajectoryLambertRequest):
+    if payload.from_id == payload.to_id:
         raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
-    try:
-        departure_jd = float(departure_jd)
-        arrival_jd = float(arrival_jd)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="`departure_jd` and `arrival_jd` must be numeric") from exc
-    if not math.isfinite(departure_jd) or not math.isfinite(arrival_jd):
-        raise HTTPException(status_code=400, detail="`departure_jd` and `arrival_jd` must be finite")
-    if arrival_jd <= departure_jd:
+    if payload.arrival_jd <= payload.departure_jd:
         raise HTTPException(status_code=400, detail="`arrival_jd` must be greater than `departure_jd`")
-    if not isinstance(ephemeris_provider, str):
-        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
-    if not isinstance(prograde, bool):
-        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
 
-    result = solve_direct_lambert(
-        ALL_BODIES,
-        from_id=from_id,
-        to_id=to_id,
-        departure_jd=departure_jd,
-        arrival_jd=arrival_jd,
-        ephemeris_provider=ephemeris_provider,
-        prograde=prograde,
-    )
+    _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
+
+    try:
+        result = solve_direct_lambert(
+            ALL_BODIES,
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_jd=float(payload.departure_jd),
+            arrival_jd=float(payload.arrival_jd),
+            ephemeris_provider=payload.ephemeris_provider,
+            prograde=payload.prograde,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     if result.get("solution") is None:
         raise HTTPException(status_code=422, detail=result.get("error", "No Lambert solution"))
     return result
 
 
 @app.post("/trajectory/porkchop")
-def trajectory_porkchop(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Payload must be an object")
+def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
+    if payload.from_id == payload.to_id:
+        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+    if payload.departure_end_jd <= payload.departure_start_jd:
+        raise HTTPException(status_code=400, detail="`departure_end_jd` must be greater than `departure_start_jd`")
+    if payload.tof_max_days <= payload.tof_min_days:
+        raise HTTPException(status_code=400, detail="`tof_max_days` must be greater than `tof_min_days`")
 
-    from_id = payload.get("from_id")
-    to_id = payload.get("to_id")
-    ephemeris_provider = payload.get("ephemeris_provider", "auto")
-    prograde = payload.get("prograde", True)
+    _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
 
     try:
-        departure_start_jd = float(payload.get("departure_start_jd"))
-        departure_end_jd = float(payload.get("departure_end_jd"))
-        departure_step_days = float(payload.get("departure_step_days", 10.0))
-        tof_min_days = float(payload.get("tof_min_days", 60.0))
-        tof_max_days = float(payload.get("tof_max_days", 700.0))
-        tof_step_days = float(payload.get("tof_step_days", 20.0))
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Porkchop bounds must be numeric") from exc
-
-    if not isinstance(from_id, str) or not isinstance(to_id, str):
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must be strings")
-    if from_id == to_id:
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
-    if departure_end_jd <= departure_start_jd:
-        raise HTTPException(status_code=400, detail="`departure_end_jd` must be greater than `departure_start_jd`")
-    if tof_max_days <= tof_min_days:
-        raise HTTPException(status_code=400, detail="`tof_max_days` must be greater than `tof_min_days`")
-    if departure_step_days <= 0.0 or tof_step_days <= 0.0:
-        raise HTTPException(status_code=400, detail="Step sizes must be positive")
-    if not isinstance(ephemeris_provider, str):
-        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
-    if not isinstance(prograde, bool):
-        raise HTTPException(status_code=400, detail="`prograde` must be a boolean")
-
-    return run_porkchop_scan(
-        ALL_BODIES,
-        from_id=from_id,
-        to_id=to_id,
-        departure_start_jd=departure_start_jd,
-        departure_end_jd=departure_end_jd,
-        departure_step_days=departure_step_days,
-        tof_min_days=tof_min_days,
-        tof_max_days=tof_max_days,
-        tof_step_days=tof_step_days,
-        ephemeris_provider=ephemeris_provider,
-        prograde=prograde,
-    )
+        return run_porkchop_scan(
+            ALL_BODIES,
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_start_jd=float(payload.departure_start_jd),
+            departure_end_jd=float(payload.departure_end_jd),
+            departure_step_days=float(payload.departure_step_days),
+            tof_min_days=float(payload.tof_min_days),
+            tof_max_days=float(payload.tof_max_days),
+            tof_step_days=float(payload.tof_step_days),
+            ephemeris_provider=payload.ephemeris_provider,
+            prograde=payload.prograde,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/mission/capabilities")
@@ -385,11 +570,14 @@ def mission_capabilities():
 
 
 @app.post("/mission/plan")
-def mission_plan(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Payload must be an object")
+def mission_plan(payload: MissionPlanRequest):
     planner = MissionPlannerAgent(ALL_BODIES)
-    result = planner.plan(payload)
+    mission_payload = payload.model_dump(exclude_none=True)
+    try:
+        result = planner.plan(mission_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     if result.get("recommendation") is None:
         raise HTTPException(status_code=422, detail=result.get("status", "No feasible mission recommendation"))
     return result
@@ -397,26 +585,33 @@ def mission_plan(payload: dict):
 
 @app.get("/benchmark/accuracy")
 def benchmark_accuracy(ephemeris_provider: str = "auto"):
-    return benchmark_against_references(ALL_BODIES, ephemeris_provider=ephemeris_provider)
+    try:
+        provider = _normalize_ephemeris_provider(ephemeris_provider)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"`ephemeris_provider` {exc}") from exc
+
+    try:
+        return benchmark_against_references(ALL_BODIES, ephemeris_provider=provider)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/benchmark/accuracy/report")
-def benchmark_accuracy_report(payload: dict):
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Payload must be an object")
-    ephemeris_provider = payload.get("ephemeris_provider", "auto")
-    if not isinstance(ephemeris_provider, str):
-        raise HTTPException(status_code=400, detail="`ephemeris_provider` must be a string")
-
+def benchmark_accuracy_report(payload: AccuracyReportRequest):
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
-    default_path = Path("my-notes") / f"ACCURACY_REPORT_{timestamp}.md"
-    output_path = Path(payload.get("output_path", str(default_path)))
-    report = generate_accuracy_report(
-        ALL_BODIES,
-        output_path=output_path,
-        ephemeris_provider=ephemeris_provider,
+    output_path = _resolve_benchmark_report_path(
+        payload.output_path,
+        default_filename=f"ACCURACY_REPORT_{timestamp}.md",
     )
-    return report
+
+    try:
+        return generate_accuracy_report(
+            ALL_BODIES,
+            output_path=output_path,
+            ephemeris_provider=payload.ephemeris_provider,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ── Simulation Runner (background thread) ────────────────────────────────────

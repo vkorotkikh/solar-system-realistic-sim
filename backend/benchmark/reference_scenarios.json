@@ -1,35 +1,152 @@
 [
   {
-    "id": "earth_mars_short_transfer",
-    "description": "Earth to Mars representative short transfer",
-    "source": "reference-gmat-orekit-tudat-blend",
+    "id": "earth_mars_2024_window",
+    "description": "Earth to Mars transfer benchmark window",
+    "source": "strict-gmat-orekit-tudat",
     "from_id": "earth",
     "to_id": "mars",
     "departure_jd": 2460600.5,
     "arrival_jd": 2460860.5,
-    "reference_total_delta_v_km_s": 8.6,
-    "delta_v_tolerance_km_s": 6.0
+    "truth_calibration": {
+      "tier": "strict",
+      "consensus_method": "mean_of_required_tools",
+      "consensus_total_delta_v_km_s": 8.48952,
+      "delta_v_tolerance_km_s": 0.45,
+      "tools": {
+        "gmat": {
+          "total_delta_v_km_s": 8.48213,
+          "tool_version": "R2025a",
+          "run_id": "earth_mars_2024_window-gmat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_mars_2024_window__gmat.csv",
+          "artifact_sha256": "373f5b584c0886d71df2a74d5b238657b66771e78556cd7f536b6adacb9a5efd"
+        },
+        "orekit": {
+          "total_delta_v_km_s": 8.49741,
+          "tool_version": "13.1",
+          "run_id": "earth_mars_2024_window-orekit-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_mars_2024_window__orekit.csv",
+          "artifact_sha256": "33c4f37adc44f67ddd486a6f6ffe956f492b3459b8f9c259e5b4b33bfe5330d1"
+        },
+        "tudat": {
+          "total_delta_v_km_s": 8.48902,
+          "tool_version": "1.0",
+          "run_id": "earth_mars_2024_window-tudat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_mars_2024_window__tudat.csv",
+          "artifact_sha256": "53a0716829269de7b266a08dd791c94c6c1dc64489c99d049441bcc18caf93f7"
+        }
+      },
+      "provenance": {
+        "calibration_batch": "cal-2026-02-15-a",
+        "notes": "Cross-tool direct Lambert benchmark capture for fixed departure/arrival dates.",
+        "source_links": [
+          "https://www.spaceops.org/icsos-2025-gmat-technical-track-day/",
+          "https://www.orekit.org/",
+          "https://docs.tudat.space/en/latest/"
+        ]
+      }
+    }
   },
   {
-    "id": "earth_venus_inner_transfer",
-    "description": "Earth to Venus inner transfer",
-    "source": "reference-gmat-orekit-tudat-blend",
+    "id": "earth_venus_2024_window",
+    "description": "Earth to Venus transfer benchmark window",
+    "source": "strict-gmat-orekit-tudat",
     "from_id": "earth",
     "to_id": "venus",
     "departure_jd": 2460400.5,
     "arrival_jd": 2460520.5,
-    "reference_total_delta_v_km_s": 7.2,
-    "delta_v_tolerance_km_s": 5.0
+    "truth_calibration": {
+      "tier": "strict",
+      "consensus_method": "mean_of_required_tools",
+      "consensus_total_delta_v_km_s": 7.108343333333333,
+      "delta_v_tolerance_km_s": 0.4,
+      "tools": {
+        "gmat": {
+          "total_delta_v_km_s": 7.11492,
+          "tool_version": "R2025a",
+          "run_id": "earth_venus_2024_window-gmat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_venus_2024_window__gmat.csv",
+          "artifact_sha256": "c166feba4e9a64f412aea253c05275a8da6e9d81b58a567c7934944e7a72992b"
+        },
+        "orekit": {
+          "total_delta_v_km_s": 7.10177,
+          "tool_version": "13.1",
+          "run_id": "earth_venus_2024_window-orekit-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_venus_2024_window__orekit.csv",
+          "artifact_sha256": "1fcea50bd94b3b93a5059dd9301f31e23eafeb8b6e0d3c9d477f9665f576132e"
+        },
+        "tudat": {
+          "total_delta_v_km_s": 7.10834,
+          "tool_version": "1.0",
+          "run_id": "earth_venus_2024_window-tudat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_venus_2024_window__tudat.csv",
+          "artifact_sha256": "4a86f69d78617ab7b245fd1cdfdee44d78b5e059b520bb4680018836c7f8f572"
+        }
+      },
+      "provenance": {
+        "calibration_batch": "cal-2026-02-15-a",
+        "notes": "Cross-tool direct Lambert benchmark capture for fixed departure/arrival dates.",
+        "source_links": [
+          "https://www.spaceops.org/icsos-2025-gmat-technical-track-day/",
+          "https://www.orekit.org/",
+          "https://docs.tudat.space/en/latest/"
+        ]
+      }
+    }
   },
   {
-    "id": "earth_jupiter_outer_transfer",
-    "description": "Earth to Jupiter representative transfer",
-    "source": "reference-gmat-orekit-tudat-blend",
+    "id": "earth_jupiter_2024_window",
+    "description": "Earth to Jupiter transfer benchmark window",
+    "source": "strict-gmat-orekit-tudat",
     "from_id": "earth",
     "to_id": "jupiter",
     "departure_jd": 2460300.5,
     "arrival_jd": 2461200.5,
-    "reference_total_delta_v_km_s": 17.0,
-    "delta_v_tolerance_km_s": 10.0
+    "truth_calibration": {
+      "tier": "strict",
+      "consensus_method": "mean_of_required_tools",
+      "consensus_total_delta_v_km_s": 16.873126666666664,
+      "delta_v_tolerance_km_s": 0.7,
+      "tools": {
+        "gmat": {
+          "total_delta_v_km_s": 16.84211,
+          "tool_version": "R2025a",
+          "run_id": "earth_jupiter_2024_window-gmat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_jupiter_2024_window__gmat.csv",
+          "artifact_sha256": "6ebac66c1ea04802c4d9275c8ffc06712fc8fae7017fae55fbceace93e235cfc"
+        },
+        "orekit": {
+          "total_delta_v_km_s": 16.90054,
+          "tool_version": "13.1",
+          "run_id": "earth_jupiter_2024_window-orekit-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_jupiter_2024_window__orekit.csv",
+          "artifact_sha256": "76d5ee384d03545013178208609705dede037e2f97f5f4ec8e7ba31c93b7c283"
+        },
+        "tudat": {
+          "total_delta_v_km_s": 16.87673,
+          "tool_version": "1.0",
+          "run_id": "earth_jupiter_2024_window-tudat-run-01",
+          "captured_utc": "2026-02-15T10:27:25Z",
+          "artifact_path": "artifacts/earth_jupiter_2024_window__tudat.csv",
+          "artifact_sha256": "142eda26b340226803fd22cadf028bd05dd394ef242e9f910a5cf0521eebe463"
+        }
+      },
+      "provenance": {
+        "calibration_batch": "cal-2026-02-15-a",
+        "notes": "Cross-tool direct Lambert benchmark capture for fixed departure/arrival dates.",
+        "source_links": [
+          "https://www.spaceops.org/icsos-2025-gmat-technical-track-day/",
+          "https://www.orekit.org/",
+          "https://docs.tudat.space/en/latest/"
+        ]
+      }
+    }
   }
 ]
