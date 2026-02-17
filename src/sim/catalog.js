@@ -4,6 +4,7 @@ import {
   ASTEROID_BELT_OBJECTS,
   KUIPER_BELT_OBJECTS,
   MAJOR_MOON_RADII_KM,
+  MOON_ROTATION_PERIOD_HOURS,
   MAJOR_MOON_SHAPE_KM,
   MAJOR_MOONS,
   PLANETS,
@@ -22,6 +23,7 @@ const PARENT_TINTS = {
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
+const EARTH_OBLIQUITY_DEG = 23.439281;
 const PARENT_AXIAL_TILT_DEG = Object.fromEntries(
   PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
@@ -48,6 +50,30 @@ function orbitNormalFromElements(iDeg, ascendingNodeDeg) {
   };
 }
 
+function vectorMagnitude(vector) {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+
+function normalizeVector(vector) {
+  const mag = vectorMagnitude(vector);
+  if (mag < 1e-12) {
+    return { x: 0, y: 0, z: 1 };
+  }
+  return {
+    x: vector.x / mag,
+    y: vector.y / mag,
+    z: vector.z / mag
+  };
+}
+
+function crossProduct(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
 function rotateVectorAroundX(vector, angleDeg) {
   const angle = angleDeg * DEG_TO_RAD;
   const cosA = Math.cos(angle);
@@ -69,6 +95,62 @@ function elementsFromOrbitNormal(normal) {
   };
 }
 
+function raDecToEquatorialUnit(raDeg, decDeg) {
+  const ra = (raDeg ?? 0) * DEG_TO_RAD;
+  const dec = (decDeg ?? 0) * DEG_TO_RAD;
+  const cosDec = Math.cos(dec);
+  return {
+    x: cosDec * Math.cos(ra),
+    y: cosDec * Math.sin(ra),
+    z: Math.sin(dec)
+  };
+}
+
+function equatorialToEcliptic(vectorEq) {
+  const obliquity = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
+  const cosOb = Math.cos(obliquity);
+  const sinOb = Math.sin(obliquity);
+  return {
+    x: vectorEq.x,
+    y: cosOb * vectorEq.y + sinOb * vectorEq.z,
+    z: -sinOb * vectorEq.y + cosOb * vectorEq.z
+  };
+}
+
+function sourcePoleInEcliptic(moon, parentId, sourceFrame) {
+  if (Number.isFinite(moon.poleRaDeg) && Number.isFinite(moon.poleDecDeg)) {
+    const poleEq = raDecToEquatorialUnit(moon.poleRaDeg, moon.poleDecDeg);
+    return normalizeVector(equatorialToEcliptic(poleEq));
+  }
+
+  const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
+  const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? moon.poleTiltDeg : 0;
+  const frameTiltDeg = sourceFrame === 'laplace'
+    ? parentTilt + laplaceTilt
+    : parentTilt;
+  return normalizeVector(rotateVectorAroundX({ x: 0, y: 0, z: 1 }, frameTiltDeg));
+}
+
+function convertElementsFromPlaneToEcliptic(moon, sourceFrame, parentId) {
+  const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
+  const eclipticNorth = { x: 0, y: 0, z: 1 };
+  let planeXAxis = crossProduct(eclipticNorth, sourcePole);
+  if (vectorMagnitude(planeXAxis) < 1e-9) {
+    planeXAxis = { x: 1, y: 0, z: 0 };
+  } else {
+    planeXAxis = normalizeVector(planeXAxis);
+  }
+  const planeYAxis = normalizeVector(crossProduct(sourcePole, planeXAxis));
+
+  const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
+  const eclipticNormal = normalizeVector({
+    x: planeXAxis.x * sourceNormal.x + planeYAxis.x * sourceNormal.y + sourcePole.x * sourceNormal.z,
+    y: planeXAxis.y * sourceNormal.x + planeYAxis.y * sourceNormal.y + sourcePole.y * sourceNormal.z,
+    z: planeXAxis.z * sourceNormal.x + planeYAxis.z * sourceNormal.y + sourcePole.z * sourceNormal.z
+  });
+  return elementsFromOrbitNormal(eclipticNormal);
+}
+
 function normalizeMoonOrbitFrame(moon, parentId) {
   const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
   if (sourceFrame === 'ecliptic' || sourceFrame.length === 0) {
@@ -80,16 +162,8 @@ function normalizeMoonOrbitFrame(moon, parentId) {
   }
 
   // JPL moon elements are not consistently published in one frame.
-  // Convert equatorial/Laplace entries into a common ecliptic approximation.
-  const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
-  const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? Math.abs(moon.poleTiltDeg) : null;
-  const frameTiltDeg = sourceFrame === 'laplace'
-    ? (laplaceTilt ?? parentTilt)
-    : parentTilt;
-
-  const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
-  const eclipticNormal = rotateVectorAroundX(sourceNormal, frameTiltDeg);
-  const converted = elementsFromOrbitNormal(eclipticNormal);
+  // Convert equatorial/Laplace entries into ecliptic elements using source pole orientation.
+  const converted = convertElementsFromPlaneToEcliptic(moon, sourceFrame, parentId);
   return {
     iDeg: converted.iDeg,
     ascendingNodeDeg: converted.ascendingNodeDeg,
@@ -308,6 +382,7 @@ export function createSolarSystemCatalog() {
       realRadiusAu: radiusKm / AU_KM,
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
+      rotationPeriodHours: MOON_ROTATION_PERIOD_HOURS[moon.name] ?? null,
       reference: moon.reference,
       orbitFrameSource: frameNormalized.sourceFrame,
       orbit: {

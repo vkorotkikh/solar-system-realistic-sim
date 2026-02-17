@@ -64,6 +64,15 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
 }
 
 function evaluateAssist(model, body, incomingLeg, outgoingLeg) {
+  if (!body) {
+    return {
+      assistGainKmS: 0,
+      requiredTurnDeg: 0,
+      maxTurnDeg: 0,
+      feasible: false
+    };
+  }
+
   if (!body.massKg || !body.radiusKm) {
     return {
       assistGainKmS: 0,
@@ -158,17 +167,48 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     assistPool = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn']
   } = options;
 
-  const routeBodies = generateAssistRoutes(fromId, toId, assistPool, maxAssists);
+  if (!bodyById.has(fromId) || !bodyById.has(toId) || fromId === toId) {
+    return {
+      best: null,
+      alternatives: []
+    };
+  }
+
+  const sanitizedAssistPool = Array.from(
+    new Set(
+      (Array.isArray(assistPool) ? assistPool : [])
+        .filter((candidate) => typeof candidate === 'string')
+        .map((candidate) => candidate.trim())
+        .filter((candidate) => candidate.length > 0 && candidate !== fromId && candidate !== toId && bodyById.has(candidate))
+    )
+  );
+
+  const routeBodies = generateAssistRoutes(fromId, toId, sanitizedAssistPool, maxAssists);
   const evaluatedRoutes = [];
 
   for (const bodyRoute of routeBodies) {
     const legs = [];
     let currentDeparture = departureJd;
+    let routeValid = true;
 
     for (let i = 0; i < bodyRoute.length - 1; i += 1) {
-      const leg = computeHohmannLeg(model, bodyRoute[i], bodyRoute[i + 1], currentDeparture);
+      let leg;
+      try {
+        leg = computeHohmannLeg(model, bodyRoute[i], bodyRoute[i + 1], currentDeparture);
+      } catch {
+        routeValid = false;
+        break;
+      }
+      if (!Number.isFinite(leg.arrivalJd) || !Number.isFinite(leg.departureJd) || leg.arrivalJd <= leg.departureJd) {
+        routeValid = false;
+        break;
+      }
       legs.push(leg);
       currentDeparture = leg.arrivalJd;
+    }
+
+    if (!routeValid || legs.length === 0) {
+      continue;
     }
 
     let totalAssistGainKmS = 0;
