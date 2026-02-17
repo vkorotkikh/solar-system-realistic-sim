@@ -34,7 +34,12 @@ export function normalizeSolarFeatureSetFromState(physicsState, fallbackEpochJd,
     const kind = `${feature?.kind ?? 'loop'}`.toLowerCase();
     const brightness = Math.max(0.05, Math.min(1, Number(feature?.brightness) || 0.35));
     const speedKms = Number(feature?.expansion_speed_kms);
-    const speedFactor = Number.isFinite(speedKms) ? Math.max(0.06, Math.min(0.9, speedKms / 2_100)) : 0.2;
+    let speedFactor = 0.2;
+    if (Number.isFinite(speedKms)) {
+      // Map widened physical speed range (20..3500 km/s) into a perceptual animation factor.
+      const normalized = clampUnit((speedKms - 20) / 3_480);
+      speedFactor = Math.max(0.02, Math.min(0.95, normalized ** 0.55));
+    }
     const peakExtentRaw = Number(feature?.peak_extent_solar_radii);
     const peakExtent = Number.isFinite(peakExtentRaw) ? Math.max(1, peakExtentRaw) : 1.0;
 

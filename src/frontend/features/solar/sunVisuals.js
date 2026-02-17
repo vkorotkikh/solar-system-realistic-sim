@@ -348,6 +348,56 @@ export function setSunEruptionBaseRadius(sunEruptionLayer, baseRadiusAu) {
   }
 }
 
+export function clearSunCoronalLoops(sunCoronalLoopGroup) {
+  if (!sunCoronalLoopGroup) return;
+  const loops = Array.isArray(sunCoronalLoopGroup.children)
+    ? [...sunCoronalLoopGroup.children]
+    : [];
+
+  for (const loop of loops) {
+    if (loop?.geometry && typeof loop.geometry.dispose === 'function') {
+      loop.geometry.dispose();
+    }
+    const material = loop?.material;
+    if (Array.isArray(material)) {
+      for (const entry of material) {
+        if (entry && typeof entry.dispose === 'function') {
+          entry.dispose();
+        }
+      }
+    } else if (material && typeof material.dispose === 'function') {
+      material.dispose();
+    }
+  }
+
+  sunCoronalLoopGroup.clear();
+}
+
+export function clearSunParkerSpiralLines(sunParkerSpiralGroup) {
+  if (!sunParkerSpiralGroup) return;
+  const lines = Array.isArray(sunParkerSpiralGroup.children)
+    ? [...sunParkerSpiralGroup.children]
+    : [];
+
+  for (const line of lines) {
+    if (line?.geometry && typeof line.geometry.dispose === 'function') {
+      line.geometry.dispose();
+    }
+    const material = line?.material;
+    if (Array.isArray(material)) {
+      for (const entry of material) {
+        if (entry && typeof entry.dispose === 'function') {
+          entry.dispose();
+        }
+      }
+    } else if (material && typeof material.dispose === 'function') {
+      material.dispose();
+    }
+  }
+
+  sunParkerSpiralGroup.clear();
+}
+
 function ensureSunCoronalLoop(sunCoronalLoopGroup, index) {
   if (!sunCoronalLoopGroup) return null;
   if (sunCoronalLoopGroup.children[index]) return sunCoronalLoopGroup.children[index];
@@ -375,6 +425,26 @@ function stableHash01(input) {
     hash = Math.imul(hash, 16777619);
   }
   return ((hash >>> 0) % 10_000) / 10_000;
+}
+
+function ensureSunParkerSpiralLine(sunParkerSpiralGroup, index) {
+  if (!sunParkerSpiralGroup) return null;
+  if (sunParkerSpiralGroup.children[index]) return sunParkerSpiralGroup.children[index];
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(6), 3));
+  const material = new LineBasicMaterial({
+    color: new Color('#9bd8ff'),
+    transparent: true,
+    opacity: 0.17,
+    blending: AdditiveBlending,
+    depthWrite: false
+  });
+  const line = new Line(geometry, material);
+  line.renderOrder = 4;
+  line.frustumCulled = false;
+  sunParkerSpiralGroup.add(line);
+  return line;
 }
 
 export function updateSunCoronalLoopsFromBlendView(
@@ -476,6 +546,76 @@ export function updateSunCoronalLoopsFromBlendView(
 
   for (let i = loopEntries.length; i < sunCoronalLoopGroup.children.length; i += 1) {
     sunCoronalLoopGroup.children[i].visible = false;
+  }
+}
+
+export function updateSunParkerSpiralFromPhysicsState(
+  sunParkerSpiralGroup,
+  physicsState,
+  sunRadiusAu,
+  maxLines = 6,
+  maxPoints = 96,
+  timeSec = 0
+) {
+  if (!sunParkerSpiralGroup) return;
+  const sourceLines = Array.isArray(physicsState?.heliosphere?.parker_spiral?.lines)
+    ? physicsState.heliosphere.parker_spiral.lines
+    : [];
+  const spiralLines = sourceLines.slice(0, Math.max(1, maxLines));
+
+  for (let i = 0; i < spiralLines.length; i += 1) {
+    const entry = spiralLines[i];
+    const line = ensureSunParkerSpiralLine(sunParkerSpiralGroup, i);
+    if (!line) continue;
+
+    const arcRaw = Array.isArray(entry?.arc) ? entry.arc : [];
+    const arc = [];
+    for (let p = 0; p < arcRaw.length && arc.length < Math.max(2, maxPoints); p += 1) {
+      const sample = arcRaw[p];
+      if (!Array.isArray(sample) || sample.length !== 3) continue;
+      const x = Number(sample[0]);
+      const y = Number(sample[1]);
+      const z = Number(sample[2]);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      arc.push([x, y, z]);
+    }
+    if (arc.length < 2) {
+      line.visible = false;
+      continue;
+    }
+
+    const pointCount = arc.length;
+    const geometry = line.geometry;
+    let positionAttr = geometry.getAttribute('position');
+    if (!positionAttr || positionAttr.count !== pointCount) {
+      positionAttr = new Float32BufferAttribute(new Float32Array(pointCount * 3), 3);
+      geometry.setAttribute('position', positionAttr);
+    }
+    const array = positionAttr.array;
+    for (let p = 0; p < pointCount; p += 1) {
+      const base = p * 3;
+      array[base] = arc[p][0] * sunRadiusAu;
+      array[base + 1] = arc[p][1] * sunRadiusAu;
+      array[base + 2] = arc[p][2] * sunRadiusAu;
+    }
+    positionAttr.needsUpdate = true;
+    geometry.setDrawRange(0, pointCount);
+
+    if (line.material?.isLineBasicMaterial) {
+      const seed = stableHash01(`${entry?.id ?? `spiral-${i}`}`);
+      const windKmsRaw = Number(entry?.wind_speed_kms);
+      const windKms = Number.isFinite(windKmsRaw) ? windKmsRaw : 420;
+      const windFactor = clampUnit((windKms - 200) / 700);
+      const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
+      const hueShift = 0.06 + windFactor * 0.12;
+      line.material.color.setRGB(0.56 + hueShift, 0.79 + hueShift * 0.35, 1.0);
+      line.material.opacity = Math.max(0.06, Math.min(0.32, (0.12 + windFactor * 0.1) * flicker));
+    }
+    line.visible = true;
+  }
+
+  for (let i = spiralLines.length; i < sunParkerSpiralGroup.children.length; i += 1) {
+    sunParkerSpiralGroup.children[i].visible = false;
   }
 }
 
