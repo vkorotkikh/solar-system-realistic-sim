@@ -62,7 +62,20 @@ import { generateMoonTexture, generatePlanetTexture } from './textures.js';
 import { PlanetCloudDataPipeline } from './frontend/features/planetary/cloudDataPipeline.js';
 import { createPlanetHeightTexture } from './frontend/features/planetary/terrainSynthesis.js';
 import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem.js';
+import { MoonTexturePipeline } from './frontend/features/planetary/moonTexturePipeline.js';
 import { planetVisualProfile } from './frontend/features/planetary/visualProfiles.js';
+import { SimulationClient } from './frontend/app/simulationClient.js';
+import { createTimeController } from './frontend/app/timeController.js';
+import {
+  clearRouteVisualization as clearRouteVisualizationImpl,
+  plotRoute as plotRouteImpl,
+  updateRouteVisualization as updateRouteVisualizationImpl
+} from './frontend/app/routeRenderer.js';
+import { createPlannerController } from './frontend/app/plannerController.js';
+import { setupUiBindings } from './frontend/app/uiBindings.js';
+import { createLabelSystemOps } from './frontend/app/labelSystem.js';
+import { createNearbySystemsRenderer } from './frontend/app/nearbySystemsRenderer.js';
+import { createLocalSystemRenderer } from './frontend/app/localSystemRenderer.js';
 import earthDayTextureUrl from './assets/textures/earth_day_4096.jpg';
 import earthNormalTextureUrl from './assets/textures/earth_normal_2048.jpg';
 import earthTopobathyTextureUrl from './assets/textures/earth_topobathy_8192.jpg';
@@ -106,6 +119,7 @@ const dom = {
   toggleNearbySystems: document.getElementById('toggle-nearby-systems'),
   toggleEarthSatellites: document.getElementById('toggle-earth-satellites'),
   toggleSatelliteJ2: document.getElementById('toggle-satellite-j2'),
+  starSystemList: document.getElementById('star-system-list'),
   bodySearch: document.getElementById('body-search'),
   bodyList: document.getElementById('body-list'),
   focusBody: document.getElementById('focus-body'),
@@ -151,6 +165,7 @@ const dom = {
   focusMarsSkim: document.getElementById('focus-mars-skim'),
   focusMarsLmo: document.getElementById('focus-mars-lmo'),
   focusMarsAreo: document.getElementById('focus-mars-areostationary'),
+  returnSolarSystem: document.getElementById('return-solar-system'),
   viewportShell: document.getElementById('viewport-shell'),
   statusRender: document.getElementById('status-render')
 };
@@ -190,17 +205,28 @@ function isEarthMoonBody(body) {
     && body.id === CANONICAL_BODY_IDS.moon;
 }
 
+const SYSTEM_VIEW_MODE = Object.freeze({
+  SOLAR: 'solar',
+  INTERSTELLAR: 'interstellar',
+  SYSTEM_LOCAL: 'system_local'
+});
+
 const simState = {
   julianDate: currentJulianDate(),
   timeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC,
   paused: false,
   followBodyId: null,
   focusedBodyId: 'sun',
+  lastSolarFocusedBodyId: 'sun',
   route: null,
   backend: 'local',
   useRealisticScale: false,
   milkyWayMode: 'standard',
   focusedNearbySystemId: null,
+  hoveredNearbySystemId: null,
+  activeLocalSystemId: null,
+  selectedStarSystemId: 'solar-system',
+  systemViewMode: SYSTEM_VIEW_MODE.SOLAR,
   zoomSensitivity: 1.0,
   serverConnected: false
 };
@@ -215,10 +241,43 @@ const DEFAULT_BACKEND_PORT = 8042;
 const SOLAR_SYSTEM_MAX_DISTANCE_AU = 8_000;
 const INTERSTELLAR_MAX_DISTANCE_AU = 2_500_000;
 const INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU = 320;
-const INTERSTELLAR_LABEL_VISIBILITY_MIN_RANGE_AU = 900;
+const INTERSTELLAR_LABEL_VISIBILITY_MIN_RANGE_AU = 620;
 const INTERSTELLAR_MAX_DISTANCE_LY = 25;
 const INTERSTELLAR_LABEL_LIMIT = 25;
 const INTERSTELLAR_POSITION_UPDATE_MIN_JD_DELTA = 1 / 365.25;
+const INTERSTELLAR_NEARBY_HALO_MAX_DISTANCE_LY = 10;
+const INTERSTELLAR_PICK_RADIUS_PX_MIN = 18;
+const INTERSTELLAR_PICK_RADIUS_PX_MAX = 66;
+const LOCAL_SYSTEM_MAX_DISTANCE_AU = 3_600;
+const NEARBY_SYSTEM_NAME_OVERRIDES_BY_SYS_ID = Object.freeze({
+  1: 'Alpha Centauri',
+  2: "Barnard's Star",
+  7: 'Sirius'
+});
+const LOCAL_SYSTEM_MANIFEST_BY_NEARBY_ID = Object.freeze({
+  'nearby-system-1': '/solar-systems/manifests/alpha-centauri.json',
+  'nearby-system-2': '/solar-systems/manifests/barnards-star.json',
+  'nearby-system-7': '/solar-systems/manifests/sirius.json'
+});
+const STAR_SYSTEM_STATIC_LABEL_BY_ID = Object.freeze({
+  'solar-system': 'Solar System',
+  'nearby-system-1': 'Alpha Centauri',
+  'nearby-system-2': "Barnard's Star",
+  'nearby-system-7': 'Sirius'
+});
+const STAR_SYSTEM_OPTION_ORDER = Object.freeze([
+  'solar-system',
+  'nearby-system-1',
+  'nearby-system-2',
+  'nearby-system-7'
+]);
+const EXPLORER_BODY_TYPE_ORDER = Object.freeze({
+  star: 0,
+  planet: 1,
+  dwarf: 2,
+  moon: 3,
+  asteroid: 4
+});
 const J2000_ECLIPTIC_OBLIQUITY_RAD = 23.439291111 * DEG_TO_RAD;
 const COS_J2000_ECLIPTIC_OBLIQUITY = Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD);
 const SIN_J2000_ECLIPTIC_OBLIQUITY = Math.sin(J2000_ECLIPTIC_OBLIQUITY_RAD);
@@ -234,6 +293,31 @@ const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
 const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
+const nearbySystemConstants = Object.freeze({
+  SYSTEM_VIEW_MODE,
+  DEG_TO_RAD,
+  PC_TO_AU,
+  INTERSTELLAR_LABEL_LIMIT,
+  INTERSTELLAR_NEARBY_HALO_MAX_DISTANCE_LY,
+  INTERSTELLAR_PICK_RADIUS_PX_MIN,
+  INTERSTELLAR_PICK_RADIUS_PX_MAX,
+  INTERSTELLAR_POSITION_UPDATE_MIN_JD_DELTA,
+  INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU,
+  INTERSTELLAR_LABEL_VISIBILITY_MIN_RANGE_AU,
+  INTERSTELLAR_MAX_DISTANCE_AU,
+  SOLAR_SYSTEM_MAX_DISTANCE_AU,
+  INTERSTELLAR_MAX_DISTANCE_LY,
+  NEARBY_SYSTEM_NAME_OVERRIDES_BY_SYS_ID,
+  LOCAL_SYSTEM_MANIFEST_BY_NEARBY_ID
+});
+const {
+  createLabelSprite,
+  createLocatorHaloSprite,
+  createInterstellarLabelSprite,
+  updateLocatorOverlays: updateLocatorOverlaysImpl
+} = createLabelSystemOps({
+  pointerTipOffsetNorm: LABEL_POINTER_TIP_OFFSET_NORM
+});
 const EARTH_VISUAL_PROFILE = planetVisualProfile('earth') ?? {};
 const MOON_VISUAL_PROFILE = planetVisualProfile('moon') ?? {};
 const MARS_VISUAL_PROFILE = planetVisualProfile('mars') ?? {};
@@ -480,6 +564,7 @@ function updateAdaptiveZoomBehavior() {
   const baseZoom = Math.max(0.01, simState.zoomSensitivity);
   controls.zoomSpeed = baseZoom;
 
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return;
   if (!simState.useRealisticScale) return;
 
   const activeBodyId = resolveBodyId(simState.followBodyId ?? simState.focusedBodyId);
@@ -510,7 +595,9 @@ function updateCameraClipPlanes() {
   const rangeAu = Math.max(1e-9, camera.position.distanceTo(controls.target));
   let near = 0.0001;
   let far = 20_000;
-  const interstellarModeActive = Boolean(dom.toggleNearbySystems?.checked) && nearbySystemsLoaded;
+  const interstellarModeActive = simState.systemViewMode !== SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    && Boolean(dom.toggleNearbySystems?.checked)
+    && nearbySystemsLoaded;
 
   if (simState.useRealisticScale && rangeAu < 0.08) {
     near = Math.max(5e-9, Math.min(5e-5, rangeAu * 0.00035));
@@ -522,6 +609,11 @@ function updateCameraClipPlanes() {
     const catalogFar = nearbySystemsMaxDistanceAu > 0 ? nearbySystemsMaxDistanceAu * 1.15 : farTarget;
     far = Math.max(far, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, catalogFar));
     near = Math.max(0.0001, Math.min(1.0, rangeAu * 0.0000015));
+  }
+
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL || cameraTransitionState.active) {
+    far = Math.max(far, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, rangeAu * 1.6 + 400));
+    near = Math.max(1e-5, Math.min(0.6, rangeAu * 0.000001));
   }
 
   const nearDelta = Math.abs(camera.near - near);
@@ -580,22 +672,127 @@ const orbitLines = [];
 const labels = [];
 const locatorHalos = [];
 const gravityArrowByBodyId = new Map();
+const solarSystemGroup = new Group();
+scene.add(solarSystemGroup);
 const routeGroup = new Group();
-scene.add(routeGroup);
+solarSystemGroup.add(routeGroup);
 const gravityVectorGroup = new Group();
 gravityVectorGroup.visible = false;
-scene.add(gravityVectorGroup);
+solarSystemGroup.add(gravityVectorGroup);
 const nearbySystemsGroup = new Group();
 nearbySystemsGroup.visible = false;
 scene.add(nearbySystemsGroup);
+const localSystemGroup = new Group();
+localSystemGroup.visible = false;
+scene.add(localSystemGroup);
 
 let nearbySystemsPoints = null;
 const nearbySystemLabelEntries = [];
+const nearbySystemCloseHaloEntries = [];
+let nearbySystemHoverHalo = null;
 const nearbySystemsById = new Map();
 let nearbySystemsCatalog = [];
 let nearbySystemsMaxDistanceAu = 0;
 let nearbySystemsLoaded = false;
 let nearbySystemsLastUpdateJd = Number.NaN;
+const nearbySystemsState = {
+  get nearbySystemsPoints() {
+    return nearbySystemsPoints;
+  },
+  set nearbySystemsPoints(value) {
+    nearbySystemsPoints = value;
+  },
+  nearbySystemLabelEntries,
+  nearbySystemCloseHaloEntries,
+  get nearbySystemHoverHalo() {
+    return nearbySystemHoverHalo;
+  },
+  set nearbySystemHoverHalo(value) {
+    nearbySystemHoverHalo = value;
+  },
+  nearbySystemsById,
+  get nearbySystemsCatalog() {
+    return nearbySystemsCatalog;
+  },
+  set nearbySystemsCatalog(value) {
+    nearbySystemsCatalog = value;
+  },
+  get nearbySystemsMaxDistanceAu() {
+    return nearbySystemsMaxDistanceAu;
+  },
+  set nearbySystemsMaxDistanceAu(value) {
+    nearbySystemsMaxDistanceAu = value;
+  },
+  get nearbySystemsLoaded() {
+    return nearbySystemsLoaded;
+  },
+  set nearbySystemsLoaded(value) {
+    nearbySystemsLoaded = value;
+  },
+  get nearbySystemsLastUpdateJd() {
+    return nearbySystemsLastUpdateJd;
+  },
+  set nearbySystemsLastUpdateJd(value) {
+    nearbySystemsLastUpdateJd = value;
+  }
+};
+const {
+  loadNearbySystemsCatalog,
+  updateNearbySystemsPositions,
+  applyNearbySystemsVisibility,
+  pickNearbySystemAtClientPosition,
+  updateNearbySystemHoverAtClientPosition,
+  setHoveredNearbySystem,
+  focusNearbySystem
+} = createNearbySystemsRenderer({
+  dom,
+  camera,
+  controls,
+  simState,
+  state: nearbySystemsState,
+  nearbySystemsGroup,
+  constants: nearbySystemConstants,
+  createInterstellarLabelSprite,
+  julianDateToJulianYear,
+  equatorialDegToCartesian,
+  backendBaseUrl,
+  setSystemViewMode,
+  refreshStarSystemListOptions
+});
+const localSystemManifestCache = new Map();
+let activeLocalSystem = null;
+const localOrbitLines = [];
+const localBodyEntries = [];
+const localBodyById = new Map();
+const localBodyMeshById = new Map();
+const localBodyNodeById = new Map();
+const localTextureCache = new Map();
+let localSystemLoadInFlight = false;
+const localSystemState = {
+  localSystemManifestCache,
+  localTextureCache,
+  localOrbitLines,
+  localBodyEntries,
+  localBodyById,
+  localBodyMeshById,
+  localBodyNodeById,
+  get activeLocalSystem() {
+    return activeLocalSystem;
+  },
+  set activeLocalSystem(value) {
+    activeLocalSystem = value;
+  }
+};
+const cameraTransitionState = {
+  active: false,
+  elapsedSec: 0,
+  durationSec: 1.0,
+  startTarget: new Vector3(),
+  startCamera: new Vector3(),
+  endTarget: new Vector3(),
+  endCamera: new Vector3(),
+  onComplete: null
+};
 const earthOrbitGuides = [];
 const moonOrbitGuides = [];
 const marsOrbitGuides = [];
@@ -617,6 +814,11 @@ let moonTerrainDisplacementTexture = null;
 let moonLodCurrentLevel = 'low';
 let moonSatelliteSystem = null;
 let moonSurfaceMaterial = null;
+let moonTexturePipeline = null;
+let sunSurfaceMaterial = null;
+let sunCoronaMaterial = null;
+let sunGlowSprite = null;
+let sunEruptionLayer = null;
 let marsSurfaceMesh = null;
 let marsCloudMesh = null;
 let marsAtmosphereMesh = null;
@@ -641,7 +843,7 @@ const majorNodeIds = new Set(
 // ── Geometry & Material Caches ───────────────────────────────────────────────
 
 const geometryCache = {
-  sun: new SphereGeometry(1, 48, 32),
+  sun: new SphereGeometry(1, 128, 96),
   planet: new SphereGeometry(1, 48, 36),
   moon: new SphereGeometry(1, 12, 10),
   majorMoon: new SphereGeometry(1, 36, 28),
@@ -686,6 +888,17 @@ function configureLoadedTexture(texture, { isColorMap = true } = {}) {
   texture.generateMipmaps = true;
   if (isColorMap) {
     texture.colorSpace = SRGBColorSpace;
+  }
+}
+
+function disposeThreeMaterial(material) {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    material.forEach(disposeThreeMaterial);
+    return;
+  }
+  if (typeof material.dispose === 'function') {
+    material.dispose();
   }
 }
 
@@ -946,6 +1159,16 @@ function profileSurfaceTexture(profile, mapType) {
   return SURFACE_TEXTURE_REGISTRY.get(mapId) ?? null;
 }
 
+moonTexturePipeline = new MoonTexturePipeline({
+  textureLoader,
+  configureTexture: (texture) => {
+    configureLoadedTexture(texture);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.needsUpdate = true;
+  }
+});
+
 hiResTextures.earthClouds.wrapS = RepeatWrapping;
 hiResTextures.earthClouds.wrapT = RepeatWrapping;
 hiResTextures.earthClouds.needsUpdate = true;
@@ -989,12 +1212,20 @@ if (MARS_VISUAL_PROFILE.clouds?.enabled && MARS_VISUAL_PROFILE.clouds?.provider?
   });
 }
 
+const nonEarthMoonBodies = catalog.bodies.filter((body) => body.type === 'moon' && !isEarthMoonBody(body));
+void moonTexturePipeline.preloadForBodies(nonEarthMoonBodies);
+
 // Generate procedural textures for planets at startup
 const planetTextures = new Map();
 for (const bodyId of ['sun', 'mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto']) {
   const canvas = generatePlanetTexture(bodyId);
   if (canvas) {
-    planetTextures.set(bodyId, new CanvasTexture(canvas));
+    const texture = new CanvasTexture(canvas);
+    configureLoadedTexture(texture);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.needsUpdate = true;
+    planetTextures.set(bodyId, texture);
   }
 }
 const proceduralMoonTextures = new Map();
@@ -1034,7 +1265,11 @@ function getMaterial(body) {
   const cacheKey = body.id;
 
   if (materialCache.has(cacheKey)) {
-    return materialCache.get(cacheKey);
+    const cachedMaterial = materialCache.get(cacheKey);
+    if (body.id === 'sun' && cachedMaterial?.isShaderMaterial) {
+      sunSurfaceMaterial = cachedMaterial;
+    }
+    return cachedMaterial;
   }
 
   const texture = planetTextures.get(body.id);
@@ -1051,7 +1286,30 @@ function getMaterial(body) {
   const hiResDay = hiResDayMaps[body.id];
   let material;
 
-  if (body.type === 'star') {
+  if (body.id === 'sun') {
+    const sunMap = texture ?? planetTextures.get('sun');
+    if (sunMap) {
+      sunMap.wrapS = RepeatWrapping;
+      sunMap.wrapT = RepeatWrapping;
+      sunMap.needsUpdate = true;
+      material = new ShaderMaterial({
+        vertexShader: SUN_SURFACE_VERTEX_SHADER,
+        fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
+        uniforms: {
+          time: { value: 0 },
+          activity: { value: 0.55 },
+          baseMap: { value: sunMap }
+        }
+      });
+      material.toneMapped = false;
+      sunSurfaceMaterial = material;
+    } else {
+      material = new MeshBasicMaterial({
+        color: new Color(body.color)
+      });
+      sunSurfaceMaterial = null;
+    }
+  } else if (body.type === 'star') {
     material = new MeshBasicMaterial({
       map: texture ?? undefined,
       color: texture ? undefined : new Color(body.color)
@@ -1100,6 +1358,15 @@ function getMaterial(body) {
       roughness: 0.93,
       metalness: 0.0
     });
+    const applyCuratedMoonTexture = (loadedTexture) => {
+      if (!loadedTexture || material.map === loadedTexture) return;
+      material.map = loadedTexture;
+      material.needsUpdate = true;
+    };
+    const curatedMoonTexture = moonTexturePipeline?.requestTexture(body, applyCuratedMoonTexture);
+    if (curatedMoonTexture) {
+      applyCuratedMoonTexture(curatedMoonTexture);
+    }
   } else if (hiResDay) {
     material = new MeshStandardMaterial({
       color: new Color('#ffffff'),
@@ -1125,385 +1392,356 @@ function getMaterial(body) {
   return material;
 }
 
-// ── Label Sprites ────────────────────────────────────────────────────────────
-
-function createLabelSprite(text) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 768;
-  canvas.height = 192;
-  const ctx = canvas.getContext('2d');
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Downward locator arrow.
-  const cx = canvas.width * 0.5;
-  const yBase = canvas.height * 0.78;
-  ctx.strokeStyle = 'rgba(255, 188, 82, 0.95)';
-  ctx.lineWidth = 10;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(cx, yBase - 38);
-  ctx.lineTo(cx, yBase);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255, 170, 58, 0.95)';
-  ctx.beginPath();
-  ctx.moveTo(cx - 20, yBase - 4);
-  ctx.lineTo(cx + 20, yBase - 4);
-  ctx.lineTo(cx, yBase + 24);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 2;
-  ctx.fillStyle = '#ffbe64';
-  ctx.font = '700 62px Oxanium, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height * 0.34);
-  ctx.shadowBlur = 5;
-  ctx.fillStyle = '#ffd79f';
-  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height * 0.34);
-
-  const texture = new CanvasTexture(canvas);
-  const material = new SpriteMaterial({ map: texture, transparent: true, depthTest: false });
-  const sprite = new Sprite(material);
-  sprite.scale.set(1.2, 0.32, 1);
-  sprite.userData.aspect = canvas.width / canvas.height;
-  sprite.userData.pointerTipOffsetNorm = LABEL_POINTER_TIP_OFFSET_NORM;
-  sprite.renderOrder = 11;
-  return sprite;
+function startCameraTransition(endTarget, endCamera, durationSec = 1.2, onComplete = null) {
+  cameraTransitionState.active = true;
+  cameraTransitionState.elapsedSec = 0;
+  cameraTransitionState.durationSec = Math.max(0.05, durationSec);
+  cameraTransitionState.startTarget.copy(controls.target);
+  cameraTransitionState.startCamera.copy(camera.position);
+  cameraTransitionState.endTarget.copy(endTarget);
+  cameraTransitionState.endCamera.copy(endCamera);
+  cameraTransitionState.onComplete = typeof onComplete === 'function' ? onComplete : null;
+  controls.enabled = false;
 }
 
-function createLocatorHaloSprite() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 160;
-  canvas.height = 160;
-  const ctx = canvas.getContext('2d');
+function updateCameraTransition(deltaSeconds) {
+  if (!cameraTransitionState.active) return;
+  cameraTransitionState.elapsedSec += Math.max(0, deltaSeconds);
+  const normalized = Math.min(1, cameraTransitionState.elapsedSec / cameraTransitionState.durationSec);
+  const eased = 1 - Math.pow(1 - normalized, 3);
 
-  const c = canvas.width / 2;
-  const outer = 62;
-  const inner = 42;
-  const gradient = ctx.createRadialGradient(c, c, inner - 16, c, c, outer + 8);
-  gradient.addColorStop(0, 'rgba(255, 185, 66, 0.0)');
-  gradient.addColorStop(0.55, 'rgba(255, 185, 66, 0.16)');
-  gradient.addColorStop(1, 'rgba(255, 185, 66, 0.0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  controls.target.lerpVectors(cameraTransitionState.startTarget, cameraTransitionState.endTarget, eased);
+  camera.position.lerpVectors(cameraTransitionState.startCamera, cameraTransitionState.endCamera, eased);
 
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = 'rgba(255, 185, 66, 0.92)';
-  ctx.beginPath();
-  ctx.arc(c, c, inner, 0, Math.PI * 2);
-  ctx.stroke();
-
-  const texture = new CanvasTexture(canvas);
-  const material = new SpriteMaterial({ map: texture, transparent: true, depthTest: false });
-  const sprite = new Sprite(material);
-  sprite.visible = false;
-  sprite.renderOrder = 10;
-  return sprite;
-}
-
-function createInterstellarLabelSprite(text) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 768;
-  canvas.height = 188;
-  const ctx = canvas.getContext('2d');
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 2;
-  ctx.fillStyle = 'rgba(197, 225, 255, 0.96)';
-  ctx.font = '600 50px Oxanium, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height * 0.4);
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(138, 198, 255, 0.88)';
-  ctx.fillRect(canvas.width * 0.2, canvas.height * 0.72, canvas.width * 0.6, 3);
-
-  const texture = new CanvasTexture(canvas);
-  const material = new SpriteMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: false
-  });
-  const sprite = new Sprite(material);
-  sprite.scale.set(1.6, 0.42, 1);
-  sprite.renderOrder = 12;
-  return sprite;
-}
-
-function normalizeNearbySystemEntry(entry, fallbackRank) {
-  const sysId = Number(entry?.sys_id);
-  const rank = Number(entry?.rank);
-  const raDeg = Number(entry?.ra_deg);
-  const decDeg = Number(entry?.dec_deg);
-  const parallaxMas = Number(entry?.parallax_mas);
-  if (!Number.isFinite(sysId) || !Number.isFinite(raDeg) || !Number.isFinite(decDeg) || !Number.isFinite(parallaxMas) || parallaxMas <= 0) {
-    return null;
+  if (normalized >= 1) {
+    cameraTransitionState.active = false;
+    controls.enabled = true;
+    if (cameraTransitionState.onComplete) {
+      const handler = cameraTransitionState.onComplete;
+      cameraTransitionState.onComplete = null;
+      handler();
+    }
   }
-
-  const distanceLyRaw = Number(entry?.distance_ly);
-  const distancePcRaw = Number(entry?.distance_pc);
-  const distancePc = Number.isFinite(distancePcRaw) && distancePcRaw > 0 ? distancePcRaw : 1000 / parallaxMas;
-  const distanceLy = Number.isFinite(distanceLyRaw) && distanceLyRaw > 0 ? distanceLyRaw : distancePc * 3.26156;
-  const distanceAu = distancePc * PC_TO_AU;
-  if (!Number.isFinite(distanceAu) || distanceAu <= 0) {
-    return null;
-  }
-
-  const pmRaMasYrRaw = Number(entry?.pm_ra_mas_per_yr);
-  const pmDecMasYrRaw = Number(entry?.pm_dec_mas_per_yr);
-  const epochYearRaw = Number(entry?.epoch_year);
-  const gmagRaw = Number(entry?.gmag);
-  const rvKmSRaw = Number(entry?.rv_km_s);
-  const name = (entry?.catalog_name ?? entry?.identifier ?? `System ${sysId}`).toString().trim();
-  const identifier = (entry?.identifier ?? name).toString().trim();
-
-  return {
-    id: `nearby-system-${sysId}`,
-    sysId,
-    rank: Number.isFinite(rank) ? rank : fallbackRank,
-    name: name || identifier || `System ${sysId}`,
-    identifier: identifier || name || `System ${sysId}`,
-    objType: (entry?.obj_type ?? '').toString().trim(),
-    spectralType: (entry?.spectral_type ?? '').toString().trim(),
-    distanceLy,
-    distancePc,
-    distanceAu,
-    raDeg,
-    decDeg,
-    parallaxMas,
-    epochYear: Number.isFinite(epochYearRaw) ? epochYearRaw : 2016.0,
-    pmRaMasYr: Number.isFinite(pmRaMasYrRaw) ? pmRaMasYrRaw : 0,
-    pmDecMasYr: Number.isFinite(pmDecMasYrRaw) ? pmDecMasYrRaw : 0,
-    rvKmS: Number.isFinite(rvKmSRaw) ? rvKmSRaw : null,
-    gmag: Number.isFinite(gmagRaw) ? gmagRaw : null,
-    worldPosition: new Vector3()
-  };
 }
 
-function clearNearbySystemsLayer() {
-  nearbySystemsGroup.clear();
-  nearbySystemsPoints = null;
-  nearbySystemLabelEntries.length = 0;
-  nearbySystemsById.clear();
-  nearbySystemsCatalog = [];
-  nearbySystemsMaxDistanceAu = 0;
-  nearbySystemsLoaded = false;
-  nearbySystemsLastUpdateJd = Number.NaN;
-}
+const {
+  setLocalBodyMeshScale,
+  localBodyRenderRadiusAu,
+  buildLocalSystemScene,
+  updateLocalSystemScene,
+  focusLocalBody,
+  loadLocalSystemManifestForNearbySystem
+} = createLocalSystemRenderer({
+  dom,
+  simState,
+  camera,
+  controls,
+  constants: {
+    AU_KM,
+    J2000_JD,
+    TWO_PI
+  },
+  state: localSystemState,
+  localSystemGroup,
+  geometryCache,
+  createLabelSprite,
+  createSunGlow,
+  textureTools: {
+    loadHiResTexture,
+    configureLoadedTexture,
+    generateMoonTexture,
+    generatePlanetTexture
+  },
+  mathTools: {
+    stableHash,
+    normalizeRadians
+  },
+  orbitTools: {
+    propagateKeplerOrbit
+  },
+  disposeThreeMaterial
+});
 
-function nearbySystemRaDecAtJulianDate(system, julianDate) {
-  const dtYears = julianDateToJulianYear(julianDate) - system.epochYear;
-  const cosDec = Math.max(1e-6, Math.abs(Math.cos(system.decDeg * DEG_TO_RAD)));
-  const deltaRaDeg = (system.pmRaMasYr * dtYears) / (3_600_000 * cosDec);
-  const deltaDecDeg = (system.pmDecMasYr * dtYears) / 3_600_000;
-  const ra = ((system.raDeg + deltaRaDeg) % 360 + 360) % 360;
-  const dec = Math.max(-89.999999, Math.min(89.999999, system.decDeg + deltaDecDeg));
-  return [ra, dec];
-}
+function setSystemViewMode(mode) {
+  if (!Object.values(SYSTEM_VIEW_MODE).includes(mode)) return;
+  if (simState.systemViewMode === mode) return;
+  simState.systemViewMode = mode;
 
-function nearbySystemWorldPosition(system, julianDate, outVector) {
-  const [raDeg, decDeg] = nearbySystemRaDecAtJulianDate(system, julianDate);
-  const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, system.distanceAu);
-  outVector.set(x, y, z);
-  return outVector;
-}
-
-function buildNearbySystemsLayer(systems) {
-  clearNearbySystemsLayer();
-  nearbySystemsCatalog = systems;
-  if (systems.length === 0) return;
-
-  const positions = new Float32Array(systems.length * 3);
-  const colors = new Float32Array(systems.length * 3);
-
-  for (let i = 0; i < systems.length; i += 1) {
-    const system = systems[i];
-    nearbySystemsById.set(system.id, system);
-    nearbySystemsMaxDistanceAu = Math.max(nearbySystemsMaxDistanceAu, system.distanceAu);
-
-    const apparentMag = Number.isFinite(system.gmag) ? system.gmag : 10.5;
-    const intensity = Math.max(0.18, Math.min(1.0, 1.08 - apparentMag * 0.055));
-    colors[i * 3] = intensity * 0.72;
-    colors[i * 3 + 1] = intensity * 0.84;
-    colors[i * 3 + 2] = intensity;
-  }
-
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-
-  nearbySystemsPoints = new Points(
-    geometry,
-    new PointsMaterial({
-      size: 3.1,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.86,
-      blending: AdditiveBlending,
-      sizeAttenuation: false,
-      depthWrite: false
-    })
-  );
-  nearbySystemsPoints.frustumCulled = false;
-  nearbySystemsPoints.renderOrder = -35;
-  nearbySystemsGroup.add(nearbySystemsPoints);
-
-  for (let i = 0; i < Math.min(INTERSTELLAR_LABEL_LIMIT, systems.length); i += 1) {
-    const system = systems[i];
-    const label = createInterstellarLabelSprite(system.name);
-    label.userData.nearbySystemId = system.id;
-    label.visible = false;
-    nearbySystemLabelEntries.push({ systemId: system.id, sprite: label });
-    nearbySystemsGroup.add(label);
-  }
-
-  nearbySystemsLoaded = true;
-}
-
-function updateNearbySystemsPositions(julianDate, force = false) {
-  if (!nearbySystemsLoaded || !nearbySystemsPoints) return;
-  if (
-    !force
-    && Number.isFinite(nearbySystemsLastUpdateJd)
-    && Math.abs(julianDate - nearbySystemsLastUpdateJd) < INTERSTELLAR_POSITION_UPDATE_MIN_JD_DELTA
-  ) {
+  if (mode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    solarSystemGroup.visible = false;
+    nearbySystemsGroup.visible = false;
+    localSystemGroup.visible = true;
+    controls.maxDistance = LOCAL_SYSTEM_MAX_DISTANCE_AU;
+    controls.minDistance = 0.00003;
+    setHoveredNearbySystem(null);
+    if (dom.returnSolarSystem) {
+      dom.returnSolarSystem.disabled = false;
+    }
     return;
   }
 
-  const positions = nearbySystemsPoints.geometry.attributes.position.array;
-  for (let i = 0; i < nearbySystemsCatalog.length; i += 1) {
-    const system = nearbySystemsCatalog[i];
-    nearbySystemWorldPosition(system, julianDate, system.worldPosition);
-    positions[i * 3] = system.worldPosition.x;
-    positions[i * 3 + 1] = system.worldPosition.y;
-    positions[i * 3 + 2] = system.worldPosition.z;
+  solarSystemGroup.visible = true;
+  localSystemGroup.visible = false;
+  cameraTransitionState.active = false;
+  controls.enabled = true;
+  controls.minDistance = simState.useRealisticScale ? 0.000003 : 0.0002;
+  if (dom.returnSolarSystem) {
+    dom.returnSolarSystem.disabled = true;
   }
-  nearbySystemsPoints.geometry.attributes.position.needsUpdate = true;
-  nearbySystemsPoints.geometry.computeBoundingSphere();
-
-  for (const entry of nearbySystemLabelEntries) {
-    const system = nearbySystemsById.get(entry.systemId);
-    if (!system) continue;
-    const labelScale = Math.max(700, system.distanceAu * 0.0038);
-    entry.sprite.position.copy(system.worldPosition).multiplyScalar(1.00005);
-    entry.sprite.scale.set(labelScale * 2.3, labelScale * 0.62, 1);
-  }
-
-  nearbySystemsLastUpdateJd = julianDate;
+  applyNearbySystemsVisibility();
 }
 
-function applyNearbySystemsVisibility() {
-  const enabledByToggle = Boolean(dom.toggleNearbySystems?.checked);
-  controls.maxDistance = enabledByToggle ? INTERSTELLAR_MAX_DISTANCE_AU : SOLAR_SYSTEM_MAX_DISTANCE_AU;
-
-  if (!enabledByToggle || !nearbySystemsLoaded) {
-    nearbySystemsGroup.visible = false;
+function syncSystemViewModeWithCameraRange() {
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return;
+  if (!(Boolean(dom.toggleNearbySystems?.checked) && nearbySystemsLoaded)) {
+    setSystemViewMode(SYSTEM_VIEW_MODE.SOLAR);
     return;
   }
 
   const rangeAu = camera.position.distanceTo(controls.target);
-  const showMarkers = rangeAu >= INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU;
-  const showLabels = showMarkers && rangeAu >= INTERSTELLAR_LABEL_VISIBILITY_MIN_RANGE_AU;
-  nearbySystemsGroup.visible = true;
-  if (nearbySystemsPoints) {
-    nearbySystemsPoints.visible = showMarkers;
-  }
-  for (const entry of nearbySystemLabelEntries) {
-    entry.sprite.visible = showLabels;
-  }
+  const mode = rangeAu >= INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU
+    ? SYSTEM_VIEW_MODE.INTERSTELLAR
+    : SYSTEM_VIEW_MODE.SOLAR;
+  setSystemViewMode(mode);
 }
 
-async function loadNearbySystemsCatalog() {
-  const url = `${backendBaseUrl()}/nearby-systems?limit=500&max_distance_ly=${INTERSTELLAR_MAX_DISTANCE_LY}`;
-  try {
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error(`Nearby systems API unavailable (${response.status})`);
-    }
-    const payload = await response.json();
-    const rows = Array.isArray(payload?.systems) ? payload.systems : [];
-    const systems = rows
-      .map((entry, index) => normalizeNearbySystemEntry(entry, index + 1))
-      .filter(Boolean)
-      .sort((a, b) => a.rank - b.rank);
-    buildNearbySystemsLayer(systems);
-    updateNearbySystemsPositions(simState.julianDate, true);
-    applyNearbySystemsVisibility();
-  } catch {
-    clearNearbySystemsLayer();
-  }
-}
-
-function pickNearbySystemAtClientPosition(clientX, clientY) {
-  if (!nearbySystemsLoaded) return null;
-  const rect = dom.canvas.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) return null;
-  if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
-
-  pickPointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-  pickPointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-  pickRaycaster.setFromCamera(pickPointerNdc, camera);
-
-  const pickTargets = [];
-  for (const entry of nearbySystemLabelEntries) {
-    if (entry.sprite.visible) {
-      pickTargets.push(entry.sprite);
-    }
-  }
-  if (pickTargets.length === 0) return null;
-
-  const intersections = pickRaycaster.intersectObjects(pickTargets, false);
-  for (const hit of intersections) {
-    const systemId = hit.object?.userData?.nearbySystemId;
-    if (typeof systemId === 'string' && nearbySystemsById.has(systemId)) {
-      return nearbySystemsById.get(systemId);
-    }
-  }
-  return null;
-}
-
-function focusNearbySystem(systemId, hardSnap = false) {
+async function enterLocalSystemFromNearbySystem(systemId) {
+  if (localSystemLoadInFlight) return false;
   const system = nearbySystemsById.get(systemId);
-  if (!system) return;
+  if (!system) return false;
 
-  const target = system.worldPosition;
-  const offset = camera.position.clone().sub(controls.target);
-  const preferredDistance = Math.max(2_000, Math.min(120_000, system.distanceAu * 0.03));
-  controls.minDistance = 120;
+  localSystemLoadInFlight = true;
+  try {
+    simState.selectedStarSystemId = system.id;
+    syncStarSystemSelection(system.id);
+    focusNearbySystem(systemId, true);
+    simState.lastSolarFocusedBodyId = simState.focusedBodyId ?? 'sun';
+    dom.statusFocus.textContent = `Focus: ${system.name} (loading local system...)`;
 
-  if (offset.lengthSq() < 1e-9) {
-    offset.set(0, -preferredDistance, preferredDistance * 0.52);
+    let manifest;
+    try {
+      manifest = await loadLocalSystemManifestForNearbySystem(system);
+    } catch {
+      dom.bodyInfo.textContent = `${system.name}\nNo local manifest could be loaded.`;
+      refillBodyList(dom.bodySearch?.value ?? '');
+      return false;
+    }
+    if (!manifest) {
+      dom.bodyInfo.textContent = `${system.name}\nNo local manifest is mapped yet.`;
+      refillBodyList(dom.bodySearch?.value ?? '');
+      return false;
+    }
+
+    const built = buildLocalSystemScene(manifest);
+    if (!built || !activeLocalSystem) {
+      dom.bodyInfo.textContent = `${system.name}\nManifest is present but contained no renderable bodies.`;
+      refillBodyList(dom.bodySearch?.value ?? '');
+      return false;
+    }
+
+    simState.activeLocalSystemId = activeLocalSystem.id;
+    simState.followBodyId = null;
+    simState.focusedNearbySystemId = system.id;
+    simState.focusedBodyId = activeLocalSystem.primaryBodyId;
+    setSystemViewMode(SYSTEM_VIEW_MODE.SYSTEM_LOCAL);
+
+    const target = new Vector3(0, 0, 0);
+    const offset = camera.position.clone().sub(controls.target);
+    const preferredDistance = activeLocalSystem.preferredDistanceAu;
+    if (offset.lengthSq() < 1e-12) {
+      offset.set(0, -preferredDistance, preferredDistance * 0.6);
+    }
+    const desiredCamera = target.clone().add(offset.setLength(preferredDistance));
+    startCameraTransition(target, desiredCamera, 1.35);
+
+    const starsCount = Array.isArray(manifest.stars) ? manifest.stars.length : 0;
+    const planetsCount = Array.isArray(manifest.planets) ? manifest.planets.length : 0;
+    dom.statusFocus.textContent = `Focus: ${activeLocalSystem.name}`;
+    dom.bodyInfo.textContent =
+      `${activeLocalSystem.name}\nMode: Local system\n` +
+      `Stars: ${starsCount}\nPlanets: ${planetsCount}\n` +
+      `Fidelity tier: ${manifest.fidelity_tier ?? 'B'}\n` +
+      `Source: ${Array.isArray(manifest.sources) ? manifest.sources.join('; ') : 'manifest'}`;
+    refillBodyList(dom.bodySearch?.value ?? '');
+    syncBodyListSelection(activeLocalSystem.primaryBodyId);
+    updateBodyInfoPanel(activeLocalSystem.primaryBodyId);
+    return true;
+  } finally {
+    localSystemLoadInFlight = false;
   }
-
-  if (hardSnap) {
-    controls.target.copy(target);
-    camera.position.copy(target).add(offset.setLength(preferredDistance));
-  } else {
-    controls.target.lerp(target, 0.22);
-    const desiredCamera = tempVecB.copy(target).add(offset.setLength(preferredDistance));
-    camera.position.lerp(desiredCamera, 0.2);
-  }
-
-  simState.followBodyId = null;
-  simState.focusedNearbySystemId = system.id;
-  dom.statusFocus.textContent = `Focus: ${system.name}`;
-  dom.bodyInfo.textContent =
-    `${system.name}\nType: ${system.objType || 'star system'}\n` +
-    `Distance: ${system.distanceLy.toFixed(3)} ly\n` +
-    `RA/Dec: ${system.raDeg.toFixed(4)}°, ${system.decDeg.toFixed(4)}°\n` +
-    `Identifier: ${system.identifier}`;
 }
 
-// ── Sun Glow ─────────────────────────────────────────────────────────────────
+function returnToSolarSystemView({ hardSnap = true } = {}) {
+  if (simState.systemViewMode !== SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return;
+
+  cameraTransitionState.active = false;
+  controls.enabled = true;
+  simState.activeLocalSystemId = null;
+  simState.focusedNearbySystemId = null;
+  setSystemViewMode(SYSTEM_VIEW_MODE.SOLAR);
+
+  const fallbackFocusId = bodyById.has(simState.lastSolarFocusedBodyId)
+    ? simState.lastSolarFocusedBodyId
+    : 'sun';
+  simState.followBodyId = null;
+  simState.selectedStarSystemId = 'solar-system';
+  syncStarSystemSelection('solar-system');
+  focusBody(fallbackFocusId, hardSnap);
+  syncBodyListSelection(fallbackFocusId);
+  updateBodyInfoPanel(fallbackFocusId);
+  refillBodyList(dom.bodySearch?.value ?? '');
+  dom.statusFocus.textContent = `Focus: ${bodyById.get(fallbackFocusId)?.name ?? 'Sun'}`;
+}
+
+// ── Sun Surface + Corona Dynamics ────────────────────────────────────────────
+
+const SUN_SURFACE_VERTEX_SHADER = `
+varying vec2 vUv;
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+void main() {
+  vUv = uv;
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const SUN_SURFACE_FRAGMENT_SHADER = `
+uniform float time;
+uniform float activity;
+uniform sampler2D baseMap;
+
+varying vec2 vUv;
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float noise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash13(i + vec3(0.0, 0.0, 0.0)), hash13(i + vec3(1.0, 0.0, 0.0)), u.x),
+        mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),
+    mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x),
+        mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y),
+    u.z
+  );
+}
+
+float fbm(vec3 p) {
+  float sum = 0.0;
+  float amp = 0.55;
+  float norm = 0.0;
+  for (int i = 0; i < 5; i++) {
+    sum += amp * noise3(p);
+    norm += amp;
+    p *= 2.02;
+    amp *= 0.5;
+  }
+  return sum / max(1e-6, norm);
+}
+
+void main() {
+  vec3 normalDir = normalize(vWorldNormal);
+  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+  float limbWeight = pow(max(dot(normalDir, viewDir), 0.0), 0.42);
+
+  float flowA = fbm(normalDir * 6.0 + vec3(time * 0.18, -time * 0.11, time * 0.07));
+  float flowB = fbm(normalDir * 13.0 + vec3(-time * 0.42, time * 0.24, -time * 0.16));
+  float granulation = fbm(normalDir * 56.0 + vec3(time * 1.65, -time * 1.25, time * 0.92));
+  float spotField = fbm(normalDir * 19.0 + vec3(time * 0.07, time * 0.03, -time * 0.05));
+  float spotMask = smoothstep(0.72, 0.92, spotField) * (0.35 + activity * 0.45);
+
+  vec2 uvShift = vec2((flowA - 0.5) * 0.028, (flowB - 0.5) * 0.022);
+  vec3 baseTex = texture2D(baseMap, fract(vUv + uvShift + vec2(time * 0.008, 0.0))).rgb;
+
+  float heatPattern = mix(flowA, flowB, 0.5);
+  float brightness = 0.62 + heatPattern * 0.35 + granulation * 0.22 - spotMask * 0.44;
+  brightness *= mix(0.78, 1.18, limbWeight);
+
+  vec3 cool = vec3(1.0, 0.42, 0.06);
+  vec3 hot = vec3(1.0, 0.78, 0.22);
+  vec3 plasma = mix(cool, hot, clamp(brightness, 0.0, 1.0));
+  vec3 color = mix(plasma, baseTex * 1.2, 0.42);
+  color += vec3(0.95, 0.36, 0.08) * granulation * 0.18;
+
+  gl_FragColor = vec4(color, 1.0);
+}
+`;
+
+const SUN_CORONA_VERTEX_SHADER = `
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+void main() {
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const SUN_CORONA_FRAGMENT_SHADER = `
+uniform float time;
+uniform float activity;
+uniform vec3 coronaColor;
+
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float noise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash13(i + vec3(0.0, 0.0, 0.0)), hash13(i + vec3(1.0, 0.0, 0.0)), u.x),
+        mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),
+    mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x),
+        mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y),
+    u.z
+  );
+}
+
+float fbm(vec3 p) {
+  float sum = 0.0;
+  float amp = 0.6;
+  float norm = 0.0;
+  for (int i = 0; i < 4; i++) {
+    sum += amp * noise3(p);
+    norm += amp;
+    p *= 2.1;
+    amp *= 0.52;
+  }
+  return sum / max(1e-6, norm);
+}
+
+void main() {
+  vec3 normalDir = normalize(vWorldNormal);
+  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+  float rim = pow(max(0.0, 1.0 - max(dot(normalDir, viewDir), 0.0)), 2.3);
+  float turbulence = fbm(normalDir * 9.0 + vec3(time * 0.38, -time * 0.26, time * 0.19));
+  float burst = smoothstep(0.72, 0.95, turbulence);
+  float pulse = 0.62 + 0.38 * sin(time * 1.9 + turbulence * 8.0);
+  float alpha = rim * (0.14 + burst * (0.5 + activity * 0.35)) * pulse;
+  vec3 color = mix(coronaColor * 0.72, coronaColor * 1.4, burst);
+  gl_FragColor = vec4(color, alpha);
+}
+`;
 
 function createSunGlow(sunDisplayRadius) {
   const canvas = document.createElement('canvas');
@@ -1512,11 +1750,11 @@ function createSunGlow(sunDisplayRadius) {
   const ctx = canvas.getContext('2d');
 
   const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  gradient.addColorStop(0, 'rgba(255, 240, 150, 0.45)');
-  gradient.addColorStop(0.12, 'rgba(255, 210, 90, 0.22)');
-  gradient.addColorStop(0.35, 'rgba(255, 160, 50, 0.08)');
-  gradient.addColorStop(0.65, 'rgba(255, 110, 30, 0.02)');
-  gradient.addColorStop(1, 'rgba(255, 80, 20, 0.0)');
+  gradient.addColorStop(0, 'rgba(255, 244, 170, 0.55)');
+  gradient.addColorStop(0.1, 'rgba(255, 216, 98, 0.3)');
+  gradient.addColorStop(0.34, 'rgba(255, 168, 58, 0.12)');
+  gradient.addColorStop(0.68, 'rgba(255, 118, 32, 0.04)');
+  gradient.addColorStop(1, 'rgba(255, 82, 20, 0.0)');
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 256, 256);
@@ -1525,14 +1763,146 @@ function createSunGlow(sunDisplayRadius) {
   const material = new SpriteMaterial({
     map: texture,
     transparent: true,
+    opacity: 0.78,
     blending: AdditiveBlending,
     depthWrite: false,
     depthTest: false
   });
 
   const glow = new Sprite(material);
-  glow.scale.setScalar(sunDisplayRadius * 14);
+  glow.scale.setScalar(sunDisplayRadius * 14.5);
+  glow.userData.baseScaleMultiplier = 14.5;
+  glow.userData.baseOpacity = 0.78;
   return glow;
+}
+
+function createSunCoronaShell(geometry) {
+  const material = new ShaderMaterial({
+    vertexShader: SUN_CORONA_VERTEX_SHADER,
+    fragmentShader: SUN_CORONA_FRAGMENT_SHADER,
+    uniforms: {
+      time: { value: 0 },
+      activity: { value: 0.5 },
+      coronaColor: { value: new Color('#ffba6d') }
+    },
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: DoubleSide
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.userData.bodyId = 'sun-corona';
+  mesh.userData.surfaceScale = 1.11;
+  return mesh;
+}
+
+function createSunEruptionLayer(sunDisplayRadius) {
+  const burstCount = 360;
+  const positions = new Float32Array(burstCount * 3);
+  const directions = new Float32Array(burstCount * 3);
+  const tangents = new Float32Array(burstCount * 3);
+  const speeds = new Float32Array(burstCount);
+  const phases = new Float32Array(burstCount);
+  const amplitudes = new Float32Array(burstCount);
+
+  for (let i = 0; i < burstCount; i += 1) {
+    const u = Math.random() * 2 - 1;
+    const theta = Math.random() * TWO_PI;
+    const radial = Math.sqrt(Math.max(1e-6, 1 - u * u));
+    const dx = radial * Math.cos(theta);
+    const dy = radial * Math.sin(theta);
+    const dz = u;
+
+    // Choose a stable reference axis for tangent generation.
+    const axisX = Math.abs(dz) > 0.78 ? 1 : 0;
+    const axisY = 0;
+    const axisZ = Math.abs(dz) > 0.78 ? 0 : 1;
+
+    let tx = dy * axisZ - dz * axisY;
+    let ty = dz * axisX - dx * axisZ;
+    let tz = dx * axisY - dy * axisX;
+    const tangentLen = Math.hypot(tx, ty, tz);
+    if (tangentLen > 1e-9) {
+      tx /= tangentLen;
+      ty /= tangentLen;
+      tz /= tangentLen;
+    } else {
+      tx = 1;
+      ty = 0;
+      tz = 0;
+    }
+
+    const base = i * 3;
+    directions[base] = dx;
+    directions[base + 1] = dy;
+    directions[base + 2] = dz;
+    tangents[base] = tx;
+    tangents[base + 1] = ty;
+    tangents[base + 2] = tz;
+    speeds[i] = 0.32 + Math.random() * 1.7;
+    phases[i] = Math.random() * TWO_PI;
+    amplitudes[i] = 0.04 + Math.random() * 0.22;
+    positions[base] = dx * sunDisplayRadius * 1.03;
+    positions[base + 1] = dy * sunDisplayRadius * 1.03;
+    positions[base + 2] = dz * sunDisplayRadius * 1.03;
+  }
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+
+  const material = new PointsMaterial({
+    color: new Color('#ffbf74'),
+    size: sunDisplayRadius * 0.65,
+    transparent: true,
+    opacity: 0.34,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+
+  const points = new Points(geometry, material);
+  points.userData.bodyId = 'sun-eruptions';
+  points.userData.sunBursts = {
+    burstCount,
+    positions,
+    directions,
+    tangents,
+    speeds,
+    phases,
+    amplitudes,
+    baseRadius: sunDisplayRadius
+  };
+  points.renderOrder = 6;
+  return points;
+}
+
+function setSunGlowScale(baseRadiusAu, pulse = 1) {
+  if (!sunGlowSprite) return;
+  const baseScaleMultiplier = sunGlowSprite.userData.baseScaleMultiplier ?? 14.5;
+  sunGlowSprite.scale.setScalar(baseRadiusAu * baseScaleMultiplier * pulse);
+}
+
+function setSunEruptionBaseRadius(baseRadiusAu) {
+  if (!sunEruptionLayer) return;
+  const bursts = sunEruptionLayer.userData?.sunBursts;
+  if (!bursts) return;
+  const geometry = sunEruptionLayer.geometry;
+  if (!geometry || typeof geometry.getAttribute !== 'function') return;
+  const positionAttr = geometry.getAttribute('position');
+  if (!positionAttr) return;
+
+  const radius = Math.max(1e-9, baseRadiusAu);
+  bursts.baseRadius = radius;
+  for (let i = 0; i < bursts.burstCount; i += 1) {
+    const base = i * 3;
+    bursts.positions[base] = bursts.directions[base] * radius * 1.03;
+    bursts.positions[base + 1] = bursts.directions[base + 1] * radius * 1.03;
+    bursts.positions[base + 2] = bursts.directions[base + 2] * radius * 1.03;
+  }
+  positionAttr.needsUpdate = true;
+  if (sunEruptionLayer.material?.isPointsMaterial) {
+    sunEruptionLayer.material.size = Math.max(0.0000035, radius * 0.65);
+  }
 }
 
 const EARTH_ATMOSPHERE_VERTEX_SHADER = `
@@ -1671,6 +2041,10 @@ function createBodyNode(body) {
   mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
   mesh.userData.axialTiltDeg = axialTiltDeg;
   spinGroup.add(mesh);
+
+  if (body.id === 'sun' && material?.isShaderMaterial) {
+    sunSurfaceMaterial = material;
+  }
 
   // Earth cloud layer with animated detail modulation for weather-like evolution.
   if (body.id === 'earth') {
@@ -1963,9 +2337,23 @@ function createBodyNode(body) {
     spinGroup.add(ring);
   }
 
-  // Sun corona glow
-  if (body.type === 'star') {
-    const glow = createSunGlow(body.displayRadiusAu);
+  if (body.id === 'sun') {
+    const sunRadiusAu = bodyRenderRadiusAu(body, simState.useRealisticScale);
+    sunGlowSprite = createSunGlow(sunRadiusAu);
+    node.add(sunGlowSprite);
+
+    const coronaMesh = createSunCoronaShell(geometryCache.sun);
+    setBodyMeshScale(coronaMesh, body, simState.useRealisticScale, coronaMesh.userData.surfaceScale);
+    spinGroup.add(coronaMesh);
+    sunCoronaMaterial = coronaMesh.material;
+
+    sunEruptionLayer = createSunEruptionLayer(sunRadiusAu);
+    sunEruptionLayer.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
+    sunEruptionLayer.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
+    spinGroup.add(sunEruptionLayer);
+    setSunEruptionBaseRadius(sunRadiusAu);
+  } else if (body.type === 'star') {
+    const glow = createSunGlow(bodyRenderRadiusAu(body, simState.useRealisticScale));
     node.add(glow);
   }
 
@@ -2046,7 +2434,7 @@ function mountSceneGraph() {
   for (const body of catalog.bodies) {
     const node = bodyNodes.get(body.id);
     if (!body.parentId) {
-      scene.add(node);
+      solarSystemGroup.add(node);
     } else {
       const parentNode = bodyNodes.get(body.parentId);
       parentNode.add(node);
@@ -2057,7 +2445,7 @@ function mountSceneGraph() {
       if (body.parentId) {
         bodyNodes.get(body.parentId).add(orbitLine);
       } else {
-        scene.add(orbitLine);
+        solarSystemGroup.add(orbitLine);
       }
     }
   }
@@ -3062,18 +3450,18 @@ function applyMilkyWayAppearance() {
   }
 }
 
-scene.add(asteroidBelt);
-scene.add(asteroidBeltWaypoint);
+solarSystemGroup.add(asteroidBelt);
+solarSystemGroup.add(asteroidBeltWaypoint);
 
-scene.add(asteroidDetailPoints);
+solarSystemGroup.add(asteroidDetailPoints);
 
 const kuiperBelt = createKuiperBelt();
-scene.add(kuiperBelt);
+solarSystemGroup.add(kuiperBelt);
 
-scene.add(kuiperDetailPoints);
+solarSystemGroup.add(kuiperDetailPoints);
 
 const oortCloud = createOortCloud();
-scene.add(oortCloud);
+solarSystemGroup.add(oortCloud);
 
 async function initializeEarthSatelliteLayer() {
   const entries = [
@@ -3095,7 +3483,16 @@ async function initializeEarthSatelliteLayer() {
       showOrbits: profile.defaultShowOrbits ?? true,
       useJ2: profile.defaultUseJ2 ?? true,
       tleSources: profile.tleSources ?? null,
-      catalogSatellites: profile.catalog ?? []
+      catalogSatellites: profile.catalog ?? [],
+      useInstancing: profile.useInstancing ?? (entry.bodyId === 'earth'),
+      useWorkerPropagation: profile.useWorkerPropagation ?? false,
+      workerLeadSeconds: profile.workerLeadSeconds ?? 0.4,
+      workerCadenceMs: profile.workerCadenceMs ?? 120,
+      maxOrbitLines: profile.maxOrbitLines ?? 1_200,
+      markerStyle: profile.markerStyle ?? 'sphere',
+      markerPixelSize: profile.markerPixelSize ?? null,
+      markerBaseScaleAu: profile.markerBaseScaleAu ?? null,
+      markerColorOverrides: profile.markerColorOverrides ?? null
     });
 
     system.attachTo(node);
@@ -3128,93 +3525,11 @@ void loadNearbySystemsCatalog();
 
 // ── WebSocket Simulation Client ──────────────────────────────────────────
 
-class SimulationClient {
-  constructor() {
-    this.ws = null;
-    this.connected = false;
-    this.latestState = null;
-    this.latestKuiper = null;
-    this.kuiperActive = false;
-    this.onConnected = null;
-    this.onDisconnected = null;
-  }
-
-  connect(backend = 'rebound', port = 8042) {
-    if (this.ws) this.disconnect();
-    const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
-    this.ws = new WebSocket(backendWebSocketUrl({
-      port,
-      params: {
-        engine: backend,
-        integrator
-      }
-    }));
-
-    this.ws.onopen = () => {
-      this.connected = true;
-      if (this.onConnected) this.onConnected();
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'state_update') {
-          this.latestState = msg;
-          if (msg.kuiper) {
-            this.latestKuiper = msg.kuiper;
-          }
-        } else if (msg.type === 'connected') {
-          this.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
-          this.send({ type: simState.paused ? 'pause' : 'resume' });
-        }
-      } catch { /* ignore parse errors */ }
-    };
-
-    this.ws.onclose = () => {
-      this.connected = false;
-      this.latestState = null;
-      if (this.onDisconnected) this.onDisconnected();
-    };
-
-    this.ws.onerror = () => {
-      this.connected = false;
-      if (this.onDisconnected) this.onDisconnected();
-    };
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.connected = false;
-    this.latestState = null;
-    this.latestKuiper = null;
-  }
-
-  send(msg) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
-    }
-  }
-
-  activateKuiper(center, spread) {
-    if (!this.kuiperActive) {
-      this.send({ type: 'activate_kuiper', center: [center.x, center.y, center.z], spread });
-      this.kuiperActive = true;
-    }
-  }
-
-  deactivateKuiper() {
-    if (this.kuiperActive) {
-      this.send({ type: 'deactivate_kuiper' });
-      this.kuiperActive = false;
-      this.latestKuiper = null;
-    }
-  }
-}
-
-const simClient = new SimulationClient();
+const simClient = new SimulationClient({ buildWebSocketUrl: backendWebSocketUrl });
+simClient.onServerReady = () => {
+  simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
+  simClient.send({ type: simState.paused ? 'pause' : 'resume' });
+};
 
 simClient.onConnected = () => {
   simState.serverConnected = true;
@@ -3246,7 +3561,7 @@ const serverKuiperPoints = new Points(
 );
 serverKuiperPoints.visible = false;
 serverKuiperPoints.frustumCulled = false;
-scene.add(serverKuiperPoints);
+solarSystemGroup.add(serverKuiperPoints);
 
 function applyServerState(state) {
   if (!state || !state.bodies) return;
@@ -3311,7 +3626,9 @@ function applyServerKuiper(particles) {
 
 function applyScaleMode() {
   const realistic = simState.useRealisticScale;
-  controls.minDistance = realistic ? 0.000003 : 0.0002;
+  controls.minDistance = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    ? 0.00003
+    : (realistic ? 0.000003 : 0.0002);
 
   for (const body of catalog.bodies) {
     const mesh = bodyMeshes.get(body.id);
@@ -3340,7 +3657,35 @@ function applyScaleMode() {
     system.applyScaleMode(realistic);
   }
 
-  if (simState.focusedBodyId) {
+  const sunBody = bodyById.get('sun');
+  if (sunBody) {
+    const sunRadiusAu = bodyRenderRadiusAu(sunBody, realistic);
+    setSunGlowScale(sunRadiusAu);
+    setSunEruptionBaseRadius(sunRadiusAu);
+  }
+
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    for (const entry of localBodyEntries) {
+      if (!entry?.mesh || !entry?.body) continue;
+      setLocalBodyMeshScale(entry.mesh, entry.body, realistic);
+      if (entry.glow) {
+        const glowRadius = localBodyRenderRadiusAu(entry.body, realistic);
+        entry.glow.scale.setScalar(glowRadius * 14);
+      }
+      if (entry.label) {
+        const labelRadius = localBodyRenderRadiusAu(entry.body, realistic);
+        entry.label.position.set(0, labelRadius * 2.4 + 0.015, 0);
+      }
+    }
+    const localFocusBodyId = localBodyById.has(simState.focusedBodyId)
+      ? simState.focusedBodyId
+      : activeLocalSystem?.primaryBodyId;
+    if (localFocusBodyId) {
+      focusLocalBody(localFocusBodyId, true);
+      updateBodyInfoPanel(localFocusBodyId);
+      syncBodyListSelection(localFocusBodyId);
+    }
+  } else if (simState.focusedBodyId) {
     focusBody(simState.focusedBodyId, true);
   }
 
@@ -3401,68 +3746,21 @@ function updateSceneBodies() {
   }
 }
 
-function worldUnitsPerPixelAt(distanceToCamera) {
-  const canvasHeight = Math.max(1, renderer.domElement.clientHeight || window.innerHeight);
-  return (2 * distanceToCamera * Math.tan((camera.fov * Math.PI) / 360)) / canvasHeight;
-}
-
 function updateLocatorOverlays() {
-  const locatorMode = Boolean(dom.toggleLocators?.checked);
-  const labelsEnabled = Boolean(dom.toggleLabels?.checked);
-
-  for (const entry of labels) {
-    const body = bodyById.get(entry.bodyId);
-    const node = bodyNodes.get(entry.bodyId);
-    if (!body || !node) continue;
-
-    node.getWorldPosition(tempVecA);
-    const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
-    const unitPerPixel = worldUnitsPerPixelAt(distance);
-    const radius = bodyRenderRadiusAu(body, simState.useRealisticScale);
-    const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
-
-    const forceLocatorInRealistic = locatorMode && simState.useRealisticScale;
-    const shouldShowLabel = labelsEnabled || forceLocatorInRealistic;
-
-    const labelHeightPx = shouldShowLabel
-      ? (forceLocatorInRealistic ? 28 : 21)
-      : 0;
-    const labelHeightWorld = labelHeightPx * unitPerPixel;
-    const minHeightWorld = radius * (forceLocatorInRealistic ? 1.45 : 1.1);
-    const maxHeightWorld = simState.useRealisticScale ? 0.16 : 2.0;
-    const clampedHeight = Math.max(minHeightWorld, Math.min(maxHeightWorld, labelHeightWorld));
-    const aspect = entry.sprite.userData.aspect ?? 4.0;
-    const pointerTipOffsetNorm = entry.sprite.userData.pointerTipOffsetNorm ?? LABEL_POINTER_TIP_OFFSET_NORM;
-
-    entry.sprite.visible = shouldShowLabel;
-    entry.sprite.scale.set(clampedHeight * aspect, clampedHeight, 1);
-
-    const clearancePx = shouldShowLabel ? 16 : 8;
-    const pointerTipWorld = clampedHeight * pointerTipOffsetNorm;
-    const pointerTipTargetY = Math.max(radius * 2.25, unitPerPixel * (clearancePx + pixelRadius * 1.2));
-    entry.sprite.position.set(0, pointerTipTargetY + pointerTipWorld, 0);
-  }
-
-  const halosByBodyId = new Map(locatorHalos.map((item) => [item.bodyId, item.sprite]));
-  for (const [bodyId, haloSprite] of halosByBodyId.entries()) {
-    const body = bodyById.get(bodyId);
-    const node = bodyNodes.get(bodyId);
-    if (!body || !node) continue;
-
-    node.getWorldPosition(tempVecA);
-    const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
-    const unitPerPixel = worldUnitsPerPixelAt(distance);
-    const radius = bodyRenderRadiusAu(body, simState.useRealisticScale);
-    const pixelRadius = radius / Math.max(unitPerPixel, 1e-9);
-
-    const haloVisible = Boolean(dom.toggleLocators?.checked) && pixelRadius < 1.35;
-    haloSprite.visible = haloVisible;
-    if (haloVisible) {
-      const haloWorldSize = Math.max(unitPerPixel * 22, radius * 4.5);
-      haloSprite.scale.set(haloWorldSize, haloWorldSize, 1);
-      haloSprite.position.set(0, 0, 0);
-    }
-  }
+  updateLocatorOverlaysImpl({
+    dom,
+    simState,
+    labels,
+    locatorHalos,
+    bodyById,
+    bodyNodes,
+    camera,
+    renderer,
+    bodyRenderRadiusAu,
+    localBodyEntries,
+    localBodyRenderRadiusAu,
+    labelPointerTipOffsetNorm: LABEL_POINTER_TIP_OFFSET_NORM
+  });
 }
 
 function updateBodyRotations(julianDate) {
@@ -3524,6 +3822,64 @@ function updateMarsWeather(julianDate) {
   const shortWave = Math.sin(elapsedHours * 0.064);
   const baseOpacity = MARS_VISUAL_PROFILE.clouds?.baseOpacity ?? 0.24;
   marsCloudLayerMaterial.opacity = Math.max(0.08, baseOpacity - 0.03 + longWave * 0.06 + shortWave * 0.03);
+}
+
+function updateSunDynamics(julianDate, realtimeSeconds) {
+  const timeSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
+  const solarCycleYears = (julianDate - J2000_JD) / 365.25;
+  const cyclePhase = (solarCycleYears / 11.0) * TWO_PI;
+  const cycleActivity = 0.5 + 0.5 * Math.sin(cyclePhase);
+  const shortPulse = 0.5 + 0.5 * Math.sin(timeSec * 0.37);
+  const activity = Math.min(1, Math.max(0, 0.28 + cycleActivity * 0.47 + shortPulse * 0.25));
+
+  if (sunSurfaceMaterial?.uniforms) {
+    sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
+    sunSurfaceMaterial.uniforms.activity.value = activity;
+  }
+
+  if (sunCoronaMaterial?.uniforms) {
+    sunCoronaMaterial.uniforms.time.value = timeSec * 0.54;
+    sunCoronaMaterial.uniforms.activity.value = activity;
+    const coronaColor = sunCoronaMaterial.uniforms.coronaColor?.value;
+    if (coronaColor?.isColor) {
+      coronaColor.setRGB(1.0, 0.62 + activity * 0.16, 0.3 + activity * 0.1);
+    }
+  }
+
+  const sunBody = bodyById.get('sun');
+  const sunRadiusAu = sunBody ? bodyRenderRadiusAu(sunBody, simState.useRealisticScale) : 0.01;
+  const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + activity * 0.045;
+  setSunGlowScale(sunRadiusAu, glowPulse);
+  if (sunGlowSprite?.material) {
+    const baseOpacity = sunGlowSprite.userData.baseOpacity ?? 0.78;
+    sunGlowSprite.material.opacity = Math.max(0.4, Math.min(0.98, baseOpacity * (0.9 + activity * 0.22)));
+  }
+
+  const bursts = sunEruptionLayer?.userData?.sunBursts;
+  if (!bursts) return;
+  const geometry = sunEruptionLayer.geometry;
+  if (!geometry || typeof geometry.getAttribute !== 'function') return;
+  const positionAttr = geometry.getAttribute('position');
+  if (!positionAttr) return;
+
+  const plumeFactor = 0.45 + activity * 0.95;
+  for (let i = 0; i < bursts.burstCount; i += 1) {
+    const base = i * 3;
+    const wave = Math.sin(timeSec * bursts.speeds[i] + bursts.phases[i]);
+    const plume = Math.max(0, wave) * bursts.amplitudes[i] * plumeFactor;
+    const swirl = Math.sin(timeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
+    const radius = bursts.baseRadius * (1.03 + plume);
+    const tangentOffset = bursts.baseRadius * swirl;
+
+    bursts.positions[base] = bursts.directions[base] * radius + bursts.tangents[base] * tangentOffset;
+    bursts.positions[base + 1] = bursts.directions[base + 1] * radius + bursts.tangents[base + 1] * tangentOffset;
+    bursts.positions[base + 2] = bursts.directions[base + 2] * radius + bursts.tangents[base + 2] * tangentOffset;
+  }
+  positionAttr.needsUpdate = true;
+  if (sunEruptionLayer.material?.isPointsMaterial) {
+    sunEruptionLayer.material.opacity = Math.max(0.18, 0.25 + activity * 0.28);
+    sunEruptionLayer.material.size = Math.max(0.0000035, bursts.baseRadius * (0.54 + activity * 0.3));
+  }
 }
 
 function maybeRefreshEarthCloudCoverage(nowMs = Date.now(), force = false) {
@@ -3687,6 +4043,11 @@ function updateEarthSurfaceLod() {
 }
 
 function updateGravityVectors() {
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    gravityVectorGroup.visible = false;
+    return;
+  }
+
   const enabled = Boolean(dom.toggleGravityVectors?.checked);
   gravityVectorGroup.visible = enabled;
   if (!enabled) return;
@@ -3758,8 +4119,11 @@ function updateEarthOrbitGuidesVisibility() {
 }
 
 function applyRenderVisibility() {
+  const solarVisible = simState.systemViewMode !== SYSTEM_VIEW_MODE.SYSTEM_LOCAL;
+  const localVisible = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL;
+
   for (const line of orbitLines) {
-    if (!dom.toggleOrbits.checked) {
+    if (!solarVisible || !dom.toggleOrbits.checked) {
       line.visible = false;
       continue;
     }
@@ -3770,24 +4134,36 @@ function applyRenderVisibility() {
 
   const shouldShowLabels = Boolean(dom.toggleLabels?.checked) || (Boolean(dom.toggleLocators?.checked) && simState.useRealisticScale);
   for (const entry of labels) {
-    entry.sprite.visible = shouldShowLabels;
+    entry.sprite.visible = solarVisible && shouldShowLabels;
   }
   for (const entry of locatorHalos) {
     entry.sprite.visible = false;
   }
 
-  asteroidBelt.visible = dom.toggleAsteroids.checked;
-  asteroidBeltWaypoint.visible = dom.toggleAsteroids.checked;
-  asteroidDetailPoints.visible = dom.toggleAsteroids.checked && asteroidDetailPoints.visible;
-  kuiperBelt.visible = dom.toggleKuiper.checked;
-  oortCloud.visible = dom.toggleOort.checked;
-  gravityVectorGroup.visible = Boolean(dom.toggleGravityVectors?.checked);
+  asteroidBelt.visible = solarVisible && dom.toggleAsteroids.checked;
+  asteroidBeltWaypoint.visible = solarVisible && dom.toggleAsteroids.checked;
+  asteroidDetailPoints.visible = solarVisible && dom.toggleAsteroids.checked && asteroidDetailPoints.visible;
+  kuiperBelt.visible = solarVisible && dom.toggleKuiper.checked;
+  oortCloud.visible = solarVisible && dom.toggleOort.checked;
+  gravityVectorGroup.visible = solarVisible && Boolean(dom.toggleGravityVectors?.checked);
   for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
     if (!system) continue;
-    system.setVisible(Boolean(dom.toggleEarthSatellites?.checked));
-    system.setOrbitVisibility(Boolean(dom.toggleOrbits?.checked));
+    system.setVisible(solarVisible && Boolean(dom.toggleEarthSatellites?.checked));
+    system.setOrbitVisibility(solarVisible && Boolean(dom.toggleOrbits?.checked));
     system.setJ2Enabled(Boolean(dom.toggleSatelliteJ2?.checked));
   }
+
+  for (const orbitLine of localOrbitLines) {
+    orbitLine.visible = localVisible && Boolean(dom.toggleOrbits?.checked);
+  }
+  for (const entry of localBodyEntries) {
+    if (entry.label) {
+      entry.label.visible = localVisible && Boolean(dom.toggleLabels?.checked);
+    }
+  }
+
+  solarSystemGroup.visible = solarVisible;
+  localSystemGroup.visible = localVisible;
   applyMilkyWayAppearance();
   applyNearbySystemsVisibility();
   updateEarthOrbitGuidesVisibility();
@@ -3798,6 +4174,11 @@ function applyRenderVisibility() {
 // ── Focus & Follow ───────────────────────────────────────────────────────────
 
 function focusBody(bodyId, hardSnap = false) {
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    simState.activeLocalSystemId = null;
+    setSystemViewMode(SYSTEM_VIEW_MODE.SOLAR);
+  }
+
   const resolvedBodyId = resolveBodyId(bodyId);
   const body = bodyById.get(resolvedBodyId);
   const node = bodyNodes.get(resolvedBodyId);
@@ -3828,7 +4209,10 @@ function focusBody(bodyId, hardSnap = false) {
   }
 
   simState.focusedNearbySystemId = null;
+  simState.selectedStarSystemId = 'solar-system';
+  syncStarSystemSelection('solar-system');
   simState.focusedBodyId = resolvedBodyId;
+  simState.lastSolarFocusedBodyId = resolvedBodyId;
   updateEarthOrbitGuidesVisibility();
   dom.statusFocus.textContent = `Focus: ${body.name}`;
 }
@@ -3843,6 +4227,11 @@ function ensureRealisticScaleEnabled() {
 }
 
 function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    simState.activeLocalSystemId = null;
+    setSystemViewMode(SYSTEM_VIEW_MODE.SOLAR);
+  }
+
   const resolvedBodyId = resolveBodyId(bodyId);
   const body = bodyById.get(resolvedBodyId);
   const node = bodyNodes.get(resolvedBodyId);
@@ -3862,7 +4251,10 @@ function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
   camera.position.copy(tempVecA).add(offset.setLength(Math.max(centerDistance, controls.minDistance)));
 
   simState.focusedNearbySystemId = null;
+  simState.selectedStarSystemId = 'solar-system';
+  syncStarSystemSelection('solar-system');
   simState.focusedBodyId = resolvedBodyId;
+  simState.lastSolarFocusedBodyId = resolvedBodyId;
   if (follow) {
     simState.followBodyId = resolvedBodyId;
   }
@@ -3879,6 +4271,117 @@ function focusBodyAtAltitude(bodyId, altitudeKm, { follow = true } = {}) {
 }
 
 function updateBodyInfoPanel(bodyId) {
+  if (localBodyById.has(bodyId)) {
+    updateLocalBodyInfoPanel(bodyId);
+    return;
+  }
+  updateSolarBodyInfoPanel(bodyId);
+}
+
+// ── Body List & Search ───────────────────────────────────────────────────────
+
+const allBodiesSorted = [...catalog.bodies].sort((a, b) => {
+  const aTypeOrder = EXPLORER_BODY_TYPE_ORDER[a.type] ?? 99;
+  const bTypeOrder = EXPLORER_BODY_TYPE_ORDER[b.type] ?? 99;
+  if (aTypeOrder === bTypeOrder) return a.name.localeCompare(b.name);
+  return aTypeOrder - bTypeOrder;
+});
+
+function labelForBody(body) {
+  const tag = body.type === 'dwarf' ? 'dwarf planet' : body.type;
+  return `${body.name} [${tag}]`;
+}
+
+function localBodiesSorted() {
+  return [...localBodyById.values()].sort((a, b) => {
+    const aTypeOrder = EXPLORER_BODY_TYPE_ORDER[a.type] ?? 99;
+    const bTypeOrder = EXPLORER_BODY_TYPE_ORDER[b.type] ?? 99;
+    if (aTypeOrder === bTypeOrder) return a.name.localeCompare(b.name);
+    return aTypeOrder - bTypeOrder;
+  });
+}
+
+function bodyDisplayName(bodyId) {
+  return bodyById.get(bodyId)?.name
+    ?? localBodyById.get(bodyId)?.name
+    ?? bodyId;
+}
+
+function starSystemOptionIds() {
+  const ids = new Set(['solar-system', ...Object.keys(LOCAL_SYSTEM_MANIFEST_BY_NEARBY_ID)]);
+  for (const knownId of STAR_SYSTEM_OPTION_ORDER) {
+    ids.add(knownId);
+  }
+  if (simState.selectedStarSystemId) {
+    ids.add(simState.selectedStarSystemId);
+  }
+  return [...ids].sort((a, b) => {
+    const aStaticIndex = STAR_SYSTEM_OPTION_ORDER.indexOf(a);
+    const bStaticIndex = STAR_SYSTEM_OPTION_ORDER.indexOf(b);
+    if (aStaticIndex >= 0 || bStaticIndex >= 0) {
+      if (aStaticIndex < 0) return 1;
+      if (bStaticIndex < 0) return -1;
+      if (aStaticIndex !== bStaticIndex) return aStaticIndex - bStaticIndex;
+    }
+    const aRank = nearbySystemsById.get(a)?.rank ?? Number.POSITIVE_INFINITY;
+    const bRank = nearbySystemsById.get(b)?.rank ?? Number.POSITIVE_INFINITY;
+    if (aRank !== bRank) return aRank - bRank;
+    const aLabel = starSystemLabelForId(a);
+    const bLabel = starSystemLabelForId(b);
+    return aLabel.localeCompare(bLabel);
+  });
+}
+
+function starSystemLabelForId(systemId) {
+  if (systemId === 'solar-system') {
+    return STAR_SYSTEM_STATIC_LABEL_BY_ID['solar-system'];
+  }
+  const nearbyName = nearbySystemsById.get(systemId)?.name;
+  if (typeof nearbyName === 'string' && nearbyName.trim()) {
+    return nearbyName;
+  }
+  return STAR_SYSTEM_STATIC_LABEL_BY_ID[systemId] ?? systemId;
+}
+
+function refreshStarSystemListOptions() {
+  if (!dom.starSystemList) return;
+  const selected = simState.selectedStarSystemId || dom.starSystemList.value || 'solar-system';
+  const optionIds = starSystemOptionIds();
+
+  dom.starSystemList.innerHTML = '';
+  for (const systemId of optionIds) {
+    const option = document.createElement('option');
+    option.value = systemId;
+    option.textContent = starSystemLabelForId(systemId);
+    dom.starSystemList.appendChild(option);
+  }
+
+  const hasSelected = optionIds.includes(selected);
+  simState.selectedStarSystemId = hasSelected ? selected : 'solar-system';
+  dom.starSystemList.value = simState.selectedStarSystemId;
+}
+
+function syncStarSystemSelection(systemId = simState.selectedStarSystemId) {
+  if (!dom.starSystemList) return;
+  simState.selectedStarSystemId = systemId || 'solar-system';
+  refreshStarSystemListOptions();
+  dom.starSystemList.value = simState.selectedStarSystemId;
+}
+
+function selectedSystemBodySource() {
+  if (simState.selectedStarSystemId === 'solar-system') {
+    return allBodiesSorted;
+  }
+  const localSystemActive = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    && simState.focusedNearbySystemId === simState.selectedStarSystemId
+    && localBodyById.size > 0;
+  if (!localSystemActive) {
+    return [];
+  }
+  return localBodiesSorted();
+}
+
+function updateSolarBodyInfoPanel(bodyId) {
   const body = bodyById.get(bodyId);
   if (!body) {
     dom.bodyInfo.textContent = 'No body selected.';
@@ -3923,11 +4426,23 @@ function updateBodyInfoPanel(bodyId) {
     if (MOON_VISUAL_PROFILE.surfaceData?.maps?.relief) {
       lines.push(`Relief map: ${MOON_VISUAL_PROFILE.surfaceData.maps.relief}`);
     }
+  } else if (body.type === 'moon') {
+    const attribution = moonTexturePipeline?.attributionForBody(body);
+    if (attribution) {
+      lines.push(`Surface map source: ${attribution.provider}`);
+      lines.push(`Surface map dataset: ${attribution.dataset}`);
+    } else {
+      lines.push('Surface map source: procedural fallback');
+    }
   }
   if (body.id === 'earth' && earthSatelliteSystem) {
     const satStatus = earthSatelliteSystem.status();
     lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
     lines.push(`Satellite perturbation: ${satStatus.useJ2 ? 'J2 on' : 'J2 off'}`);
+    lines.push(`Satellite render: ${satStatus.useInstancing ? 'instanced' : 'mesh per object'}`);
+    if (satStatus.useWorkerPropagation) {
+      lines.push(`Satellite propagation: ${satStatus.workerReady ? 'worker + interpolation' : 'worker initializing'}`);
+    }
   } else if (isEarthMoonBody(body) && moonSatelliteSystem) {
     const satStatus = moonSatelliteSystem.status();
     lines.push(`Tracked satellites: ${satStatus.satelliteCount}`);
@@ -3941,21 +4456,53 @@ function updateBodyInfoPanel(bodyId) {
   dom.bodyInfo.textContent = lines.join('\n');
 }
 
-// ── Body List & Search ───────────────────────────────────────────────────────
+function updateLocalBodyInfoPanel(bodyId) {
+  const body = localBodyById.get(bodyId);
+  if (!body) {
+    dom.bodyInfo.textContent = 'No local body selected.';
+    return;
+  }
 
-const allBodiesSorted = [...catalog.bodies].sort((a, b) => {
-  if (a.type === b.type) return a.name.localeCompare(b.name);
-  return a.type.localeCompare(b.type);
-});
+  const parentName = body.parentId ? (localBodyById.get(body.parentId)?.name ?? body.parentId) : 'None';
+  const lines = [
+    `Name: ${body.name}`,
+    `System: ${activeLocalSystem?.name ?? starSystemLabelForId(simState.selectedStarSystemId)}`,
+    `Type: ${body.type}`,
+    `Parent: ${parentName}`,
+    `Radius: ${Number(body.radiusKm).toFixed(1)} km`
+  ];
 
-function labelForBody(body) {
-  const tag = body.type === 'dwarf' ? 'dwarf planet' : body.type;
-  return `${body.name} [${tag}]`;
+  if (Number.isFinite(body.massKg) && body.massKg > 0) {
+    lines.push(`Mass: ${body.massKg.toExponential(3)} kg`);
+  }
+
+  if (body.orbit) {
+    lines.push(`Semi-major axis: ${body.orbit.aAu.toFixed(5)} AU`);
+    lines.push(`Orbital period: ${body.orbit.periodDays.toFixed(3)} days`);
+    lines.push(`Eccentricity: ${body.orbit.e.toFixed(3)}`);
+  } else {
+    lines.push('Orbital period: N/A');
+  }
+
+  const sourceText = body.observedTexture
+    ? `Observed map (${body.observedTexture})`
+    : (
+      body.textureTemplate
+        ? `Procedural template (${body.textureTemplate})`
+        : (body.type === 'moon' ? 'Procedural moon map' : 'Procedural template')
+    );
+  lines.push(`Surface source: ${sourceText}`);
+  if (body.notes) {
+    lines.push(`Notes: ${body.notes}`);
+  }
+
+  dom.bodyInfo.textContent = lines.join('\n');
 }
 
 function refillBodyList(searchValue = '') {
   const needle = searchValue.trim().toLowerCase();
-  const filtered = allBodiesSorted.filter((body) => body.name.toLowerCase().includes(needle));
+  const bodies = selectedSystemBodySource();
+  const filtered = bodies.filter((body) => body.name.toLowerCase().includes(needle));
 
   dom.bodyList.innerHTML = '';
   for (const body of filtered) {
@@ -3965,11 +4512,24 @@ function refillBodyList(searchValue = '') {
     dom.bodyList.appendChild(option);
   }
 
-  if (filtered.length > 0) {
-    dom.bodyList.value = filtered[0].id;
-    updateBodyInfoPanel(filtered[0].id);
+  if (simState.selectedStarSystemId === 'solar-system') {
+    dom.statusBodies.textContent = `Bodies: ${catalog.bodies.length}`;
   } else {
-    dom.bodyInfo.textContent = 'No matching body.';
+    dom.statusBodies.textContent = `Bodies: ${bodies.length} (${starSystemLabelForId(simState.selectedStarSystemId)})`;
+  }
+
+  if (filtered.length > 0) {
+    const preferredId = (
+      (simState.followBodyId && filtered.some((body) => body.id === simState.followBodyId) && simState.followBodyId)
+      || (simState.focusedBodyId && filtered.some((body) => body.id === simState.focusedBodyId) && simState.focusedBodyId)
+      || filtered[0].id
+    );
+    dom.bodyList.value = preferredId;
+    updateBodyInfoPanel(preferredId);
+  } else {
+    dom.bodyInfo.textContent = (simState.selectedStarSystemId !== 'solar-system' && bodies.length === 0)
+      ? 'Select a mapped star system to load local bodies.'
+      : 'No matching body.';
   }
 }
 
@@ -3983,6 +4543,7 @@ function bodyListContainsOption(bodyId) {
 
 function syncBodyListSelection(bodyId) {
   if (!dom.bodyList) return;
+  if (typeof bodyId !== 'string' || !bodyId) return;
   if (!bodyListContainsOption(bodyId)) {
     if (dom.bodySearch) {
       dom.bodySearch.value = '';
@@ -3995,6 +4556,21 @@ function syncBodyListSelection(bodyId) {
 }
 
 function selectBodyAndTrack(bodyId, { hardSnap = true, follow = true } = {}) {
+  if (localBodyById.has(bodyId) && simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    const localBody = localBodyById.get(bodyId);
+    if (!localBody) return;
+    if (follow) {
+      simState.followBodyId = bodyId;
+    }
+    focusLocalBody(bodyId, hardSnap);
+    updateBodyInfoPanel(bodyId);
+    syncBodyListSelection(bodyId);
+    if (follow) {
+      dom.statusFocus.textContent = `Following: ${localBody.name}`;
+    }
+    return;
+  }
+
   const resolvedBodyId = resolveBodyId(bodyId);
   const body = bodyById.get(resolvedBodyId);
   if (!body) return;
@@ -4020,7 +4596,10 @@ function pickBodyAtClientPosition(clientX, clientY) {
   pickRaycaster.setFromCamera(pickPointerNdc, camera);
 
   const pickTargets = [];
-  for (const mesh of bodyMeshes.values()) {
+  const sourceMeshes = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    ? localBodyMeshById.values()
+    : bodyMeshes.values();
+  for (const mesh of sourceMeshes) {
     if (!mesh.visible) continue;
     pickTargets.push(mesh);
   }
@@ -4028,6 +4607,10 @@ function pickBodyAtClientPosition(clientX, clientY) {
 
   const intersections = pickRaycaster.intersectObjects(pickTargets, false);
   for (const hit of intersections) {
+    const localBodyId = hit.object?.userData?.localBodyId;
+    if (typeof localBodyId === 'string' && localBodyById.has(localBodyId)) {
+      return localBodyId;
+    }
     const bodyId = hit.object?.userData?.bodyId;
     if (typeof bodyId === 'string' && bodyById.has(bodyId)) {
       return bodyId;
@@ -4036,390 +4619,100 @@ function pickBodyAtClientPosition(clientX, clientY) {
   return null;
 }
 
-// ── Planner Selects ──────────────────────────────────────────────────────────
+async function selectStarSystem(systemId, { hardSnap = true } = {}) {
+  const targetSystemId = typeof systemId === 'string' && systemId.trim()
+    ? systemId.trim()
+    : 'solar-system';
+  simState.selectedStarSystemId = targetSystemId;
+  syncStarSystemSelection(targetSystemId);
 
-function fillPlannerSelects() {
-  dom.plannerFrom.innerHTML = '';
-  dom.plannerTo.innerHTML = '';
-
-  for (const bodyId of catalog.plannerBodyIds) {
-    const body = bodyById.get(bodyId);
-    const optionFrom = document.createElement('option');
-    const optionTo = document.createElement('option');
-
-    optionFrom.value = bodyId;
-    optionTo.value = bodyId;
-    optionFrom.textContent = body.name;
-    optionTo.textContent = body.name;
-
-    dom.plannerFrom.appendChild(optionFrom);
-    dom.plannerTo.appendChild(optionTo);
+  if (targetSystemId === 'solar-system') {
+    if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+      returnToSolarSystemView({ hardSnap });
+    } else {
+      const focusId = bodyById.has(simState.focusedBodyId) ? simState.focusedBodyId : 'sun';
+      syncBodyListSelection(focusId);
+      updateBodyInfoPanel(focusId);
+    }
+    refillBodyList(dom.bodySearch?.value ?? '');
+    return true;
   }
 
-  dom.plannerFrom.value = 'earth';
-  dom.plannerTo.value = 'mars';
-  dom.plannerDate.value = formatJulianAsDate(simState.julianDate);
-  dom.plannerArrivalDate.value = formatJulianAsDate(simState.julianDate + 240);
-  dom.plannerEphemeris.value = 'auto';
-  dom.plannerPayloadMass.value = '6500';
-  dom.plannerPrograde.checked = true;
+  const localSystemAlreadyActive = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    && simState.focusedNearbySystemId === targetSystemId
+    && localBodyById.size > 0;
+  if (localSystemAlreadyActive) {
+    refillBodyList(dom.bodySearch?.value ?? '');
+    syncBodyListSelection(simState.focusedBodyId);
+    updateBodyInfoPanel(simState.focusedBodyId);
+    return true;
+  }
+
+  if (!nearbySystemsById.has(targetSystemId)) {
+    dom.bodyInfo.textContent = `${starSystemLabelForId(targetSystemId)}\nNearby-system entry unavailable in current catalog.`;
+    refillBodyList(dom.bodySearch?.value ?? '');
+    return false;
+  }
+
+  const loaded = await enterLocalSystemFromNearbySystem(targetSystemId);
+  refillBodyList(dom.bodySearch?.value ?? '');
+  return loaded;
 }
 
-// ── Route Visualization (dynamic, updates each frame) ────────────────────────
-
-const ROUTE_SEGMENTS = 90;
-
-function disposeThreeMaterial(material) {
-  if (!material) return;
-  if (Array.isArray(material)) {
-    material.forEach(disposeThreeMaterial);
-    return;
-  }
-  if (typeof material.dispose === 'function') {
-    material.dispose();
-  }
-}
-
-function disposeRouteVisualizationResources() {
-  for (const child of routeGroup.children) {
-    child.traverse((node) => {
-      if (node.geometry && typeof node.geometry.dispose === 'function') {
-        node.geometry.dispose();
-      }
-      disposeThreeMaterial(node.material);
-    });
-  }
-}
+// ── Planner + Route Modules ─────────────────────────────────────────────────
 
 function clearRouteVisualization() {
-  disposeRouteVisualizationResources();
-  routeGroup.clear();
-  simState.route = null;
-  dom.statusRoute.textContent = 'Route: none';
+  clearRouteVisualizationImpl({
+    routeGroup,
+    simState,
+    statusRouteElement: dom.statusRoute
+  });
 }
 
 function plotRoute(route) {
-  disposeRouteVisualizationResources();
-  routeGroup.clear();
-
-  route.legs.forEach((leg, index) => {
-    // Compute initial curve
-    const points = buildTransferCurvePoints(leg, ROUTE_SEGMENTS);
-    const positions = new Float32Array((ROUTE_SEGMENTS + 1) * 3);
-
-    for (let i = 0; i < points.length; i++) {
-      positions[i * 3] = points[i].x;
-      positions[i * 3 + 1] = points[i].y;
-      positions[i * 3 + 2] = points[i].z;
-    }
-
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-
-    const material = new LineBasicMaterial({
-      color: new Color(index % 2 === 0 ? '#ffcc85' : '#e98c5a'),
-      linewidth: 1.5,
-      transparent: true,
-      opacity: 0.95
-    });
-
-    const line = new Line(geometry, material);
-    line.frustumCulled = false;
-    routeGroup.add(line);
+  plotRouteImpl({
+    routeGroup,
+    route,
+    bodyById,
+    simState,
+    statusRouteElement: dom.statusRoute,
+    buildTransferCurvePoints
   });
-
-  simState.route = route;
-  const routeNames = route.bodyRoute.map((bodyId) => bodyById.get(bodyId)?.name ?? bodyId).join(' -> ');
-  dom.statusRoute.textContent = `Route: ${routeNames}`;
 }
 
 function updateRouteVisualization() {
-  if (!simState.route) return;
-
-  const route = simState.route;
-  const legs = route.legs;
-
-  for (let i = 0; i < legs.length; i++) {
-    const leg = legs[i];
-    const line = routeGroup.children[i];
-    if (!line) continue;
-
-    // Get current world positions of departure and arrival bodies
-    const fromNode = bodyNodes.get(leg.fromId);
-    const toNode = bodyNodes.get(leg.toId);
-    if (!fromNode || !toNode) continue;
-
-    fromNode.getWorldPosition(tempVecA);
-    toNode.getWorldPosition(tempVecB);
-
-    // Create updated leg data with current positions
-    const updatedLeg = {
-      startPosition: tempVecA.clone(),
-      endPosition: tempVecB.clone()
-    };
-
-    // Recompute the Bézier curve with updated endpoints
-    const points = buildTransferCurvePoints(updatedLeg, ROUTE_SEGMENTS);
-
-    // Update vertex positions in the buffer
-    const posAttr = line.geometry.attributes.position;
-    for (let j = 0; j < points.length && j < posAttr.count; j++) {
-      posAttr.setXYZ(j, points[j].x, points[j].y, points[j].z);
-    }
-    posAttr.needsUpdate = true;
-    line.geometry.computeBoundingSphere();
-  }
+  updateRouteVisualizationImpl({
+    routeGroup,
+    route: simState.route,
+    bodyNodes,
+    buildTransferCurvePoints,
+    tempStart: tempVecA,
+    tempEnd: tempVecB
+  });
 }
 
-// ── Planner Execution ────────────────────────────────────────────────────────
-
-function buildRouteFromLambert(solution, objective = 'min_distance') {
-  const totalDeltaVKmS = Number(solution.deltaVDepartureKmS) + Number(solution.deltaVArrivalKmS);
-  return {
-    bodyRoute: [solution.fromId, solution.toId],
-    legs: [solution],
-    assists: [],
-    objective,
-    totalAssistGainKmS: 0,
-    totalDeltaVKmS,
-    totalPathLengthAu: Number(solution.pathLengthAu ?? 0),
-    totalTimeDays: Number(solution.tofDays ?? 0),
-    turnDeficitPenalty: 0
-  };
-}
-
-function plannerCommonOptions() {
-  const fromId = dom.plannerFrom.value;
-  const toId = dom.plannerTo.value;
-  const departureJd = parseDateInputToJulian(dom.plannerDate.value) ?? simState.julianDate;
-  const ephemerisProvider = dom.plannerEphemeris.value || 'auto';
-  const prograde = Boolean(dom.plannerPrograde.checked);
-  return { fromId, toId, departureJd, ephemerisProvider, prograde };
-}
-
-function formatMissionSummary(recommendation) {
-  const outbound = recommendation?.outbound;
-  const inbound = recommendation?.return;
-  const closure = recommendation?.payloadClosure ?? {};
-  const risk = recommendation?.risk ?? {};
-  const verify = recommendation?.verification ?? {};
-  const objective = recommendation?.objectiveBreakdown ?? {};
-
-  return [
-    'Mission recommendation ready.',
-    `Outbound route: ${(outbound?.bodyRoute ?? []).join(' -> ')}`,
-    `Return route: ${(inbound?.bodyRoute ?? []).join(' -> ')}`,
-    `Returned payload: ${(closure.returnedPayloadKg ?? 0).toFixed(1)} kg`,
-    `Propellant used: ${(objective.propellantUsedKg ?? 0).toFixed(1)} kg`,
-    `Risk failure probability: ${((risk.failureProbability ?? 0) * 100).toFixed(2)}%`,
-    `Verifier: ${verify.valid ? 'PASS' : `FAIL (${(verify.reasons ?? []).join(', ') || 'unknown'})`}`,
-    `Mission score: ${(recommendation.missionScore ?? 0).toFixed(2)}`
-  ].join('\n');
-}
-
-async function runPlanner({ directOnly }) {
-  const {
-    fromId,
-    toId,
-    departureJd,
-    ephemerisProvider,
-    prograde
-  } = plannerCommonOptions();
-
-  if (fromId === toId) {
-    dom.plannerOutput.textContent = 'Select different departure and destination bodies.';
-    return;
+const plannerController = createPlannerController({
+  dom,
+  simState,
+  model,
+  plannerBodyIds: catalog.plannerBodyIds,
+  bodyById,
+  planners: {
+    describeRoute,
+    planInterplanetaryRoute,
+    planMissionProfile,
+    scanPorkchopWindow,
+    solveLambertTransfer
+  },
+  routeApi: {
+    plotRoute,
+    clearRouteVisualization
+  },
+  dateUtils: {
+    formatJulianAsDate,
+    parseDateInputToJulian
   }
-
-  const maxAssists = directOnly ? 0 : Number(dom.plannerAssists.value);
-  const objective = directOnly ? 'min_distance' : dom.plannerObjective.value;
-
-  dom.plannerOutput.textContent = 'Planning route...';
-
-  let result = null;
-  try {
-    result = await planInterplanetaryRoute(model, bodyById, {
-      fromId,
-      toId,
-      departureJd,
-      objective,
-      maxAssists,
-      ephemerisProvider,
-      prograde
-    });
-  } catch {
-    dom.plannerOutput.textContent = 'Planner request failed.';
-    clearRouteVisualization();
-    return;
-  }
-
-  if (!result.best) {
-    dom.plannerOutput.textContent = 'Planner could not find a route with current settings.';
-    clearRouteVisualization();
-    return;
-  }
-
-  plotRoute(result.best);
-  const solver = result.source === 'backend' ? 'Backend trajectory solver' : 'Local fallback solver';
-  dom.plannerOutput.textContent = `${describeRoute(result.best, bodyById)}\nSolver: ${solver}`;
-}
-
-async function runLambertPlanner() {
-  const {
-    fromId,
-    toId,
-    departureJd,
-    ephemerisProvider,
-    prograde
-  } = plannerCommonOptions();
-  const arrivalJd = parseDateInputToJulian(dom.plannerArrivalDate.value);
-
-  if (fromId === toId) {
-    dom.plannerOutput.textContent = 'Select different departure and destination bodies.';
-    return;
-  }
-  if (!Number.isFinite(arrivalJd) || arrivalJd <= departureJd) {
-    dom.plannerOutput.textContent = 'Lambert mode requires an arrival date after departure date.';
-    return;
-  }
-
-  dom.plannerOutput.textContent = 'Solving Lambert transfer...';
-  try {
-    const result = await solveLambertTransfer({
-      fromId,
-      toId,
-      departureJd,
-      arrivalJd,
-      ephemerisProvider,
-      prograde
-    });
-
-    if (!result.solution) {
-      dom.plannerOutput.textContent = 'Lambert solver did not return a solution.';
-      clearRouteVisualization();
-      return;
-    }
-
-    const route = buildRouteFromLambert(result.solution, 'min_distance');
-    plotRoute(route);
-    dom.plannerOutput.textContent =
-      `${describeRoute(route, bodyById)}\nSolver: Lambert (${result.ephemerisProvider ?? ephemerisProvider})`;
-  } catch {
-    dom.plannerOutput.textContent = 'Lambert request failed.';
-    clearRouteVisualization();
-  }
-}
-
-async function runPorkchopPlanner() {
-  const {
-    fromId,
-    toId,
-    departureJd,
-    ephemerisProvider,
-    prograde
-  } = plannerCommonOptions();
-
-  if (fromId === toId) {
-    dom.plannerOutput.textContent = 'Select different departure and destination bodies.';
-    return;
-  }
-
-  dom.plannerOutput.textContent = 'Scanning porkchop window...';
-  try {
-    const window = await scanPorkchopWindow({
-      fromId,
-      toId,
-      departureStartJd: departureJd,
-      departureEndJd: departureJd + 220,
-      departureStepDays: 10,
-      tofMinDays: 70,
-      tofMaxDays: 900,
-      tofStepDays: 20,
-      ephemerisProvider,
-      prograde
-    });
-
-    if (!window.best) {
-      dom.plannerOutput.textContent = 'Porkchop scan found no feasible transfer in this window.';
-      clearRouteVisualization();
-      return;
-    }
-
-    const lambert = await solveLambertTransfer({
-      fromId,
-      toId,
-      departureJd: window.best.departureJd,
-      arrivalJd: window.best.arrivalJd,
-      ephemerisProvider,
-      prograde
-    });
-    if (!lambert.solution) {
-      dom.plannerOutput.textContent = 'Porkchop best point could not be reconstructed as a Lambert arc.';
-      clearRouteVisualization();
-      return;
-    }
-
-    const route = buildRouteFromLambert(lambert.solution, 'min_distance');
-    plotRoute(route);
-    dom.plannerDate.value = formatJulianAsDate(window.best.departureJd);
-    dom.plannerArrivalDate.value = formatJulianAsDate(window.best.arrivalJd);
-    dom.plannerOutput.textContent = [
-      describeRoute(route, bodyById),
-      `Porkchop points scanned: ${window.count}`,
-      `Best total delta-v: ${window.best.totalDeltaVKmS.toFixed(2)} km/s`,
-      `Solver: Porkchop + Lambert (${window.ephemerisProvider ?? ephemerisProvider})`
-    ].join('\n');
-  } catch {
-    dom.plannerOutput.textContent = 'Porkchop request failed.';
-    clearRouteVisualization();
-  }
-}
-
-async function runMissionPlanner() {
-  const {
-    fromId,
-    toId,
-    departureJd,
-    ephemerisProvider,
-    prograde
-  } = plannerCommonOptions();
-  const payloadMassKg = Math.max(100, Number(dom.plannerPayloadMass.value) || 6500);
-  const objective = dom.plannerObjective.value;
-  const maxAssists = Number(dom.plannerAssists.value);
-
-  if (fromId === toId) {
-    dom.plannerOutput.textContent = 'Select different departure and destination bodies.';
-    return;
-  }
-
-  dom.plannerOutput.textContent = 'Planning mission profile...';
-  try {
-    const result = await planMissionProfile({
-      fromId,
-      targetId: toId,
-      returnId: fromId,
-      departureJd,
-      objective,
-      maxAssists,
-      ephemerisProvider,
-      prograde,
-      payloadMassKg
-    });
-
-    const recommendation = result?.recommendation;
-    if (!recommendation?.outbound) {
-      dom.plannerOutput.textContent = 'Mission planner returned no feasible recommendation.';
-      clearRouteVisualization();
-      return;
-    }
-
-    plotRoute(recommendation.outbound);
-    dom.plannerOutput.textContent = `${formatMissionSummary(recommendation)}\nSolver: MissionPlannerAgent`;
-  } catch {
-    dom.plannerOutput.textContent = 'Mission planner request failed.';
-    clearRouteVisualization();
-  }
-}
+});
 
 // ── Follow Target ────────────────────────────────────────────────────────────
 
@@ -4428,9 +4721,10 @@ function updateFollowTarget() {
     return;
   }
 
-  const body = bodyById.get(simState.followBodyId);
-  const node = bodyNodes.get(simState.followBodyId);
-  if (!body || !node) return;
+  const node = simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL
+    ? localBodyNodeById.get(simState.followBodyId)
+    : bodyNodes.get(simState.followBodyId);
+  if (!node) return;
 
   node.getWorldPosition(tempVecA);
 
@@ -4444,217 +4738,65 @@ function updateFollowTarget() {
 
 // ── UI Event Setup ───────────────────────────────────────────────────────────
 
+const timeController = createTimeController({
+  dom,
+  simState,
+  minTimeScale: MIN_TIME_SCALE_DAYS_PER_SEC,
+  maxTimeScale: MAX_TIME_SCALE_DAYS_PER_SEC,
+  currentJulianDate,
+  formatJulianAsDate
+});
+
 function setupUiEvents() {
-  dom.togglePlay.addEventListener('click', () => {
-    simState.paused = !simState.paused;
-    dom.togglePlay.textContent = simState.paused ? 'Resume' : 'Pause';
-    if (simState.serverConnected) {
-      simClient.send({ type: simState.paused ? 'pause' : 'resume' });
+  timeController.bindUi();
+  plannerController.bindPlannerUi();
+
+  setupUiBindings({
+    dom,
+    simState,
+    controls,
+    quickViewPresets: [
+      { element: dom.focusEarthAtmo, bodyId: 'earth', altitudeKm: EARTH_ATMOSPHERE_ALTITUDE_KM },
+      { element: dom.focusEarthLeo, bodyId: 'earth', altitudeKm: EARTH_LEO_ALTITUDE_KM },
+      { element: dom.focusEarthGeo, bodyId: 'earth', altitudeKm: EARTH_GEO_ALTITUDE_KM },
+      { element: dom.focusMoonSkim, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_SKIM_ALTITUDE_KM },
+      { element: dom.focusMoonLlo, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_LLO_ALTITUDE_KM },
+      { element: dom.focusMoonNrho, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_NRHO_ALTITUDE_KM },
+      { element: dom.focusMarsAtmo, bodyId: 'mars', altitudeKm: MARS_ATMOSPHERE_ALTITUDE_KM },
+      { element: dom.focusMarsSkim, bodyId: 'mars', altitudeKm: MARS_SKIM_ALTITUDE_KM },
+      { element: dom.focusMarsLmo, bodyId: 'mars', altitudeKm: MARS_LMO_ALTITUDE_KM },
+      { element: dom.focusMarsAreo, bodyId: 'mars', altitudeKm: MARS_AREOSTATIONARY_ALTITUDE_KM }
+    ],
+    handlers: {
+      systemViewModeLocal: SYSTEM_VIEW_MODE.SYSTEM_LOCAL,
+      sendServerMessage: (msg) => simClient.send(msg),
+      updateZoomMetricsUI,
+      focusBodyAtAltitude,
+      applyRenderVisibility,
+      refillBodyList,
+      selectStarSystem,
+      setHoveredNearbySystem,
+      updateNearbySystemHoverAtClientPosition,
+      pickBodyAtClientPosition,
+      selectBodyAndTrack,
+      pickNearbySystemAtClientPosition,
+      bodyDisplayName,
+      updateEarthOrbitGuidesVisibility,
+      returnToSolarSystemView,
+      connectSimulation: (backend) => simClient.connect(backend),
+      disconnectSimulation: () => simClient.disconnect(),
+      applyScaleMode,
+      updateBodyInfoPanel
     }
   });
-
-  dom.nowTime.addEventListener('click', () => {
-    simState.julianDate = currentJulianDate();
-    dom.plannerDate.value = formatJulianAsDate(simState.julianDate);
-    dom.plannerArrivalDate.value = formatJulianAsDate(simState.julianDate + 240);
-  });
-
-  dom.timeScale.min = `${MIN_TIME_SCALE_DAYS_PER_SEC}`;
-  dom.timeScale.max = `${MAX_TIME_SCALE_DAYS_PER_SEC}`;
-  dom.timeScale.value = `${simState.timeScaleDaysPerSec}`;
-  dom.timeScale.addEventListener('input', () => {
-    simState.timeScaleDaysPerSec = Number(dom.timeScale.value);
-  });
-
-  if (dom.zoomSensitivity) {
-    dom.zoomSensitivity.value = `${simState.zoomSensitivity}`;
-    dom.zoomSensitivity.addEventListener('input', () => {
-      simState.zoomSensitivity = Number(dom.zoomSensitivity.value);
-      if (!Number.isFinite(simState.zoomSensitivity)) {
-        simState.zoomSensitivity = 1.0;
-      }
-      controls.zoomSpeed = simState.zoomSensitivity;
-      updateZoomMetricsUI();
-    });
-  }
-
-  dom.focusEarthAtmo?.addEventListener('click', () => {
-    focusBodyAtAltitude('earth', EARTH_ATMOSPHERE_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusEarthLeo?.addEventListener('click', () => {
-    focusBodyAtAltitude('earth', EARTH_LEO_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusEarthGeo?.addEventListener('click', () => {
-    focusBodyAtAltitude('earth', EARTH_GEO_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMoonSkim?.addEventListener('click', () => {
-    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_SKIM_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMoonLlo?.addEventListener('click', () => {
-    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_LLO_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMoonNrho?.addEventListener('click', () => {
-    focusBodyAtAltitude(CANONICAL_BODY_IDS.moon, MOON_NRHO_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMarsAtmo?.addEventListener('click', () => {
-    focusBodyAtAltitude('mars', MARS_ATMOSPHERE_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMarsSkim?.addEventListener('click', () => {
-    focusBodyAtAltitude('mars', MARS_SKIM_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMarsLmo?.addEventListener('click', () => {
-    focusBodyAtAltitude('mars', MARS_LMO_ALTITUDE_KM, { follow: true });
-  });
-  dom.focusMarsAreo?.addEventListener('click', () => {
-    focusBodyAtAltitude('mars', MARS_AREOSTATIONARY_ALTITUDE_KM, { follow: true });
-  });
-
-  for (const toggle of [
-    dom.toggleOrbits,
-    dom.toggleLabels,
-    dom.toggleLocators,
-    dom.toggleGravityVectors,
-    dom.toggleMoons,
-    dom.toggleAsteroids,
-    dom.toggleKuiper,
-    dom.toggleOort,
-    dom.toggleEnhancedMilky,
-    dom.toggleSurveyMilky,
-    dom.toggleNearbySystems,
-    dom.toggleEarthSatellites,
-    dom.toggleSatelliteJ2
-  ]) {
-    toggle.addEventListener('change', applyRenderVisibility);
-  }
-
-  dom.bodySearch.addEventListener('input', () => {
-    refillBodyList(dom.bodySearch.value);
-  });
-
-  let dragPickPointerId = null;
-  let dragPickStartX = 0;
-  let dragPickStartY = 0;
-  let dragPickMoved = false;
-  const dragPickThresholdPx = 7;
-
-  dom.canvas.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    dragPickPointerId = event.pointerId;
-    dragPickStartX = event.clientX;
-    dragPickStartY = event.clientY;
-    dragPickMoved = false;
-  });
-
-  dom.canvas.addEventListener('pointermove', (event) => {
-    if (dragPickPointerId !== event.pointerId) return;
-    const dx = event.clientX - dragPickStartX;
-    const dy = event.clientY - dragPickStartY;
-    if (dx * dx + dy * dy > dragPickThresholdPx * dragPickThresholdPx) {
-      dragPickMoved = true;
-    }
-  });
-
-  dom.canvas.addEventListener('pointerup', (event) => {
-    if (dragPickPointerId !== event.pointerId) return;
-    const shouldPick = !dragPickMoved && event.button === 0;
-    dragPickPointerId = null;
-    dragPickMoved = false;
-    if (!shouldPick) return;
-
-    const pickedBodyId = pickBodyAtClientPosition(event.clientX, event.clientY);
-    if (pickedBodyId) {
-      selectBodyAndTrack(pickedBodyId, { hardSnap: true, follow: true });
-      return;
-    }
-
-    const pickedNearbySystem = pickNearbySystemAtClientPosition(event.clientX, event.clientY);
-    if (pickedNearbySystem) {
-      focusNearbySystem(pickedNearbySystem.id, true);
-    }
-  });
-
-  dom.canvas.addEventListener('pointercancel', () => {
-    dragPickPointerId = null;
-    dragPickMoved = false;
-  });
-
-  dom.bodyList.addEventListener('change', () => {
-    if (!dom.bodyList.value) return;
-    selectBodyAndTrack(dom.bodyList.value, { hardSnap: true, follow: true });
-  });
-
-  dom.focusBody.addEventListener('click', () => {
-    const id = dom.bodyList.value;
-    if (!id) return;
-    selectBodyAndTrack(id, { hardSnap: true, follow: true });
-  });
-
-  dom.followBody.addEventListener('click', () => {
-    const id = dom.bodyList.value;
-    if (!id) return;
-    selectBodyAndTrack(id, { hardSnap: true, follow: true });
-  });
-
-  dom.clearFollow.addEventListener('click', () => {
-    simState.followBodyId = null;
-    const body = bodyById.get(simState.focusedBodyId);
-    dom.statusFocus.textContent = `Focus: ${body?.name ?? 'None'}`;
-    updateEarthOrbitGuidesVisibility();
-  });
-
-  dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
-  dom.planOptimal.addEventListener('click', () => runPlanner({ directOnly: false }));
-  dom.planLambert.addEventListener('click', () => runLambertPlanner());
-  dom.planPorkchop.addEventListener('click', () => runPorkchopPlanner());
-  dom.planMission.addEventListener('click', () => runMissionPlanner());
-
-  dom.clearRoute.addEventListener('click', () => {
-    clearRouteVisualization();
-    dom.plannerOutput.textContent = 'No plotted route.';
-  });
-
-  // ── Simulation backend controls ──────────────────────────────────
-  dom.simConnect.addEventListener('click', () => {
-    if (simState.serverConnected) {
-      simClient.disconnect();
-      simState.backend = 'local';
-      dom.simStatus.textContent = 'Local';
-    } else {
-      const backend = dom.simBackend.value;
-      if (backend === 'local') {
-        dom.simStatus.textContent = 'Local';
-        return;
-      }
-      simState.backend = backend;
-      dom.simStatus.textContent = 'Connecting...';
-      simClient.connect(backend);
-    }
-  });
-
-  dom.simBackend.addEventListener('change', () => {
-    if (dom.simBackend.value === 'local' && simState.serverConnected) {
-      simClient.disconnect();
-      simState.backend = 'local';
-      dom.simStatus.textContent = 'Local';
-    }
-  });
-
-  // ── Realistic scale toggle ───────────────────────────────────────
-  if (dom.toggleRealisticScale) {
-    dom.toggleRealisticScale.addEventListener('change', () => {
-      simState.useRealisticScale = dom.toggleRealisticScale.checked;
-      applyScaleMode();
-      if (simState.focusedBodyId) {
-        updateBodyInfoPanel(simState.focusedBodyId);
-      }
-    });
-  }
 }
 
 // ── Initialize ───────────────────────────────────────────────────────────────
 
 setupUiEvents();
-fillPlannerSelects();
+plannerController.fillPlannerSelects();
+refreshStarSystemListOptions();
+syncStarSystemSelection('solar-system');
 refillBodyList();
 model.update(simState.julianDate);
 updateSceneBodies();
@@ -4663,7 +4805,6 @@ applyRenderVisibility();
 updateLocatorOverlays();
 updateZoomMetricsUI();
 
-dom.statusBodies.textContent = `Bodies: ${catalog.bodies.length}`;
 dom.plannerOutput.textContent = 'No plotted route.';
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
@@ -4688,15 +4829,18 @@ function animate(timestamp) {
     simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
   } else {
     // ── Local Keplerian simulation ───────────────────────────────
-    if (!simState.paused) {
-      simState.julianDate += deltaSeconds * simState.timeScaleDaysPerSec;
-    }
+    timeController.advanceLocalTime(deltaSeconds);
     model.update(simState.julianDate);
     updateSceneBodies();
   }
   const deltaSimDays = simState.julianDate - previousJd;
 
+  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
+    updateLocalSystemScene(simState.julianDate);
+  }
+
   updateBodyRotations(simState.julianDate);
+  updateSunDynamics(simState.julianDate, timestamp * 0.001);
   updateEarthWeather(simState.julianDate);
   updateMarsWeather(simState.julianDate);
   maybeRefreshEarthCloudCoverage(Date.now());
@@ -4704,9 +4848,13 @@ function animate(timestamp) {
   updateEarthSurfaceLod();
   updateMoonEarthshine();
   updateMarsSeasonalAppearance(simState.julianDate);
+  const satelliteViewState = {
+    camera,
+    viewportHeight: Math.max(1, renderer.domElement.clientHeight || window.innerHeight || 1)
+  };
   for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
     if (!system) continue;
-    system.update(simState.julianDate);
+    system.update(simState.julianDate, satelliteViewState);
   }
   updateAsteroidBelt(simState.julianDate);
 
@@ -4725,16 +4873,17 @@ function animate(timestamp) {
 
   // Keep the selected follow body status synchronized
   if (simState.followBodyId) {
-    const followBody = bodyById.get(simState.followBodyId);
-    dom.statusFocus.textContent = `Following: ${followBody?.name ?? simState.followBodyId}`;
+    dom.statusFocus.textContent = `Following: ${bodyDisplayName(simState.followBodyId)}`;
   }
 
   // Keep sky layers centered on camera to emulate an effectively infinite backdrop.
   backgroundStars.position.copy(camera.position);
   surveyMilkySphere.position.copy(camera.position);
   updateNearbySystemsPositions(simState.julianDate);
+  syncSystemViewModeWithCameraRange();
   applyNearbySystemsVisibility();
 
+  updateCameraTransition(deltaSeconds);
   updateAdaptiveZoomBehavior();
   controls.update();
   resizeRenderer();
@@ -4744,8 +4893,7 @@ function animate(timestamp) {
   updateZoomMetricsUI();
   renderer.render(scene, camera);
 
-  dom.timeScaleValue.textContent = simState.timeScaleDaysPerSec.toFixed(1);
-  dom.timeDate.textContent = formatJulianAsDate(simState.julianDate);
+  timeController.updateHud();
 
   requestAnimationFrame(animate);
 }
