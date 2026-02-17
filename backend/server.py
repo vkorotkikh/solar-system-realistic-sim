@@ -58,6 +58,7 @@ from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
+from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
 from trajectory import (
     DEFAULT_ASSIST_POOL,
     TRAJECTORY_OBJECTIVES,
@@ -102,6 +103,7 @@ NEARBY_SYSTEMS_SCHEMA = {
     "name": NEARBY_SYSTEMS_SCHEMA_NAME,
     "version": NEARBY_SYSTEMS_SCHEMA_VERSION,
 }
+SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
 
 
 def _rebound_available() -> bool:
@@ -391,6 +393,44 @@ def bodies():
         "type_counts": type_counts,
         "bodies": catalog,
     }
+
+
+@app.get("/solar/capabilities")
+def solar_capabilities():
+    return SOLAR_PHYSICS_MODEL.capabilities()
+
+
+@app.get("/solar/physics")
+def solar_physics_state(
+    jd: float | None = None,
+    fidelity: str = "operational",
+    max_features: int = 220,
+):
+    if jd is None:
+        epoch_jd = utc_now_to_julian_date()
+    else:
+        try:
+            epoch_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
+        if not math.isfinite(epoch_jd):
+            raise HTTPException(status_code=400, detail="`jd` must be finite")
+
+    fidelity_key = fidelity.strip().lower()
+    if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`fidelity` must be one of {list(SOLAR_PHYSICS_MODEL.fidelity_levels)}",
+        )
+
+    safe_max_features = max(8, min(2_048, int(max_features)))
+    state = SOLAR_PHYSICS_MODEL.sample_state(
+        epoch_jd,
+        fidelity=fidelity_key,
+        max_features=safe_max_features,
+    )
+    state["source"] = "backend"
+    return state
 
 
 @app.get("/nearby-systems")

@@ -103,16 +103,46 @@ class KuiperBeltEngine:
         rng = np.random.default_rng()
 
         for _ in range(self.particle_count):
-            # Semi-major axis: normal distribution around camera distance
-            a = rng.normal(center_r, spread_au * 0.35)
-            a = max(30.0, min(80.0, a))
+            # ── Population-based Sampling ─────────────────────────────
+            # We mix populations based on proximity to the camera (center_r).
+            # 1. Plutinos (3:2 Resonance): ~39.4 AU
+            # 2. Classical Belt: ~42-48 AU (Cold & Hot populations)
+            # 3. Scattered/Detached: > 48 AU
 
-            # Eccentricity: Rayleigh-distributed, typical KBO range
-            e = min(abs(rng.normal(0.06, 0.07)), 0.35)
+            # Probability of being a Plutino depends on how close we are to 39.4 AU
+            dist_plutino = abs(center_r - 39.4)
+            prob_plutino = 0.3 * math.exp(-(dist_plutino**2) / (2 * 2.5**2))
 
-            # Inclination: half-normal, typical classical KBO
-            inc = abs(rng.normal(0.0, math.radians(8)))
-            inc = min(inc, math.radians(40))
+            if rng.random() < prob_plutino:
+                # Plutino
+                a = rng.normal(39.4, 0.6)
+                e = rng.uniform(0.1, 0.28)  # Plutinos have moderate eccentricity
+                inc = abs(rng.normal(math.radians(15), math.radians(5)))
+            else:
+                # Sample 'a' around the camera to ensure visibility, but respect belt structure
+                a = rng.normal(center_r, spread_au * 0.4)
+
+                if 42.0 <= a <= 48.0:
+                    # Classical Belt: Mix Cold (low i, low e) and Hot (high i, high e)
+                    if rng.random() < 0.7:  # Cold dominant
+                        e = rng.rayleigh(0.04)
+                        inc = rng.rayleigh(math.radians(2.0))
+                    else:  # Hot
+                        e = rng.rayleigh(0.08)
+                        inc = rng.rayleigh(math.radians(10.0))
+                elif a > 48.0:
+                    # Scattered / Detached
+                    e = rng.uniform(0.15, 0.4)
+                    inc = abs(rng.normal(math.radians(20), math.radians(10)))
+                else:
+                    # Inner / General background
+                    e = rng.rayleigh(0.06)
+                    inc = abs(rng.normal(0, math.radians(8)))
+
+            # Clamp to valid ranges
+            a = max(30.0, min(100.0, a))
+            e = min(e, 0.5)
+            inc = min(inc, math.radians(50))
 
             self.sim.add(
                 m=0,  # test particle — no mutual interaction
