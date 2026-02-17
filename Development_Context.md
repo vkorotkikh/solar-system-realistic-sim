@@ -47,6 +47,65 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-17 07:48:06 UTC
+Status: DONE
+
+What changed:
+- Implemented frontend rendering for backend-provided Parker-spiral heliosphere lines and integrated it into Sun update paths.
+- Added solar-visual lifecycle teardown for Parker-spiral lines (`clearSunParkerSpiralLines(...)`) and wired cleanup before Sun-group reinitialization.
+- Closed prior OPEN item about missing Parker-spiral visualization by adding runtime scene integration in `main.js`.
+
+Why it changed:
+- The backend already emitted Parker-spiral data, but it was not displayed; this was the primary remaining gap from the Sun-model improvement list.
+- Teardown parity was extended to avoid line geometry/material leaks when Sun visuals are rebuilt.
+
+Evidence/validation:
+- `npm run build` passed after module and integration changes.
+- `pytest -q backend/tests/test_solar_physics_api.py` passed (`3 passed`), confirming backend payload contract remains valid.
+- Code-path verification confirms Parker-spiral updates now run in both scale-mode refresh and per-frame Sun dynamics updates.
+
+Files touched:
+- `src/frontend/features/solar/sunVisuals.js`
+- `src/main.js`
+
+Follow-ups / open questions:
+- OPEN: add user-facing UI toggle and style controls for Parker-spiral visibility/intensity.
+- OPEN: consider blending/interpolating Parker-spiral states across backend refreshes to smooth visual transitions.
+
+### 2026-02-17 07:35:53 UTC
+Status: DONE
+
+What changed:
+- Implemented a new explicit coronal-loop teardown API `clearSunCoronalLoops(...)` in the solar visuals module and wired it in `src/main.js` before loop-group reinitialization.
+- Upgraded backend solar physics model from `quasi_mhd_corona_v2` to `quasi_mhd_corona_v3` with:
+  - Asymmetric Hathaway-style cycle forcing plus Carrington modulation.
+  - Bipolar active-region topology and paired loop anchoring.
+  - RTV-style thermodynamic coupling (`temperature_mk ~ field_strength_gauss^(2/7)`).
+  - Alfvén-coupled CME speed model with bounded envelope `20..3500 km/s`.
+  - Parker-spiral heliosphere metadata in API output.
+- Updated frontend solar speed normalization to map the widened physical speed range without flattening slower features.
+- Expanded solar API tests for new topology/thermodynamic fields and speed bounds.
+
+Why it changed:
+- Address known parity gap from refactor analysis: explicit standalone loop teardown/dispose helper was missing.
+- Improve physical plausibility and coupling in backend Sun model while preserving existing frontend contract compatibility.
+
+Evidence/validation:
+- `pytest -q backend/tests/test_solar_physics_api.py` passed (`3 passed`).
+- `npm run build` passed (Vite production build successful after changes).
+- Manual sampling of backend state confirms new fields and model id (`quasi_mhd_corona_v3`) are emitted.
+
+Files touched:
+- `src/frontend/features/solar/sunVisuals.js`
+- `src/main.js`
+- `backend/sim/solar_physics.py`
+- `src/frontend/features/solar/solarFeatureBlending.js`
+- `backend/tests/test_solar_physics_api.py`
+
+Follow-ups / open questions:
+- OPEN: frontend does not yet render `heliosphere.parker_spiral` lines; add optional visual layer and UI toggle.
+- OPEN: consider adding a full Sun-visual teardown call in any future global scene-destroy/reset path (beyond current pre-reinit guard).
+
 ### 2026-02-17 05:07:33 UTC
 What changed:
 - Added dedicated solar modules and moved Sun-specific rendering/blending logic out of `src/main.js`.
