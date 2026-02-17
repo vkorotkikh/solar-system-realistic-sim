@@ -64,6 +64,24 @@ import { createPlanetHeightTexture } from './frontend/features/planetary/terrain
 import { OrbitalSatelliteSystem } from './frontend/features/planetary/satelliteSystem.js';
 import { MoonTexturePipeline } from './frontend/features/planetary/moonTexturePipeline.js';
 import { planetVisualProfile } from './frontend/features/planetary/visualProfiles.js';
+import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient.js';
+import {
+  createSunSurfaceMaterial,
+  createSunGlow,
+  createSunCoronaShell,
+  createSunEruptionLayer,
+  setSunGlowScale as setSunGlowScaleImpl,
+  setSunEruptionBaseRadius as setSunEruptionBaseRadiusImpl,
+  updateSunCoronalLoopsFromBlendView as updateSunCoronalLoopsFromBlendViewImpl,
+  updateSunEruptionLayerFromBlendView,
+  updateSunMaterialUniforms
+} from './frontend/features/solar/sunVisuals.js';
+import {
+  clampUnit,
+  normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
+  buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
+  materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
+} from './frontend/features/solar/solarFeatureBlending.js';
 import { SimulationClient } from './frontend/app/simulationClient.js';
 import { createTimeController } from './frontend/app/timeController.js';
 import {
@@ -819,6 +837,15 @@ let sunSurfaceMaterial = null;
 let sunCoronaMaterial = null;
 let sunGlowSprite = null;
 let sunEruptionLayer = null;
+let sunCoronalLoopGroup = null;
+let solarPhysicsClient = null;
+let solarPhysicsState = null;
+let solarPhysicsFeatureSetCurrent = null;
+let solarPhysicsFeatureSetTarget = null;
+let solarPhysicsBlendStartMs = 0;
+let solarPhysicsBlendDurationMs = 1_050;
+let solarPhysicsRefreshInFlight = false;
+let solarPhysicsNextRefreshMs = 0;
 let marsSurfaceMesh = null;
 let marsCloudMesh = null;
 let marsAtmosphereMesh = null;
@@ -1168,6 +1195,13 @@ moonTexturePipeline = new MoonTexturePipeline({
     texture.needsUpdate = true;
   }
 });
+solarPhysicsClient = new SolarPhysicsClient({
+  baseUrl: backendBaseUrl,
+  pollIntervalMs: 900,
+  timeoutMs: 2_600,
+  maxFeatures: 180,
+  fidelity: 'high'
+});
 
 hiResTextures.earthClouds.wrapS = RepeatWrapping;
 hiResTextures.earthClouds.wrapT = RepeatWrapping;
@@ -1292,16 +1326,7 @@ function getMaterial(body) {
       sunMap.wrapS = RepeatWrapping;
       sunMap.wrapT = RepeatWrapping;
       sunMap.needsUpdate = true;
-      material = new ShaderMaterial({
-        vertexShader: SUN_SURFACE_VERTEX_SHADER,
-        fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
-        uniforms: {
-          time: { value: 0 },
-          activity: { value: 0.55 },
-          baseMap: { value: sunMap }
-        }
-      });
-      material.toneMapped = false;
+      material = createSunSurfaceMaterial(sunMap);
       sunSurfaceMaterial = material;
     } else {
       material = new MeshBasicMaterial({
@@ -1595,316 +1620,40 @@ function returnToSolarSystemView({ hardSnap = true } = {}) {
 
 // ── Sun Surface + Corona Dynamics ────────────────────────────────────────────
 
-const SUN_SURFACE_VERTEX_SHADER = `
-varying vec2 vUv;
-varying vec3 vWorldPosition;
-varying vec3 vWorldNormal;
-
-void main() {
-  vUv = uv;
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  vWorldPosition = worldPosition.xyz;
-  vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
-}
-`;
-
-const SUN_SURFACE_FRAGMENT_SHADER = `
-uniform float time;
-uniform float activity;
-uniform sampler2D baseMap;
-
-varying vec2 vUv;
-varying vec3 vWorldPosition;
-varying vec3 vWorldNormal;
-
-float hash13(vec3 p) {
-  p = fract(p * 0.1031);
-  p += dot(p, p.yzx + 33.33);
-  return fract((p.x + p.y) * p.z);
-}
-
-float noise3(vec3 p) {
-  vec3 i = floor(p);
-  vec3 f = fract(p);
-  vec3 u = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(mix(hash13(i + vec3(0.0, 0.0, 0.0)), hash13(i + vec3(1.0, 0.0, 0.0)), u.x),
-        mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),
-    mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x),
-        mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y),
-    u.z
-  );
-}
-
-float fbm(vec3 p) {
-  float sum = 0.0;
-  float amp = 0.55;
-  float norm = 0.0;
-  for (int i = 0; i < 5; i++) {
-    sum += amp * noise3(p);
-    norm += amp;
-    p *= 2.02;
-    amp *= 0.5;
-  }
-  return sum / max(1e-6, norm);
-}
-
-void main() {
-  vec3 normalDir = normalize(vWorldNormal);
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float limbWeight = pow(max(dot(normalDir, viewDir), 0.0), 0.42);
-
-  float flowA = fbm(normalDir * 6.0 + vec3(time * 0.18, -time * 0.11, time * 0.07));
-  float flowB = fbm(normalDir * 13.0 + vec3(-time * 0.42, time * 0.24, -time * 0.16));
-  float granulation = fbm(normalDir * 56.0 + vec3(time * 1.65, -time * 1.25, time * 0.92));
-  float spotField = fbm(normalDir * 19.0 + vec3(time * 0.07, time * 0.03, -time * 0.05));
-  float spotMask = smoothstep(0.72, 0.92, spotField) * (0.35 + activity * 0.45);
-
-  vec2 uvShift = vec2((flowA - 0.5) * 0.028, (flowB - 0.5) * 0.022);
-  vec3 baseTex = texture2D(baseMap, fract(vUv + uvShift + vec2(time * 0.008, 0.0))).rgb;
-
-  float heatPattern = mix(flowA, flowB, 0.5);
-  float brightness = 0.62 + heatPattern * 0.35 + granulation * 0.22 - spotMask * 0.44;
-  brightness *= mix(0.78, 1.18, limbWeight);
-
-  vec3 cool = vec3(1.0, 0.42, 0.06);
-  vec3 hot = vec3(1.0, 0.78, 0.22);
-  vec3 plasma = mix(cool, hot, clamp(brightness, 0.0, 1.0));
-  vec3 color = mix(plasma, baseTex * 1.2, 0.42);
-  color += vec3(0.95, 0.36, 0.08) * granulation * 0.18;
-
-  gl_FragColor = vec4(color, 1.0);
-}
-`;
-
-const SUN_CORONA_VERTEX_SHADER = `
-varying vec3 vWorldPosition;
-varying vec3 vWorldNormal;
-
-void main() {
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  vWorldPosition = worldPosition.xyz;
-  vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
-}
-`;
-
-const SUN_CORONA_FRAGMENT_SHADER = `
-uniform float time;
-uniform float activity;
-uniform vec3 coronaColor;
-
-varying vec3 vWorldPosition;
-varying vec3 vWorldNormal;
-
-float hash13(vec3 p) {
-  p = fract(p * 0.1031);
-  p += dot(p, p.yzx + 33.33);
-  return fract((p.x + p.y) * p.z);
-}
-
-float noise3(vec3 p) {
-  vec3 i = floor(p);
-  vec3 f = fract(p);
-  vec3 u = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(mix(hash13(i + vec3(0.0, 0.0, 0.0)), hash13(i + vec3(1.0, 0.0, 0.0)), u.x),
-        mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),
-    mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x),
-        mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y),
-    u.z
-  );
-}
-
-float fbm(vec3 p) {
-  float sum = 0.0;
-  float amp = 0.6;
-  float norm = 0.0;
-  for (int i = 0; i < 4; i++) {
-    sum += amp * noise3(p);
-    norm += amp;
-    p *= 2.1;
-    amp *= 0.52;
-  }
-  return sum / max(1e-6, norm);
-}
-
-void main() {
-  vec3 normalDir = normalize(vWorldNormal);
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float rim = pow(max(0.0, 1.0 - max(dot(normalDir, viewDir), 0.0)), 2.3);
-  float turbulence = fbm(normalDir * 9.0 + vec3(time * 0.38, -time * 0.26, time * 0.19));
-  float burst = smoothstep(0.72, 0.95, turbulence);
-  float pulse = 0.62 + 0.38 * sin(time * 1.9 + turbulence * 8.0);
-  float alpha = rim * (0.14 + burst * (0.5 + activity * 0.35)) * pulse;
-  vec3 color = mix(coronaColor * 0.72, coronaColor * 1.4, burst);
-  gl_FragColor = vec4(color, alpha);
-}
-`;
-
-function createSunGlow(sunDisplayRadius) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-
-  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  gradient.addColorStop(0, 'rgba(255, 244, 170, 0.55)');
-  gradient.addColorStop(0.1, 'rgba(255, 216, 98, 0.3)');
-  gradient.addColorStop(0.34, 'rgba(255, 168, 58, 0.12)');
-  gradient.addColorStop(0.68, 'rgba(255, 118, 32, 0.04)');
-  gradient.addColorStop(1, 'rgba(255, 82, 20, 0.0)');
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 256, 256);
-
-  const texture = new CanvasTexture(canvas);
-  const material = new SpriteMaterial({
-    map: texture,
-    transparent: true,
-    opacity: 0.78,
-    blending: AdditiveBlending,
-    depthWrite: false,
-    depthTest: false
-  });
-
-  const glow = new Sprite(material);
-  glow.scale.setScalar(sunDisplayRadius * 14.5);
-  glow.userData.baseScaleMultiplier = 14.5;
-  glow.userData.baseOpacity = 0.78;
-  return glow;
-}
-
-function createSunCoronaShell(geometry) {
-  const material = new ShaderMaterial({
-    vertexShader: SUN_CORONA_VERTEX_SHADER,
-    fragmentShader: SUN_CORONA_FRAGMENT_SHADER,
-    uniforms: {
-      time: { value: 0 },
-      activity: { value: 0.5 },
-      coronaColor: { value: new Color('#ffba6d') }
-    },
-    transparent: true,
-    blending: AdditiveBlending,
-    depthWrite: false,
-    side: DoubleSide
-  });
-  const mesh = new Mesh(geometry, material);
-  mesh.userData.bodyId = 'sun-corona';
-  mesh.userData.surfaceScale = 1.11;
-  return mesh;
-}
-
-function createSunEruptionLayer(sunDisplayRadius) {
-  const burstCount = 360;
-  const positions = new Float32Array(burstCount * 3);
-  const directions = new Float32Array(burstCount * 3);
-  const tangents = new Float32Array(burstCount * 3);
-  const speeds = new Float32Array(burstCount);
-  const phases = new Float32Array(burstCount);
-  const amplitudes = new Float32Array(burstCount);
-
-  for (let i = 0; i < burstCount; i += 1) {
-    const u = Math.random() * 2 - 1;
-    const theta = Math.random() * TWO_PI;
-    const radial = Math.sqrt(Math.max(1e-6, 1 - u * u));
-    const dx = radial * Math.cos(theta);
-    const dy = radial * Math.sin(theta);
-    const dz = u;
-
-    // Choose a stable reference axis for tangent generation.
-    const axisX = Math.abs(dz) > 0.78 ? 1 : 0;
-    const axisY = 0;
-    const axisZ = Math.abs(dz) > 0.78 ? 0 : 1;
-
-    let tx = dy * axisZ - dz * axisY;
-    let ty = dz * axisX - dx * axisZ;
-    let tz = dx * axisY - dy * axisX;
-    const tangentLen = Math.hypot(tx, ty, tz);
-    if (tangentLen > 1e-9) {
-      tx /= tangentLen;
-      ty /= tangentLen;
-      tz /= tangentLen;
-    } else {
-      tx = 1;
-      ty = 0;
-      tz = 0;
-    }
-
-    const base = i * 3;
-    directions[base] = dx;
-    directions[base + 1] = dy;
-    directions[base + 2] = dz;
-    tangents[base] = tx;
-    tangents[base + 1] = ty;
-    tangents[base + 2] = tz;
-    speeds[i] = 0.32 + Math.random() * 1.7;
-    phases[i] = Math.random() * TWO_PI;
-    amplitudes[i] = 0.04 + Math.random() * 0.22;
-    positions[base] = dx * sunDisplayRadius * 1.03;
-    positions[base + 1] = dy * sunDisplayRadius * 1.03;
-    positions[base + 2] = dz * sunDisplayRadius * 1.03;
-  }
-
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-
-  const material = new PointsMaterial({
-    color: new Color('#ffbf74'),
-    size: sunDisplayRadius * 0.65,
-    transparent: true,
-    opacity: 0.34,
-    blending: AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true
-  });
-
-  const points = new Points(geometry, material);
-  points.userData.bodyId = 'sun-eruptions';
-  points.userData.sunBursts = {
-    burstCount,
-    positions,
-    directions,
-    tangents,
-    speeds,
-    phases,
-    amplitudes,
-    baseRadius: sunDisplayRadius
-  };
-  points.renderOrder = 6;
-  return points;
-}
-
 function setSunGlowScale(baseRadiusAu, pulse = 1) {
-  if (!sunGlowSprite) return;
-  const baseScaleMultiplier = sunGlowSprite.userData.baseScaleMultiplier ?? 14.5;
-  sunGlowSprite.scale.setScalar(baseRadiusAu * baseScaleMultiplier * pulse);
+  setSunGlowScaleImpl(sunGlowSprite, baseRadiusAu, pulse);
 }
 
 function setSunEruptionBaseRadius(baseRadiusAu) {
-  if (!sunEruptionLayer) return;
-  const bursts = sunEruptionLayer.userData?.sunBursts;
-  if (!bursts) return;
-  const geometry = sunEruptionLayer.geometry;
-  if (!geometry || typeof geometry.getAttribute !== 'function') return;
-  const positionAttr = geometry.getAttribute('position');
-  if (!positionAttr) return;
-
-  const radius = Math.max(1e-9, baseRadiusAu);
-  bursts.baseRadius = radius;
-  for (let i = 0; i < bursts.burstCount; i += 1) {
-    const base = i * 3;
-    bursts.positions[base] = bursts.directions[base] * radius * 1.03;
-    bursts.positions[base + 1] = bursts.directions[base + 1] * radius * 1.03;
-    bursts.positions[base + 2] = bursts.directions[base + 2] * radius * 1.03;
-  }
-  positionAttr.needsUpdate = true;
-  if (sunEruptionLayer.material?.isPointsMaterial) {
-    sunEruptionLayer.material.size = Math.max(0.0000035, radius * 0.65);
-  }
+  setSunEruptionBaseRadiusImpl(sunEruptionLayer, baseRadiusAu);
 }
 
+function buildSolarFeatureBlendView(nowMs = Date.now(), featureLimit = 220) {
+  const blendView = buildSolarFeatureBlendViewImpl({
+    currentFeatureSet: solarPhysicsFeatureSetCurrent,
+    targetFeatureSet: solarPhysicsFeatureSetTarget,
+    blendStartMs: solarPhysicsBlendStartMs,
+    blendDurationMs: solarPhysicsBlendDurationMs,
+    nowMs,
+    featureLimit
+  });
+  solarPhysicsFeatureSetCurrent = blendView.nextCurrentFeatureSet;
+  solarPhysicsFeatureSetTarget = blendView.nextTargetFeatureSet;
+  solarPhysicsBlendStartMs = blendView.nextBlendStartMs;
+  return blendView;
+}
+
+function normalizeSolarFeatureSetFromState(physicsState, featureLimit = 220) {
+  return normalizeSolarFeatureSetFromStateImpl(physicsState, simState.julianDate, featureLimit);
+}
+
+function materializeSolarFeatureSetFromBlendView(blendView) {
+  return materializeSolarFeatureSetFromBlendViewImpl(blendView, simState.julianDate);
+}
+
+function updateSunCoronalLoopsFromBlendView(blendView, sunRadiusAu, timeSec = 0) {
+  updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, blendView, sunRadiusAu, 144, timeSec);
+}
 const EARTH_ATMOSPHERE_VERTEX_SHADER = `
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -2352,6 +2101,12 @@ function createBodyNode(body) {
     sunEruptionLayer.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(sunEruptionLayer);
     setSunEruptionBaseRadius(sunRadiusAu);
+
+    sunCoronalLoopGroup = new Group();
+    sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
+    spinGroup.add(sunCoronalLoopGroup);
+    const initialSolarBlend = buildSolarFeatureBlendView(Date.now(), 220);
+    updateSunCoronalLoopsFromBlendView(initialSolarBlend, sunRadiusAu);
   } else if (body.type === 'star') {
     const glow = createSunGlow(bodyRenderRadiusAu(body, simState.useRealisticScale));
     node.add(glow);
@@ -3662,6 +3417,8 @@ function applyScaleMode() {
     const sunRadiusAu = bodyRenderRadiusAu(sunBody, realistic);
     setSunGlowScale(sunRadiusAu);
     setSunEruptionBaseRadius(sunRadiusAu);
+    const solarBlendView = buildSolarFeatureBlendView(Date.now(), 220);
+    updateSunCoronalLoopsFromBlendView(solarBlendView, sunRadiusAu);
   }
 
   if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
@@ -3830,56 +3587,88 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
   const cyclePhase = (solarCycleYears / 11.0) * TWO_PI;
   const cycleActivity = 0.5 + 0.5 * Math.sin(cyclePhase);
   const shortPulse = 0.5 + 0.5 * Math.sin(timeSec * 0.37);
-  const activity = Math.min(1, Math.max(0, 0.28 + cycleActivity * 0.47 + shortPulse * 0.25));
+  const fallbackActivity = Math.min(1, Math.max(0, 0.28 + cycleActivity * 0.47 + shortPulse * 0.25));
+  const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
+  const blendedActivityRaw = Number(solarBlendView?.activityIndex);
+  const backendActivityRaw = Number(solarPhysicsState?.activity_index);
+  const activity = Number.isFinite(blendedActivityRaw)
+    ? clampUnit(blendedActivityRaw)
+    : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
 
-  if (sunSurfaceMaterial?.uniforms) {
-    sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
-    sunSurfaceMaterial.uniforms.activity.value = activity;
-  }
-
-  if (sunCoronaMaterial?.uniforms) {
-    sunCoronaMaterial.uniforms.time.value = timeSec * 0.54;
-    sunCoronaMaterial.uniforms.activity.value = activity;
-    const coronaColor = sunCoronaMaterial.uniforms.coronaColor?.value;
-    if (coronaColor?.isColor) {
-      coronaColor.setRGB(1.0, 0.62 + activity * 0.16, 0.3 + activity * 0.1);
-    }
-  }
+  updateSunMaterialUniforms({
+    sunSurfaceMaterial,
+    sunCoronaMaterial,
+    timeSec,
+    activity
+  });
 
   const sunBody = bodyById.get('sun');
   const sunRadiusAu = sunBody ? bodyRenderRadiusAu(sunBody, simState.useRealisticScale) : 0.01;
+  updateSunCoronalLoopsFromBlendView(solarBlendView, sunRadiusAu, timeSec);
+
   const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + activity * 0.045;
   setSunGlowScale(sunRadiusAu, glowPulse);
   if (sunGlowSprite?.material) {
-    const baseOpacity = sunGlowSprite.userData.baseOpacity ?? 0.78;
-    sunGlowSprite.material.opacity = Math.max(0.4, Math.min(0.98, baseOpacity * (0.9 + activity * 0.22)));
+    const baseOpacity = sunGlowSprite.userData.baseOpacity ?? 0.42;
+    sunGlowSprite.material.opacity = Math.max(0.18, Math.min(0.64, baseOpacity * (0.9 + activity * 0.16)));
   }
 
-  const bursts = sunEruptionLayer?.userData?.sunBursts;
-  if (!bursts) return;
-  const geometry = sunEruptionLayer.geometry;
-  if (!geometry || typeof geometry.getAttribute !== 'function') return;
-  const positionAttr = geometry.getAttribute('position');
-  if (!positionAttr) return;
+  updateSunEruptionLayerFromBlendView({
+    sunEruptionLayer,
+    blendView: solarBlendView,
+    sunRadiusAu,
+    timeSec,
+    activity
+  });
+}
 
-  const plumeFactor = 0.45 + activity * 0.95;
-  for (let i = 0; i < bursts.burstCount; i += 1) {
-    const base = i * 3;
-    const wave = Math.sin(timeSec * bursts.speeds[i] + bursts.phases[i]);
-    const plume = Math.max(0, wave) * bursts.amplitudes[i] * plumeFactor;
-    const swirl = Math.sin(timeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
-    const radius = bursts.baseRadius * (1.03 + plume);
-    const tangentOffset = bursts.baseRadius * swirl;
+function maybeRefreshSolarPhysics(nowMs = Date.now(), force = false) {
+  if (!solarPhysicsClient || solarPhysicsRefreshInFlight) return;
+  if (!force && nowMs < solarPhysicsNextRefreshMs) return;
 
-    bursts.positions[base] = bursts.directions[base] * radius + bursts.tangents[base] * tangentOffset;
-    bursts.positions[base + 1] = bursts.directions[base + 1] * radius + bursts.tangents[base + 1] * tangentOffset;
-    bursts.positions[base + 2] = bursts.directions[base + 2] * radius + bursts.tangents[base + 2] * tangentOffset;
-  }
-  positionAttr.needsUpdate = true;
-  if (sunEruptionLayer.material?.isPointsMaterial) {
-    sunEruptionLayer.material.opacity = Math.max(0.18, 0.25 + activity * 0.28);
-    sunEruptionLayer.material.size = Math.max(0.0000035, bursts.baseRadius * (0.54 + activity * 0.3));
-  }
+  solarPhysicsRefreshInFlight = true;
+  const requestJd = simState.julianDate;
+
+  void solarPhysicsClient.maybeRefresh(requestJd, force)
+    .then((updated) => {
+      const status = solarPhysicsClient.status();
+      if (updated) {
+        solarPhysicsState = solarPhysicsClient.latestState();
+        const normalized = normalizeSolarFeatureSetFromState(
+          solarPhysicsState,
+          480
+        );
+        if (normalized) {
+          if (!solarPhysicsFeatureSetCurrent) {
+            solarPhysicsFeatureSetCurrent = normalized;
+            solarPhysicsFeatureSetTarget = null;
+            solarPhysicsBlendStartMs = Date.now();
+          } else {
+            if (solarPhysicsFeatureSetTarget) {
+              const inFlightBlend = buildSolarFeatureBlendView(Date.now(), 220);
+              const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
+              if (blendedSnapshot) {
+                solarPhysicsFeatureSetCurrent = blendedSnapshot;
+              } else {
+                solarPhysicsFeatureSetCurrent = solarPhysicsFeatureSetTarget;
+              }
+              solarPhysicsFeatureSetTarget = null;
+            }
+            solarPhysicsFeatureSetTarget = normalized;
+            solarPhysicsBlendStartMs = Date.now();
+            const pollMs = Number(status.pollIntervalMs);
+            solarPhysicsBlendDurationMs = Math.max(
+              520,
+              Math.min(1_350, (Number.isFinite(pollMs) ? pollMs : 900) * 0.9)
+            );
+          }
+        }
+      }
+      solarPhysicsNextRefreshMs = nowMs + (status.lastError ? 6_000 : status.pollIntervalMs);
+    })
+    .finally(() => {
+      solarPhysicsRefreshInFlight = false;
+    });
 }
 
 function maybeRefreshEarthCloudCoverage(nowMs = Date.now(), force = false) {
@@ -4843,6 +4632,7 @@ function animate(timestamp) {
   updateSunDynamics(simState.julianDate, timestamp * 0.001);
   updateEarthWeather(simState.julianDate);
   updateMarsWeather(simState.julianDate);
+  maybeRefreshSolarPhysics(Date.now());
   maybeRefreshEarthCloudCoverage(Date.now());
   maybeRefreshMarsCloudCoverage(Date.now());
   updateEarthSurfaceLod();
@@ -4903,4 +4693,5 @@ updateCameraClipPlanes();
 updateZoomMetricsUI();
 maybeRefreshEarthCloudCoverage(Date.now(), true);
 maybeRefreshMarsCloudCoverage(Date.now(), true);
+maybeRefreshSolarPhysics(Date.now(), true);
 requestAnimationFrame(animate);
