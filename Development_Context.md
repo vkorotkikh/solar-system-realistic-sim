@@ -47,6 +47,39 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-17 07:59:38 UTC
+Status: DONE
+
+What changed:
+- Reverted `src/frontend/app/nearbySystemsRenderer.js` to the pre-experiment baseline (halo-based nearby marker behavior restored) after interstellar-visibility regression feedback.
+- Added rollback archive `src/frontend/app/temp_nearbySystemsRenderer.js` containing:
+  - commented removed-original snippets,
+  - commented experimental replacement snapshot,
+  - active restored original code.
+- Restored nearby-renderer wiring lines in `src/main.js` that were removed during the experiment:
+  - `INTERSTELLAR_NEARBY_HALO_MAX_DISTANCE_LY` constant,
+  - `nearbySystemCloseHaloEntries` state collection,
+  - `nearbySystemHoverHalo` state getter/setter.
+- Fixed deep-zoom disappearance regression in `updateCameraClipPlanes()` by ensuring `camera.far` scales with both interstellar catalog range and actual camera range (`rangeAu * 1.05` safeguard).
+
+Why it changed:
+- Reported behavior: zooming out beyond Oort-cloud visibility could produce a blank scene.
+- Root cause: interstellar far-clip logic could under-shoot camera distance in extreme zoom states.
+- User requested rollback-safe archival of renderer experiment and restoration-first handling.
+
+Evidence/validation:
+- `npm run build` passed after rollback + clip-plane fix.
+- Regression-path logic review confirms far-plane is now guarded against clipping the focused solar scene at max interstellar zoom.
+
+Files touched:
+- `src/frontend/app/nearbySystemsRenderer.js`
+- `src/frontend/app/temp_nearbySystemsRenderer.js`
+- `src/main.js`
+
+Follow-ups / open questions:
+- OPEN: if nearby-system halo style remains undesired, reintroduce the new depiction work behind a feature flag (`experimental_interstellar_markers`) instead of direct replacement.
+- OPEN: add a quick runtime debug line in HUD for clip planes (`near/far`) while tuning interstellar ranges.
+
 ### 2026-02-17 07:48:06 UTC
 Status: DONE
 

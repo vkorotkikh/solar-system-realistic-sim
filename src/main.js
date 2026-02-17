@@ -72,7 +72,10 @@ import {
   createSunEruptionLayer,
   setSunGlowScale as setSunGlowScaleImpl,
   setSunEruptionBaseRadius as setSunEruptionBaseRadiusImpl,
+  clearSunCoronalLoops as clearSunCoronalLoopsImpl,
   updateSunCoronalLoopsFromBlendView as updateSunCoronalLoopsFromBlendViewImpl,
+  clearSunParkerSpiralLines as clearSunParkerSpiralLinesImpl,
+  updateSunParkerSpiralFromPhysicsState as updateSunParkerSpiralFromPhysicsStateImpl,
   updateSunEruptionLayerFromBlendView,
   updateSunMaterialUniforms
 } from './frontend/features/solar/sunVisuals.js';
@@ -625,7 +628,12 @@ function updateCameraClipPlanes() {
   if (interstellarModeActive && rangeAu >= INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU) {
     const farTarget = Math.max(80_000, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, rangeAu * 6));
     const catalogFar = nearbySystemsMaxDistanceAu > 0 ? nearbySystemsMaxDistanceAu * 1.15 : farTarget;
-    far = Math.max(far, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, catalogFar));
+    far = Math.max(
+      far,
+      farTarget,
+      Math.min(INTERSTELLAR_MAX_DISTANCE_AU, catalogFar),
+      rangeAu * 1.05
+    );
     near = Math.max(0.0001, Math.min(1.0, rangeAu * 0.0000015));
   }
 
@@ -838,6 +846,7 @@ let sunCoronaMaterial = null;
 let sunGlowSprite = null;
 let sunEruptionLayer = null;
 let sunCoronalLoopGroup = null;
+let sunParkerSpiralGroup = null;
 let solarPhysicsClient = null;
 let solarPhysicsState = null;
 let solarPhysicsFeatureSetCurrent = null;
@@ -1628,6 +1637,14 @@ function setSunEruptionBaseRadius(baseRadiusAu) {
   setSunEruptionBaseRadiusImpl(sunEruptionLayer, baseRadiusAu);
 }
 
+function clearSunCoronalLoops() {
+  clearSunCoronalLoopsImpl(sunCoronalLoopGroup);
+}
+
+function clearSunParkerSpiralLines() {
+  clearSunParkerSpiralLinesImpl(sunParkerSpiralGroup);
+}
+
 function buildSolarFeatureBlendView(nowMs = Date.now(), featureLimit = 220) {
   const blendView = buildSolarFeatureBlendViewImpl({
     currentFeatureSet: solarPhysicsFeatureSetCurrent,
@@ -1654,6 +1671,18 @@ function materializeSolarFeatureSetFromBlendView(blendView) {
 function updateSunCoronalLoopsFromBlendView(blendView, sunRadiusAu, timeSec = 0) {
   updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, blendView, sunRadiusAu, 144, timeSec);
 }
+
+function updateSunParkerSpiralFromPhysicsState(physicsState, sunRadiusAu, timeSec = 0) {
+  updateSunParkerSpiralFromPhysicsStateImpl(
+    sunParkerSpiralGroup,
+    physicsState,
+    sunRadiusAu,
+    6,
+    120,
+    timeSec
+  );
+}
+
 const EARTH_ATMOSPHERE_VERTEX_SHADER = `
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -2102,11 +2131,28 @@ function createBodyNode(body) {
     spinGroup.add(sunEruptionLayer);
     setSunEruptionBaseRadius(sunRadiusAu);
 
+    if (sunCoronalLoopGroup) {
+      clearSunCoronalLoops();
+      if (sunCoronalLoopGroup.parent) {
+        sunCoronalLoopGroup.parent.remove(sunCoronalLoopGroup);
+      }
+    }
+    if (sunParkerSpiralGroup) {
+      clearSunParkerSpiralLines();
+      if (sunParkerSpiralGroup.parent) {
+        sunParkerSpiralGroup.parent.remove(sunParkerSpiralGroup);
+      }
+    }
     sunCoronalLoopGroup = new Group();
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
     spinGroup.add(sunCoronalLoopGroup);
     const initialSolarBlend = buildSolarFeatureBlendView(Date.now(), 220);
     updateSunCoronalLoopsFromBlendView(initialSolarBlend, sunRadiusAu);
+
+    sunParkerSpiralGroup = new Group();
+    sunParkerSpiralGroup.userData.bodyId = 'sun-parker-spiral';
+    node.add(sunParkerSpiralGroup);
+    updateSunParkerSpiralFromPhysicsState(solarPhysicsState, sunRadiusAu);
   } else if (body.type === 'star') {
     const glow = createSunGlow(bodyRenderRadiusAu(body, simState.useRealisticScale));
     node.add(glow);
@@ -3419,6 +3465,7 @@ function applyScaleMode() {
     setSunEruptionBaseRadius(sunRadiusAu);
     const solarBlendView = buildSolarFeatureBlendView(Date.now(), 220);
     updateSunCoronalLoopsFromBlendView(solarBlendView, sunRadiusAu);
+    updateSunParkerSpiralFromPhysicsState(solarPhysicsState, sunRadiusAu);
   }
 
   if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
@@ -3605,6 +3652,7 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
   const sunBody = bodyById.get('sun');
   const sunRadiusAu = sunBody ? bodyRenderRadiusAu(sunBody, simState.useRealisticScale) : 0.01;
   updateSunCoronalLoopsFromBlendView(solarBlendView, sunRadiusAu, timeSec);
+  updateSunParkerSpiralFromPhysicsState(solarPhysicsState, sunRadiusAu, timeSec);
 
   const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + activity * 0.045;
   setSunGlowScale(sunRadiusAu, glowPulse);
