@@ -1,0 +1,181 @@
+{
+  "id": "alpha-centauri",
+  "name": "Alpha Centauri System",
+  "version": 2,
+  "epoch_jd": 2451545.0,
+  "fidelity_tier": "B",
+  "sources": [
+    "Gaia EDR3 / VizieR J/A+A/650/A201",
+    "NASA Exoplanet Archive (Proxima planetary entries)"
+  ],
+  "notes": "Hybrid local manifest: Proxima planets are kept near the scene origin for exploration; Alpha Centauri A/B are included as companion stars with scaled visualization spacing.",
+  "primary_star_id": "proxima-centauri",
+  "stars": [
+    {
+      "id": "proxima-centauri",
+      "name": "Proxima Centauri",
+      "type": "star",
+      "mass_kg": 2.43e29,
+      "radius_km": 107000,
+      "display_radius_au": 0.020,
+      "color": "#ff9b6a",
+      "rotation_period_hours": 2016,
+      "notes": "Observed nearby red dwarf; primary local anchor for this manifest."
+    },
+    {
+      "id": "alpha-centauri-a",
+      "name": "Alpha Centauri A",
+      "type": "star",
+      "parent_id": "proxima-centauri",
+      "mass_kg": 2.188e30,
+      "radius_km": 834840,
+      "display_radius_au": 0.029,
+      "color": "#ffe1b0",
+      "rotation_period_hours": 528,
+      "orbit": {
+        "a_au": 220.0,
+        "e": 0.42,
+        "i_deg": 77.0,
+        "ascending_node_deg": 142.0,
+        "arg_periapsis_deg": 233.0,
+        "mean_anomaly_deg": 18.0,
+        "period_days": 1826250.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Companion star placement is scaled for local-system usability."
+    },
+    {
+      "id": "alpha-centauri-b",
+      "name": "Alpha Centauri B",
+      "type": "star",
+      "parent_id": "alpha-centauri-a",
+      "mass_kg": 1.804e30,
+      "radius_km": 602680,
+      "display_radius_au": 0.024,
+      "color": "#ffc993",
+      "rotation_period_hours": 864,
+      "orbit": {
+        "a_au": 23.4,
+        "e": 0.524,
+        "i_deg": 79.2,
+        "ascending_node_deg": 204.0,
+        "arg_periapsis_deg": 232.0,
+        "mean_anomaly_deg": 156.0,
+        "period_days": 29171.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Orbital shape approximates the observed A/B binary behavior."
+    }
+  ],
+  "planets": [
+    {
+      "id": "ac-proxima-d",
+      "name": "Proxima d",
+      "type": "planet",
+      "parent_id": "proxima-centauri",
+      "radius_km": 4200,
+      "display_radius_au": 0.0034,
+      "color": "#7fd8be",
+      "texture_template": "mercury",
+      "orbit": {
+        "a_au": 0.02885,
+        "e": 0.04,
+        "i_deg": 1.1,
+        "ascending_node_deg": 17.0,
+        "arg_periapsis_deg": 63.0,
+        "mean_anomaly_deg": 198.0,
+        "period_days": 5.122,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Observed candidate; rendered with procedural rocky texture."
+    },
+    {
+      "id": "ac-proxima-b",
+      "name": "Proxima b",
+      "type": "planet",
+      "parent_id": "proxima-centauri",
+      "radius_km": 7600,
+      "display_radius_au": 0.0042,
+      "color": "#6ca6ff",
+      "texture_template": "earth",
+      "rotation_period_hours": 268.5,
+      "orbit": {
+        "a_au": 0.04856,
+        "e": 0.02,
+        "i_deg": 0.8,
+        "ascending_node_deg": 39.0,
+        "arg_periapsis_deg": 112.0,
+        "mean_anomaly_deg": 41.0,
+        "period_days": 11.186,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Observed exoplanet; atmosphere and geology are simulated."
+    },
+    {
+      "id": "ac-proxima-c",
+      "name": "Proxima c (candidate)",
+      "type": "planet",
+      "parent_id": "proxima-centauri",
+      "radius_km": 12500,
+      "display_radius_au": 0.0048,
+      "color": "#d4bf8e",
+      "texture_template": "neptune",
+      "rotation_period_hours": 432,
+      "orbit": {
+        "a_au": 1.489,
+        "e": 0.07,
+        "i_deg": 2.6,
+        "ascending_node_deg": 74.0,
+        "arg_periapsis_deg": 233.0,
+        "mean_anomaly_deg": 12.0,
+        "period_days": 1928.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Long-period candidate rendered with simulated temperate-gas texture."
+    },
+    {
+      "id": "ac-proxima-c-i",
+      "name": "Proxima c I (simulated moon)",
+      "type": "moon",
+      "parent_id": "ac-proxima-c",
+      "radius_km": 1700,
+      "display_radius_au": 0.0016,
+      "color": "#b8bec8",
+      "moon_texture_seed": "ac_proxima_c_i",
+      "rotation_period_hours": 201.6,
+      "orbit": {
+        "a_au": 0.0061,
+        "e": 0.03,
+        "i_deg": 3.2,
+        "ascending_node_deg": 18.0,
+        "arg_periapsis_deg": 82.0,
+        "mean_anomaly_deg": 127.0,
+        "period_days": 8.4,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Simulated moon placeholder for local orbital context."
+    },
+    {
+      "id": "ac-bb",
+      "name": "Alpha Centauri Bb (candidate)",
+      "type": "planet",
+      "parent_id": "alpha-centauri-b",
+      "radius_km": 6400,
+      "display_radius_au": 0.0038,
+      "color": "#f1c48c",
+      "texture_template": "venus",
+      "rotation_period_hours": 76.8,
+      "orbit": {
+        "a_au": 0.042,
+        "e": 0.1,
+        "i_deg": 2.1,
+        "ascending_node_deg": 245.0,
+        "arg_periapsis_deg": 49.0,
+        "mean_anomaly_deg": 310.0,
+        "period_days": 3.24,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Historical candidate entry retained for exploratory visualization only."
+    }
+  ]
+}

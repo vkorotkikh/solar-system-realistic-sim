@@ -1,0 +1,139 @@
+{
+  "id": "sirius",
+  "name": "Sirius System",
+  "version": 1,
+  "epoch_jd": 2451545.0,
+  "fidelity_tier": "C",
+  "sources": [
+    "Gaia EDR3 / VizieR J/A+A/650/A201",
+    "USNO ORB6 binary-orbit references",
+    "No confirmed exoplanets; exploratory procedural placeholders"
+  ],
+  "notes": "Sirius A/B binary is modeled from observed orbital behavior; planetary bodies are simulated placeholders for interaction and camera workflow validation.",
+  "primary_star_id": "sirius-a",
+  "stars": [
+    {
+      "id": "sirius-a",
+      "name": "Sirius A",
+      "type": "star",
+      "mass_kg": 4.018e30,
+      "radius_km": 1190000,
+      "display_radius_au": 0.034,
+      "color": "#dceeff",
+      "rotation_period_hours": 120,
+      "notes": "Observed A-type primary star."
+    },
+    {
+      "id": "sirius-b",
+      "name": "Sirius B",
+      "type": "star",
+      "parent_id": "sirius-a",
+      "mass_kg": 2.063e30,
+      "radius_km": 5840,
+      "display_radius_au": 0.014,
+      "color": "#e6f2ff",
+      "rotation_period_hours": 24,
+      "orbit": {
+        "a_au": 20.1,
+        "e": 0.592,
+        "i_deg": 136.5,
+        "ascending_node_deg": 45.5,
+        "arg_periapsis_deg": 147.3,
+        "mean_anomaly_deg": 88.0,
+        "period_days": 18309.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Observed white dwarf companion orbit."
+    }
+  ],
+  "planets": [
+    {
+      "id": "sirius-a-1",
+      "name": "Sirius A-1 (simulated)",
+      "type": "planet",
+      "parent_id": "sirius-a",
+      "radius_km": 7400,
+      "display_radius_au": 0.0041,
+      "color": "#f0c79f",
+      "texture_template": "venus",
+      "rotation_period_hours": 144,
+      "orbit": {
+        "a_au": 0.84,
+        "e": 0.12,
+        "i_deg": 2.0,
+        "ascending_node_deg": 122.0,
+        "arg_periapsis_deg": 341.0,
+        "mean_anomaly_deg": 63.0,
+        "period_days": 289.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Procedural planet placeholder (no confirmed Sirius exoplanet)."
+    },
+    {
+      "id": "sirius-a-1-i",
+      "name": "Sirius A-1 I (simulated moon)",
+      "type": "moon",
+      "parent_id": "sirius-a-1",
+      "radius_km": 1800,
+      "display_radius_au": 0.0015,
+      "color": "#c2cad6",
+      "moon_texture_seed": "sirius_a_1_i",
+      "rotation_period_hours": 110,
+      "orbit": {
+        "a_au": 0.0045,
+        "e": 0.02,
+        "i_deg": 1.9,
+        "ascending_node_deg": 89.0,
+        "arg_periapsis_deg": 204.0,
+        "mean_anomaly_deg": 15.0,
+        "period_days": 4.9,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Simulated moon for local orbital interaction tests."
+    },
+    {
+      "id": "sirius-a-2",
+      "name": "Sirius A-2 (simulated)",
+      "type": "planet",
+      "parent_id": "sirius-a",
+      "radius_km": 13100,
+      "display_radius_au": 0.0049,
+      "color": "#d8b989",
+      "texture_template": "jupiter",
+      "rotation_period_hours": 20,
+      "orbit": {
+        "a_au": 2.16,
+        "e": 0.18,
+        "i_deg": 4.6,
+        "ascending_node_deg": 213.0,
+        "arg_periapsis_deg": 77.0,
+        "mean_anomaly_deg": 188.0,
+        "period_days": 1145.0,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Simulated gas giant placeholder for deep-zoom scale testing."
+    },
+    {
+      "id": "sirius-b-1",
+      "name": "Sirius B-1 (simulated)",
+      "type": "planet",
+      "parent_id": "sirius-b",
+      "radius_km": 5200,
+      "display_radius_au": 0.0035,
+      "color": "#9eaec5",
+      "texture_template": "mercury",
+      "rotation_period_hours": 90,
+      "orbit": {
+        "a_au": 0.11,
+        "e": 0.05,
+        "i_deg": 5.2,
+        "ascending_node_deg": 19.0,
+        "arg_periapsis_deg": 168.0,
+        "mean_anomaly_deg": 251.0,
+        "period_days": 15.6,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Simulated compact world around Sirius B for binary-system interaction tests."
+    }
+  ]
+}
