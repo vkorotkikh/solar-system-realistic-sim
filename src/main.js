@@ -225,6 +225,11 @@ const PC_TO_AU = 206_264.80624709636;
 const MSUN_KG = 1.98847e30;
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
+const CYCLE_25_START_JD = 2_458_849.5;
+const CYCLE_LENGTH_MONTHS = 132.0;
+const MEAN_MONTH_DAYS = 30.44;
+const HATHAWAY_B = 54.0;
+const HATHAWAY_C = 0.71;
 const DEFAULT_BACKEND_HOST = 'localhost';
 const DEFAULT_BACKEND_PORT = 8042;
 const SOLAR_SYSTEM_MAX_DISTANCE_AU = 8_000;
@@ -436,6 +441,33 @@ function bodyMuAu3Day2(massKg) {
 function normalizeRadians(angle) {
   const wrapped = angle % TWO_PI;
   return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
+}
+
+function hathawayRaw(tMonths, b = HATHAWAY_B, c = HATHAWAY_C) {
+  if (!Number.isFinite(tMonths) || tMonths <= 0) return 0;
+  const ratio = tMonths / Math.max(1e-6, b);
+  const ratio2 = ratio * ratio;
+  const ratio3 = ratio2 * ratio;
+  const denom = Math.exp(ratio2) - c;
+  if (denom <= 1e-12) return 0;
+  return ratio3 / denom;
+}
+
+function hathawayNormalized(tMonths) {
+  const tPeak = HATHAWAY_B * Math.sqrt(1.5);
+  const peak = hathawayRaw(tPeak);
+  if (peak <= 1e-12) return 0;
+  return Math.max(0, Math.min(1, hathawayRaw(tMonths) / peak));
+}
+
+function fallbackSolarActivityFromJulianDate(julianDate) {
+  const cycleDays = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS;
+  const cycleOffsetDays = ((julianDate - CYCLE_25_START_JD) % cycleDays + cycleDays) % cycleDays;
+  const tMonths = cycleOffsetDays / MEAN_MONTH_DAYS;
+  const hathaway = hathawayNormalized(tMonths);
+  const rotationMod = 0.5 + 0.5 * Math.sin(((julianDate - J2000_JD) / 27.2753) * TWO_PI + 0.17);
+  const activity = 0.06 + hathaway * 0.82 + rotationMod * 0.1;
+  return Math.max(0.02, Math.min(0.98, activity));
 }
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
@@ -1454,7 +1486,8 @@ function updateSunParkerSpiralFromPhysicsState(physicsState, sunRadiusAu, timeSe
     sunRadiusAu,
     6,
     120,
-    timeSec
+    timeSec,
+    camera
   );
 }
 
@@ -3415,11 +3448,7 @@ function updateMarsWeather(julianDate) {
 
 function updateSunDynamics(julianDate, realtimeSeconds) {
   const timeSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
-  const solarCycleYears = (julianDate - J2000_JD) / 365.25;
-  const cyclePhase = (solarCycleYears / 11.0) * TWO_PI;
-  const cycleActivity = 0.5 + 0.5 * Math.sin(cyclePhase);
-  const shortPulse = 0.5 + 0.5 * Math.sin(timeSec * 0.37);
-  const fallbackActivity = Math.min(1, Math.max(0, 0.28 + cycleActivity * 0.47 + shortPulse * 0.25));
+  const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
   const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
   const blendedActivityRaw = Number(solarBlendView?.activityIndex);
   const backendActivityRaw = Number(solarPhysicsState?.activity_index);

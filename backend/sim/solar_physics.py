@@ -13,6 +13,13 @@ J2000_JD = 2_451_545.0
 SOLAR_CYCLE_YEARS = 11.0
 SOLAR_CYCLE_DAYS = SOLAR_CYCLE_YEARS * 365.25
 CARRINGTON_ROTATION_DAYS = 27.2753
+# Hathaway-cycle reference anchored at Cycle 25 start (~2019-12-01 UTC).
+CYCLE_25_START_JD = 2_458_849.5
+CYCLE_25_NUMBER = 25
+CYCLE_LENGTH_MONTHS = 132.0
+MEAN_MONTH_DAYS = 30.44
+HATHAWAY_B = 54.0
+HATHAWAY_C = 0.71
 
 # SI constants used for coarse Alfvén-speed coupling.
 MU0_SI = 4.0e-7 * math.pi
@@ -113,12 +120,43 @@ def _slerp(
     )
 
 
-def _hathaway_activity(months_since_cycle_start: float, a: float = 150.0, b: float = 48.7, c: float = 0.71) -> float:
-    x = months_since_cycle_start / max(1e-6, b)
-    denom = math.exp(x * x) - c
-    if denom <= 1e-6:
+def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if t_months <= 0.0:
         return 0.0
-    return a * (x**3) / denom
+    ratio = t_months / max(1e-6, b)
+    ratio2 = ratio * ratio
+    ratio3 = ratio2 * ratio
+    denom = math.exp(ratio2) - c
+    if denom <= 1e-12:
+        return 0.0
+    return ratio3 / denom
+
+
+def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    # Analytic peak at t = b * sqrt(3/2) for the canonical Hathaway form.
+    t_peak = b * math.sqrt(1.5)
+    peak_val = _hathaway_raw(t_peak, b, c)
+    if peak_val <= 1e-12:
+        return 0.0
+    return _clamp(_hathaway_raw(t_months, b, c) / peak_val, 0.0, 1.0)
+
+
+def _cycle_length_days() -> float:
+    return CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
+
+
+def _cycle_offset_months(jd: float) -> float:
+    cycle_days = _cycle_length_days()
+    cycle_offset_days = (jd - CYCLE_25_START_JD) % cycle_days
+    if cycle_offset_days < 0.0:
+        cycle_offset_days += cycle_days
+    return cycle_offset_days / MEAN_MONTH_DAYS
+
+
+def _solar_cycle_number(jd: float) -> int:
+    cycle_days = _cycle_length_days()
+    cycles_since_25 = math.floor((jd - CYCLE_25_START_JD) / cycle_days + 1e-12)
+    return CYCLE_25_NUMBER + int(cycles_since_25)
 
 
 @dataclass(frozen=True)
@@ -129,6 +167,8 @@ class ActiveRegionSeed:
     tilt_rad: float
     separation_rad: float
     strength: float
+    hemisphere_sign: float
+    hale_cycle25_leading_polarity: float
     flux_imbalance: float
 
 
@@ -167,37 +207,31 @@ class SolarCoronaPhysicsModel:
         self.base_tube_count = max(64, int(base_tube_count))
         self.fidelity_levels = tuple(self.FIDELITY_POINT_COUNT.keys())
         self.default_fidelity = "operational"
-        self.model_name = "quasi_mhd_corona_v3"
-        self._hathaway_norm = self._estimate_hathaway_normalization()
+        self.model_name = "quasi_mhd_corona_v4"
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
-
-    def _estimate_hathaway_normalization(self) -> float:
-        peak = 0.0
-        # One 11-year cycle is ~132 months.
-        for month_idx in range(0, 1321):
-            month = month_idx * 0.1
-            peak = max(peak, _hathaway_activity(month))
-        return max(1e-6, peak)
 
     def _build_active_regions(self) -> list[ActiveRegionSeed]:
         rng = Random(self.seed * 31 + 7)
         out: list[ActiveRegionSeed] = []
-        region_count = max(32, self.base_tube_count // 3)
+        region_count = max(24, self.base_tube_count // 4)
 
         for idx in range(region_count):
             hemisphere = -1.0 if rng.random() < 0.5 else 1.0
-            core_lat_deg = rng.uniform(8.0, 35.0)
-            tail_lat_deg = rng.uniform(0.0, 56.0)
-            blend = rng.random() * rng.random()
-            lat_deg = hemisphere * (core_lat_deg * (1.0 - blend) + tail_lat_deg * blend * 0.36)
+            core_lat_deg = rng.uniform(7.0, 34.0)
+            low_lat_deg = rng.uniform(3.0, 18.0)
+            blend = rng.random() ** 1.8
+            lat_deg = hemisphere * (core_lat_deg * (1.0 - blend) + low_lat_deg * blend)
             lon_deg = rng.uniform(0.0, 360.0)
 
-            # Joy's-law-like tilts with scatter.
-            tilt_deg = hemisphere * (4.0 + 0.42 * abs(lat_deg) + rng.uniform(-7.0, 7.0))
-            separation_deg = rng.uniform(5.0, 15.0)
-            strength = _clamp(rng.betavariate(2.4, 2.8) * 1.15, 0.08, 1.0)
-            flux_imbalance = rng.uniform(-0.28, 0.28)
+            # Joy's law: tilt rises with latitude, plus observational scatter.
+            tilt_mean_deg = 0.5 * abs(lat_deg)
+            tilt_deg = hemisphere * (tilt_mean_deg + rng.uniform(-15.0, 15.0))
+            strength = _clamp(rng.betavariate(2.2, 3.0) * 1.22, 0.06, 1.0)
+            separation_deg = _clamp(2.0 + strength * 7.0 + rng.uniform(-0.9, 0.9), 2.0, 10.0)
+            # Cycle 25 is odd: north leading is negative, south leading is positive.
+            hale_cycle25_leading = -1.0 if hemisphere > 0.0 else 1.0
+            flux_imbalance = rng.uniform(-0.18, 0.18)
 
             out.append(
                 ActiveRegionSeed(
@@ -207,6 +241,8 @@ class SolarCoronaPhysicsModel:
                     tilt_rad=math.radians(tilt_deg),
                     separation_rad=math.radians(separation_deg),
                     strength=strength,
+                    hemisphere_sign=hemisphere,
+                    hale_cycle25_leading_polarity=hale_cycle25_leading,
                     flux_imbalance=flux_imbalance,
                 )
             )
@@ -216,36 +252,74 @@ class SolarCoronaPhysicsModel:
     def _build_flux_tube_seeds(self) -> list[FluxTubeSeed]:
         rng = Random(self.seed)
         out: list[FluxTubeSeed] = []
-        # Favor loop-like structures while retaining plume/CME events.
-        families = ("loop", "loop", "loop", "plume", "plume", "cme")
+        templates = (
+            ("loop", "leading", 1.00, 0.34, 1.16),
+            ("loop", "trailing", 0.92, 0.42, 1.04),
+            ("plume", "trailing", 0.78, 0.22, 0.94),
+            ("cme", "leading", 1.18, 0.58, 1.42),
+        )
 
-        for idx in range(self.base_tube_count):
-            region_idx = rng.randrange(0, len(self.active_regions))
-            region = self.active_regions[region_idx]
-            strength = _clamp(region.strength * (0.55 + 0.9 * rng.random()), 0.05, 1.0)
-            twist = rng.uniform(0.2, 1.45)
-            chirality = -1.0 if rng.random() < 0.5 else 1.0
-            family = families[rng.randrange(0, len(families))]
+        idx = 0
+        for region in self.active_regions:
+            for family, root_role, strength_scale, twist_min, twist_max in templates:
+                if idx >= self.base_tube_count:
+                    break
+                root_sign = (
+                    region.hale_cycle25_leading_polarity
+                    if root_role == "leading"
+                    else -region.hale_cycle25_leading_polarity
+                )
+                strength = _clamp(region.strength * (strength_scale + rng.uniform(-0.16, 0.2)), 0.05, 1.0)
+                twist = rng.uniform(twist_min, twist_max)
+                chirality = -region.hemisphere_sign if family != "cme" else region.hemisphere_sign
+                jitter_span = 2.0 if family == "loop" else 1.7
+                jitter_lat = math.radians(rng.uniform(-jitter_span, jitter_span))
+                jitter_lon = math.radians(rng.uniform(-jitter_span, jitter_span))
+                out.append(
+                    FluxTubeSeed(
+                        idx=idx,
+                        region_idx=region.idx,
+                        strength=strength,
+                        twist=twist,
+                        chirality=chirality,
+                        family=family,
+                        polarity_sign=root_sign,
+                        footpoint_jitter_lat_rad=jitter_lat,
+                        footpoint_jitter_lon_rad=jitter_lon,
+                    )
+                )
+                idx += 1
+            if idx >= self.base_tube_count:
+                break
 
-            # Slightly bias polarity occupancy by active-region flux imbalance.
-            base_split = 0.5 + 0.22 * region.flux_imbalance
-            polarity_sign = -1.0 if rng.random() < base_split else 1.0
-            jitter_lat = math.radians(rng.uniform(-2.8, 2.8))
-            jitter_lon = math.radians(rng.uniform(-2.8, 2.8))
+        while idx < self.base_tube_count:
+            region = self.active_regions[idx % len(self.active_regions)]
+            family = "loop"
+            if idx % 11 == 0:
+                family = "cme"
+            elif idx % 3 == 0:
+                family = "plume"
 
+            root_sign = region.hale_cycle25_leading_polarity if family != "plume" else -region.hale_cycle25_leading_polarity
+            strength = _clamp(region.strength * (0.78 + 0.44 * rng.random()), 0.05, 1.0)
+            twist = rng.uniform(0.24, 1.4)
+            chirality = -region.hemisphere_sign if family != "cme" else region.hemisphere_sign
+            jitter_lat = math.radians(rng.uniform(-2.2, 2.2))
+            jitter_lon = math.radians(rng.uniform(-2.2, 2.2))
             out.append(
                 FluxTubeSeed(
                     idx=idx,
-                    region_idx=region_idx,
+                    region_idx=region.idx,
                     strength=strength,
                     twist=twist,
                     chirality=chirality,
                     family=family,
-                    polarity_sign=polarity_sign,
+                    polarity_sign=root_sign,
                     footpoint_jitter_lat_rad=jitter_lat,
                     footpoint_jitter_lon_rad=jitter_lon,
                 )
             )
+            idx += 1
 
         return out
 
@@ -264,11 +338,17 @@ class SolarCoronaPhysicsModel:
             "solar_radius_km": SOLAR_RADIUS_KM,
             "solar_radius_au": SOLAR_RADIUS_AU,
             "solar_cycle_days": SOLAR_CYCLE_DAYS,
+            "activity_cycle_model": "hathaway_2015_normalized",
+            "activity_cycle_params": {
+                "b_months": HATHAWAY_B,
+                "c_asymmetry": HATHAWAY_C,
+                "reference_cycle_start_jd": CYCLE_25_START_JD,
+            },
             "notes": [
                 "Deterministic physically-inspired synthesis, not a full MHD PDE solve.",
-                "Uses asymmetric Hathaway-like cycle forcing with Carrington modulation.",
+                "Uses a normalized Hathaway envelope with Carrington-scale rotation modulation.",
                 "Coronal loops are anchored to bipolar active-region polarity pairs.",
-                "RTV-like temperature scaling and Alfvén-linked CME speed envelope (20-3500 km/s).",
+                "RTV-like temperature scaling and expanded CME speed envelope (20-3500 km/s).",
                 "Returns feature arcs in solar-radii units for direct 3D rendering.",
                 "Includes wall-clock transient activation so corona evolves even when simulation epoch is paused.",
             ],
@@ -438,18 +518,11 @@ class SolarCoronaPhysicsModel:
         return blended_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
 
     def _activity_index(self, jd: float) -> tuple[float, float]:
-        cycle_years = (jd - J2000_JD) / 365.25
-        cycle_fraction = (cycle_years % SOLAR_CYCLE_YEARS) / SOLAR_CYCLE_YEARS
-        cycle_phase = cycle_fraction * 2.0 * math.pi
-
-        # Hathaway profile in months within an 11-year cycle.
-        months = cycle_fraction * (SOLAR_CYCLE_YEARS * 12.0)
-        hathaway = _hathaway_activity(months) / self._hathaway_norm
-        asym_cycle = _clamp(hathaway, 0.0, 1.0)
-
-        harmonic = 0.5 + 0.5 * math.sin(cycle_phase * 2.0 + 1.1)
+        t_months = _cycle_offset_months(jd)
+        cycle_phase = (t_months / CYCLE_LENGTH_MONTHS) * 2.0 * math.pi
+        hathaway = _hathaway_normalized(t_months, HATHAWAY_B, HATHAWAY_C)
         rotation_mod = 0.5 + 0.5 * math.sin(((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi + 0.17)
-        activity = 0.08 + asym_cycle * 0.72 + harmonic * 0.12 + rotation_mod * 0.08
+        activity = 0.06 + hathaway * 0.82 + rotation_mod * 0.10
         return _clamp(activity, 0.02, 0.98), cycle_phase
 
     def _feature_temporal_state(
@@ -504,6 +577,7 @@ class SolarCoronaPhysicsModel:
         tuple[float, float, float],
         tuple[float, float, float],
         tuple[float, float, float],
+        float,
     ]:
         lat = region.center_lat_rad
         lon = (region.center_lon_rad + _differential_rotation_rad_day(lat) * (jd - J2000_JD)) % (2.0 * math.pi)
@@ -517,7 +591,10 @@ class SolarCoronaPhysicsModel:
         offset = math.tan(half_sep)
         positive = _normalize(_add(center, _scale(axis, offset)))
         negative = _normalize(_add(center, _scale(axis, -offset)))
-        return center, negative, positive, axis
+        cycle_number = _solar_cycle_number(jd)
+        north_leading_sign = -1.0 if cycle_number % 2 == 1 else 1.0
+        leading_polarity_sign = north_leading_sign * region.hemisphere_sign
+        return center, negative, positive, axis, leading_polarity_sign
 
     @staticmethod
     def _jitter_direction(
@@ -586,7 +663,7 @@ class SolarCoronaPhysicsModel:
         points_count: int,
     ) -> dict[str, Any]:
         region = self.active_regions[tube.region_idx]
-        center, negative_dir, positive_dir, pair_axis = self._region_polarity_dirs(region, jd)
+        _, negative_dir, positive_dir, pair_axis, leading_polarity_sign = self._region_polarity_dirs(region, jd)
 
         if tube.polarity_sign >= 0:
             source_base = positive_dir
@@ -607,6 +684,7 @@ class SolarCoronaPhysicsModel:
             -0.45 * tube.footpoint_jitter_lat_rad,
             0.45 * tube.footpoint_jitter_lon_rad,
         )
+        source_role = "leading" if (tube.polarity_sign * leading_polarity_sign) > 0.0 else "trailing"
 
         base = _normalize(_add(source_dir, sink_dir))
         tangent, binormal = _orthonormal_basis(base)
@@ -635,12 +713,11 @@ class SolarCoronaPhysicsModel:
         )
 
         if family == "cme":
-            eruptive_scale = (0.06 + 0.94 * (eruption_gate**1.55)) * (0.3 + 0.7 * tube.strength)
+            base_speed = 20.0 + 480.0 * tube.strength
+            activity_speed = activity * (600.0 + tube.strength * 1_200.0)
+            eruption_speed = eruption_gate * 1_200.0 * tube.strength
             speed_kms = _clamp(
-                20.0
-                + alfven_speed_kms * 0.075 * eruptive_scale
-                + eruption_gate * activity * 640.0
-                + (eruption_gate**2) * tube.strength * 1_500.0,
+                base_speed + activity_speed + eruption_speed,
                 20.0,
                 3_500.0,
             )
@@ -722,8 +799,12 @@ class SolarCoronaPhysicsModel:
         return {
             "id": f"tube-{tube.idx:04d}",
             "kind": family,
+            "region_id": region.idx,
             "active_region_id": f"ar-{region.idx:03d}",
             "source_polarity": source_polarity,
+            "source_role": source_role,
+            "leading_polarity_sign": leading_polarity_sign,
+            "polarity": tube.polarity_sign,
             "base_dir": [source_dir[0], source_dir[1], source_dir[2]],
             "paired_dir": [sink_dir[0], sink_dir[1], sink_dir[2]],
             "tangent_dir": [tangent[0], tangent[1], tangent[2]],
@@ -743,51 +824,68 @@ class SolarCoronaPhysicsModel:
         self,
         jd: float,
         activity: float,
-        line_count: int = 4,
-        point_count: int = 24,
-        max_extent_solar_radii: float = 36.0,
+        line_count: int = 6,
+        point_count: int = 80,
+        max_extent_au: float = 3.0,
         wind_speed_kms_override: float | None = None,
     ) -> dict[str, Any]:
-        # Nominal equatorial rotation period and solar-wind speed proxy.
-        omega_sun = 2.0 * math.pi / (25.38 * 86_400.0)
-        wind_speed_kms = (
-            float(wind_speed_kms_override)
-            if isinstance(wind_speed_kms_override, (float, int)) and math.isfinite(float(wind_speed_kms_override))
-            else (320.0 + 430.0 * activity)
-        )
-        wind_speed_kms = _clamp(wind_speed_kms, 120.0, 1_200.0)
-        base_phase = ((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi
-
-        r0 = 1.04
+        omega_sun_rad_day = 2.0 * math.pi / 25.38
+        source_surface_radii = 2.5
+        source_surface_au = source_surface_radii * SOLAR_RADIUS_AU
+        max_radius_au = max(source_surface_au * 1.5, float(max_extent_au))
         lines: list[dict[str, Any]] = []
-        for i in range(max(1, line_count)):
-            lat = math.radians(-24.0 + (48.0 * i / max(1, line_count - 1)))
-            lon0 = base_phase + (2.0 * math.pi * i / max(1, line_count))
+        safe_line_count = max(1, int(line_count))
+        safe_point_count = max(2, int(point_count))
+        rotation_phase = ((jd - J2000_JD) / 25.38) * 2.0 * math.pi
+        override_wind = (
+            _clamp(float(wind_speed_kms_override), 280.0, 900.0)
+            if isinstance(wind_speed_kms_override, (float, int)) and math.isfinite(float(wind_speed_kms_override))
+            else None
+        )
+
+        for i in range(safe_line_count):
+            arm_phase = rotation_phase + (2.0 * math.pi * i / safe_line_count)
+            sector_wave = math.sin(arm_phase * 2.1 + activity * 1.3)
+            intrinsic_wind = 420.0 + 220.0 * sector_wave
+            wind_speed_kms = (
+                _clamp(0.58 * override_wind + 0.42 * intrinsic_wind, 280.0, 900.0)
+                if override_wind is not None
+                else _clamp(intrinsic_wind, 300.0, 860.0)
+            )
+            wind_speed_au_day = wind_speed_kms / (AU_KM / 86_400.0)
+            polarity_sign = 1.0 if i % 2 == 0 else -1.0
+            hcs_tilt_rad = math.radians(7.25 + activity * 15.0)
             arc: list[list[float]] = []
-            for p in range(max(2, point_count)):
-                s = p / max(1, point_count - 1)
-                r = r0 + (max_extent_solar_radii - r0) * s
-                dr_km = (r - r0) * SOLAR_RADIUS_KM
-                delta_lon = -(omega_sun * dr_km) / max(120.0, wind_speed_kms)
-                lon = lon0 + delta_lon
-                direction = _vector_from_lat_lon(lat, lon)
-                arc.append([direction[0] * r, direction[1] * r, direction[2] * r])
+
+            for p in range(safe_point_count):
+                frac = p / max(1, safe_point_count - 1)
+                r_au = source_surface_au + (max_radius_au - source_surface_au) * (frac**1.45)
+                delta_r = r_au - source_surface_au
+                phi = arm_phase - (omega_sun_rad_day / max(1e-6, wind_speed_au_day)) * delta_r
+                lat = hcs_tilt_rad * 0.16 * math.sin(phi + i * 0.33)
+                direction = _vector_from_lat_lon(lat, phi)
+                r_solar = r_au / SOLAR_RADIUS_AU
+                arc.append([direction[0] * r_solar, direction[1] * r_solar, direction[2] * r_solar])
 
             lines.append(
                 {
                     "id": f"spiral-{i:02d}",
-                    "source_lat_deg": math.degrees(lat),
-                    "wind_speed_kms": wind_speed_kms,
+                    "polarity": polarity_sign,
+                    "source_lat_deg": 0.0,
+                    "wind_speed_kms": round(wind_speed_kms, 1),
                     "arc": arc,
                 }
             )
 
+        mean_wind = sum(float(line["wind_speed_kms"]) for line in lines) / max(1, len(lines))
         return {
             "line_count": len(lines),
-            "point_count": max(2, point_count),
-            "max_extent_solar_radii": max_extent_solar_radii,
-            "wind_speed_kms": wind_speed_kms,
-            "omega_sun_rad_s": omega_sun,
+            "point_count": safe_point_count,
+            "source_surface_radii": source_surface_radii,
+            "max_extent_au": max_radius_au,
+            "max_extent_solar_radii": max_radius_au / SOLAR_RADIUS_AU,
+            "wind_speed_kms": mean_wind,
+            "omega_sun_rad_day": omega_sun_rad_day,
             "lines": lines,
         }
 
@@ -844,20 +942,20 @@ class SolarCoronaPhysicsModel:
         max_extent = max((feat["peak_extent_solar_radii"] for feat in features), default=1.0)
 
         if fidelity_key == "preview":
-            spiral_lines = 3
+            spiral_points = 48
         elif fidelity_key == "operational":
-            spiral_lines = 4
+            spiral_points = 64
         elif fidelity_key == "high":
-            spiral_lines = 5
+            spiral_points = 80
         else:
-            spiral_lines = 6
+            spiral_points = 96
 
         parker_spiral = self._build_parker_spiral(
             jd=jd,
             activity=activity,
-            line_count=spiral_lines,
-            point_count=max(12, points_count),
-            max_extent_solar_radii=36.0,
+            line_count=6,
+            point_count=spiral_points,
+            max_extent_au=3.0,
             wind_speed_kms_override=wind_speed_kms_override,
         )
 
@@ -875,7 +973,12 @@ class SolarCoronaPhysicsModel:
             "data_assimilation": assimilation,
             "surface": {
                 "differential_rotation_model": "snodgrass_1983_like",
-                "activity_cycle_model": "hathaway_2015_asymmetric_plus_rotation",
+                "activity_cycle_model": "hathaway_2015_normalized",
+                "activity_cycle_params": {
+                    "b_months": HATHAWAY_B,
+                    "c_asymmetry": HATHAWAY_C,
+                    "reference_cycle_start_jd": CYCLE_25_START_JD,
+                },
                 "estimated_equatorial_rotation_days": 24.47,
                 "estimated_polar_rotation_days": 34.3,
                 "active_region_count": len(self.active_regions),
