@@ -23,7 +23,12 @@ export function createTimeController({
       dom.timeScale.max = `${maxTimeScale}`;
       dom.timeScale.value = `${simState.timeScaleDaysPerSec}`;
       dom.timeScale.addEventListener('input', () => {
-        simState.timeScaleDaysPerSec = Number(dom.timeScale.value);
+        const nextTimeScale = Number(dom.timeScale.value);
+        if (!Number.isFinite(nextTimeScale)) return;
+        if (nextTimeScale !== simState.timeScaleDaysPerSec) {
+          simState.timeScaleDaysPerSec = nextTimeScale;
+          simState.timeScaleDirty = true;
+        }
       });
     }
   }

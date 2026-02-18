@@ -52,14 +52,17 @@ export function createAnimationLoop({
     previousTimestamp = timestamp;
     const previousJd = simState.julianDate;
 
+    if (simState.serverConnected && simState.timeScaleDirty) {
+      simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
+      simState.timeScaleDirty = false;
+    }
+
     if (simState.serverConnected && simClient.latestState) {
       applyServerState(simClient.latestState);
 
       if (simClient.latestKuiper) {
         applyServerKuiper(simClient.latestKuiper);
       }
-
-      simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
     } else {
       timeController.advanceLocalTime(deltaSeconds);
       model.update(simState.julianDate);

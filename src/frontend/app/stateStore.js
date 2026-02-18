@@ -47,6 +47,7 @@ export function createSimulationState({
   return {
     julianDate: currentJulianDate(),
     timeScaleDaysPerSec: defaultTimeScaleDaysPerSec,
+    timeScaleDirty: false,
     paused: false,
     followBodyId: null,
     focusedBodyId: 'sun',
