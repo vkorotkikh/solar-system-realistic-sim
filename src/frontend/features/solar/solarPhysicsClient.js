@@ -8,10 +8,9 @@ export class SolarPhysicsClient {
     pollIntervalMs = 1_800,
     timeoutMs = 2_400,
     maxFeatures = 220,
-7    fidelity = 'high',
+    fidelity = 'high',
     forcing = 'hybrid',
     liveData = true
-    fidelity = 'high'
   }) {
     this.baseUrl = baseUrl;
     this.pollIntervalMs = clamp(Number(pollIntervalMs), 300, 30_000);
@@ -57,8 +56,7 @@ export class SolarPhysicsClient {
 
   async maybeRefresh(jd, force = false) {
     const nowMs = Date.now();
-    if (this.inFlight) return false;
-    
+
     if (this.inFlight) {
       if (force) {
         // If forced, abort the current in-flight request and proceed
@@ -81,22 +79,19 @@ export class SolarPhysicsClient {
       max_features: `${Math.round(this.maxFeatures)}`,
       forcing: this.forcing,
       live_data: this.liveData ? 'true' : 'false'
-      max_features: `${Math.round(this.maxFeatures)}`
     });
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
     let timeoutHandle = null;
     const controller = new AbortController();
-    this.abortController = new AbortController();
+    this.abortController = controller;
     
     try {
       timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
-      timeoutHandle = setTimeout(() => this.abortController?.abort(), this.timeoutMs);
       const startMs = Date.now();
       const response = await fetch(url, {
         cache: 'no-store',
         signal: controller.signal
-        signal: this.abortController.signal
       });
       
       // If a new request started while we were awaiting, ignore this result

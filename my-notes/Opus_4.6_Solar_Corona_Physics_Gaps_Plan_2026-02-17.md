@@ -3,7 +3,7 @@
 **Author:** Opus 4.6 (Claude)
 **Date:** 2026-02-17
 **Scope:** Four physics improvements to `SolarCoronaPhysicsModel` in `backend/sim/solar_physics.py` and associated frontend rendering
-**Relates to:** Development_Context.md entry 2026-02-17 05:07:33 UTC; CODEX_XHIGH 2026-02-16 19:47:16
+**Relates to:** Development_History_Context.md entry 2026-02-17 05:07:33 UTC; CODEX_XHIGH 2026-02-16 19:47:16
 
 ---
 

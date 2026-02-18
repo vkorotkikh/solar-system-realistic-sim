@@ -43,3 +43,7 @@ build/
 venv/
 env/
 ENV/
+
+# Data-fetching script caches
+scripts/.cache/
+scripts/output/

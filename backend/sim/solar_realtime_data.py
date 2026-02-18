@@ -60,14 +60,18 @@ class SolarRealtimeDataProvider:
 
     # SDO/AIA source IDs from Helioviewer data-source catalog.
     AIA_SOURCE_IDS = {
+        "aia_094": 8,
         "aia_171": 10,
         "aia_193": 11,
         "aia_211": 12,
+        "aia_304": 13,
     }
     AIA_ACTIVITY_WEIGHTS = {
-        "aia_171": 0.28,
-        "aia_193": 0.46,
-        "aia_211": 0.26,
+        "aia_094": 0.10,
+        "aia_171": 0.22,
+        "aia_193": 0.36,
+        "aia_211": 0.18,
+        "aia_304": 0.14,
     }
 
     def __init__(self, timeout_s: float = 3.8, cache_ttl_s: float = 300.0):

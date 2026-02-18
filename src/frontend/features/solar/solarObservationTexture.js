@@ -1,13 +1,30 @@
 import { clampUnit } from './solarFeatureBlending.js';
 
-const DEFAULT_AIA_CHANNEL_PRIORITY = ['aia_193', 'aia_211', 'aia_171'];
+const DEFAULT_AIA_CHANNEL_PRIORITY = ['aia_193', 'aia_211', 'aia_171', 'aia_094', 'aia_304'];
+
+export const AIA_CHANNEL_OPTIONS = [
+  { value: 'auto', label: 'Auto (best available)' },
+  { value: 'aia_094', label: '94 \u00C5 \u2013 Flare plasma' },
+  { value: 'aia_171', label: '171 \u00C5 \u2013 Quiet corona' },
+  { value: 'aia_193', label: '193 \u00C5 \u2013 Active corona' },
+  { value: 'aia_211', label: '211 \u00C5 \u2013 Active regions' },
+  { value: 'aia_304', label: '304 \u00C5 \u2013 Chromosphere' },
+];
+
+export const CHANNEL_VISUAL_WEIGHTS = {
+  aia_094: { blendBoost: 0.06, emissionBoost: 0.10 },
+  aia_171: { blendBoost: 0.0, emissionBoost: 0.0 },
+  aia_193: { blendBoost: 0.0, emissionBoost: 0.0 },
+  aia_211: { blendBoost: 0.0, emissionBoost: 0.0 },
+  aia_304: { blendBoost: 0.04, emissionBoost: 0.08 },
+};
 
 function asFiniteNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY) {
+export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY, overrideChannel = null) {
   const sdoAia = physicsState?.data_assimilation?.sources?.sdo_aia;
   if (!sdoAia || typeof sdoAia !== 'object') return null;
 
@@ -16,7 +33,10 @@ export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT
 
   const visualizationPreferred = `${sdoAia?.visualization?.preferred_channel ?? ''}`.toLowerCase();
   const orderedChannels = [];
-  if (visualizationPreferred) orderedChannels.push(visualizationPreferred);
+  if (overrideChannel && overrideChannel !== 'auto') {
+    orderedChannels.push(overrideChannel.toLowerCase());
+  }
+  if (visualizationPreferred && !orderedChannels.includes(visualizationPreferred)) orderedChannels.push(visualizationPreferred);
   for (const channel of preferredOrder) {
     const normalized = `${channel ?? ''}`.toLowerCase();
     if (!normalized || orderedChannels.includes(normalized)) continue;
@@ -59,7 +79,7 @@ export function buildAiaProxyTextureUrl(baseUrl, channel, imageId = null) {
   return `${base}/solar/realtime/aia-tile?${query.toString()}`;
 }
 
-export function deriveSunObservationControls(physicsState, fallbackActivity = 0.5) {
+export function deriveSunObservationControls(physicsState, fallbackActivity = 0.5, activeChannel = null) {
   const assimilation = physicsState?.data_assimilation;
   const sdoAia = assimilation?.sources?.sdo_aia;
 
@@ -87,12 +107,19 @@ export function deriveSunObservationControls(physicsState, fallbackActivity = 0.
   }
 
   const assimilationApplied = assimilation?.applied === true;
-  const observationBlend = clampUnit(
+  let observationBlend = clampUnit(
     (assimilationApplied ? 0.12 : 0.04)
     + confidence * (assimilationApplied ? 0.52 : 0.14)
     + sdoSignal * 0.12
   );
-  const observationEmission = clampUnit(0.16 + sdoSignal * 0.78);
+  let observationEmission = clampUnit(0.16 + sdoSignal * 0.78);
+
+  const channelKey = activeChannel && activeChannel !== 'auto' ? activeChannel : null;
+  const weights = channelKey ? (CHANNEL_VISUAL_WEIGHTS[channelKey] ?? null) : null;
+  if (weights) {
+    observationBlend = clampUnit(observationBlend + weights.blendBoost);
+    observationEmission = clampUnit(observationEmission + weights.emissionBoost);
+  }
 
   return {
     observationBlend,
