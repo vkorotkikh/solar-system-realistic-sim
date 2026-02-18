@@ -8,13 +8,17 @@ export class SolarPhysicsClient {
     pollIntervalMs = 1_800,
     timeoutMs = 2_400,
     maxFeatures = 220,
-    fidelity = 'high'
+    fidelity = 'high',
+    forcing = 'hybrid',
+    liveData = true
   }) {
     this.baseUrl = baseUrl;
     this.pollIntervalMs = clamp(Number(pollIntervalMs), 300, 30_000);
     this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
     this.maxFeatures = clamp(Number(maxFeatures), 8, 2_048);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
+    this.forcing = `${forcing ?? 'hybrid'}`.trim().toLowerCase() || 'hybrid';
+    this.liveData = Boolean(liveData);
 
     this.lastError = null;
     this.lastSuccessMs = 0;
@@ -48,7 +52,9 @@ export class SolarPhysicsClient {
     const query = new URLSearchParams({
       jd: Number(jd).toFixed(8),
       fidelity: this.fidelity,
-      max_features: `${Math.round(this.maxFeatures)}`
+      max_features: `${Math.round(this.maxFeatures)}`,
+      forcing: this.forcing,
+      live_data: this.liveData ? 'true' : 'false'
     });
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
@@ -81,4 +87,3 @@ export class SolarPhysicsClient {
     }
   }
 }
-

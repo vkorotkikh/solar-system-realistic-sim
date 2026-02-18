@@ -36,6 +36,9 @@ export const SUN_SURFACE_FRAGMENT_SHADER = `
 uniform float time;
 uniform float activity;
 uniform sampler2D baseMap;
+uniform sampler2D observationMap;
+uniform float observationBlend;
+uniform float observationEmission;
 
 varying vec2 vUv;
 varying vec3 vWorldNormal;
@@ -86,9 +89,14 @@ void main() {
 
   vec2 uvShift = vec2((flowA - 0.5) * 0.028, (flowB - 0.5) * 0.022);
   vec3 baseTex = texture2D(baseMap, fract(vUv + uvShift + vec2(time * 0.008, 0.0))).rgb;
+  vec3 obsTex = texture2D(observationMap, fract(vUv + vec2(time * 0.0032, 0.0))).rgb;
+  float obsLuma = dot(obsTex, vec3(0.2126, 0.7152, 0.0722));
+  float obsNeighbor = dot(texture2D(observationMap, fract(vUv + vec2(0.0018, -0.0018))).rgb, vec3(0.2126, 0.7152, 0.0722));
+  float obsContrast = abs(obsLuma - obsNeighbor);
 
   float heatPattern = mix(flowA, flowB, 0.5);
   float brightness = 0.62 + heatPattern * 0.35 + granulation * 0.22 - spotMask * 0.44;
+  brightness += observationBlend * ((obsLuma - 0.44) * (0.22 + observationEmission * 0.28) + obsContrast * 0.9);
   brightness *= mix(0.78, 1.18, limbWeight);
 
   vec3 cool = vec3(1.0, 0.42, 0.06);
@@ -96,6 +104,8 @@ void main() {
   vec3 plasma = mix(cool, hot, clamp(brightness, 0.0, 1.0));
   vec3 color = mix(plasma, baseTex * 1.2, 0.42);
   color += vec3(0.95, 0.36, 0.08) * granulation * 0.18;
+  vec3 observedAccent = vec3(1.0, 0.58, 0.2) * (obsLuma * 0.45 + obsContrast * 1.1);
+  color = mix(color, color + observedAccent * (0.24 + observationEmission * 0.5), observationBlend * 0.7);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -117,6 +127,8 @@ export const SUN_CORONA_FRAGMENT_SHADER = `
 uniform float time;
 uniform float activity;
 uniform vec3 coronaColor;
+uniform float observationBlend;
+uniform float observationEmission;
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -164,8 +176,10 @@ void main() {
   float burst = smoothstep(0.72, 0.95, turbulence);
   float pulse = 0.78 + 0.22 * sin(time * 1.4 + turbulence * 6.8);
   float alpha = (offLimb * 0.06 + rim * 0.09) * (0.26 + burst * (0.42 + activity * 0.32)) * pulse;
+  alpha *= 1.0 + observationBlend * (0.18 + observationEmission * 0.46);
   vec3 hotWhite = vec3(1.0, 0.96, 0.86);
   vec3 color = mix(coronaColor * 0.8, hotWhite, 0.16 + burst * 0.36 + activity * 0.12);
+  color = mix(color, hotWhite, observationBlend * (0.08 + observationEmission * 0.28));
   gl_FragColor = vec4(color, alpha);
 }
 `;
@@ -180,7 +194,10 @@ export function createSunSurfaceMaterial(sunMap) {
     uniforms: {
       time: { value: 0 },
       activity: { value: 0.55 },
-      baseMap: { value: sunMap }
+      baseMap: { value: sunMap },
+      observationMap: { value: sunMap },
+      observationBlend: { value: 0 },
+      observationEmission: { value: 0.25 }
     }
   });
   material.toneMapped = false;
@@ -227,7 +244,9 @@ export function createSunCoronaShell(geometry) {
     uniforms: {
       time: { value: 0 },
       activity: { value: 0.5 },
-      coronaColor: { value: new Color('#ffb877') }
+      coronaColor: { value: new Color('#ffb877') },
+      observationBlend: { value: 0 },
+      observationEmission: { value: 0.25 }
     },
     transparent: true,
     blending: AdditiveBlending,
@@ -680,20 +699,45 @@ export function updateSunEruptionLayerFromBlendView({
   }
 }
 
+export function setSunObservationTexture({
+  sunSurfaceMaterial,
+  observationTexture
+}) {
+  if (!sunSurfaceMaterial?.uniforms?.observationMap) return;
+  const baseMap = sunSurfaceMaterial.uniforms.baseMap?.value ?? null;
+  sunSurfaceMaterial.uniforms.observationMap.value = observationTexture ?? baseMap;
+}
+
 export function updateSunMaterialUniforms({
   sunSurfaceMaterial,
   sunCoronaMaterial,
   timeSec,
-  activity
+  activity,
+  observationBlend = 0,
+  observationEmission = 0.25
 }) {
+  const obsBlend = clampUnit(Number(observationBlend) || 0);
+  const obsEmission = clampUnit(Number(observationEmission) || 0.25);
   if (sunSurfaceMaterial?.uniforms) {
     sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
     sunSurfaceMaterial.uniforms.activity.value = activity;
+    if (sunSurfaceMaterial.uniforms.observationBlend) {
+      sunSurfaceMaterial.uniforms.observationBlend.value = obsBlend;
+    }
+    if (sunSurfaceMaterial.uniforms.observationEmission) {
+      sunSurfaceMaterial.uniforms.observationEmission.value = obsEmission;
+    }
   }
 
   if (sunCoronaMaterial?.uniforms) {
     sunCoronaMaterial.uniforms.time.value = timeSec * 0.54;
     sunCoronaMaterial.uniforms.activity.value = activity;
+    if (sunCoronaMaterial.uniforms.observationBlend) {
+      sunCoronaMaterial.uniforms.observationBlend.value = obsBlend;
+    }
+    if (sunCoronaMaterial.uniforms.observationEmission) {
+      sunCoronaMaterial.uniforms.observationEmission.value = obsEmission;
+    }
     const coronaColor = sunCoronaMaterial.uniforms.coronaColor?.value;
     if (coronaColor?.isColor) {
       coronaColor.setRGB(1.0, 0.66 + activity * 0.14, 0.34 + activity * 0.1);

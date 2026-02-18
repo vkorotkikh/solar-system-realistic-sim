@@ -77,6 +77,7 @@ import {
   clearSunParkerSpiralLines as clearSunParkerSpiralLinesImpl,
   updateSunParkerSpiralFromPhysicsState as updateSunParkerSpiralFromPhysicsStateImpl,
   updateSunEruptionLayerFromBlendView,
+  setSunObservationTexture,
   updateSunMaterialUniforms
 } from './frontend/features/solar/sunVisuals.js';
 import {
@@ -85,6 +86,11 @@ import {
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
 } from './frontend/features/solar/solarFeatureBlending.js';
+import {
+  buildAiaProxyTextureUrl,
+  deriveSunObservationControls,
+  pickAiaObservationChannel
+} from './frontend/features/solar/solarObservationTexture.js';
 import { SimulationClient } from './frontend/app/simulationClient.js';
 import { createTimeController } from './frontend/app/timeController.js';
 import {
@@ -855,6 +861,11 @@ let solarPhysicsBlendStartMs = 0;
 let solarPhysicsBlendDurationMs = 1_050;
 let solarPhysicsRefreshInFlight = false;
 let solarPhysicsNextRefreshMs = 0;
+let solarObservationTexture = null;
+let solarObservationTextureImageId = null;
+let solarObservationTextureChannel = null;
+let solarObservationTextureLoadInFlight = false;
+let solarObservationTextureLastLoadMs = 0;
 let marsSurfaceMesh = null;
 let marsCloudMesh = null;
 let marsAtmosphereMesh = null;
@@ -917,6 +928,9 @@ const geometryCache = {
 
 const materialCache = new Map();
 const textureLoader = new TextureLoader();
+const solarObservationTextureLoader = new TextureLoader();
+textureLoader.setCrossOrigin('anonymous');
+solarObservationTextureLoader.setCrossOrigin('anonymous');
 const maxAnisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
 
 function configureLoadedTexture(texture, { isColorMap = true } = {}) {
@@ -1209,7 +1223,9 @@ solarPhysicsClient = new SolarPhysicsClient({
   pollIntervalMs: 900,
   timeoutMs: 2_600,
   maxFeatures: 180,
-  fidelity: 'high'
+  fidelity: 'high',
+  forcing: 'hybrid',
+  liveData: true
 });
 
 hiResTextures.earthClouds.wrapS = RepeatWrapping;
@@ -1311,6 +1327,7 @@ function getMaterial(body) {
     const cachedMaterial = materialCache.get(cacheKey);
     if (body.id === 'sun' && cachedMaterial?.isShaderMaterial) {
       sunSurfaceMaterial = cachedMaterial;
+      applySunObservationTextureToMaterials();
     }
     return cachedMaterial;
   }
@@ -1337,6 +1354,7 @@ function getMaterial(body) {
       sunMap.needsUpdate = true;
       material = createSunSurfaceMaterial(sunMap);
       sunSurfaceMaterial = material;
+      applySunObservationTextureToMaterials();
     } else {
       material = new MeshBasicMaterial({
         color: new Color(body.color)
@@ -1680,6 +1698,61 @@ function updateSunParkerSpiralFromPhysicsState(physicsState, sunRadiusAu, timeSe
     6,
     120,
     timeSec
+  );
+}
+
+function applySunObservationTextureToMaterials() {
+  setSunObservationTexture({
+    sunSurfaceMaterial,
+    observationTexture: solarObservationTexture
+  });
+}
+
+function maybeRefreshSunObservationTexture(nowMs = Date.now(), force = false) {
+  if (solarObservationTextureLoadInFlight) return;
+  if (!solarPhysicsState) return;
+
+  const selection = pickAiaObservationChannel(solarPhysicsState);
+  if (!selection) return;
+
+  const nextImageId = `${selection.imageId ?? ''}`;
+  const nextChannel = `${selection.channel ?? ''}`.toLowerCase();
+  if (!nextImageId || !nextChannel) return;
+
+  if (!force && nextImageId === solarObservationTextureImageId && nextChannel === solarObservationTextureChannel) {
+    return;
+  }
+  if (!force && nowMs - solarObservationTextureLastLoadMs < 12_000) {
+    return;
+  }
+
+  const proxyUrl = buildAiaProxyTextureUrl(
+    backendBaseUrl(),
+    nextChannel,
+    nextImageId
+  );
+  if (!proxyUrl) return;
+
+  solarObservationTextureLoadInFlight = true;
+  solarObservationTextureLastLoadMs = nowMs;
+  solarObservationTextureLoader.load(
+    proxyUrl,
+    (loaded) => {
+      configureLoadedTexture(loaded);
+      loaded.needsUpdate = true;
+      if (solarObservationTexture && solarObservationTexture !== loaded && typeof solarObservationTexture.dispose === 'function') {
+        solarObservationTexture.dispose();
+      }
+      solarObservationTexture = loaded;
+      solarObservationTextureImageId = nextImageId;
+      solarObservationTextureChannel = nextChannel;
+      applySunObservationTextureToMaterials();
+      solarObservationTextureLoadInFlight = false;
+    },
+    undefined,
+    () => {
+      solarObservationTextureLoadInFlight = false;
+    }
   );
 }
 
@@ -3641,12 +3714,15 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
   const activity = Number.isFinite(blendedActivityRaw)
     ? clampUnit(blendedActivityRaw)
     : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
+  const observationControls = deriveSunObservationControls(solarPhysicsState, activity);
 
   updateSunMaterialUniforms({
     sunSurfaceMaterial,
     sunCoronaMaterial,
     timeSec,
-    activity
+    activity,
+    observationBlend: observationControls.observationBlend,
+    observationEmission: observationControls.observationEmission
   });
 
   const sunBody = bodyById.get('sun');
@@ -3682,6 +3758,7 @@ function maybeRefreshSolarPhysics(nowMs = Date.now(), force = false) {
       const status = solarPhysicsClient.status();
       if (updated) {
         solarPhysicsState = solarPhysicsClient.latestState();
+        maybeRefreshSunObservationTexture(nowMs, force);
         const normalized = normalizeSolarFeatureSetFromState(
           solarPhysicsState,
           480
