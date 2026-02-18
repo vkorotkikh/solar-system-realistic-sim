@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
 
@@ -59,6 +59,7 @@ from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
 from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
+from sim.solar_realtime_data import SolarRealtimeDataProvider
 from trajectory import (
     DEFAULT_ASSIST_POOL,
     TRAJECTORY_OBJECTIVES,
@@ -104,6 +105,7 @@ NEARBY_SYSTEMS_SCHEMA = {
     "version": NEARBY_SYSTEMS_SCHEMA_VERSION,
 }
 SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
+SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
 
 
 def _rebound_available() -> bool:
@@ -397,7 +399,57 @@ def bodies():
 
 @app.get("/solar/capabilities")
 def solar_capabilities():
-    return SOLAR_PHYSICS_MODEL.capabilities()
+    capabilities = SOLAR_PHYSICS_MODEL.capabilities()
+    capabilities["realtime_data"] = SOLAR_REALTIME_DATA.capabilities()
+    capabilities["realtime_data"]["aia_tile_proxy_endpoint"] = "/solar/realtime/aia-tile"
+    return capabilities
+
+
+@app.get("/solar/realtime")
+def solar_realtime_data(force_refresh: bool = False):
+    snapshot = SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
+    return {
+        "schema": {"name": "solar_realtime_endpoint", "version": 1},
+        "source": "backend",
+        "snapshot": snapshot,
+    }
+
+
+@app.get("/solar/realtime/aia-tile")
+def solar_realtime_aia_tile(
+    channel: str = "aia_193",
+    jd: float | None = None,
+    force_refresh: bool = False,
+):
+    channel_key = channel.strip().lower()
+    if channel_key not in SOLAR_REALTIME_DATA.AIA_SOURCE_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`channel` must be one of {list(SOLAR_REALTIME_DATA.AIA_SOURCE_IDS.keys())}",
+        )
+
+    try:
+        tile = SOLAR_REALTIME_DATA.latest_aia_tile(
+            channel=channel_key,
+            jd=jd,
+            force_refresh=bool(force_refresh),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
+
+    response = Response(
+        content=tile["content"],
+        media_type=str(tile.get("content_type") or "image/png"),
+    )
+    response.headers["Cache-Control"] = f"public, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"
+    response.headers["X-Solar-AIA-Channel"] = str(tile.get("channel") or channel_key)
+    if tile.get("image_id") is not None:
+        response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])
+    if tile.get("image_date") is not None:
+        response.headers["X-Solar-AIA-Image-Date"] = str(tile["image_date"])
+    return response
 
 
 @app.get("/solar/physics")
@@ -405,6 +457,9 @@ def solar_physics_state(
     jd: float | None = None,
     fidelity: str = "operational",
     max_features: int = 220,
+    forcing: str = "synthetic",
+    live_data: bool = False,
+    force_data_refresh: bool = False,
 ):
     if jd is None:
         epoch_jd = utc_now_to_julian_date()
@@ -423,12 +478,34 @@ def solar_physics_state(
             detail=f"`fidelity` must be one of {list(SOLAR_PHYSICS_MODEL.fidelity_levels)}",
         )
 
+    forcing_key = forcing.strip().lower()
+    if forcing_key not in SOLAR_PHYSICS_MODEL.FORCING_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
+        )
+
     safe_max_features = max(8, min(2_048, int(max_features)))
+    realtime_data: dict[str, Any] | None = None
+    if bool(live_data) and forcing_key != "synthetic":
+        try:
+            realtime_data = SOLAR_REALTIME_DATA.latest(
+                jd=epoch_jd,
+                force_refresh=bool(force_data_refresh),
+            )
+        except Exception:
+            # Keep synthetic fallback resilient on transient upstream data failures.
+            realtime_data = None
+
     state = SOLAR_PHYSICS_MODEL.sample_state(
         epoch_jd,
         fidelity=fidelity_key,
         max_features=safe_max_features,
+        forcing=forcing_key,
+        realtime_data=realtime_data,
     )
+    state["forcing"] = forcing_key
+    state["live_data_enabled"] = bool(live_data)
     state["source"] = "backend"
     return state
 
