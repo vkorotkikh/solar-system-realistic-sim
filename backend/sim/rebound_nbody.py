@@ -8,7 +8,6 @@ All bodies exert mutual gravitational forces on each other.
 import math
 from typing import Any, Dict, List
 
-import numpy as np
 try:
     import rebound
 except ImportError:
@@ -19,6 +18,9 @@ from .base import SimulationEngine
 MSUN_KG = 1.98847e30
 J2000_JD = 2_451_545.0
 DAYS_PER_YEAR = 365.25
+CHECKPOINT_INTERVAL_YEARS = 10.0
+DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
+SEEK_EPSILON_YEARS = 1e-12
 
 
 class REBOUNDEngine(SimulationEngine):
@@ -31,6 +33,9 @@ class REBOUNDEngine(SimulationEngine):
         self._stored_bodies: List[Dict] = []
         self._integrator = integrator
         self._initial_energy: float = 0.0
+        self._checkpoints: Dict[int, Any] = {}
+        self._checkpoint_interval_years: float = CHECKPOINT_INTERVAL_YEARS
+        self._direct_backward_seek_max_years: float = DIRECT_BACKWARD_SEEK_MAX_YEARS
 
     @property
     def engine_name(self) -> str:
@@ -100,6 +105,8 @@ class REBOUNDEngine(SimulationEngine):
         # Move to centre-of-mass frame for proper N-body dynamics
         self.sim.move_to_com()
         self._initial_energy = self.sim.energy()
+        self._checkpoints = {}
+        self._store_checkpoint()
 
         # If requested start differs from J2000, integrate forward
         if abs(start_jd - J2000_JD) > 0.01:
@@ -148,14 +155,121 @@ class REBOUNDEngine(SimulationEngine):
             return self.start_jd
         return self.sim.t * DAYS_PER_YEAR + J2000_JD
 
+    def _checkpoint_index_for_time(self, years_since_j2000: float) -> int:
+        return int(math.floor((years_since_j2000 / self._checkpoint_interval_years) + 1e-9))
+
+    def _checkpoint_time_for_index(self, checkpoint_idx: int) -> float:
+        return checkpoint_idx * self._checkpoint_interval_years
+
+    def _copy_simulation(self, source_sim: Any | None = None) -> Any | None:
+        sim_ref = self.sim if source_sim is None else source_sim
+        if sim_ref is None:
+            return None
+        copy_fn = getattr(sim_ref, "copy", None)
+        if not callable(copy_fn):
+            return None
+        try:
+            return copy_fn()
+        except Exception:
+            return None
+
+    def _store_checkpoint(self) -> None:
+        if self.sim is None:
+            return
+        checkpoint = self._copy_simulation(self.sim)
+        if checkpoint is None:
+            return
+        checkpoint_idx = self._checkpoint_index_for_time(float(self.sim.t))
+        checkpoint_time = self._checkpoint_time_for_index(checkpoint_idx)
+        if abs(float(self.sim.t) - checkpoint_time) > 1e-8:
+            return
+        self._checkpoints[checkpoint_idx] = checkpoint
+
+    def _restore_checkpoint_at_or_before(self, target_years: float) -> bool:
+        if not self._checkpoints:
+            return False
+        target_idx = self._checkpoint_index_for_time(target_years)
+        candidate_idx = None
+        for checkpoint_idx in self._checkpoints.keys():
+            if checkpoint_idx <= target_idx and (candidate_idx is None or checkpoint_idx > candidate_idx):
+                candidate_idx = checkpoint_idx
+        if candidate_idx is None:
+            return False
+
+        snapshot = self._checkpoints.get(candidate_idx)
+        restored = self._copy_simulation(snapshot)
+        if restored is None:
+            return False
+        self.sim = restored
+        return True
+
+    def _integrate_forward_with_checkpoints(self, target_years: float) -> None:
+        if self.sim is None:
+            return
+        if target_years <= float(self.sim.t) + SEEK_EPSILON_YEARS:
+            if abs(target_years - float(self.sim.t)) > SEEK_EPSILON_YEARS:
+                self.sim.integrate(target_years)
+            return
+
+        current_years = float(self.sim.t)
+        next_checkpoint_idx = self._checkpoint_index_for_time(current_years) + 1
+        while True:
+            checkpoint_years = self._checkpoint_time_for_index(next_checkpoint_idx)
+            if checkpoint_years >= target_years - SEEK_EPSILON_YEARS:
+                break
+            self.sim.integrate(checkpoint_years)
+            self._store_checkpoint()
+            next_checkpoint_idx += 1
+
+        self.sim.integrate(target_years)
+        self._store_checkpoint()
+
     def set_julian_date(self, jd: float) -> None:
-        """Jump to a specific JD by reinitializing from J2000 and integrating."""
+        """
+        Jump to a specific JD using checkpoint-assisted seeking.
+
+        Forward jumps integrate from current state and materialize checkpoints.
+        Backward jumps restore nearest checkpoint at-or-before target, then
+        integrate forward to the requested epoch.
+        """
         if not self._stored_bodies:
             return
-        self.initialize(self._stored_bodies, start_jd=J2000_JD)
-        if abs(jd - J2000_JD) > 0.01:
-            target = (jd - J2000_JD) / DAYS_PER_YEAR
-            self.sim.integrate(target)
+        if self.sim is None:
+            self.initialize(self._stored_bodies, start_jd=J2000_JD)
+        if self.sim is None:
+            return
+
+        target_years = (jd - J2000_JD) / DAYS_PER_YEAR
+        current_years = float(self.sim.t)
+        if abs(target_years - current_years) <= SEEK_EPSILON_YEARS:
+            return
+
+        # Forward seeks are cheap from the current state.
+        if target_years > current_years:
+            self._integrate_forward_with_checkpoints(target_years)
+            return
+
+        # For small backward seeks, try direct integration first.
+        if (current_years - target_years) <= self._direct_backward_seek_max_years:
+            try:
+                self.sim.integrate(target_years)
+                return
+            except Exception:
+                # Fall through to checkpoint restore path.
+                pass
+
+        # Restore nearest checkpoint <= target, then integrate forward.
+        restored = self._restore_checkpoint_at_or_before(target_years)
+        if not restored:
+            self.initialize(self._stored_bodies, start_jd=J2000_JD)
+            if self.sim is None:
+                return
+
+        if target_years >= float(self.sim.t):
+            self._integrate_forward_with_checkpoints(target_years)
+        else:
+            # Safety fallback if restored checkpoint is somehow after target.
+            self.sim.integrate(target_years)
 
     def get_energy(self) -> float:
         if self.sim is None:

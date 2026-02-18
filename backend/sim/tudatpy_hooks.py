@@ -310,7 +310,12 @@ class TudatPyEngine(SimulationEngine):
     def set_julian_date(self, jd: float) -> None:
         self._jd = jd
         target_s = _jd_to_seconds(jd)
-        self._propagate_chunk(target_s)
+        if (
+            self._chunk_epochs is None
+            or target_s > self._chunk_end_s
+            or target_s < self._chunk_start_s
+        ):
+            self._propagate_chunk(target_s)
         self._current_state = self._interpolate_at(target_s)
 
     def get_energy(self) -> float:
