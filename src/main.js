@@ -47,8 +47,8 @@ import {
   solveLambertTransfer
 } from './frontend/features/trajectory/index.js';
 import { createSolarSystemCatalog } from './sim/catalog.js';
-import { propagateKeplerOrbit } from './sim/orbitMath.js';
-import { SolarSystemModel } from './sim/solarSystemModel.js';
+import { propagateKeplerOrbit } from './sim/orbitMath';
+import { SolarSystemModel } from './sim/solarSystemModel';
 import { generateMoonTexture, generatePlanetTexture } from './textures.js';
 import { PlanetCloudDataPipeline } from './frontend/features/planetary/cloudDataPipeline.js';
 import { createPlanetHeightTexture } from './frontend/features/planetary/terrainSynthesis.js';
@@ -82,7 +82,7 @@ import {
   deriveSunObservationControls,
   pickAiaObservationChannel
 } from './frontend/features/solar/solarObservationTexture.js';
-import { SimulationClient } from './frontend/app/simulationClient.js';
+import { SimulationClient } from './frontend/app/simulationClient';
 import { createTimeController } from './frontend/app/timeController.js';
 import { createSimulationState, createBodyIdResolver, SYSTEM_VIEW_MODE } from './frontend/app/stateStore.js';
 import {

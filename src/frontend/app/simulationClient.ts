@@ -1,5 +1,53 @@
+interface BuildWebSocketUrlArgs {
+  port?: number;
+  params?: Record<string, string | number | boolean>;
+}
+
+type BuildWebSocketUrl = (args?: BuildWebSocketUrlArgs) => string;
+
+interface ServerBodyState {
+  pos: [number, number, number];
+}
+
+export interface ServerStateUpdateMessage {
+  type: 'state_update';
+  jd: number;
+  bodies: Record<string, ServerBodyState>;
+  kuiper?: number[][];
+}
+
+interface ConnectedMessage {
+  type: 'connected';
+}
+
+type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage;
+
+interface Vector3Like {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export class SimulationClient {
-  constructor({ buildWebSocketUrl }) {
+  private readonly buildWebSocketUrl: BuildWebSocketUrl;
+
+  private ws: WebSocket | null;
+
+  private connected: boolean;
+
+  latestState: ServerStateUpdateMessage | null;
+
+  latestKuiper: number[][] | null;
+
+  private kuiperActive: boolean;
+
+  onConnected: (() => void) | null;
+
+  onDisconnected: (() => void) | null;
+
+  onServerReady: ((client: SimulationClient) => void) | null;
+
+  constructor({ buildWebSocketUrl }: { buildWebSocketUrl: BuildWebSocketUrl }) {
     this.buildWebSocketUrl = buildWebSocketUrl;
     this.ws = null;
     this.connected = false;
@@ -11,7 +59,7 @@ export class SimulationClient {
     this.onServerReady = null;
   }
 
-  connect(backend = 'rebound', port = 8042) {
+  connect(backend: 'rebound' | 'kepler' | string = 'rebound', port = 8042): void {
     if (this.ws) this.disconnect();
     const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
     this.ws = new WebSocket(this.buildWebSocketUrl({
@@ -27,9 +75,10 @@ export class SimulationClient {
       if (this.onConnected) this.onConnected();
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = (event: MessageEvent) => {
+      if (typeof event.data !== 'string') return;
       try {
-        const msg = JSON.parse(event.data);
+        const msg = JSON.parse(event.data) as IncomingMessage;
         if (msg.type === 'state_update') {
           this.latestState = msg;
           if (msg.kuiper) {
@@ -55,7 +104,7 @@ export class SimulationClient {
     };
   }
 
-  disconnect() {
+  disconnect(): void {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -65,20 +114,20 @@ export class SimulationClient {
     this.latestKuiper = null;
   }
 
-  send(msg) {
+  send(msg: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }
   }
 
-  activateKuiper(center, spread) {
+  activateKuiper(center: Vector3Like, spread: number): void {
     if (!this.kuiperActive) {
       this.send({ type: 'activate_kuiper', center: [center.x, center.y, center.z], spread });
       this.kuiperActive = true;
     }
   }
 
-  deactivateKuiper() {
+  deactivateKuiper(): void {
     if (this.kuiperActive) {
       this.send({ type: 'deactivate_kuiper' });
       this.kuiperActive = false;

@@ -3,16 +3,32 @@ import { Vector3 } from 'three';
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
 
-export function degToRad(deg) {
+export interface KeplerOrbit {
+  aAu: number;
+  periodDays: number;
+  epochJd: number;
+  e?: number;
+  iDeg?: number;
+  ascendingNodeDeg?: number;
+  argPeriapsisDeg?: number;
+  meanAnomalyDeg?: number;
+}
+
+export function degToRad(deg: number): number {
   return deg * DEG_TO_RAD;
 }
 
-function normalizeRadians(angle) {
+function normalizeRadians(angle: number): number {
   const reduced = angle % TWO_PI;
   return reduced >= 0 ? reduced : reduced + TWO_PI;
 }
 
-export function solveKepler(meanAnomalyRad, eccentricity, tolerance = 1e-9, maxIterations = 20) {
+export function solveKepler(
+  meanAnomalyRad: number,
+  eccentricity: number,
+  tolerance = 1e-9,
+  maxIterations = 20
+): number {
   const e = Math.max(0, Math.min(0.9999999, eccentricity));
   let eccentricAnomaly = e < 0.8 ? meanAnomalyRad : Math.PI;
 
@@ -29,7 +45,12 @@ export function solveKepler(meanAnomalyRad, eccentricity, tolerance = 1e-9, maxI
   return eccentricAnomaly;
 }
 
-export function propagateKeplerOrbit(orbit, elapsedDays, outPosition, outVelocity = null) {
+export function propagateKeplerOrbit(
+  orbit: KeplerOrbit,
+  elapsedDays: number,
+  outPosition: Vector3,
+  outVelocity: Vector3 | null = null
+): void {
   const a = orbit.aAu;
   const e = Math.max(0, Math.min(0.9999999, orbit.e ?? 0));
   const i = degToRad(orbit.iDeg ?? 0);
@@ -93,10 +114,13 @@ export function propagateKeplerOrbit(orbit, elapsedDays, outPosition, outVelocit
   }
 }
 
-export function orbitalPeriodDaysFromSemimajorAxisAu(aAu, mu = 0.0002959122082855911) {
+export function orbitalPeriodDaysFromSemimajorAxisAu(
+  aAu: number,
+  mu = 0.0002959122082855911
+): number {
   return TWO_PI * Math.sqrt((aAu * aAu * aAu) / mu);
 }
 
-export function cloneVector(vec) {
+export function cloneVector(vec: Pick<Vector3, 'x' | 'y' | 'z'>): Vector3 {
   return new Vector3(vec.x, vec.y, vec.z);
 }
