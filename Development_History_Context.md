@@ -1,4 +1,4 @@
-# Development Context
+# Development History Context
 
 ## 1) Instruction Layer
 This file is a rolling, timestamped development context log for recent high-value engineering changes and decisions.
@@ -55,11 +55,121 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-18 11:38:22 UTC
+Status: DONE
+
+What changed:
+- Continued `src/main.js` decomposition with additional focused modules and rewiring:
+  - Camera transition lifecycle extracted to `src/frontend/camera/transitions.js`.
+  - Orbit line generation extracted to `src/frontend/rendering/orbitRenderer.js`.
+  - Milky Way/starfield generation and appearance switching extracted to `src/frontend/rendering/milkyWay.js`.
+  - Surface LOD transition logic extracted to `src/frontend/rendering/lodManager.js`.
+- Preserved previous extraction set already in place and integrated with the new split (`stateStore`, `sceneSetup`, `textureManager`, `cameraController`, `bodyManager`, `inputHandler`, `animationLoop`).
+- Completed first incremental TypeScript phase for high-risk simulation paths:
+  - Converted `src/sim/orbitMath.js` -> `src/sim/orbitMath.ts`.
+  - Converted `src/sim/solarSystemModel.js` -> `src/sim/solarSystemModel.ts`.
+  - Converted `src/frontend/app/simulationClient.js` -> `src/frontend/app/simulationClient.ts`.
+  - Added `tsconfig.json`, `npm run typecheck`, `typescript`, and `@types/three`.
+- Repaired syntax corruption in `src/frontend/features/solar/solarPhysicsClient.js` that was blocking bundling (duplicate/garbled constructor/query/fetch fields).
+
+Why it changed:
+- User-directed goal: further partition `main.js` into focused modules to reduce coupling and implementation risk.
+- High-risk physics and messaging paths were prioritized for typed contracts to reduce silent runtime errors.
+- Build stability required immediate syntax recovery in `solarPhysicsClient.js` before validating architecture work.
+
+Evidence/validation:
+- `npm run build` passed after module extraction and syntax repair.
+- `npm run typecheck` passed after TS adoption for targeted modules.
+- `src/main.js` reduced from `4521` lines to `4026` lines in this pass.
+
+Files touched:
+- `src/main.js`
+- `src/frontend/camera/transitions.js` (new)
+- `src/frontend/rendering/orbitRenderer.js` (new)
+- `src/frontend/rendering/milkyWay.js` (new)
+- `src/frontend/rendering/lodManager.js` (new)
+- `src/sim/orbitMath.ts` (new, replaced `.js`)
+- `src/sim/solarSystemModel.ts` (new, replaced `.js`)
+- `src/frontend/app/simulationClient.ts` (new, replaced `.js`)
+- `src/frontend/features/solar/solarPhysicsClient.js`
+- `package.json`
+- `package-lock.json`
+- `tsconfig.json` (new)
+
+Follow-ups / open questions:
+- OPEN: extract asteroid/Kuiper/Oort systems into `rendering/particleSystems` module(s) to remove the largest remaining block from `main.js`.
+- OPEN: isolate `createBodyNode`/material creation into `rendering/bodyFactory` to complete the major rendering split.
+- OPEN: add unit-branded TypeScript types (`Au`, `Km`, `JulianDay`, `Radians`) and propagate through `constants` and catalog/orbit contracts.
+
+### 2026-02-18 10:30:00 UTC
+Status: DONE
+
+What changed:
+- Expanded SDO/AIA observation pipeline from 3 channels (171/193/211) to 5 channels (094/171/193/211/304):
+  - Added AIA 094 Å (hot flare plasma, 6.3 MK) and AIA 304 Å (chromospheric, prominences/filaments).
+  - Backend: added source IDs and rebalanced activity weights across all 5 channels (sum = 1.0).
+  - Frontend: updated channel priority list, added `AIA_CHANNEL_OPTIONS` export for UI, added `CHANNEL_VISUAL_WEIGHTS` for per-channel blend/emission boost.
+  - Updated `pickAiaObservationChannel()` to accept optional `overrideChannel` parameter.
+  - Updated `deriveSunObservationControls()` to accept optional `activeChannel` parameter and apply channel-specific visual weight adjustments.
+- Added AIA channel selector dropdown to `index.html` Display section with all 5 channels + "Auto" mode.
+- Wired AIA dropdown in `main.js` with `userAiaChannelOverride` state variable, change listener that forces texture refresh, and channel passthrough to observation controls and channel picker.
+- Closes prior OPEN item: "expose UI controls to toggle observational texturing and tune observation blend strength at runtime."
+
+Why it changed:
+- AIA 094 Å captures hot flare plasma (Fe XVIII, ~6.3 MK) essential for flare/CME visualization.
+- AIA 304 Å captures chromospheric He II emission, providing prominence/filament structure visibility.
+- User-facing channel selector enables targeted solar observation for educational and scientific exploration.
+
+Evidence/validation:
+- Backend `AIA_SOURCE_IDS` dict now has 5 entries; `/solar/realtime/aia-tile?channel=aia_304` and `?channel=aia_094` resolve to valid Helioviewer source IDs (8, 13).
+- Frontend `pickAiaObservationChannel` correctly prioritizes override channel when set.
+
+Files touched:
+- `backend/sim/solar_realtime_data.py`
+- `src/frontend/features/solar/solarObservationTexture.js`
+- `index.html`
+- `src/main.js`
+
+Follow-ups / open questions:
+- OPEN: add per-channel false-color remapping in shader for channels with distinct temperature ranges (094 vs 304).
+- OPEN: consider channel-specific tile refresh cadence (094/304 may update less frequently on Helioviewer).
+
+### 2026-02-18 10:00:00 UTC
+Status: DONE
+
+What changed:
+- Created three new data-fetching scripts under `scripts/` for external catalog enrichment:
+  1. `scripts/fetch_utils.py` — shared HTTP/caching utilities (urllib-based, no external deps). Provides `http_get()`, `http_get_json()`, `load_or_fetch()` with time-based cache, `parse_csv_text()`, `safe_float()`/`safe_int()`.
+  2. `scripts/fetch_gaia_catalog.py` — queries ESA Gaia DR3 TAP endpoint for bright stars (G < 7.5) and nearby systems (parallax > 100 mas). TAP fallback chain: ESA → VizieR → static fallback. Cross-matches with existing nearby systems CSV by angular position (5 arcsec). Outputs updated `src/data/stars_catalog.json` (~10k entries) and enriched `solar-systems/nearby_star_systems_ranked_full.csv`.
+  3. `scripts/fetch_jpl_sbdb.py` — queries JPL SBDB API for top asteroids (by H mag), notable NEOs (Aten/Apollo/Amor classes), and Jupiter Trojans. Directly appends new entries to `backend/data/bodies.py` and `src/data/planets.js` with deduplication. Estimates radius from H magnitude, assigns colors from taxonomic classification.
+- Added `scripts/.cache/` and `scripts/output/` to `.gitignore`.
+
+Why it changed:
+- Star catalog had ~5,500 entries; Gaia DR3 enrichment targets ~10,000 with proper motions.
+- Asteroid catalog had 20 named objects; SBDB enrichment adds ~80 additional with orbital elements.
+- Scripts are idempotent with caching for re-runs and fallback strategies for network failures.
+
+Evidence/validation:
+- All three scripts parse without errors (`python -m py_compile` passes).
+- Gaia TAP queries use standard ADQL against public endpoints with documented fallback chain.
+- SBDB script uses documented JPL API fields and matches existing data format in bodies.py/planets.js.
+
+Files touched:
+- `scripts/fetch_utils.py` (new)
+- `scripts/fetch_gaia_catalog.py` (new)
+- `scripts/fetch_jpl_sbdb.py` (new)
+- `.gitignore`
+
+Follow-ups / open questions:
+- OPEN: run `python scripts/fetch_gaia_catalog.py` and `python scripts/fetch_jpl_sbdb.py` to generate updated data files.
+- OPEN: validate star catalog rendering density and asteroid orbital element accuracy after data refresh.
+- OPEN: consider adding a static Gaia fallback JSON for fully offline builds (currently falls back to bundled data if network unavailable).
+
 ### 2026-02-17 08:22:20 UTC
 Status: DONE
 
 What changed:
-- Updated `Development_Context.md` instruction layer with a new primary file-size objective of staying under `30,000 tokens`.
+- Updated `Development_History_Context.md` instruction layer with a new primary file-size objective of staying under `30,000 tokens`.
 - Added an explicit token-to-line estimate based on current file density and noted the practical line range (`~2,000-2,400`, centered around `~2,195`).
 - Added an explicit maintenance reminder to always check this file before and after significant implementation work.
 - Replaced prior rolling size-control thresholds (`KB/line-based`) with token-based soft/hard caps aligned to the new objective.
@@ -69,14 +179,14 @@ Why it changed:
 - Token-based policy is a better fit for model context management than raw file-size-only thresholds.
 
 Evidence/validation:
-- Measured current file metrics: `249 lines`, `1,640 words`, `13,614 chars` via `wc -l -w -c Development_Context.md`.
+- Measured current file metrics: `249 lines`, `1,640 words`, `13,614 chars` via `wc -l -w -c Development_History_Context.md`.
 - Computation used in-file:
   - `chars/line ≈ 13,614 / 249 ≈ 54.7`
   - `30,000 tokens * ~4 chars/token ≈ 120,000 chars`
   - `120,000 / 54.7 ≈ 2,195 lines`
 
 Files touched:
-- `Development_Context.md`
+- `Development_History_Context.md`
 
 Follow-ups / open questions:
 - OPEN: if writing style density changes significantly (more code blocks/paths), recalibrate the line-equivalent estimate quarterly.

@@ -47,6 +47,206 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-18 11:38:22 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Completed another major `main.js` partitioning pass and stabilized build/typecheck.
+
+Context / rationale:
+- `main.js` remained a high-risk monolith even after initial extraction; rendering/camera seams were still tightly coupled.
+- Additional modular boundaries were needed before tackling particle systems/body factory split.
+
+Proposed approach:
+- Extracted and wired:
+  - `src/frontend/camera/transitions.js`
+  - `src/frontend/rendering/orbitRenderer.js`
+  - `src/frontend/rendering/milkyWay.js`
+  - `src/frontend/rendering/lodManager.js`
+- Delegated corresponding logic from `src/main.js` while preserving current behavior.
+- Fixed pre-existing syntax corruption in `src/frontend/features/solar/solarPhysicsClient.js` so builds could validate.
+
+Expected impact:
+- Lower coupling and smaller blast radius for future rendering/camera changes.
+- More reliable iteration loop due to passing build and typecheck gates.
+
+Affected files/systems:
+- `src/main.js`
+- `src/frontend/camera/transitions.js`
+- `src/frontend/rendering/orbitRenderer.js`
+- `src/frontend/rendering/milkyWay.js`
+- `src/frontend/rendering/lodManager.js`
+- `src/frontend/features/solar/solarPhysicsClient.js`
+
+Next step:
+- Continue with particle-system and body-factory extraction to remove remaining large rendering blocks from `main.js`.
+
+### 2026-02-18 11:38:22 UTC
+Status: `OPEN`
+Type: `ARCHITECTURE`
+Summary:
+- Next-phase partitioning roadmap for finishing `main.js` decomposition.
+
+Context / rationale:
+- Largest remaining complexity is concentrated in body construction and particle systems (asteroid/Kuiper/Oort), plus high-density UI/body-list wiring.
+
+Proposed approach:
+- Phase A: create `src/frontend/rendering/particleSystems.js` for asteroid, Kuiper, and Oort creation/update flows.
+- Phase B: create `src/frontend/rendering/bodyFactory.js` for `getMaterial`, body shell layering, rings, sun structures, and label/halo attachment.
+- Phase C: move body-list/info-panel logic to a dedicated UI domain module (`src/frontend/app/bodyExplorer.js`).
+- Phase D: keep `src/main.js` as bootstrap/composition layer only (imports, wiring, lifecycle start).
+
+Expected impact:
+- Further reduction of regression surface in orbital and rendering edits.
+- Faster onboarding and parallel development across independent modules.
+
+Affected files/systems:
+- `src/main.js`
+- `src/frontend/rendering/*`
+- `src/frontend/app/*`
+
+Next step:
+- Start with Phase A and include API-style integration tests for visibility toggles and LOD behavior.
+
+### 2026-02-18 11:38:22 UTC
+Status: `OPEN`
+Type: `TECH-DEBT`
+Summary:
+- TypeScript continuation plan for physics and frontend contract safety.
+
+Context / rationale:
+- Initial TS migration of `orbitMath`, `solarSystemModel`, and `simulationClient` is complete; unit/contract safety should now expand to sources feeding those modules.
+
+Proposed approach:
+- Convert `src/constants.js` and `src/sim/catalog.js` to TS next.
+- Add shared unit brands/types (`Au`, `Km`, `JulianDay`, `Radians`) and apply in orbital interfaces.
+- Add explicit wire types for solar/API payloads (`solarPhysicsClient`, observation texture metadata).
+- Add CI gate requiring both `npm run typecheck` and `npm run build`.
+
+Expected impact:
+- Reduced risk of unit confusion and payload-shape drift.
+- Stronger compile-time guardrails for future physics/model upgrades.
+
+Affected files/systems:
+- `src/constants.js`
+- `src/sim/catalog.js`
+- `src/frontend/features/solar/*`
+- CI pipeline config
+
+Next step:
+- Introduce a small `src/types/units.ts` and adopt it in `orbitMath.ts` first.
+
+### 2026-02-18 10:30:00 UTC
+Status: `DONE`
+Type: `UX`
+Summary:
+- Added AIA channel selector UI and expanded SDO/AIA pipeline from 3 to 5 channels.
+
+Context / rationale:
+- Prior OPEN items requested UI controls for observation texturing and channel selection.
+- AIA 094 Å (hot flare plasma) and 304 Å (chromosphere) provide scientifically distinct views not previously accessible.
+
+Proposed approach:
+- Added `<select>` dropdown in Display section with all 5 AIA channels + Auto mode.
+- Wired dropdown to `userAiaChannelOverride` state, forcing texture refresh on change.
+- Added per-channel visual weights (`CHANNEL_VISUAL_WEIGHTS`) for blend/emission boost on extreme-temperature channels.
+- Updated `pickAiaObservationChannel` and `deriveSunObservationControls` to accept override parameters.
+
+Expected impact:
+- Users can select specific AIA wavelength channels for targeted solar observation.
+- 094 Å highlights hot flare plasma, 304 Å highlights prominences/filaments — both previously unavailable.
+
+Affected files/systems:
+- `backend/sim/solar_realtime_data.py`
+- `src/frontend/features/solar/solarObservationTexture.js`
+- `index.html`
+- `src/main.js`
+
+Next step:
+- Add per-channel false-color remapping and channel-specific refresh cadence tuning.
+
+### 2026-02-18 10:00:00 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Created data-fetching script infrastructure for Gaia DR3, JPL SBDB, and shared utilities.
+
+Context / rationale:
+- Star catalog (~5,500 entries) and asteroid catalog (20 named objects) were identified as enhancement opportunities in the codebase review.
+- External catalog enrichment requires network-resilient scripts with caching and fallback strategies.
+
+Proposed approach:
+- `scripts/fetch_utils.py`: shared HTTP/cache layer using only stdlib (`urllib`), no external deps.
+- `scripts/fetch_gaia_catalog.py`: ESA Gaia DR3 TAP with VizieR fallback and static fallback. Cross-matches with existing nearby systems CSV.
+- `scripts/fetch_jpl_sbdb.py`: JPL SBDB API for asteroids/NEOs/Trojans. Direct modification of `bodies.py` and `planets.js` with deduplication.
+
+Expected impact:
+- Star catalog grows from ~5,500 to ~10,000 entries with Gaia proper motions.
+- Asteroid catalog grows from 20 to ~100 named objects with proper taxonomic classification and colors.
+- Scripts are idempotent and cached for development workflow.
+
+Affected files/systems:
+- `scripts/fetch_utils.py`, `scripts/fetch_gaia_catalog.py`, `scripts/fetch_jpl_sbdb.py` (new)
+- `src/data/stars_catalog.json`, `solar-systems/nearby_star_systems_ranked_full.csv` (outputs)
+- `backend/data/bodies.py`, `src/data/planets.js` (direct modification targets)
+
+Next step:
+- Run scripts to generate data, validate rendering density and orbital accuracy.
+
+### 2026-02-18 10:00:00 UTC
+Status: `OPEN`
+Type: `IDEA`
+Summary:
+- Add multi-revolution Lambert solver and Izzo's algorithm for improved trajectory planning.
+
+Context / rationale:
+- Current Lambert solver (`backend/trajectory/lambert.py`) uses universal variables with bisection root-finding, limited to single revolution.
+- Multi-rev solutions are critical for long-duration transfers and can yield significantly lower delta-V options.
+- Izzo's 2015 algorithm provides robust multi-rev handling with Householder iteration (4th-order convergence).
+
+Proposed approach:
+- Implement Izzo's Lancaster-Blanchard formulation alongside existing universal-variable solver.
+- Add `max_revs` parameter to `solve_lambert_universal` and `compute_lambert_leg`.
+- Return multiple solutions (short/long path per revolution count) for porkchop grid evaluation.
+
+Expected impact:
+- Wider trajectory solution space for mission planning.
+- Better delta-V optimization for outer-planet transfers.
+
+Affected files/systems:
+- `backend/trajectory/lambert.py`
+- `backend/server.py` (API parameter addition)
+
+Next step:
+- Prototype Izzo solver in isolation and validate against known test cases (Earth-Mars, Earth-Jupiter).
+
+### 2026-02-18 10:00:00 UTC
+Status: `OPEN`
+Type: `IDEA`
+Summary:
+- Add GR precession and J2 oblateness corrections to REBOUND N-body engine via REBOUNDx.
+
+Context / rationale:
+- Current REBOUND engine uses point-mass gravity only. Mercury's perihelion precession (~43 arcsec/century from GR) is not captured.
+- REBOUNDx provides `gr_potential` (post-Newtonian) and `gravitational_harmonics` (J2) as drop-in force additions.
+
+Proposed approach:
+- Add optional REBOUNDx import in `backend/sim/rebound_nbody.py`.
+- Add `gr_potential` for GR precession on inner planets.
+- Add `gravitational_harmonics` with J2 coefficients for Sun, Jupiter, Saturn.
+- Make these configurable via initialization parameters.
+
+Expected impact:
+- Mercury precession accuracy improves from ~0 to ~43 arcsec/century.
+- Inner-planet close encounters become more accurate for trajectory planning.
+
+Affected files/systems:
+- `backend/sim/rebound_nbody.py`
+- `backend/requirements.txt`
+
+Next step:
+- Test REBOUNDx availability and benchmark integration overhead with IAS15.
+
 ### 2026-02-18 07:49:28 UTC
 Status: `DONE`
 Type: `FIX`
