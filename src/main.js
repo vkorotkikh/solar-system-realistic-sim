@@ -1,7 +1,6 @@
 import './style.css';
 import {
   AdditiveBlending,
-  AmbientLight,
   ArrowHelper,
   BackSide,
   BufferGeometry,
@@ -10,32 +9,24 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
-  HemisphereLight,
   Line,
   LineBasicMaterial,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
   Matrix4,
-  PerspectiveCamera,
-  PointLight,
   Points,
   PointsMaterial,
   RepeatWrapping,
   Raycaster,
   RingGeometry,
-  SRGBColorSpace,
-  Scene,
   ShaderMaterial,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
-  TextureLoader,
   Vector2,
-  Vector3,
-  WebGLRenderer
+  Vector3
 } from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   AU_KM,
   DEFAULT_TIME_SCALE_DAYS_PER_SEC,
@@ -93,13 +84,30 @@ import {
 } from './frontend/features/solar/solarObservationTexture.js';
 import { SimulationClient } from './frontend/app/simulationClient.js';
 import { createTimeController } from './frontend/app/timeController.js';
+import { createSimulationState, createBodyIdResolver, SYSTEM_VIEW_MODE } from './frontend/app/stateStore.js';
+import {
+  createRuntimeUiConfig,
+  applyViewportSizeOverride,
+  createSceneSetup,
+  addDefaultLighting,
+  createSceneGroups,
+  updateRenderResolutionStatus
+} from './frontend/app/sceneSetup.js';
+import { createTextureManager } from './frontend/app/textureManager.js';
+import { createCameraController } from './frontend/app/cameraController.js';
+import {
+  mountSceneGraph as mountSceneGraphImpl,
+  updateSceneBodiesFromModel,
+  applyServerStateToScene
+} from './frontend/app/bodyManager.js';
+import { setupInputHandlers } from './frontend/app/inputHandler.js';
+import { createAnimationLoop } from './frontend/app/animationLoop.js';
 import {
   clearRouteVisualization as clearRouteVisualizationImpl,
   plotRoute as plotRouteImpl,
   updateRouteVisualization as updateRouteVisualizationImpl
 } from './frontend/app/routeRenderer.js';
 import { createPlannerController } from './frontend/app/plannerController.js';
-import { setupUiBindings } from './frontend/app/uiBindings.js';
 import { createLabelSystemOps } from './frontend/app/labelSystem.js';
 import { createNearbySystemsRenderer } from './frontend/app/nearbySystemsRenderer.js';
 import { createLocalSystemRenderer } from './frontend/app/localSystemRenderer.js';
@@ -202,61 +210,15 @@ const dom = {
 const catalog = createSolarSystemCatalog();
 const model = new SolarSystemModel(catalog);
 const bodyById = new Map(catalog.bodies.map((body) => [body.id, body]));
-
-function resolveEarthMoonBodyId() {
-  for (const body of catalog.bodies) {
-    if (body.type === 'moon' && body.parentId === 'earth' && body.name === 'Moon') {
-      return body.id;
-    }
-  }
-  return 'moon';
-}
-
-const CANONICAL_BODY_IDS = Object.freeze({
-  moon: resolveEarthMoonBodyId()
+const {
+  CANONICAL_BODY_IDS,
+  resolveBodyId,
+  isEarthMoonBody
+} = createBodyIdResolver(catalog);
+const simState = createSimulationState({
+  currentJulianDate,
+  defaultTimeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC
 });
-
-const BODY_ID_ALIASES = new Map([
-  ['moon', CANONICAL_BODY_IDS.moon]
-]);
-
-function resolveBodyId(bodyId) {
-  if (typeof bodyId !== 'string') return bodyId;
-  return BODY_ID_ALIASES.get(bodyId) ?? bodyId;
-}
-
-function isEarthMoonBody(body) {
-  return Boolean(body)
-    && body.type === 'moon'
-    && body.parentId === 'earth'
-    && body.id === CANONICAL_BODY_IDS.moon;
-}
-
-const SYSTEM_VIEW_MODE = Object.freeze({
-  SOLAR: 'solar',
-  INTERSTELLAR: 'interstellar',
-  SYSTEM_LOCAL: 'system_local'
-});
-
-const simState = {
-  julianDate: currentJulianDate(),
-  timeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC,
-  paused: false,
-  followBodyId: null,
-  focusedBodyId: 'sun',
-  lastSolarFocusedBodyId: 'sun',
-  route: null,
-  backend: 'local',
-  useRealisticScale: false,
-  milkyWayMode: 'standard',
-  focusedNearbySystemId: null,
-  hoveredNearbySystemId: null,
-  activeLocalSystemId: null,
-  selectedStarSystemId: 'solar-system',
-  systemViewMode: SYSTEM_VIEW_MODE.SOLAR,
-  zoomSensitivity: 1.0,
-  serverConnected: false
-};
 
 const AU_PER_LIGHT_YEAR = 63_241.077;
 const PC_TO_AU = 206_264.80624709636;
@@ -447,44 +409,7 @@ function wrapUnitInterval(value) {
   return wrapped >= 0 ? wrapped : wrapped + 1;
 }
 
-function clampRuntimeNumber(value, min, max) {
-  if (!Number.isFinite(value)) return null;
-  return Math.min(max, Math.max(min, value));
-}
-
-function readRuntimeNumber(searchParams, paramKey, envKey, fallback, min, max) {
-  const fromQuery = searchParams.get(paramKey);
-  if (fromQuery !== null && fromQuery.trim() !== '') {
-    const parsed = Number(fromQuery);
-    const clamped = clampRuntimeNumber(parsed, min, max);
-    if (clamped !== null) return clamped;
-  }
-
-  const fromEnv = import.meta.env?.[envKey];
-  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
-    const parsed = Number(fromEnv);
-    const clamped = clampRuntimeNumber(parsed, min, max);
-    if (clamped !== null) return clamped;
-  }
-
-  return fallback;
-}
-
-function buildRuntimeUiConfig() {
-  const params = new URLSearchParams(window.location.search);
-  const uiWidth = readRuntimeNumber(params, 'uiWidth', 'VITE_UI_WIDTH', null, 640, 10_000);
-  const uiHeight = readRuntimeNumber(params, 'uiHeight', 'VITE_UI_HEIGHT', null, 360, 10_000);
-  const renderScale = readRuntimeNumber(params, 'renderScale', 'VITE_RENDER_SCALE', 1, 0.5, 3);
-  const maxPixelRatio = readRuntimeNumber(params, 'maxPixelRatio', 'VITE_MAX_PIXEL_RATIO', 2, 1, 4);
-  return {
-    uiWidth,
-    uiHeight,
-    renderScale,
-    maxPixelRatio
-  };
-}
-
-const runtimeUiConfig = buildRuntimeUiConfig();
+const runtimeUiConfig = createRuntimeUiConfig();
 
 function backendBaseUrl() {
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
@@ -503,24 +428,6 @@ function julianDateToJulianYear(julianDate) {
   return 2000 + (julianDate - J2000_JD) / 365.25;
 }
 
-function applyViewportSizeOverride() {
-  if (!dom.viewportShell) return;
-  if (!runtimeUiConfig.uiWidth || !runtimeUiConfig.uiHeight) return;
-  dom.viewportShell.style.width = `${runtimeUiConfig.uiWidth}px`;
-  dom.viewportShell.style.height = `${runtimeUiConfig.uiHeight}px`;
-  dom.viewportShell.style.maxWidth = '100%';
-  dom.viewportShell.style.maxHeight = '100vh';
-  dom.viewportShell.style.margin = '0 auto';
-  dom.viewportShell.style.alignSelf = 'center';
-}
-
-function updateRenderResolutionStatus(renderWidth, renderHeight, viewportWidth, viewportHeight) {
-  if (!dom.statusRender) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, runtimeUiConfig.maxPixelRatio);
-  dom.statusRender.textContent =
-    `Render: ${renderWidth}x${renderHeight} (view ${viewportWidth}x${viewportHeight}, DPR ${dpr.toFixed(2)} cap)`;
-}
-
 function bodyMuAu3Day2(massKg) {
   if (!massKg || !Number.isFinite(massKg) || massKg <= 0) return 0;
   return MU_SUN_AU3_DAY2 * (massKg / MSUN_KG);
@@ -531,169 +438,24 @@ function normalizeRadians(angle) {
   return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
 }
 
-function formatAu(au) {
-  if (au >= 1_000) return `${au.toFixed(1)} AU`;
-  if (au >= 10) return `${au.toFixed(2)} AU`;
-  if (au >= 1) return `${au.toFixed(3)} AU`;
-  if (au >= 0.01) return `${au.toFixed(4)} AU`;
-  return `${au.toFixed(6)} AU`;
-}
-
-function formatDistanceScale(au, realisticMode) {
-  const safeAu = Math.max(0, au);
-  const ly = safeAu / AU_PER_LIGHT_YEAR;
-  const km = safeAu * AU_KM;
-  const auText = formatAu(safeAu);
-
-  if (!realisticMode) {
-    if (ly >= 0.02) {
-      return `${ly.toFixed(3)} ly (${auText})`;
-    }
-    return auText;
-  }
-
-  if (ly >= 0.02) {
-    return `${ly.toFixed(3)} ly (${auText})`;
-  }
-  if (km >= 1_000) {
-    const kiloKm = km / 1_000;
-    const decimals = kiloKm >= 10_000 ? 0 : kiloKm >= 1_000 ? 1 : 2;
-    return `${kiloKm.toFixed(decimals)}k km (${auText})`;
-  }
-  return `${km.toFixed(0)} km (${auText})`;
-}
-
-function updateZoomMetricsUI() {
-  const rangeAu = camera.position.distanceTo(controls.target);
-  const halfFovRad = (camera.fov * Math.PI) / 360;
-  const viewHeightAu = 2 * rangeAu * Math.tan(halfFovRad);
-  const viewWidthAu = viewHeightAu * camera.aspect;
-
-  const rangeText = formatDistanceScale(rangeAu, simState.useRealisticScale);
-  const widthText = formatDistanceScale(viewWidthAu, simState.useRealisticScale);
-  const heightText = formatDistanceScale(viewHeightAu, simState.useRealisticScale);
-  const baseZoomText = `x${simState.zoomSensitivity.toFixed(2)}`;
-  const effectiveZoom = Number.isFinite(controls.zoomSpeed) ? controls.zoomSpeed : simState.zoomSensitivity;
-  const zoomText = `x${effectiveZoom.toFixed(2)}`;
-
-  if (dom.zoomSensitivityValue) dom.zoomSensitivityValue.textContent = baseZoomText;
-  if (dom.zoomDistanceValue) dom.zoomDistanceValue.textContent = `Range: ${rangeText}`;
-  if (dom.viewScaleValue) dom.viewScaleValue.textContent = `View span: ${widthText} x ${heightText}`;
-  if (dom.statusZoom) dom.statusZoom.textContent = `Zoom: ${zoomText}`;
-  if (dom.statusScale) dom.statusScale.textContent = `Scale: ${widthText} x ${heightText}`;
-}
-
-function clamp01(value) {
-  return Math.min(1, Math.max(0, value));
-}
-
-function updateAdaptiveZoomBehavior() {
-  const baseZoom = Math.max(0.01, simState.zoomSensitivity);
-  controls.zoomSpeed = baseZoom;
-
-  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return;
-  if (!simState.useRealisticScale) return;
-
-  const activeBodyId = resolveBodyId(simState.followBodyId ?? simState.focusedBodyId);
-  if (!activeBodyId) return;
-
-  const body = bodyById.get(activeBodyId);
-  const profile = ADAPTIVE_ZOOM_PROFILES[activeBodyId];
-  if (!body || !profile) return;
-
-  const node = bodyNodes.get(activeBodyId);
-  if (!node) return;
-
-  node.getWorldPosition(tempVecA);
-  const distanceToBodyAu = camera.position.distanceTo(tempVecA);
-  const minCenterDistanceAu = bodyDistanceAuAtAltitude(body, profile.minClearanceKm);
-  const dampingBandAu = Math.max(1e-9, profile.dampingBandKm / AU_KM);
-  const normalized = clamp01((distanceToBodyAu - minCenterDistanceAu) / dampingBandAu);
-  const eased = Math.pow(normalized, 0.72);
-  const speedFactor = profile.minSpeedFactor + (1 - profile.minSpeedFactor) * eased;
-  controls.zoomSpeed = baseZoom * speedFactor;
-
-  if (controls.minDistance > minCenterDistanceAu) {
-    controls.minDistance = minCenterDistanceAu;
-  }
-}
-
-function updateCameraClipPlanes() {
-  const rangeAu = Math.max(1e-9, camera.position.distanceTo(controls.target));
-  let near = 0.0001;
-  let far = 20_000;
-  const interstellarModeActive = simState.systemViewMode !== SYSTEM_VIEW_MODE.SYSTEM_LOCAL
-    && Boolean(dom.toggleNearbySystems?.checked)
-    && nearbySystemsLoaded;
-
-  if (simState.useRealisticScale && rangeAu < 0.08) {
-    near = Math.max(5e-9, Math.min(5e-5, rangeAu * 0.00035));
-    far = Math.max(0.45, Math.min(120, rangeAu * 4_200));
-  }
-
-  if (interstellarModeActive && rangeAu >= INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU) {
-    const farTarget = Math.max(80_000, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, rangeAu * 6));
-    const catalogFar = nearbySystemsMaxDistanceAu > 0 ? nearbySystemsMaxDistanceAu * 1.15 : farTarget;
-    far = Math.max(
-      far,
-      farTarget,
-      Math.min(INTERSTELLAR_MAX_DISTANCE_AU, catalogFar),
-      rangeAu * 1.05
-    );
-    near = Math.max(0.0001, Math.min(1.0, rangeAu * 0.0000015));
-  }
-
-  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL || cameraTransitionState.active) {
-    far = Math.max(far, Math.min(INTERSTELLAR_MAX_DISTANCE_AU, rangeAu * 1.6 + 400));
-    near = Math.max(1e-5, Math.min(0.6, rangeAu * 0.000001));
-  }
-
-  const nearDelta = Math.abs(camera.near - near);
-  const farDelta = Math.abs(camera.far - far);
-  if (nearDelta > near * 0.02 || farDelta > far * 0.02) {
-    camera.near = near;
-    camera.far = far;
-    camera.updateProjectionMatrix();
-  }
-}
-
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-const renderer = new WebGLRenderer({
+const {
+  renderer,
+  scene,
+  camera,
+  controls
+} = createSceneSetup({
   canvas: dom.canvas,
-  antialias: true,
-  alpha: false
+  runtimeUiConfig,
+  initialZoomSensitivity: simState.zoomSensitivity,
+  solarSystemMaxDistanceAu: SOLAR_SYSTEM_MAX_DISTANCE_AU
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio));
-
-const scene = new Scene();
-scene.background = new Color('#03070c');
-
-const camera = new PerspectiveCamera(58, 1, 0.0001, 20_000);
-camera.position.set(0, -10, 6);
-
-const controls = new OrbitControls(camera, dom.canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.maxDistance = SOLAR_SYSTEM_MAX_DISTANCE_AU;
-controls.minDistance = 0.0002;
-controls.zoomSpeed = simState.zoomSensitivity;
-controls.target.set(0, 0, 0);
-applyViewportSizeOverride();
-
-// ── Lighting ─────────────────────────────────────────────────────────────────
-
-// Reduced ambient so directional sun light is visible
-const ambientLight = new AmbientLight('#2a3a47', 0.3);
-scene.add(ambientLight);
-
-const hemisphereLight = new HemisphereLight('#5a8aab', '#1a0f08', 0.12);
-scene.add(hemisphereLight);
-
-// Point light at the Sun for realistic directional lighting
-const sunLight = new PointLight('#fff5e0', 1.8, 0, 0);
-sunLight.position.set(0, 0, 0);
-scene.add(sunLight);
+applyViewportSizeOverride({
+  viewportShell: dom.viewportShell,
+  runtimeUiConfig
+});
+addDefaultLighting(scene);
 
 // ── Collections ──────────────────────────────────────────────────────────────
 
@@ -704,19 +466,13 @@ const orbitLines = [];
 const labels = [];
 const locatorHalos = [];
 const gravityArrowByBodyId = new Map();
-const solarSystemGroup = new Group();
-scene.add(solarSystemGroup);
-const routeGroup = new Group();
-solarSystemGroup.add(routeGroup);
-const gravityVectorGroup = new Group();
-gravityVectorGroup.visible = false;
-solarSystemGroup.add(gravityVectorGroup);
-const nearbySystemsGroup = new Group();
-nearbySystemsGroup.visible = false;
-scene.add(nearbySystemsGroup);
-const localSystemGroup = new Group();
-localSystemGroup.visible = false;
-scene.add(localSystemGroup);
+const {
+  solarSystemGroup,
+  routeGroup,
+  gravityVectorGroup,
+  nearbySystemsGroup,
+  localSystemGroup
+} = createSceneGroups(scene);
 
 let nearbySystemsPoints = null;
 const nearbySystemLabelEntries = [];
@@ -825,6 +581,34 @@ const cameraTransitionState = {
   endCamera: new Vector3(),
   onComplete: null
 };
+const {
+  updateZoomMetricsUI,
+  updateAdaptiveZoomBehavior,
+  updateCameraClipPlanes
+} = createCameraController({
+  camera,
+  controls,
+  dom,
+  simState,
+  resolveBodyId,
+  bodyById,
+  bodyNodes,
+  adaptiveZoomProfiles: ADAPTIVE_ZOOM_PROFILES,
+  bodyDistanceAuAtAltitude,
+  distanceConstants: {
+    AU_PER_LIGHT_YEAR,
+    AU_KM
+  },
+  systemViewMode: SYSTEM_VIEW_MODE,
+  interstellarMarkerVisibilityMinRangeAu: INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU,
+  interstellarMaxDistanceAu: INTERSTELLAR_MAX_DISTANCE_AU,
+  getInterstellarState: () => ({
+    nearbySystemsLoaded,
+    nearbySystemsMaxDistanceAu
+  }),
+  isCameraTransitionActive: () => cameraTransitionState.active,
+  tempVector: new Vector3()
+});
 const earthOrbitGuides = [];
 const moonOrbitGuides = [];
 const marsOrbitGuides = [];
@@ -927,43 +711,16 @@ const geometryCache = {
 };
 
 const materialCache = new Map();
-const textureLoader = new TextureLoader();
-const solarObservationTextureLoader = new TextureLoader();
-textureLoader.setCrossOrigin('anonymous');
-solarObservationTextureLoader.setCrossOrigin('anonymous');
 const maxAnisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
-
-function configureLoadedTexture(texture, { isColorMap = true } = {}) {
-  texture.anisotropy = maxAnisotropy;
-  texture.generateMipmaps = true;
-  if (isColorMap) {
-    texture.colorSpace = SRGBColorSpace;
-  }
-}
-
-function disposeThreeMaterial(material) {
-  if (!material) return;
-  if (Array.isArray(material)) {
-    material.forEach(disposeThreeMaterial);
-    return;
-  }
-  if (typeof material.dispose === 'function') {
-    material.dispose();
-  }
-}
-
-function loadHiResTexture(url, options = {}) {
-  const texture = textureLoader.load(
-    url,
-    (loaded) => configureLoadedTexture(loaded, options),
-    undefined,
-    () => {
-      // Keep procedural fallback material behavior if a texture fails to load.
-    }
-  );
-  configureLoadedTexture(texture, options);
-  return texture;
-}
+const {
+  textureLoader,
+  solarObservationTextureLoader,
+  configureLoadedTexture,
+  disposeThreeMaterial,
+  loadHiResTexture
+} = createTextureManager({
+  maxAnisotropy
+});
 
 function fract(value) {
   return value - Math.floor(value);
@@ -2300,30 +2057,13 @@ function createOrbitLine(body) {
 
 // ── Scene Graph ──────────────────────────────────────────────────────────────
 
-function mountSceneGraph() {
-  for (const body of catalog.bodies) {
-    createBodyNode(body);
-  }
-
-  for (const body of catalog.bodies) {
-    const node = bodyNodes.get(body.id);
-    if (!body.parentId) {
-      solarSystemGroup.add(node);
-    } else {
-      const parentNode = bodyNodes.get(body.parentId);
-      parentNode.add(node);
-    }
-
-    const orbitLine = createOrbitLine(body);
-    if (orbitLine) {
-      if (body.parentId) {
-        bodyNodes.get(body.parentId).add(orbitLine);
-      } else {
-        solarSystemGroup.add(orbitLine);
-      }
-    }
-  }
-}
+const mountSceneGraph = () => mountSceneGraphImpl({
+  catalog,
+  createBodyNode,
+  bodyNodes,
+  createOrbitLine,
+  solarSystemGroup
+});
 
 // ── Background Stars ─────────────────────────────────────────────────────────
 
@@ -3438,39 +3178,14 @@ serverKuiperPoints.frustumCulled = false;
 solarSystemGroup.add(serverKuiperPoints);
 
 function applyServerState(state) {
-  if (!state || !state.bodies) return;
-
-  simState.julianDate = state.jd;
-
-  for (const body of catalog.bodies) {
-    const serverBody = state.bodies[body.id];
-    const node = bodyNodes.get(body.id);
-    if (!node) continue;
-
-    if (serverBody) {
-      // Server provides world coordinates — convert to parent-relative for scene graph
-      if (body.parentId) {
-        const parentServer = state.bodies[body.parentId];
-        if (parentServer) {
-          node.position.set(
-            serverBody.pos[0] - parentServer.pos[0],
-            serverBody.pos[1] - parentServer.pos[1],
-            serverBody.pos[2] - parentServer.pos[2]
-          );
-        }
-      } else {
-        node.position.set(serverBody.pos[0], serverBody.pos[1], serverBody.pos[2]);
-      }
-    } else if (body.parentId && body.orbit) {
-      // Moons without server data: local Keplerian relative to parent
-      const elapsedDays = state.jd - body.orbit.epochJd;
-      propagateKeplerOrbit(body.orbit, elapsedDays, node.position);
-    }
-
-    if (body.type === 'moon') {
-      node.visible = dom.toggleMoons.checked;
-    }
-  }
+  applyServerStateToScene({
+    state,
+    simState,
+    catalog,
+    bodyNodes,
+    propagateKeplerOrbit,
+    showMoons: dom.toggleMoons.checked
+  });
 }
 
 function applyServerKuiper(particles) {
@@ -3591,7 +3306,14 @@ function resizeRenderer() {
     camera.updateProjectionMatrix();
     updateZoomMetricsUI();
   }
-  updateRenderResolutionStatus(renderWidth, renderHeight, viewportWidth, viewportHeight);
+  updateRenderResolutionStatus({
+    statusElement: dom.statusRender,
+    renderWidth,
+    renderHeight,
+    viewportWidth,
+    viewportHeight,
+    maxPixelRatio: runtimeUiConfig.maxPixelRatio
+  });
 }
 
 window.addEventListener('resize', resizeRenderer);
@@ -3605,22 +3327,12 @@ const pickRaycaster = new Raycaster();
 const pickPointerNdc = new Vector2();
 
 function updateSceneBodies() {
-  for (const body of catalog.bodies) {
-    const state = model.getState(body.id);
-    const node = bodyNodes.get(body.id);
-
-    if (!state || !node) continue;
-
-    if (body.parentId) {
-      node.position.copy(state.relativePosition);
-    } else {
-      node.position.copy(state.worldPosition);
-    }
-
-    if (body.type === 'moon') {
-      node.visible = dom.toggleMoons.checked;
-    }
-  }
+  updateSceneBodiesFromModel({
+    catalog,
+    model,
+    bodyNodes,
+    showMoons: dom.toggleMoons.checked
+  });
 }
 
 function updateLocatorOverlays() {
@@ -4661,53 +4373,51 @@ const timeController = createTimeController({
   formatJulianAsDate
 });
 
-function setupUiEvents() {
-  timeController.bindUi();
-  plannerController.bindPlannerUi();
+const quickViewPresets = [
+  { element: dom.focusEarthAtmo, bodyId: 'earth', altitudeKm: EARTH_ATMOSPHERE_ALTITUDE_KM },
+  { element: dom.focusEarthLeo, bodyId: 'earth', altitudeKm: EARTH_LEO_ALTITUDE_KM },
+  { element: dom.focusEarthGeo, bodyId: 'earth', altitudeKm: EARTH_GEO_ALTITUDE_KM },
+  { element: dom.focusMoonSkim, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_SKIM_ALTITUDE_KM },
+  { element: dom.focusMoonLlo, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_LLO_ALTITUDE_KM },
+  { element: dom.focusMoonNrho, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_NRHO_ALTITUDE_KM },
+  { element: dom.focusMarsAtmo, bodyId: 'mars', altitudeKm: MARS_ATMOSPHERE_ALTITUDE_KM },
+  { element: dom.focusMarsSkim, bodyId: 'mars', altitudeKm: MARS_SKIM_ALTITUDE_KM },
+  { element: dom.focusMarsLmo, bodyId: 'mars', altitudeKm: MARS_LMO_ALTITUDE_KM },
+  { element: dom.focusMarsAreo, bodyId: 'mars', altitudeKm: MARS_AREOSTATIONARY_ALTITUDE_KM }
+];
 
-  setupUiBindings({
-    dom,
-    simState,
-    controls,
-    quickViewPresets: [
-      { element: dom.focusEarthAtmo, bodyId: 'earth', altitudeKm: EARTH_ATMOSPHERE_ALTITUDE_KM },
-      { element: dom.focusEarthLeo, bodyId: 'earth', altitudeKm: EARTH_LEO_ALTITUDE_KM },
-      { element: dom.focusEarthGeo, bodyId: 'earth', altitudeKm: EARTH_GEO_ALTITUDE_KM },
-      { element: dom.focusMoonSkim, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_SKIM_ALTITUDE_KM },
-      { element: dom.focusMoonLlo, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_LLO_ALTITUDE_KM },
-      { element: dom.focusMoonNrho, bodyId: CANONICAL_BODY_IDS.moon, altitudeKm: MOON_NRHO_ALTITUDE_KM },
-      { element: dom.focusMarsAtmo, bodyId: 'mars', altitudeKm: MARS_ATMOSPHERE_ALTITUDE_KM },
-      { element: dom.focusMarsSkim, bodyId: 'mars', altitudeKm: MARS_SKIM_ALTITUDE_KM },
-      { element: dom.focusMarsLmo, bodyId: 'mars', altitudeKm: MARS_LMO_ALTITUDE_KM },
-      { element: dom.focusMarsAreo, bodyId: 'mars', altitudeKm: MARS_AREOSTATIONARY_ALTITUDE_KM }
-    ],
-    handlers: {
-      systemViewModeLocal: SYSTEM_VIEW_MODE.SYSTEM_LOCAL,
-      sendServerMessage: (msg) => simClient.send(msg),
-      updateZoomMetricsUI,
-      focusBodyAtAltitude,
-      applyRenderVisibility,
-      refillBodyList,
-      selectStarSystem,
-      setHoveredNearbySystem,
-      updateNearbySystemHoverAtClientPosition,
-      pickBodyAtClientPosition,
-      selectBodyAndTrack,
-      pickNearbySystemAtClientPosition,
-      bodyDisplayName,
-      updateEarthOrbitGuidesVisibility,
-      returnToSolarSystemView,
-      connectSimulation: (backend) => simClient.connect(backend),
-      disconnectSimulation: () => simClient.disconnect(),
-      applyScaleMode,
-      updateBodyInfoPanel
-    }
-  });
-}
+setupInputHandlers({
+  timeController,
+  plannerController,
+  dom,
+  simState,
+  controls,
+  quickViewPresets,
+  handlers: {
+    systemViewModeLocal: SYSTEM_VIEW_MODE.SYSTEM_LOCAL,
+    sendServerMessage: (msg) => simClient.send(msg),
+    updateZoomMetricsUI,
+    focusBodyAtAltitude,
+    applyRenderVisibility,
+    refillBodyList,
+    selectStarSystem,
+    setHoveredNearbySystem,
+    updateNearbySystemHoverAtClientPosition,
+    pickBodyAtClientPosition,
+    selectBodyAndTrack,
+    pickNearbySystemAtClientPosition,
+    bodyDisplayName,
+    updateEarthOrbitGuidesVisibility,
+    returnToSolarSystemView,
+    connectSimulation: (backend) => simClient.connect(backend),
+    disconnectSimulation: () => simClient.disconnect(),
+    applyScaleMode,
+    updateBodyInfoPanel
+  }
+});
 
 // ── Initialize ───────────────────────────────────────────────────────────────
 
-setupUiEvents();
 plannerController.fillPlannerSelects();
 refreshStarSystemListOptions();
 syncStarSystemSelection('solar-system');
@@ -4723,95 +4433,54 @@ dom.plannerOutput.textContent = 'No plotted route.';
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
-let previousTimestamp = performance.now();
-
-function animate(timestamp) {
-  const deltaSeconds = Math.max(0, (timestamp - previousTimestamp) / 1_000);
-  previousTimestamp = timestamp;
-  const previousJd = simState.julianDate;
-
-  if (simState.serverConnected && simClient.latestState) {
-    // ── Server-driven simulation ─────────────────────────────────
-    applyServerState(simClient.latestState);
-
-    // Apply server Kuiper particles if available
-    if (simClient.latestKuiper) {
-      applyServerKuiper(simClient.latestKuiper);
-    }
-
-    // Sync time controls to server
-    simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
-  } else {
-    // ── Local Keplerian simulation ───────────────────────────────
-    timeController.advanceLocalTime(deltaSeconds);
-    model.update(simState.julianDate);
-    updateSceneBodies();
-  }
-  const deltaSimDays = simState.julianDate - previousJd;
-
-  if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
-    updateLocalSystemScene(simState.julianDate);
-  }
-
-  updateBodyRotations(simState.julianDate);
-  updateSunDynamics(simState.julianDate, timestamp * 0.001);
-  updateEarthWeather(simState.julianDate);
-  updateMarsWeather(simState.julianDate);
-  maybeRefreshSolarPhysics(Date.now());
-  maybeRefreshEarthCloudCoverage(Date.now());
-  maybeRefreshMarsCloudCoverage(Date.now());
-  updateEarthSurfaceLod();
-  updateMoonEarthshine();
-  updateMarsSeasonalAppearance(simState.julianDate);
-  const satelliteViewState = {
-    camera,
-    viewportHeight: Math.max(1, renderer.domElement.clientHeight || window.innerHeight || 1)
-  };
-  for (const system of [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem]) {
-    if (!system) continue;
-    system.update(simState.julianDate, satelliteViewState);
-  }
-  updateAsteroidBelt(simState.julianDate);
-
-  // Dynamic route update — keeps trajectory curves attached to moving planets
-  updateRouteVisualization();
-
-  // Asteroid belt LOD with adaptive count and optional local perturbation refinement.
-  updateAsteroidDetail(simState.julianDate, deltaSimDays);
-
-  // Kuiper belt LOD — shows detail particles when zoomed into the belt region
-  updateKuiperDetail();
-  // Keep deep-space layer visibility synchronized with UI toggles.
-  oortCloud.visible = Boolean(dom.toggleOort?.checked);
-
-  updateFollowTarget();
-
-  // Keep the selected follow body status synchronized
-  if (simState.followBodyId) {
-    dom.statusFocus.textContent = `Following: ${bodyDisplayName(simState.followBodyId)}`;
-  }
-
-  // Keep sky layers centered on camera to emulate an effectively infinite backdrop.
-  backgroundStars.position.copy(camera.position);
-  surveyMilkySphere.position.copy(camera.position);
-  updateNearbySystemsPositions(simState.julianDate);
-  syncSystemViewModeWithCameraRange();
-  applyNearbySystemsVisibility();
-
-  updateCameraTransition(deltaSeconds);
-  updateAdaptiveZoomBehavior();
-  controls.update();
-  resizeRenderer();
-  updateCameraClipPlanes();
-  updateLocatorOverlays();
-  updateGravityVectors();
-  updateZoomMetricsUI();
-  renderer.render(scene, camera);
-
-  timeController.updateHud();
-
-  requestAnimationFrame(animate);
-}
+const animationLoop = createAnimationLoop({
+  simState,
+  simClient,
+  systemViewModeLocal: SYSTEM_VIEW_MODE.SYSTEM_LOCAL,
+  applyServerState,
+  applyServerKuiper,
+  timeController,
+  model,
+  updateSceneBodies,
+  updateLocalSystemScene,
+  updateBodyRotations,
+  updateSunDynamics,
+  updateEarthWeather,
+  updateMarsWeather,
+  maybeRefreshSolarPhysics,
+  maybeRefreshEarthCloudCoverage,
+  maybeRefreshMarsCloudCoverage,
+  updateEarthSurfaceLod,
+  updateMoonEarthshine,
+  updateMarsSeasonalAppearance,
+  getSatelliteSystems: () => [earthSatelliteSystem, moonSatelliteSystem, marsSatelliteSystem],
+  camera,
+  renderer,
+  updateAsteroidBelt,
+  updateRouteVisualization,
+  updateAsteroidDetail,
+  updateKuiperDetail,
+  updateOortVisibility: () => {
+    oortCloud.visible = Boolean(dom.toggleOort?.checked);
+  },
+  updateFollowTarget,
+  bodyDisplayName,
+  dom,
+  backgroundStars,
+  surveyMilkySphere,
+  updateNearbySystemsPositions,
+  syncSystemViewModeWithCameraRange,
+  applyNearbySystemsVisibility,
+  updateCameraTransition,
+  updateAdaptiveZoomBehavior,
+  controls,
+  resizeRenderer,
+  updateCameraClipPlanes,
+  updateLocatorOverlays,
+  updateGravityVectors,
+  updateZoomMetricsUI,
+  scene
+});
 
 focusBody('sun', true);
 updateCameraClipPlanes();
@@ -4819,4 +4488,4 @@ updateZoomMetricsUI();
 maybeRefreshEarthCloudCoverage(Date.now(), true);
 maybeRefreshMarsCloudCoverage(Date.now(), true);
 maybeRefreshSolarPhysics(Date.now(), true);
-requestAnimationFrame(animate);
+animationLoop.start();
