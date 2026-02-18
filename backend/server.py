@@ -940,7 +940,8 @@ class SimulationRunner:
             if jd is None:
                 self._push_error("`set_julian_date` requires numeric `jd`", action=action)
                 return
-            self.engine.set_julian_date(jd)
+            if abs(self.engine.get_julian_date() - jd) > 1e-12:
+                self.engine.set_julian_date(jd)
             if self.kuiper.active:
                 self.kuiper.deactivate()
 
