@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+import server
 from server import app
 
 client = TestClient(app)
@@ -14,6 +15,8 @@ def test_solar_capabilities_exposes_fidelity_levels() -> None:
     payload = response.json()
     assert payload["model"]
     assert "fidelity_levels" in payload
+    assert "forcing_modes" in payload
+    assert "hybrid" in payload["forcing_modes"]
     assert "operational" in payload["fidelity_levels"]
     assert payload["solar_radius_km"] > 600_000
     assert payload["active_region_count"] >= 32
@@ -67,3 +70,72 @@ def test_solar_physics_rejects_unknown_fidelity() -> None:
     )
     assert response.status_code == 400
     assert "fidelity" in response.text.lower()
+
+
+def test_solar_physics_rejects_unknown_forcing_mode() -> None:
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "forcing": "ultra_real",
+        },
+    )
+    assert response.status_code == 400
+    assert "forcing" in response.text.lower()
+
+
+def test_solar_physics_hybrid_mode_without_live_data_is_stable() -> None:
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "forcing": "hybrid",
+            "live_data": "false",
+            "max_features": 32,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["forcing"] == "hybrid"
+    assert payload["live_data_enabled"] is False
+    assert payload["data_assimilation"]["mode"] == "hybrid"
+    assert payload["data_assimilation"]["applied"] is False
+    assert payload["data_assimilation"]["observed_confidence"] == 0.0
+    assert payload["data_assimilation"]["blend_weight"] == 0.0
+    assert payload["activity_index"] == payload["data_assimilation"]["blended_activity_index"]
+
+
+def test_solar_realtime_aia_tile_rejects_unknown_channel() -> None:
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_999"})
+
+    assert response.status_code == 400
+    assert "channel" in response.text.lower()
+
+
+def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> None:
+    payload = {
+        "channel": "aia_193",
+        "image_id": "184733789",
+        "image_date": "2026-02-17 03:19:41",
+        "tile_url": "https://api.helioviewer.org/v2/getTile/?id=184733789&x=-1&y=-1&imageScale=0.6",
+        "content": b"\x89PNG\r\n\x1a\nfake",
+        "content_type": "image/png",
+    }
+
+    def fake_latest_aia_tile(channel: str, jd: float | None = None, force_refresh: bool = False):
+        assert channel == "aia_193"
+        assert jd is None
+        assert force_refresh is False
+        return payload
+
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+    assert response.status_code == 200
+    assert response.content == payload["content"]
+    assert response.headers.get("content-type", "").startswith("image/png")
+    assert response.headers.get("x-solar-aia-channel") == "aia_193"
+    assert response.headers.get("x-solar-aia-image-id") == "184733789"
