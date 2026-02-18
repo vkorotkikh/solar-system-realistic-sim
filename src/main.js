@@ -3175,6 +3175,7 @@ void loadNearbySystemsCatalog();
 const simClient = new SimulationClient({ buildWebSocketUrl: backendWebSocketUrl });
 simClient.onServerReady = () => {
   simClient.send({ type: 'set_time_scale', days_per_sec: simState.timeScaleDaysPerSec });
+  simState.timeScaleDirty = false;
   simClient.send({ type: simState.paused ? 'pause' : 'resume' });
 };
 

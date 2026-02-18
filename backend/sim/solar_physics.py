@@ -713,9 +713,9 @@ class SolarCoronaPhysicsModel:
         )
 
         if family == "cme":
-            base_speed = 20.0 + 480.0 * tube.strength
-            activity_speed = activity * (600.0 + tube.strength * 1_200.0)
-            eruption_speed = eruption_gate * 1_200.0 * tube.strength
+            base_speed = 20.0 + 300.0 * tube.strength
+            activity_speed = activity * (360.0 + tube.strength * 900.0)
+            eruption_speed = eruption_gate * (400.0 + 1_800.0 * tube.strength)
             speed_kms = _clamp(
                 base_speed + activity_speed + eruption_speed,
                 20.0,
