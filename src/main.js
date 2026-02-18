@@ -9,12 +9,9 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
-  Line,
-  LineBasicMaterial,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
-  Matrix4,
   Points,
   PointsMaterial,
   RepeatWrapping,
@@ -95,11 +92,18 @@ import {
 } from './frontend/app/sceneSetup.js';
 import { createTextureManager } from './frontend/app/textureManager.js';
 import { createCameraController } from './frontend/app/cameraController.js';
+import { createCameraTransitions } from './frontend/camera/transitions.js';
 import {
   mountSceneGraph as mountSceneGraphImpl,
   updateSceneBodiesFromModel,
   applyServerStateToScene
 } from './frontend/app/bodyManager.js';
+import { createOrbitLine as createOrbitLineImpl } from './frontend/rendering/orbitRenderer.js';
+import { updateBodySurfaceLod as updateBodySurfaceLodImpl } from './frontend/rendering/lodManager.js';
+import {
+  createMilkyWayRenderer,
+  equatorialDegToCartesian
+} from './frontend/rendering/milkyWay.js';
 import { setupInputHandlers } from './frontend/app/inputHandler.js';
 import { createAnimationLoop } from './frontend/app/animationLoop.js';
 import {
@@ -154,6 +158,7 @@ const dom = {
   toggleNearbySystems: document.getElementById('toggle-nearby-systems'),
   toggleEarthSatellites: document.getElementById('toggle-earth-satellites'),
   toggleSatelliteJ2: document.getElementById('toggle-satellite-j2'),
+  aiaChannel: document.getElementById('aia-channel'),
   starSystemList: document.getElementById('star-system-list'),
   bodySearch: document.getElementById('body-search'),
   bodyList: document.getElementById('body-list'),
@@ -272,19 +277,6 @@ const EXPLORER_BODY_TYPE_ORDER = Object.freeze({
   moon: 3,
   asteroid: 4
 });
-const J2000_ECLIPTIC_OBLIQUITY_RAD = 23.439291111 * DEG_TO_RAD;
-const COS_J2000_ECLIPTIC_OBLIQUITY = Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD);
-const SIN_J2000_ECLIPTIC_OBLIQUITY = Math.sin(J2000_ECLIPTIC_OBLIQUITY_RAD);
-// IAU 1958 galactic frame in J2000/ICRS realization (Hipparcos/ERFA constants).
-const GALACTIC_TO_EQUATORIAL_M11 = -0.0548755604;
-const GALACTIC_TO_EQUATORIAL_M12 = 0.4941094279;
-const GALACTIC_TO_EQUATORIAL_M13 = -0.867666149;
-const GALACTIC_TO_EQUATORIAL_M21 = -0.8734370902;
-const GALACTIC_TO_EQUATORIAL_M22 = -0.44482963;
-const GALACTIC_TO_EQUATORIAL_M23 = -0.1980763734;
-const GALACTIC_TO_EQUATORIAL_M31 = -0.4838350155;
-const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
-const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 const LABEL_POINTER_TIP_OFFSET_NORM = (192 * 0.78 + 24 - 192 * 0.5) / 192;
 const nearbySystemConstants = Object.freeze({
@@ -603,16 +595,16 @@ const localSystemState = {
     activeLocalSystem = value;
   }
 };
-const cameraTransitionState = {
-  active: false,
-  elapsedSec: 0,
-  durationSec: 1.0,
-  startTarget: new Vector3(),
-  startCamera: new Vector3(),
-  endTarget: new Vector3(),
-  endCamera: new Vector3(),
-  onComplete: null
-};
+const {
+  startCameraTransition,
+  updateCameraTransition,
+  cancelCameraTransition,
+  isCameraTransitionActive,
+  flyToInterstellarTarget
+} = createCameraTransitions({
+  camera,
+  controls
+});
 const {
   updateZoomMetricsUI,
   updateAdaptiveZoomBehavior,
@@ -638,7 +630,7 @@ const {
     nearbySystemsLoaded,
     nearbySystemsMaxDistanceAu
   }),
-  isCameraTransitionActive: () => cameraTransitionState.active,
+  isCameraTransitionActive,
   tempVector: new Vector3()
 });
 const earthOrbitGuides = [];
@@ -682,6 +674,7 @@ let solarObservationTextureImageId = null;
 let solarObservationTextureChannel = null;
 let solarObservationTextureLoadInFlight = false;
 let solarObservationTextureLastLoadMs = 0;
+let userAiaChannelOverride = null;
 let marsSurfaceMesh = null;
 let marsCloudMesh = null;
 let marsAtmosphereMesh = null;
@@ -1233,38 +1226,6 @@ function getMaterial(body) {
   return material;
 }
 
-function startCameraTransition(endTarget, endCamera, durationSec = 1.2, onComplete = null) {
-  cameraTransitionState.active = true;
-  cameraTransitionState.elapsedSec = 0;
-  cameraTransitionState.durationSec = Math.max(0.05, durationSec);
-  cameraTransitionState.startTarget.copy(controls.target);
-  cameraTransitionState.startCamera.copy(camera.position);
-  cameraTransitionState.endTarget.copy(endTarget);
-  cameraTransitionState.endCamera.copy(endCamera);
-  cameraTransitionState.onComplete = typeof onComplete === 'function' ? onComplete : null;
-  controls.enabled = false;
-}
-
-function updateCameraTransition(deltaSeconds) {
-  if (!cameraTransitionState.active) return;
-  cameraTransitionState.elapsedSec += Math.max(0, deltaSeconds);
-  const normalized = Math.min(1, cameraTransitionState.elapsedSec / cameraTransitionState.durationSec);
-  const eased = 1 - Math.pow(1 - normalized, 3);
-
-  controls.target.lerpVectors(cameraTransitionState.startTarget, cameraTransitionState.endTarget, eased);
-  camera.position.lerpVectors(cameraTransitionState.startCamera, cameraTransitionState.endCamera, eased);
-
-  if (normalized >= 1) {
-    cameraTransitionState.active = false;
-    controls.enabled = true;
-    if (cameraTransitionState.onComplete) {
-      const handler = cameraTransitionState.onComplete;
-      cameraTransitionState.onComplete = null;
-      handler();
-    }
-  }
-}
-
 const {
   setLocalBodyMeshScale,
   localBodyRenderRadiusAu,
@@ -1323,8 +1284,7 @@ function setSystemViewMode(mode) {
 
   solarSystemGroup.visible = true;
   localSystemGroup.visible = false;
-  cameraTransitionState.active = false;
-  controls.enabled = true;
+  cancelCameraTransition();
   controls.minDistance = simState.useRealisticScale ? 0.000003 : 0.0002;
   if (dom.returnSolarSystem) {
     dom.returnSolarSystem.disabled = true;
@@ -1384,16 +1344,34 @@ async function enterLocalSystemFromNearbySystem(systemId) {
     simState.followBodyId = null;
     simState.focusedNearbySystemId = system.id;
     simState.focusedBodyId = activeLocalSystem.primaryBodyId;
-    setSystemViewMode(SYSTEM_VIEW_MODE.SYSTEM_LOCAL);
 
-    const target = new Vector3(0, 0, 0);
-    const offset = camera.position.clone().sub(controls.target);
-    const preferredDistance = activeLocalSystem.preferredDistanceAu;
-    if (offset.lengthSq() < 1e-12) {
-      offset.set(0, -preferredDistance, preferredDistance * 0.6);
-    }
-    const desiredCamera = target.clone().add(offset.setLength(preferredDistance));
-    startCameraTransition(target, desiredCamera, 1.35);
+    // Phase 1: Interstellar Fly-To
+    // We animate the camera to the target in the INTERSTELLAR coordinate space first.
+    // Once we arrive, we switch the view mode and reset coordinates.
+    const flyToTarget = system.worldPosition.clone();
+
+    flyToInterstellarTarget(flyToTarget, () => {
+      // Phase 2: Switch Context & Reset Coordinates
+      // Now we are "at" the target star. We switch to local mode.
+      setSystemViewMode(SYSTEM_VIEW_MODE.SYSTEM_LOCAL);
+
+      // Reset camera to be relative to the new local origin (0,0,0)
+      // We position it at the same relative offset we arrived at (approx 1000 AU out)
+      const arrivalOffset = camera.position.clone().sub(flyToTarget);
+
+      // Snap camera to new local definition
+      const localTarget = new Vector3(0, 0, 0); // Primary body is at origin
+      controls.target.copy(localTarget);
+      camera.position.copy(localTarget).add(arrivalOffset);
+
+      // Phase 3: Final Approach
+      // Smoothly zoom in from the arrival distance (1000 AU) to the preferred viewing distance
+      const preferredDistance = activeLocalSystem.preferredDistanceAu;
+      const finalOffset = arrivalOffset.clone().setLength(preferredDistance);
+      const finalCameraPos = localTarget.clone().add(finalOffset);
+
+      startCameraTransition(localTarget, finalCameraPos, 2.0);
+    });
 
     const starsCount = Array.isArray(manifest.stars) ? manifest.stars.length : 0;
     const planetsCount = Array.isArray(manifest.planets) ? manifest.planets.length : 0;
@@ -1415,8 +1393,7 @@ async function enterLocalSystemFromNearbySystem(systemId) {
 function returnToSolarSystemView({ hardSnap = true } = {}) {
   if (simState.systemViewMode !== SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return;
 
-  cameraTransitionState.active = false;
-  controls.enabled = true;
+  cancelCameraTransition();
   simState.activeLocalSystemId = null;
   simState.focusedNearbySystemId = null;
   setSystemViewMode(SYSTEM_VIEW_MODE.SOLAR);
@@ -1502,7 +1479,7 @@ function maybeRefreshSunObservationTexture(nowMs = Date.now(), force = false) {
   if (solarObservationTextureLoadInFlight) return;
   if (!solarPhysicsState) return;
 
-  const selection = pickAiaObservationChannel(solarPhysicsState);
+  const selection = pickAiaObservationChannel(solarPhysicsState, undefined, userAiaChannelOverride);
   if (!selection) return;
 
   const nextImageId = `${selection.imageId ?? ''}`;
@@ -1662,17 +1639,17 @@ function createBodyNode(body) {
     ? geometryCache.sun
     : body.type === 'moon'
       ? (
-          isEarthMoon
-            ? geometryCache.moonSurfaceLod.low
-            : (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
-        )
+        isEarthMoon
+          ? geometryCache.moonSurfaceLod.low
+          : (body.isMajor ? geometryCache.majorMoon : geometryCache.moon)
+      )
       : (
-          body.id === 'earth'
-            ? geometryCache.earthSurfaceLod.low
-            : body.id === 'mars'
-              ? geometryCache.marsSurfaceLod.low
-              : geometryCache.planet
-        );
+        body.id === 'earth'
+          ? geometryCache.earthSurfaceLod.low
+          : body.id === 'mars'
+            ? geometryCache.marsSurfaceLod.low
+            : geometryCache.planet
+      );
   const material = getMaterial(body);
 
   const mesh = new Mesh(geometry, material);
@@ -2049,43 +2026,11 @@ function createBodyNode(body) {
 // ── Orbit Lines ──────────────────────────────────────────────────────────────
 
 function createOrbitLine(body) {
-  if (!body.orbit) {
-    return null;
-  }
-
-  // More segments for very long-period orbits (KBOs) and eccentric orbits
-  let segments;
-  if (body.type === 'moon') {
-    segments = 64;
-  } else if (body.orbit.periodDays > 50_000) {
-    segments = 400;
-  } else {
-    segments = 220;
-  }
-
-  const points = [];
-  const point = new Vector3();
-
-  for (let i = 0; i <= segments; i += 1) {
-    const elapsedDays = (i / segments) * body.orbit.periodDays;
-    propagateKeplerOrbit(body.orbit, elapsedDays, point);
-    points.push(point.clone());
-  }
-
-  const geometry = new BufferGeometry().setFromPoints(points);
-  const color = body.type === 'moon' ? '#5e7183' : body.type === 'dwarf' ? '#6e8a7c' : body.type === 'asteroid' ? '#8a7e6e' : '#7fa2bc';
-
-  const material = new LineBasicMaterial({
-    color: new Color(color),
-    transparent: true,
-    opacity: body.type === 'moon' ? 0.22 : body.type === 'dwarf' ? 0.28 : body.type === 'asteroid' ? 0.25 : 0.36
+  return createOrbitLineImpl({
+    body,
+    propagateKeplerOrbit,
+    orbitLines
   });
-
-  const line = new Line(geometry, material);
-  line.userData.bodyType = body.type;
-
-  orbitLines.push(line);
-  return line;
 }
 
 // ── Scene Graph ──────────────────────────────────────────────────────────────
@@ -2100,400 +2045,26 @@ const mountSceneGraph = () => mountSceneGraphImpl({
 
 // ── Background Stars ─────────────────────────────────────────────────────────
 
-function bvToRgbUnit(bvValue) {
-  const bv = Math.min(2.2, Math.max(-0.4, Number.isFinite(bvValue) ? bvValue : 0.65));
-  let t;
-  if (bv < 0.0) t = (bv + 0.4) / 0.4;
-  else if (bv < 0.4) t = bv / 0.4;
-  else if (bv < 1.5) t = (bv - 0.4) / 1.1;
-  else t = (bv - 1.5) / 0.7;
+const {
+  backgroundStars,
+  surveyMilkySphere,
+  applyMilkyWayAppearance: applyMilkyWayAppearanceImpl
+} = createMilkyWayRenderer({
+  scene,
+  starsCatalog,
+  surveyTexture: hiResTextures.milkyWaySurvey,
+  starsRadius: 18_000,
+  surveyRadius: 19_000
+});
 
-  if (bv < 0.0) return [0.62 + 0.1 * t, 0.74 + 0.1 * t, 1.0];
-  if (bv < 0.4) return [0.72 + 0.23 * t, 0.84 + 0.14 * t, 1.0];
-  if (bv < 1.5) return [1.0, 0.98 - 0.3 * t, 0.95 - 0.62 * t];
-  return [1.0, 0.68 - 0.2 * t, 0.33 - 0.08 * t];
-}
-
-function equatorialDegToUnit(raDeg, decDeg) {
-  const ra = raDeg * DEG_TO_RAD;
-  const dec = decDeg * DEG_TO_RAD;
-  const cosDec = Math.cos(dec);
-  return [
-    cosDec * Math.cos(ra),
-    cosDec * Math.sin(ra),
-    Math.sin(dec)
-  ];
-}
-
-function galacticUnitToEquatorial(xg, yg, zg) {
-  return [
-    GALACTIC_TO_EQUATORIAL_M11 * xg + GALACTIC_TO_EQUATORIAL_M12 * yg + GALACTIC_TO_EQUATORIAL_M13 * zg,
-    GALACTIC_TO_EQUATORIAL_M21 * xg + GALACTIC_TO_EQUATORIAL_M22 * yg + GALACTIC_TO_EQUATORIAL_M23 * zg,
-    GALACTIC_TO_EQUATORIAL_M31 * xg + GALACTIC_TO_EQUATORIAL_M32 * yg + GALACTIC_TO_EQUATORIAL_M33 * zg
-  ];
-}
-
-function equatorialUnitToEcliptic(xEq, yEq, zEq) {
-  return [
-    xEq,
-    COS_J2000_ECLIPTIC_OBLIQUITY * yEq + SIN_J2000_ECLIPTIC_OBLIQUITY * zEq,
-    -SIN_J2000_ECLIPTIC_OBLIQUITY * yEq + COS_J2000_ECLIPTIC_OBLIQUITY * zEq
-  ];
-}
-
-function eclipticUnitToEquatorial(xEcl, yEcl, zEcl) {
-  return [
-    xEcl,
-    COS_J2000_ECLIPTIC_OBLIQUITY * yEcl - SIN_J2000_ECLIPTIC_OBLIQUITY * zEcl,
-    SIN_J2000_ECLIPTIC_OBLIQUITY * yEcl + COS_J2000_ECLIPTIC_OBLIQUITY * zEcl
-  ];
-}
-
-function equatorialDegToCartesian(raDeg, decDeg, radius) {
-  const [xEq, yEq, zEq] = equatorialDegToUnit(raDeg, decDeg);
-  const [x, y, z] = equatorialUnitToEcliptic(xEq, yEq, zEq);
-  return [
-    x * radius,
-    y * radius,
-    z * radius
-  ];
-}
-
-function galacticToCartesian(lRad, bRad, radius) {
-  const cosB = Math.cos(bRad);
-  const xg = cosB * Math.cos(lRad);
-  const yg = cosB * Math.sin(lRad);
-  const zg = Math.sin(bRad);
-  const [xEq, yEq, zEq] = galacticUnitToEquatorial(xg, yg, zg);
-  const [x, y, z] = equatorialUnitToEcliptic(xEq, yEq, zEq);
-  return [x * radius, y * radius, z * radius];
-}
-
-function angularSeparationDeg(ax, ay, az, bx, by, bz) {
-  const dot = Math.min(1, Math.max(-1, ax * bx + ay * by + az * bz));
-  return (Math.acos(dot) * 180) / Math.PI;
-}
-
-function validateGalacticFrame() {
-  const [gcX, gcY, gcZ] = galacticToCartesian(0, 0, 1);
-  const [gcEqX, gcEqY, gcEqZ] = eclipticUnitToEquatorial(gcX, gcY, gcZ);
-  const [gcExpectedX, gcExpectedY, gcExpectedZ] = equatorialDegToUnit(266.4051, -28.936175);
-  const gcErrorDeg = angularSeparationDeg(gcEqX, gcEqY, gcEqZ, gcExpectedX, gcExpectedY, gcExpectedZ);
-
-  const [ngpX, ngpY, ngpZ] = galacticToCartesian(0, Math.PI * 0.5, 1);
-  const [ngpEqX, ngpEqY, ngpEqZ] = eclipticUnitToEquatorial(ngpX, ngpY, ngpZ);
-  const [ngpExpectedX, ngpExpectedY, ngpExpectedZ] = equatorialDegToUnit(192.85948, 27.12825);
-  const ngpErrorDeg = angularSeparationDeg(ngpEqX, ngpEqY, ngpEqZ, ngpExpectedX, ngpExpectedY, ngpExpectedZ);
-
-  if (gcErrorDeg > 1e-2 || ngpErrorDeg > 1e-2) {
-    console.warn(
-      `[Milky Way frame] Verification failed: GC error ${gcErrorDeg.toExponential(2)} deg, ` +
-      `NGP error ${ngpErrorDeg.toExponential(2)} deg`
-    );
-  }
-}
-
-if (import.meta.env?.DEV) {
-  validateGalacticFrame();
-}
-
-function wrapRadians(angle) {
-  const wrapped = angle % TWO_PI;
-  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
-}
-
-function circularDistanceRadians(a, b) {
-  const d = Math.abs(a - b) % TWO_PI;
-  return Math.min(d, TWO_PI - d);
-}
-
-function gaussianByDistance(distance, sigma) {
-  if (sigma <= 0) return 0;
-  return Math.exp(-(distance * distance) / (2 * sigma * sigma));
-}
-
-function sampleGaussian(sigma = 1) {
-  const u1 = Math.max(1e-8, Math.random());
-  const u2 = Math.max(1e-8, Math.random());
-  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(TWO_PI * u2) * sigma;
-}
-
-function galacticLongitudeWeight(lRad) {
-  const bulge = gaussianByDistance(circularDistanceRadians(lRad, 0), 0.33);
-  const scutumCentaurus = gaussianByDistance(circularDistanceRadians(lRad, 0.42), 0.27);
-  const cygnus = gaussianByDistance(circularDistanceRadians(lRad, 1.45), 0.31);
-  const carina = gaussianByDistance(circularDistanceRadians(lRad, 5.05), 0.3);
-  const anticenter = gaussianByDistance(circularDistanceRadians(lRad, Math.PI), 0.5);
-  const density = 0.18 + bulge * 0.95 + scutumCentaurus * 0.48 + cygnus * 0.44 + carina * 0.4 + anticenter * 0.25;
-  return Math.max(0.16, Math.min(1, density));
-}
-
-function createStandardMilkyWayLayer(radius) {
-  const milkyCount = 34_000;
-  const milkyPositions = new Float32Array(milkyCount * 3);
-  const milkyColors = new Float32Array(milkyCount * 3);
-
-  for (let i = 0; i < milkyCount; i++) {
-    const l = Math.random() * TWO_PI;
-    let b = sampleGaussian(0.095);
-    b += 0.012 * Math.sin(2.1 * l + 0.4);
-    b = Math.max(-0.52, Math.min(0.52, b));
-
-    const r = radius * (0.9 + Math.random() * 0.1);
-    const [x, y, z] = galacticToCartesian(l, b, r);
-    milkyPositions[i * 3] = x;
-    milkyPositions[i * 3 + 1] = y;
-    milkyPositions[i * 3 + 2] = z;
-
-    const laneDark = gaussianByDistance(Math.abs(b), 0.034);
-    const latFalloff = Math.exp(-Math.abs(b) / 0.25);
-    const intensity = (0.28 + 0.72 * Math.random()) * latFalloff * (1 - 0.35 * laneDark);
-    milkyColors[i * 3] = intensity * 0.84;
-    milkyColors[i * 3 + 1] = intensity * 0.89;
-    milkyColors[i * 3 + 2] = intensity * 0.98;
-  }
-
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(milkyPositions, 3));
-  geometry.setAttribute('color', new Float32BufferAttribute(milkyColors, 3));
-
-  const layerGroup = new Group();
-  const points = new Points(
-    geometry,
-    new PointsMaterial({
-      size: 0.55,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.33,
-      blending: AdditiveBlending,
-      sizeAttenuation: true,
-      depthTest: true,
-      depthWrite: false
-    })
-  );
-  const haze = new Points(
-    geometry,
-    new PointsMaterial({
-      color: new Color('#cad5e2'),
-      size: 1.5,
-      transparent: true,
-      opacity: 0.045,
-      blending: AdditiveBlending,
-      sizeAttenuation: true,
-      depthTest: true,
-      depthWrite: false
-    })
-  );
-
-  layerGroup.add(points);
-  layerGroup.add(haze);
-  layerGroup.userData.mode = 'standard';
-  return layerGroup;
-}
-
-function createEnhancedMilkyWayLayer(radius) {
-  const layerGroup = new Group();
-  // Enhanced mode: structured model with bulge/arm weighting and dust lanes.
-  const milkyCount = 76_000;
-  const milkyPositions = new Float32Array(milkyCount * 3);
-  const milkyColors = new Float32Array(milkyCount * 3);
-  const componentThresholdA = 0.57; // thin disk
-  const componentThresholdB = 0.87; // thick disk; remainder is bulge
-
-  for (let i = 0; i < milkyCount; i++) {
-    const selector = Math.random();
-
-    let l;
-    let b;
-    let bulgeMix = 0;
-
-    if (selector > componentThresholdB) {
-      // Central bulge concentration around galactic center (l ~= 0).
-      l = wrapRadians(sampleGaussian(0.24));
-      b = sampleGaussian(0.17);
-      bulgeMix = 1;
-    } else {
-      const latSigma = selector < componentThresholdA ? 0.055 : 0.125;
-      let accepted = false;
-      l = Math.random() * TWO_PI;
-      for (let attempts = 0; attempts < 8; attempts++) {
-        l = Math.random() * TWO_PI;
-        if (Math.random() <= galacticLongitudeWeight(l)) {
-          accepted = true;
-          break;
-        }
-      }
-      if (!accepted) {
-        l = Math.random() * TWO_PI;
-      }
-
-      b = sampleGaussian(latSigma);
+function applyMilkyWayAppearance() {
+  applyMilkyWayAppearanceImpl({
+    useSurvey: Boolean(dom.toggleSurveyMilky?.checked),
+    useEnhanced: Boolean(dom.toggleEnhancedMilky?.checked),
+    onModeChange: (mode) => {
+      simState.milkyWayMode = mode;
     }
-
-    // Galactic warp and flare approximation for a less perfectly flat band.
-    b += 0.021 * Math.sin(2.0 * l + 0.45);
-    b += 0.009 * Math.sin(5.0 * l - 1.05);
-    b = Math.max(-0.62, Math.min(0.62, b));
-
-    const lonWeight = galacticLongitudeWeight(l);
-    const bulgeWeight = gaussianByDistance(circularDistanceRadians(l, 0), 0.36);
-
-    // Dark dust lane: strongest close to the plane and near dense longitudes.
-    const laneCenter = 0.012 * Math.sin(1.35 * l + 0.6);
-    const laneWidth = 0.026 + 0.017 * bulgeWeight;
-    const laneAbsorption = gaussianByDistance(Math.abs(b - laneCenter), laneWidth);
-    const dustFactor = 1 - 0.62 * laneAbsorption * (0.32 + 0.68 * lonWeight);
-
-    const r = radius * (0.88 + Math.random() * 0.12);
-    const [x, y, z] = galacticToCartesian(l, b, r);
-    milkyPositions[i * 3] = x;
-    milkyPositions[i * 3 + 1] = y;
-    milkyPositions[i * 3 + 2] = z;
-
-    const latFalloff = Math.exp(-Math.abs(b) / 0.22);
-    const intensity = (0.14 + 0.52 * Math.random()) * (0.3 + 0.54 * lonWeight) * latFalloff * dustFactor;
-
-    // Bulge skews warmer/yellower; outer disk remains cooler.
-    const warmMix = Math.min(1, 0.15 + 0.78 * bulgeWeight + 0.4 * bulgeMix);
-    const coolMix = 1 - warmMix;
-    const rCol = intensity * (0.86 + 0.3 * warmMix);
-    const gCol = intensity * (0.88 + 0.16 * warmMix);
-    const bCol = intensity * (0.95 - 0.28 * warmMix + 0.12 * coolMix);
-
-    milkyColors[i * 3] = rCol;
-    milkyColors[i * 3 + 1] = gCol;
-    milkyColors[i * 3 + 2] = bCol;
-  }
-  const milkyGeometry = new BufferGeometry();
-  milkyGeometry.setAttribute('position', new Float32BufferAttribute(milkyPositions, 3));
-  milkyGeometry.setAttribute('color', new Float32BufferAttribute(milkyColors, 3));
-  const milkyPoints = new Points(
-    milkyGeometry,
-    new PointsMaterial({
-      size: 1.05,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.48,
-      blending: AdditiveBlending,
-      sizeAttenuation: false,
-      depthTest: true,
-      depthWrite: false
-    })
-  );
-  layerGroup.add(milkyPoints);
-
-  // Soft haze layer to make the galactic band perceptible at a glance.
-  const milkyHaze = new Points(
-    milkyGeometry,
-    new PointsMaterial({
-      color: new Color('#cfd8e6'),
-      size: 2.45,
-      transparent: true,
-      opacity: 0.045,
-      blending: AdditiveBlending,
-      sizeAttenuation: false,
-      depthTest: true,
-      depthWrite: false
-    })
-  );
-  layerGroup.add(milkyHaze);
-
-  layerGroup.userData.mode = 'enhanced';
-  return layerGroup;
-}
-
-function createCatalogStarField(radius = 18_000) {
-  const baseLayers = [
-    { maxMag: 2.0, size: 2.2, opacity: 0.96 },
-    { maxMag: 4.2, size: 1.45, opacity: 0.82 },
-    { maxMag: Infinity, size: 0.95, opacity: 0.56 }
-  ];
-
-  const groupedPositions = baseLayers.map(() => []);
-  const groupedColors = baseLayers.map(() => []);
-
-  for (const entry of starsCatalog) {
-    const [raDeg, decDeg, mag, bv] = entry;
-    if (!Number.isFinite(raDeg) || !Number.isFinite(decDeg) || !Number.isFinite(mag)) continue;
-
-    const layerIndex = baseLayers.findIndex((layer) => mag <= layer.maxMag);
-    if (layerIndex < 0) continue;
-
-    const r = radius * (0.92 + Math.random() * 0.08);
-    const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, r);
-    const [cr, cg, cb] = bvToRgbUnit(bv);
-    groupedPositions[layerIndex].push(x, y, z);
-    groupedColors[layerIndex].push(cr, cg, cb);
-  }
-
-  const group = new Group();
-  const baseLayerPoints = [];
-  for (let i = 0; i < baseLayers.length; i++) {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(groupedPositions[i], 3));
-    geometry.setAttribute('color', new Float32BufferAttribute(groupedColors[i], 3));
-    const points = new Points(
-      geometry,
-      new PointsMaterial({
-        size: baseLayers[i].size,
-        vertexColors: true,
-        transparent: true,
-        opacity: baseLayers[i].opacity,
-        blending: AdditiveBlending,
-        sizeAttenuation: false,
-        depthWrite: false
-      })
-    );
-    baseLayerPoints.push(points);
-    group.add(points);
-  }
-
-  const standardMilky = createStandardMilkyWayLayer(radius);
-  const enhancedMilky = createEnhancedMilkyWayLayer(radius);
-  enhancedMilky.visible = false;
-  group.add(standardMilky);
-  group.add(enhancedMilky);
-
-  group.userData.starCount = starsCatalog.length;
-  group.userData.baseLayers = baseLayerPoints;
-  group.userData.standardMilky = standardMilky;
-  group.userData.enhancedMilky = enhancedMilky;
-  return group;
-}
-
-function createSurveyMilkyWaySphere(radius = 19_000) {
-  const texture = hiResTextures.milkyWaySurvey;
-  // 2MASS all-sky maps are distributed in sky-view orientation where galactic longitude
-  // increases to the left; mirror U so the map follows the right-handed galactic basis.
-  texture.wrapS = RepeatWrapping;
-  texture.repeat.x = -1;
-  texture.offset.x = 1;
-  texture.needsUpdate = true;
-
-  const geometry = new SphereGeometry(radius, 96, 64);
-  const material = new MeshBasicMaterial({
-    map: texture,
-    color: new Color('#ffffff'),
-    side: BackSide,
-    transparent: true,
-    opacity: 0.82
   });
-
-  const sphere = new Mesh(geometry, material);
-  // Sphere local basis mapping after horizontal texture mirror:
-  // local +x -> l=0,b=0 ; local +y -> b=+90 ; local +z -> l=270,b=0.
-  const localXAxisWorld = new Vector3(...galacticToCartesian(0, 0, 1));
-  const localYAxisWorld = new Vector3(...galacticToCartesian(0, Math.PI * 0.5, 1));
-  const localZAxisWorld = new Vector3(...galacticToCartesian(-Math.PI * 0.5, 0, 1));
-  const surveyToWorldMatrix = new Matrix4().makeBasis(
-    localXAxisWorld,
-    localYAxisWorld,
-    localZAxisWorld
-  );
-  sphere.setRotationFromMatrix(surveyToWorldMatrix);
-  sphere.visible = false;
-  sphere.renderOrder = -50;
-  return sphere;
 }
 
 // ── Asteroid Belt (element-driven + adaptive LOD refinement) ──────────────────
@@ -3069,34 +2640,6 @@ function createOortCloud() {
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
-const backgroundStars = createCatalogStarField(18_000);
-scene.add(backgroundStars);
-const surveyMilkySphere = createSurveyMilkyWaySphere(19_000);
-scene.add(surveyMilkySphere);
-
-function applyMilkyWayAppearance() {
-  const useSurvey = Boolean(dom.toggleSurveyMilky?.checked);
-  const useEnhanced = !useSurvey && Boolean(dom.toggleEnhancedMilky?.checked);
-  const mode = useSurvey ? 'survey' : useEnhanced ? 'enhanced' : 'standard';
-  simState.milkyWayMode = mode;
-
-  const baseLayers = backgroundStars.userData.baseLayers ?? [];
-  const standardMilky = backgroundStars.userData.standardMilky;
-  const enhancedMilky = backgroundStars.userData.enhancedMilky;
-  for (const layer of baseLayers) {
-    layer.visible = mode !== 'survey';
-  }
-  if (standardMilky) {
-    standardMilky.visible = mode === 'standard';
-  }
-  if (enhancedMilky) {
-    enhancedMilky.visible = mode === 'enhanced';
-  }
-  if (surveyMilkySphere) {
-    surveyMilkySphere.visible = mode === 'survey';
-  }
-}
-
 solarSystemGroup.add(asteroidBelt);
 solarSystemGroup.add(asteroidBeltWaypoint);
 
@@ -3353,6 +2896,14 @@ function resizeRenderer() {
 window.addEventListener('resize', resizeRenderer);
 resizeRenderer();
 
+if (dom.aiaChannel) {
+  dom.aiaChannel.addEventListener('change', () => {
+    const value = dom.aiaChannel.value;
+    userAiaChannelOverride = value === 'auto' ? null : value;
+    maybeRefreshSunObservationTexture(Date.now(), true);
+  });
+}
+
 // ── Scene Updates ────────────────────────────────────────────────────────────
 
 const tempVecA = new Vector3();
@@ -3456,7 +3007,7 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
   const activity = Number.isFinite(blendedActivityRaw)
     ? clampUnit(blendedActivityRaw)
     : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
-  const observationControls = deriveSunObservationControls(solarPhysicsState, activity);
+  const observationControls = deriveSunObservationControls(solarPhysicsState, activity, userAiaChannelOverride);
 
   updateSunMaterialUniforms({
     sunSurfaceMaterial,
@@ -3635,36 +3186,19 @@ function updateBodySurfaceLod({
   atmosphereMesh = null,
   extraMeshes = []
 }) {
-  if (!surfaceMesh || !lodGeometries) return currentLevel;
-
-  const node = bodyNodes.get(bodyId);
-  if (!node) return currentLevel;
-
-  node.getWorldPosition(tempVecA);
-  const distanceToBody = camera.position.distanceTo(tempVecA);
-  const highThreshold = profile?.lod?.thresholdsAu?.high ?? 0.00025;
-  const mediumThreshold = profile?.lod?.thresholdsAu?.medium ?? 0.0012;
-
-  let targetLevel = 'low';
-  if (distanceToBody < highThreshold) {
-    targetLevel = 'high';
-  } else if (distanceToBody < mediumThreshold) {
-    targetLevel = 'medium';
-  }
-
-  if (targetLevel === currentLevel) return currentLevel;
-
-  const targetGeometry = lodGeometries[targetLevel] ?? lodGeometries.low;
-  surfaceMesh.geometry = targetGeometry;
-  if (cloudMesh) cloudMesh.geometry = targetGeometry;
-  if (atmosphereMesh) atmosphereMesh.geometry = targetGeometry;
-  for (const mesh of extraMeshes) {
-    if (mesh) {
-      mesh.geometry = targetGeometry;
-    }
-  }
-
-  return targetLevel;
+  return updateBodySurfaceLodImpl({
+    bodyId,
+    profile,
+    lodGeometries,
+    currentLevel,
+    surfaceMesh,
+    cloudMesh,
+    atmosphereMesh,
+    extraMeshes,
+    bodyNodes,
+    camera,
+    tempVector: tempVecA
+  });
 }
 
 function updateEarthSurfaceLod() {
