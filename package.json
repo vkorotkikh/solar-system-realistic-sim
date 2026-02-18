@@ -7,11 +7,14 @@
     "dev": "vite",
     "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "update:moons": "node ./scripts/update-moons-data.mjs",
     "ingest:moon-textures": "node ./scripts/ingest-moon-textures.mjs"
   },
   "devDependencies": {
+    "@types/three": "^0.182.0",
+    "typescript": "^5.9.3",
     "vite": "^7.2.4"
   },
   "dependencies": {
