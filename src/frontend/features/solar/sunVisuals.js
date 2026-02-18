@@ -574,13 +574,24 @@ export function updateSunParkerSpiralFromPhysicsState(
   sunRadiusAu,
   maxLines = 6,
   maxPoints = 96,
-  timeSec = 0
+  timeSec = 0,
+  camera = null
 ) {
   if (!sunParkerSpiralGroup) return;
   const sourceLines = Array.isArray(physicsState?.heliosphere?.parker_spiral?.lines)
     ? physicsState.heliosphere.parker_spiral.lines
     : [];
   const spiralLines = sourceLines.slice(0, Math.max(1, maxLines));
+  const cameraDistanceAu = camera?.position
+    ? Math.hypot(
+      Number(camera.position.x) || 0,
+      Number(camera.position.y) || 0,
+      Number(camera.position.z) || 0
+    )
+    : null;
+  const cameraFade = Number.isFinite(cameraDistanceAu)
+    ? clampUnit((cameraDistanceAu - 0.5) / 1.5)
+    : 1;
 
   for (let i = 0; i < spiralLines.length; i += 1) {
     const entry = spiralLines[i];
@@ -624,13 +635,19 @@ export function updateSunParkerSpiralFromPhysicsState(
       const seed = stableHash01(`${entry?.id ?? `spiral-${i}`}`);
       const windKmsRaw = Number(entry?.wind_speed_kms);
       const windKms = Number.isFinite(windKmsRaw) ? windKmsRaw : 420;
-      const windFactor = clampUnit((windKms - 200) / 700);
+      const windFactor = clampUnit((windKms - 300) / 560);
+      const slowWindFactor = 1 - windFactor;
+      const polarity = Number(entry?.polarity);
       const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
-      const hueShift = 0.06 + windFactor * 0.12;
-      line.material.color.setRGB(0.56 + hueShift, 0.79 + hueShift * 0.35, 1.0);
-      line.material.opacity = Math.max(0.06, Math.min(0.32, (0.12 + windFactor * 0.1) * flicker));
+      if (polarity < 0) {
+        line.material.color.setRGB(0.73 + slowWindFactor * 0.09, 0.53 + slowWindFactor * 0.07, 0.40 + slowWindFactor * 0.06);
+      } else {
+        line.material.color.setRGB(0.40 + slowWindFactor * 0.08, 0.53 + slowWindFactor * 0.07, 0.73 + slowWindFactor * 0.09);
+      }
+      const sectorOpacity = 0.06 + slowWindFactor * 0.06;
+      line.material.opacity = Math.max(0.0, Math.min(0.34, sectorOpacity * flicker * cameraFade));
     }
-    line.visible = true;
+    line.visible = cameraFade > 0.01;
   }
 
   for (let i = spiralLines.length; i < sunParkerSpiralGroup.children.length; i += 1) {
