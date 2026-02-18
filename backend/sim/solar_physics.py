@@ -160,6 +160,7 @@ class SolarCoronaPhysicsModel:
         "high": 30,
         "ultra": 42,
     }
+    FORCING_MODES = ("synthetic", "hybrid", "data_driven")
 
     def __init__(self, seed: int = 17, base_tube_count: int = 420):
         self.seed = int(seed)
@@ -256,6 +257,7 @@ class SolarCoronaPhysicsModel:
                 "from rotating active regions with solar-cycle forcing."
             ),
             "fidelity_levels": list(self.fidelity_levels),
+            "forcing_modes": list(self.FORCING_MODES),
             "default_fidelity": self.default_fidelity,
             "base_flux_tube_count": self.base_tube_count,
             "active_region_count": len(self.active_regions),
@@ -271,6 +273,169 @@ class SolarCoronaPhysicsModel:
                 "Includes wall-clock transient activation so corona evolves even when simulation epoch is paused.",
             ],
         }
+
+    @staticmethod
+    def _extract_numeric(mapping: dict[str, Any] | None, key: str) -> float | None:
+        if not isinstance(mapping, dict):
+            return None
+        value = mapping.get(key)
+        if not isinstance(value, (float, int)):
+            return None
+        value_f = float(value)
+        if not math.isfinite(value_f):
+            return None
+        return value_f
+
+    @staticmethod
+    def _parse_utc_timestamp(value: Any) -> datetime | None:
+        if not isinstance(value, str):
+            return None
+        raw = value.strip()
+        if not raw:
+            return None
+        # Normalize common UTC forms: "YYYY-MM-DD HH:MM:SS" and ISO8601 with Z.
+        normalized = raw.replace("Z", "+00:00")
+        if " " in normalized and "T" not in normalized:
+            normalized = normalized.replace(" ", "T")
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    @staticmethod
+    def _freshness_weight(timestamp: datetime | None, max_age_s: float) -> float | None:
+        if timestamp is None:
+            return None
+        age_s = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
+        return _clamp(1.0 - age_s / max(1.0, max_age_s), 0.0, 1.0)
+
+    def _apply_realtime_forcing(
+        self,
+        synthetic_activity: float,
+        forcing: str,
+        realtime_data: dict[str, Any] | None,
+    ) -> tuple[float, dict[str, Any], float | None]:
+        forcing_key = forcing.strip().lower()
+        if forcing_key not in self.FORCING_MODES:
+            forcing_key = "synthetic"
+
+        assimilation = {
+            "mode": forcing_key,
+            "applied": False,
+            "synthetic_activity_index": synthetic_activity,
+            "observed_activity_index": None,
+            "blended_activity_index": synthetic_activity,
+            "observed_confidence": 0.0,
+            "blend_weight": 0.0,
+            "live_data_available": False,
+            "source_status": None,
+            "proxy_breakdown": {},
+            "sources": {
+                "swpc": None,
+                "silso": None,
+                "sdo_aia": None,
+            },
+        }
+        if forcing_key == "synthetic":
+            return synthetic_activity, assimilation, None
+        if not isinstance(realtime_data, dict):
+            return synthetic_activity, assimilation, None
+
+        assimilation["source_status"] = realtime_data.get("source_status")
+        swpc = realtime_data.get("swpc")
+        silso = realtime_data.get("silso")
+        sdo_aia = realtime_data.get("sdo_aia")
+        assimilation["sources"]["swpc"] = swpc
+        assimilation["sources"]["silso"] = silso
+        assimilation["sources"]["sdo_aia"] = sdo_aia
+        assimilation["live_data_available"] = any(
+            isinstance(value, dict) for value in (swpc, silso, sdo_aia)
+        )
+
+        proxy_breakdown: dict[str, float] = {}
+        observed_proxy = self._extract_numeric(realtime_data, "combined_activity_proxy")
+        if observed_proxy is None:
+            weighted_sum = 0.0
+            weight_total = 0.0
+            swpc_proxy = self._extract_numeric(swpc, "activity_proxy")
+            silso_proxy = self._extract_numeric(silso, "activity_proxy")
+            sdo_proxy = self._extract_numeric(sdo_aia, "activity_proxy")
+            if swpc_proxy is not None:
+                weighted_sum += swpc_proxy * 0.5
+                weight_total += 0.5
+                proxy_breakdown["swpc"] = swpc_proxy
+            if silso_proxy is not None:
+                weighted_sum += silso_proxy * 0.35
+                weight_total += 0.35
+                proxy_breakdown["silso"] = silso_proxy
+            if sdo_proxy is not None:
+                weighted_sum += sdo_proxy * 0.15
+                weight_total += 0.15
+                proxy_breakdown["sdo_aia"] = sdo_proxy
+            if weight_total > 0:
+                observed_proxy = _clamp(weighted_sum / weight_total, 0.0, 1.0)
+        else:
+            proxy_breakdown["combined"] = observed_proxy
+
+        if observed_proxy is None:
+            assimilation["blended_activity_index"] = synthetic_activity
+            assimilation["proxy_breakdown"] = proxy_breakdown
+            return synthetic_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
+
+        swpc_time = self._parse_utc_timestamp(swpc.get("time_tag") if isinstance(swpc, dict) else None)
+        silso_date = self._parse_utc_timestamp(
+            f"{silso.get('date')}T00:00:00Z" if isinstance(silso, dict) and isinstance(silso.get("date"), str) else None
+        )
+        sdo_time = self._parse_utc_timestamp(
+            (
+                sdo_aia.get("latest_image_date_utc")
+                if isinstance(sdo_aia, dict) and isinstance(sdo_aia.get("latest_image_date_utc"), str)
+                else sdo_aia.get("request_date_utc")
+                if isinstance(sdo_aia, dict)
+                else None
+            )
+        )
+        swpc_weight = self._freshness_weight(swpc_time, max_age_s=4.0 * 3_600.0)
+        silso_weight = self._freshness_weight(silso_date, max_age_s=8.0 * 86_400.0)
+        sdo_weight = self._freshness_weight(sdo_time, max_age_s=10.0 * 3_600.0)
+
+        confidence_sum = 0.0
+        confidence_weight_total = 0.0
+        if swpc_weight is not None:
+            confidence_sum += swpc_weight * 0.48
+            confidence_weight_total += 0.48
+        if silso_weight is not None:
+            confidence_sum += silso_weight * 0.27
+            confidence_weight_total += 0.27
+        if sdo_weight is not None:
+            confidence_sum += sdo_weight * 0.25
+            confidence_weight_total += 0.25
+        observed_confidence = (
+            _clamp(confidence_sum / confidence_weight_total, 0.0, 1.0)
+            if confidence_weight_total > 0
+            else 0.0
+        )
+
+        assimilation["observed_activity_index"] = observed_proxy
+        assimilation["observed_confidence"] = observed_confidence
+        assimilation["proxy_breakdown"] = proxy_breakdown
+
+        if forcing_key == "data_driven":
+            blend_weight = 0.78 + 0.18 * observed_confidence
+        else:
+            # Hybrid keeps synthetic cycle continuity while nudging toward real-time observations.
+            blend_weight = 0.25 + 0.35 * observed_confidence
+        blend_weight = _clamp(blend_weight, 0.0, 1.0)
+        blended_activity = synthetic_activity * (1.0 - blend_weight) + observed_proxy * blend_weight
+        blended_activity = _clamp(blended_activity, 0.02, 0.98)
+
+        assimilation["applied"] = True
+        assimilation["blend_weight"] = blend_weight
+        assimilation["blended_activity_index"] = blended_activity
+        return blended_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
 
     def _activity_index(self, jd: float) -> tuple[float, float]:
         cycle_years = (jd - J2000_JD) / 365.25
@@ -581,10 +746,16 @@ class SolarCoronaPhysicsModel:
         line_count: int = 4,
         point_count: int = 24,
         max_extent_solar_radii: float = 36.0,
+        wind_speed_kms_override: float | None = None,
     ) -> dict[str, Any]:
         # Nominal equatorial rotation period and solar-wind speed proxy.
         omega_sun = 2.0 * math.pi / (25.38 * 86_400.0)
-        wind_speed_kms = 320.0 + 430.0 * activity
+        wind_speed_kms = (
+            float(wind_speed_kms_override)
+            if isinstance(wind_speed_kms_override, (float, int)) and math.isfinite(float(wind_speed_kms_override))
+            else (320.0 + 430.0 * activity)
+        )
+        wind_speed_kms = _clamp(wind_speed_kms, 120.0, 1_200.0)
         base_phase = ((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi
 
         r0 = 1.04
@@ -620,13 +791,25 @@ class SolarCoronaPhysicsModel:
             "lines": lines,
         }
 
-    def sample_state(self, jd: float, fidelity: str = "operational", max_features: int = 220) -> dict[str, Any]:
+    def sample_state(
+        self,
+        jd: float,
+        fidelity: str = "operational",
+        max_features: int = 220,
+        forcing: str = "synthetic",
+        realtime_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         fidelity_key = fidelity.strip().lower()
         if fidelity_key not in self.FIDELITY_POINT_COUNT:
             fidelity_key = self.default_fidelity
         points_count = self.FIDELITY_POINT_COUNT[fidelity_key]
 
-        activity, cycle_phase = self._activity_index(jd)
+        synthetic_activity, cycle_phase = self._activity_index(jd)
+        activity, assimilation, wind_speed_kms_override = self._apply_realtime_forcing(
+            synthetic_activity,
+            forcing,
+            realtime_data,
+        )
         wall_jd = utc_now_to_julian_date()
         safe_max_features = max(8, min(2_048, int(max_features)))
 
@@ -675,6 +858,7 @@ class SolarCoronaPhysicsModel:
             line_count=spiral_lines,
             point_count=max(12, points_count),
             max_extent_solar_radii=36.0,
+            wind_speed_kms_override=wind_speed_kms_override,
         )
 
         return {
@@ -686,7 +870,9 @@ class SolarCoronaPhysicsModel:
             "solar_radius_km": SOLAR_RADIUS_KM,
             "solar_radius_au": SOLAR_RADIUS_AU,
             "activity_index": activity,
+            "synthetic_activity_index": synthetic_activity,
             "cycle_phase_rad": cycle_phase,
+            "data_assimilation": assimilation,
             "surface": {
                 "differential_rotation_model": "snodgrass_1983_like",
                 "activity_cycle_model": "hathaway_2015_asymmetric_plus_rotation",
