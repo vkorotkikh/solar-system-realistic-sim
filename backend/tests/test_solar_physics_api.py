@@ -37,7 +37,7 @@ def test_solar_physics_returns_3d_coronal_features() -> None:
     assert payload["source"] == "backend"
     assert payload["fidelity"] == "high"
     assert payload["wall_epoch_jd"] >= payload["epoch_jd"] - 365_000
-    assert payload["surface"]["activity_cycle_model"] == "hathaway_2015_asymmetric_plus_rotation"
+    assert payload["surface"]["activity_cycle_model"] == "hathaway_2015_normalized"
     assert payload["corona"]["feature_count"] <= 64
     assert payload["corona"]["feature_count"] >= 8
     assert payload["corona"]["topology_model"] == "bipolar_active_region_pairs"
