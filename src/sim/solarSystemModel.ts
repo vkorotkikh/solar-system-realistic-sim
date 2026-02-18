@@ -1,7 +1,31 @@
 import { Vector3 } from 'three';
-import { propagateKeplerOrbit } from './orbitMath.js';
+import { propagateKeplerOrbit, type KeplerOrbit } from './orbitMath';
 
-function makeZeroState() {
+export interface CatalogBody {
+  id: string;
+  parentId?: string | null;
+  orbit?: KeplerOrbit | null;
+}
+
+export interface SolarSystemCatalog {
+  bodies: CatalogBody[];
+}
+
+export interface BodyState {
+  relativePosition: Vector3;
+  relativeVelocity: Vector3;
+  worldPosition: Vector3;
+  worldVelocity: Vector3;
+}
+
+export interface SampledBodyState {
+  position: Vector3;
+  velocity: Vector3;
+  relativePosition: Vector3;
+  relativeVelocity: Vector3;
+}
+
+function makeZeroState(): BodyState {
   return {
     relativePosition: new Vector3(),
     relativeVelocity: new Vector3(),
@@ -11,7 +35,21 @@ function makeZeroState() {
 }
 
 export class SolarSystemModel {
-  constructor(catalog) {
+  private readonly bodies: CatalogBody[];
+
+  private readonly bodyById: Map<string, CatalogBody>;
+
+  private readonly childrenById: Map<string, string[]>;
+
+  private readonly stateById: Map<string, BodyState>;
+
+  private readonly parentById: Map<string, string>;
+
+  private readonly updateOrder: string[];
+
+  private currentJd: number | null;
+
+  constructor(catalog: SolarSystemCatalog) {
     this.bodies = catalog.bodies;
     this.bodyById = new Map(this.bodies.map((body) => [body.id, body]));
     this.childrenById = new Map();
@@ -25,7 +63,7 @@ export class SolarSystemModel {
         if (!this.childrenById.has(body.parentId)) {
           this.childrenById.set(body.parentId, []);
         }
-        this.childrenById.get(body.parentId).push(body.id);
+        this.childrenById.get(body.parentId)?.push(body.id);
       }
     }
 
@@ -33,13 +71,14 @@ export class SolarSystemModel {
     this.currentJd = null;
   }
 
-  buildUpdateOrder() {
-    const order = [];
+  private buildUpdateOrder(): string[] {
+    const order: string[] = [];
     const roots = this.bodies.filter((body) => !body.parentId).map((body) => body.id);
 
     const stack = [...roots];
     while (stack.length > 0) {
       const id = stack.shift();
+      if (!id) break;
       order.push(id);
       const children = this.childrenById.get(id);
       if (children) {
@@ -52,24 +91,25 @@ export class SolarSystemModel {
     return order;
   }
 
-  getBody(id) {
+  getBody(id: string): CatalogBody | null {
     return this.bodyById.get(id) ?? null;
   }
 
-  getState(id) {
+  getState(id: string): BodyState | null {
     return this.stateById.get(id) ?? null;
   }
 
-  getBodies() {
+  getBodies(): CatalogBody[] {
     return this.bodies;
   }
 
-  update(julianDate) {
+  update(julianDate: number): void {
     this.currentJd = julianDate;
 
     for (const bodyId of this.updateOrder) {
       const body = this.bodyById.get(bodyId);
       const state = this.stateById.get(bodyId);
+      if (!body || !state) continue;
 
       if (!body.orbit) {
         state.relativePosition.set(0, 0, 0);
@@ -81,8 +121,13 @@ export class SolarSystemModel {
 
       if (body.parentId) {
         const parentState = this.stateById.get(body.parentId);
-        state.worldPosition.copy(parentState.worldPosition).add(state.relativePosition);
-        state.worldVelocity.copy(parentState.worldVelocity).add(state.relativeVelocity);
+        if (parentState) {
+          state.worldPosition.copy(parentState.worldPosition).add(state.relativePosition);
+          state.worldVelocity.copy(parentState.worldVelocity).add(state.relativeVelocity);
+        } else {
+          state.worldPosition.copy(state.relativePosition);
+          state.worldVelocity.copy(state.relativeVelocity);
+        }
       } else {
         state.worldPosition.copy(state.relativePosition);
         state.worldVelocity.copy(state.relativeVelocity);
@@ -90,22 +135,26 @@ export class SolarSystemModel {
     }
   }
 
-  getWorldPosition(id, target = new Vector3()) {
+  getWorldPosition(id: string, target: Vector3 = new Vector3()): Vector3 | null {
     const state = this.stateById.get(id);
     if (!state) return null;
     return target.copy(state.worldPosition);
   }
 
-  getWorldVelocity(id, target = new Vector3()) {
+  getWorldVelocity(id: string, target: Vector3 = new Vector3()): Vector3 | null {
     const state = this.stateById.get(id);
     if (!state) return null;
     return target.copy(state.worldVelocity);
   }
 
-  sampleBodyStateAt(id, julianDate, memo = new Map()) {
+  sampleBodyStateAt(
+    id: string,
+    julianDate: number,
+    memo: Map<string, SampledBodyState> = new Map()
+  ): SampledBodyState | null {
     const memoKey = `${id}:${julianDate}`;
     if (memo.has(memoKey)) {
-      return memo.get(memoKey);
+      return memo.get(memoKey) ?? null;
     }
 
     const body = this.bodyById.get(id);
@@ -113,7 +162,7 @@ export class SolarSystemModel {
       return null;
     }
 
-    const sampled = {
+    const sampled: SampledBodyState = {
       position: new Vector3(),
       velocity: new Vector3(),
       relativePosition: new Vector3(),
@@ -133,8 +182,10 @@ export class SolarSystemModel {
 
       if (body.parentId) {
         const parent = this.sampleBodyStateAt(body.parentId, julianDate, memo);
-        sampled.position.add(parent.position);
-        sampled.velocity.add(parent.velocity);
+        if (parent) {
+          sampled.position.add(parent.position);
+          sampled.velocity.add(parent.velocity);
+        }
       }
     }
 
