@@ -1,42 +1,33 @@
-// Prototype implementation for Asteroid 3D Models and Materials
-
+// Updated asteroidGeometry.js configured for GPU Shader injection.
 import {
     IcosahedronGeometry,
     MeshStandardMaterial,
     Color,
     Vector3,
     InstancedMesh,
+    InstancedBufferAttribute,
     DynamicDrawUsage,
-    Object3D
+    StaticDrawUsage
 } from 'three';
 import { TAXONOMIES } from './asteroidDistributions.js';
+import { patchAsteroidMaterial } from './asteroidShaders.js';
 
-/**
- * Procedurally generates a low-poly asteroid shape.
- * Achieved by displacing the vertices of an icosahedron.
- */
 export function generateAsteroidGeometry(detail = 1, distortionAmount = 0.35) {
     const geometry = new IcosahedronGeometry(1.0, detail);
     const positionAttribute = geometry.attributes.position;
     const vertex = new Vector3();
 
-    // Create a potato-like primary distortion by scaling axes non-uniformly first
     const scaleX = 1.0 + (Math.random() - 0.5) * 0.4;
     const scaleY = 1.0 + (Math.random() - 0.5) * 0.4;
     const scaleZ = 1.0 + (Math.random() - 0.5) * 0.4;
 
     for (let i = 0; i < positionAttribute.count; i++) {
         vertex.fromBufferAttribute(positionAttribute, i);
-
-        // Non-uniform base stretch
         vertex.x *= scaleX;
         vertex.y *= scaleY;
         vertex.z *= scaleZ;
-
-        // Per-vertex random noise for rubble-pile rockiness
         const scalar = 1.0 + (Math.random() - 0.5) * distortionAmount;
         vertex.multiplyScalar(scalar);
-
         positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
 
@@ -44,34 +35,9 @@ export function generateAsteroidGeometry(detail = 1, distortionAmount = 0.35) {
     return geometry;
 }
 
-/**
- * Picks a random color within the given taxonomy's array.
- */
-export function randomTaxonomyColor(taxObj) {
-    const colors = taxObj.colorRange;
-    const hex = colors[Math.floor(Math.random() * colors.length)];
-    const color = new Color(hex);
-
-    // Slight luminance shift for extra variety
-    const shift = (Math.random() - 0.5) * 0.1;
-    color.offsetHSL(0, 0, shift);
-    return color;
-}
-
-/**
- * Pre-computes and returns a mapping of InstancedMeshes.
- * We create one or more InstancedMeshes per Taxonomic class to allow 
- * for unique PBR properties (metalness/roughness) and base geometry variance.
- * 
- * @param {number} totalAsteroids - The total expected count of objects limit.
- * @param {number} shapesPerTaxonomy - How many distinct base shapes per taxonomy group.
- */
-export function createAsteroidInstancedBuckets(totalAsteroids, shapesPerTaxonomy = 3) {
+export function createAsteroidInstancedBuckets(totalAsteroids, shapesPerTaxonomy, shaderUniforms) {
     const buckets = {};
     const taxKeys = Object.keys(TAXONOMIES);
-
-    // Distribute max capacities evenly among the meshes for now.
-    // In a real pipeline, we'd count exactly how many of each we generated.
     const maxPerMesh = Math.ceil(totalAsteroids / (taxKeys.length * shapesPerTaxonomy));
 
     for (const key of taxKeys) {
@@ -79,30 +45,39 @@ export function createAsteroidInstancedBuckets(totalAsteroids, shapesPerTaxonomy
         buckets[key] = [];
 
         for (let i = 0; i < shapesPerTaxonomy; i++) {
-            // 1. Generate unique shape
             const geom = generateAsteroidGeometry(1, 0.4);
 
-            // 2. Map material
+            // Setup the geometry to hold our custom orbital buffers
+            geom.setAttribute('aOrbitParams1', new InstancedBufferAttribute(new Float32Array(maxPerMesh * 4), 4));
+            geom.setAttribute('aOrbitParams2', new InstancedBufferAttribute(new Float32Array(maxPerMesh * 3), 3));
+            geom.setAttribute('aSpinParams', new InstancedBufferAttribute(new Float32Array(maxPerMesh * 4), 4));
+
             const mat = new MeshStandardMaterial({
-                color: new Color('#ffffff'), // White base, instances will recolor via setColorAt
+                color: new Color('#ffffff'),
                 roughness: tax.roughness,
                 metalness: tax.metalness,
                 flatShading: true
             });
 
-            // 3. Create InstancedMesh
-            const iMesh = new InstancedMesh(geom, mat, maxPerMesh);
-            // We'll update the matrix attributes dynamically in the render loop on the GPU
-            iMesh.instanceMatrix.setUsage(DynamicDrawUsage);
-            // If we update color on load, its a static attribute
-            // iMesh.instanceColor.setUsage(StaticDrawUsage); 
+            // Inject the Keplerian orbit shader
+            patchAsteroidMaterial(mat, shaderUniforms);
 
-            // Initially hide the excess instances by setting count to 0
+            const iMesh = new InstancedMesh(geom, mat, maxPerMesh);
+            // Now the matrix only holds Scale + local offset, not global world pos. It can be static!
+            iMesh.instanceMatrix.setUsage(StaticDrawUsage);
+
             iMesh.count = 0;
+            // Because the position is pushed globally by the shader, we must disable standard frustum culling
+            // Alternatively, we set the bounding sphere to encapsulate the whole inner solar system
+            iMesh.frustumCulled = false;
 
             buckets[key].push({
                 mesh: iMesh,
-                capacity: maxPerMesh
+                capacity: maxPerMesh,
+                // Keep tracking arrays for easy populating
+                oParam1: geom.attributes.aOrbitParams1.array,
+                oParam2: geom.attributes.aOrbitParams2.array,
+                sParam: geom.attributes.aSpinParams.array
             });
         }
     }
