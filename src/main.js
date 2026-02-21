@@ -2074,29 +2074,170 @@ const ASTEROID_BASE_COUNT = 22_000;
 const ASTEROID_DETAIL_MAX = 90_000;
 const ASTEROID_DETAIL_MIN = 7_000;
 const ASTEROID_DETAIL_TARGET_MAX = 78_000;
-const ASTEROID_GAPS = [
-  { center: 2.06, halfWidth: 0.02 },
-  { center: 2.50, halfWidth: 0.035 },
-  { center: 2.82, halfWidth: 0.025 },
-  { center: 2.95, halfWidth: 0.02 },
-  { center: 3.28, halfWidth: 0.025 }
+const ASTEROID_MAIN_BELT_MIN_A = 2.02;
+const ASTEROID_MAIN_BELT_MAX_A = 3.35;
+const ASTEROID_EXTENDED_MAX_A = 5.45;
+const ASTEROID_RESONANCES = [
+  { centerAu: 2.06, sigmaAu: 0.013, depletion: 0.58 }, // 4:1
+  { centerAu: 2.50, sigmaAu: 0.02, depletion: 0.84 }, // 3:1
+  { centerAu: 2.82, sigmaAu: 0.017, depletion: 0.72 }, // 5:2
+  { centerAu: 2.96, sigmaAu: 0.015, depletion: 0.6 }, // 7:3
+  { centerAu: 3.27, sigmaAu: 0.018, depletion: 0.8 } // 2:1
 ];
 const ASTEROID_FAMILY_COMPONENTS = [
-  { centerA: 2.28, sigmaA: 0.09, weight: 0.2 },
-  { centerA: 2.41, sigmaA: 0.08, weight: 0.24 },
-  { centerA: 2.66, sigmaA: 0.1, weight: 0.2 },
-  { centerA: 2.9, sigmaA: 0.1, weight: 0.2 },
-  { centerA: 3.15, sigmaA: 0.09, weight: 0.16 }
+  {
+    id: 'flora',
+    centerA: 2.2,
+    sigmaA: 0.05,
+    centerE: 0.14,
+    sigmaE: 0.03,
+    centerSinI: 0.08,
+    sigmaSinI: 0.024,
+    taxonomyBias: { S: 2.9, C: 0.55, M: 0.9 },
+    weight: 0.21
+  },
+  {
+    id: 'eunomia',
+    centerA: 2.64,
+    sigmaA: 0.07,
+    centerE: 0.17,
+    sigmaE: 0.045,
+    centerSinI: 0.18,
+    sigmaSinI: 0.03,
+    taxonomyBias: { S: 2.15, C: 0.7, M: 1.0 },
+    weight: 0.2
+  },
+  {
+    id: 'koronis',
+    centerA: 2.87,
+    sigmaA: 0.06,
+    centerE: 0.055,
+    sigmaE: 0.02,
+    centerSinI: 0.055,
+    sigmaSinI: 0.018,
+    taxonomyBias: { S: 1.45, C: 0.9, M: 0.9 },
+    weight: 0.2
+  },
+  {
+    id: 'eos',
+    centerA: 3.01,
+    sigmaA: 0.07,
+    centerE: 0.08,
+    sigmaE: 0.028,
+    centerSinI: 0.18,
+    sigmaSinI: 0.026,
+    taxonomyBias: { S: 0.95, C: 1.25, M: 1.05 },
+    weight: 0.18
+  },
+  {
+    id: 'themis',
+    centerA: 3.14,
+    sigmaA: 0.08,
+    centerE: 0.14,
+    sigmaE: 0.03,
+    centerSinI: 0.04,
+    sigmaSinI: 0.016,
+    taxonomyBias: { S: 0.45, C: 2.55, M: 0.7 },
+    weight: 0.21
+  }
 ];
-const ASTEROID_FAMILY_TOTAL_WEIGHT = ASTEROID_FAMILY_COMPONENTS.reduce((sum, comp) => sum + comp.weight, 0);
+const ASTEROID_TAXONOMY_MODELS = [
+  {
+    id: 'C',
+    weight: 0.75,
+    meanA: 2.97,
+    sigmaA: 0.32,
+    albedoMin: 0.03,
+    albedoMax: 0.1,
+    baseColor: new Color('#69737c')
+  },
+  {
+    id: 'S',
+    weight: 0.17,
+    meanA: 2.35,
+    sigmaA: 0.2,
+    albedoMin: 0.1,
+    albedoMax: 0.22,
+    baseColor: new Color('#b99b76')
+  },
+  {
+    id: 'M',
+    weight: 0.08,
+    meanA: 2.72,
+    sigmaA: 0.23,
+    albedoMin: 0.1,
+    albedoMax: 0.18,
+    baseColor: new Color('#a4a9b1')
+  }
+];
+const ASTEROID_POPULATION_MODELS = [
+  {
+    id: 'main-belt',
+    centerA: 2.75,
+    weight: 0.9
+  },
+  {
+    id: 'hilda',
+    centerA: 3.97,
+    weight: 0.06,
+    taxonomyBias: { C: 1.2, S: 0.85, M: 0.95 }
+  },
+  {
+    id: 'trojan-l4',
+    centerA: 5.2,
+    weight: 0.02,
+    longitudeOffsetDeg: 60,
+    longitudeSigmaDeg: 18,
+    taxonomyBias: { C: 1.4, S: 0.5, M: 0.85 }
+  },
+  {
+    id: 'trojan-l5',
+    centerA: 5.2,
+    weight: 0.02,
+    longitudeOffsetDeg: -60,
+    longitudeSigmaDeg: 18,
+    taxonomyBias: { C: 1.4, S: 0.5, M: 0.85 }
+  }
+];
 
-function isInsideAsteroidGap(radiusAu) {
-  for (const gap of ASTEROID_GAPS) {
-    if (Math.abs(radiusAu - gap.center) < gap.halfWidth) {
-      return true;
+function clampRange(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeDegrees(value) {
+  const wrapped = value % 360;
+  return wrapped < 0 ? wrapped + 360 : wrapped;
+}
+
+function weightedPick(entries, weightFn = (entry) => entry.weight) {
+  if (!entries || entries.length === 0) {
+    return null;
+  }
+  let total = 0;
+  for (const entry of entries) {
+    total += Math.max(0, Number(weightFn(entry) || 0));
+  }
+  if (total <= 0) {
+    return entries[entries.length - 1];
+  }
+  let selector = Math.random() * total;
+  for (const entry of entries) {
+    selector -= Math.max(0, Number(weightFn(entry) || 0));
+    if (selector <= 0) {
+      return entry;
     }
   }
-  return false;
+  return entries[entries.length - 1];
+}
+
+function asteroidResonanceRetention(aAu) {
+  let retention = 1;
+  for (const resonance of ASTEROID_RESONANCES) {
+    const dz = (aAu - resonance.centerAu) / resonance.sigmaAu;
+    const depletion = resonance.depletion * Math.exp(-0.5 * dz * dz);
+    retention *= Math.max(0.08, 1 - depletion);
+  }
+  return clampRange(retention, 0.08, 1);
 }
 
 function randomGaussian() {
@@ -2105,49 +2246,169 @@ function randomGaussian() {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function sampleAsteroidFamilySemimajorAxis(minA, maxA) {
-  let selector = Math.random() * ASTEROID_FAMILY_TOTAL_WEIGHT;
-  let picked = ASTEROID_FAMILY_COMPONENTS[ASTEROID_FAMILY_COMPONENTS.length - 1];
-  for (const component of ASTEROID_FAMILY_COMPONENTS) {
-    selector -= component.weight;
-    if (selector <= 0) {
-      picked = component;
+function sampleAsteroidPopulation(minA, maxA, populationHint = 'auto') {
+  if (populationHint && populationHint !== 'auto' && populationHint !== 'mixed') {
+    const explicit = ASTEROID_POPULATION_MODELS.find((population) => population.id === populationHint);
+    if (explicit) return explicit;
+  }
+  const candidates = populationHint === 'mixed'
+    ? ASTEROID_POPULATION_MODELS
+    : ASTEROID_POPULATION_MODELS.filter(
+      (population) => population.centerA >= minA - 0.2 && population.centerA <= maxA + 0.2
+    );
+  return weightedPick(candidates.length > 0 ? candidates : ASTEROID_POPULATION_MODELS);
+}
+
+function sampleSizeFromPowerLaw(minDiameterKm = 0.22, maxDiameterKm = 160, q = 2.5) {
+  const safeMin = Math.max(0.01, minDiameterKm);
+  const safeMax = Math.max(safeMin + 0.01, maxDiameterKm);
+  const exponent = Math.max(0.7, q);
+  const minInv = Math.pow(safeMin, -exponent);
+  const maxInv = Math.pow(safeMax, -exponent);
+  const sampledInv = minInv - (minInv - maxInv) * Math.random();
+  return Math.pow(sampledInv, -1 / exponent);
+}
+
+function sampleTaxonomicClass(aAu, populationModel, familyModel = null) {
+  const picked = weightedPick(ASTEROID_TAXONOMY_MODELS, (taxonomy) => {
+    const dz = (aAu - taxonomy.meanA) / taxonomy.sigmaA;
+    let score = taxonomy.weight * Math.exp(-0.5 * dz * dz);
+    if (populationModel?.taxonomyBias?.[taxonomy.id]) {
+      score *= populationModel.taxonomyBias[taxonomy.id];
+    }
+    if (familyModel?.taxonomyBias?.[taxonomy.id]) {
+      score *= familyModel.taxonomyBias[taxonomy.id];
+    }
+    return Math.max(1e-6, score);
+  });
+  return picked ?? ASTEROID_TAXONOMY_MODELS[0];
+}
+
+function sampleAlbedoFromTaxonomy(taxonomyModel) {
+  const jitter = clampRange(0.5 + randomGaussian() * 0.2, 0, 1);
+  return taxonomyModel.albedoMin + (taxonomyModel.albedoMax - taxonomyModel.albedoMin) * jitter;
+}
+
+function deriveAsteroidColor(taxonomyModel, albedo, diameterKm) {
+  const albedoSpan = Math.max(1e-6, taxonomyModel.albedoMax - taxonomyModel.albedoMin);
+  const albedoNorm = clampRange((albedo - taxonomyModel.albedoMin) / albedoSpan, 0, 1);
+  const sizeNorm = clampRange(
+    Math.log10(1 + diameterKm) / Math.log10(1 + 160),
+    0,
+    1
+  );
+  const brightness = clampRange(
+    0.23 + 0.44 * albedoNorm + 0.14 * sizeNorm + (Math.random() - 0.5) * 0.05,
+    0.18,
+    0.92
+  );
+  return {
+    r: clampRange(taxonomyModel.baseColor.r * brightness, 0, 1),
+    g: clampRange(taxonomyModel.baseColor.g * brightness, 0, 1),
+    b: clampRange(taxonomyModel.baseColor.b * brightness, 0, 1)
+  };
+}
+
+function generateRealisticFamilyElements(minA, maxA, enforceGaps = true) {
+  const clampedMinA = clampRange(minA, ASTEROID_MAIN_BELT_MIN_A, ASTEROID_MAIN_BELT_MAX_A);
+  const clampedMaxA = clampRange(maxA, clampedMinA, ASTEROID_MAIN_BELT_MAX_A);
+  let familyModel = ASTEROID_FAMILY_COMPONENTS[ASTEROID_FAMILY_COMPONENTS.length - 1];
+  let aAu = familyModel.centerA;
+
+  for (let attempts = 0; attempts < 24; attempts++) {
+    familyModel = weightedPick(ASTEROID_FAMILY_COMPONENTS) ?? familyModel;
+    aAu = clampRange(familyModel.centerA + randomGaussian() * familyModel.sigmaA, clampedMinA, clampedMaxA);
+    if (!enforceGaps || Math.random() <= asteroidResonanceRetention(aAu)) {
       break;
     }
   }
-  return Math.max(minA, Math.min(maxA, picked.centerA + randomGaussian() * picked.sigmaA));
+
+  const e = clampRange(familyModel.centerE + randomGaussian() * familyModel.sigmaE, 0.005, 0.34);
+  const sinI = clampRange(familyModel.centerSinI + randomGaussian() * familyModel.sigmaSinI, 0, 0.43);
+  const iDeg = Math.asin(clampRange(sinI, -1, 1)) / DEG_TO_RAD;
+  return {
+    aAu,
+    e,
+    iDeg,
+    familyId: familyModel.id,
+    familyModel
+  };
 }
 
 function createAsteroidOrbitElement({
-  minA = 2.1,
-  maxA = 3.3,
+  minA = ASTEROID_MAIN_BELT_MIN_A,
+  maxA = ASTEROID_MAIN_BELT_MAX_A,
   centerA = null,
   sigmaA = 0.35,
-  enforceGaps = true
+  enforceGaps = true,
+  populationHint = 'auto'
 } = {}) {
+  const safeMinA = clampRange(minA, ASTEROID_MAIN_BELT_MIN_A, ASTEROID_EXTENDED_MAX_A - 0.01);
+  const safeMaxA = clampRange(maxA, safeMinA + 0.01, ASTEROID_EXTENDED_MAX_A);
+  const population = sampleAsteroidPopulation(safeMinA, safeMaxA, populationHint);
+
   let a = 0;
-  for (let attempts = 0; attempts < 20; attempts++) {
+  let e = 0;
+  let iDeg = 0;
+  let familyModel = null;
+  let familyId = null;
+  let ascendingNodeDeg = Math.random() * 360;
+  let argPeriapsisDeg = Math.random() * 360;
+  let meanAnomalyDeg = Math.random() * 360;
+
+  if (population.id === 'main-belt') {
     if (centerA === null) {
-      if (Math.random() < 0.68) {
-        a = sampleAsteroidFamilySemimajorAxis(minA, maxA);
-      } else {
-        const minSq = minA * minA;
-        const maxSq = maxA * maxA;
-        a = Math.sqrt(minSq + (maxSq - minSq) * Math.random());
-      }
+      const familyElements = generateRealisticFamilyElements(safeMinA, safeMaxA, enforceGaps);
+      a = familyElements.aAu;
+      e = familyElements.e;
+      iDeg = familyElements.iDeg;
+      familyModel = familyElements.familyModel;
+      familyId = familyElements.familyId;
     } else {
-      a = Math.max(minA, Math.min(maxA, centerA + randomGaussian() * sigmaA));
+      const familyBand = generateRealisticFamilyElements(
+        Math.max(safeMinA, centerA - Math.max(0.18, sigmaA * 1.6)),
+        Math.min(safeMaxA, centerA + Math.max(0.18, sigmaA * 1.6)),
+        enforceGaps
+      );
+      for (let attempts = 0; attempts < 16; attempts++) {
+        a = clampRange(centerA + randomGaussian() * sigmaA, safeMinA, safeMaxA);
+        if (!enforceGaps || Math.random() <= asteroidResonanceRetention(a)) {
+          break;
+        }
+      }
+      a = clampRange(a * 0.72 + familyBand.aAu * 0.28, safeMinA, safeMaxA);
+      e = clampRange(familyBand.e + randomGaussian() * 0.018, 0.005, 0.34);
+      iDeg = clampRange(Math.abs(familyBand.iDeg + randomGaussian() * 1.8), 0, 24);
+      familyModel = familyBand.familyModel;
+      familyId = familyBand.familyId;
     }
-    if (!enforceGaps || !isInsideAsteroidGap(a)) {
-      break;
-    }
+  } else if (population.id === 'hilda') {
+    a = clampRange(3.97 + randomGaussian() * 0.08, safeMinA, safeMaxA);
+    e = clampRange(Math.abs(0.16 + randomGaussian() * 0.05), 0.04, 0.32);
+    iDeg = clampRange(Math.abs(7.5 + randomGaussian() * 4.3), 0.5, 26);
+  } else {
+    a = clampRange(5.2 + randomGaussian() * 0.085, safeMinA, safeMaxA);
+    e = clampRange(Math.abs(0.07 + randomGaussian() * 0.036), 0.01, 0.24);
+    iDeg = clampRange(Math.abs(11 + randomGaussian() * 7.4), 0.2, 40);
+    const jupiterOrbit = bodyById.get('jupiter')?.orbit;
+    const jupiterMeanLongitudeDeg = jupiterOrbit
+      ? normalizeDegrees(jupiterOrbit.ascendingNodeDeg + jupiterOrbit.argPeriapsisDeg + jupiterOrbit.meanAnomalyDeg)
+      : 34.4;
+    const populationOffset = population.longitudeOffsetDeg ?? 0;
+    const longitudeSigma = population.longitudeSigmaDeg ?? 20;
+    const clusteredLongitude = normalizeDegrees(
+      jupiterMeanLongitudeDeg + populationOffset + randomGaussian() * longitudeSigma
+    );
+    ascendingNodeDeg = Math.random() * 360;
+    argPeriapsisDeg = Math.random() * 360;
+    meanAnomalyDeg = normalizeDegrees(clusteredLongitude - ascendingNodeDeg - argPeriapsisDeg);
   }
 
-  const e = Math.min(0.32, Math.abs(0.07 + randomGaussian() * 0.045));
-  const iDeg = Math.min(24, Math.abs(randomGaussian() * 5.2));
-  const ascendingNodeDeg = Math.random() * 360;
-  const argPeriapsisDeg = Math.random() * 360;
-  const meanAnomalyDeg = Math.random() * 360;
+  const taxonomyModel = sampleTaxonomicClass(a, population, familyModel);
+  const albedo = sampleAlbedoFromTaxonomy(taxonomyModel);
+  const diameterKm = sampleSizeFromPowerLaw();
+  const rgb = deriveAsteroidColor(taxonomyModel, albedo, diameterKm);
+
   return {
     aAu: a,
     e,
@@ -2155,7 +2416,15 @@ function createAsteroidOrbitElement({
     ascendingNodeDeg,
     argPeriapsisDeg,
     meanAnomalyDeg,
-    periodDays: 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN_AU3_DAY2)
+    periodDays: 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN_AU3_DAY2),
+    populationId: population.id,
+    familyId,
+    taxonomy: taxonomyModel.id,
+    albedo,
+    diameterKm,
+    colorR: rgb.r,
+    colorG: rgb.g,
+    colorB: rgb.b
   };
 }
 
@@ -2170,26 +2439,19 @@ const asteroidBasePositions = new Float32Array(ASTEROID_BASE_COUNT * 3);
 const asteroidBaseColors = new Float32Array(ASTEROID_BASE_COUNT * 3);
 const asteroidTmpPos = new Vector3();
 const asteroidTmpVel = new Vector3();
+const asteroidTmpJupiterPos = new Vector3();
 
 for (let i = 0; i < ASTEROID_BASE_COUNT; i++) {
-  const element = createAsteroidOrbitElement();
+  const element = createAsteroidOrbitElement({
+    minA: ASTEROID_MAIN_BELT_MIN_A,
+    maxA: ASTEROID_EXTENDED_MAX_A,
+    enforceGaps: true,
+    populationHint: 'mixed'
+  });
   asteroidBaseElements[i] = element;
-  const t = (element.aAu - 2.1) / 1.2;
-  const brightness = 0.44 + Math.random() * 0.16;
-  if (t < 0.4) {
-    asteroidBaseColors[i * 3] = brightness * 1.12;
-    asteroidBaseColors[i * 3 + 1] = brightness * 0.98;
-    asteroidBaseColors[i * 3 + 2] = brightness * 0.82;
-  } else if (t < 0.7) {
-    asteroidBaseColors[i * 3] = brightness * 0.98;
-    asteroidBaseColors[i * 3 + 1] = brightness * 0.94;
-    asteroidBaseColors[i * 3 + 2] = brightness * 0.89;
-  } else {
-    const darker = brightness * 0.8;
-    asteroidBaseColors[i * 3] = darker * 0.9;
-    asteroidBaseColors[i * 3 + 1] = darker * 0.9;
-    asteroidBaseColors[i * 3 + 2] = darker * 0.94;
-  }
+  asteroidBaseColors[i * 3] = element.colorR;
+  asteroidBaseColors[i * 3 + 1] = element.colorG;
+  asteroidBaseColors[i * 3 + 2] = element.colorB;
 }
 
 asteroidBaseGeometry.setAttribute('position', new Float32BufferAttribute(asteroidBasePositions, 3));
@@ -2227,13 +2489,15 @@ const asteroidBeltWaypoint = createAsteroidBeltWaypoint();
 const asteroidDetailGeometry = new BufferGeometry();
 const asteroidDetailPositions = new Float32Array(ASTEROID_DETAIL_MAX * 3);
 const asteroidDetailVelocities = new Float32Array(ASTEROID_DETAIL_MAX * 3);
+const asteroidDetailColors = new Float32Array(ASTEROID_DETAIL_MAX * 3);
 const asteroidDetailElements = new Array(ASTEROID_DETAIL_MAX);
 asteroidDetailGeometry.setAttribute('position', new Float32BufferAttribute(asteroidDetailPositions, 3));
+asteroidDetailGeometry.setAttribute('color', new Float32BufferAttribute(asteroidDetailColors, 3));
 
 const asteroidDetailPoints = new Points(
   asteroidDetailGeometry,
   new PointsMaterial({
-    color: new Color('#d0c5af'),
+    vertexColors: true,
     size: 0.0022,
     transparent: true,
     opacity: 0.68,
@@ -2249,17 +2513,47 @@ const lastAsteroidDetailCenter = new Vector3(Infinity, Infinity, Infinity);
 
 function regenerateAsteroidDetail(target, cameraDist, jd, targetCount) {
   const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
-  const centerA = Math.max(2.15, Math.min(3.25, distFromSun));
   const sigmaA = Math.max(0.08, Math.min(0.42, cameraDist * 0.12));
+  let minA = ASTEROID_MAIN_BELT_MIN_A;
+  let maxA = ASTEROID_MAIN_BELT_MAX_A + 0.1;
+  let centerA = Math.max(2.15, Math.min(3.25, distFromSun));
+  let populationHint = 'main-belt';
+
+  if (distFromSun >= 3.55 && distFromSun <= 4.35) {
+    minA = 3.72;
+    maxA = 4.2;
+    centerA = 3.97;
+    populationHint = 'hilda';
+  } else if (distFromSun > 4.35) {
+    minA = 4.95;
+    maxA = 5.42;
+    centerA = 5.2;
+    populationHint = 'trojan-l4';
+    const jupiterNode = bodyNodes.get('jupiter');
+    if (jupiterNode) {
+      jupiterNode.getWorldPosition(asteroidTmpJupiterPos);
+      const targetLongitudeDeg = normalizeDegrees(Math.atan2(target.y, target.x) / DEG_TO_RAD);
+      const jupiterLongitudeDeg = normalizeDegrees(Math.atan2(asteroidTmpJupiterPos.y, asteroidTmpJupiterPos.x) / DEG_TO_RAD);
+      const l4LongitudeDeg = normalizeDegrees(jupiterLongitudeDeg + 60);
+      const l5LongitudeDeg = normalizeDegrees(jupiterLongitudeDeg - 60);
+      const l4Delta = Math.abs(((targetLongitudeDeg - l4LongitudeDeg + 540) % 360) - 180);
+      const l5Delta = Math.abs(((targetLongitudeDeg - l5LongitudeDeg + 540) % 360) - 180);
+      populationHint = l4Delta <= l5Delta ? 'trojan-l4' : 'trojan-l5';
+    } else {
+      populationHint = Math.random() < 0.5 ? 'trojan-l4' : 'trojan-l5';
+    }
+  }
+
   asteroidDetailCount = Math.max(ASTEROID_DETAIL_MIN, Math.min(ASTEROID_DETAIL_MAX, targetCount));
 
   for (let i = 0; i < asteroidDetailCount; i++) {
     const element = createAsteroidOrbitElement({
-      minA: 2.02,
-      maxA: 3.45,
+      minA,
+      maxA,
       centerA,
       sigmaA,
-      enforceGaps: true
+      enforceGaps: true,
+      populationHint
     });
     asteroidDetailElements[i] = element;
     computeOrbitStateFromElement(element, jd, asteroidTmpPos, asteroidTmpVel);
@@ -2269,10 +2563,14 @@ function regenerateAsteroidDetail(target, cameraDist, jd, targetCount) {
     asteroidDetailVelocities[i * 3] = asteroidTmpVel.x;
     asteroidDetailVelocities[i * 3 + 1] = asteroidTmpVel.y;
     asteroidDetailVelocities[i * 3 + 2] = asteroidTmpVel.z;
+    asteroidDetailColors[i * 3] = element.colorR;
+    asteroidDetailColors[i * 3 + 1] = element.colorG;
+    asteroidDetailColors[i * 3 + 2] = element.colorB;
   }
 
   asteroidDetailGeometry.setDrawRange(0, asteroidDetailCount);
   asteroidDetailGeometry.attributes.position.needsUpdate = true;
+  asteroidDetailGeometry.attributes.color.needsUpdate = true;
   asteroidDetailGeometry.computeBoundingSphere();
   lastAsteroidDetailCenter.copy(target);
 }
@@ -2381,7 +2679,7 @@ function updateAsteroidDetail(jd, deltaSimDays = 0) {
   const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
   const height = Math.abs(target.z);
   const cameraDist = camera.position.distanceTo(target);
-  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 3.6 && height < 2.2 && cameraDist < 4.2;
+  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 5.8 && height < 3.1 && cameraDist < 5.6;
   if (!inBeltRegion) {
     asteroidDetailPoints.visible = false;
     return;
