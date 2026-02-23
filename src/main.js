@@ -2485,10 +2485,10 @@ asteroidBaseGeometry.setAttribute('color', new Float32BufferAttribute(asteroidBa
 const asteroidBelt = new Points(
   asteroidBaseGeometry,
   new PointsMaterial({
-    size: 0.0085,
+    size: 0.018,
     vertexColors: true,
     transparent: true,
-    opacity: 0.74,
+    opacity: 0.82,
     sizeAttenuation: true,
     depthWrite: false
   })
