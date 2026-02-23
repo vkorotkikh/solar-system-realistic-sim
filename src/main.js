@@ -2523,9 +2523,9 @@ const asteroidDetailPoints = new Points(
   asteroidDetailGeometry,
   new PointsMaterial({
     vertexColors: true,
-    size: 0.0022,
+    size: 0.006,
     transparent: true,
-    opacity: 0.68,
+    opacity: 0.76,
     sizeAttenuation: true,
     depthWrite: false
   })
