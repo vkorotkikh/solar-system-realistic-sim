@@ -1,0 +1,328 @@
+commit 2928d0504742ddeadc2810d88b554e8a0f163a57
+Author: Vadim Korotkikh <vkorotki@umd.edu>
+Date:   Mon Feb 23 03:06:32 2026 -0500
+
+    Add AGN shockwave engine and enhance gravitational wave visualization
+    
+    - Introduced a new module, `agnShockwaveEngine.js`, to simulate AGN shockwave events and their impact on solar flares.
+    - Updated the gravitational wave visualization to incorporate AGN event parameters, including shockwave distance and glow effects.
+    - Enhanced shader logic to visually represent AGN shockwaves, improving the realism of the simulation.
+    - Adjusted relevant functions to ensure proper integration and updating of AGN features during the simulation loop.
+
+diff --git a/src/frontend/features/solar/agnShockwaveEngine.js b/src/frontend/features/solar/agnShockwaveEngine.js
+new file mode 100644
+index 0000000..930ad67
+--- /dev/null
++++ b/src/frontend/features/solar/agnShockwaveEngine.js
+@@ -0,0 +1,93 @@
++import { Vector3 } from 'three';
++
++// Sagittarius A* approximate direction
++export const SAGITTARIUS_A_DIR = new Vector3(-0.05, -0.86, 0.5).normalize();
++
++// Centaurus A approximate direction
++export const CENTAURUS_A_DIR = new Vector3(-0.35, -0.45, 0.8).normalize();
++
++/**
++ * Creates the simulated FTL Gravitational Wave Tsunami from an AGN.
++ * @param {Object} gwDisplayer - The object returned by createGWVisualization
++ * @param {Object} sunCtrl - The sun controller to trigger flares upon impact
++ */
++export function createAgnShockwaveEngine(gwDisplayer, sunCtrl) {
++    let isActive = false;
++    let timeToImpactSec = 0;
++
++    // FTL reference speed (arbitrary fast speed for dramatic effect)
++    let speedAuPerSec = 20.0;
++    let currentDistanceAu = 0;
++    let direction = SAGITTARIUS_A_DIR.clone();
++    let intensity = 1.0;
++
++    return {
++        /**
++         * Trigger a new shockwave event
++         * @param {string} source 'SagittariusA' or 'CentaurusA'
++         * @param {number} impactTimeSec Time until the wave hits the sun (0,0,0)
++         * @param {number} eventIntensity Strength of the event
++         */
++        triggerEvent(source = 'SagittariusA', impactTimeSec = 10, eventIntensity = 1.0) {
++            isActive = true;
++            timeToImpactSec = impactTimeSec;
++            intensity = eventIntensity;
++
++            if (source === 'CentaurusA') {
++                direction.copy(CENTAURUS_A_DIR);
++            } else {
++                direction.copy(SAGITTARIUS_A_DIR);
++            }
++
++            currentDistanceAu = speedAuPerSec * timeToImpactSec;
++
++            if (gwDisplayer) {
++                gwDisplayer.toggle(true);
++                gwDisplayer.setParams({
++                    frequency: 10.0, // High freq jitter
++                    strain: 0.8 * intensity, // Massive exaggerated strain
++                    direction: direction,
++                    isAgnEvent: 1.0,
++                    shockwaveDist: currentDistanceAu
++                });
++            }
++        },
++
++        update(dtSec) {
++            if (!isActive) return;
++
++            timeToImpactSec -= dtSec;
++            currentDistanceAu = speedAuPerSec * timeToImpactSec;
++
++            if (gwDisplayer) {
++                gwDisplayer.setParams({
++                    shockwaveDist: currentDistanceAu
++                });
++            }
++
++            if (timeToImpactSec <= 0 && currentDistanceAu <= 0) {
++                this.onImpact();
++            }
++        },
++
++        onImpact() {
++            isActive = false;
++
++            // Trigger an extreme solar flare reaction on all sides
++            if (sunCtrl && sunCtrl.triggerMassiveAgnFlare) {
++                sunCtrl.triggerMassiveAgnFlare(intensity);
++            }
++
++            if (gwDisplayer) {
++                setTimeout(() => {
++                    gwDisplayer.setParams({ isAgnEvent: 0.0, strain: 0.0 });
++                    gwDisplayer.toggle(false);
++                }, 4000); // Tsunami passes and dissipates
++            }
++        },
++
++        isActive() { return isActive; },
++        getDistanceAu() { return currentDistanceAu; },
++        getTimeToImpact() { return timeToImpactSec; }
++    };
++}
+diff --git a/src/frontend/features/solar/gravitationalWaves.js b/src/frontend/features/solar/gravitationalWaves.js
+index 6e9e9f8..5145b8e 100644
+--- a/src/frontend/features/solar/gravitationalWaves.js
++++ b/src/frontend/features/solar/gravitationalWaves.js
+@@ -28,9 +28,12 @@ uniform float frequency;       // Hz
+ uniform float strainAmplitude; // exaggerated strain
+ uniform vec3 propagationDir;   // wave propagation direction
+ uniform float enabled;         // 0.0 = off, 1.0 = on
++uniform float isAgnEvent;      // AGN shockwave mode
++uniform float shockwaveDist;   // Current distance of shockwave from origin
+ 
+ varying vec2 vUv;
+ varying float vDistortion;
++varying float vAgnGlow;
+ 
+ void main() {
+   vUv = uv;
+@@ -39,12 +42,36 @@ void main() {
+   float phasePos = dot(position, propagationDir) * 0.5;
+   float phase = time * frequency * 6.28318 + phasePos;
+   
+-  // + polarization: stretch x, squeeze y (and vice versa half a cycle later)
++  // + polarization: stretch x, squeeze y
+   float hPlus = strainAmplitude * sin(phase) * enabled;
+   
++  // If AGN event, compute shockwave front
++  float axisPos = dot(position, propagationDir);
++  vAgnGlow = 0.0;
++  if (isAgnEvent > 0.5) {
++      // Scale space drastically behind the shockwave front
++      float distBehind = axisPos - shockwaveDist;
++      if (distBehind < 0.0) {
++          // Sharp compression at the front, exponential decay behind
++          hPlus += strainAmplitude * exp(distBehind * 0.5) * sin(time * 20.0);
++          
++          // High energy particle glow at the wavefront boundary
++          if (distBehind > -2.0) {
++              vAgnGlow = 1.0 - (abs(distBehind) / 2.0);
++          }
++      } else {
++          // Flat ahead of the tsunami
++          hPlus = 0.0;
++      }
++  }
++  
+   vec3 displaced = position;
+   displaced.x *= (1.0 + hPlus);
+   displaced.z *= (1.0 - hPlus);
++  // Add some vertical FTL turbulence
++  if (isAgnEvent > 0.5 && axisPos < shockwaveDist) {
++      displaced.y += sin(position.x * 5.0 + time * 10.0) * exp((axisPos - shockwaveDist) * 0.5);
++  }
+   
+   vDistortion = abs(hPlus);
+   
+@@ -54,10 +81,12 @@ void main() {
+ 
+ const GW_FRAGMENT_SHADER = `
+ uniform float enabled;
++uniform float isAgnEvent;
+ uniform vec3 waveColor;
+ 
+ varying vec2 vUv;
+ varying float vDistortion;
++varying float vAgnGlow;
+ 
+ void main() {
+   if (enabled < 0.5) discard;
+@@ -71,6 +100,12 @@ void main() {
+   vec3 color = mix(waveColor * 0.3, waveColor, vDistortion * 10.0);
+   float alpha = gridAlpha * 0.4 + vDistortion * 2.0;
+   
++  // AGN Tsunami gamma-ray glowing front
++  if (isAgnEvent > 0.5 && vAgnGlow > 0.01) {
++      color = mix(color, vec3(1.0, 0.9, 1.0) * 2.0, vAgnGlow); // Blinding white/purple
++      alpha += vAgnGlow * 2.5;
++  }
++  
+   gl_FragColor = vec4(color, alpha * 0.5);
+ }
+ `;
+@@ -94,11 +129,14 @@ export function createGWVisualization(size = 10) {
+             strainAmplitude: { value: 0.05 },     // Hugely exaggerated (real: 10⁻²¹)
+             propagationDir: { value: new Vector3(0, 1, 0) }, // From "above" ecliptic
+             enabled: { value: 0 },               // Off by default
++            isAgnEvent: { value: 0.0 },          // AGN mode off
++            shockwaveDist: { value: 9999.0 },
+             waveColor: { value: new Color(0.3, 0.6, 1.0) }  // Blue-ish
+         },
+         transparent: true,
+         side: DoubleSide,
+-        depthWrite: false
++        depthWrite: false,
++        blending: 2 // Additive blending for better glowing effect
+     });
+ 
+     const mesh = new Mesh(geometry, material);
+@@ -129,10 +167,12 @@ export function createGWVisualization(size = 10) {
+          * Set GW parameters.
+          * @param {Object} params
+          */
+-        setParams({ frequency, strain, direction }) {
++        setParams({ frequency, strain, direction, isAgnEvent, shockwaveDist }) {
+             if (frequency !== undefined) material.uniforms.frequency.value = frequency;
+             if (strain !== undefined) material.uniforms.strainAmplitude.value = strain;
+             if (direction) material.uniforms.propagationDir.value.copy(direction);
++            if (isAgnEvent !== undefined) material.uniforms.isAgnEvent.value = isAgnEvent;
++            if (shockwaveDist !== undefined) material.uniforms.shockwaveDist.value = shockwaveDist;
+         },
+ 
+         /**
+
+commit e915dfe902caebdece59dbc46d6c84a0174f1ed4
+Author: Vadim Korotkikh <vkorotki@umd.edu>
+Date:   Mon Feb 23 03:05:47 2026 -0500
+
+    Add AGN shockwave functionality and integrate gravitational wave visualization
+    
+    - Introduced a new DOM element for triggering AGN shockwaves and added an event listener to handle click events.
+    - Implemented the AGN shockwave engine within the sun controller, allowing for the triggering of massive AGN flares and associated solar phenomena.
+    - Integrated gravitational wave visualization into the sun controller, enhancing the simulation's capability to represent complex astrophysical interactions.
+    - Updated relevant functions to ensure proper handling and updating of the new features during the simulation loop.
+
+diff --git a/src/main.js b/src/main.js
+index 414d165..048274f 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -68,7 +68,8 @@ const dom = {
+   statusZoom: document.getElementById('status-zoom'),
+   zoomSensitivity: document.getElementById('zoom-sensitivity'),
+   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
+-  viewportShell: document.getElementById('viewport-shell')
++  viewportShell: document.getElementById('viewport-shell'),
++  triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
+ };
+ 
+ // ── Data & State ─────────────────────────────────────────────────────────────
+@@ -567,6 +568,10 @@ dom.canvas?.addEventListener('dblclick', (e) => {
+   }
+ });
+ 
++dom.triggerAgnShockwave?.addEventListener('click', () => {
++  sunCtrl.triggerAgnShockwave('SagittariusA', 8.0, 1.5); // 8 seconds impact, 1.5 intensity
++});
++
+ // ── Initialize ───────────────────────────────────────────────────────────────
+ 
+ refillBodyList();
+diff --git a/src/sunController.js b/src/sunController.js
+index 11bf1ba..92c5110 100644
+--- a/src/sunController.js
++++ b/src/sunController.js
+@@ -28,6 +28,8 @@ import {
+   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
+   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
+ } from './frontend/features/solar/solarFeatureBlending.js';
++import { createGWVisualization } from './frontend/features/solar/gravitationalWaves.js';
++import { createAgnShockwaveEngine } from './frontend/features/solar/agnShockwaveEngine.js';
+ import {
+   buildAiaProxyTextureUrl,
+   deriveSunObservationControls,
+@@ -100,6 +102,9 @@ export function createSunController({
+   let sunCoronalLoopGroup = null;
+   let sunParkerSpiralGroup = null;
+ 
++  let gwDisplayer = null;
++  let agnEngine = null;
++
+   let solarPhysicsState = null;
+   let solarPhysicsFeatureSetCurrent = null;
+   let solarPhysicsFeatureSetTarget = null;
+@@ -249,6 +254,22 @@ export function createSunController({
+     sunParkerSpiralGroup.userData.bodyId = 'sun-parker-spiral';
+     node.add(sunParkerSpiralGroup);
+     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, sunRadiusAu, 6, 120, 0, camera);
++
++    // Agn Shockwave Engine
++    gwDisplayer = createGWVisualization(400); // Massive grid
++    node.add(gwDisplayer.mesh);
++
++    // Inject self (controller) into the engine for the triggerMassiveAgnFlare callback
++    agnEngine = createAgnShockwaveEngine(gwDisplayer, {
++      triggerMassiveAgnFlare: (intensity) => {
++        if (solarFlareManager) {
++          // Spawn 3 massive CMEs wrapping the sun
++          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
++          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
++          solarFlareManager.spawnRandomFlare(intensity * 2.0, sunRadiusAu);
++        }
++      }
++    });
+   }
+ 
+   function update(julianDate, realtimeSeconds) {
+@@ -310,6 +331,13 @@ export function createSunController({
+ 
+     const is304Mode = userAiaChannelOverride === 'aia_304';
+     updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, is304Mode);
++
++    if (gwDisplayer && gwDisplayer.mesh.visible) {
++      gwDisplayer.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
++    }
++    if (agnEngine && agnEngine.isActive()) {
++      agnEngine.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
++    }
+   }
+ 
+   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
+@@ -371,6 +399,9 @@ export function createSunController({
+     maybeRefreshPhysics,
+     onScaleChange,
+     setAiaChannelOverride,
++    triggerAgnShockwave: (source, impactTimeSec, intensity) => {
++      if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity);
++    },
+     get magneticFieldGroup() { return sunMagneticFieldGroup; },
+     get surfaceMaterial() { return sunSurfaceMaterial; }
+   };
