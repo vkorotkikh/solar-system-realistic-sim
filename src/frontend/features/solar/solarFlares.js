@@ -164,7 +164,7 @@ export function createSolarFlareEvent({
 
     // Lifecycle state
     let elapsedSec = 0;
-    let isExpired = false;
+    let _expired = false;
 
     // Duration of surface flare flash (short)
     const flashDurationSec = 15.0 + intensity * 20.0;
@@ -180,7 +180,7 @@ export function createSolarFlareEvent({
         intensity,
 
         update(dtSec) {
-            if (isExpired) return;
+            if (_expired) return;
 
             elapsedSec += dtSec;
 
@@ -201,12 +201,12 @@ export function createSolarFlareEvent({
             }
 
             if (elapsedSec > maxLifeTimeSec) {
-                isExpired = true;
+                _expired = true;
             }
         },
 
         isExpired() {
-            return isExpired;
+            return _expired;
         },
 
         dispose() {
