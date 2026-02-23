@@ -124,6 +124,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
 
   const tempVecA = new Vector3();
   const tempVecB = new Vector3();
+  const screenUpVec = new Vector3();
 
   function updateLocatorOverlays({
     dom,
@@ -141,6 +142,8 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
   }) {
     const locatorMode = Boolean(dom.toggleLocators?.checked);
     const labelsEnabled = Boolean(dom.toggleLabels?.checked);
+
+    screenUpVec.set(0, 1, 0).applyQuaternion(camera.quaternion);
 
     for (const entry of labels) {
       const body = bodyById.get(entry.bodyId);
@@ -172,7 +175,8 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
       const clearancePx = shouldShowLabel ? 16 : 8;
       const pointerTipWorld = clampedHeight * pointerTipNorm;
       const pointerTipTargetY = Math.max(radius * 2.25, unitPerPixel * (clearancePx + pixelRadius * 1.2));
-      entry.sprite.position.set(0, pointerTipTargetY + pointerTipWorld, 0);
+      const offsetDist = pointerTipTargetY + pointerTipWorld;
+      entry.sprite.position.copy(screenUpVec).multiplyScalar(offsetDist);
     }
 
     if (Array.isArray(localBodyEntries) && typeof localBodyRenderRadiusAu === 'function') {
@@ -182,7 +186,8 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
         const radius = localBodyRenderRadiusAu(entry.body, simState.useRealisticScale);
         const pointerTipNorm = entry.label.userData.pointerTipOffsetNorm ?? labelPointerTipOffsetNorm;
         const pointerTipWorld = entry.label.scale.y * pointerTipNorm;
-        entry.label.position.set(0, radius * 2.4 + 0.015 + pointerTipWorld * 0, 0);
+        const localOffsetDist = radius * 2.4 + 0.015 + pointerTipWorld;
+        entry.label.position.copy(screenUpVec).multiplyScalar(localOffsetDist);
         entry.label.visible = showLocalLabels;
       }
     }
