@@ -346,6 +346,7 @@ uniform float coronalHoleActivity;
 uniform vec3 coronaColor;
 uniform float observationBlend;
 uniform float observationEmission;
+uniform float sunRadius;  // display radius of the sun in scene units
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -395,15 +396,46 @@ void main() {
   float alpha = (offLimb * 0.06 + rim * 0.09) * (0.26 + burst * (0.42 + activity * 0.32)) * pulse;
   alpha *= 1.0 + observationBlend * (0.18 + observationEmission * 0.46);
 
-  // Coronal hole attenuation
-  float absLat = abs(normalDir.y);
-  float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
-  float holeFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, absLat);
-  alpha *= mix(0.08, 1.0, 1.0 - holeFade * (1.0 - coronalHoleActivity * 0.7));
+  // ─── K-Corona Radial Intensity Falloff (Baumbach/van de Hulst 1950) ────────
+  // N(r) = 10^8 * (0.036*r^-1.5 + 1.55*r^-6 + 2.99*r^-16)
+  // Simplified to two dominant terms for real-time rendering.
+  float fragR = max(length(vWorldPosition) / max(sunRadius, 0.0001), 1.001);
+  float coronaRadial = 0.036 * pow(fragR, -1.5) + 1.55 * pow(fragR, -6.0);
+  coronaRadial = coronaRadial / 1.586; // normalize to ~1.0 at r=1
+  alpha *= coronaRadial;
 
+  // ─── Helmet Streamer Structure ─────────────────────────────────────────────
+  // During solar minimum: bright equatorial streamer belt
+  // During solar maximum: streamers at all latitudes
+  float streamerLat = abs(normalDir.y); // 0 at equator, 1 at poles
+  float streamerWidth = 0.15 + activity * 0.35; // narrow at min, broad at max
+  float streamerBright = smoothstep(streamerWidth, max(streamerWidth - 0.1, 0.01), streamerLat);
+  // Add streamer-specific turbulence (radially elongated)
+  float streamerTurb = fbm(vec3(normalDir.x * 3.0, normalDir.y * 0.5, normalDir.z * 3.0)
+                          + vec3(time * 0.1, 0.0, -time * 0.08));
+  alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
+
+  // ─── Magnetically-Driven Coronal Holes ─────────────────────────────────────
+  // Polar holes (always present) + equatorial holes (appear at solar max)
+  float polarHole = abs(normalDir.y);
+  float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
+  float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
+  // Noise-modulated equatorial holes at high activity
+  float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
+  float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
+  float holeStrength = max(polarFade, equatorialHole);
+  alpha *= mix(0.08, 1.0, 1.0 - holeStrength * (1.0 - coronalHoleActivity * 0.7));
+
+  // ─── Temperature-Dependent Corona Color ────────────────────────────────────
+  // Inner corona (~1 MK): Fe XIV green line at 530.3 nm contribution
+  // Outer corona (~2 MK): traditional warm white
   vec3 hotWhite = vec3(1.0, 0.96, 0.86);
-  vec3 color = mix(coronaColor * 0.8, hotWhite, 0.16 + burst * 0.36 + activity * 0.12);
+  vec3 innerCorona = vec3(0.6, 1.0, 0.5); // Fe XIV green line contribution
+  float tempGradient = smoothstep(1.0, 3.5, fragR);
+  vec3 baseCorona = mix(innerCorona * 0.3 + hotWhite * 0.7, coronaColor * 0.8, tempGradient);
+  vec3 color = mix(baseCorona, hotWhite, 0.16 + burst * 0.36 + activity * 0.12);
   color = mix(color, hotWhite, observationBlend * (0.08 + observationEmission * 0.28));
+
   gl_FragColor = vec4(color, alpha);
 }
 `;
@@ -509,7 +541,7 @@ export function updateSunFlaresUniforms(sunSurfaceMaterial, flareParamsArray) {
 
 const CHROMOSPHERE_VERTEX_SHADER = `
 attribute float aLifetime;   // [0,1] normalized phase offset per spicule
-attribute float aSpeed;      // animation speed multiplier
+attribute float aSpeed;      // animation speed multiplier (< 3.0 = Type I, >= 3.0 = Type II)
 attribute vec3  aAxis;       // outward normal direction
 
 uniform float time;
@@ -521,31 +553,46 @@ varying float vAlpha;
 varying float vHeight; // 0 = base, 1 = tip
 
 void main() {
-  // Each spicule animates on its own clock
-  float phase = fract(time * aSpeed * 0.018 + aLifetime);
-  // Triangle wave: 0->0.5 rise, 0.5->1 fall
-  float rise = phase < 0.5 ? phase * 2.0 : (1.0 - phase) * 2.0;
+  // Distinguish Type I (slow, parabolic) from Type II (fast, fade-without-descent)
+  // Type I: 10-40 km/s, 3-7 min lifetime, symmetric rise+fall
+  // Type II: 80-300 km/s, 10-150s lifetime, rapid rise then fade in place
+  bool isTypeII = aSpeed >= 3.0;
 
-  // Spicules are ~0.008 solar radii tall (Beckers 1972: ~10,000 km / 696,000 km = 0.014 Rsun max)
-  float maxHeight = 0.005 + chromoActivity * 0.009;
+  float phase = fract(time * aSpeed * 0.018 + aLifetime);
+  float rise;
+  if (isTypeII) {
+    // Type II: rapid ballistic rise (30% of cycle), then fade without descent
+    rise = phase < 0.3 ? (phase / 0.3) : max(0.0, 1.0 - (phase - 0.3) * 2.5);
+  } else {
+    // Type I: parabolic rise and fall (Beckers 1972)
+    rise = phase < 0.5 ? phase * 2.0 : (1.0 - phase) * 2.0;
+  }
+
+  // Type II spicules reach higher and are thinner
+  float maxHeight = isTypeII
+    ? (0.007 + chromoActivity * 0.013)   // Type II: 4,900-13,900 km
+    : (0.005 + chromoActivity * 0.009);   // Type I:  3,500-9,700 km
   float height = rise * maxHeight;
   vHeight = rise;
 
   // Offset vertex outward along the surface normal
   vec3 spiculePos = position + aAxis * height * sunRadius;
 
-  // Limb fade: spicules are most visible at the limb (edge) of the disk.
-  // Use dot product with view direction to determine if we're near the limb.
-  // At limb: normalDir nearly perpendicular to viewDir, dot ~ 0.
-  // At disk center: dot ~ 1. Invert: limbFade = 1 - ndotv.
+  // Limb fade: spicules are most visible at the limb (edge) of the disk
   vec3 viewDelta = cameraPosition - vec3(modelMatrix[3]);
   float ndotv = abs(dot(normalize(aAxis), normalize(viewDelta)));
-  float limbFade = clamp(1.0 - ndotv * 0.65, 0.0, 1.0);  // still partially visible across disk
+  float limbFade = clamp(1.0 - ndotv * 0.65, 0.0, 1.0);
 
   vAlpha = rise * limbFade * (0.45 + chromoActivity * 0.55) * chromoOpacity;
+  // Type II fade faster overall
+  if (isTypeII) vAlpha *= 0.7;
 
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(spiculePos, 1.0);
-  gl_PointSize = 1.8;
+
+  // Distance-scaled point size (perspective attenuation)
+  float dist = length(cameraPosition - (modelMatrix * vec4(spiculePos, 1.0)).xyz);
+  float baseSize = isTypeII ? 1.2 : 2.0; // Type II are thinner (~200 km vs ~660 km)
+  gl_PointSize = clamp(baseSize * (300.0 / max(dist, 0.001)), 0.5, 6.0);
 }
 `;
 
@@ -596,8 +643,14 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
 
     // Lifetime offset: evenly spread so not all in phase
     lifetimes[i] = Math.random();
-    // Speed: vary ±30% to avoid synchrony
-    speeds[i] = 0.8 + Math.random() * 0.4;
+    // Speed: Type I (70% of particles) vs Type II (30%)
+    // Type I: aSpeed 0.5-2.0 (slow, parabolic rise+fall)
+    // Type II: aSpeed 5.0-15.0 (fast, rapid rise then fade)
+    if (i < count * 0.7) {
+      speeds[i] = 0.5 + Math.random() * 1.5;   // Type I
+    } else {
+      speeds[i] = 5.0 + Math.random() * 10.0;  // Type II
+    }
   }
 
   const geometry = new BufferGeometry();
@@ -619,7 +672,7 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
     transparent: true,
     blending: AdditiveBlending,
     depthWrite: false,
-    sizeAttenuation: false
+    sizeAttenuation: true  // distance-scaled spicule sizes
   });
 
   const points = new Points(geometry, material);
@@ -696,7 +749,8 @@ export function createSunCoronaShell(geometry) {
       coronalHoleActivity: { value: 0.5 },
       coronaColor: { value: new Color('#ffb877') },
       observationBlend: { value: 0 },
-      observationEmission: { value: 0.25 }
+      observationEmission: { value: 0.25 },
+      sunRadius: { value: 1.0 }  // updated by updateSunMaterialUniforms
     },
     transparent: true,
     blending: AdditiveBlending,
@@ -705,7 +759,8 @@ export function createSunCoronaShell(geometry) {
   });
   const mesh = new Mesh(geometry, material);
   mesh.userData.bodyId = 'sun-corona';
-  mesh.userData.surfaceScale = 1.032;
+  // Expanded to ~4 solar radii for physical K-corona radial falloff
+  mesh.userData.surfaceScale = 4.0;
   return mesh;
 }
 
@@ -1182,7 +1237,8 @@ export function updateSunMaterialUniforms({
   activity,
   observationBlend = 0,
   observationEmission = 0.25,
-  coronaHue = null
+  coronaHue = null,
+  sunDisplayRadius = 1.0
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
   const obsEmission = clampUnit(Number(observationEmission) || 0.25);
@@ -1202,6 +1258,9 @@ export function updateSunMaterialUniforms({
     sunCoronaMaterial.uniforms.activity.value = activity;
     if (sunCoronaMaterial.uniforms.coronalHoleActivity) {
       sunCoronaMaterial.uniforms.coronalHoleActivity.value = activity;
+    }
+    if (sunCoronaMaterial.uniforms.sunRadius) {
+      sunCoronaMaterial.uniforms.sunRadius.value = sunDisplayRadius;
     }
     if (sunCoronaMaterial.uniforms.observationBlend) {
       sunCoronaMaterial.uniforms.observationBlend.value = obsBlend;

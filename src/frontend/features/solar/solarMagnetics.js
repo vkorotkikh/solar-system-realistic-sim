@@ -24,40 +24,57 @@ function computeMagneticField(x, y, z, activity) {
     const r = Math.sqrt(r2);
     if (r < 0.0001) return new Vector3(0, 1, 0);
 
-    // Convert to spherical coords
-    // theta is colatitude (0 at north pole, pi at south pole)
+    // Phase 7B: Solar dipole tilt (~10-30° at solar max)
+    // Rotate input coordinates around X-axis before dipole computation
+    const tiltAngle = 0.2 * activity; // ~12° at solar max
+    const cosT_tilt = Math.cos(tiltAngle);
+    const sinT_tilt = Math.sin(tiltAngle);
+    // Tilted coordinates for dipole only
+    const xTilt = x;
+    const yTilt = y * cosT_tilt - z * sinT_tilt;
+    const zTilt = y * sinT_tilt + z * cosT_tilt;
+
+    // Convert tilted coords to spherical for dipole
+    const rTilt = Math.sqrt(xTilt * xTilt + yTilt * yTilt + zTilt * zTilt);
+    const thetaTilt = Math.acos(zTilt / rTilt);
+    const phiTilt = Math.atan2(yTilt, xTilt);
+
+    // Convert original coords to spherical for quadrupole + octupole
     const theta = Math.acos(z / r);
     const phi = Math.atan2(y, x);
 
-    const cosT = Math.cos(theta);
-    const sinT = Math.sin(theta);
+    const cosT = Math.cos(thetaTilt);
+    const sinT = Math.sin(thetaTilt);
 
-    // Dipole component
+    // Dipole component (using tilted coords)
     const b0_dipole = 1.0;
-    // B_r = 2 * B0 * cos(theta) / r^3
-    // B_theta = B0 * sin(theta) / r^3
     const br_dip = 2 * b0_dipole * cosT / (r * r2);
     const bt_dip = b0_dipole * sinT / (r * r2);
 
-    // Quadrupole component (activity adds higher-order complexity)
+    // Quadrupole component (ℓ=2, using original coords)
     const b0_quad = 0.5 * activity;
-    // B_r = 0.5 * B0 * (3cos^2(theta) - 1) / r^4
-    // B_theta = B0 * sin(2*theta) / r^4
+    const cosT_orig = Math.cos(theta);
+    const sinT_orig = Math.sin(theta);
     const cos2T = Math.cos(2 * theta);
     const sin2T = Math.sin(2 * theta);
-    const br_quad = 0.5 * b0_quad * (3 * cosT * cosT - 1) / (r2 * r2);
+    const br_quad = 0.5 * b0_quad * (3 * cosT_orig * cosT_orig - 1) / (r2 * r2);
     const bt_quad = b0_quad * sin2T / (r2 * r2);
 
-    // Tilted dipole offset (wobble)
-    const tiltAngle = 0.2 * activity;
+    // Phase 7C: Octupole component (ℓ=3, activity-dependent complexity)
+    // Breaks simple bar-magnet symmetry, adds current-sheet crossings
+    const b0_oct = 0.25 * activity * activity; // only significant at high activity
+    const cosT3 = cosT_orig * cosT_orig * cosT_orig;
+    const br_oct = b0_oct * (5 * cosT3 - 3 * cosT_orig) / (r2 * r2 * r);
+    const bt_oct = b0_oct * (1.5 * sin2T * cosT_orig) / (r2 * r2 * r);
 
-    const br = br_dip + br_quad;
-    const bt = bt_dip + bt_quad;
+    // Combine all harmonics
+    const br = br_dip + br_quad + br_oct;
+    const bt = bt_dip + bt_quad + bt_oct;
     const bp = 0; // Purely axisymmetric
 
-    // Transform back to Cartesian (accounting for tilt could be done here, simplified)
-    const bx = sinT * Math.cos(phi) * br + cosT * Math.cos(phi) * bt - Math.sin(phi) * bp;
-    const by = sinT * Math.sin(phi) * br + cosT * Math.sin(phi) * bt + Math.cos(phi) * bp;
+    // Transform back to Cartesian (using tilted basis for dipole consistency)
+    const bx = sinT * Math.cos(phiTilt) * br + cosT * Math.cos(phiTilt) * bt - Math.sin(phiTilt) * bp;
+    const by = sinT * Math.sin(phiTilt) * br + cosT * Math.sin(phiTilt) * bt + Math.cos(phiTilt) * bp;
     const bz = cosT * br - sinT * bt;
 
     return new Vector3(bx, by, bz).normalize();
