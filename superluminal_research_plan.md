@@ -1,92 +1,92 @@
-# Research & Implementation Plan (phased)
+# Research and Implementation Plan: Superluminal Fronts in AGN/SMBH Context
 
-Because this is a large topic, this is split into a multi-stage plan with explicit deliverables, risk checks, and source-query prompts.
+## Objective
+Build a simulation architecture for apparent superluminal phenomena that is:
+- causally safe,
+- physically interpretable,
+- multi-messenger aware (GW/EM/CR/neutrino channels),
+- adjustable by confidence level (hard physics vs speculative hooks).
 
-## Stage 0 — Scope lock and citation baseline
+## Phase 0: Source and parameter baselines
+1. Lock source presets with minimal required constants.
+2. Store in code as YAML or JSON-like config with fixed provenance.
+3. Include documented priors and confidence labels.
 
-**Goal:** freeze the target physical layers and confidence taxonomy.
+Proposed presets:
+- Sgr A*.
+- Centaurus A.
+- M87.
+- Maffei 1.
 
-- [ ] Define source presets explicitly: `Sgr A*`, `Centaurus A`, `M87`, `Maffei 1`.
-- [ ] Lock model tags: `observational`, `phenomenological`, `speculative`.
-- [ ] Freeze key geometry equations: apparent superluminal and Doppler factor.
-- [ ] Confirm data APIs/asset formats for MOJAVE, IceCube, PAO, PTA releases.
+## Phase 1: Causal kinematics core
+1. Implement per-feature geometry transform.
+2. Implement apparent speed transform and projection.
+3. Add observer-time mapping and light-delay correction.
+4. Add visual mode fallback and physical mode output separation.
 
-### Query prompts to run next
-- `"MOJAVE component speeds table API 2019"`
-- `"NANOGrav 15-year HD curve data release details"`
-- `"IceCube TXS 0506+056 public alert data release"`
-- `"Auger latest UHECR anisotropy update catalog"`
+Deliverables:
+- deterministic `beta_app` outputs,
+- observed arrival timestamps,
+- debug overlay with local/casual speed.
 
-## Stage 1 — Causal event core (conservative default)
+## Phase 2: Multi-channel event scheduler
+1. Replace fixed 20 AU/s front behavior with a typed event object.
+2. Add delayed kernels for channels:
+2.1 GW.
+2.2 EM optical/UV/X-ray proxy.
+2.3 CR and neutrino proxy.
+3. Add channel-specific decay and dilution.
 
-**Goal:** replace current one-off animation trigger with a channelized event kernel.
+Deliverables:
+- one event creates multiple physically distinct observables,
+- UI can show causality-safe staggered timeline.
 
-- [ ] Implement `Event` schema: launch time, duration, energy budget, source geometry, jet angle.
-- [ ] Add channel structs:
-  - `GW`, `EM`, `CR`, `MHDFront`, `Neutrino`
-- [ ] Add arrival-time model per channel:
-  - near-`c` baseline + channel-specific delay term.
-- [ ] Add simple transport defaults:
-  - `CR` with diffusion coefficient scaling in rigidity
-  - `MHDFront` with medium-dependent speed law
-  - optional launch lag terms
+## Phase 3: Jet morphology and transport
+1. Add 1--2 component jet model: spine and sheath.
+2. Add beaming law and Doppler modulation.
+3. Add optional shock compression regions and moving knots.
+4. Add toy CR transport equation with adjustable diffusivity.
 
-### Outputs for stage 1
-- stable deterministic simulation with time-offset signatures
-- debug panel showing channel-specific delay curve
+Deliverables:
+- stronger morphological patterns,
+- anisotropic lobe/beam evolution,
+- delayed CR/neutrino proxy timeline.
 
-## Stage 2 — Observable-layer superluminal module
+## Phase 4: Validation and calibration set
+1. Match toy outputs to 4 benchmark signatures:
+- apparent superluminal curve shape,
+- luminosity rise/decay asymmetry,
+- delayed channel onset,
+- orientation sensitivity.
+2. Compare qualitatively to anchor cases:
+- GW170817-like jet delay ladder,
+- MOJAVE speed distribution style shape,
+- Cen A jet kinematics scale,
+- no-superspeed causality checks.
 
-**Goal:** model apparent pattern speeds separately from physical transport.
+Deliverables:
+- benchmark cards and example parameter sets,
+- confidence bars and failure flags.
 
-- [ ] Add `beta_app` formula and Doppler boosting module.
-- [ ] Render apparent feature motion independent of causal channel speed.
-- [ ] Tie jet orientation jitter to apparent morphology only.
+## Phase 5: Optional advanced/speculative module
+1. Add toggle `advanced_mode`.
+2. Add Gertsenshtein-like coupling term and GW memory proxy as low-amplitude perturbations.
+3. Keep disabled by default.
 
-### Validation checks
-- reproduces typical `~`1–50`c` AGN apparent ranges with plausible `Γ, θ` combinations
-- maintains causality in transport layer.
+Deliverables:
+- explicit experiment mode docs,
+- no core behavior dependency.
 
-## Stage 3 — Source presets and medium maps
+## Query and research pack for continuation
+1. ``Rees 1966 apparent relativistic expansion Nature DOI''
+2. ``MOJAVE XVII 2019 public dataset apparent speeds''
+3. ``Cen A TANAMI inner parsec jet kinematics''
+4. ``GW170817 superluminal jet Nature 2018''
+5. ``Bell 1978 diffusive shock acceleration pdf''
+6. ``Gertsenshtein effect gravitational to electromagnetic conversion''
 
-**Goal:** create repeatable scientific presets for multi-source scenarios.
-
-- [ ] `SgrA`, `CenA`, `M87`, `Maffei1` JSON preset records.
-- [ ] Add optional medium map (`density`, `B-field proxy`) for differential front response.
-- [ ] Add refractive/reflective/ram-pressure terms for front distortion (no unbounded physical claims).
-
-## Stage 4 — Advanced transport realism (optional)
-
-**Goal:** move from toy transport to physically richer but still stable modules.
-
-- [ ] Add Parker-equation based CR transport module (1D radial + rigidity channel at first).
-- [ ] Add jet-breakout and shock-energy bookkeeping (shock compression proxy, heating proxy).
-- [ ] Add neutrino flux proxy from hadronic channel (user-triggerable).
-
-## Stage 5 — Speculative coupling sandbox
-
-**Goal:** isolate experimental effects only.
-
-- [ ] Add optional GWs-to-plasma coupling/feedback flag off by default.
-- [ ] Add memory-like strain pulse kernels in a disabled mode.
-- [ ] Print explicit warnings when enabled.
-
-## Stage 6 — Observational calibration
-
-**Goal:** calibrate against known datasets and annotate what is matched.
-
-- [ ] Compare against MOJAVE apparent speed envelope.
-- [ ] Compare delay ordering with GW170817-like toy sequence.
-- [ ] Verify AGN channel mapping with TXS 0506+056 neutrino timeline and PAO/UHECR anisotropy heuristics.
-
-## Deliverables
-
-1. Code: source presets + channelized event stack + dual-layer rendering.
-2. Documentation: this paper catalog + math approach docs + model assumptions.
-3. QA checklist: causality, numerical stability, and interpretation bounds.
-
-## Hard constraints to keep
-
-- Never let apparent motion override causal transport equations.
-- Never enable speculative couplings in default mode.
-- Keep every new term traceable to a source or clearly marked assumption.
+## Minimal implementation scope decision
+Phase 0 + Phase 1 can be done first and is enough for a visible, causal, educational upgrade.
+Phase 2 adds multi-messenger scheduling.
+Phase 3 improves scientific credibility substantially.
+Phase 4 + 5 are optional follow-on.

@@ -1,82 +1,89 @@
-\section{Mathematical Modeling Approaches}
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
 
-This section translates the candidate phenomena into equations you can code.
+\begin{document}
 
-\subsection{1) Apparent superluminal geometry}
+\title{Mathematical Approaches for Superluminal-like Front Modeling}
+\date{}
+\maketitle
 
-For a pattern moving at \(v=\beta c\):
-\begin{equation}
-  \beta_{\mathrm{app}} = \frac{\beta\sin\theta}{1-\beta\cos\theta},\qquad v_{\mathrm{app}}=\beta_{\mathrm{app}}c
-\end{equation}
+\section{1. Causal light-travel geometry}
 
-Causal constraint: \(\beta<1\). Yet \(\beta_{\mathrm{app}}>1\) is allowed by geometry.
+a feature at speed $\beta=v/c$ and viewing angle $\theta$ has apparent speed
+\[
+\beta_{\mathrm{app}} = \frac{\beta\sin\theta}{1-\beta\cos\theta}.
+\]
+This is a geometric mapping only and does not imply acausal transport.
 
-Doppler factor:
-\begin{equation}
-  \delta = [\Gamma(1-\beta\cos\theta)]^{-1},\qquad \Gamma=(1-\beta^2)^{-1/2}
-\end{equation}
+\section{2. Doppler and beaming}
+\[
+\delta = [\Gamma(1-\beta\cos\theta)]^{-1},\qquad
+S_{\nu,\mathrm{obs}} = \delta^{k-\alpha}S'_{\nu'}.
+\]
+With $k\approx2$ for continuous flow and $k\approx3$ for discrete blobs.
 
-Flux scaling (schematic):
-\begin{equation}
-  I_{\mathrm{obs}}\propto \delta^{p+\alpha}I\,' , \quad p\in\{2,3\}
-\end{equation}
+\section{3. Pattern and bulk speed}
+Let $\beta_p$ denote pattern speed and $\beta_b$ bulk speed.
+A robust model can maintain separate priors and fit observationally:
+\[
+\beta_{\mathrm{app},i}=f(\beta_p,\theta),\quad \text{and}
+\quad \Gamma_b\,\text{from independent constraints}.
+\]
 
-\subsection{2) Multi-channel arrival model}
+\section{4. Radiative transfer and arrival time}
+Ray-transfer equation:
+\[
+\frac{dI_\nu}{ds}=-\kappa_\nu I_\nu + j_\nu.
+\]
+Observer time map:
+\[
+t_\mathrm{obs}=t_\mathrm{em}+\frac{D-\mathbf n\cdot\mathbf r}{c}.
+\]
 
-Per source event \(E\), each observable channel has own transport law and delay:
-\begin{equation}
-  t_i = t_0 + \frac{D}{c} + \tau_{i}(E,\mathbf{M})
-\end{equation}
+\section{5. Multi-channel transport}
+For each channel $c$ (CR, neutrino, EM):
+\[
+\frac{\partial f_c}{\partial t}+\mathbf v\cdot\nabla f_c=
+\nabla\cdot(\mathbf D\nabla f_c)+\frac13(\nabla\cdot\mathbf u)
+\frac{\partial f_c}{\partial\ln p}+Q_c-L_c.
+\]
 
-Where \(\tau_i\) includes launch lag, breakout, scattering, diffusion and energy-loss delays.
+\section{6. Shock acceleration proxy}
+Test-particle slope:
+\[
+s=(r+2)/(r-1),
+\]
+with compression ratio $r$. A simple confinement bound is
+\[
+E_\mathrm{max}\approx Z e B R \beta.
+\]
 
-\subsection{3) Jet power and SMBH coupling (practical form)}
+\section{7. Event scheduling}
+Event state parameters:
+\[
+\mathcal E=(t_0,\mathbf r_0,\theta, P(t),\phi_c).
+\]
+Each channel uses delayed kernel
+\[
+K_c(t)=H(t)\left(\frac{t}{\tau_c}\right)e^{-t/\tau_c}.
+\]
 
-Use a conservative BZ-like parameterization:
-\begin{equation}
-  P_{\mathrm{BZ}} \approx \kappa\,\frac{\Phi_{\mathrm{BH}}^{2}\Omega_H^2}{4\pi c}
-\end{equation}
+\section{8. Inference objective}
+\[
+\mathcal L(\theta)=\sum_{\nu,t}\frac{(X_\mathrm{model}(t,\nu;\theta)-X_\mathrm{obs}(t,\nu))^2}{\sigma^2}
+\]
+with low-dimensional Bayesian exploration on parameters $\theta$.
 
-with horizon spin term \(\Omega_H\propto a_*/M\).
-
-\subsection{4) Shock dynamics}
-
-Non-relativistic self-similar blast:
-\begin{equation}
-  R=\xi\left(\frac{E}{\rho_0}\right)^{1/5} t^{2/5},\qquad v_s=\frac{2}{5}\frac{R}{t}
-\end{equation}
-
-Ultra-relativistic energy-conserving scaling (schematic):
-\begin{equation}
-  \Gamma^2 R^{3-k}\propto E\quad (\rho\propto r^{-k})
-\end{equation}
-
-Transition regime can be handled with moderate-\(\Gamma\) corrections (e.g., Coughlin 2019) for numerical continuity.
-
-\subsection{5) CR transport}
-
-Parker transport form (reduced):
-\begin{equation}
-  \frac{\partial f}{\partial t}+\mathbf u\cdot\nabla f-\nabla\cdot(\mathbf K\nabla f)-\frac{1}{3}(\nabla\cdot\mathbf u)p\frac{\partial f}{\partial p}=Q
-\end{equation}
-
-Simple diffusion scale estimate:
-\begin{equation}
-  \ell\sim\sqrt{2Kt},\qquad \Delta t\sim \frac{L^2}{2K}
-\end{equation}
-
-\subsection{6) Suggested code architecture}
-
-Implement each mechanism as a channel model:
+\section{Useful reference anchors}
 \begin{itemize}
-  \item Causal transport module for each channel (GW/EM/CR/MHD).
-  \item Geometric projection module for screen-space rendering.
-  \item Optional speculative module (off by default).
+\item Rees 1966, Nature. \url{https://www.nature.com/articles/211468a0}
+\item Blandford and K"onigl 1979. \url{https://www.osti.gov/biblio/5759330}
+\item MOJAVE VI and XVII. \url{https://arxiv.org/abs/0909.5100}, \url{https://arxiv.org/abs/1902.09591}
+\item GW170817 jet motion. \url{https://arxiv.org/abs/1806.09693}
+\item Bell 1978 shock acceleration. \url{https://www.osti.gov/etdeweb/biblio/6780891}
+\item Gertsenshtein derivation. \url{https://arxiv.org/abs/2301.02072}
 \end{itemize}
 
-A clean state tuple is:
-\begin{equation}
-  \mathbf x=\{t,\mathbf r,\Gamma,\theta,\delta, K_{\parallel},K_{\perp}, \tau_{\mathrm{arrive}},\Phi_{\mathrm{BH}},a_*,M_{\mathrm{BH}}\}
-\end{equation}
-
-where each field evolves via independent but coordinated update operators.
+\end{document}

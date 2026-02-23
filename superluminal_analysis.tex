@@ -1,79 +1,97 @@
-\section{Deep Analysis: AGN SMBH shock-wave modeling and apparent superluminal phenomena}
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,hyperref}
 
-\subsection*{1) Current model status and gap analysis}
+\begin{document}
 
-From the repository context, current implementation is primarily \\emph{visual/educational} in these areas:
-\begin{itemize}
-  \item A fixed local-tide approach with fallback Sgr A* terms in \texttt{galactic\_tide.py}.
-  \item A stylized AGN shock event path in \texttt{agnShockwaveEngine.js}.
-  \item An amplified toy treatment of gravitational wave magnitude in \texttt{gravitationalWaves.js}.
-  \item Event orchestration via UI hooks in \texttt{sunController.js}.
-\end{itemize}
+\title{Deep Analysis: Apparent Superluminal Fronts and SMBH Multi-Messenger Physics}
+\date{}
+\maketitle
 
-This aligns with your observation: the code is currently a \\textbf{single-channel, appearance-led demo} rather than a physically coupled framework.
-
-\subsection*{2) Physics interpretation of your core questions}
-
-\subsubsection*{2.1 Does SMBH mass couple to GW + UHE particle channels?}
-
-In the present architecture, SMBH mass appears mostly as metadata and not as a causal engine for a multi-channel propagation stack. A physically meaningful simulation requires per-source parameters such as
-\(M_{\mathrm{BH}}, a_*, d_L, \theta, \dot M\), etc., then channel-specific transport models.
-
-\subsubsection*{2.2 Can any apparent output exceed \(c\)?}
-
-No physical transport channel should. The apparent superluminal phenomenon follows from projection:
-\begin{equation}
-  v_{\mathrm{app}} = \frac{\beta \sin\theta}{1-\beta\cos\theta}c,\qquad \beta=v/c <1
-\end{equation}
-
-Hence superluminal sky-plane speeds are pattern/geometry effects.
-
-\subsubsection*{2.3 Source candidates}
-
-For nearby active/jet-relevant systems:
-\begin{itemize}
-  \item \textbf{Cen A}: nearest active radio galaxy in many practical modeling frameworks.
-  \item \textbf{M87}: high-power jet with strong observational constraints and EHT mass context.
-  \item \textbf{Sgr A*}: nearest SMBH, but active outburst impact at heliocentric scales remains likely tiny in realistic transport models.
-\end{itemize}
-
-\subsection*{3) Recommended modeling split: causal transport vs apparent layer}
-
-A robust architecture separates:
-\begin{description}
-  \item[Observable layer:] apparent kinematics (superluminal projection, Doppler boosting, front morphology).
-  \item[Causal layer:] channel-by-channel physical transport (EM/ GW/ CR/ MHD front) at subluminal speeds.
-  \item[Speculative layer:] optional exotic couplings (disabled by default).
-\end{description}
-
-\subsection*{4) Implementation-minded multi-channel formulation}
-
-For an event tuple\(E\), define independent channel arrival:
-\begin{equation}
-  t_i = t_0 + \frac{D}{c} + \tau_{\mathrm{delay},i}
-\end{equation}
-
-where \(\tau_{\mathrm{delay},i}\) encodes medium transport, diffusion rigidity dependence, and launch lag.
-
-Suggested channels:
-\begin{itemize}
-  \item GW/EM\: near-light propagation with emission-angle delays and opacity windows.
-  \item CR\: transport/diffusion kernel.
-  \item Shock/MHD\: medium-dependent front speed and energy deposition.
-  \item Neutrino\: hadronic interaction module tied to CR energy density/ambient gas.
-\end{itemize}
-
-\subsection*{5) Deep reasoning conclusion}
-
-The key failure mode to avoid is conflating three layers (visual projection, transport physics, speculative coupling). The highest leverage for your simulation is explicit layer separation, deterministic defaults, and transparent confidence levels (observational/phenomenological/speculative).
-
-\subsection*{6) Proposed staged rollout}
+\section{Scope and constraints}
+This analysis is tailored to the current code context: preserve causality while implementing a high-fidelity apparent-superluminal layer. We separate the model into three layers:
 \begin{enumerate}
-  \item Add typed source preset registry (e.g., Sgr A*, Cen A, M87, Maffei 1).
-  \item Introduce event pipeline and channel-specific arrival equations.
-  \item Add geometry module (\(\beta_{\mathrm{app}}\), Doppler factor).
-  \item Add optional medium map + shock transport.
-  \item Add diagnostics panel with per-channel fluence/proxy values and offset timelines.
+\item geometry and observation,
+\item plasma/MHD transport,
+\item multi-messenger channels (GW, CR, neutrino, EM flare).
 \end{enumerate}
 
-Keep speculative modules explicit and off by default.
+\section{Physics of apparent superluminal motion}
+Superluminal features in compact jets are interpreted as finite-light-travel-time effects rather than information faster than light. For bulk motion $\beta=v/c$ at viewing angle $\theta$,
+\[
+\beta_{\mathrm{app}} = \frac{\beta \sin\theta}{1-\beta\cos\theta}.
+\]
+For large $\beta$ and small $\theta$, $\beta_{\mathrm{app}}>1$.
+
+\section{Why a re-architecture is needed}
+A realistic architecture requires distinct channels:
+\begin{enumerate}
+\item source descriptor,\
+\item per-messenger transport,\
+\item rendering layer.
+\end{enumerate}
+A fixed-speed, toy-only front can be kept as a visual mode, while the physical mode uses causal transport.
+
+\section{Causal hierarchy}
+\subsection{Strict causality layer}
+No transport channel carries information above $c$. GW and EM radiative fronts remain near-luminal.
+
+\subsection{Apparent pattern layer}
+Pattern speed (knots, shock fronts, hotspots) can produce apparent speeds above $c$ while preserving local causal transport.
+
+\subsection{Coupled multi-messenger layer}
+Shared launch metadata should drive delays:
+\begin{itemize}
+\item launch epoch,
+\item direction vector,
+\item opening angle,
+\item channel energy budget,
+\item decay law.
+\end{itemize}
+
+\section{Source ranking}
+\begin{enumerate}
+\item Sagittarius A*: closest SMBH at $\sim26{,}000\,\mathrm{ly}$; intermittent activity. Useful for high-cadence local disturbance tests.
+\item Centaurus A: nearest radio-loud AGN at $\sim3.8\,\mathrm{Mpc}$; strong jet and VLBI constraints; good active analog.
+\item M87: jet/knots with resolved superluminal features; useful for structured-jet scenarios.
+\item Maffei 1: nearby elliptical but weak AGN behavior; useful as a low-activity control.
+\end{enumerate}
+
+\section{Multi-messenger ordering}
+\begin{enumerate}
+\item GW channel: causal and prompt; constrained by GW170817--GRB timing.
+\item EM jet channel: delayed by jet opacity and afterglow geometry.
+\item CR/neutrino channel: delayed diffusion and scattering, often with broader spread.
+\end{enumerate}
+
+\section{Implementation recommendations}
+\begin{enumerate}
+\item Add event schema with per-channel delay/dispersion rules.
+\item Keep fast visual speeds as an optional visual-only mode.
+\item Add explicit simulation modes: \texttt{visual\_mode} and \texttt{physical\_mode}.
+\item Add source presets for Sgr A*, Cen A, M87, Maffei 1.
+\item Log $\beta_{\mathrm{app}}$, arrival lag, and confidence tags per channel.
+\end{enumerate}
+
+\section{Confidence and risks}
+Pattern speed may not equal plasma speed; CR/neutrino transport uncertainties are large; beaming and orientation dominate apparent speed.
+
+\section{Suggested queries}
+\begin{itemize}
+\item ``Blandford Znajek jet launch formula 1977''.
+\item ``Blandford\,\&\,K"onigl 1979 conical jet Doppler exponent''.
+\item ``MOJAVE apparent speed distribution 2019 full sample''.
+\item ``GW170817 superluminal jet and afterglow model''.
+\item ``Bell 1978 diffusive shock acceleration review''.
+\end{itemize}
+
+\section{Key references}
+\begin{itemize}
+\item Rees 1966; \url{https://www.nature.com/articles/211468a0}
+\item Mooney et al. on GW170817 superluminal jet: \url{https://arxiv.org/abs/1806.09693}
+\item MOJAVE VI, 2009 and MOJAVE XVII, 2019: \url{https://arxiv.org/abs/0909.5100}, \url{https://arxiv.org/abs/1902.09591}
+\item TXS 0506+056 neutrino association: \url{https://arxiv.org/abs/1807.08794}
+\item Auger--AGN anisotropy: \url{https://arxiv.org/abs/0712.2843}
+\end{itemize}
+
+\end{document}

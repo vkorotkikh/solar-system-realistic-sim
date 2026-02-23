@@ -1,177 +1,132 @@
-# Mathematical Approaches for Superluminal and Multi-Messenger AGN/SMBH Event Modeling
+# Mathematical Approaches for Superluminal-like Front Modeling
 
-This document collects practical formalisms you can directly convert into engine code.
+## 1) Causal light-travel geometry (core model)
+For a compact feature launched at speed `v` with angle `theta` to the line of sight, the apparent transverse speed is
 
-## 1) Apparent superluminal motion (geometry and observables)
+`beta_app = (beta * sin(theta)) / (1 - beta * cos(theta))`
 
-For a feature moving at speed `v = βc` at angle `θ` to the line of sight:
+where `beta = v / c`.
 
-```math
-\beta_{\rm app} = \frac{\beta\sin\theta}{1-\beta\cos\theta},\quad v_{\rm app}=\beta_{\rm app}c
-```
+From the measured apparent speed, lower bounds and priors follow:
 
-This is causal (`β < 1`) but can give `v_app > c` for small `θ`. Practical consequences:
-- Brightness is dominated by Doppler boosting near `θ 1/Γ`.
-- Large apparent speeds are selection-biased toward jets near line of sight.
+- `Gamma_min = sqrt(1 + beta_app^2)`.
+- Maximum apparent speed occurs near `theta ≈ 1/Gamma`.
+- Apparent motion is an output transform, not local information speed.
 
-Useful identity:
+This model is stable, cheap, and should be your mandatory base layer.
 
-```math
-\beta_{\rm app, max}=\sqrt{\Gamma^2-1},\quad \Gamma=(1-\beta^2)^{-1/2}
-```
+## 2) Doppler boosting and observables
+Doppler factor
 
-### Doppler factor and flux scaling
+`delta = [Gamma * (1 - beta * cos(theta))]^-1`
 
-```math
-\delta = \frac{1}{\Gamma(1-\beta\cos\theta)}
-```
+with beaming law for flux density
 
-Observed intensity scales approximately as `I_obs ~ δ^(p+\alpha) I'` (exact exponent depends on emissivity geometry, usually `p=2` or `3`).
+`S_nu_obs = delta^(k - alpha) * S_nu'
+`
 
-## 2) Kinematic event propagation for multi-channel stack
+where `k` is often 2 (continuous jet) or 3 (moving blob), and `alpha` is spectral index.
 
-Represent one source event as a tuple
-`E = {t0, D, channels[], environment, orientation}`.
+Use this to couple viewing geometry to visible front contrast.
 
-For each channel `i` with effective propagation velocity field `v_i`:
+## 3) Pattern speed versus plasma speed
+Let `beta_p` be pattern velocity and `beta_b` be bulk plasma velocity.
 
-```math
-\Delta t_i = \frac{D}{c} + \tau_{\rm delay,i}(E,\text{medium})
-```
+- For conical shocks/knots, use independent priors for `beta_p` and `beta_b`.
+- Use Bayesian inference to decide if `|beta_p - beta_b|` is required by observations.
+- This solves the common mismatch between VLBI centroids and physically plausible flow speeds.
 
-Where:
-- `D/c` is vacuum travel baseline,
-- `\tau_delay` includes optical depth, diffusion, acceleration, breakout, and launch-lag terms.
+A simple Gaussian-knot transport is practical:
 
-For a shock-like plasma front in inhomogeneous medium, one practical parameterization is:
+`F_obs(t,nu)=Σ_i A_i(t,nu) * K(beta_app_i, delta_i, t_obs-delay_i)`
 
-```math
-\frac{\mathrm dR}{\mathrm dt}=u_s(R)=\begin{cases}
-c\left(1-\frac{1}{2\Gamma^2(R)}\right), &\text{(relativistic)}\\
-\beta_s c, &\text{(non-relativistic constant-\,\Gamma regime)}
-\end{cases}
-```
+where each component `i` carries a profile `A_i`.
 
-Then arrival time to radius `R` is `t(R)=\int dR/u_s(R)`.
+## 4) Jet spine-sheath structure and light profile
+Represent each transverse zone `j` as
 
-## 3) Relativistic jet energy extraction (simplified BZ-style)
+`S_j(t) = ∫ j_nu(theta_j, beta_j, delta_j, s_j) dA_j`
 
-A practical engineering form for spin-powered jet power:
+A two-zone spine-sheath approximation yields direction-dependent `beta_app`, useful to reproduce limb brightening and knot acceleration.
 
-```math
-P_{\rm BZ}\approx \kappa\,\frac{\Phi_{\rm BH}^2\,\Omega_H^2}{4\pi c}
-```
+## 5) Radiative transfer for moving fronts
+Use standard transfer along a ray for each emitting cell:
 
-where `Φ_BH` is magnetic flux threading the BH horizon and `Ω_H` horizon angular frequency (`\propto a_* M^{-1}`).
+`dI_nu/ds = -kappa_nu I_nu + j_nu`
 
-This underpins AGN power presets:
-- mass-dependent scaling,
-- spin-dependent amplification,
-- field-geometry dependence.
+and map source time to observer time with
 
-## 4) Shock front models
+`t_obs = t_em + (D - n·r_em)/c`
 
-### 4.1 Sedov-Taylor (non-relativistic)
+This is where curved wavefronts and viewing-dependent morphology are generated.
 
-```math
-R(t)=\xi\left(\frac{E}{\rho_0}\right)^{1/5}t^{2/5},\quad v_s=\frac{2}{5}\frac{R}{t}
-```
+## 6) CR and neutrino transport channels
+For each event channel `c` (CR, neutrino, radio electrons):
 
-### 4.2 Blandford–McKee (ultra-relativistic limit)
+`
+\partial_t f_c + \mathbf{v} \cdot \nabla f_c = 
+\nabla \cdot (\mathbf{D} \nabla f_c) + \frac{1}{3}(\nabla \cdot \mathbf{u})
+\frac{\partial f_c}{\partial \ln p} + Q_c - L_c
+`
 
-For density `ρ∝r^{-k}`, self-similar relativistic shell gives energy-conserving scaling approximately:
+with channel-specific:
 
-```math
-\Gamma^2 R^{3-k}\propto E
-```
+- diffusion tensor `D(E,r)` (can start isotropic scalar `D = D0 (E/E0)^a`),
+- loss terms `L_c` (synchrotron, adiabatic, hadronic, photo-pion as needed),
+- source term `Q_c` tied to jet/shock dissipation.
 
-and `R\approx ct(1 - 1/(2(4-k)\Gamma^2))` as the front approaches causal transition.
+Outputs for UI: particle fluence proxy and delayed arrival windows with broad spread.
 
-### 4.3 Transitional correction models
+## 7) Shock acceleration proxy
+For nonrelativistic test-particle shock acceleration,
 
-Use corrections for moderate `Γ` regimes where neither BMK nor ST is ideal. Coughlin-style energy-conserving relativistic corrections are useful when `Γ≈1.5–5` and you need smooth interpolation.
+`spectrum p^{-s}` with `s = (r+2)/(r-1)`
 
-## 5) Diffusive and anisotropic CR transport
+where `r` is shock compression ratio.
 
-### Parker transport equation (guiding form)
+For simulation usability use a maximum energy bound:
 
-```math
-\frac{\partial f}{\partial t}+\mathbf u\cdot\nabla f-\nabla\cdot(\mathbf K\nabla f) -\frac{1}{3}(\nabla\cdot\mathbf u)p\frac{\partial f}{\partial p}=Q
-```
+`E_max ≈ Z e B R beta`
 
-For practical simulation, use a reduced form with:
-- `u(r,t)` ambient solar wind flow or shock-frame speed,
-- `K` anisotropic diffusion tensor (parallel/perpendicular),
-- optional drift terms.
+or equivalently confinement-time-limited formulas in local units.
 
-Implementation options:
-- finite-volume/FV solver,
-- stochastic differential equation equivalent (robust for strong anisotropy).
+## 8) Event scheduling mathematics
+Represent a source activation event as a tuple:
 
-### Characteristic scaling
+`E = {t0, pos, orientation, jet_power(t), channel_energy_fractions}`
 
-Diffusion length estimate:
+Propagate channel states:
 
-```math
-\ell(E,t)\sim\sqrt{2 K(E) t}
-```
+`state_c(t) = state_c0 * exp(-(t-t0)/tau_c) * response_c(t,delay)`
 
-Delay at 1D can be approximated:
+For a toy but coherent model, use channel-dependent `tau_c` and a propagation kernel:
 
-```math
-\Delta t_{\rm CR}\approx \frac{L^2}{2K(E)}
-```
+`K_c(t) = H(t) * (t/tau_c) * exp(-t/tau_c)`
 
-Useful for quick event-time spread in toy models.
+with `H` as Heaviside.
 
-## 6) Jet front and shock observables in medium
+## 9) Inverse step: parameter fitting
+Given synthetic-to-observed residual:
 
-Use shock Mach proxy:
+`L = Σ_t Σ_ν (X_model(t,ν;θ) - X_obs(t,ν))^2 / σ^2`
 
-```math
-\mathcal M = \frac{v_{\rm rel}}{c_s}
-```
+fit parameters `θ` by:
 
-For observable compression/radiative proxies use jump-like relations (EOS-dependent):
+- Bayesian posterior over `Γ, theta, tau, tau_c, E_channel`,
+- simple MCMC or particle swarm in low dimension.
 
-```math
-\frac{\rho_2}{\rho_1}=\frac{(\gamma+1)\mathcal M^2}{(\gamma-1)\mathcal M^2+2}
-```
+This gives physically interpretable sliders in the UI.
 
-Then generate:
-- pressure increase for heating,
-- emissivity map modulated by compression/`B` enhancement,
-- anisotropic reflection/refraction if medium map used.
+## 10) Recommended computational stack for `solar-system-realistic-sim`
+1. Geometry kernel for `beta_app` and delay mapping.
+2. Channel scheduler with causality guardrails.
+3. Optional MHD-lite perturbation field on top of ballistic kinematics.
+4. Transport module for CR/neutrinos.
+5. Speculative module in feature flag `advanced_mode`.
 
-## 7) Hypothesis modules (simulation flags)
-
-A clean architecture is three-tiered:
-
-1. **Deterministic causal layer (default)**
-   - GW and EM: near-`c` propagation.
-   - CR: diffusion kernel with rigidity dependence.
-   - shock front: medium-dependent speed law.
-
-2. **Geometric observables layer**
-   - `β_app`, `δ`, projection geometry and apparent morphology.
-
-3. **Speculative coupling layer (off by default)**
-   - GW-EM memory,
-   - very weak GW-plasma coupling terms,
-   - exotic conversion coefficients.
-
-Mark this layer as `speculative=true` and keep it excluded from baseline dynamics.
-
-## 8) Suggested numerical implementation pattern
-
-- Convert each approach above into a `ChannelModel` interface with `evaluate(t, state)`.
-- Use adaptive timestep by shortest physically relevant timescale:
-  - geometric pulse width,
-  - transport CFL,
-  - diffusion stability scale,
-  - shock curvature radius.
-- Keep all physical coefficients in source-overrideable JSON presets.
-
----
-
-This architecture is directly compatible with your existing simulation structure and prevents causality confusion while enabling dramatic visual behavior.
+## Reference anchors for each module
+- Relativistic geometry and beaming: Nature 211468a0, Nature 267211a0.
+- Jet kinematics/statistics: MOJAVE VI and XVII.
+- Transport and anisotropy: Auger and UHECR literature.
+- Shock acceleration and transport: Bell 1978, Strong et al.
+- Couplings: Gertsenshtein derivations, GW memory papers.

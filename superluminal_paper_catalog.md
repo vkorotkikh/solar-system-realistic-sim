@@ -1,149 +1,113 @@
-# Paper Catalog: Superluminal Phenomena and Multi-Messenger Astrophysical Modeling
+# Paper and Source Catalog: Superluminal Phenomena, Jets, and Multi-Messenger Modeling
 
-## A) Foundational apparent superluminal literature
+## Foundational kinematics and superluminal interpretation
+1. Rees, M. J. (1966). ``Appearance of Relativistically Expanding Radio Sources''. Nature 211, 468--470.
+   https://www.nature.com/articles/211468a0
+   Summary: Introduces relativistic travel-time geometry that creates apparent superluminal radio feature motion.
 
-1. **Rees 1966, “Appearance of Relativistically Expanding Radio Sources”**
-   - Link: https://www.nature.com/articles/211468a0
-   - Core contribution: finite light-travel-time projection geometry that yields apparent transverse speeds above `c`.
-   - Data relevance: early motivation for VLBI superluminal studies.
+2. Blandford, C. F., Rees, M. J., et al. (1977). ``Super-luminal expansion in extragalactic radio sources''. Nature 267, 211--216.
+   https://www.nature.com/articles/267211a0
+   Summary: Early jet model and interpretation of high apparent speeds in compact extragalactic sources.
 
-2. **Superluminal motion in AGN jets: MOJAVE XIII**
-   - Link: https://arxiv.org/abs/1603.03882
-   - Core contribution: 19-year 15 GHz VLBA program, parsec-scale jet kinematics statistics; fastest component speeds $50c$.
-   - Data relevance: public kinematic catalogs used for apparent-speed validation and jet population modeling.
+3. Burbidge et al. style and early compact source geometry in Nature-era literature (history and light-propagation framing).
+   https://www.nature.com
+   Summary: Historical context for projection-based speed amplification.
 
-3. **Superluminal motion in AGN jets: MOJAVE XVII**
-   - Link: https://arxiv.org/abs/1902.09591
-   - Core contribution: expanded sample and parent-population inferences for relativistic beamed radio-loud AGN.
-   - Data relevance: speed/accelerating-component constraints.
+## AGN jet models and unification
+4. Blandford, R. D.; K"onigl, A. (1979). ``Relativistic jets as compact radio sources''. Astrophysical Journal 232, 34.
+   https://www.osti.gov/biblio/5759330
+   Summary: Shock/flow decomposition for compact radio variability and observed superluminal morphology.
 
-4. **Apparent superluminal motion of GW170817 jet**
-   - Link: https://www.nature.com/articles/s41586-018-0486-3
-   - Core contribution: direct VLBI confirmation of apparent superluminal motion in a compact structured outflow tied to a GW event.
-   - Data relevance: multi-messenger constraints on jet geometry and arrival timing.
+5. Urry, C. M. and Padovani, P. (1995). ``Unified schemes for radio-loud active galactic nuclei''. PASP 107, 803--845.
+   https://arxiv.org/abs/astro-ph/9506063
+   Summary: Core AGN orientation model explaining why apparent jet behavior changes across classes.
 
-## B) Jet launching and relativistic MHD
+6. Marscher review chapter excerpts on relativistic jet model.
+   https://ned.ipac.caltech.edu/level5/Marscher/Mar4.html
+   Summary: Compact jet geometry and viewing-angle effects used in observational interpretation.
 
-5. **Blandford & Znajek 1977**
-   - Classical mechanism for extracting BH spin energy into Poynting-dominated jets.
-   - For a practical citation trail in modern GRMHD work, see reviews and implementations in GRMHD simulations (below).
+## Observational kinematics datasets
+7. Lister et al. (2009). MOJAVE VI, complete sample of blazar jet kinematics.
+   https://arxiv.org/abs/0909.5100
+   Summary: Velocity catalog and VLBI component tracking for parsec-scale jets.
 
-6. **Numerical Hydrodynamics in Special Relativity (Martí & Müller 1999/2003)**
-   - Link: https://link.springer.com/article/10.12942/lrr-1999-3
-   - Core contribution: high-resolution SRHD/RMHD methods and shock capture fundamentals.
-   - Data relevance: method backbone for implementing jet/shock evolution in code.
+8. Lister et al. (2019). MOJAVE XVII: kinematics and parent-population constraints.
+   https://arxiv.org/abs/1902.09591
+   Summary: Multi-hundred-epoch statistics of apparent speeds and beaming in radio-loud jets.
 
-7. **PLUTO code for astrophysical flows**
-   - Link: https://arxiv.org/abs/astro-ph/0701854
-   - Core contribution: modular relativistic (M)HD framework used in jet simulations.
-   - Data relevance: reproducible numerical engine choices.
+9. Tanami / Cen A inner jet dynamics (Müller et al. 2014).
+   https://www.aanda.org/articles/aa/full_html/2014/09/aa23948-14/aa23948-14.html
+   Summary: Closest AGN kinematics with high-resolution parsec-scale constraints.
 
-8. **Accelerating AGN jets to parsec scales**
-   - Link: https://arxiv.org/abs/1904.03243
-   - Core contribution: GRMHD jet acceleration/collimation in large domain simulations.
-   - Data relevance: compares with VLBI phenomenology and jet stability structures.
+10. EHT constraints on the Cen A inner jet and collimation.
+    https://www.nature.com/articles/s41550-021-01417-w
+    Summary: Direct mm-VLBI imaging of Cen A sub-light-day scales and jet structure.
 
-9. **MHD quad-shock jet model for M87**
-   - Link: https://arxiv.org/abs/1403.3477
-   - Core contribution: shock-chain interpretation for super/sub-luminal knot trains and particle acceleration signatures.
-   - Data relevance: optical and radio knot motion in M87/HST-1-like settings.
+## GW and EM multi-messenger links
+11. GW170817 + GRB170817A.
+    https://arxiv.org/abs/1710.05834
+    Summary: 1.7 s arrival delay bound gives strong limit on GW and EM speed difference.
 
-10. **Centaurus A jet launch region (EHT)**
-    - Link: https://www.nature.com/articles/s41550-021-01417-w
-    - Core contribution: mm-VLBI imaging close to the SMBH and resolved jet structure.
-    - Data relevance: direct nearest-AGN-ish jet morphology reference.
+12. Mooley et al. (2018). ``Superluminal motion of a relativistic jet in the neutron-star merger GW170817''. Nature 561, 355.
+    https://arxiv.org/abs/1806.09693
+    Summary: Direct VLBI apparent superluminal jet motion in a merger remnant.
 
-11. **Tchekhovskoy, Narayan & McKinney 2011 (MAD MAD jets)**
-    - Link: https://arxiv.org/abs/1108.0412
-    - Core contribution: high-efficiency spin-powered jets in magnetically arrested discs.
-    - Data relevance: informs plausible mapping from BH spin + magnetic flux to jet energetics in simulation presets.
+13. Mooley et al. (2022) later optical/jet motion updates.
+    https://www.nature.com/articles/s41586-022-05145-7
+    Summary: Continued constraints on jet structure and angular motion.
 
-## C) Blast-wave and shock transport equations
+## Neutrinos and UHE cosmic rays in AGN context
+14. IceCube-TXS 0506+056 discovery and follow-up.
+    https://arxiv.org/abs/1807.08794
+    Summary: First strong blazar-neutrino coincidence signal narrative.
 
-12. **Blandford & McKee 1976**
-    - Classic ultra-relativistic self-similar blast-wave solution (referenced throughout GRB/relativistic shock literature).
+15. Cuoco and Hannestad (2008). ``Ultra-high energy neutrinos from Cen A and the Auger hot spot''.
+    https://arxiv.org/abs/0712.1830
+    Summary: Early AGN+UHECR/neutrino coupling hypothesis and event-rate forecasts.
 
-13. **Coughlin 2019 (relativistic correction to Sedov-Taylor)**
-    - Link: https://arxiv.org/abs/1905.11991
-    - Core contribution: perturbative connection between relativistic and nonrelativistic blast-wave regimes with finite-energy constraints.
-    - Data relevance: useful transitional model for medium-driven fronts.
+16. Pierre Auger Collaboration (2007 anisotropy with nearby AGN within 75 Mpc).
+    https://arxiv.org/abs/0712.2843
+    Summary: First strong directional anisotropy clue toward nearby extragalactic source classes.
 
-14. **Shocks and cavities from repeated AGN outbursts in NGC 5813**
-    - Link: https://arxiv.org/abs/1006.4379
-    - Core contribution: observed Mach ~1.5–1.7 cavity-driven shocks plus energy budget.
-    - Data relevance: X-ray shock and cavity chronology from Chandra.
+17. Nagar and Matulich (2008). ``First direct evidence... nearby radiogalaxies''. A&A 488, 879.
+    https://www.aanda.org/articles/aa/abs/2008/36/aa10108-08/aa10108-08.html
+    Summary: Extended radio galaxies as plausible UHECR contributors.
 
-15. **AGN jet feedback on moving mesh (AREPO simulations)**
-    - Link: https://arxiv.org/abs/2008.12784
-    - Core contribution: shock heating and lobe evolution with varying jet powers.
-    - Data relevance: model-observation mapping via mock radio/X-ray maps.
+## Shock acceleration and CR transport foundations
+18. Bell (1978). The acceleration of cosmic rays in shock fronts I.
+    https://www.osti.gov/etdeweb/biblio/6780891
+    Summary: Diffusive shock acceleration as universal power-law mechanism.
 
-## D) Cosmic-ray and neutrino production / transport
+19. Strong, Moskalenko, Ptuskin (2007). Cosmic-Ray Propagation and Interactions in the Galaxy.
+    https://www.annualreviews.org/content/journals/10.1146/annurev.nucl.57.090506.123011
+    Summary: Transport frameworks for CR spatial propagation and loss/interaction terms.
 
-16. **IceCube-TXS 0506+056 prior-neutrino flare**
-    - Link: https://arxiv.org/abs/1807.08794
-    - Core contribution: reported neutrino excess in directional window around TXS 0506+056.
-    - Observational data: IceCube 9.5-year archival data + EM flaring context.
+20. Caprioli et al. modern DSA synthesis.
+    https://arxiv.org/abs/2111.10629
+    Summary: Nonlinear microphysics and spectrum modifications in shock acceleration.
 
-17. **Hooper, Linden, Vieregg (AGNs and IceCube diffuse flux)**
-    - Link: https://arxiv.org/abs/1810.02823
-    - Core contribution: limits fraction of diffuse flux from blazars; argues not dominant.
-    - Observational data: IceCube public catalogs + blazar catalogs.
+## Speculative or frontier couplings
+21. Gertsenshtein effect early derivations.
+    https://arxiv.org/abs/2301.02072
+    Summary: EM-GW mixing in magnetic fields; speculative for macroscopic astrophysical observables.
 
-18. **Parker transport / heliospheric cosmic-ray transport methodology**
-    - Links: https://arxiv.org/abs/1509.06519 and https://arxiv.org/abs/1509.06523
-    - Core contribution: stochastic and finite-difference solutions of anisotropic diffusive transport.
-    - Observational data: modulation and Forbush decrease datasets in heliospheric studies.
+22. Gertsenshtein curved-spacetime generalization.
+    https://arxiv.org/abs/2510.17094
+    Summary: Recent formal extension with geometric optics and curved backgrounds.
 
-19. **Classical CR shock acceleration: Bell (1978)**
-    - Link: https://academic.oup.com/mnras/article/182/2/147/1104432
-    - Core contribution: foundational diffusive shock acceleration mechanism and power-law spectra.
-    - Data relevance: SNR CR spectral framework (transferable template).
+23. Gravitational-wave memory review/prospective detection.
+    https://journals.aps.org/prd/abstract/10.1103/PhysRevD.101.083026
+    Summary: Nonlinear GW amplitude features to be tracked only as optional exotic channel.
 
-20. **Blandford & Ostriker (1978) supernova CR acceleration extension)**
-    - Link: https://ui.adsabs.harvard.edu/abs/1980ApJ...237....../abstract
-    - Core contribution: galactic CR regeneration by first-order Fermi in shocks.
+## Observational data anchors
+- MOJAVE table and VLBI proper-motion catalogs.
+- LIGO-Virgo GWTC and associated GCN event pages for GW170817.
+- IceCube alert pages and public data releases around TXS 0506+056 era.
+- H.E.S.S./Fermi/VLA/CARMA follow-up series for Cen A and M87 jets.
 
-## E) UHECR anisotropy and AGN links
-
-21. **Pierre Auger Collaboration: highest-energy CRs and nearby AGN**
-    - Link: https://arxiv.org/abs/0711.2256
-    - Core contribution: initial anisotropy/correlation with local AGN-like catalog within 75 Mpc.
-    - Observational data: Pierre Auger event directions at $\gtrsim 6\times10^{19}$ eV.
-
-22. **Bayesian AGN-source fraction update with PAO data**
-    - Link: https://academic.oup.com/mnras/article-abstract/460/3/2765/2609435
-    - Core contribution: source fraction modeling for AGN catalogs vs isotropic alternatives.
-
-23. **Centaurus A hot-spot/AGN UHE models**
-    - Link: https://arxiv.org/abs/0712.1830
-    - Core contribution: Cen A as potential nearest AGN UHECR/neutrino laboratory.
-
-## F) SMBH binaries and low-frequency GW
-
-24. **NANOGrav 15-year evidence for stochastic GW background**
-    - Link: https://arxiv.org/abs/2306.16213
-    - Core contribution: nHz stochastic signal with Hellings–Downs pattern, consistent with SMBH binary population.
-    - Data relevance: PTA 15-year data set.
-
-25. **NANOGrav interpretation page**
-    - Link: https://nanograv.org/15yr/Summary/Interpret
-
-## G) Source characterization references for simulation presets
-
-26. **GW170817 constraints on propagation speed differences**
-    - Link: https://arxiv.org/abs/1710.05834
-    - Core contribution: 1.7 s delay constraints on GW-vs-EM causal speed assumptions.
-
-27. **Sgr A* historical activity and X-ray echoes**
-    - Links: https://arxiv.org/abs/1307.3954 and https://arxiv.org/abs/1712.02678
-    - Core contribution: evidence of past high-luminosity flares in the last few hundred years inferred by molecular cloud echoes.
-
-28. **M87 shadow / mass determination (EHT)**
-    - Link: https://arxiv.org/abs/1906.11243
-
-## Working conclusion from the literature set
-
-- The strongest, least ambiguous physical layer is **multi-channel causality + transport**.
-- The strongest and most visible UI layer is **apparent superluminal geometry + beaming**.
-- Best simulation architecture: two-layer coupling with explicit data provenance, plus an explicit `model confidence` tag per source/channel.
+## Why these matter for your simulator
+The catalog above splits into
+- hard-observed layers: kinematics, delay, beaming,
+- medium-confidence models: jet structure and transport,
+- speculative channels: EM-GW couplings.
+That hierarchy can be directly mapped to simulation feature flags.
