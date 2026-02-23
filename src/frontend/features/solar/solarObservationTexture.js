@@ -12,11 +12,11 @@ export const AIA_CHANNEL_OPTIONS = [
 ];
 
 export const CHANNEL_VISUAL_WEIGHTS = {
-  aia_094: { blendBoost: 0.06, emissionBoost: 0.10 },
-  aia_171: { blendBoost: 0.0, emissionBoost: 0.0 },
-  aia_193: { blendBoost: 0.0, emissionBoost: 0.0 },
-  aia_211: { blendBoost: 0.0, emissionBoost: 0.0 },
-  aia_304: { blendBoost: 0.04, emissionBoost: 0.08 },
+  aia_094: { blendBoost: 0.35, emissionBoost: 0.60, activityBoost: 0.40, coronaHue: [0.2, 1.0, 0.95] },
+  aia_171: { blendBoost: 0.30, emissionBoost: 0.25, activityBoost: 0.10, coronaHue: [0.08, 0.85, 0.45] },
+  aia_193: { blendBoost: 0.25, emissionBoost: 0.35, activityBoost: 0.20, coronaHue: [1.0, 0.72, 0.30] },
+  aia_211: { blendBoost: 0.30, emissionBoost: 0.45, activityBoost: 0.30, coronaHue: [0.85, 0.50, 1.0] },
+  aia_304: { blendBoost: 0.35, emissionBoost: 0.55, activityBoost: 0.35, coronaHue: [1.0, 0.18, 0.08] },
 };
 
 function asFiniteNumber(value) {
@@ -116,15 +116,25 @@ export function deriveSunObservationControls(physicsState, fallbackActivity = 0.
 
   const channelKey = activeChannel && activeChannel !== 'auto' ? activeChannel : null;
   const weights = channelKey ? (CHANNEL_VISUAL_WEIGHTS[channelKey] ?? null) : null;
+
+  let coronaHue = null;
+  let activityBoost = 0;
+
   if (weights) {
+    // When a specific channel is actively selected, force strong visual impact
+    // even without backend data, so the user sees an immediate dramatic change
     observationBlend = clampUnit(observationBlend + weights.blendBoost);
     observationEmission = clampUnit(observationEmission + weights.emissionBoost);
+    activityBoost = weights.activityBoost ?? 0;
+    coronaHue = weights.coronaHue ?? null;
   }
 
   return {
     observationBlend,
     observationEmission,
     observedSignal: sdoSignal,
-    observedConfidence: confidence
+    observedConfidence: confidence,
+    coronaHue,
+    activityBoost
   };
 }
