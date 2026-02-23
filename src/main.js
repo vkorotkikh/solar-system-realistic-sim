@@ -2026,7 +2026,8 @@ function createBodyNode(body) {
   if (majorNodeIds.has(body.id)) {
     const label = createLabelSprite(body.name);
     const pointerTipOffset = label.scale.y * (label.userData.pointerTipOffsetNorm ?? LABEL_POINTER_TIP_OFFSET_NORM);
-    label.position.set(0, body.displayRadiusAu * 2.5 + 0.03 + pointerTipOffset, 0);
+    const initRadius = bodyRenderRadiusAu(body, simState.useRealisticScale);
+    label.position.set(0, initRadius * 2.5 + 0.03 + pointerTipOffset, 0);
     node.add(label);
     labels.push({ bodyId: body.id, sprite: label });
 
