@@ -69,6 +69,8 @@ const dom = {
   zoomSensitivity: document.getElementById('zoom-sensitivity'),
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   viewportShell: document.getElementById('viewport-shell'),
+  agnSource: document.getElementById('agn-source'),
+  agnObserverFrame: document.getElementById('agn-observer-frame'),
   triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
 };
 
@@ -585,7 +587,25 @@ dom.canvas?.addEventListener('dblclick', (e) => {
 });
 
 dom.triggerAgnShockwave?.addEventListener('click', () => {
-  sunCtrl.triggerAgnShockwave('SagittariusA', 8.0, 1.5); // 8 seconds impact, 1.5 intensity
+  const source = dom.agnSource?.value || 'SagittariusA';
+  const observerFrame = Boolean(dom.agnObserverFrame?.checked);
+  sunCtrl.setAgnObserverFrameMode(observerFrame);
+
+  let impactTimeSec = 8.0;
+  let intensity = 1.4;
+  if (source === 'CentaurusA') {
+    impactTimeSec = 9.5;
+    intensity = 1.1;
+  } else if (source === 'Maffei1') {
+    impactTimeSec = 10.5;
+    intensity = 0.7;
+  }
+
+  sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity);
+});
+
+dom.agnObserverFrame?.addEventListener('change', () => {
+  sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
 });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
@@ -603,6 +623,7 @@ for (const line of orbitLines) line.visible = Boolean(dom.toggleOrbits?.checked)
 for (const entry of labels) entry.sprite.visible = Boolean(dom.toggleLabels?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
+sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
 
 resizeRenderer();
 renderer.render(scene, camera);
