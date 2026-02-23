@@ -28,9 +28,12 @@ uniform float frequency;       // Hz
 uniform float strainAmplitude; // exaggerated strain
 uniform vec3 propagationDir;   // wave propagation direction
 uniform float enabled;         // 0.0 = off, 1.0 = on
+uniform float isAgnEvent;      // AGN shockwave mode
+uniform float shockwaveDist;   // Current distance of shockwave from origin
 
 varying vec2 vUv;
 varying float vDistortion;
+varying float vAgnGlow;
 
 void main() {
   vUv = uv;
@@ -39,12 +42,36 @@ void main() {
   float phasePos = dot(position, propagationDir) * 0.5;
   float phase = time * frequency * 6.28318 + phasePos;
   
-  // + polarization: stretch x, squeeze y (and vice versa half a cycle later)
+  // + polarization: stretch x, squeeze y
   float hPlus = strainAmplitude * sin(phase) * enabled;
+  
+  // If AGN event, compute shockwave front
+  float axisPos = dot(position, propagationDir);
+  vAgnGlow = 0.0;
+  if (isAgnEvent > 0.5) {
+      // Scale space drastically behind the shockwave front
+      float distBehind = axisPos - shockwaveDist;
+      if (distBehind < 0.0) {
+          // Sharp compression at the front, exponential decay behind
+          hPlus += strainAmplitude * exp(distBehind * 0.5) * sin(time * 20.0);
+          
+          // High energy particle glow at the wavefront boundary
+          if (distBehind > -2.0) {
+              vAgnGlow = 1.0 - (abs(distBehind) / 2.0);
+          }
+      } else {
+          // Flat ahead of the tsunami
+          hPlus = 0.0;
+      }
+  }
   
   vec3 displaced = position;
   displaced.x *= (1.0 + hPlus);
   displaced.z *= (1.0 - hPlus);
+  // Add some vertical FTL turbulence
+  if (isAgnEvent > 0.5 && axisPos < shockwaveDist) {
+      displaced.y += sin(position.x * 5.0 + time * 10.0) * exp((axisPos - shockwaveDist) * 0.5);
+  }
   
   vDistortion = abs(hPlus);
   
@@ -54,10 +81,12 @@ void main() {
 
 const GW_FRAGMENT_SHADER = `
 uniform float enabled;
+uniform float isAgnEvent;
 uniform vec3 waveColor;
 
 varying vec2 vUv;
 varying float vDistortion;
+varying float vAgnGlow;
 
 void main() {
   if (enabled < 0.5) discard;
@@ -70,6 +99,12 @@ void main() {
   // Color distorted regions
   vec3 color = mix(waveColor * 0.3, waveColor, vDistortion * 10.0);
   float alpha = gridAlpha * 0.4 + vDistortion * 2.0;
+  
+  // AGN Tsunami gamma-ray glowing front
+  if (isAgnEvent > 0.5 && vAgnGlow > 0.01) {
+      color = mix(color, vec3(1.0, 0.9, 1.0) * 2.0, vAgnGlow); // Blinding white/purple
+      alpha += vAgnGlow * 2.5;
+  }
   
   gl_FragColor = vec4(color, alpha * 0.5);
 }
@@ -94,11 +129,14 @@ export function createGWVisualization(size = 10) {
             strainAmplitude: { value: 0.05 },     // Hugely exaggerated (real: 10⁻²¹)
             propagationDir: { value: new Vector3(0, 1, 0) }, // From "above" ecliptic
             enabled: { value: 0 },               // Off by default
+            isAgnEvent: { value: 0.0 },          // AGN mode off
+            shockwaveDist: { value: 9999.0 },
             waveColor: { value: new Color(0.3, 0.6, 1.0) }  // Blue-ish
         },
         transparent: true,
         side: DoubleSide,
-        depthWrite: false
+        depthWrite: false,
+        blending: 2 // Additive blending for better glowing effect
     });
 
     const mesh = new Mesh(geometry, material);
@@ -129,10 +167,12 @@ export function createGWVisualization(size = 10) {
          * Set GW parameters.
          * @param {Object} params
          */
-        setParams({ frequency, strain, direction }) {
+        setParams({ frequency, strain, direction, isAgnEvent, shockwaveDist }) {
             if (frequency !== undefined) material.uniforms.frequency.value = frequency;
             if (strain !== undefined) material.uniforms.strainAmplitude.value = strain;
             if (direction) material.uniforms.propagationDir.value.copy(direction);
+            if (isAgnEvent !== undefined) material.uniforms.isAgnEvent.value = isAgnEvent;
+            if (shockwaveDist !== undefined) material.uniforms.shockwaveDist.value = shockwaveDist;
         },
 
         /**
