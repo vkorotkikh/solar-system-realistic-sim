@@ -55,6 +55,37 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-23 — Codebase Analysis: Non-Solar Bug Sweep & Physics Fixes
+Status: DONE
+
+What changed:
+- **Label positioning (camera-relative):** Rewrote label offset logic in `labelSystem.js` so planet name labels always appear directly above the body's center of mass from the camera's viewpoint, regardless of camera angle or orbit orientation. Previously labels used a fixed local-Y offset (`(0, Y, 0)`) which caused them to drift off-center when the camera orbited around a planet. Now computes the camera's screen-up direction (`camera.quaternion` → local Y axis in world space) once per frame and positions all labels along that vector. Same fix applied to local-system body labels, which also had a `pointerTipWorld * 0` bug that zeroed out the pointer offset entirely.
+- **Asteroid belt visibility:** Increased base asteroid particle size from `0.0085` to `0.018` AU and opacity from `0.74` to `0.82`. Increased detail layer particle size from `0.0022` to `0.006` AU and opacity from `0.68` to `0.76`. Relaxed detail layer activation region from `height < 3.1 && cameraDist < 5.6` to `height < 5.0 && cameraDist < 7.0` so the detail LOD layer is visible from edge-on ecliptic views and slightly further zoom distances.
+- **Planet spin axis ecliptic longitudes (physics fix):** Added `spinAxisLongitudeDeg` to Earth (90°), Mars (353°), Jupiter (248°), and Neptune (319°) in `src/data/planets.js`. These values are the ecliptic longitude of the IAU north pole direction, computed from the equatorial-to-ecliptic frame rotation of each planet's IAU pole coordinates. Previously all four defaulted to 0°, causing Earth's axis to point 90° off (toward the vernal equinox instead of toward ecliptic longitude 90°), misaligning the solstice/equinox cycle by ~3 months and orienting the day-night terminator incorrectly. Saturn and Uranus already had correct values.
+- **Ring material constant:** Replaced `side: 2` magic number with imported `DoubleSide` constant for Saturn and Uranus ring materials.
+- **Initial label radius:** Changed initial label position from `body.displayRadiusAu` to `bodyRenderRadiusAu(body, simState.useRealisticScale)` so the first-frame label offset matches the actual rendered size.
+- **applyScaleMode local labels:** Fixed local body label repositioning in `applyScaleMode()` to also use camera-relative up direction instead of fixed Y.
+
+Why it changed:
+- User-reported: planet labels were visibly off-center and did not track correctly from all camera angles.
+- User-reported: asteroid belt objects were invisible at typical zoom levels despite toggle being enabled.
+- Codebase analysis identified missing spin axis ecliptic longitudes as a physics inconsistency affecting planetary orientation, seasonal cycle accuracy, and day-night terminator direction.
+
+Evidence/validation:
+- No linter errors after all changes.
+- Label offset now uses `screenUpVec.set(0, 1, 0).applyQuaternion(camera.quaternion)` which correctly tracks the camera's billboard-up axis.
+- Spin axis values verified by converting IAU pole coordinates (RA/Dec) from equatorial to ecliptic frame using the standard rotation matrix `Rx(+23.44°)`.
+
+Files touched:
+- `src/frontend/app/labelSystem.js`
+- `src/main.js`
+- `src/data/planets.js`
+
+Follow-ups / open questions:
+- OPEN: consider adding `spinAxisLongitudeDeg` for Mercury (effectively irrelevant with 0.034° tilt) and Pluto (relevant with 122.53° tilt, but ecliptic longitude of pole needs careful calculation due to extreme obliquity).
+- OPEN: asteroid belt particle sizes may need further tuning after visual verification at multiple zoom levels.
+- OPEN: the `rotationPhaseDeg: -90` for Earth was calibrated before the axis correction — verify that the texture prime meridian alignment is still accurate after the spin axis longitude fix.
+
 ### 2026-02-18 11:38:22 UTC
 Status: DONE
 

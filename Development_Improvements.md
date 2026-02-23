@@ -47,6 +47,98 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-23 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Fixed planet label positioning to always appear above center-of-mass relative to camera viewpoint.
+
+Context / rationale:
+- Labels were positioned with a fixed local-Y offset in each body's node space. Since the solar system uses X-Y as the ecliptic plane and Z as the ecliptic normal, a Y offset only points "above" from one specific camera direction. From other angles, labels appeared beside or below the planet center.
+
+Proposed approach:
+- Compute the camera's screen-up direction (`new Vector3(0,1,0).applyQuaternion(camera.quaternion)`) once per frame in `updateLocatorOverlays`. Use this as the offset direction for all labels instead of the fixed `(0, Y, 0)` vector. Applied to both solar-system labels and local-system labels. Also fixed `pointerTipWorld * 0` bug that zeroed the pointer offset for local body labels.
+
+Expected impact:
+- Labels now visually track the "above" direction regardless of camera orbit angle, zoom, or focused body.
+
+Affected files/systems:
+- `src/frontend/app/labelSystem.js`
+- `src/main.js`
+
+Next step:
+- Visual verification at multiple camera angles and zoom levels.
+
+### 2026-02-23 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Fixed asteroid belt visibility — particles were sub-pixel at typical zoom levels.
+
+Context / rationale:
+- Base asteroid belt used 22,000 particles at size `0.0085 AU`. At a typical overview distance of ~10 AU, each particle occupied less than 1 pixel. The detail layer's activation region (`height < 3.1`, `cameraDist < 5.6`) was also too restrictive for edge-on ecliptic views.
+
+Proposed approach:
+- Increased base particle size from `0.0085` to `0.018` AU and opacity from `0.74` to `0.82`. Increased detail layer particle size from `0.0022` to `0.006` AU and opacity from `0.68` to `0.76`. Relaxed detail layer height limit from `3.1` to `5.0` and camera distance from `5.6` to `7.0`.
+
+Expected impact:
+- Asteroid belt now visible as a defined structure at solar-system overview zoom levels. Detail layer activates more reliably from edge-on views.
+
+Affected files/systems:
+- `src/main.js`
+
+Next step:
+- Tune particle sizes further after visual verification. Consider adding a minimum screen-pixel size via shader to prevent sub-pixel rendering at extreme distances.
+
+### 2026-02-23 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Added missing spin axis ecliptic longitudes for Earth, Mars, Jupiter, and Neptune.
+
+Context / rationale:
+- The `spinAxisLongitudeDeg` property was only set for Saturn (79.53°) and Uranus (257.65°). All other planets defaulted to 0°. For Earth, this placed the north pole projection at ecliptic longitude 0° (vernal equinox direction) instead of the correct 90°, causing a ~3-month seasonal phase error and incorrect day-night terminator orientation.
+
+Proposed approach:
+- Computed correct ecliptic longitudes by converting each planet's IAU J2000 pole direction (RA, Dec) from equatorial to ecliptic coordinates using `Rx(+23.44°)`. Values: Earth=90°, Mars=353°, Jupiter=248°, Neptune=319°.
+
+Expected impact:
+- Earth's solstice/equinox cycle now occurs at the correct orbital positions. Day-night terminator orientation is corrected. Mars and Neptune polar cap orientations are now physically accurate.
+
+Affected files/systems:
+- `src/data/planets.js`
+
+Next step:
+- Verify Earth texture alignment (`rotationPhaseDeg: -90`) is still correct after axis direction change. Add Pluto spin axis longitude if needed.
+
+### 2026-02-23 UTC
+Status: `OPEN`
+Type: `PROBLEM`
+Summary:
+- Identified additional non-solar issues from codebase sweep requiring future attention.
+
+Context / rationale:
+- Deep code analysis revealed several moderate-priority issues not addressed in this pass.
+
+Proposed approach:
+- Track remaining items:
+  1. `applyScaleMode` ring scaling uses `body.displayRadiusAu` at geometry creation time then applies a `ringFactor` scalar at runtime — works correctly but is fragile; should use `bodyRenderRadiusAu()` directly at creation.
+  2. Moon texture loading has a potential race condition — procedural texture set immediately, then async curated texture replaces it without checking if the material was disposed.
+  3. Earthshine phase calculation uses a simplified dot-product model that may not match actual lunar phase geometry.
+  4. Asteroid detail N-body perturbation integration doesn't validate Jupiter/Saturn mass data before use (potential NaN).
+  5. No GPU memory cleanup (`geometry.dispose()`, `material.dispose()`) when toggling feature systems or switching between solar/local system views.
+  6. Kepler solver clamps eccentricity at 0.9999999, preventing near-parabolic and hyperbolic orbit propagation for comets.
+  7. Camera clip plane logic could benefit from HUD diagnostics (`near/far` values) during interstellar zoom tuning.
+
+Expected impact:
+- Items 2 and 5 are memory leak risks in long sessions. Items 4 and 6 are correctness risks for edge-case bodies.
+
+Affected files/systems:
+- `src/main.js`, `src/sim/orbitMath.js`, `src/frontend/app/labelSystem.js`
+
+Next step:
+- Prioritize GPU memory cleanup (item 5) and the Kepler solver parabolic/hyperbolic extension (item 6) for next pass.
+
 ### 2026-02-18 11:38:22 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`
