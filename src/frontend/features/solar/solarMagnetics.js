@@ -92,7 +92,13 @@ function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
         const p4 = pos.clone().addScaledVector(k3, stepSize);
         const k4 = computeMagneticField(p4.x, p4.y, p4.z, activity).multiplyScalar(traceDirSign);
 
-        const stepVec = k1.add(k2.multiplyScalar(2)).add(k3.multiplyScalar(2)).add(k4).multiplyScalar(stepSize / 6);
+        // RK4 weighted sum: use addScaledVector to avoid in-place mutation of k1-k3
+        const stepVec = new Vector3()
+            .addScaledVector(k1, 1)
+            .addScaledVector(k2, 2)
+            .addScaledVector(k3, 2)
+            .addScaledVector(k4, 1)
+            .multiplyScalar(stepSize / 6);
         pos.add(stepVec);
 
         const r = pos.length();
