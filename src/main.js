@@ -352,6 +352,7 @@ function focusBody(bodyId, hardSnap = false) {
   if (hardSnap) {
     controls.target.copy(tempVec);
     camera.position.copy(tempVec).add(offset.setLength(preferredDistance));
+    controls.update();
   } else {
     controls.target.lerp(tempVec, 0.25);
     const desired = new Vector3().copy(tempVec).add(offset.setLength(preferredDistance));
@@ -458,7 +459,22 @@ function updateSceneBodies() {
   }
 }
 
-// ── Resize ───────────────────────────────────────────────────────────────────
+// ── Resize & Clip Planes ─────────────────────────────────────────────────────
+
+function updateCameraClipPlanes() {
+  const rangeAu = Math.max(1e-9, camera.position.distanceTo(controls.target));
+  let near = 0.0001;
+  let far = 20_000;
+  if (simState.useRealisticScale && rangeAu < 0.08) {
+    near = Math.max(5e-9, Math.min(5e-5, rangeAu * 0.00035));
+    far = Math.max(0.45, Math.min(120, rangeAu * 4_200));
+  }
+  if (camera.near !== near || camera.far !== far) {
+    camera.near = near;
+    camera.far = far;
+    camera.updateProjectionMatrix();
+  }
+}
 
 function resizeRenderer() {
   const w = dom.canvas.clientWidth;
@@ -578,12 +594,18 @@ refillBodyList();
 model.update(simState.julianDate);
 updateSceneBodies();
 focusBody('sun', true);
+controls.update();
+camera.lookAt(controls.target);
+updateCameraClipPlanes();
 updateBodyInfoPanel('sun');
 
 for (const line of orbitLines) line.visible = Boolean(dom.toggleOrbits?.checked);
 for (const entry of labels) entry.sprite.visible = Boolean(dom.toggleLabels?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
+
+resizeRenderer();
+renderer.render(scene, camera);
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
@@ -606,6 +628,7 @@ function animate(timestamp) {
 
   backgroundStars.position.copy(camera.position);
   controls.update();
+  updateCameraClipPlanes();
   resizeRenderer();
   renderer.render(scene, camera);
   timeController.updateHud();
