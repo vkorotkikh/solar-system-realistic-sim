@@ -47,6 +47,54 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-23 05:30 UTC
+Status: `OPEN`
+Type: `FIX` / `ARCHITECTURE`
+Summary:
+- Sun model physics fidelity overhaul — 14 deficiencies identified, 7-phase fix plan created.
+
+Context / rationale:
+- Comprehensive physics audit compared every shader/algorithm against published solar physics research (Neckel-Labs 1994, Nordlund-Stein simulations, De Pontieu et al. 2007, van de Hulst K-corona model, Parker wind theory). Found 2 wrong-physics bugs and 12 low-fidelity simplifications.
+
+Proposed approach:
+- **Phase 1 — Critical bug fixes:**
+  1. 🔴 Replace invented limb darkening polynomial with real Neckel & Labs 1994 per-channel (R/G/B) coefficients (`sunVisuals.js:89-99`)
+  2. 🔴 Fix PFSS RK4 in-place vector mutation corrupting field traces (`solarMagnetics.js:95`)
+- **Phase 2 — Blackbody color correction:**
+  3. 🟡 Replace artistic orange palette with Planck-derived sRGB colors; Sun at 5778K should be near-white, not orange (`sunVisuals.js:245-261`)
+- **Phase 3 — Granulation & sunspot improvements:**
+  4. 🟡 Fix granulation contrast from 82% to ~22% RMS per Nordlund-Stein (`sunVisuals.js:215-217`)
+  5. 🟡 Reinterpret 8 uniform slots as sunspot *groups* producing 2-5 spot clusters each (`sunVisuals.js:418-455`)
+  6. 🟡 Replace isotropic penumbral noise with radially elongated Evershed-flow fibrils (`sunVisuals.js:168-171`)
+  7. 🟡 Add center-to-limb facular contrast variation per Topka 1997 (`sunVisuals.js:173-176`)
+  8. 🟡 Add Wilson depression geometric foreshortening near limb (`sunVisuals.js:146-190`)
+- **Phase 4 — Chromosphere Type II spicules:**
+  9. 🟡 Add dual-population spicule model: Type II (80-300 km/s, 10-150s, fade without descent) alongside existing Type I (`sunVisuals.js:468-525`)
+  10. 🟡 Fix fixed point size to use distance-scaled sizing (`sunVisuals.js:510`)
+- **Phase 5 — Corona overhaul:**
+  11. 🟡 Add K-corona radial intensity falloff using Baumbach/van de Hulst profile I(r) ∝ r⁻⁶ (`sunVisuals.js:347-372`)
+  12. 🟡 Add helmet streamer equatorial brightening modulated by activity (`sunVisuals.js:354-356`)
+  13. 🟡 Replace latitude-only coronal holes with magnetically-modulated system (`sunVisuals.js:361-365`)
+  14. 🟡 Add temperature-dependent corona color gradient (inner green Fe XIV → outer warm) (`sunVisuals.js:368-369`)
+- **Phase 6 — Flare/CME physics:**
+  15. 🟡 Parameterize CME angular width (20°-120°) instead of always full hemisphere (`solarFlares.js:79`)
+  16. 🟡 Replace linear rise/fall with GOES-style Neupert-effect temporal profile (`solarFlares.js:191-201`)
+- **Phase 7 — Timing & PFSS harmonics:**
+  17. 🟡 Tie differential rotation to simulation Julian date, not arbitrary constant (`sunVisuals.js:205`)
+  18. 🟡 Apply dipole tilt angle and add octupole (ℓ=3) harmonic (`solarMagnetics.js:52, 22-64`)
+
+Expected impact:
+- Sun transitions from an "artistic impression" to a physics-grounded G2V stellar model. Limb darkening, blackbody color, coronal structure, and chromospheric dynamics will match published observations.
+
+Affected files/systems:
+- `src/frontend/features/solar/sunVisuals.js` (majority of changes)
+- `src/frontend/features/solar/solarMagnetics.js`
+- `src/frontend/features/solar/solarFlares.js`
+
+Next step:
+- Full plan document: `my-notes/Sun_Physics_Overhaul_Plan_2026-02-23.md`
+- Begin with Phase 1 (critical bug fixes) — low effort, zero risk.
+
 ### 2026-02-23 UTC
 Status: `DONE`
 Type: `FIX`
