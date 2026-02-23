@@ -1,9 +1,9 @@
-# Sun Model Physics Overhaul — Master Implementation Plan
+# Sun & Solar System Physics Overhaul — Master Implementation Plan v2
 
-Comprehensive plan to resolve all 14 deficiencies identified in the [Sun Physics Audit](file:///home/nomad/.gemini/antigravity/brain/9b5d0b2d-f03a-4124-b8e3-1981a0324fac/sun_physics_audit.md). Organized into 7 execution phases, ordered by dependency and criticality.
+Expanded plan resolving all 14 original deficiencies plus 10 newly identified gaps covering radiation pressure, galactic forces, prominences, transition region, solar wind, and experimental gravitational wave visualization.
 
 > [!IMPORTANT]
-> All physics constants and formulas below are sourced from published, peer-reviewed literature. Each section cites specific publications. No invented coefficients.
+> All physics constants and formulas are sourced from published, peer-reviewed literature. Each section cites specific publications. No invented coefficients.
 
 ---
 
@@ -11,11 +11,9 @@ Comprehensive plan to resolve all 14 deficiencies identified in the [Sun Physics
 *Effort: Low | Risk: Low | Files: `sunVisuals.js`, `solarMagnetics.js`*
 
 ### 1A. Fix Limb Darkening Coefficients
-**Audit item #1** | [sunVisuals.js:89-99](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L89-L99)
+**Audit #1** | [sunVisuals.js:89-99](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L89-L99)
 
-Replace the current invented polynomial with **per-channel** Neckel & Labs (1994) coefficients. Compute limb darkening independently for R, G, B using wavelength-representative coefficients to capture the physical reddening at the limb.
-
-**Published 5th-order coefficients** (Neckel & Labs 1994, *Solar Physics* 153:91–114):
+Replace invented polynomial with **per-channel** Neckel & Labs (1994, *Solar Physics* 153:91–114) coefficients:
 
 | λ (nm) | Channel | a₀ | a₁ | a₂ | a₃ | a₄ | a₅ |
 |---|---|---|---|---|---|---|---|
@@ -26,37 +24,22 @@ Replace the current invented polynomial with **per-channel** Neckel & Labs (1994
 **Replacement GLSL:**
 ```glsl
 vec3 neckellLimbDarkRGB(float mu) {
-  float mu2 = mu * mu;
-  float mu3 = mu2 * mu;
-  float mu4 = mu3 * mu;
-  float mu5 = mu4 * mu;
-  // R channel (~650 nm)
+  float mu2 = mu * mu, mu3 = mu2 * mu, mu4 = mu3 * mu, mu5 = mu4 * mu;
   float ldR = 0.3434 + 0.9721*mu - 0.4348*mu2 + 0.2024*mu3 - 0.1220*mu4 + 0.0390*mu5;
-  // G channel (~550 nm)
   float ldG = 0.3050 + 1.1312*mu - 0.7860*mu2 + 0.6164*mu3 - 0.3612*mu4 + 0.0946*mu5;
-  // B channel (~450 nm)
   float ldB = 0.2688 + 1.3765*mu - 1.3645*mu2 + 1.2816*mu3 - 0.7458*mu4 + 0.1834*mu5;
   return vec3(ldR, ldG, ldB);
 }
 ```
 
-**Changes:**
-- `neckellLimbDark(float mu)` → `neckellLimbDarkRGB(float mu)` returning `vec3`
-- Line 198: `float limbDark = neckellLimbDark(mu)` → `vec3 limbDark = neckellLimbDarkRGB(mu)`
-- Line 251: `float brightness = combinedGranulation * limbDark * spotDark` → `vec3 limbColor = vec3(combinedGranulation * spotDark) * limbDark;` then use `limbColor` as a multiplier for the base color assembly
-- **Verification:** At μ=1 (disk center), each channel sums to 1.0 ± 0.0001. At μ=0.1 (limb), B channel is ~40% darker than R channel.
+**Validation:** At μ=1, each channel sums to 1.0 ± 0.0001. At μ=0.1: R≈0.56, G≈0.42, B≈0.29 (limb reddening).
 
 ---
 
 ### 1B. Fix PFSS RK4 Vector Corruption
-**Audit item #2** | [solarMagnetics.js:95](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js#L95)
+**Audit #2** | [solarMagnetics.js:95](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js#L95)
 
-The RK4 step mutates `k1`, `k2`, `k3` in place via Three.js chained `.add()` / `.multiplyScalar()`.
-
-**Current (broken):**
-```js
-const stepVec = k1.add(k2.multiplyScalar(2)).add(k3.multiplyScalar(2)).add(k4).multiplyScalar(stepSize / 6);
-```
+**Current (broken):** `k1.add(k2.multiplyScalar(2))...` — mutates in place.
 
 **Replacement:**
 ```js
@@ -68,28 +51,24 @@ const stepVec = new Vector3()
   .multiplyScalar(stepSize / 6);
 ```
 
-`addScaledVector` does NOT mutate the source vector — it only mutates the target (`stepVec`). This is the standard safe pattern for Three.js vector arithmetic.
-
 ---
 
 ## Phase 2 — Blackbody Color Correction
 *Effort: Medium | Risk: Low | File: `sunVisuals.js`*
 
 ### 2A. Replace Artistic Palette with Planck-Derived Colors
-**Audit item #3** | [sunVisuals.js:245-261](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L245-L261)
+**Audit #3** | [sunVisuals.js:245-261](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L245-L261)
 
-Compute physically accurate blackbody-to-linear-sRGB colors. The CIE-matched values from Planck integration are:
+CIE-matched blackbody-to-linear-sRGB values (Planck integration over CIE 1931 color matching functions):
 
-| T (K) | Feature | linear sRGB (R, G, B) | Hex (gamma) |
+| T (K) | Feature | linear sRGB | Hex (gamma) |
 |---|---|---|---|
 | 3000 | Coolest umbra | (1.000, 0.417, 0.094) | `#FF8422` |
 | 3700 | Typical umbra | (1.000, 0.538, 0.203) | `#FFa148` |
-| 5000 | Penumbra | (1.000, 0.757, 0.538) | `#FFD1A3` |
 | 5778 | Quiet photosphere | (1.000, 0.867, 0.757) | `#FFF1E4` |
 | 6300 | Hot granule top | (1.000, 0.918, 0.843) | `#FFF8F0` |
 | 7000 | Brightest intergranular | (0.953, 0.953, 1.000) | `#F3F9FF` |
 
-**Replacement GLSL constants:**
 ```glsl
 vec3 umbralColor  = vec3(1.000, 0.538, 0.203);  // 3700K blackbody
 vec3 quietColor   = vec3(1.000, 0.867, 0.757);  // 5778K blackbody
@@ -97,18 +76,8 @@ vec3 hotColor     = vec3(1.000, 0.918, 0.843);  // 6300K
 vec3 granuletop   = vec3(0.953, 0.953, 1.000);  // 7000K
 ```
 
-> [!NOTE]
-> The Sun will appear significantly whiter/less orange after this change. This is physically correct — a G2V star at 5778K is nearly white. The "golden Sun" appearance is an artifact of atmospheric scattering and artistic convention, not intrinsic stellar color.
-
-### 2B. Optional: Blackbody Lookup Texture
-For maximum fidelity, create a 256×1 texture mapping temperature (3000K–8000K) to sRGB color. Sample it in the shader using the local effective temperature:
-
-```glsl
-uniform sampler2D blackbodyLUT; // 256×1, x = (T - 3000) / 5000
-vec3 tempColor = texture2D(blackbodyLUT, vec2((localTemp - 3000.0) / 5000.0, 0.5)).rgb;
-```
-
-This would be generated once on CPU using the Planck function integrated over CIE color matching functions. Creates a new utility function `createBlackbodyLUT()` in `sunVisuals.js`.
+### 2B. Blackbody Lookup Texture (Optional Enhancement)
+Generate a 256×1 texture mapping temperature 3000K–8000K → sRGB. Sample via `texture2D(blackbodyLUT, vec2((T-3000.0)/5000.0, 0.5))`. Compute once on CPU using Planck function integrated over CIE color matching functions.
 
 ---
 
@@ -116,99 +85,44 @@ This would be generated once on CPU using the Planck function integrated over CI
 *Effort: Medium | Risk: Low | File: `sunVisuals.js`*
 
 ### 3A. Fix Granulation Contrast Ratio
-**Audit item #7** | [sunVisuals.js:215-217](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L215-L217)
+**Audit #7** | [sunVisuals.js:215-217](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L215-L217)
 
-Real granulation contrast: ~14–22% RMS (Nordlund & Stein 1998; Hinode/SOT). Center-to-lane brightness ratio is approximately 1.0:0.78.
+Real: ~14–22% RMS (Nordlund & Stein 1998; Hinode/SOT observation). Current: 82%.
 
-**Current:** `granulationBrightness = gran1.x * 0.82 + 0.18` → range 0.18–1.0 (82% contrast)
-
-**Fix:** Scale the Voronoi cell output to match observed contrast:
 ```glsl
-float granulationBrightness = gran1.x * 0.22 + 0.78;   // range 0.78–1.0 (22% contrast)
-float superGranNetwork = gran2.x * 0.04 + 0.98;          // very subtle supergranule modulation
-```
-
-Also add a comment documenting the deliberate cell-count simplification:
-```glsl
-// Rendering simplification: ~48 cells vs ~3000+ real granules per axis.
-// At typical zoom levels this produces visually acceptable granular texture
-// without the GPU cost of a 3000² Voronoi grid.
+float granulationBrightness = gran1.x * 0.22 + 0.78;   // range 0.78–1.0
+float superGranNetwork = gran2.x * 0.04 + 0.98;
 ```
 
 ### 3B. Sunspot Cluster System
-**Audit item #9** | [sunVisuals.js:418-455](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L418-L455)
+**Audit #9** | [sunVisuals.js:418-455](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L418-L455)
 
-Reinterpret each of the 8 uniform slots as a **sunspot group** rather than an individual spot. Each group should produce a cluster of 2–5 spots at slightly offset positions with varying sizes.
+Reinterpret 8 uniform slots as **groups** generating 2–5 spot clusters. At solar max: 8 × 5 = up to 40 visible spots.
 
-**Changes to `sunspotDarkening()` shader function:**
-```glsl
-float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec) {
-  if (seed.w < 0.001) return 1.0;
+### 3C. Evershed-Flow Penumbral Fibrils
+**Audit #8** | [sunVisuals.js:168-171](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L168-L171)
 
-  float dark = 1.0;
-  // Each seed generates a small cluster of spots
-  int clusterCount = 2 + int(seed.w * 3.0); // 2–5 spots per group
-  for (int c = 0; c < 5; c++) {
-    if (c >= clusterCount) break;
-    // Offset each cluster member slightly from the group center
-    float cSeed = float(c) * 0.618033;
-    float lonOff = (hash12(vec2(seed.x, cSeed)) - 0.5) * seed.z * 1.5;
-    float latOff = (hash12(vec2(seed.y, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
-    vec4 subSpot = vec4(seed.x + lonOff, seed.y + latOff,
-                        seed.z * (0.3 + hash12(vec2(cSeed, seed.x)) * 0.7),
-                        seed.w);
-    dark = min(dark, sunspotDarkening(nDir, subSpot, timeSec));
-  }
-  return dark;
-}
-```
-
-Update `updateSunspotUniforms()`: set `count = Math.round(activity * 7) + 1` to give 1–8 active groups. At solar maximum with 8 groups × 5 spots = up to 40 visible spots.
-
-### 3C. Radially Elongated Penumbral Fibrils (Evershed Effect)
-**Audit item #8** | [sunVisuals.js:168-171](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L168-L171)
-
-Replace isotropic `noise3(radialDir * 140.0 ...)` with directionally elongated noise:
+Replace isotropic noise with directionally elongated noise (2.67:1 radial aspect ratio matching Evershed radial outflow pattern):
 
 ```glsl
-// Evershed flow: penumbral fibrils are radially elongated from umbra center
-vec3 radialDir = normalize(nDir - spotDir * dot(nDir, spotDir));
-vec3 tangentialDir = normalize(cross(spotDir, radialDir));
-// Stretch noise along radial direction (2:1 aspect ratio)
 vec3 fibrilCoord = radialDir * 60.0 + tangentialDir * 160.0 + vec3(timeSec * 0.03);
-float fibrilNoise = noise3(fibrilCoord);
 ```
-
-The key change: `tangentialDir * 160.0` vs `radialDir * 60.0` creates 2.67:1 elongation perpendicular to the radial direction — fibrils are narrow radially but long tangentially, which is exactly the Evershed pattern.
 
 ### 3D. Facular Center-to-Limb Variation
-**Audit item #13** | [sunVisuals.js:173-176](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L173-L176)
+**Audit #13** | [sunVisuals.js:173-176](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L173-L176)
 
-Facular contrast inverts with viewing angle: dark at disk center (mu ≈ 1.0), bright at the limb (mu ≈ 0.3). This is the well-known Spruit (1976) / Topka (1997) facular contrast model.
-
+Faculae are dark at disk center (μ≈1), bright at limb (μ≈0.3) — Topka et al. 1997:
 ```glsl
-// Facular CLV: contrast varies from negative (dark) at disk center
-// to positive (bright) at limb (Topka et al. 1997)
 float faculaContrast = (-0.12 + 0.95 * (1.0 - mu)) * spotIntensity;
-float faculaeBrightness = 1.0 + faculaeZone * faculaContrast;
 ```
 
-This requires passing `mu` (the cosine of the viewing angle) into the `sunspotDarkening()` function. Add `mu` as an additional parameter.
+### 3E. Wilson Depression
+**Audit #8** | [sunVisuals.js:146-190](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L146-L190)
 
-### 3E. Wilson Depression (Geometric Limb Foreshortening)
-**Audit item #8** | [sunVisuals.js:146-190](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L146-L190)
-
-The Wilson depression (~600 km, ~0.00086 R☉) causes sunspot umbrae to appear foreshortened when near the solar limb. Simulation approach: scale the apparent spot angular radius based on viewing angle:
-
+Foreshorten spot angular radius based on viewing angle to simulate the ~600 km geometric depression:
 ```glsl
-// Wilson depression: spot appears foreshortened near limb
-float spotMu = dot(spotDir, viewDir); // how face-on is the spot
-float wilsonFactor = 0.65 + 0.35 * spotMu; // partial at limb
-float effectiveUmbra = umbra * wilsonFactor;
-float effectivePenumbra = penumbra * wilsonFactor;
+float wilsonFactor = 0.65 + 0.35 * dot(spotDir, viewDir);
 ```
-
-This shrinks spots near the limb while leaving face-on spots at full size. The 0.65 floor ensures spots don't vanish entirely.
 
 ---
 
@@ -216,51 +130,21 @@ This shrinks spots near the limb while leaving face-on spots at full size. The 0
 *Effort: Medium | Risk: Low | File: `sunVisuals.js`*
 
 ### 4A. Dual-Population Spicule Model
-**Audit item #6** | [sunVisuals.js:468-525](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L468-L525)
+**Audit #6** | [sunVisuals.js:468-525](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L468-L525)
 
-Add a second population of Type II spicules alongside the existing Type I. Use a `uniform float aSpiculeType` attribute to distinguish them, or more efficiently, encode the type in an existing attribute.
+Add Type II population (De Pontieu et al. 2007): rapid ballistic rise (80–300 km/s), 10–150s lifetime, fade without descent. Discriminate by `aSpeed` threshold:
 
-**Approach:** In `createChromosphereLayer()`, generate two populations within the same `BufferGeometry`:
-
-| Property | Type I (existing) | Type II (new) |
-|---|---|---|
-| Count | 5,000 | 3,000 |
-| `aSpeed` range | 0.5–2.0 (slow) | 5.0–15.0 (fast) |
-| `aLifetime` usage | Triangle wave (rise+fall) | One-shot rise then fade |
-| Max height | 0.005–0.014 R☉ | 0.007–0.020 R☉ |
-
-**Vertex shader changes:**
 ```glsl
-// Distinguish Type I (aSpeed < 3.0) from Type II (aSpeed >= 3.0)
 bool isTypeII = aSpeed >= 3.0;
-
-float phase = fract(time * aSpeed * 0.018 + aLifetime);
-float rise;
-if (isTypeII) {
-  // Type II: rapid ballistic rise, then fade without descent
-  rise = phase < 0.3 ? (phase / 0.3) : max(0.0, 1.0 - (phase - 0.3) * 2.5);
-} else {
-  // Type I: parabolic rise and fall
-  rise = phase < 0.5 ? phase * 2.0 : (1.0 - phase) * 2.0;
-}
-
-float maxHeight = isTypeII
-  ? (0.007 + chromoActivity * 0.013)   // Type II: taller
-  : (0.005 + chromoActivity * 0.009);   // Type I
+float rise = isTypeII
+  ? (phase < 0.3 ? phase/0.3 : max(0.0, 1.0 - (phase-0.3)*2.5))
+  : (phase < 0.5 ? phase*2.0 : (1.0-phase)*2.0);
 ```
 
-The key physics difference: Type II spicules shoot up rapidly (80–300 km/s) and then fade in place (heated to coronal temperatures), while Type I follow a symmetric parabolic trajectory.
-
 ### 4B. Distance-Scaled Point Size
-**Audit item #6 (sub)** | [sunVisuals.js:510](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L510)
-
-Replace `sizeAttenuation: false` with `sizeAttenuation: true` in the material, and compute `gl_PointSize` based on projected size:
-
+Replace `gl_PointSize = 1.8` with perspective-scaled:
 ```glsl
-float dist = length(cameraPosition - (modelMatrix * vec4(spiculePos, 1.0)).xyz);
-float baseSize = isTypeII ? 1.2 : 2.0; // Type II are thinner
-gl_PointSize = baseSize * (300.0 / dist); // perspective scaling
-gl_PointSize = clamp(gl_PointSize, 0.5, 6.0); // clamp for sanity
+gl_PointSize = clamp(baseSize * (300.0 / dist), 0.5, 6.0);
 ```
 
 ---
@@ -269,211 +153,372 @@ gl_PointSize = clamp(gl_PointSize, 0.5, 6.0); // clamp for sanity
 *Effort: High | Risk: Medium | File: `sunVisuals.js`*
 
 ### 5A. K-Corona Radial Intensity Falloff
-**Audit item #4** | [sunVisuals.js:347-372](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L347-L372)
+**Audit #4** | [sunVisuals.js:347-372](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L347-L372)
 
-Implement the Baumbach/van de Hulst electron density model. The K-corona intensity (Thomson scattering of photospheric light by coronal electrons) follows:
+Implement Baumbach/van de Hulst (1950) electron density model:
 
 ```
 N(r) = 10⁸ × (0.036·r⁻¹·⁵ + 1.55·r⁻⁶ + 2.99·r⁻¹⁶)  [cm⁻³]
 ```
-where `r` is in solar radii. For rendering, we normalize to visible intensity:
 
+Simplified to the two dominant terms for GPU:
 ```glsl
-// Radial distance from sun center in solar radii
-float fragR = length(vWorldPosition) / sunRadius; // need sunRadius uniform
-float rClamped = max(fragR, 1.001); // avoid division by zero at surface
-
-// Van de Hulst / Baumbach K-corona radial intensity
-// Simplified to two dominant terms (r^-6 drops quickly, r^-1.5 dominates far out)
 float coronaRadial = 0.036 * pow(rClamped, -1.5) + 1.55 * pow(rClamped, -6.0);
-coronaRadial = coronaRadial / 1.586; // normalize so coronaRadial ≈ 1.0 at r = 1.0
+coronaRadial /= 1.586; // normalize to 1.0 at r=1
 ```
 
-**Required new uniform:** `sunRadius` (float) — the sun's display radius in scene units. Add to `createSunCoronaShell()` uniforms and update in `updateSunMaterialUniforms()`.
+Expand corona shell geometry from 1.032× to 4.0× solar radii.
 
-**Shader integration:** Multiply the existing alpha by `coronaRadial`:
-```glsl
-float alpha = (offLimb * 0.06 + rim * 0.09) * (...) * pulse;
-alpha *= coronaRadial; // physical radial falloff
-```
-
-This transforms the corona from a thin bright ring to a physically accurate extended atmosphere with the characteristic steep inner falloff and gentle outer tail.
-
-### 5B. Corona Shell Geometry Expansion
-The current corona shell uses the same `SphereGeometry` as the sun surface (scaled by 1.032×). For the K-corona falloff to work, the shell must extend to at least 3–5 R☉:
-
-**Change in `createSunCoronaShell()`:**
-```js
-mesh.userData.surfaceScale = 4.0; // was 1.032 — extend to 4 R☉
-```
-
-And adjust the vertex shader to properly pass world-space positions for the radial calculation.
-
-### 5C. Helmet Streamer Structure
-**Audit item #5** | [sunVisuals.js:354-356](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L354-L356)
-
-Add latitude-dependent streamer brightness modulation. During solar minimum, streamers concentrate near the equatorial plane (heliospheric current sheet). During solar maximum, they appear at all latitudes.
+### 5B. Helmet Streamer Structure
+**Audit #5** | Near equatorial plane, modulated by activity cycle:
 
 ```glsl
-// Helmet streamer belt: enhanced brightness near equatorial plane
-float streamerLat = abs(normalDir.y); // 0 at equator, 1 at poles
-float streamerWidth = 0.15 + activity * 0.35; // narrow at min, broad at max
+float streamerLat = abs(normalDir.y);
+float streamerWidth = 0.15 + activity * 0.35;
 float streamerBright = smoothstep(streamerWidth, streamerWidth - 0.1, streamerLat);
-
-// Add streamer-specific turbulence (elongated radially)
-float streamerTurb = fbm(vec3(normalDir.x * 3.0, normalDir.y * 0.5, normalDir.z * 3.0)
-                        + vec3(time * 0.1, 0.0, -time * 0.08));
-
-alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
+alpha *= (1.0 + streamerBright * 1.2);
 ```
 
-The streamer noise is deliberately elongated along `y` (radial in this geometry) to produce the characteristic narrow, tall structures visible in coronagraph images.
+### 5C. Magnetically-Driven Coronal Holes
+**Audit #11** | Replace `abs(normalDir.y)` with noise-modulated system including equatorial holes at solar max.
 
-### 5D. Magnetically-Driven Coronal Holes
-**Audit item #11** | [sunVisuals.js:361-365](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L361-L365)
-
-Replace the purely latitudinal `abs(normalDir.y)` with a noise-modulated system that includes equatorial coronal holes at high activity:
-
-```glsl
-// Coronal holes: magnetically-defined regions of open field
-float polarHole = abs(normalDir.y); // base polar component
-// Add noise-modulated equatorial holes that appear during solar maximum
-float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
-float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
-float holeStrength = max(
-  smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole),
-  equatorialHole
-);
-alpha *= mix(0.08, 1.0, 1.0 - holeStrength * (1.0 - coronalHoleActivity * 0.7));
-```
-
-### 5E. Temperature-Dependent Corona Color
-**Audit item #5 (sub)** | [sunVisuals.js:368-369](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L368-L369)
-
-Add radial color shift from the inner corona (~1 MK, greenish Fe XIV 530.3 nm line) to the outer corona (~2 MK, cooler, more reddish):
-
-```glsl
-// Temperature-dependent corona coloring
-vec3 innerCorona = vec3(0.6, 1.0, 0.5); // Fe XIV green line contribution
-vec3 outerCorona = coronaColor;           // existing warm white/orange
-float tempGradient = smoothstep(1.0, 3.5, rClamped);
-color = mix(innerCorona * 0.3 + hotWhite * 0.7, outerCorona, tempGradient);
-// Still modulate with streamer brightness and observation blend as before
-```
+### 5D. Temperature-Dependent Corona Color
+**Audit #5 (sub)** | Inner corona: Fe XIV green line (530.3 nm, ~1 MK). Outer: warm white (~2 MK). Radial color gradient.
 
 ---
 
-## Phase 6 — Flare & CME Physics Corrections
+## Phase 6 — Flare & CME Physics
 *Effort: Low–Medium | Risk: Low | File: `solarFlares.js`*
 
 ### 6A. CME Angular Width Control
-**Audit item #10** | [solarFlares.js:79](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.js#L79)
+**Audit #10** | Parameterize `SphereGeometry phiLength` to 20°–120° range (NASA CME catalog).
 
-The `SphereGeometry` should use angular width to control the cone of the CME:
-
+### 6B. GOES-Style Neupert-Effect Temporal Profile
+**Audit (flares)** | Replace linear rise/fall with fast exponential rise (~15% duration), slow exponential decay (~85%):
 ```js
-// Current (always full hemisphere):
-new SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
-
-// Replacement — parameterize angular width:
-function getCmeGeometry(angularWidthRad = Math.PI) {
-  // angularWidthRad controls the azimuthal span (e.g., 60° = π/3)
-  return new SphereGeometry(1, 32, 16, 0, angularWidthRad, 0, Math.PI * 0.5);
-}
+if (t < impulsive) opacity = intensity * (1.0 - Math.exp(-4.0 * t/impulsive));
+else              opacity = intensity * Math.exp(-2.5 * (t-impulsive)/gradual);
 ```
-
-In `createSolarFlareEvent()`, add `angularWidthDeg` parameter (default 60°). In `spawnRandomFlare()`, randomize between 20° and 120°:
-
-```js
-const angularWidthDeg = 20 + Math.random() * 100; // 20°–120° (NASA CME catalog range)
-```
-
-### 6B. GOES-Style Flare Temporal Profile (Neupert Effect)
-**Audit item #7 (flares)** | [solarFlares.js:191-201](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.js#L191-L201)
-
-Replace the linear rise/fall with an asymmetric profile: fast exponential rise, slow exponential decay.
-
-```js
-// Current: linear rise to peak, linear fall
-// Replace with GOES-style soft X-ray profile:
-const impulsiveDuration = flashDurationSec * 0.15; // ~15% of total = impulsive phase
-const gradualDecay = flashDurationSec * 0.85;       // ~85% = gradual phase
-
-if (elapsedSec < impulsiveDuration) {
-  // Rapid exponential rise (impulsive phase)
-  const t = elapsedSec / impulsiveDuration;
-  flareSprite.material.opacity = intensity * (1.0 - Math.exp(-4.0 * t));
-} else {
-  // Slow exponential decay (gradual phase, Neupert effect)
-  const t = (elapsedSec - impulsiveDuration) / gradualDecay;
-  flareSprite.material.opacity = intensity * Math.exp(-2.5 * t);
-}
-```
-
-This produces the characteristic asymmetric GOES X-ray light curve: sharp peak within the first ~15% of the duration, then a long exponential tail.
 
 ---
 
 ## Phase 7 — Timing & PFSS Harmonics
-*Effort: Medium–High | Risk: Low | File: `sunVisuals.js`, `solarMagnetics.js`*
+*Effort: Medium | Risk: Low | Files: `sunVisuals.js`, `solarMagnetics.js`*
 
-### 7A. Differential Rotation Time Synchronization
-**Audit item #14** | [sunVisuals.js:205](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js#L205)
+### 7A. Differential Rotation ↔ Simulation Clock Sync
+**Audit #14** | Tie Snodgrass rotation to Julian date, not arbitrary `time * 0.00012`.
 
-The `time * 0.00012` constant is arbitrary. Tie it to the simulation's actual time advancement rate.
+### 7B. Apply Dipole Tilt Angle
+**Audit #12 (sub)** | Use the computed but unused `tiltAngle = 0.2 * activity` to rotate dipole axis.
 
-The Snodgrass equatorial rate is 14.44°/day. The `time` uniform receives `timeSec * 0.4`. To produce correct rotation:
+### 7C. Octupole Harmonic (ℓ=3)
+**Audit #12** | Add third-order spherical harmonic for sector structure at high activity.
 
-```
-lonOffset (rad) = degPerDay × (simDays) × π/180
-```
+---
 
-The key question: what does `timeSec` represent? If it's wall-clock seconds, and the simulation advances at `timeScale` days/second:
+## Phase 8 — Solar Prominences & Transition Region *(NEW)*
+*Effort: High | Risk: Medium | Files: `sunVisuals.js`, new `solarProminences.js`*
 
+> [!NOTE]
+> The current model has **zero** prominence/filament representation. These are among the most visually striking solar phenomena, extending 10–100 Mm above the limb at 5,000–8,000K (100× cooler and 100× denser than the surrounding corona).
+
+### 8A. Create `solarProminences.js` — Prominence/Filament System
+
+**Physics:**
+- Prominences are magnetically suspended plasma structures above polarity inversion lines
+- **Quiescent:** persist weeks–months, higher latitudes, heights 10–100 Mm
+- **Active region:** hours–days, near sunspots, erupt frequently
+- Temperature: ~10,000K (Hα emission), 100× cooler than corona
+- Erupting prominences: 600–1000+ km/s, frequently trigger CMEs
+
+**Implementation approach:**
 ```js
-// In updateSunMaterialUniforms, pass simDays directly:
-sunSurfaceMaterial.uniforms.simDays = { value: 0 }; // new uniform
-
-// In updateSunDynamics: compute simDays from Julian date
-const simDays = (julianDate - J2000_EPOCH) / 1.0; // days since J2000
-sunSurfaceMaterial.uniforms.simDays.value = simDays;
+// Each prominence is a parametric 3D curve (catenary approximation of
+// magnetically suspended plasma) with vertex particles spread along it.
+export function createProminence({
+  footpoint1,     // {lon, lat} on surface — one magnetic polarity
+  footpoint2,     // {lon, lat} — opposite polarity
+  maxHeight,      // 0.01–0.15 R☉ (7,000–104,000 km)
+  temperature,    // 5000–8000K → maps to Hα reddish-pink color
+  density,        // opacity scaling
+  lifetime,       // seconds before dissipation or eruption
+  isErupting      // triggers kinematic eruption animation
+}) { ... }
 ```
+
+**Visual rendering:**
+- Use `LineSegments` or ribbon geometry for the arch shape
+- Color: Hα reddish-pink `vec3(0.9, 0.15, 0.12)` at ~6563Å
+- At limb: bright emission against dark sky
+- On disk: dark absorption ("filament") against photosphere — requires checking if fragment is in front or behind solar disk relative to camera
+
+**Shader snippet (prominence fragment):**
+```glsl
+// Prominence is visible as bright emission at limb, dark filament on disk
+float prominenceNdotV = dot(normalize(position - sunCenter), viewDir);
+bool onDisk = prominenceNdotV > 0.0;
+vec3 color = onDisk
+  ? vec3(0.0) // dark filament absorption
+  : vec3(0.9, 0.15, 0.12) * opacity; // Hα emission off-limb
+```
+
+**Integration in `main.js`:** Spawn prominence objects based on `activity` level. Place footpoints near sunspot groups (polarity inversion lines). Auto-erupt at configurable probability.
+
+### 8B. Transition Region Layer
+
+The **transition region** (TR) is a thin (~100 km) shell between chromosphere (~20,000K) and corona (~1 MK). Currently completely absent. It produces characteristic EUV emission visible in SDO/AIA 304Å.
+
+**Implementation:** Add a thin emissive shell at 1.004× solar radius with UV-colored emission that responds to the 304Å observation mode:
 
 ```glsl
-// In shader:
-uniform float simDays;
-float lonOffset = snodgrassRotationOffset(vLatitude, simDays);
+// In the chromosphere/corona intermediate region
+float trHeight = 1.004; // 1.004 R☉ = ~2,800 km above photosphere
+float trEmission = smoothstep(trHeight - 0.001, trHeight, fragR)
+                 * (1.0 - smoothstep(trHeight, trHeight + 0.002, fragR));
+// In 304Å mode, TR becomes very bright magenta
+vec3 trColor = is304Mode ? vec3(0.85, 0.1, 0.3) : vec3(0.4, 0.05, 0.15);
 ```
 
-### 7B. PFSS Dipole Tilt + Use Unused Variable
-**Audit item #12 (sub)** | [solarMagnetics.js:52](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js#L52)
+---
 
-Apply the computed `tiltAngle` to rotate the dipole axis:
+## Phase 9 — Solar Radiation Pressure *(NEW)*
+*Effort: Medium | Risk: Low | Files: `rebound_nbody.py` or new `radiationPressure.js`*
+
+> [!IMPORTANT]
+> The codebase has **zero** radiation pressure implementation. Solar radiation pressure is significant for: dust particles (can exceed gravity for sub-micron grains), spacecraft trajectories (15,000 km miss at Mars without SRP), and long-term asteroid orbit evolution (Yarkovsky effect).
+
+### 9A. Solar Radiation Pressure Force
+
+The radiation pressure acceleration on a body at distance `r` from the Sun is:
+
+```
+a_SRP = (L☉ / (4π·c)) × (A / m) × (1/r²) × Cr
+```
+
+Where:
+- `L☉` = 3.828 × 10²⁶ W (solar luminosity)
+- `c` = 2.998 × 10⁸ m/s
+- `A/m` = area-to-mass ratio of the body
+- `Cr` = radiation pressure coefficient (1.0 = perfect absorber, 2.0 = perfect reflector)
+- `r` = heliocentric distance
+
+At 1 AU for a 1 m² / 1 kg flat plate: `a_SRP ≈ 4.56 × 10⁻⁶ m/s²`
+
+**Ratio to solar gravity:** The dimensionless parameter `β = F_SRP / F_grav`:
+```
+β = (L☉ × Cr × A) / (16π² × G × M☉ × m × c)
+```
+
+For dust grains: β > 0.5 means the particle is blown out of the solar system. For β ≈ 1, radiation exactly cancels gravity. This defines the **blowout size** (~0.1–1 μm for silicate grains).
+
+**Implementation — Backend (REBOUND):**
+```python
+# Add as REBOUNDx force or custom additional_forces callback
+def radiation_pressure(reb_sim):
+    sun = reb_sim.particles[0]
+    for i in range(1, reb_sim.N):
+        p = reb_sim.particles[i]
+        dx, dy, dz = p.x - sun.x, p.y - sun.y, p.z - sun.z
+        r2 = dx*dx + dy*dy + dz*dz
+        r = math.sqrt(r2)
+        # beta = SRP_force / gravity_force for this body
+        beta = getattr(p, 'beta', 0.0)  # 0 for planets, nonzero for dust/spacecraft
+        # Acceleration = beta * GM☉/r² (same magnitude as gravity, radially outward)
+        a_srp = beta * reb_sim.G * sun.m / r2
+        p.ax += a_srp * dx / r
+        p.ay += a_srp * dy / r
+        p.az += a_srp * dz / r
+```
+
+**Implementation — Frontend (trajectory planning):**
+Add a `beta` parameter to spacecraft/dust definitions in the mission planner. Show SRP as a force vector overlay when enabled.
+
+### 9B. Poynting-Robertson Drag
+
+For dust particles, the tangential component of radiation causes orbital decay:
+
+```
+F_PR = F_SRP × (v_tangential / c)
+```
+
+Timescale to spiral into the Sun from 1 AU: ~10,000 years for a 10 μm grain. Relevant for zodiacal dust cloud simulation.
+
+### 9C. Yarkovsky Effect on Asteroids *(Experimental)*
+
+Asymmetric thermal re-radiation from rotating asteroids causes secular drift in semi-major axis:
+
+```
+da/dt ≈ ±(4/9) × (1-A) × (Φ☉ / (ρ·D·n·c·a))
+```
+
+Where `A` = albedo, `Φ☉` = solar flux, `ρ` = density, `D` = diameter, `n` = mean motion. This is the dominant mechanism for delivering main-belt asteroids into resonances → NEO population. Could be added as a slow secular perturbation on tracked asteroid orbits.
+
+---
+
+## Phase 10 — Galactic-Scale Gravitational Forces *(NEW)*
+*Effort: Medium–High | Risk: Low | Files: `rebound_nbody.py`, new `galacticTide.js`*
+
+> [!NOTE]
+> The codebase's galactic code (`milkyWay.js`) is purely visual — it renders the Milky Way backdrop. No galactic gravitational physics exists.
+
+### 10A. Milky Way Galactic Tidal Field
+
+The galactic tide is the **dominant external perturber** of the Oort Cloud, responsible for ~90% of long-period comet injection (Heisler & Tremaine 1986; Levison et al. 2001).
+
+**Tidal acceleration** in the local galactic frame (Heisler & Tremaine formulation):
+
+```
+a_x = -Ω₀² × x                    (radial, toward galactic center)
+a_y = -(4πGρ₀ - Ω₀²) × y          (vertical, perpendicular to disk)
+a_z = -Ω₀² × z                    (azimuthal, along orbit)
+```
+
+Where:
+- `Ω₀` ≈ 26 km/s/kpc = 8.4 × 10⁻¹⁶ rad/s (Solar orbital angular velocity around Galactic center)
+- `ρ₀` ≈ 0.1 M☉/pc³ = 6.77 × 10⁻²¹ kg/m³ (local disk mass density, Oort limit)
+- `G` = 6.674 × 10⁻¹¹ m³/(kg·s²)
+
+**Magnitude comparison at different distances:**
+
+| Distance | Galactic tide (m/s²) | Sun's gravity (m/s²) | Ratio |
+|---|---|---|---|
+| 1 AU | ~3 × 10⁻¹³ | 5.9 × 10⁻³ | 10⁻¹⁰ (negligible) |
+| 100 AU | ~3 × 10⁻¹³ | 5.9 × 10⁻⁷ | 10⁻⁶ (negligible) |
+| 10,000 AU | ~3 × 10⁻¹³ | 5.9 × 10⁻¹¹ | ~5 × 10⁻³ (marginally significant) |
+| 50,000 AU | ~3 × 10⁻¹³ | 2.4 × 10⁻¹² | ~0.13 (**significant**) |
+| 100,000 AU | ~3 × 10⁻¹³ | 5.9 × 10⁻¹³ | ~0.5 (**dominant**) |
+
+> [!IMPORTANT]
+> For **inner solar system objects** (planets, asteroids, spacecraft), galactic tidal forces are 10⁻⁶ to 10⁻¹⁰ × solar gravity — completely negligible for any practical simulation timescale. For **Oort Cloud objects** (> 50,000 AU), galactic tides dominate and must be included for realistic long-period comet dynamics.
+
+**Implementation:**
+```python
+# In rebound_nbody.py — only activated when simulating Oort Cloud objects
+def galactic_tide(reb_sim):
+    Omega0 = 8.4e-16  # rad/s
+    rho0_SI = 6.77e-21 # kg/m³
+    # Convert to simulation units (AU, solar masses, etc.)
+    for i in range(1, reb_sim.N):
+        p = reb_sim.particles[i]
+        r = math.sqrt(p.x**2 + p.y**2 + p.z**2)
+        if r < 1000:  # AU — skip inner solar system
+            continue
+        p.ax += -Omega0**2 * p.x
+        p.ay += -(4*math.pi*G*rho0 - Omega0**2) * p.y
+        p.az += -Omega0**2 * p.z
+```
+
+### 10B. Nearby Stellar Perturbations
+
+Passing stars perturb the outer Oort Cloud. The typical stellar encounter rate within 1 pc is ~10 per Myr. For the simulation, this could be modeled as stochastic impulse events:
+
+```
+Δv ≈ 2 G M★ / (b × v∞)
+```
+Where `b` = impact parameter, `v∞` = relative velocity (~30 km/s typical). Implementation: stochastic impulse kicks on Oort Cloud test particles during long-duration simulations. **Lower priority** — only relevant for Myr-scale integrations.
+
+### 10C. Sgr A* Direct Gravitational Pull
+
+At 26,000 ly (8 kpc), Sgr A* (4 × 10⁶ M☉) produces on the solar system:
+
+```
+a = GM / r² ≈ 6.674e-11 × 4e6 × 1.989e30 / (2.47e20)² ≈ 8.7 × 10⁻¹² m/s²
+```
+
+This is ~10⁻⁹ × solar gravity at 1 AU — **completely negligible for orbital dynamics**. The galactic tide (from the distributed disk mass) is ~1000× stronger than the direct Sgr A* pull. **No implementation needed** for Sgr A* as an isolated point source — it is already included within the tidal field of Phase 10A.
+
+---
+
+## Phase 11 — Solar Wind System *(NEW)*
+*Effort: Medium | Risk: Low | File: new `solarWind.js` or extend `sunVisuals.js`*
+
+### 11A. Parker Spiral Magnetic Field Enhancement
+
+The Parker spiral already exists visually, but lacks physical parameterization. The interplanetary magnetic field (IMF) follows:
+
+```
+B_r = B₀ × (r₀/r)²
+B_φ = -B_r × (Ω × r × sinθ) / v_sw
+```
+
+Where `B₀ ≈ 5 nT` at `r₀ = 1 AU`, `Ω` = solar rotation rate, `v_sw` = solar wind speed (400–800 km/s).
+
+**Enhancement:** Compute the spiral angle `ψ = atan(Ω·r·sinθ / v_sw)` and vary the displayed spiral tightness based on the actual solar wind speed from the backend physics.
+
+### 11B. Fast/Slow Solar Wind Bimodal Structure
+
+The solar wind has two distinct components:
+- **Slow wind:** ~400 km/s, denser, near streamer belt / equatorial
+- **Fast wind:** ~750 km/s, from coronal holes (polar regions)
+
+Visualize as particle density/speed variations in the Parker spiral, keyed to coronal hole and streamer positions from Phase 5.
+
+---
+
+## Phase 12 — Experimental: Gravitational Waves *(NEW)*
+*Effort: Low | Risk: None | File: new `gravitationalWaves.js`*
+
+> [!CAUTION]
+> Gravitational waves have **no measurable effect** on solar system dynamics. Peak strain from binary black hole mergers is ~10⁻²¹ — this stretches the Earth-Sun distance by ~0.15 femtometers (less than an atomic nucleus). This phase is purely for **educational/visualization purposes** — an experimental showcase feature.
+
+### 12A. Gravitational Wave Spacetime Distortion Visualization
+
+When toggled on, render a passing gravitational wave as a visual "ripple" through the scene grid:
 
 ```js
-const tiltAngle = 0.2 * activity; // 0°–12° tilt
-// Rotate input coordinates before computing the dipole field
-const cosT = Math.cos(tiltAngle);
-const sinT = Math.sin(tiltAngle);
-const xTilt = x * cosT - z * sinT;
-const zTilt = x * sinT + z * cosT;
-// Use xTilt, y, zTilt for dipole calculation, x, y, z for quadrupole
+// Gravitational wave parameters (visualization only — hugely exaggerated)
+const gwVisualization = {
+  frequency: 50,            // Hz (typical LIGO detection band)
+  strainExaggeration: 1e18, // amplify 10⁻²¹ to visible levels
+  source: 'binary_bh',      // visualization mode
+  propagationDir: new Vector3(0, 0, 1), // from "above" ecliptic
+};
+
+// Apply sinusoidal stretch+squeeze to a background grid
+function applyGWDistortion(gridMesh, time) {
+  const phase = time * gwVisualization.frequency * 2 * Math.PI;
+  const h = gwVisualization.strainExaggeration * 1e-21;
+  // + polarization: stretch x, squeeze y
+  gridMesh.scale.set(1 + h * Math.sin(phase), 1 - h * Math.sin(phase), 1);
+}
 ```
 
-### 7C. Higher-Order Spherical Harmonics (Octupole)
-**Audit item #12** | [solarMagnetics.js:22-64](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js#L22-L64)
+**UI:** A toggle in the experimental section: "Show gravitational wave visualization (educational)." Include an info tooltip explaining that real GW effects are 10⁻²¹ and this is amplified for educational purposes.
 
-Add an octupole (ℓ=3) term for more complex field geometry:
+---
+
+## Phase 13 — Additional Missed Items *(NEW)*
+*Effort: Low–Medium | Risk: Low | Various files*
+
+### 13A. Coronal Loop Arcade Enhancement
+
+The coronal loop system (`coronal-loops-group` in `main.js`) currently exists but uses simple tube geometry. Real coronal loops observed by SDO/AIA show:
+- Temperature stratification along the loop (hotter apex, cooler footpoints)
+- EUV-dependent visibility (171Å: 0.6 MK, 193Å: 1.5 MK, 211Å: 2 MK)
+- Cross-section expansion toward the apex (flux conservation)
+
+**Enhancement:** Add temperature-dependent glow color that shifts with observation channel. Apply slight cross-section expansion toward the loop apex.
+
+### 13B. Differential Emission Measure (DEM) Display
+
+When switching between AIA observation channels, the Sun's appearance should change dramatically:
+- **171Å (Fe IX, 0.6 MK):** Quiet corona loops, blue-green
+- **193Å (Fe XII, 1.5 MK):** Hot corona, green-yellow
+- **211Å (Fe XIV, 2 MK):** Active region loops, purple
+- **304Å (He II, 0.05 MK):** Chromosphere/TR, magenta-red
+- **094Å (Fe XVIII, 6.3 MK):** Flare plasma only, green
+
+Currently, observation channels just overlay a texture. The procedural features (granulation, corona, chromosphere) should also respond to channel selection.
+
+### 13C. Solar Irradiance Variability
+
+The solar "constant" actually varies: ~0.1% over the 11-year cycle, ~0.3% during sunspot passages. The backend's `activity` value could drive a `luminosity` uniform:
 
 ```js
-// Octupole component (ℓ=3): activity-dependent complexity
-const b0_oct = 0.25 * activity * activity; // only significant at high activity
-const cosT3 = cosT * cosT * cosT;
-const br_oct = b0_oct * (5 * cosT3 - 3 * cosT) / (2 * r2 * r2 * r);
-const bt_oct = b0_oct * (1.5 * sin2T * cosT) / (r2 * r2 * r);
+const luminosityFactor = 1.0 + 0.001 * (activity - 0.5); // ±0.05%
 ```
 
-This breaks the simple bar-magnet symmetry and produces current-sheet crossings and sector structure at higher activity levels. Full PFSS with ℓ=9+ would require spherical harmonic coefficient data from magnetograms, which is out of scope for procedural generation.
+This affects the glow sprite brightness and overall scene lighting intensity.
 
 ---
 
@@ -481,32 +526,55 @@ This breaks the simple bar-magnet symmetry and produces current-sheet crossings 
 
 | File | Changes | Phases |
 |---|---|---|
-| [sunVisuals.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js) | Limb darkening, colors, granulation contrast, sunspot clusters, fibrils, faculae, Wilson depression, Type II spicules, corona radial falloff, streamers, coronal holes, temperature gradient, time sync | 1A, 2A–B, 3A–E, 4A–B, 5A–E, 7A |
-| [solarMagnetics.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js) | RK4 fix, tilt angle, octupole term | 1B, 7B–C |
-| [solarFlares.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.js) | Angular width, Neupert temporal profile | 6A–B |
+| [sunVisuals.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.js) | Limb darkening, colors, granulation, sunspots, spicules, corona, time sync, transition region, loops, DEM | 1A, 2A–B, 3A–E, 4A–B, 5A–E, 7A, 8B, 13A–C |
+| [solarMagnetics.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.js) | RK4 fix, tilt angle, octupole | 1B, 7B–C |
+| [solarFlares.js](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.js) | Angular width, Neupert profile | 6A–B |
+| **[NEW]** `solarProminences.js` | Prominence/filament system | 8A |
+| [rebound_nbody.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/rebound_nbody.py) | Radiation pressure, galactic tide | 9A–B, 10A |
+| **[NEW]** `gravitationalWaves.js` | Educational GW visualization | 12A |
+| **[NEW]** `solarWind.js` | Wind speed/density system | 11A–B |
+
+---
+
+## Priority Matrix
+
+| Phase | Severity | Complexity | Impact | Recommended Order |
+|---|---|---|---|---|
+| 1 (Bug fixes) | 🔴 Critical | Low | High | **First** |
+| 2 (Blackbody) | 🟡 | Low | High | Second |
+| 5 (Corona) | 🟡 | High | Very High | Third |
+| 3 (Granulation/spots) | 🟡 | Medium | Medium | Fourth |
+| 4 (Spicules) | 🟡 | Medium | Medium | Fifth |
+| 8 (Prominences) | 🟡 | High | Very High | Sixth |
+| 6 (Flares/CMEs) | 🟡 | Low | Medium | Seventh |
+| 9 (Radiation pressure) | 🟡 | Medium | High (trajectories) | Eighth |
+| 7 (Time/PFSS) | 🟡 | Medium | Medium | Ninth |
+| 10 (Galactic tides) | 🟢 | Medium | Low (inner SS) | Tenth |
+| 11 (Solar wind) | 🟢 | Medium | Medium | Eleventh |
+| 13 (Misc) | 🟢 | Low | Low | Twelfth |
+| 12 (GW viz) | 🟢 | Low | Educational only | Last |
 
 ---
 
 ## Verification Plan
 
 ### Automated
-- `npm run build` — zero errors after all changes
+- `npm run build` — zero errors
 - `npm run typecheck` — zero new type errors
+- `pytest backend/tests/` — all pass including new radiation pressure tests
 
 ### Visual — Browser Tests
-1. **Limb darkening:** Screenshot at solar limb → limb should be visibly redder than disk center (B channel falls off faster than R). Disk center should not appear dimmed.
-2. **Blackbody color:** Sun should appear nearly white/cream, not orange-gold.
-3. **Granulation:** Surface texture should be subtle (22% contrast), not tile-cracked.
-4. **Sunspot clusters:** At high activity, groups of 2-5 spots should appear together.
-5. **Penumbral fibrils:** Zoom into a sunspot → fibril pattern should be radially elongated.
-6. **Type II spicules:** At the limb, fast-moving particles should shoot up and fade without falling back.
-7. **Corona radial falloff:** Corona should extend to 3-4 R☉ with gradual dimming, not a thin ring.
-8. **Helmet streamers:** Equatorial region should show enhanced corona brightness (at solar minimum).
-9. **CME angular width:** Spawned CMEs should vary from narrow (20°) to wide (120°) cones.
-10. **Flare profile:** Flare brightness should spike rapidly then decay slowly (asymmetric).
+1. Limb reddening visible at solar edge (B channel darker than R)
+2. Sun appears near-white at 5778K, not orange
+3. Subtle granulation (22% contrast), not tile-cracked
+4. Sunspot groups with 2-5 clustered spots
+5. Type II spicules shoot up fast and fade without falling
+6. Corona extends to 3-4 R☉ with r⁻⁶ radial falloff
+7. Prominences visible at limb as Hα-pink arches
+8. CMEs show varying angular widths
 
 ### Physics Validation
-- At μ=1 (disk center): `neckellLimbDarkRGB(1.0)` should return `vec3(1.000, 1.000, 1.000)` ± 0.001
-- At μ=0.1: R ≈ 0.56, G ≈ 0.42, B ≈ 0.29 (limb is redder)
-- K-corona at r=2 R☉: intensity should be ~3.5% of surface intensity
-- K-corona at r=4 R☉: intensity should be ~0.06% of surface intensity
+- `neckellLimbDarkRGB(1.0)` returns `(1.0, 1.0, 1.0)` ± 0.001
+- K-corona at 2 R☉ ≈ 3.5% of surface intensity
+- Radiation pressure `β=1` correctly nullifies gravity for test particle
+- Galactic tide acceleration at 50,000 AU ≈ 3 × 10⁻¹³ m/s²
