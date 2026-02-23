@@ -6,7 +6,40 @@ interface so the server can swap engines transparently.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal, TypedDict, TypeAlias
+
+
+EngineFidelity: TypeAlias = Literal["high", "normal", "low"]
+Vec3: TypeAlias = List[float]
+
+
+class BodyState(TypedDict):
+    pos: Vec3
+    vel: Vec3
+
+
+class StateUpdate(TypedDict, total=False):
+    type: Literal["state_update"]
+    engine: str
+    fidelity: EngineFidelity
+    jd: float
+    force_models: Dict[str, Any]
+    bodies: Dict[str, BodyState]
+    paused: bool
+    time_scale: float
+    energy_error: float
+    backend: Dict[str, Any]
+
+
+class OrbitalElements(TypedDict, total=False):
+    a: float
+    e: float
+    inc: float
+    Omega: float
+    omega: float
+    M: float
+    f: float
+    P: float
 
 
 class SimulationEngine(ABC):
@@ -20,8 +53,14 @@ class SimulationEngine(ABC):
 
     @property
     @abstractmethod
-    def fidelity_level(self) -> str:
+    def fidelity_level(self) -> EngineFidelity:
         """Return 'high', 'normal', or 'low'."""
+        ...
+
+    @property
+    @abstractmethod
+    def available(self) -> bool:
+        """Whether this engine can run in the current environment."""
         ...
 
     @abstractmethod
@@ -40,7 +79,7 @@ class SimulationEngine(ABC):
         ...
 
     @abstractmethod
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> StateUpdate:
         """
         Return current state of all bodies.
         Format:
@@ -76,6 +115,16 @@ class SimulationEngine(ABC):
         ...
 
     @abstractmethod
-    def get_orbital_elements(self, body_id: str) -> Dict | None:
+    def get_orbital_elements(self, body_id: str) -> OrbitalElements | None:
         """Return osculating orbital elements for a tracked body, if available."""
         ...
+
+
+__all__ = [
+    "BodyState",
+    "EngineFidelity",
+    "OrbitalElements",
+    "SimulationEngine",
+    "StateUpdate",
+    "Vec3",
+]
