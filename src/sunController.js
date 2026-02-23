@@ -259,14 +259,24 @@ export function createSunController({
     gwDisplayer = createGWVisualization(400); // Massive grid
     node.add(gwDisplayer.mesh);
 
-    // Inject self (controller) into the engine for the triggerMassiveAgnFlare callback
+    // Inject flare callbacks used by the multi-messenger AGN engine.
     agnEngine = createAgnShockwaveEngine(gwDisplayer, {
+      triggerFlareBurst: (intensity = 0.5, count = 1) => {
+        if (!solarFlareManager) return;
+        const flareCount = Math.max(1, Math.min(8, Math.round(Number(count) || 1)));
+        const flareIntensity = Math.max(0.1, Math.min(2.5, Number(intensity) || 0.5));
+        const currentSunRadiusAu = getSunRadiusAu();
+        for (let i = 0; i < flareCount; i++) {
+          solarFlareManager.spawnRandomFlare(flareIntensity, currentSunRadiusAu);
+        }
+      },
       triggerMassiveAgnFlare: (intensity) => {
         if (solarFlareManager) {
+          const currentSunRadiusAu = getSunRadiusAu();
           // Spawn 3 massive CMEs wrapping the sun
-          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
-          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
-          solarFlareManager.spawnRandomFlare(intensity * 2.0, sunRadiusAu);
+          solarFlareManager.spawnRandomFlare(intensity * 1.5, currentSunRadiusAu);
+          solarFlareManager.spawnRandomFlare(intensity * 1.5, currentSunRadiusAu);
+          solarFlareManager.spawnRandomFlare(intensity * 2.0, currentSunRadiusAu);
         }
       }
     });
@@ -274,6 +284,9 @@ export function createSunController({
 
   function update(julianDate, realtimeSeconds) {
     const timeSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
+    const rawDt = Math.max(0, timeSec - (lastTimeSec ?? timeSec));
+    const dtSec = Math.min(0.25, rawDt);
+    lastTimeSec = timeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
     const blendedActivityRaw = Number(solarBlendView?.activityIndex);
@@ -298,9 +311,7 @@ export function createSunController({
     const sunRadiusAu = getSunRadiusAu();
 
     if (solarFlareManager) {
-      const dt = Math.max(0, timeSec - (lastTimeSec ?? timeSec));
-      lastTimeSec = timeSec;
-      solarFlareManager.update(Math.min(0.1, dt), effectiveActivity, sunRadiusAu);
+      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu);
       updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareManager.getActiveFlaresParams());
     }
 
@@ -333,10 +344,10 @@ export function createSunController({
     updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, is304Mode);
 
     if (gwDisplayer && gwDisplayer.mesh.visible) {
-      gwDisplayer.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
+      gwDisplayer.update(dtSec);
     }
     if (agnEngine && agnEngine.isActive()) {
-      agnEngine.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
+      agnEngine.update(dtSec);
     }
   }
 
@@ -399,6 +410,9 @@ export function createSunController({
     maybeRefreshPhysics,
     onScaleChange,
     setAiaChannelOverride,
+    setAgnObserverFrameMode: (enabled) => {
+      if (agnEngine?.setObserverFrameMode) agnEngine.setObserverFrameMode(enabled);
+    },
     triggerAgnShockwave: (source, impactTimeSec, intensity) => {
       if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity);
     },
