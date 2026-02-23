@@ -1,0 +1,79 @@
+\section{Deep Analysis: AGN SMBH shock-wave modeling and apparent superluminal phenomena}
+
+\subsection*{1) Current model status and gap analysis}
+
+From the repository context, current implementation is primarily \\emph{visual/educational} in these areas:
+\begin{itemize}
+  \item A fixed local-tide approach with fallback Sgr A* terms in \texttt{galactic\_tide.py}.
+  \item A stylized AGN shock event path in \texttt{agnShockwaveEngine.js}.
+  \item An amplified toy treatment of gravitational wave magnitude in \texttt{gravitationalWaves.js}.
+  \item Event orchestration via UI hooks in \texttt{sunController.js}.
+\end{itemize}
+
+This aligns with your observation: the code is currently a \\textbf{single-channel, appearance-led demo} rather than a physically coupled framework.
+
+\subsection*{2) Physics interpretation of your core questions}
+
+\subsubsection*{2.1 Does SMBH mass couple to GW + UHE particle channels?}
+
+In the present architecture, SMBH mass appears mostly as metadata and not as a causal engine for a multi-channel propagation stack. A physically meaningful simulation requires per-source parameters such as
+\(M_{\mathrm{BH}}, a_*, d_L, \theta, \dot M\), etc., then channel-specific transport models.
+
+\subsubsection*{2.2 Can any apparent output exceed \(c\)?}
+
+No physical transport channel should. The apparent superluminal phenomenon follows from projection:
+\begin{equation}
+  v_{\mathrm{app}} = \frac{\beta \sin\theta}{1-\beta\cos\theta}c,\qquad \beta=v/c <1
+\end{equation}
+
+Hence superluminal sky-plane speeds are pattern/geometry effects.
+
+\subsubsection*{2.3 Source candidates}
+
+For nearby active/jet-relevant systems:
+\begin{itemize}
+  \item \textbf{Cen A}: nearest active radio galaxy in many practical modeling frameworks.
+  \item \textbf{M87}: high-power jet with strong observational constraints and EHT mass context.
+  \item \textbf{Sgr A*}: nearest SMBH, but active outburst impact at heliocentric scales remains likely tiny in realistic transport models.
+\end{itemize}
+
+\subsection*{3) Recommended modeling split: causal transport vs apparent layer}
+
+A robust architecture separates:
+\begin{description}
+  \item[Observable layer:] apparent kinematics (superluminal projection, Doppler boosting, front morphology).
+  \item[Causal layer:] channel-by-channel physical transport (EM/ GW/ CR/ MHD front) at subluminal speeds.
+  \item[Speculative layer:] optional exotic couplings (disabled by default).
+\end{description}
+
+\subsection*{4) Implementation-minded multi-channel formulation}
+
+For an event tuple\(E\), define independent channel arrival:
+\begin{equation}
+  t_i = t_0 + \frac{D}{c} + \tau_{\mathrm{delay},i}
+\end{equation}
+
+where \(\tau_{\mathrm{delay},i}\) encodes medium transport, diffusion rigidity dependence, and launch lag.
+
+Suggested channels:
+\begin{itemize}
+  \item GW/EM\: near-light propagation with emission-angle delays and opacity windows.
+  \item CR\: transport/diffusion kernel.
+  \item Shock/MHD\: medium-dependent front speed and energy deposition.
+  \item Neutrino\: hadronic interaction module tied to CR energy density/ambient gas.
+\end{itemize}
+
+\subsection*{5) Deep reasoning conclusion}
+
+The key failure mode to avoid is conflating three layers (visual projection, transport physics, speculative coupling). The highest leverage for your simulation is explicit layer separation, deterministic defaults, and transparent confidence levels (observational/phenomenological/speculative).
+
+\subsection*{6) Proposed staged rollout}
+\begin{enumerate}
+  \item Add typed source preset registry (e.g., Sgr A*, Cen A, M87, Maffei 1).
+  \item Introduce event pipeline and channel-specific arrival equations.
+  \item Add geometry module (\(\beta_{\mathrm{app}}\), Doppler factor).
+  \item Add optional medium map + shock transport.
+  \item Add diagnostics panel with per-channel fluence/proxy values and offset timelines.
+\end{enumerate}
+
+Keep speculative modules explicit and off by default.

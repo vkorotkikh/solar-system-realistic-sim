@@ -1,0 +1,67 @@
+\section{Research and Implementation Plan}
+
+A staged plan is recommended because this topic spans geometry, transport physics, and speculative coupling.
+
+\subsection{Stage 0: Scope lock}
+\begin{itemize}
+  \item Define source presets (e.g., Sgr A*, Cen A, M87, Maffei 1).
+  \item Define confidence taxonomy: observational, phenomenological, speculative.
+  \item Lock core formulas for apparent motion and delay terms.
+  \item Confirm dataset access points.
+\end{itemize}
+
+\subsubsection*{Next searches}
+\begin{itemize}
+  \item \\texttt{MOJAVE component speeds table API 2019}
+  \item \\texttt{NANOGrav 15-year HD curve data release}
+  \item \\texttt{IceCube TXS 0506+056 public alert + event data}
+  \item \\texttt{Pierre Auger UHECR anisotropy latest release}
+\end{itemize}
+
+\subsection{Stage 1: Conservative causal core}
+\begin{itemize}
+  \item Build a channelized event schema (\(t_0,\Delta t, E, \theta, M_{BH}, a_*, ...\)).
+  \item Add channels: GW, EM, CR, MHDFront, neutrino.
+  \item Use physical arrival formula\(: t_i=t_0+D/c+\tau_i\) with channel-specific \(\tau_i\).
+\end{itemize}
+
+\subsection{Stage 2: Observable superluminal layer}
+\begin{itemize}
+  \item Implement apparent-motion equations and Doppler boosting.
+  \item Keep this separate from causal transport.
+  \item Expose a panel of observable and causal timelines.
+\end{itemize}
+
+\subsection{Stage 3: Source presets and media maps}
+\begin{itemize}
+  \item Presets for nearby systems with mass/distance/jet-angle.
+  \item Medium map injection: density and field proxies.
+  \item Medium response for front shape and delay.
+\end{itemize}
+
+\subsection{Stage 4: Advanced transport)
+\begin{itemize}
+  \item Add Parker-transport form for CR proxy.
+  \item Add MHD-front shock energetics (mach proxy, compression proxy).
+  \item Add optional neutrino production proxy tied to CR--target interactions.
+\end{itemize}
+
+\subsection{Stage 5: Speculative sandbox (off by default)}
+\begin{itemize}
+  \item Add opt-in coupling terms (GW/EM-memory-like/weak conversion terms).
+  \item Clearly tag as hypothesis-only with warning banners.
+\end{itemize}
+
+\subsection{Stage 6: Calibration against observations}
+\begin{itemize}
+  \item Validate apparent speeds against MOJAVE envelopes.
+  \item Validate delay ordering against known multi-messenger templates (e.g., GW170817-style sequencing).
+  \item Calibrate AGN source presets against TXS 0506+056 and Cen A references.
+\end{itemize}
+
+\subsection*{Hard constraints}
+\begin{itemize}
+  \item Apparent superluminal effects must not alter physical transport causality.
+  \item Speculative layers remain disabled in default mode.
+  \item Every parameter path has source-linked provenance.
+\end{itemize}
