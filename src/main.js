@@ -1945,7 +1945,7 @@ function createBodyNode(body) {
       const outer = body.displayRadiusAu * band.outerMul;
       const ring = new Mesh(
         new RingGeometry(inner, outer, 96),
-        new MeshBasicMaterial({ color: new Color(band.color), transparent: true, opacity: band.opacity, side: 2 })
+        new MeshBasicMaterial({ color: new Color(band.color), transparent: true, opacity: band.opacity, side: DoubleSide })
       );
       ring.rotation.x = Math.PI * 0.5;
       ring.userData.lockBodySpin = true;
@@ -1953,13 +1953,12 @@ function createBodyNode(body) {
     }
   }
 
-  // Uranus has faint rings too
   if (body.id === 'uranus') {
     const inner = body.displayRadiusAu * 1.65;
     const outer = body.displayRadiusAu * 1.95;
     const ring = new Mesh(
       new RingGeometry(inner, outer, 64),
-      new MeshBasicMaterial({ color: new Color('#7a9aa8'), transparent: true, opacity: 0.08, side: 2 })
+      new MeshBasicMaterial({ color: new Color('#7a9aa8'), transparent: true, opacity: 0.08, side: DoubleSide })
     );
     ring.rotation.x = Math.PI * 0.5;
     ring.userData.lockBodySpin = true;
@@ -2704,7 +2703,7 @@ function updateAsteroidDetail(jd, deltaSimDays = 0) {
   const distFromSun = Math.sqrt(target.x * target.x + target.y * target.y);
   const height = Math.abs(target.z);
   const cameraDist = camera.position.distanceTo(target);
-  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 5.8 && height < 3.1 && cameraDist < 5.6;
+  const inBeltRegion = distFromSun >= 1.8 && distFromSun <= 5.8 && height < 5.0 && cameraDist < 7.0;
   if (!inBeltRegion) {
     asteroidDetailPoints.visible = false;
     return;
