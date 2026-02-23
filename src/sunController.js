@@ -28,6 +28,8 @@ import {
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
 } from './frontend/features/solar/solarFeatureBlending.js';
+import { createGWVisualization } from './frontend/features/solar/gravitationalWaves.js';
+import { createAgnShockwaveEngine } from './frontend/features/solar/agnShockwaveEngine.js';
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
@@ -99,6 +101,9 @@ export function createSunController({
   let sunMagneticFieldGroup = null;
   let sunCoronalLoopGroup = null;
   let sunParkerSpiralGroup = null;
+
+  let gwDisplayer = null;
+  let agnEngine = null;
 
   let solarPhysicsState = null;
   let solarPhysicsFeatureSetCurrent = null;
@@ -249,6 +254,22 @@ export function createSunController({
     sunParkerSpiralGroup.userData.bodyId = 'sun-parker-spiral';
     node.add(sunParkerSpiralGroup);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, sunRadiusAu, 6, 120, 0, camera);
+
+    // Agn Shockwave Engine
+    gwDisplayer = createGWVisualization(400); // Massive grid
+    node.add(gwDisplayer.mesh);
+
+    // Inject self (controller) into the engine for the triggerMassiveAgnFlare callback
+    agnEngine = createAgnShockwaveEngine(gwDisplayer, {
+      triggerMassiveAgnFlare: (intensity) => {
+        if (solarFlareManager) {
+          // Spawn 3 massive CMEs wrapping the sun
+          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
+          solarFlareManager.spawnRandomFlare(intensity * 1.5, sunRadiusAu);
+          solarFlareManager.spawnRandomFlare(intensity * 2.0, sunRadiusAu);
+        }
+      }
+    });
   }
 
   function update(julianDate, realtimeSeconds) {
@@ -310,6 +331,13 @@ export function createSunController({
 
     const is304Mode = userAiaChannelOverride === 'aia_304';
     updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, is304Mode);
+
+    if (gwDisplayer && gwDisplayer.mesh.visible) {
+      gwDisplayer.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
+    }
+    if (agnEngine && agnEngine.isActive()) {
+      agnEngine.update(Math.max(0, timeSec - (lastTimeSec ?? timeSec)));
+    }
   }
 
   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
@@ -371,6 +399,9 @@ export function createSunController({
     maybeRefreshPhysics,
     onScaleChange,
     setAiaChannelOverride,
+    triggerAgnShockwave: (source, impactTimeSec, intensity) => {
+      if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity);
+    },
     get magneticFieldGroup() { return sunMagneticFieldGroup; },
     get surfaceMaterial() { return sunSurfaceMaterial; }
   };

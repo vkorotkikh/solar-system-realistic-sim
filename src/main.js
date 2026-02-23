@@ -68,7 +68,8 @@ const dom = {
   statusZoom: document.getElementById('status-zoom'),
   zoomSensitivity: document.getElementById('zoom-sensitivity'),
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
-  viewportShell: document.getElementById('viewport-shell')
+  viewportShell: document.getElementById('viewport-shell'),
+  triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
 };
 
 // ── Data & State ─────────────────────────────────────────────────────────────
@@ -565,6 +566,10 @@ dom.canvas?.addEventListener('dblclick', (e) => {
       updateBodyInfoPanel(bodyId);
     }
   }
+});
+
+dom.triggerAgnShockwave?.addEventListener('click', () => {
+  sunCtrl.triggerAgnShockwave('SagittariusA', 8.0, 1.5); // 8 seconds impact, 1.5 intensity
 });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
