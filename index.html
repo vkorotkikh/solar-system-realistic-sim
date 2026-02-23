@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Solar System Mission Lab</title>
+    <title>Sun Model Lab</title>
   </head>
   <body>
     <div id="app">
       <aside id="control-panel">
         <header class="panel-header">
-          <p class="eyebrow">3D Mission Sandbox</p>
-          <h1>Solar System Mission Lab</h1>
-          <p class="subtitle">Real-time planetary and moon dynamics with route planning and gravity-assist previews.</p>
+          <p class="eyebrow">Sun-Focus Branch</p>
+          <h1>Sun Model Lab</h1>
+          <p class="subtitle">Isolated sun model with barebones solar system context.</p>
         </header>
 
         <section class="panel-section">
@@ -29,36 +29,11 @@
         </section>
 
         <section class="panel-section">
-          <h2>Simulation Engine</h2>
-          <label for="sim-backend">Backend</label>
-          <select id="sim-backend">
-            <option value="local">Local (Keplerian)</option>
-            <option value="rebound">REBOUND N-body (Python)</option>
-            <option value="tudatpy">TudatPy (Python, normal fidelity)</option>
-          </select>
-          <div class="row row-inline">
-            <button id="sim-connect" type="button">Connect</button>
-            <span id="sim-status">Local</span>
-          </div>
-        </section>
-
-        <section class="panel-section">
           <h2>Display</h2>
           <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
           <label><input id="toggle-magnetic-field" type="checkbox" /> Show solar magnetic field</label>
-          <label><input id="toggle-labels" type="checkbox" checked /> Show major labels</label>
-          <label><input id="toggle-locators" type="checkbox" checked /> Show realism locators</label>
-          <label><input id="toggle-gravity-vectors" type="checkbox" /> Show gravity vectors</label>
-          <label><input id="toggle-moons" type="checkbox" checked /> Show moons</label>
-          <label><input id="toggle-asteroids" type="checkbox" checked /> Show asteroid belt</label>
-          <label><input id="toggle-kuiper" type="checkbox" checked /> Show Kuiper belt</label>
-          <label><input id="toggle-oort" type="checkbox" checked /> Show Oort cloud shell</label>
-          <label><input id="toggle-enhanced-milky" type="checkbox" /> Enhanced Milky Way</label>
-          <label><input id="toggle-survey-milky" type="checkbox" /> Survey Milky Way (2MASS)</label>
-          <label><input id="toggle-nearby-systems" type="checkbox" checked /> Show nearby star systems (Phase 1)</label>
+          <label><input id="toggle-labels" type="checkbox" checked /> Show labels</label>
           <label><input id="toggle-realistic-scale" type="checkbox" /> Realistic scale</label>
-          <label><input id="toggle-earth-satellites" type="checkbox" checked /> Show planetary satellites (Earth + Moon + Mars)</label>
-          <label><input id="toggle-satellite-j2" type="checkbox" checked /> Apply J2 perturbation to satellites</label>
           <label for="aia-channel">Solar observation channel</label>
           <select id="aia-channel">
             <option value="auto" selected>Auto (best available)</option>
@@ -74,108 +49,18 @@
           <h2>Navigation</h2>
           <label for="zoom-sensitivity">Zoom sensitivity</label>
           <input id="zoom-sensitivity" type="range" min="0.2" max="4" step="0.05" value="1" />
-          <div class="row row-inline">
-            <span id="zoom-sensitivity-value">x1.00</span>
-            <span id="zoom-distance-value">Range: --</span>
-          </div>
-          <div class="row">
-            <span id="view-scale-value" class="stat-chip">View span: --</span>
-          </div>
-          <label>Earth quick views</label>
-          <div class="row row-inline">
-            <button id="focus-earth-atmo" type="button">Atmosphere</button>
-            <button id="focus-earth-leo" type="button">LEO</button>
-            <button id="focus-earth-geo" type="button">GEO</button>
-          </div>
-          <label>Moon quick views</label>
-          <div class="row row-inline">
-            <button id="focus-moon-skim" type="button">Exosphere</button>
-            <button id="focus-moon-llo" type="button">LLO</button>
-            <button id="focus-moon-nrho" type="button">NRHO</button>
-          </div>
-          <label>Mars quick views</label>
-          <div class="row row-inline">
-            <button id="focus-mars-atmo" type="button">Atmosphere</button>
-            <button id="focus-mars-skim" type="button">Surface skim</button>
-            <button id="focus-mars-lmo" type="button">LMO</button>
-            <button id="focus-mars-areostationary" type="button">Areostationary</button>
-          </div>
-          <label>System view</label>
-          <div class="row row-inline">
-            <button id="return-solar-system" type="button" disabled>Return to Solar System</button>
-          </div>
+          <span id="zoom-sensitivity-value">x1.00</span>
         </section>
 
         <section class="panel-section">
           <h2>Explorer</h2>
-          <label for="star-system-list">Star system</label>
-          <select id="star-system-list"></select>
-          <label for="body-search">Body search</label>
-          <input id="body-search" type="search" placeholder="Type body name" />
-          <select id="body-list" size="12"></select>
+          <select id="body-list" size="10"></select>
           <div class="row row-inline">
             <button id="focus-body" type="button">Focus</button>
             <button id="follow-body" type="button">Follow</button>
             <button id="clear-follow" type="button">Free Cam</button>
           </div>
           <pre id="body-info" class="info-box"></pre>
-        </section>
-
-        <section class="panel-section">
-          <h2>Trajectory Planner</h2>
-          <label for="planner-from">From</label>
-          <select id="planner-from"></select>
-
-          <label for="planner-to">To</label>
-          <select id="planner-to"></select>
-
-          <label for="planner-date">Departure date (UTC)</label>
-          <input id="planner-date" type="date" />
-
-          <label for="planner-objective">Objective</label>
-          <select id="planner-objective">
-            <option value="min_distance">Minimize travel path</option>
-            <option value="max_assist">Maximize gravity-assist gain</option>
-            <option value="min_time">Minimize total time</option>
-          </select>
-
-          <label for="planner-assists">Max assist flybys</label>
-          <select id="planner-assists">
-            <option value="0">0</option>
-            <option value="1" selected>1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select>
-
-          <label for="planner-ephemeris">Ephemeris source</label>
-          <select id="planner-ephemeris">
-            <option value="auto" selected>Auto (SPICE / Kepler / HORIZONS)</option>
-            <option value="kepler">Kepler fallback</option>
-            <option value="spice">SPICE (TudatPy)</option>
-            <option value="horizons">JPL HORIZONS</option>
-          </select>
-
-          <label><input id="planner-prograde" type="checkbox" checked /> Prograde transfer</label>
-
-          <label for="planner-arrival-date">Lambert arrival date (UTC)</label>
-          <input id="planner-arrival-date" type="date" />
-
-          <label for="planner-payload-mass">Mission payload mass (kg)</label>
-          <input id="planner-payload-mass" type="number" min="100" step="100" value="6500" />
-
-          <div class="row row-inline">
-            <button id="plan-direct" type="button">Direct</button>
-            <button id="plan-optimal" type="button">Plan Route</button>
-            <button id="plan-lambert" type="button">Lambert</button>
-          </div>
-
-          <div class="row row-inline">
-            <button id="plan-porkchop" type="button">Porkchop Best</button>
-            <button id="plan-mission" type="button">Mission Plan</button>
-            <button id="clear-route" type="button">Clear</button>
-          </div>
-
-          <pre id="planner-output" class="info-box"></pre>
         </section>
       </aside>
 
@@ -184,10 +69,7 @@
         <div id="status-bar">
           <span id="status-focus">Focus: Sun</span>
           <span id="status-bodies">Bodies: --</span>
-          <span id="status-route">Route: none</span>
-          <span id="status-zoom">Zoom: x1.00</span>
-          <span id="status-scale">Scale: --</span>
-          <span id="status-render">Render: --</span>
+          <span id="status-zoom">Range: --</span>
         </div>
       </main>
     </div>
