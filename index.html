@@ -67,7 +67,17 @@
 
       <section class="panel-section">
         <h2>Cataclysmic Events</h2>
-        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger AGN Warp Wave (Sag A*)</button>
+        <label for="agn-source">SMBH source</label>
+        <select id="agn-source">
+          <option value="SagittariusA" selected>Sagittarius A* (Milky Way)</option>
+          <option value="CentaurusA">Centaurus A (nearest active AGN)</option>
+          <option value="Maffei1">Maffei 1 (hypothetical giant elliptical)</option>
+        </select>
+        <label>
+          <input id="agn-observer-frame" type="checkbox" checked />
+          Observer frame (apparent superluminal projection)
+        </label>
+        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger SMBH Multi-Messenger Event</button>
       </section>
     </aside>
 
