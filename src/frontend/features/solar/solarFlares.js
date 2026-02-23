@@ -73,12 +73,14 @@ void main() {
 `;
 
 // Shared geometry for all CME shells (half sphere)
-let sharedCmeGeometry = null;
-function getCmeGeometry() {
-    if (!sharedCmeGeometry) {
-        sharedCmeGeometry = new SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+let sharedCmeGeometries = {};
+function getCmeGeometry(angularWidthRad = Math.PI * 2) {
+    // Round to nearest 10° for geometry caching
+    const key = Math.round(angularWidthRad * 180 / Math.PI / 10) * 10;
+    if (!sharedCmeGeometries[key]) {
+        sharedCmeGeometries[key] = new SphereGeometry(1, 32, 16, 0, angularWidthRad, 0, Math.PI * 0.5);
     }
-    return sharedCmeGeometry;
+    return sharedCmeGeometries[key];
 }
 
 // Generate a soft radial glow texture for the flare sprite
@@ -110,7 +112,8 @@ export function createSolarFlareEvent({
     longitudeRad,
     sunRadiusAu,
     velocityKms = 489,
-    intensity = 0.5
+    intensity = 0.5,
+    angularWidthDeg = 60
 }) {
     const group = new Group();
 
@@ -156,7 +159,8 @@ export function createSolarFlareEvent({
         depthWrite: false,
         side: FrontSide
     });
-    const cmeMesh = new Mesh(getCmeGeometry(), cmeMaterial);
+    const angularWidthRad = angularWidthDeg * Math.PI / 180;
+    const cmeMesh = new Mesh(getCmeGeometry(angularWidthRad), cmeMaterial);
     // Orient the half-sphere to point outward along the normal
     const up = new Vector3(0, 1, 0); // standard sphere top
     cmeMesh.quaternion.setFromUnitVectors(up, normal);
@@ -187,14 +191,20 @@ export function createSolarFlareEvent({
             // Update CME shader
             cmeMaterial.uniforms.uElapsedSec.value = elapsedSec;
 
-            // Update Flare Sprite (flash up, then fade out)
+            // Update Flare Sprite — GOES-style Neupert-effect temporal profile:
+            // Fast exponential rise (~15% of duration = impulsive phase)
+            // followed by slow exponential decay (~85% = gradual phase)
+            const impulsiveDuration = flashDurationSec * 0.15;
+            const gradualDuration = flashDurationSec * 0.85;
             if (elapsedSec < flashDurationSec) {
-                // Quick rise, slow fall
-                const peakTime = flashDurationSec * 0.1;
-                if (elapsedSec < peakTime) {
-                    flareSprite.material.opacity = (elapsedSec / peakTime) * intensity;
+                if (elapsedSec < impulsiveDuration) {
+                    // Rapid exponential rise (impulsive phase)
+                    const t = elapsedSec / impulsiveDuration;
+                    flareSprite.material.opacity = intensity * (1.0 - Math.exp(-4.0 * t));
                 } else {
-                    flareSprite.material.opacity = intensity * (1.0 - (elapsedSec - peakTime) / (flashDurationSec - peakTime));
+                    // Slow exponential decay (gradual phase — Neupert effect)
+                    const t = (elapsedSec - impulsiveDuration) / gradualDuration;
+                    flareSprite.material.opacity = intensity * Math.exp(-2.5 * t);
                 }
             } else {
                 flareSprite.material.opacity = 0;
@@ -264,12 +274,16 @@ export class SolarFlareManager {
         const intensity = 0.3 + Math.random() * 0.7 * activity; // 0.3 to 1.0
         const velocityKms = CME_SPEED_KMS_MIN + Math.random() * Math.random() * (CME_SPEED_KMS_MAX - CME_SPEED_KMS_MIN);
 
+        // CME angular width: 20°-120° (NASA CME catalog range)
+        const angularWidthDeg = 20 + Math.random() * 100;
+
         const flare = createSolarFlareEvent({
             latitudeRad: lat,
             longitudeRad: lon,
             sunRadiusAu,
             velocityKms,
-            intensity
+            intensity,
+            angularWidthDeg
         });
 
         this.events.push(flare);
