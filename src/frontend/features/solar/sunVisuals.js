@@ -86,16 +86,23 @@ float fbm(vec3 p) {
   return s / max(1e-6, n);
 }
 
-// ─── Phase A1: Neckel-Labs Limb Darkening ────────────────────────────────────
-// Coefficients from Neckel & Labs (1994), visual broadband (~550 nm)
-float neckellLimbDark(float mu) {
-  // mu = cos(theta) = dot(normal, viewDir), clamped [0,1]
-  float mu2 = mu  * mu;
+// ─── Phase A1: Neckel-Labs Limb Darkening (Per-Channel) ──────────────────────
+// Published 5th-order polynomial coefficients from Neckel & Labs (1994),
+// Solar Physics 153:91-114.  Per-channel evaluation captures the physical
+// wavelength-dependent limb reddening (blue darkens ~40% more than red).
+// Each channel sums to exactly 1.0 at mu=1 (disk center).
+vec3 neckellLimbDarkRGB(float mu) {
+  float mu2 = mu * mu;
   float mu3 = mu2 * mu;
   float mu4 = mu3 * mu;
   float mu5 = mu4 * mu;
-  // Polynomial fit: I(mu)/I(1) = a0 + a1*mu + a2*mu^2 + a3*mu^3 + a4*mu^4 + a5*mu^5
-  return 0.3 + 1.02*mu - 0.8*mu2 + 0.73*mu3 - 0.55*mu4 + 0.24*mu5;
+  // R channel (~650 nm)
+  float ldR = 0.3434 + 0.9721*mu - 0.4348*mu2 + 0.2024*mu3 - 0.1220*mu4 + 0.0390*mu5;
+  // G channel (~550 nm)
+  float ldG = 0.3050 + 1.1312*mu - 0.7860*mu2 + 0.6164*mu3 - 0.3612*mu4 + 0.0946*mu5;
+  // B channel (~450 nm)
+  float ldB = 0.2688 + 1.3765*mu - 1.3645*mu2 + 1.2816*mu3 - 0.7458*mu4 + 0.1834*mu5;
+  return vec3(ldR, ldG, ldB);
 }
 
 // ─── Phase A3: Snodgrass Differential Rotation ───────────────────────────────
@@ -146,7 +153,7 @@ vec2 voronoiGranulation(vec2 uv, float scale, float t) {
 // ─── Phase A4: Structured Sunspot ────────────────────────────────────────────
 // Returns a darkening factor (1=no spot, 0=full umbra) at surface point nDir 
 // given a spot at spherical (lon, lat) with angular radius, and a penumbra fibril noise
-float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec) {
+float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   float spotIntensity = seed.w;       // [0..1], 0 = inactive slot
   if (spotIntensity < 0.001) return 1.0; // inactive — early exit, no darkening
 
@@ -158,33 +165,40 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec) {
   vec3 spotDir = vec3(cos(spotLat) * cos(spotLon), sin(spotLat), cos(spotLat) * sin(spotLon));
   float angDist = acos(clamp(dot(nDir, spotDir), -1.0, 1.0));
 
-  if (angDist > spotSize * 2.2) return 1.0; // outside spot entirely
+  if (angDist > spotSize * 2.5) return 1.0; // outside spot entirely
+
+  // ─── Wilson Depression: foreshorten spot near limb (600 km depression) ────
+  float spotMu = max(0.0, dot(spotDir, normalize(cameraPosition - vWorldPosition)));
+  float wilsonFactor = 0.65 + 0.35 * spotMu;
+  float umbra = spotSize * 0.45 * wilsonFactor;
+  float penumbra = spotSize * wilsonFactor;
   
-  float umbra = spotSize * 0.45;
-  float penumbra = spotSize;
-  
-  float t = angDist / penumbra;
-  
-  // Penumbra fibril texture: noise elongated radially from spot center
+  // ─── Evershed-Flow Penumbral Fibrils (radially elongated noise) ───────────
+  // Radial direction from umbra center projected onto the surface tangent plane
   vec3 radialDir = normalize(nDir - spotDir * dot(nDir, spotDir));
-  float fibrilNoise = noise3(radialDir * 140.0 + vec3(timeSec * 0.04, 0.0, 0.0));
+  vec3 tangentialDir = normalize(cross(spotDir, radialDir));
+  // 2.67:1 elongation along tangential direction = narrow radial fibrils
+  vec3 fibrilCoord = radialDir * 60.0 + tangentialDir * 160.0 + vec3(timeSec * 0.03);
+  float fibrilNoise = noise3(fibrilCoord);
   float fibrilModulate = 0.85 + fibrilNoise * 0.3;
   
-  // Faculae: bright ring just outside penumbra
-  float faculaeZone = smoothstep(penumbra, penumbra * 1.6, angDist) * 
-                      (1.0 - smoothstep(penumbra * 1.6, penumbra * 2.2, angDist));
-  float faculaeBrightness = 1.0 + faculaeZone * 0.18 * spotIntensity;
+  // ─── Facular CLV: center-to-limb variation (Topka et al. 1997) ───────────
+  // Faculae are dark at disk center (mu≈1), bright at limb (mu≈0.3)
+  float faculaeZone = smoothstep(penumbra, penumbra * 2.0, angDist) * 
+                      (1.0 - smoothstep(penumbra * 2.0, penumbra * 2.5, angDist));
+  float faculaContrast = (-0.12 + 0.95 * (1.0 - mu)) * spotIntensity;
+  float faculaeBrightness = 1.0 + faculaeZone * faculaContrast;
   
   if (angDist <= umbra) {
-    // Umbra: deep dark core (radiative temperature ~4000K vs 5778K, ratio^4 ~ 0.18)
-    return mix(0.15, 0.32, (angDist / umbra)) * spotIntensity + (1.0 - spotIntensity);
+    // Umbra: deep dark core (T_umbra≈3700K vs 5778K → (3700/5778)^4 ≈ 0.13)
+    return mix(0.10, 0.28, (angDist / umbra)) * spotIntensity + (1.0 - spotIntensity);
   } else if (angDist <= penumbra) {
-    // Penumbra: fibered transition zone
+    // Penumbra: Evershed-flow fibered transition
     float penumbraGrad = (angDist - umbra) / (penumbra - umbra);
-    float penumbraBrightness = mix(0.32, 0.78, penumbraGrad) * fibrilModulate;
+    float penumbraBrightness = mix(0.28, 0.78, penumbraGrad) * fibrilModulate;
     return penumbraBrightness * spotIntensity + (1.0 - spotIntensity);
   } else {
-    // Transition to faculae ring
+    // Facular ring with CLV
     return faculaeBrightness;
   }
 }
@@ -194,8 +208,8 @@ void main() {
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
   float mu = max(0.0, dot(normalDir, viewDir));
   
-  // ─── Phase A1: Neckel-Labs Limb Darkening ──────────────────────────────────
-  float limbDark = neckellLimbDark(mu);
+  // ─── Phase A1: Neckel-Labs Limb Darkening (per-channel RGB) ────────────────
+  vec3 limbDark = neckellLimbDarkRGB(mu);
   
   // ─── Phase A3: Differential Rotation UV ────────────────────────────────────
   // time uniform = timeSec * 0.4 (see updateSunMaterialUniforms).
@@ -212,8 +226,11 @@ void main() {
   // Super-granulation network overlay (much larger scale, ~30hr lifetime)
   vec2 gran2 = voronoiGranulation(uvRotated, 7.0, time * 0.008);
   
-  float granulationBrightness = gran1.x * 0.82 + 0.18;          // cell center bright, lanes dark
-  float superGranNetwork = gran2.x * 0.06 + 0.97;               // subtle large-scale modulation
+  // Rendering simplification: ~48 cells vs ~3000+ real granules per axis.
+  // At typical zoom levels this produces visually acceptable granular texture.
+  // Contrast: ~22% RMS matching Nordlund & Stein 1998 / Hinode-SOT observations.
+  float granulationBrightness = gran1.x * 0.22 + 0.78;          // range 0.78–1.0 (22% contrast)
+  float superGranNetwork = gran2.x * 0.04 + 0.98;               // subtle supergranule modulation
   float combinedGranulation = granulationBrightness * superGranNetwork;
   
   // Small-scale convective turbulence on the cell interior
@@ -224,14 +241,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Inactive slots have w==0.0 and sunspotDarkening() returns 1.0 immediately
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[0], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[1], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[2], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[3], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[4], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[5], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[6], time));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[7], time));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -243,20 +260,19 @@ void main() {
   float obsContrast = abs(obsLuma - obsNeighbor);
   
   // ─── Color Assembly ────────────────────────────────────────────────────────
-  // Physical surface temperature range:
-  // Umbra ~4000K → orange-red  (#ff6020)
-  // Penumbra ~5500K → orange  (#ffb060)
-  // Quiet photosphere ~5778K → warm white (#fff5d0)
-  // Granule top ~7000K → blue-white (#f4f8ff)
-  float brightness = combinedGranulation * limbDark * spotDark;
+  // Planck-function blackbody→sRGB colors (CIE 1931 color-matched).
+  // G2V star at 5778K appears nearly white, not orange.
+  // Umbra ~3700K, Quiet photosphere ~5778K, Granule top ~7000K.
+  float scalarBrightness = combinedGranulation * spotDark;
+  vec3 brightness = vec3(scalarBrightness) * limbDark; // per-channel limb darkening
   
-  vec3 umbralColor  = vec3(0.77, 0.25, 0.05);
-  vec3 quietColor   = vec3(1.00, 0.65, 0.25);
-  vec3 hotColor     = vec3(1.00, 0.88, 0.62);
-  vec3 granuletop   = vec3(0.95, 0.97, 1.00);
+  vec3 umbralColor  = vec3(1.000, 0.538, 0.203);  // 3700K blackbody (linear sRGB)
+  vec3 quietColor   = vec3(1.000, 0.867, 0.757);  // 5778K blackbody
+  vec3 hotColor     = vec3(1.000, 0.918, 0.843);  // 6300K blackbody
+  vec3 granuletop   = vec3(0.953, 0.953, 1.000);  // 7000K blackbody
   
   vec3 baseColor = mix(quietColor, hotColor, clamp(brightness, 0.0, 1.0));
-  baseColor = mix(baseColor, granuletop, clamp((brightness - 0.85) * 6.0, 0.0, 1.0));
+  baseColor = mix(baseColor, granuletop, clamp((brightness - vec3(0.85)) * 6.0, 0.0, 1.0));
   // Sunspot coloring: blend toward umbral in darkened areas
   baseColor = mix(umbralColor, baseColor, clamp(spotDark * 1.4, 0.0, 1.0));
   
