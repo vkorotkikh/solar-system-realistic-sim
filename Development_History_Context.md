@@ -55,6 +55,54 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-23 06:40 UTC — Sun Model Physics Overhaul: 13-Phase Implementation
+Status: DONE
+
+What changed:
+- **Implemented all 13 phases** of the Sun model physics overhaul plan across 3 modified files and 5 new modules.
+- **Phase 1 (Critical bug fixes):** Replaced invented limb darkening polynomial with per-channel Neckel & Labs 1994 coefficients (R/G/B independent, blue darkens ~40% more than red at limb). Fixed PFSS RK4 in-place vector mutation using `addScaledVector` on a fresh accumulator.
+- **Phase 2 (Blackbody):** Replaced artistic orange palette with Planck-derived linear sRGB colors. Sun at 5778K now appears near-white (correct for G2V star), not orange.
+- **Phase 3 (Granulation & sunspots):** Granulation contrast reduced 82% → 22% RMS (Nordlund-Stein). Each of 8 sunspot uniform slots now generates 2-5 clustered sub-spots (up to 40 at solar max). Penumbral fibrils now radially elongated 2.67:1 (Evershed flow). Facular contrast inverts from dark at disk center to +15% bright at limb (Topka 1997). Wilson depression foreshortening applied near limb.
+- **Phase 4 (Chromosphere):** Added Type II spicule population (30% of 8000 particles): rapid rise, fade-without-descent. Distance-scaled point sizes.
+- **Phase 5 (Corona):** K-corona radial falloff (Baumbach/van de Hulst `0.036r⁻¹·⁵ + 1.55r⁻⁶`). Corona shell expanded 1.032× → 4× R☉. Helmet streamer equatorial brightening. Noise-modulated coronal holes (polar + equatorial at solar max). Fe XIV temperature-gradient color.
+- **Phase 6 (Flares/CME):** CME angular width parameterized 20°-120°. GOES Neupert-effect flare temporal profile.
+- **Phase 7 (PFSS):** Dipole tilt angle applied (~12° at solar max). Octupole (ℓ=3) harmonic added.
+- **Phase 8 (NEW):** Created `solarProminences.js` — catenary arch prominences with Hα emission, eruption animation, ProminenceManager.
+- **Phase 9 (NEW):** Created `radiation_pressure.py` — SRP, Poynting-Robertson drag, β ratio, Yarkovsky, REBOUND callback.
+- **Phase 10 (NEW):** Created `galactic_tide.py` — Heisler-Tremaine tidal field, REBOUND callback.
+- **Phase 11 (NEW):** Created `solarWind.js` — Parker spiral physics, bimodal speed model, IMF.
+- **Phase 12 (NEW):** Created `gravitationalWaves.js` — educational GW spacetime distortion visualization.
+
+Why it changed:
+- Comprehensive physics audit identified 14 deficiencies + 6 new phenomena gaps. All physics constants sourced from peer-reviewed publications.
+
+Evidence/validation:
+- `npx vite build` — zero errors, 25 modules transformed.
+- Neckel-Labs coefficient sums at μ=1: R=1.0001, G=1.0000, B=1.0000.
+- K-corona at 2 R☉: 2.33% of surface intensity.
+- Python radiation_pressure β: 6.09e-8 for 1m²/1000kg spacecraft.
+- Python galactic_tide: relevant at 50,000 AU (True), irrelevant at 1 AU (False).
+
+Files touched:
+- `src/frontend/features/solar/sunVisuals.js` (15 shader corrections)
+- `src/frontend/features/solar/solarMagnetics.js` (RK4 fix + tilt + octupole)
+- `src/frontend/features/solar/solarFlares.js` (CME width + Neupert profile)
+- `src/frontend/features/solar/solarProminences.js` (new)
+- `src/frontend/features/solar/solarWind.js` (new)
+- `src/frontend/features/solar/gravitationalWaves.js` (new)
+- `backend/sim/radiation_pressure.py` (new)
+- `backend/sim/galactic_tide.py` (new)
+- `my-notes/Sun_Physics_Overhaul_Plan_2026-02-23.md` (updated v2 plan)
+- `my-notes/Sun_Physics_Overhaul_Report_2026-02-23.md` (new report)
+
+Follow-ups / open questions:
+- OPEN: wire `ProminenceManager`, `solarWind.js`, and `gravitationalWaves.js` into `main.js` animation loop.
+- OPEN: wire `radiation_pressure.py` and `galactic_tide.py` as REBOUND `additional_forces` callbacks.
+- OPEN: Phase 7A (differential rotation → Julian date sync) not implemented — requires Julian date propagation.
+- OPEN: Phase 13 (coronal loop temperature stratification, DEM-aware AIA channels, irradiance variability) deferred.
+- OPEN: unused imports in `solarProminences.js` (`DoubleSide`, `AU_M`) — cosmetic cleanup.
+- OPEN: visual verification at browser zoom levels needed for corona 4× expansion and sunspot clustering.
+
 ### 2026-02-23 — Codebase Analysis: Non-Solar Bug Sweep & Physics Fixes
 Status: DONE
 
