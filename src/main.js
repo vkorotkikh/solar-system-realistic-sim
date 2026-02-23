@@ -66,8 +66,14 @@ import {
   updateSunParkerSpiralFromPhysicsState as updateSunParkerSpiralFromPhysicsStateImpl,
   updateSunEruptionLayerFromBlendView,
   setSunObservationTexture,
-  updateSunMaterialUniforms
+  updateSunMaterialUniforms,
+  updateSunspotUniforms,
+  updateSunFlaresUniforms,
+  createChromosphereLayer,
+  updateChromosphereLayer
 } from './frontend/features/solar/sunVisuals.js';
+import { SolarFlareManager } from './frontend/features/solar/solarFlares.js';
+import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics.js';
 import {
   clampUnit,
   normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
@@ -146,6 +152,7 @@ const dom = {
   timeScaleValue: document.getElementById('time-scale-value'),
   timeDate: document.getElementById('time-date'),
   toggleOrbits: document.getElementById('toggle-orbits'),
+  toggleMagneticField: document.getElementById('toggle-magnetic-field'),
   toggleLabels: document.getElementById('toggle-labels'),
   toggleLocators: document.getElementById('toggle-locators'),
   toggleGravityVectors: document.getElementById('toggle-gravity-vectors'),
@@ -659,6 +666,10 @@ let sunSurfaceMaterial = null;
 let sunCoronaMaterial = null;
 let sunGlowSprite = null;
 let sunEruptionLayer = null;
+let sunChromosphereLayer = null;
+let sunFlareGroup = null;
+let solarFlareManager = null;
+let sunMagneticFieldGroup = null;
 let sunCoronalLoopGroup = null;
 let sunParkerSpiralGroup = null;
 let solarPhysicsClient = null;
@@ -1970,6 +1981,19 @@ function createBodyNode(body) {
     sunEruptionLayer.userData.rotationOffsetRad = mesh.userData.rotationOffsetRad;
     spinGroup.add(sunEruptionLayer);
     setSunEruptionBaseRadius(sunRadiusAu);
+
+    sunChromosphereLayer = createChromosphereLayer(sunRadiusAu, 8000);
+    sunChromosphereLayer.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
+    spinGroup.add(sunChromosphereLayer);
+
+    sunFlareGroup = new Group();
+    sunFlareGroup.userData.bodyId = 'sun-flares';
+    spinGroup.add(sunFlareGroup);
+    solarFlareManager = new SolarFlareManager(sunFlareGroup);
+
+    sunMagneticFieldGroup = createMagneticFieldLines(sunRadiusAu, 0.5);
+    sunMagneticFieldGroup.visible = Boolean(dom.toggleMagneticField?.checked);
+    node.add(sunMagneticFieldGroup);
 
     if (sunCoronalLoopGroup) {
       clearSunCoronalLoops();
@@ -3306,26 +3330,47 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
     ? clampUnit(blendedActivityRaw)
     : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
   const observationControls = deriveSunObservationControls(solarPhysicsState, activity, userAiaChannelOverride);
+  const effectiveActivity = clampUnit(activity + (observationControls.activityBoost ?? 0));
 
   updateSunMaterialUniforms({
     sunSurfaceMaterial,
     sunCoronaMaterial,
     timeSec,
-    activity,
+    activity: effectiveActivity,
     observationBlend: observationControls.observationBlend,
-    observationEmission: observationControls.observationEmission
+    observationEmission: observationControls.observationEmission,
+    coronaHue: observationControls.coronaHue
   });
+  // Update procedural sunspot positions (Spörer's law + differential rotation drift)
+  updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec);
 
   const sunBody = bodyById.get('sun');
   const sunRadiusAu = sunBody ? bodyRenderRadiusAu(sunBody, simState.useRealisticScale) : 0.01;
+
+  if (solarFlareManager) {
+    const lastSunTimeSec = updateSunDynamics.lastTimeSec ?? timeSec;
+    const dt = Math.max(0, timeSec - lastSunTimeSec);
+    updateSunDynamics.lastTimeSec = timeSec;
+    solarFlareManager.update(Math.min(0.1, dt), effectiveActivity, sunRadiusAu);
+    const flareParams = solarFlareManager.getActiveFlaresParams();
+    updateSunFlaresUniforms(sunSurfaceMaterial, flareParams);
+  }
+
+  if (sunMagneticFieldGroup) {
+    sunMagneticFieldGroup.visible = Boolean(dom.toggleMagneticField?.checked);
+    if (sunMagneticFieldGroup.visible) {
+      updateMagneticFieldLines(sunMagneticFieldGroup, timeSec);
+    }
+  }
+
   updateSunCoronalLoopsFromBlendView(solarBlendView, sunRadiusAu, timeSec);
   updateSunParkerSpiralFromPhysicsState(solarPhysicsState, sunRadiusAu, timeSec);
 
-  const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + activity * 0.045;
+  const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + effectiveActivity * 0.045;
   setSunGlowScale(sunRadiusAu, glowPulse);
   if (sunGlowSprite?.material) {
     const baseOpacity = sunGlowSprite.userData.baseOpacity ?? 0.42;
-    sunGlowSprite.material.opacity = Math.max(0.18, Math.min(0.64, baseOpacity * (0.9 + activity * 0.16)));
+    sunGlowSprite.material.opacity = Math.max(0.18, Math.min(0.64, baseOpacity * (0.9 + effectiveActivity * 0.16)));
   }
 
   updateSunEruptionLayerFromBlendView({
@@ -3333,8 +3378,12 @@ function updateSunDynamics(julianDate, realtimeSeconds) {
     blendView: solarBlendView,
     sunRadiusAu,
     timeSec,
-    activity
+    activity: effectiveActivity
   });
+
+  // Phase B: update chromosphere spicule field
+  const is304Mode = userAiaChannelOverride === 'aia_304';
+  updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, is304Mode);
 }
 
 function maybeRefreshSolarPhysics(nowMs = Date.now(), force = false) {

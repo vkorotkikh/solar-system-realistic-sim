@@ -47,3 +47,9 @@ ENV/
 # Data-fetching script caches
 scripts/.cache/
 scripts/output/
+
+# Local screenshot clutter
+Screenshot *.png
+
+# Temporary local validation artifacts
+my-notes/ACCURACY_REPORT_smoke.md
