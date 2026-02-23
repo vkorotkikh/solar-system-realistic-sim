@@ -1,101 +1,117 @@
-# Asteroid Belt Subsystem Analysis & Improvement Plan
+# Comprehensive Astronomical & Mining Analysis of the Asteroid Belt Subsystem
+
+*A Highly Detailed Technical Specification and Architectural Roadmap Designed for AI Context (Claude Opus 4.6), detailing the transition from CPU-driven point-clouds to GPU-driven deterministic orbital propagation and high-fidelity contact-physics drone mining simulations.*
+
+---
 
 ## 1. Executive Summary
-The current solar system simulation possesses a credible baseline for visual representation, incorporating a procedurally generated main asteroid belt with roughly 22,000 base points and up to 90,000 dynamically refined particles. However, the simulation treats the objects primarily as abstract points (particles) driven by a largely independent statistical wrapper, rather than fully leveraging observed astrophysical constraints regarding composition, power-law size distributions, accurate resonance mechanics (Kirkwood gaps), or 3D instanced geometry. 
+The solar system simulation codebase represents a critical bridge between astronomical orbit propagation and localized, high-fidelity mechanical simulation (mining/drones). Historically, the main asteroid belt (situated roughly between 2.1 and 3.3 Astronomical Units from the Sun) has been simulated as a generic `THREE.Points` (particle cloud) system driven by randomized parameters. This document outlines the rigorous, multi-staged improvement plan designed to elevate the simulation into an **ultra-realistic model capable of tracking 2,000,000+ objects simultaneously**, while also introducing a **Dual-Coordinate Frame Architecture** that permits 1,000+ autonomous spacecraft (drones, NASA Artemis vehicles, AstroForge/TransAstra commercial craft) to scout, interact with, and physically mine specific asteroids down to the meter scale.
 
-To achieve an **ultra-realistic model simulation**, we must transition from a simple Monte Carlo point cloud to a scientifically grounded, multi-population instanced rendering system that obeys astrometric distributions, physical compositions, and 3D geometric variance.
-
----
-
-## 2. Evaluation of Current Implementation
-
-### 2.1 Strengths
-- **Performance-Oriented Architecture:** Uses heavily optimized `THREE.Points` (particles) with `BufferGeometry` mapped to typed arrays (`Float32Array`).
-- **Dynamic Level of Detail (LOD):** Adapts the detail level based on the camera position, rendering more asteroids only when zoomed into the belt.
-- **Local N-Body Perturbation:** The LOD tier integrates local gravitational perturbations from the Sun, Jupiter, and Saturn on the fly.
-- **Deterministic Major Objects:** Real, major asteroids (Ceres, Vesta, Pallas) exist alongside a Kuiper belt with distinct dynamical classes (classical, resonant, scattered).
-
-### 2.2 Critical Weaknesses (Deviations from Reality)
-- **Homogeneous Rendering (`THREE.Points`):** Asteroids are rendered as 2D point sprites with uniform sizes. Actual asteroids exhibit a wide spectrum of shapes (potato-like, rubble piles, dog-bone shapes) and wildly varying sizes spanning meters to hundreds of kilometers.
-- **Inaccurate Size-Frequency Distribution:** The generator lacks a physical size scale based on collisional cascades (a generic power-law). 
-- **Arbitrary Taxonomy/Albedo:** Colors are assigned using generic noise (`brightness * 0.98`), rather than adhering to established asteroid taxonomies (C-type, S-type, M-type) that correlate directly with semi-major axis (e.g., S-types dominate the inner belt, C-types dominate the outer belt).
-- **Loose Family Structures:** The current model only constrains the semi-major axis ($a$) for families. Real families (like Eos, Koronis, Themis, and Flora) are clusters in the 3D space of proper elements ($a$, $e$, $\sin(i)$), formed by specific collisional events.
-- **Exclusionary Kirkwood Gaps:** The gaps (e.g., the 3:1 and 5:2 Jupiter resonances) are modeled as strict cutoff zones (`isInsideAsteroidGap`). Realistically, these are chaotic zones cleared over long periods, leading to specific populations like the Alinda or Griqua groups at the edges, rather than arbitrary empty space.
-- **Omission of Non-Main-Belt Populations:** Jupiter Trojans (L4/L5), Hildas (3:2 resonance), and Near-Earth Objects (NEAs) are completely absent.
+This document serves as the absolute source of truth for all required physics constraints, hardware limitations, shader implementations, and commercial spacecraft integration logic.
 
 ---
 
-## 3. Ultra-Realistic Improvement Plan
+## 2. Deep Evaluation of Current CPU Implementation
 
-To depict the asteroid belt accurately, substitution of probabilistic logic using widely accepted astrophysics datasets and models is necessary.
+### 2.1 Existing Strengths
+1. **Performance-Oriented Baseline Architecture:** The legacy system effectively utilizes heavily optimized `THREE.Points` with `BufferGeometry` mapped to contiguous typed arrays (`Float32Array`).
+2. **Dynamic Level of Detail (LOD):** The scale of rendering dynamically shifts based on the camera position. At macro scale, a base array of 22,000 particles is shown. As the frustum approaches the belt, an additional 90,000 refined particles are spawned.
+3. **Local N-Body Perturbation Loop:** The LOD tier integrates local gravitational perturbations from the Sun, Jupiter, and Saturn in near real-time, executing a simplified N-body Euler integration step over the defined `dtDays`.
+4. **Deterministic Major Objects Integration:** Real, major cataloged asteroids (e.g., Ceres, Vesta, Pallas, Hygiea) exist natively within the state tree alongside a Kuiper belt with distinct dynamical classes (classical, resonant, scattered).
 
-### 3.1 Advanced Probabilistic Orbit Generation
-1. **Proper Element Distributions (Families):**
-   - Replace the 1D semi-major axis distribution with multi-variate Gaussian mixtures modeling known asteroid families in proper element space $(a_p, e_p, \sin(i_p))$.
-   - Examples: Flora family (inner belt, high inclination), Eunomia (middle belt), Koronis and Themis (outer belt). Track which family heavily influences the resulting object.
-2. **Accurate Resonance Mapping:**
-   - Define Jupiter's mean-motion resonances mathematically, dynamically clearing regions in the synthetic generation based on the width of the resonance (e.g., 2.50 AU for 3:1, 2.82 AU for 5:2, 2.96 AU for 7:3, 3.27 AU for 2:1).
-3. **Jupiter Trojans and Hildas:**
-   - Implement localized Gaussian generation centered around the L4 (Greek camp) and L5 (Trojan camp) Lagrangian points of Jupiter's orbit (approx. 5.2 AU).
-   - Implement the Hilda group around 3.96 AU in a 3:2 resonance with Jupiter.
-
-### 3.2 Taxonomic Grading, Composition, and Albedo
-- Assign taxonomic classifications based on semi-major axis probability curves:
-  - **S-type (Silicaceous):** ~17% of total, concentrated at 2.2 - 2.5 AU. Moderately bright (Albedo: 0.10 - 0.22).
-  - **C-type (Carbonaceous):** ~75% of total, concentrated beyond 2.7 AU. Very dark (Albedo: 0.03 - 0.10).
-  - **M-type (Metallic):** ~8% of total, mid-belt. Metallic reflection (Albedo: 0.10 - 0.18).
-- Use these taxonomies to dictate `material.color`, `roughness`, and `metalness` in shading, ensuring visually accurate optical properties matching telescopic observations.
-
-### 3.3 Power-Law Size-Frequency Distribution (SFD)
-- Replace uniform size scalars with a power-law size distribution model $N(>R) \propto R^{-q}$, where $q \approx 2.5$ for large objects and varies across collisional ranges.
-- Render massive, notable synthetics with visibly significant geometries, while keeping micro-asteroids as dust/sprite points optimized for LOD. 
-
-### 3.4 3D Instanced Rendering (Shapes and Rotation)
-- **InstancedMesh Integration:** Swap the generic `THREE.Points` implementation for `THREE.InstancedMesh`. This allows rendering thousands of true 3D models with one draw call.
-- **Procedural Geometry Vault:** Generate 5 to 10 low-poly base convex geometries (approximating rubble piles, elongated shapes, contact binaries) on application load.
-- Assign random base geometries to instances and apply random uniform/non-uniform scale matrices to mimic variation.
-- **Realistic Spin:** Apply quaternions modified frame-by-frame. Limit rotation limits by the "spin barrier" (periods rarely shorter than ~2.2 hours for asteroids larger than 150m due to centrifugal breakup).
+### 2.2 Critical Deviations from Astrophysical Reality (Weaknesses)
+- **Homogeneous Rendering (`THREE.Points`):** Asteroids are rendered as 2D point sprites with uniform radial bounds. True asteroids exhibit a wide spectrum of morphologies (potato-like deformation, rubble piles resulting from catastrophic disruption, dog-bone shapes like Kleopatra) and wildly varying sizes spanning meters to hundreds of kilometers.
+- **Inaccurate Size-Frequency Distribution (SFD):** The generative logic entirely lacks a physical size scale based on collisional cascades. It effectively sizes sprites randomly within a tiny delta rather than observing a standard astronomical power-law constraint.
+- **Arbitrary Taxonomy, Albedo, and Spectrum Mapping:** Colors are assigned using generic noise (`brightness * 0.98`), completely ignoring established Tholen/SMASS asteroid taxonomies (C-type [Carbonaceous], S-type [Silicaceous], M-type [Metallic]). In reality, these taxonomies correlate strictly with their semi-major axis (e.g., S-types heavily dominate the inner belt at ~2.2 AU, C-types dominate the outer belt beyond 2.7 AU).
+- **Loose and Inaccurate Family Structures:** The current model loosely constrains only the semi-major axis ($a$) to fake families. True orbital families (such as Eos, Koronis, Themis, and Flora) are deeply clustered in the 3D space of *proper elements* ($a_p$, $e_p$, $\sin(i_p)$), which are formed by specific hypervelocity collisional events millions of years ago.
+- **Simplistic, Exclusionary Kirkwood Gaps:** The Jupiter resonances (e.g., the 3:1 gap at 2.5 AU, the 5:2 gap at 2.82 AU) are currently modeled as strict Boolean cutoff zones (`isInsideAsteroidGap = true > despawn`). Realistically, these are chaotic zones cleared over long orbital periods, which forcefully push objects out, leading to specific fringe populations like the Alinda or Griqua groups directly at the edge of the gaps.
+- **Omission of Sub-Populations:** The current constraints absolutely restrict generation to the Main Belt. Jupiter Trojans (L4 Greek camp / L5 Trojan camp), Hildas (trapped in a 3:2 resonance at ~3.96 AU), and Near-Earth Asteroids (Apollo, Aten, Amor, Atira classes) are completely, dynamically absent.
 
 ---
 
-## 4. Implementation Steps (Phased Approach)
+## 3. The 2,000,000+ Object GPU Physics Solution
 
-**Phase 1: Generative Physics & Taxonomy Overhaul**
-* Modify `src/main.js` specifically focusing on `createAsteroidOrbitElement()`. 
-* Introduce functions: `sampleTaxonomicClass(aAu)`, `sampleSizeFromPowerLaw()`, and `generateRealisticFamilyElements()`.
-* Expand the belt to include Trojans and Hildas.
+To depict the entirety of the estimated 1.1 to 1.9 million main-belt objects larger than 1 kilometer, calculating Keplerian state equations on the CPU in JavaScript is mathematically impossible at 60 Frames Per Second (FPS). A CPU will catastrophically bottleneck around 150,000 iterations per frame. 
 
-**Phase 2: Transition to 3D Instanced Rendering**
-* Remove the `Points` and `PointsMaterial` mapping.
-* Build procedural asteroid geometries using `IcosahedronGeometry` perturbed via simplex noise.
-* Setup multiple `THREE.InstancedMesh` batches (one per texture/taxonomy group to maintain performance).
-* Map positions, rotations, colors, and scales into `InstancedBufferAttribute`.
+### 3.1 WebGL Shader Parallelization
+The absolute solution relies on shifting the massive math load to the GPU via custom GLSL Vertex Shaders injected into `THREE.MeshStandardMaterial` or `THREE.CustomShaderMaterial`.
 
-**Phase 3: Rotational Kinematics & LOD Balancing**
-* In the physics loop (or custom shader), rotate instances based on their probabilistically assigned spin rates. 
-* Balance the transition from `Points` (for extremely distant/small clusters) to `InstancedMesh` (for close-up views) ensuring 60FPS fluid simulation stays intact.
+1. **Attribute Packing:** Each procedural asteroid is instantiated into a massive `THREE.InstancedMesh`. Instead of providing a constantly updating position Matrix, the CPU provides statically loaded `InstancedBufferAttributes` containing:
+   - `aOrbitParams1`: `vec4(aAu, e, iRad, ascendingNodeRad)`
+   - `aOrbitParams2`: `vec3(argPeriapsisRad, meanAnomalyRad, periodDays)`
+   - `aSpinParams`: `vec4(spinAxisX, spinAxisY, spinAxisZ, spinPhaseOffs)`
+2. **GPU Kepler Propagation:** The vertex shader computes the True Anomaly natively. It executes the Newton-Raphson method (typically 5 iterations are sufficient for eccentricity < 0.8) to solve Kepler's Equation ($M = E - e \sin E$) entirely in parallel across 2 million instances.
+3. **Perifocal Transformation:** The GLSL logic generates the 3D local coordinate from the orbit plane and translates it automatically relative to the global `$uTimeDays$` uniform.
 
-## 4. Hardware Limitations & Simulation Capacity (CPU/GPU)
+### 3.2 Probabilistic Sub-population Generator Architecture
+1. **Proper Element Distributions:** When packing the GPU attributes, replace the 1D semi-major axis generator with multi-variate Gaussian mixtures that construct mathematically sound representations of the Flora family (inner belt, high inclination), Eunomia (middle belt), Koronis and Themis (outer belt).
+2. **Accurate Resonance Mapping:** Implement the Hamiltonian mechanics equations that dynamically clear resonances not as empty boolean space, but as chaotic edges (3:1, 5:2, 7:3, 2:1).
+3. **Lagrangian Mass Insertion:** Insert heavy Gaussian distribution generation centered specifically around the L4 space (60 degrees ahead of Jupiter's Mean Anomaly) and L5 space (60 degrees behind Jupiter) to simulate thousands of Trojans.
 
-### 4.1 The Reality of the Asteroid Belt
+### 3.3 Power-Law Size-Frequency Distribution (SFD) & Taxonomy
+- Replace uniform size scalars with an inverse transform sampling logic honoring the power-law size distribution model $N(>R) \propto R^{-q}$, where $q \approx 2.5$ for large objects.
+- Assign physical materials based strictly on distance from the Sun:
+  - **S-type:** Concentrated at 2.2 - 2.5 AU (Albedo: 0.10 - 0.22, High Roughness).
+  - **C-type:** Concentrated beyond 2.7 AU (Albedo: 0.03 - 0.10, Low metalness).
+  - **M-type:** Mid-belt spikes (Albedo: 0.10 - 0.18, High Metallic specularity).
+  - **D-type:** Exclusively for Jupiter Trojans and extremely distant Hildas.
+
+---
+
+## 4. Hardware Limitations & Hybrid Mission Tracking
+
+### 4.1 Navigational Accuracy & Target Determinism
 Current scientific consensus estimates between **1.1 and 1.9 million asteroids larger than 1 kilometer** in diameter in the main belt, with absolutely millions (if not billions) of smaller objects down to pebble size. Currently known and cataloged asteroids number roughly **1.3 million**.
 
-**Current Codebase State:** The simulation renders `22,000` base objects and dynamically spawns up to `90,000` LOD (Level of Detail) particles when zoomed in. It currently features **18** major cataloged asteroids with precise orbital elements.
+If 1.9 Million objects are strictly generated by procedural noise, we cannot simulate real-world NASA missions to *specific* named asteroids (like Psyche, Bennu, or Ryugu). Therefore, the data payload must be a **Hybrid Data Structure**:
+1. **The Exact Catalog Block (Top 100,000+):** We will query the JPL Horizons / Minor Planet Center database to generate an optimized binary payload containing the absolute true 6-element values ($a, e, i, \Omega, \omega, M$, plus Epoch) for the largest ~100k known asteroids. These objects are physically tracked, deterministic, and can be selected as mission destination targets.
+2. **The Procedural GPU Block (The remaining 1.9M+):** Objects smaller than our fixed catalog payload limit perfectly conform to the generative models described in Section 3 to fill out the visual volume.
 
-### 4.2 CPU vs. GPU Physics Limits
-If we rely strictly on CPU calculations (JavaScript via standard web workers or main UI thread) for Keplerian propagation and N-body perturbations:
-- **CPU Maximum:** A modern CPU can realistically propagate and update arrays for about **100,000 to 250,000** objects at 60 FPS in Javascript before thermal throttling and frame drops occur. N-body gravity checks (even simplified) drastically lower this.
-- **GPU Maximum (The Solution):** To simulate millions of objects, we MUST offload the Keplerian orbit propagation to a Compute Shader or Vertex Shader. By doing this, a modern dedicated, or even high-end integrated GPU, can simulate **1 to 2 million** instanced asteroids simultaneously at 60 FPS, coming incredibly close to the actual number of >1km asteroids in the belt.
-
-### 4.3 Navigational Accuracy & Target Tracking
-For manned missions or drone targeting, we cannot rely solely on probabilistic noise for major targets. We must implement a **Hybrid Data Structure**:
-1. **The Exact Catalog (Top 100,000+):** We can query the JPL Horizons database to generate a massive static JSON/binary file containing the real orbital elements (a, e, i, $\Omega$, $\omega$, M) for the largest ~100,000 to 200,000 known asteroids. These are physically tracked, deterministic, and can be selected as mission targets.
-2. **The Probabilistic Fill (The remaining 1M+):** Objects smaller than our catalog payload limit are generated procedurally based on the power-law and family distributions outlined in Section 3.
-3. **Raycasting & Selection:** Implement GPU-picking or an Octree spatial partition on the CPU to allow the user (or mission drone) to click on a specific deterministic asteroid, zoom in, and lock onto it.
+### 4.2 BVH (Bounding Volume Hierarchy) Spatial Indexing
+To allow a user (or an autonomous drone's pathfinding script) to select a target out of 2,000,000 objects in a 3D scene:
+- Do NOT raycast against the GPU InstancedMesh.
+- Construct a fast, dynamic Octree or BVH strictly tracking the 100k Deterministic objects on the CPU.
+- When an object is clicked or requested by a telemetry script, extract the ID from the BVH, fetch the true Orbital Elements, continuously calculate its world coordinate ($x, y, z$), and interpolate the rendering camera towards it.
 
 ---
 
-## 5. Detailed, Step-by-Step Implementation Plan
+## 5. Contact Physics Engine & The 1,000+ Drone Fleet Deployment
+
+Simulating the deployment of over 1,000 "hive-mind" or swarm drones scouting and physically harvesting an asteroid requires an architectural paradigm shift. Deep space is massive (Astronomical Units); asteroids are small (Meters, Kilometers).
+
+### 5.1 The "Floating Origin" (Dual-Coordinate Frame)
+If WebGL attempts to render a 4-meter drone sitting exactly on the surface of an asteroid located 3.2 AU (478 million kilometers) from the world origin, it suffers from catastrophic 32-bit floating-point precision collapse. Polygons will jitter violently; lasers will miss targets; models will clip straight through each other.
+
+**The Solution:**
+When a mission launches and the camera reaches the target asteroid, the overarching GPU Solar System simulation must visually hide or recede. The engine will instantiate a `LocalPhysicsSpace`. Inside this environment:
+- The Target Asteroid becomes `Vector3(0, 0, 0)`.
+- The scale becomes `1 Unit = 1 Meter`.
+- The environment is physically powered by Cannon.js / Ammo.js / Rapier (or equivalent physics step).
+
+### 5.2 Real-World Spacecraft / Drone Integration
+To accurately reflect modern aerospace intent, the localized environment will feature models based upon (or functionally replicating) Artemis program and commercial mining architectures:
+
+#### Artemis II & III Mission Architecture 
+For human exploration/oversight deployments:
+- **Orion Spacecraft:** The primary crewed command module. Renders procedurally as a conical capsule atop a cylindrical European Service Module (ESM) featuring distinct X-wing solar array configs. (Functions as the orbital command relay).
+- **Starship Human Landing System (HLS):** Modified SpaceX vehicle serving as the heavy lunar/asteroid descent vehicle. Instanced as a massively tall, highly reflective stainless-steel cylinder with specialized descent thrusters midway up the chassis.
+- **Gateway (Lunar/Deep Space Outpost):** Modular core stationed at stable orbital insertion points to serve as drone swarm charging / resource dropoff hubs.
+
+#### Dedicated Asteroid Mining Crafts (AstroForge / TransAstra)
+For the 1,000+ swarm, we employ configurations matching current aerospace startups aiming for NEO (Near-Earth Object) harvesting:
+- **AstroForge (Vestri / Brokkr configurations):** Small, aggressive 6U to 200kg spacecraft. Designed to autonomously attach to the asteroid surface or orbit tightly. Modeled as boxy cubesat-derivatives with dedicated drill/laser refraction arrays.
+- **TransAstra (Honey-Bee / Mini-Bee configurations):** Utilizing "Optical Mining" engines (Omnivore). These drones function by capturing small rocks in inflatable bags and utilizing massive foil parabolic reflectors to harness raw solar thermal energy. Modeled as central hubs flanked by massive, fragile, unfolding reflective satellite dishes catching sunlight.
+
+### 5.3 Massive Fleet Flocking & harvesting (Boids Mechanics)
+Running 1,000 independent pathfinding queries against an asteroid's rough geometry every frame will kill the CPU.
+- **Flocking (Boids Algorithm):** Implement Separation, Alignment, and Cohesion forces. Drones move as a liquid "swarm" over the asteroid's surface. Only "Leader" drones calculate heavy raycast pathfinding over the topography; "Followers" rely strictly on boid alignment logic to save compute cycles.
+- **Volumetric Resource Grid:** The target asteroid is generated with a 3D noise matrix overlaid on its surface mesh. Certain vertices or topological nodes are flagged as "Resource Rich" (high Platinum group metal concentration for M-types, high water-ice for C-types).
+- **Harvest Logic:** Drones shift to a `MINING` state when intersecting a resource node. Visual particle lasers or physical drilling effects trigger. The resource node's local health pool ticks down, and the overall "Faction Inventory" score ticks up.
+- **GPU Instancing for Drones:** Just like the 2,000,000 asteroids scaling with `InstancedMesh`, the 1,000 drones must share a single `InstancedMesh`. Thrust plumes (particles) and local rotation matrices must be pushed similarly via buffer attributes to maintain 60FPS.
+
+---
+
+## 6. Implementation Steps (Phased Approach)
 
 To achieve this ultra-realistic, mission-capable simulation, the build must be executed in precise architectural phases.
 
@@ -114,21 +130,21 @@ To achieve this ultra-realistic, mission-capable simulation, the build must be e
 2. **Kirkwood Gaps & Families:** Use the logic outlined in Section 3 to ensure these procedurally generated objects heavily populate the Eos, Koronis, and Themis families, while leaving the 3:1 and 5:2 Jupiter resonances empty.
 3. **Concatenation:** Merge the 100,000 'Real' deterministic elements with the 1.5 million 'Synthetic' elements into one massive rendering buffer.
 
-### Phase 4: 3D Instanced Rendering & Visual Fidelity
+### Phase 4: 3D Instanced Rendering & Rotational Kinematics
 1. **Geometry Generation:** Create 6 to 10 distinct low-resolution 3D models of asteroids (representing different taxonomic shapes, craters, rubble piles, etc.).
 2. **Multi-Instancing:** Create one `THREE.InstancedMesh` per geometric model. Distribute our 1.6+ million objects randomly across these meshes.
 3. **Instanced Attributes:** 
    - `instanceColor`: Based on taxonomy (Dark carbonaceous, lighter silicaceous).
    - `instanceMatrix`: Scale (based on a power-law size distribution) and initial Rotation.
    - `spinRate`: A custom buffer attribute passed to the shader to rotate the object on its local axis over time.
-4. **Shader Compilation:** Combine the Orbit Propagation shader logic from Phase 2 with standard lighting/PBR shaders so the asteroids cast/receive realistic shadows from the Sun.
+4. **Shader Compilation & Spin Lock:** Apply quaternions modified frame-by-frame. Limit rotation limits by the "spin barrier" (periods rarely shorter than ~2.2 hours for asteroids larger than 150m due to centrifugal breakup). Combine the Orbit Propagation shader logic from Phase 2 with standard lighting/PBR shaders so the asteroids cast/receive realistic shadows from the Sun.
 
-### Phase 5: Mission Targeting & UI Interactivity
+### Phase 5: Mission Targeting & Fleet Pathfinding
 1. **Spatial Indexing:** Build a BVH (Bounding Volume Hierarchy) or Octree on the CPU that tracks the rough positions of the 100,000 *deterministic* (real) asteroids. 
-2. **Raycasting Optmization:** When the user clicks the screen, avoid raycasting against 1.6 million objects. Instead, only raycast against the CPU BVH of the real targets.
-3. **Camera Lock-on:** Upon selection, retrieve the target's specific orbital elements, continuously calculate its exact 3D position, and smoothly interpolate the camera's `controls.target` to follow the asteroid.
-4. **Mission UI Panel:** Display readouts for the targeted asteroid: Designation, estimated mass, composition (based on taxonomy), current velocity, and perihelion/aphelion data.
+2. **Raycasting Optimization:** When the user clicks the screen, avoid raycasting against 1.6 million objects. Instead, only raycast against the CPU BVH of the real targets.
+3. **Camera Lock-on & Scale Transference:** Upon selection, retrieve the target's specific orbital elements, freeze the Astronomical View, compute its exact internal terrain mesh, and drop the player smoothly into the Local Physics Grid representing 1:1 scale contact.
+4. **Fleet UI Overlay:** Display readouts for the targeted asteroid: Designation, estimated mass, composition (based on taxonomy), current velocity, and perihelion/aphelion data. Control arrays allowing the deployment vectors of up to 1,000 distinct drones utilizing the Flocking behavior logic outlined in 5.3.
 
 ### Phase 6: Performance Tuning & Final Polish
 1. **Frustum Culling Expansion:** Ensure that chunks of the `InstancedMesh` that fall outside the camera's view are not unnecessarily passed to the fragment shader. 
-2. **Dynamic LOD scaling:** Limit the rendering count based on the user's hardware. Allow a slider in the UI to scale from "Performance" (100k real objects) to "Ultra Reality" (1.6 million mixed objects).
+2. **Dynamic LOD scaling:** Limit the rendering count based on the user's hardware. Allow a slider in the UI to scale from "Performance" (100k real objects) to "Ultra Reality" (1.6 million mixed objects). Balance the transition from abstract points for distant clusters up to pure InstancedMesh geometry at mid-range to ensure pure 60FPS fluid capability remains locked across configurations.
