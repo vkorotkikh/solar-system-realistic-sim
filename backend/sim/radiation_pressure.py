@@ -1,0 +1,213 @@
+"""
+Solar Radiation Pressure & Related Forces — Phase 9
+
+Implements:
+- Solar Radiation Pressure (SRP) acceleration
+- Poynting-Robertson drag
+- β ratio computation for dust/spacecraft
+- Yarkovsky effect approximation for asteroids
+
+Physics references:
+- Burns et al. (1979) "Radiation forces on small particles in the solar system"
+- Bottke et al. (2006) "The Yarkovsky and YORP Effects"
+- L☉ = 3.828 × 10²⁶ W (IAU 2015 nominal value)
+"""
+
+import math
+
+# Physical constants
+L_SUN = 3.828e26        # Solar luminosity [W]
+C_LIGHT = 2.998e8       # Speed of light [m/s]
+G_CONST = 6.674e-11     # Gravitational constant [m³/(kg·s²)]
+M_SUN = 1.989e30        # Solar mass [kg]
+AU_M = 1.496e11         # Astronomical unit [m]
+
+# Derived: Solar radiation pressure at 1 AU
+# P_rad = L / (4π r² c) ≈ 4.56 × 10⁻⁶ Pa at 1 AU
+P_RAD_1AU = L_SUN / (4 * math.pi * AU_M**2 * C_LIGHT)
+
+
+def compute_beta(area_m2, mass_kg, Cr=1.0):
+    """
+    Compute the dimensionless β = F_SRP / F_grav ratio.
+    
+    β > 0.5: particle blown out of the solar system
+    β ≈ 1.0: radiation exactly cancels gravity
+    β ≈ 5.7e-5: typical value for 1 m² / 1000 kg spacecraft
+    
+    Parameters:
+        area_m2: cross-sectional area [m²]
+        mass_kg: mass [kg]
+        Cr: radiation pressure coefficient (1.0=absorber, 2.0=perfect reflector)
+    
+    Returns:
+        beta: dimensionless F_SRP/F_grav
+    """
+    # β = (L☉ × Cr × A) / (16π² × G × M☉ × m × c)
+    numerator = L_SUN * Cr * area_m2
+    denominator = 16 * math.pi**2 * G_CONST * M_SUN * mass_kg * C_LIGHT
+    return numerator / denominator
+
+
+def compute_dust_blowout_size(density_kg_m3=2500, Cr=1.0):
+    """
+    Compute the blowout grain size (β = 0.5).
+    
+    For silicate grains (ρ=2500 kg/m³): blowout diameter ≈ 0.46 μm
+    For ice grains (ρ=1000 kg/m³): blowout diameter ≈ 1.15 μm
+    
+    Returns:
+        diameter_m: grain diameter at β = 0.5
+    """
+    # For a sphere: A/m = 3/(2ρD), so β = 3 L Cr / (32 π² G M☉ ρ D c)
+    # At β=0.5: D = 3 L Cr / (16 π² G M☉ ρ c)
+    return 3 * L_SUN * Cr / (16 * math.pi**2 * G_CONST * M_SUN * density_kg_m3 * C_LIGHT)
+
+
+def srp_acceleration(x_au, y_au, z_au, beta):
+    """
+    Compute solar radiation pressure acceleration vector.
+    
+    a_SRP = β × GM☉/r² in the anti-sunward direction
+    (same magnitude formula as gravity, scaled by β)
+    
+    Parameters:
+        x_au, y_au, z_au: heliocentric position in AU
+        beta: F_SRP / F_grav ratio for the body
+    
+    Returns:
+        (ax, ay, az): acceleration in m/s² (in AU-based frame)
+    """
+    x_m = x_au * AU_M
+    y_m = y_au * AU_M
+    z_m = z_au * AU_M
+    r2 = x_m**2 + y_m**2 + z_m**2
+    r = math.sqrt(r2)
+    
+    if r < 1e6:  # Too close to Sun center
+        return (0.0, 0.0, 0.0)
+    
+    # a = β × GM☉/r², directed radially outward
+    a_mag = beta * G_CONST * M_SUN / r2
+    
+    # Unit vector away from sun
+    ax = a_mag * x_m / r
+    ay = a_mag * y_m / r
+    az = a_mag * z_m / r
+    
+    return (ax, ay, az)
+
+
+def poynting_robertson_drag(x_au, y_au, z_au, vx_ms, vy_ms, vz_ms, beta):
+    """
+    Compute Poynting-Robertson drag acceleration.
+    
+    This is the tangential component of radiation force due to aberration.
+    Causes orbital decay over thousands of years for dust particles.
+    
+    Timescale from 1 AU: τ_PR ≈ 700 r²/(β) years
+    For 10 μm grain at 1 AU: ~10,000 years to spiral into the Sun
+    
+    Parameters:
+        x_au, y_au, z_au: heliocentric position [AU]
+        vx_ms, vy_ms, vz_ms: velocity [m/s]
+        beta: radiation pressure ratio
+    
+    Returns:
+        (ax, ay, az): PR drag acceleration [m/s²]
+    """
+    x_m = x_au * AU_M
+    y_m = y_au * AU_M
+    z_m = z_au * AU_M
+    r2 = x_m**2 + y_m**2 + z_m**2
+    r = math.sqrt(r2)
+    
+    if r < 1e6:
+        return (0.0, 0.0, 0.0)
+    
+    # Radial unit vector
+    rx, ry, rz = x_m / r, y_m / r, z_m / r
+    
+    # Radial velocity component
+    vr = vx_ms * rx + vy_ms * ry + vz_ms * rz
+    
+    # a_PR = (β GM☉ / r² c) × [(vr/r)r̂ - v⃗]
+    factor = beta * G_CONST * M_SUN / (r2 * C_LIGHT)
+    
+    ax = factor * (vr * rx - vx_ms)
+    ay = factor * (vr * ry - vy_ms)
+    az = factor * (vr * rz - vz_ms)
+    
+    return (ax, ay, az)
+
+
+def yarkovsky_da_dt(diameter_m, density_kg_m3, albedo, semi_major_au, obliquity_rad=0.0):
+    """
+    Approximate the Yarkovsky secular drift rate da/dt.
+    
+    This is the dominant NEO delivery mechanism from the main belt.
+    
+    Parameters:
+        diameter_m: asteroid diameter [m]
+        density_kg_m3: bulk density [kg/m³]  
+        albedo: Bond albedo [0-1]
+        semi_major_au: semi-major axis [AU]
+        obliquity_rad: spin axis obliquity (0=prograde, π=retrograde)
+    
+    Returns:
+        da_dt: semi-major axis drift rate [AU/Myr]
+    """
+    # Simplified Yarkovsky formula (Bottke et al. 2006, eq. 1)
+    # da/dt ∝ ±(1-A) × Φ☉ / (ρ × D × n × c × a)
+    # Diurnal contribution (depends on cos(obliquity))
+    
+    solar_flux_1au = L_SUN / (4 * math.pi * AU_M**2)
+    flux = solar_flux_1au / semi_major_au**2
+    n = math.sqrt(G_CONST * M_SUN / (semi_major_au * AU_M)**3)  # mean motion [rad/s]
+    
+    # Scale factor (empirical calibration from Bottke et al.)
+    scale = 4.0 / 9.0
+    
+    da_m_per_s = scale * (1 - albedo) * flux * math.cos(obliquity_rad) / (
+        density_kg_m3 * diameter_m * n * C_LIGHT * semi_major_au * AU_M
+    )
+    
+    # Convert m/s to AU/Myr
+    seconds_per_myr = 3.156e13
+    da_au_per_myr = da_m_per_s * seconds_per_myr / AU_M
+    
+    return da_au_per_myr
+
+
+def rebound_radiation_pressure_callback(reb_sim):
+    """
+    REBOUND additional_forces callback for solar radiation pressure.
+    
+    To use:
+        reb_sim.additional_forces = rebound_radiation_pressure_callback
+        # Set beta on individual particles:
+        reb_sim.particles[1].params['beta'] = 0.001
+    
+    Particles without a 'beta' attribute are unaffected.
+    """
+    sun = reb_sim.particles[0]
+    for i in range(1, reb_sim.N):
+        p = reb_sim.particles[i]
+        beta = getattr(p, 'beta', 0.0)
+        if beta == 0.0:
+            continue
+        
+        dx = p.x - sun.x
+        dy = p.y - sun.y
+        dz = p.z - sun.z
+        r2 = dx * dx + dy * dy + dz * dz
+        r = math.sqrt(r2)
+        
+        if r < 1e-10:
+            continue
+        
+        # SRP acceleration (same 1/r² as gravity, scaled by β)
+        a_srp = beta * reb_sim.G * sun.m / r2
+        p.ax += a_srp * dx / r
+        p.ay += a_srp * dy / r
+        p.az += a_srp * dz / r
