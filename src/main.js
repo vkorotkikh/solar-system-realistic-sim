@@ -3165,7 +3165,9 @@ function applyScaleMode() {
       }
       if (entry.label) {
         const labelRadius = localBodyRenderRadiusAu(entry.body, realistic);
-        entry.label.position.set(0, labelRadius * 2.4 + 0.015, 0);
+        const upDir = new Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+        const labelDist = labelRadius * 2.4 + 0.015;
+        entry.label.position.copy(upDir).multiplyScalar(labelDist);
       }
     }
     const localFocusBodyId = localBodyById.has(simState.focusedBodyId)
