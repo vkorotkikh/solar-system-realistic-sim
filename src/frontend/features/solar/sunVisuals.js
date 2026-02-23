@@ -203,6 +203,27 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   }
 }
 
+// ─── Sunspot Group Clustering ────────────────────────────────────────────────
+// Each uniform slot represents a sunspot GROUP, not an individual spot.
+// Generates 2-5 sub-spots per group at slightly offset positions with varying sizes.
+// At solar max with 8 groups × 5 spots = up to 40 visible spots.
+float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
+  if (seed.w < 0.001) return 1.0;
+  float dark = 1.0;
+  // Cluster count: 2-5 based on group intensity
+  int clusterCount = 2 + int(seed.w * 3.0);
+  for (int c = 0; c < 5; c++) {
+    if (c >= clusterCount) break;
+    float cSeed = float(c) * 0.618033;
+    float lonOff = (hash12(vec2(seed.x, cSeed)) - 0.5) * seed.z * 1.5;
+    float latOff = (hash12(vec2(seed.y, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
+    float subSize = seed.z * (0.3 + hash12(vec2(cSeed, seed.x)) * 0.7);
+    vec4 subSpot = vec4(seed.x + lonOff, seed.y + latOff, subSize, seed.w);
+    dark = min(dark, sunspotDarkening(nDir, subSpot, timeSec, mu));
+  }
+  return dark;
+}
+
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
@@ -237,18 +258,18 @@ void main() {
   float cellTurbulence = fbm(normalDir * 80.0 + vec3(time * 2.1, -time * 1.6, time * 0.9));
   combinedGranulation = mix(combinedGranulation, combinedGranulation * (0.88 + cellTurbulence * 0.24), 0.35);
   
-  // ─── Phase A4: Sunspot Darkening ───────────────────────────────────────────
+  // ─── Phase A4: Sunspot Group Darkening ─────────────────────────────────────
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
-  // Inactive slots have w==0.0 and sunspotDarkening() returns 1.0 immediately
+  // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotDarkening(normalDir, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -440,8 +461,9 @@ export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
   if (!sunSurfaceMaterial?.uniforms?.sunspotSeeds) return;
 
   const TWO_PI = Math.PI * 2;
-  // Number of visible spots scales with activity (inactive slots use w=0 guard in shader)
-  const count = Math.round(activity * 7);
+  // Number of visible sunspot GROUPS scales with activity (each group = 2-5 individual spots)
+  // At solar max: 8 groups × up to 5 spots = up to 40 visible spots
+  const count = Math.min(8, Math.round(activity * 7) + 1);
 
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
   for (let i = 0; i < 8; i++) {
