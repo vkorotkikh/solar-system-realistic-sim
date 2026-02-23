@@ -1,79 +1,87 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sun Model Lab</title>
-  </head>
-  <body>
-    <div id="app">
-      <aside id="control-panel">
-        <header class="panel-header">
-          <p class="eyebrow">Sun-Focus Branch</p>
-          <h1>Sun Model Lab</h1>
-          <p class="subtitle">Isolated sun model with barebones solar system context.</p>
-        </header>
 
-        <section class="panel-section">
-          <h2>Time</h2>
-          <div class="row row-inline">
-            <button id="toggle-play" type="button">Pause</button>
-            <button id="now-time" type="button">Now</button>
-          </div>
-          <label for="time-scale">Simulation speed (days/sec)</label>
-          <input id="time-scale" type="range" min="-120" max="120" step="1" value="4" />
-          <div class="row row-inline">
-            <span id="time-scale-value">4.0</span>
-            <span id="time-date">--</span>
-          </div>
-        </section>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sun Model Lab</title>
+</head>
 
-        <section class="panel-section">
-          <h2>Display</h2>
-          <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
-          <label><input id="toggle-magnetic-field" type="checkbox" /> Show solar magnetic field</label>
-          <label><input id="toggle-labels" type="checkbox" checked /> Show labels</label>
-          <label><input id="toggle-realistic-scale" type="checkbox" /> Realistic scale</label>
-          <label for="aia-channel">Solar observation channel</label>
-          <select id="aia-channel">
-            <option value="auto" selected>Auto (best available)</option>
-            <option value="aia_094">94 &#197; &ndash; Flare plasma</option>
-            <option value="aia_171">171 &#197; &ndash; Quiet corona</option>
-            <option value="aia_193">193 &#197; &ndash; Active corona</option>
-            <option value="aia_211">211 &#197; &ndash; Active regions</option>
-            <option value="aia_304">304 &#197; &ndash; Chromosphere</option>
-          </select>
-        </section>
+<body>
+  <div id="app">
+    <aside id="control-panel">
+      <header class="panel-header">
+        <p class="eyebrow">Sun-Focus Branch</p>
+        <h1>Sun Model Lab</h1>
+        <p class="subtitle">Isolated sun model with barebones solar system context.</p>
+      </header>
 
-        <section class="panel-section">
-          <h2>Navigation</h2>
-          <label for="zoom-sensitivity">Zoom sensitivity</label>
-          <input id="zoom-sensitivity" type="range" min="0.2" max="4" step="0.05" value="1" />
-          <span id="zoom-sensitivity-value">x1.00</span>
-        </section>
-
-        <section class="panel-section">
-          <h2>Explorer</h2>
-          <select id="body-list" size="10"></select>
-          <div class="row row-inline">
-            <button id="focus-body" type="button">Focus</button>
-            <button id="follow-body" type="button">Follow</button>
-            <button id="clear-follow" type="button">Free Cam</button>
-          </div>
-          <pre id="body-info" class="info-box"></pre>
-        </section>
-      </aside>
-
-      <main id="viewport-shell">
-        <canvas id="space-canvas"></canvas>
-        <div id="status-bar">
-          <span id="status-focus">Focus: Sun</span>
-          <span id="status-bodies">Bodies: --</span>
-          <span id="status-zoom">Range: --</span>
+      <section class="panel-section">
+        <h2>Time</h2>
+        <div class="row row-inline">
+          <button id="toggle-play" type="button">Pause</button>
+          <button id="now-time" type="button">Now</button>
         </div>
-      </main>
-    </div>
+        <label for="time-scale">Simulation speed (days/sec)</label>
+        <input id="time-scale" type="range" min="-120" max="120" step="1" value="4" />
+        <div class="row row-inline">
+          <span id="time-scale-value">4.0</span>
+          <span id="time-date">--</span>
+        </div>
+      </section>
 
-    <script type="module" src="/src/main.js"></script>
-  </body>
+      <section class="panel-section">
+        <h2>Display</h2>
+        <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
+        <label><input id="toggle-magnetic-field" type="checkbox" /> Show solar magnetic field</label>
+        <label><input id="toggle-labels" type="checkbox" checked /> Show labels</label>
+        <label><input id="toggle-realistic-scale" type="checkbox" /> Realistic scale</label>
+        <label for="aia-channel">Solar observation channel</label>
+        <select id="aia-channel">
+          <option value="auto" selected>Auto (best available)</option>
+          <option value="aia_094">94 &#197; &ndash; Flare plasma</option>
+          <option value="aia_171">171 &#197; &ndash; Quiet corona</option>
+          <option value="aia_193">193 &#197; &ndash; Active corona</option>
+          <option value="aia_211">211 &#197; &ndash; Active regions</option>
+          <option value="aia_304">304 &#197; &ndash; Chromosphere</option>
+        </select>
+      </section>
+
+      <section class="panel-section">
+        <h2>Navigation</h2>
+        <label for="zoom-sensitivity">Zoom sensitivity</label>
+        <input id="zoom-sensitivity" type="range" min="0.2" max="4" step="0.05" value="1" />
+        <span id="zoom-sensitivity-value">x1.00</span>
+      </section>
+
+      <section class="panel-section">
+        <h2>Explorer</h2>
+        <select id="body-list" size="10"></select>
+        <div class="row row-inline">
+          <button id="focus-body" type="button">Focus</button>
+          <button id="follow-body" type="button">Follow</button>
+          <button id="clear-follow" type="button">Free Cam</button>
+        </div>
+        <pre id="body-info" class="info-box"></pre>
+      </section>
+
+      <section class="panel-section">
+        <h2>Cataclysmic Events</h2>
+        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger AGN Warp Wave (Sag A*)</button>
+      </section>
+    </aside>
+
+    <main id="viewport-shell">
+      <canvas id="space-canvas"></canvas>
+      <div id="status-bar">
+        <span id="status-focus">Focus: Sun</span>
+        <span id="status-bodies">Bodies: --</span>
+        <span id="status-zoom">Range: --</span>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>
