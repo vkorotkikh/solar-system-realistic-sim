@@ -1,0 +1,125 @@
+\documentclass[11pt, oneside]{book}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{superluminal_bibliography.bib}
+
+\title{Superluminal Phenomena in Relativistic Astrophysics:\\
+Modeling, Inference, and Simulation Workflows}
+\author{Integrated Pass-2 to Pass-4 Research Pack}
+\date{2026-02-23}
+
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+
+\chapter{Executive Synthesis}
+Apparent superluminal motion in relativistic outflows is now treated as a geometric and radiative projection effect, not physical superluminal signaling. The central modeling constraint is therefore:
+\begin{equation}
+\beta_{\mathrm{app}} = \frac{\beta \sin\theta}{1-\beta\cos\theta}
+\end{equation}
+with \(\beta\le 1\), while \(\beta_{\mathrm{app}}\) can exceed unity for high \(\Gamma\) and small \(\theta\).  
+
+This deliverable binds three implementation layers:
+\begin{itemize}
+  \item \textbf{Geometric observer layer}: transform intrinsic motions to apparent observables.
+  \item \textbf{Channel transport layer}: electromagnetic/GW/CR/neutrino arrival differences, including delays.
+  \item \textbf{Physics closure layer}: shock/jets/transport models and optional GRMHD synthesis.
+\end{itemize}
+
+\mainmatter
+\chapter{Pass-2 Enriched Source Stack}
+The enriched pass-2 catalog extends historical and modern references with:
+\begin{enumerate}
+  \item DOI/arXiv dual identifiers.
+  \item Explicit modeling assumptions.
+  \item Reproducibility notes (dataset + code entry points).
+\end{enumerate}
+Core references include Rees (1966), Blandford-Rees (1977), Blandford-K{\"o}nigl (1979), and Urry-Padovani (1995).  
+
+Current best practice is to validate every claim by mapping it to:
+\begin{itemize}
+  \item a formal publication record,
+  \item open data,
+  \item executable inference setup.
+\end{itemize}
+
+\section{Observed anchors}
+MOJAVE VI--XVIII provide the long-baseline kinematics baseline for apparent-speed distributions.  
+GW170817 multi-band studies constrain causal timing and structured-jet interpretation.  
+TXS--neutrino and UHECR source-correlation work remains hypothesis-weighted and should be carried with uncertainty tagging.
+
+\chapter{Pass-3 Workflow and Implementation}
+Pass-3 captures a practical computational design that is intentionally split by physics layer:
+
+\section{1. Geometry-first baseline}
+Event tuples are created as
+\((t_0,\mathbf r_0,\beta,\Gamma,\theta,P(t),\phi_c)\), then transformed to observer frame by finite-speed delay and Doppler factors.
+
+\section{2. Multi-channel transport}
+Each channel uses explicit delay kernels \(K_c(t)\) and attenuation terms.  
+Channel ordering is emergent:
+\begin{itemize}
+  \item GW: near-luminal causal promptness.
+  \item EM: opacity + jet-structure delays.
+  \item CR/neutrino: larger dispersion and transport uncertainty.
+\end{itemize}
+
+\section{3. Multi-framework execution}
+\begin{itemize}
+  \item \textbf{Python path}: `numpy`/`scipy` + `numpyro`/`emcee` for workflow and fitting.
+  \item \textbf{Julia path}: `DifferentialEquations.jl` + `Turing.jl` for Bayesian/inference workflows.
+  \item \textbf{MHD path}: HARM/PLUTO/BHAC post-processing with synthetic-emission mapping.
+\end{itemize}
+
+\section{4. Diagnostics and reproducibility}
+Mandatory outputs include:
+\begin{itemize}
+  \item posterior corner plots,
+  \item \(\beta_{\mathrm{app}}(t)\) residual trajectories,
+  \item channel arrival lag distributions,
+  \item run manifests with data hash and seed state.
+\end{itemize}
+
+\chapter{Mathematical Model Inventory}
+The mathematical toolset includes:
+\begin{enumerate}
+  \item Light-travel and Doppler geometry.
+  \item Pattern-speed versus bulk-flow decomposition.
+  \item Radiative transfer with ray integration.
+  \item CR/neutrino transport equation classes (advection-diffusion-loss source form).
+  \item Bayesian objective fitting with structured priors.
+  \item Optional speculative couplers (e.g., high-order GW-EM conversion probes in low-impact mode).
+\end{enumerate}
+
+Representative modeling equations (selection):
+\[
+\delta=[\Gamma(1-\beta\cos\theta)]^{-1},\quad
+S_{\nu,\mathrm{obs}}=\delta^{k-\alpha}S'_{\nu'}
+\]
+\[
+\frac{\partial f_c}{\partial t}+\mathbf v\cdot\nabla f_c=
+\nabla\cdot(\mathbf D\nabla f_c)+\frac13(\nabla\cdot\mathbf u)\frac{\partial f_c}{\partial\ln p}+Q_c-L_c
+\]
+\[
+\mathcal L(\theta)=\sum_{t,\nu}\frac{\left[X_{\mathrm{model}}(t,\nu;\theta)-X_{\mathrm{obs}}(t,\nu)\right]^2}{\sigma^2}
+\]
+
+\chapter{Reference Integrity and Citation}
+For publication-grade writing, the preferred source-of-truth is:
+\begin{itemize}
+  \item `superluminal_bibliography.bib`
+  \item DOI links for foundational references
+  \item arXiv links where DOI is absent or behind archival barriers
+\end{itemize}
+
+\printbibliography
+\end{document}
+

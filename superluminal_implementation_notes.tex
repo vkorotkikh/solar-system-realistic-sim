@@ -1,0 +1,87 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\begin{document}
+\title{Implementation Notes for Superluminal Phenomena Modeling --- Pass 3}
+\date{}
+\maketitle
+
+\section*{Goal}
+Build a causally safe model where apparent superluminal signatures are observer-space transforms, while transport channels remain subluminal.
+
+\section{Architecture}
+\begin{enumerate}
+\item Source preset: mass, spin, jet axis, distance, environment flags.
+\item Event kernel: launch time, intrinsic speed, power, and channel energy split.
+\item Observer transform: \(\beta_{\mathrm{app}}\), beaming, time-delay.
+\item Multi-channel transport: EM, GW, CR, neutrino.
+\item Output rendering: trajectories, light curves, posterior summaries.
+\end{enumerate}
+
+\section{Core equations}
+\[
+\beta_{\mathrm{app}}=\frac{\beta\sin\theta}{1-\beta\cos\theta},\qquad
+t_{\mathrm{obs}}=t_{\mathrm{em}}+\frac{D-\mathbf{\hat n}\cdot\mathbf r_{\mathrm{em}}}{c}
+\]
+\[
+F_{\nu,\mathrm{obs}}=\delta^{p}F'_{\nu'},\qquad
+\delta=[\Gamma(1-\beta\cos\theta)]^{-1}
+\]
+\[
+K_c(t)=A_c\mathbb{1}_{t\ge t_0}\left(\frac{t-t_0}{\tau_c}\right)e^{-(t-t_0)/\tau_c}
+\]
+
+\section{Python workflow}
+\begin{itemize}
+\item Core stack: \texttt{numpy}, \texttt{scipy}, \texttt{astropy}, \texttt{matplotlib}, \texttt{pandas}.
+\item Bayesian stack: \texttt{numpyro}, \texttt{emcee}, \texttt{arviz}.
+\item Suggested package modules:
+\begin{itemize}
+\item \texttt{src/core/geometry.py}
+\item \texttt{src/transport/channels.py}
+\item \texttt{src/observables/beaming.py}
+\item \texttt{src/fit/objective.py}
+\item \texttt{src/run/sweep.py}
+\end{itemize}
+\end{itemize}
+
+\section{Julia workflow}
+\begin{itemize}
+\item \texttt{DifferentialEquations.jl}, \texttt{Turing.jl}, \texttt{DataFrames.jl}.
+\item Use fast parametric sweeps and posterior sampling for posterior surfaces in \((\Gamma,\theta,\tau_c,p)\).
+\end{itemize}
+
+\section{MHD branch}
+\begin{enumerate}
+\item Run GRMHD/RMHD snapshot with HARM/PLUTO/BHAC.
+\item Ray-project synthetic emissivity maps.
+\item Feed map moments into apparent-motion and delay transforms.
+\item Compare to MOJAVE-like trajectory and flux diagnostics.
+\end{enumerate}
+
+\section{Diagnostics}
+\begin{itemize}
+\item \(\beta_{\mathrm{app}}(t)\) tracks with causality envelope.
+\item \(F_{\nu,\mathrm{obs}}(t)\) residuals vs multi-band data.
+\item Corner plots over core parameters.
+\item Channel-lag distributions and posterior predictive checks.
+\end{itemize}
+
+\section{Reproducibility protocol}
+\begin{enumerate}
+\item Version-pin all dependencies.
+\item Archive random seeds and input data hashes.
+\item Save config/run manifests with every experiment.
+\item Keep `advanced_mode` (speculative couplings) disabled by default.
+\end{enumerate}
+
+\section{Suggested next step}
+Create a single CLI entrypoint:
+\texttt{simulate --source cenA --mode physical --sweep --backend python|julia}
+
+\end{document}
+

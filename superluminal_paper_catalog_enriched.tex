@@ -1,0 +1,106 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+
+\begin{document}
+\title{Superluminal Phenomena Research Catalog --- Pass 2 Enrichment}
+\date{}
+\maketitle
+
+\section*{Scope}
+This pass enriches the bibliography for apparent-superluminal modeling with DOI/arXiv links, model assumptions, and reproducibility notes.
+
+\section{Core geometric and relativistic papers}
+\begin{enumerate}
+\item Rees, M.~J. (1966). ``Appearance of Relativistically Expanding Radio Sources.'' \emph{Nature} 211, 468--470.
+\[\mathrm{DOI:}\;\url{https://doi.org/10.1038/211468a0}\]
+\textbf{Assumption:} relativistic expansion + light-travel-time geometry.\\
+\textbf{Reproducibility:} closed-form validation against VLBI trajectories.
+
+\item Blandford, R.~D., Rees, M.~J. (1977). ``Super-luminal expansion in extragalactic radio sources.'' \emph{Nature} 267, 211--216.\\
+\url{https://doi.org/10.1038/267211a0}
+\textbf{Assumption:} compact relativistic features and beaming bias.\\
+\textbf{Reproducibility:} reproduce apparent-speed curves from observed component tracks.
+
+\item Blandford, R.~D., K\"onigl, A. (1979). ``Relativistic jets as compact radio sources.'' \emph{Astrophys. J.} 232, 34.\\
+\url{https://doi.org/10.1086/157262}
+\textbf{Assumption:} conical compact-jet/shock framework.\\
+\textbf{Reproducibility:} infer kinematic/emission parameters from jet-core observables.
+
+\item Urry, C.~M., Padovani, P. (1995). ``Unified schemes for radio-loud AGN.'' \emph{PASP} 107, 803--845.\\
+\url{https://doi.org/10.1086/133630} and \url{https://arxiv.org/abs/astro-ph/9506063}
+\textbf{Assumption:} orientation + relativistic beaming drives class taxonomy.\\
+\textbf{Reproducibility:} implement parent-population priors against class fractions.
+
+\item Blandford, R.~D., Znajek, R.~L. (1977). ``Electromagnetic extraction of energy from Kerr black holes.''\\
+\url{https://doi.org/10.1093/mnras/179.3.433}
+\textbf{Assumption:} magnetically powered jet power scaling.\\
+\textbf{Reproducibility:} evaluate with BH mass/spin/flux scalings from GRMHD output.
+\end{enumerate}
+
+\section{Observational kinematics and benchmarks}
+\begin{enumerate}
+\item MOJAVE VI. \url{https://arxiv.org/abs/0909.5100}; MOJAVE archive at \url{https://www.cv.nrao.edu/MOJAVE/}
+\textbf{Assumption:} parsec-scale component decomposition is physically meaningful.\\
+\textbf{Reproducibility:} use MOJAVE component tables and epoch maps.
+
+\item MOJAVE XVII. \url{https://arxiv.org/abs/1902.09591}
+\textbf{Assumption:} selection-aware population inversion for Lorentz factor and viewing-angle distributions.\\
+\textbf{Reproducibility:} replicate sample cuts and Monte-Carlo inference setup.
+
+\item MOJAVE XVIII. \url{https://arxiv.org/abs/2108.13358}
+\textbf{Assumption:} non-ballistic motions, PA evolution and instability signatures.\\
+\textbf{Reproducibility:} time-series fitting of position angles and apparent speed histories.
+\end{enumerate}
+
+\section{Transient and multi-messenger references}
+\begin{enumerate}
+\item Abbott et al. (2017) \url{https://arxiv.org/abs/1710.05834}; GW170817 timing with LIGO/Virgo open data \url{https://www.gw-openscience.org/}
+\textbf{Assumption:} prompt causal benchmark for non-FTL channels.\\
+\textbf{Reproducibility:} recompute lag constraints from public event data.
+
+\item Mooley et al. (2018). Nature 561: 355.\\
+\url{https://doi.org/10.1038/s41586-018-0486-3}, \url{https://arxiv.org/abs/1806.09693}
+\textbf{Assumption:} VLBI-measured apparent motion in a structured jet model.\\
+\textbf{Reproducibility:} structured-jet parameter inversion with afterglow and imaging constraints.
+
+\item Aartsen et al. (2018). IceCube--TXS 0506+056 association.\\
+\url{https://doi.org/10.1126/science.aat2890}
+\textbf{Assumption:} stochastic temporal correlation of neutrino events and blazar activity.\\
+\textbf{Reproducibility:} bootstrap/Monte-Carlo alert coincidence tests.
+\end{enumerate}
+
+\section{Transport and computational framework}
+\begin{enumerate}
+\item Bell, A.~R. (1978a,b) DSA references:\\
+\url{https://doi.org/10.1093/mnras/182.2.147}, \url{https://doi.org/10.1093/mnras/182.3.443}
+\textbf{Assumption:} shock acceleration via diffusive transport.\\
+\textbf{Reproducibility:} 1D transport toy grids with controllable compression ratios.
+
+\item Gammie, McKinney, T\'oth et al. HARM code.\\
+\url{https://doi.org/10.1086/374594}
+\textbf{Assumption:} conservative ideal GRMHD evolution.\\
+\textbf{Reproducibility:} run public HARM examples as front-end benchmark.
+
+\item Mignone et al. (2007) PLUTO.\\
+\url{https://doi.org/10.1086/513316}
+\textbf{Assumption:} finite-volume shock-capturing MHD/RMHD.\\
+\textbf{Reproducibility:} standard blast-wave + relativistic jet module validation.
+
+\item Gertsenshtein coupling branch (speculative).\\
+\url{https://arxiv.org/abs/2301.02072}
+\textbf{Assumption:} weak speculative GW--EM conversion under special conditions.\\
+\textbf{Reproducibility:} keep as post-processing perturbation with explicit feature flag.
+\end{enumerate}
+
+\section{Data anchors}
+\begin{itemize}
+\item MOJAVE data and notes: \url{https://www.cv.nrao.edu/MOJAVE/}, \url{https://www.cv.nrao.edu/MOJAVE/kinematicsnotes.html}
+\item LIGO/Virgo open data: \url{https://www.gw-openscience.org/}
+\item IceCube stream: \url{https://www.icecube.wisc.edu/}
+\item Pierre Auger public pages: \url{https://www.auger.org/}
+\end{itemize}
+
+\end{document}
+
