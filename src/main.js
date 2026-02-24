@@ -42,7 +42,7 @@ import {
 } from './frontend/app/sceneSetup.js';
 import { createTextureManager } from './frontend/app/textureManager.js';
 import { createTimeController } from './frontend/app/timeController.js';
-import { createSunController } from './sunController.js';
+import { createSunController } from './sunController';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,7 @@ const dom = {
   viewportShell: document.getElementById('viewport-shell'),
   agnSource: document.getElementById('agn-source'),
   agnPreset: document.getElementById('agn-preset'),
+  agnHypothesis: document.getElementById('agn-hypothesis'),
   agnObserverFrame: document.getElementById('agn-observer-frame'),
   agnStochastic: document.getElementById('agn-stochastic'),
   triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
@@ -592,6 +593,7 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
   const source = dom.agnSource?.value || 'SagittariusA';
   const preset = dom.agnPreset?.value || '';
   const observerFrame = Boolean(dom.agnObserverFrame?.checked);
+  const hypothesis = dom.agnHypothesis?.value || 'compound';
   sunCtrl.setAgnObserverFrameMode(observerFrame);
 
   let impactTimeSec = 8.0;
@@ -609,6 +611,7 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
 
   const options = {};
   if (preset) options.preset = preset;
+  options.hypothesis = hypothesis;
 
   sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
 });

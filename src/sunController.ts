@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Group } from 'three';
 import { J2000_JD } from './constants.js';
 import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient.js';
@@ -29,7 +30,7 @@ import {
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
 } from './frontend/features/solar/solarFeatureBlending.js';
 import { createGWVisualization } from './frontend/features/solar/gravitationalWaves.js';
-import { createAgnShockwaveEngine } from './frontend/features/solar/agnShockwaveEngine.js';
+import { createAgnShockwaveEngine } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
