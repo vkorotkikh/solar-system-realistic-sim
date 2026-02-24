@@ -413,9 +413,16 @@ export function createSunController({
     setAgnObserverFrameMode: (enabled) => {
       if (agnEngine?.setObserverFrameMode) agnEngine.setObserverFrameMode(enabled);
     },
-    triggerAgnShockwave: (source, impactTimeSec, intensity) => {
-      if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity);
+    triggerAgnShockwave: (source, impactTimeSec, intensity, options) => {
+      if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity, options);
     },
+    setAgnStochasticFlaring: (enabled) => {
+      if (agnEngine?.setStochasticFlaring) agnEngine.setStochasticFlaring(enabled);
+    },
+    getAgnPhysics: () => agnEngine?.getPhysics?.() ?? null,
+    getAgnTimeline: () => agnEngine?.getTimeline?.() ?? null,
+    getAgnEventPresets: () => agnEngine?.getEventPresets?.() ?? {},
+    getAgnSourceCatalog: () => agnEngine?.getSourceCatalog?.() ?? {},
     get magneticFieldGroup() { return sunMagneticFieldGroup; },
     get surfaceMaterial() { return sunSurfaceMaterial; }
   };

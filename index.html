@@ -69,15 +69,32 @@
         <h2>Cataclysmic Events</h2>
         <label for="agn-source">SMBH source</label>
         <select id="agn-source">
-          <option value="SagittariusA" selected>Sagittarius A* (Milky Way)</option>
-          <option value="CentaurusA">Centaurus A (nearest active AGN)</option>
-          <option value="Maffei1">Maffei 1 (hypothetical giant elliptical)</option>
+          <option value="SagittariusA" selected>Sgr A* — Milky Way (4.15×10⁶ M☉)</option>
+          <option value="CentaurusA">Cen A — Nearest Active AGN (5.5×10⁷ M☉)</option>
+          <option value="Maffei1">Maffei 1 — Hidden Giant Elliptical (~3×10⁸ M☉)</option>
+          <option value="M87">M87* — Virgo Monster (6.5×10⁹ M☉, educational)</option>
+        </select>
+        <label for="agn-preset">Event preset</label>
+        <select id="agn-preset">
+          <option value="" selected>Custom (default energy)</option>
+          <option value="SgrA_CurrentFlare">Sgr A* Typical Flare (10³⁹ erg)</option>
+          <option value="SgrA_SuperFlare">Sgr A* Super-Flare ~300 yr ago (10⁴³ erg)</option>
+          <option value="SgrA_FermiBubble_Inner">Fermi Bubble Event ~5 Myr (10⁵⁶ erg)</option>
+          <option value="SgrA_FermiBubble_Outer">eROSITA Bubble ~15 Myr (10⁵⁷ erg)</option>
+          <option value="CenA_CurrentJet">Cen A Active Jet — UHECRs NOW (10⁵⁶ erg)</option>
+          <option value="Maffei1_Hypothetical">Maffei 1 Hidden Outburst (10⁵⁵ erg)</option>
+          <option value="M87_Monster">M87* Full Power Jet (10⁵⁸ erg)</option>
+          <option value="MW_M31_Merger">MW-M31 Merger ~4.5 Gyr future (10⁶² erg)</option>
         </select>
         <label>
           <input id="agn-observer-frame" type="checkbox" checked />
           Observer frame (apparent superluminal projection)
         </label>
-        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger SMBH Multi-Messenger Event</button>
+        <label>
+          <input id="agn-stochastic" type="checkbox" />
+          Continuous stochastic flaring (JWST 2025: 5-6/day)
+        </label>
+        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger SMBH Compound Shockwave</button>
       </section>
     </aside>
 

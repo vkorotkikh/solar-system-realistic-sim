@@ -70,7 +70,9 @@ const dom = {
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   viewportShell: document.getElementById('viewport-shell'),
   agnSource: document.getElementById('agn-source'),
+  agnPreset: document.getElementById('agn-preset'),
   agnObserverFrame: document.getElementById('agn-observer-frame'),
+  agnStochastic: document.getElementById('agn-stochastic'),
   triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
 };
 
@@ -588,6 +590,7 @@ dom.canvas?.addEventListener('dblclick', (e) => {
 
 dom.triggerAgnShockwave?.addEventListener('click', () => {
   const source = dom.agnSource?.value || 'SagittariusA';
+  const preset = dom.agnPreset?.value || '';
   const observerFrame = Boolean(dom.agnObserverFrame?.checked);
   sunCtrl.setAgnObserverFrameMode(observerFrame);
 
@@ -599,13 +602,23 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
   } else if (source === 'Maffei1') {
     impactTimeSec = 10.5;
     intensity = 0.7;
+  } else if (source === 'M87') {
+    impactTimeSec = 12.0;
+    intensity = 0.5;
   }
 
-  sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity);
+  const options = {};
+  if (preset) options.preset = preset;
+
+  sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
 });
 
 dom.agnObserverFrame?.addEventListener('change', () => {
   sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
+});
+
+dom.agnStochastic?.addEventListener('change', () => {
+  sunCtrl.setAgnStochasticFlaring(Boolean(dom.agnStochastic?.checked));
 });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
