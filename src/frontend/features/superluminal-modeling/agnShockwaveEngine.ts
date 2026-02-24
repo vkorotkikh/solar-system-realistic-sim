@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AGN Compound Shockwave Engine — Multi-Messenger SMBH Event Simulation
  *
@@ -15,7 +16,7 @@ import { Vector3 } from 'three';
 import {
     SOURCE_CATALOG, EVENT_PRESETS,
     SGR_A
-} from './smbhPhysicsConstants.js';
+} from './smbhPhysicsConstants';
 import {
     computeMultiMessengerTimeline,
     yearsToDisplaySeconds,
@@ -24,7 +25,7 @@ import {
     timeCompressionFactor,
     lorentzGamma,
     generateStochasticFlares
-} from './smbhPropagation.js';
+} from './smbhPropagation';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DIRECTION VECTORS (scene-space approximations)

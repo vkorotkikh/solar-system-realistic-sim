@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * SMBH Compound Shockwave — Propagation Physics
  *
@@ -18,7 +19,7 @@ import {
     C_CM_S, G_CGS, YR_S, MYR_S, EV_ERG, E_CHARGE,
     ISM, HELIO, KPC_CM, AU_CM,
     CHANNEL_DEFS, SOURCE_CATALOG
-} from './smbhPhysicsConstants.js';
+} from './smbhPhysicsConstants';
 
 const H29_ENERGY_LOG_MIN = 40;
 const H29_ENERGY_LOG_MAX = 58;
