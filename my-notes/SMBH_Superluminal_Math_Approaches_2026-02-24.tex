@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Mathematical Approaches to Superluminal Phenomenon \\ \large Simulating Astrophysical Shockwaves \& Jets}
+\author{Solar System Simulation Research}
+\date{February 24, 2026}
+
+\begin{document}
+
+\maketitle
+
+This document outlines the primary computational mathematics frameworks used in 2024-2025 to simulate and approximate superluminal phenomena in astrophysical environments.
+
+\section*{1. Apparent Superluminal Motion (Kinematics)}
+The foundational analytical approach to modeling ``faster-than-light'' observation is a geometric projection effect driven by finite light-travel time.
+
+If a plasma blob in an AGN jet moves at true velocity $v = \beta c$ at an angle $\theta$ relative to the observer's line of sight, the apparent transverse velocity $v_{app} = \beta_{app} c$ is:
+\begin{equation}
+    \beta_{app} = \frac{\beta \sin\theta}{1 - \beta \cos\theta}
+\end{equation}
+
+\section*{2. General Relativistic Magnetohydrodynamics (GRMHD)}
+Used to model the macroscopic fluid dynamics of the jet launching and accretion disk surrounding the SMBH in curved spacetime.
+
+GRMHD solves the conservation of particle number, energy, and momentum, coupled with Maxwell's equations in the ideal MHD limit:
+\begin{align}
+    \nabla_\mu (\rho u^\mu) &= 0 \\
+    \nabla_\mu T^{\mu\nu} &= 0 \\
+    \nabla_\mu ^*F^{\mu\nu} &= 0
+\end{align}
+Where $T^{\mu\nu}$ is the energy-momentum tensor encompassing fluid and electromagnetic contributions, $u^\mu$ is the 4-velocity, and $^*F^{\mu\nu}$ is the dual electromagnetic tensor. 
+
+\textbf{2024-2025 Advancements:} Recent codes integrate \textit{Resistive} Relativistic MHD (RRMHD), allowing for the numerical simulation of magnetic reconnection and current sheets, which accelerate particles to produce superluminal knots.
+
+\section*{3. Particle-in-Cell (PIC) Plasma Simulations}
+Used to model the microscopic, collisionless kinetic effects of the plasma. PIC simulations solve the Vlasov-Maxwell system by tracking discrete ``macro-particles''.
+
+\begin{enumerate}
+    \item \textbf{Lorentz Force Calculation:} 
+    \begin{equation}
+        \frac{d(\gamma \mathbf{v})}{dt} = \frac{q}{m} (\mathbf{E} + \mathbf{v} \times \mathbf{B})
+    \end{equation}
+    \item \textbf{Current/Charge Deposition:} Interpolating particle positions onto a fixed computational grid to calculate charge density $\rho$ and current density $\mathbf{J}$.
+    \item \textbf{Maxwell Solvers:} Updating the $\mathbf{E}$ and $\mathbf{B}$ fields on the grid using Finite-Difference Time-Domain (FDTD) Yee algorithms.
+\end{enumerate}
+
+\section*{4. Numerical Relativity: Cauchy-Characteristic Evolution (CCE)}
+Used to model the permanent spacetime deformations (gravitational wave memory) from massive black hole mergers.
+
+CCE couples inner Cauchy evolution to a ``characteristic'' evolution along outgoing null hypersurfaces extending to future null infinity ($\mathscr{I}^+$). This extracts the non-oscillatory ``memory'' component $\Delta h$ of the gravitational wave strain.
+
+\textbf{2024-2025 Advancements:} The SXS collaboration has developed machine learning surrogate models (NRHybSur3dq8\_CCE) that apply mathematical interpolation to vast databases of CCE simulations to rapidly approximate GW memory signals.
+
+\end{document}
