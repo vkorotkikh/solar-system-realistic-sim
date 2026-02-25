@@ -1,89 +1,82 @@
 # TypeScript Migration Plan
 
-## Current state (as of now)
+## Current state snapshot (2026-02-25)
 
-- Source files in `src` with JS/TS target modules: `58`
-- TypeScript files: `12`
-- JavaScript files: `46`
-- Pure JS-to-TS conversion completion (file-based): `12/58 = 20.7%`
-- JavaScript/TypeScript source LOC (combined, via `wc`): `15,625`
-- TypeScript LOC: `5,824`
-- TypeScript LOC coverage: `5,824 / 15,625 = 37.3%`
-- New TS wave completed in this iteration: `5` files (`constants`, `stateStore`, `timeController`, `textureManager`, `sceneSetup`) with compatibility `.js` re-export shims.
+- Source files in `src`: `61`
+- TypeScript files: `28`
+- JavaScript files: `33`
+- File-based completion: `28/61 = 45.9%`
+- Combined source LOC: `15,714`
+- TypeScript LOC: `8,804`
+- TypeScript LOC coverage: `8,804 / 15,714 = 56.0%`
+- Phase 1 data/sim items (`catalog`, `planets`, `textures`) are migrated with compatibility `.js` shims.
 
-### Immediate interpretation
-- Progress is meaningful in infrastructure, but most feature/simulation modules are still JavaScript (mostly `src/frontend/features/*`, `src/frontend/app/*`, and `src/main.js`).
+## What is currently done
 
----
+- [x] `src/sim/catalog.ts` with shim `src/sim/catalog.js`
+- [x] `src/data/planets.ts` with shim `src/data/planets.js`
+- [x] `src/textures.ts` with shim `src/textures.js`
+- [x] `src/constants.ts` with shim `src/constants.js`
+- [x] `src/sunController.ts` migration completed
+- [x] `src/frontend/app/stateStore.ts` with shim
+- [x] `src/frontend/app/timeController.ts` with shim
+- [x] `src/frontend/app/textureManager.ts` with shim
+- [x] `src/frontend/app/sceneSetup.ts` with shim
+- [x] Backend EPO smoke-test scaffold and 30 seeded episodes: `backend/mission/epo/config.py`, `backend/mission/epo/metrics.py`, `backend/mission/epo/runners.py`, `backend/mission/epo/verifier.py`, `backend/mission/epo/sample_episodes.py`, `backend/mission/epo/smoke_test.py`
+- [x] Runtime bootstrap app modules converted with shim strategy:
+  - `src/main.ts`
+  - `src/frontend/app/{animationLoop,cameraController,inputHandler,uiBindings,labelSystem,bodyManager,routeRenderer,localSystemRenderer,nearbySystemsRenderer,plannerController,temp_nearbySystemsRenderer}.ts`
+  - `src/frontend/camera/transitions.ts`
 
-## Scope breakdown (remaining, by file count)
+## Remaining JS workload (in `src`)
 
-### Remaining files to convert
-- `46` JavaScript files
-  - `app`: 15 files
-  - `features`: 18 files
-  - `sim`: 5 files
-  - `data`: 1 file
-  - root (`main`, `textures`, etc.): 7 files
+- `33` JavaScript modules remain (all as shims + non-migrated feature/render modules)
+- `frontend/app`: `13` unconverted JS files (the remaining app+feature-facing render/control modules)
+- `frontend/features`: `18` files, about `5,789` LOC
+- `sim`: `5` files, about `544` LOC
+- `frontend/rendering`: `3` files, about `557` LOC
+- `frontend/camera`: `1` file, `80` LOC
+- `root`: `main.js` plus existing shims, about `681` LOC
 
-### High-level risk / complexity buckets
-- Core runtime path (`main`, state/time/controls/render integration): medium-high
-- Planetary/solar feature math + shaders / visuals: high
-- Asteroid pipeline + distributions: medium-high
+## Phase plan (priority order)
 
----
+### Phase 1 — Runtime bootstrap and interaction layer
+- [x] `src/main.js` shim → `src/main.ts`
+- [x] `src/frontend/app/animationLoop.js` shim → `src/frontend/app/animationLoop.ts`
+- [x] `src/frontend/app/cameraController.js` shim → `src/frontend/app/cameraController.ts`
+- [x] `src/frontend/app/inputHandler.js` shim → `src/frontend/app/inputHandler.ts`
+- [x] `src/frontend/app/uiBindings.js` shim → `src/frontend/app/uiBindings.ts`
+- [x] `src/frontend/app/labelSystem.js` shim → `src/frontend/app/labelSystem.ts`
+- [x] `src/frontend/app/bodyManager.js` shim → `src/frontend/app/bodyManager.ts`
+- [x] `src/frontend/app/routeRenderer.js` shim → `src/frontend/app/routeRenderer.ts`
+- [x] `src/frontend/app/localSystemRenderer.js` shim → `src/frontend/app/localSystemRenderer.ts`
+- [x] `src/frontend/app/nearbySystemsRenderer.js` shim → `src/frontend/app/nearbySystemsRenderer.ts`
+- [x] `src/frontend/app/plannerController.js` shim → `src/frontend/app/plannerController.ts`
+- [x] `src/frontend/app/temp_nearbySystemsRenderer.js` shim → `src/frontend/app/temp_nearbySystemsRenderer.ts`
+- [x] `src/frontend/camera/transitions.js` shim → `src/frontend/camera/transitions.ts`
 
-## Phased TODO plan
+### Phase 2 — Feature logic stack
+- [ ] `src/frontend/features/planetary/*` (all `7` files)
+- [ ] `src/frontend/features/solar/*` (all `9` files)
+- [ ] `src/frontend/features/trajectory/*` (both files)
+- [ ] Validate UI/visual behavior against current baselines.
 
-### Phase 0 — Completed (already done)
-- [x] Convert core infrastructure modules to TypeScript
-  - `src/constants.ts` (+ shim `src/constants.js`)
-  - `src/frontend/app/stateStore.ts` (+ shim)
-  - `src/frontend/app/timeController.ts` (+ shim)
-  - `src/frontend/app/textureManager.ts` (+ shim)
-  - `src/frontend/app/sceneSetup.ts` (+ shim)
+### Phase 3 — Rendering + completion glue
+- [ ] `src/frontend/rendering/*`
+- [ ] Clean up bootstrap exports once app and features are on TS.
+- [ ] `src/sim` runtime callsites touched by previous phases.
 
-### Phase 1 — Data + catalog + simulation model (target: 20–25% of remaining effort)
-- [ ] `src/sim/catalog.js` → `src/sim/catalog.ts` + shim
-- [ ] `src/data/planets.js` → `src/data/planets.ts` (or structured typings in adjacent `types` module + minimal wrapper)
-- [ ] `src/textures.js` → `src/textures.ts` + shim
-- [ ] `src/sunController.ts` and tightly coupled dependencies audit for stronger typings
-
-### Phase 2 — Runtime wiring & interaction layer (target: 20–25% of remaining effort)
-- [ ] `src/main.js` → `src/main.ts` or TS boundary shim pattern
-- [ ] `src/frontend/app/animationLoop.js` → `src/frontend/app/animationLoop.ts`
-- [ ] `src/frontend/app/cameraController.js` → `src/frontend/app/cameraController.ts`
-- [ ] `src/frontend/app/inputHandler.js` → `src/frontend/app/inputHandler.ts`
-- [ ] `src/frontend/app/uiBindings.js` → `src/frontend/app/uiBindings.ts`
-- [ ] `src/frontend/app/labelSystem.js` (strongly tied to runtime; do after `state`/`model` stabilize)
-
-### Phase 3 — Feature stack (target: 40–45% of remaining effort)
-- [ ] `src/frontend/features/solar/*` (all 9 files)
-- [ ] `src/frontend/features/planetary/*` (all 7 files)
-- [ ] `src/frontend/features/trajectory/*` (2 files)
-- [ ] Keep behavior parity checks at integration points (no visible changes in rendering/control behavior).
-
-### Phase 4 — Asteroids + hardening (target: 10–15% remaining)
+### Phase 4 — Asteroids and hardening
 - [ ] `src/sim/asteroids/*` (4 files)
-- [ ] Resolve any residual `allowJs`/typing pressure (import/export gaps, JSON typing)
-- [ ] Remove shim burden where all callers move to `.ts` extensions
-- [ ] Final migration cleanup pass on app bootstrap and docs
+- [ ] Remove shims where all imports are migrated to `.ts` sources.
+- [ ] Final lint/build smoke pass plus behavior parity checks.
 
----
+## Milestones
 
-## Completion metric proposal
+- Milestone A (runtime loop stable): end of Phase 1 — **completed in this iteration**
+- Milestone B (feature parity): end of Phase 2
+- Milestone C (migration complete): end of Phase 4
 
-- Milestone A (first value): finish Phase 1 end-to-end and land 1st PR
-  - Estimated new conversion ratio: `~35% files` / `~55% LOC`
-- Milestone B (core runtime): finish Phase 2
-  - Estimated conversion ratio: `~55% files` / `~75% LOC`
-- Milestone C (full migration): finish all phases
-  - Target conversion ratio: `100% JS/TS source files` with strict TS types on call boundaries
+## Smoke-test command
 
-## Suggested immediate action order (next 1–2 passes)
-1. Start Phase 1, starting with:
-   - `src/sim/catalog.ts` (single integration seam)
-   - `src/data/planets.ts` (type surface)
-   - keep behavior unchanged behind temporary shim exports where needed
-2. Then proceed through `src/main.ts` migration to stabilize app wiring.
-3. Only after runtime wiring is stable, convert visual feature clusters.
+- `PYTHONPATH=backend python -m mission.epo.smoke_test --family mining_core --family outer_reacher --family return_pressure --compact`
