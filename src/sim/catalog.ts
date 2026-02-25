@@ -1,4 +1,4 @@
-import moons from '../data/moons.json';
+import rawMoons from '../data/moons.json';
 import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants.js';
 import {
   ASTEROID_BELT_OBJECTS,
@@ -10,6 +10,66 @@ import {
   PLANETS,
   SUN
 } from '../data/planets.js';
+import type { KeplerOrbit } from './orbitMath';
+
+interface RawMoonRecord {
+  id: number;
+  planet: string;
+  name: string;
+  iauCode: string;
+  ephemeris: string;
+  frame: string;
+  epochTdb: string;
+  aKm: number;
+  e: number;
+  argPeriapsisDeg: number;
+  meanAnomalyDeg: number;
+  inclinationDeg: number;
+  ascendingNodeDeg: number;
+  periodDays: number;
+  apsisPrecessionYears: number | null;
+  nodePrecessionYears: number | null;
+  poleRaDeg: number | null;
+  poleDecDeg: number | null;
+  poleTiltDeg: number | null;
+  reference: string;
+}
+
+const moons = rawMoons as readonly RawMoonRecord[];
+
+export interface CatalogBody {
+  id: string;
+  name: string;
+  type: string;
+  massKg: number | null;
+  radiusKm: number;
+  color: string;
+  equatorialRadiusKm: number;
+  polarRadiusKm: number;
+  displayRadiusAu: number;
+  realRadiusAu: number;
+  parentId: string | null;
+  isMajor: boolean;
+  rotationPeriodHours: number | null;
+  reference?: string;
+  orbitFrameSource?: string;
+  axialTiltDeg?: number;
+  spinAxisLongitudeDeg?: number;
+  rotationPhaseDeg?: number;
+  orbit: KeplerOrbit | null;
+}
+
+export interface SolarCatalog {
+  bodies: CatalogBody[];
+  jumpBodyIds: string[];
+  plannerBodyIds: string[];
+}
+
+interface OrbitNormal {
+  x: number;
+  y: number;
+  z: number;
+}
 
 const PARENT_TINTS = {
   Earth: '#d2d8e3',
@@ -24,7 +84,7 @@ const PARENT_TINTS = {
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 const EARTH_OBLIQUITY_DEG = 23.439281;
-const PARENT_AXIAL_TILT_DEG = Object.fromEntries(
+const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
   PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
 
@@ -50,11 +110,11 @@ function orbitNormalFromElements(iDeg, ascendingNodeDeg) {
   };
 }
 
-function vectorMagnitude(vector) {
+function vectorMagnitude(vector: OrbitNormal): number {
   return Math.hypot(vector.x, vector.y, vector.z);
 }
 
-function normalizeVector(vector) {
+function normalizeVector(vector: OrbitNormal): OrbitNormal {
   const mag = vectorMagnitude(vector);
   if (mag < 1e-12) {
     return { x: 0, y: 0, z: 1 };
@@ -66,7 +126,7 @@ function normalizeVector(vector) {
   };
 }
 
-function crossProduct(a, b) {
+function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
   return {
     x: a.y * b.z - a.z * b.y,
     y: a.z * b.x - a.x * b.z,
@@ -275,9 +335,9 @@ function applyDisplayScaleConstraints(bodies) {
   }
 }
 
-export function createSolarSystemCatalog() {
-  const usedIds = new Set();
-  const bodies = [];
+export function createSolarSystemCatalog(): SolarCatalog {
+  const usedIds = new Set<string>();
+  const bodies: CatalogBody[] = [];
 
   const sunBody = {
     ...SUN,
