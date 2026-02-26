@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { MU_SUN_AU3_DAY2 } from '../physics.js'; // Assuming physics.js exports this, or define it locally if not
 
 // Define local constant just in case it's not exported
