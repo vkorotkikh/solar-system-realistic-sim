@@ -47,6 +47,65 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-25 12:45 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Completed Phase 3 for rendering + asteroids TypeScript migration with shim cleanup.
+
+Context / rationale:
+- User requested next-phase execution through `src/frontend/rendering/*` and `src/sim/asteroids/*`.
+- This pass extends the Phase 2 shim strategy and removes shim `.js` files where imports are now TS-native.
+
+Proposed approach:
+- Converted `src/frontend/rendering/{lodManager,milkyWay,orbitRenderer}.ts` and kept behavior parity with prior `.js`.
+- Converted `src/sim/asteroids/{asteroidDistributions,asteroidGeometry,asteroidPipeline,asteroidShaders}.ts` with no algorithm changes.
+- Updated internal TypeScript imports to extensionless/TS-local module paths.
+- Removed obsolete `.js` shim files for these Phase 3 modules and updated migration metrics/documentation.
+
+Expected impact:
+- Rendering and asteroid runtime modules are now sourced directly from TypeScript for Phase 3 scope.
+- Remaining migration risk is lowered by ending shim indirection for this module set.
+- Improves maintenance signal for future edits and aligns phase completion accounting.
+
+Affected files/systems:
+- `src/frontend/rendering/{lodManager.ts,milkyWay.ts,orbitRenderer.ts}`
+- `src/sim/asteroids/{asteroidDistributions.ts,asteroidGeometry.ts,asteroidPipeline.ts,asteroidShaders.ts}`
+- `typescript_migration_plan.md`
+- `Development_History_Context.md`
+
+Next step:
+- Continue with Phase 4 runtime hardening and final TS-native callsite cleanup across remaining JS entry layers.
+
+### 2026-02-25 12:15 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Completed Phase 2 feature-stack migration from JavaScript to TypeScript with shim compatibility on all feature modules.
+
+Context / rationale:
+- User requested explicit Phase 2 execution for `src/frontend/features/{planetary,solar,trajectory}` while keeping runtime behavior unchanged.
+- Phase 1 app/runtime shim conversion was already complete, so preserving behavior during feature migration was the priority.
+
+Proposed approach:
+- Copied each feature module from `.js` to `.ts` and added `// @ts-nocheck` at the top to avoid breaking compile while preserving current contracts.
+- Replaced each `.js` entry with a one-line re-export shim to its `.ts` peer.
+- Fixed `src/frontend/features/trajectory/index.js` shim target to avoid self-import recursion (`./index.ts`).
+
+Expected impact:
+- Feature modules now load via TypeScript sources while `.js` interfaces remain stable for existing imports.
+- Immediate regression risk minimized through behavior-preserving shim strategy.
+- Sets up Phase 3 to focus on rendering/asteroid modules directly.
+
+Affected files/systems:
+- `src/frontend/features/{planetary,solar,trajectory}/*.ts`
+- `src/frontend/features/{planetary,solar,trajectory}/*.js`
+- `typescript_migration_plan.md`
+- `Development_History_Context.md` (next linked entry)
+
+Next step:
+- Begin Phase 3: migrate `src/frontend/rendering/*` and asteroids runtime modules to TypeScript using the same shim pattern.
+
 ### 2026-02-23 06:40 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`

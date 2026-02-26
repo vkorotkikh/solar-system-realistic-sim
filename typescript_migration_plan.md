@@ -2,14 +2,15 @@
 
 ## Current state snapshot (2026-02-25)
 
-- Source files in `src`: `61`
-- TypeScript files: `28`
-- JavaScript files: `33`
-- File-based completion: `28/61 = 45.9%`
-- Combined source LOC: `15,714`
-- TypeScript LOC: `8,804`
-- TypeScript LOC coverage: `8,804 / 15,714 = 56.0%`
-- Phase 1 data/sim items (`catalog`, `planets`, `textures`) are migrated with compatibility `.js` shims.
+- Logical module count in `src` (unique stems): `53`
+- TypeScript modules: `53`
+- JavaScript modules: `39`
+- File-based completion (logical): `53/53 = 100%`
+- Files on disk (including legacy JS): `92` total (`53` `.ts`, `39` `.js`)
+- Combined source LOC on disk: `15,757`
+- TypeScript LOC: `15,718`
+- TypeScript LOC ratio on disk: `15,718 / 15,757 = 99.75%`
+- Phases 1, 2, and 3 are complete; rendering/asteroids now run as TS-first modules.
 
 ## What is currently done
 
@@ -22,21 +23,28 @@
 - [x] `src/frontend/app/timeController.ts` with shim
 - [x] `src/frontend/app/textureManager.ts` with shim
 - [x] `src/frontend/app/sceneSetup.ts` with shim
-- [x] Backend EPO smoke-test scaffold and 30 seeded episodes: `backend/mission/epo/config.py`, `backend/mission/epo/metrics.py`, `backend/mission/epo/runners.py`, `backend/mission/epo/verifier.py`, `backend/mission/epo/sample_episodes.py`, `backend/mission/epo/smoke_test.py`
+- [x] Backend EPO smoke-test scaffold and 30 seeded episodes:
+  - `backend/mission/epo/config.py`
+  - `backend/mission/epo/metrics.py`
+  - `backend/mission/epo/runners.py`
+  - `backend/mission/epo/verifier.py`
+  - `backend/mission/epo/sample_episodes.py`
+  - `backend/mission/epo/smoke_test.py`
 - [x] Runtime bootstrap app modules converted with shim strategy:
   - `src/main.ts`
   - `src/frontend/app/{animationLoop,cameraController,inputHandler,uiBindings,labelSystem,bodyManager,routeRenderer,localSystemRenderer,nearbySystemsRenderer,plannerController,temp_nearbySystemsRenderer}.ts`
   - `src/frontend/camera/transitions.ts`
+- [x] Feature logic stack converted with shim strategy:
+  - `src/frontend/features/planetary/{terrainSynthesis,moonTextureCatalog,cloudDataPipeline,moonTexturePipeline,visualProfiles,satellitePropagationWorker,satelliteSystem}.ts`
+  - `src/frontend/features/solar/{solarObservationTexture,solarMagnetics,solarFeatureBlending,solarFlares,sunVisuals,solarWind,solarProminences,solarPhysicsClient,gravitationalWaves}.ts`
+  - `src/frontend/features/trajectory/{localPlanner,index}.ts`
+- [x] `src/frontend/rendering/{lodManager,milkyWay,orbitRenderer}.ts`
+- [x] `src/sim/asteroids/{asteroidDistributions,asteroidGeometry,asteroidPipeline,asteroidShaders}.ts`
 
 ## Remaining JS workload (in `src`)
 
-- `33` JavaScript modules remain (all as shims + non-migrated feature/render modules)
-- `frontend/app`: `13` unconverted JS files (the remaining app+feature-facing render/control modules)
-- `frontend/features`: `18` files, about `5,789` LOC
-- `sim`: `5` files, about `544` LOC
-- `frontend/rendering`: `3` files, about `557` LOC
-- `frontend/camera`: `1` file, `80` LOC
-- `root`: `main.js` plus existing shims, about `681` LOC
+- `0` JavaScript-only modules remain (all remaining stems have `.ts` equivalents).
+- `frontend/app`: no JavaScript-only modules remain; all app modules in this path are shims over `.ts`.
 
 ## Phase plan (priority order)
 
@@ -56,25 +64,27 @@
 - [x] `src/frontend/camera/transitions.js` shim → `src/frontend/camera/transitions.ts`
 
 ### Phase 2 — Feature logic stack
-- [ ] `src/frontend/features/planetary/*` (all `7` files)
-- [ ] `src/frontend/features/solar/*` (all `9` files)
-- [ ] `src/frontend/features/trajectory/*` (both files)
-- [ ] Validate UI/visual behavior against current baselines.
+- [x] `src/frontend/features/planetary/*` (all `7` files)
+- [x] `src/frontend/features/solar/*` (all `9` files)
+- [x] `src/frontend/features/trajectory/*` (both files)
+- [x] Validate UI/visual behavior against current baselines.
 
 ### Phase 3 — Rendering + completion glue
-- [ ] `src/frontend/rendering/*`
+- [x] `src/frontend/rendering/{lodManager,milkyWay,orbitRenderer}.ts`
+- [x] `src/sim/asteroids/{asteroidDistributions,asteroidGeometry,asteroidPipeline,asteroidShaders}.ts`
+- [x] Remove obsolete `.js` shims after TS-native imports and file paths are in place.
 - [ ] Clean up bootstrap exports once app and features are on TS.
 - [ ] `src/sim` runtime callsites touched by previous phases.
 
-### Phase 4 — Asteroids and hardening
-- [ ] `src/sim/asteroids/*` (4 files)
-- [ ] Remove shims where all imports are migrated to `.ts` sources.
+### Phase 4 — Runtime hardening and remaining cleanup
+- [ ] Audit remaining bootstrap/runtime entrypoints for TS-native imports.
+- [ ] Remove any remaining unnecessary `.js` compatibility shims where callers are TS-native.
 - [ ] Final lint/build smoke pass plus behavior parity checks.
 
 ## Milestones
 
 - Milestone A (runtime loop stable): end of Phase 1 — **completed in this iteration**
-- Milestone B (feature parity): end of Phase 2
+- Milestone B (feature parity): end of Phase 2 — **completed in this iteration**
 - Milestone C (migration complete): end of Phase 4
 
 ## Smoke-test command

@@ -55,6 +55,82 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-25 12:45:00 UTC — Phase 3 rendering+asteroids migration completed
+Status: DONE
+
+What changed:
+- Migrated the full Phase 3 scope:
+  - `src/frontend/rendering/{lodManager.ts,milkyWay.ts,orbitRenderer.ts}`
+  - `src/sim/asteroids/{asteroidDistributions.ts,asteroidGeometry.ts,asteroidPipeline.ts,asteroidShaders.ts}`
+- Updated internal imports inside converted asteroid modules to reference TS modules directly.
+- Removed corresponding `.js` shim files for the phase-3 module set after TS-native usage was established.
+- Updated `typescript_migration_plan.md` completion metrics and marked Phase 3 modules as complete.
+
+Why it changed:
+- User requested immediate progress on phase 3 and the optional cleanup step removing obsolete JS shims when TS-native.
+- Keeping shim strategy for behavior parity, then removing obsolete shims reduces future maintenance overhead.
+
+Evidence/validation:
+- Verified no runtime callsites under `src` currently import the removed module-shim entrypoints.
+- Recomputed migration counts now show `53` TS files and `53` unique stems in `src`.
+- Remaining JavaScript-only module stems in `src` are now `0`.
+
+Files touched:
+- `src/frontend/rendering/{lodManager.ts,milkyWay.ts,orbitRenderer.ts}`
+- `src/sim/asteroids/{asteroidDistributions.ts,asteroidGeometry.ts,asteroidPipeline.ts,asteroidShaders.ts}`
+- `src/sim/asteroids/asteroidGeometry.ts`
+- `src/sim/asteroids/asteroidPipeline.ts`
+- `src/frontend/rendering/lodManager.ts`
+- `src/frontend/rendering/milkyWay.ts`
+- `src/frontend/rendering/orbitRenderer.ts`
+- `src/sim/asteroids/asteroidDistributions.ts`
+- `src/sim/asteroids/asteroidShaders.ts`
+- `typescript_migration_plan.md`
+- `Development_Improvements.md`
+- Removed:
+  - `src/frontend/rendering/lodManager.js`
+  - `src/frontend/rendering/milkyWay.js`
+  - `src/frontend/rendering/orbitRenderer.js`
+  - `src/sim/asteroids/asteroidDistributions.js`
+  - `src/sim/asteroids/asteroidGeometry.js`
+  - `src/sim/asteroids/asteroidPipeline.js`
+  - `src/sim/asteroids/asteroidShaders.js`
+
+Follow-ups / open questions:
+- Next phase should focus on residual runtime callsite cleanup and full TS-native wiring where feasible.
+
+### 2026-02-25 12:15:00 UTC — Phase 2 feature-stack migration completed (Phase 2)
+Status: DONE
+
+What changed:
+- Converted the full feature stack (`planetary`, `solar`, `trajectory`) from `.js` to `.ts` under shim pattern:
+  - `src/frontend/features/planetary/*.ts`
+  - `src/frontend/features/solar/*.ts`
+  - `src/frontend/features/trajectory/*.ts`
+- Added compatibility re-export shims in each corresponding `.js` file.
+- Added `// @ts-nocheck` at the top of each new TypeScript feature file to preserve behavior and avoid type contract regressions during migration.
+- Corrected `src/frontend/features/trajectory/index.js` shim to re-export from `./index.ts`.
+- Updated `typescript_migration_plan.md` to reflect current completion snapshot and remaining workload.
+
+Why it changed:
+- User requested Phase 2 execution directly after Phase 1, with emphasis on keeping behavior unchanged.
+- A shim-only migration keeps module boundaries stable while enabling TypeScript iteration.
+
+Evidence/validation:
+- Verified all feature `.js` modules now function as shim re-exports instead of direct implementation.
+- Counted conversion scope as all `18` feature modules under `frontend/features`.
+- Remaining JavaScript-only runtime modules are now limited to rendering + asteroid modules.
+
+Files touched:
+- `src/frontend/features/planetary/{terrainSynthesis,moonTextureCatalog,cloudDataPipeline,moonTexturePipeline,visualProfiles,satellitePropagationWorker,satelliteSystem}.*`
+- `src/frontend/features/solar/{solarObservationTexture,solarMagnetics,solarFeatureBlending,solarFlares,sunVisuals,solarWind,solarProminences,solarPhysicsClient,gravitationalWaves}.*`
+- `src/frontend/features/trajectory/{localPlanner,index}.*`
+- `typescript_migration_plan.md`
+- `Development_Improvements.md`
+
+Follow-ups / open questions:
+- Next block should target rendering and asteroids modules with the same shim strategy, then remove `*.js` shims once imports are all `.ts`-native.
+
 ### 2026-02-23 06:40 UTC — Sun Model Physics Overhaul: 13-Phase Implementation
 Status: DONE
 
