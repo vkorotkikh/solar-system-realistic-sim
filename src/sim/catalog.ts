@@ -1,5 +1,5 @@
 import rawMoons from '../data/moons.json';
-import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants.js';
+import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
 import {
   ASTEROID_BELT_OBJECTS,
   KUIPER_BELT_OBJECTS,
@@ -9,7 +9,7 @@ import {
   MAJOR_MOONS,
   PLANETS,
   SUN
-} from '../data/planets.js';
+} from '../data/planets';
 import type { KeplerOrbit } from './orbitMath';
 
 interface RawMoonRecord {
