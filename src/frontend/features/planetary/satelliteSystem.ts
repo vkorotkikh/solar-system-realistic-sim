@@ -17,7 +17,7 @@ import {
   SphereGeometry,
   Vector3
 } from 'three';
-import { AU_KM, J2000_JD, julianDateFromUnixMs } from '../../../constants.js';
+import { AU_KM, J2000_JD, julianDateFromUnixMs } from '../../../constants';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
@@ -642,7 +642,7 @@ export class OrbitalSatelliteSystem {
     }
 
     try {
-      this.worker = new Worker(new URL('./satellitePropagationWorker.js', import.meta.url), { type: 'module' });
+      this.worker = new Worker(new URL('./satellitePropagationWorker.ts', import.meta.url), { type: 'module' });
     } catch (error) {
       this.lastError = `Satellite worker unavailable: ${error?.message ?? String(error)}`;
       this.useWorkerPropagation = false;

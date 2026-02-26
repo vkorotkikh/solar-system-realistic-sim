@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { RepeatWrapping } from 'three';
-import { moonTextureCatalogEntryForBody } from './moonTextureCatalog.js';
+import { moonTextureCatalogEntryForBody } from './moonTextureCatalog';
 
 function defaultConfigureTexture(texture) {
   texture.wrapS = RepeatWrapping;
