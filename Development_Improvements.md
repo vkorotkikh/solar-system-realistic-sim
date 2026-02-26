@@ -47,6 +47,35 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-26 09:00 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Completed Phase 4 for `src/sim/asteroids/*` with shim cleanup and parity documentation updates.
+
+Context / rationale:
+- User requested explicit Phase 4 completion on asteroids with obsolete `.js` shims removed and parity checks confirmed.
+- This completes the requested migration scope for asteroids while keeping behavior unchanged.
+
+Proposed approach:
+- Removed remaining obsolete asteroids shim files in `src/sim/asteroids` (already converted in Phase 3).
+- Audited asteroids callsites/imports and updated references to `.ts`-native modules.
+- Refreshed `src/sim/asteroids/README.md` to reference `.ts` module names and current import form.
+
+Expected impact:
+- No `src/sim/asteroids` callers now depend on `.js` shims for core functionality.
+- Migration context is up to date with current TS-native state.
+- Keeps future maintenance and integration work aligned with the active migration plan.
+
+Affected files/systems:
+- `src/sim/asteroids/*`
+- `src/sim/asteroids/README.md`
+- `typescript_migration_plan.md`
+- `Development_History_Context.md`
+
+Next step:
+- Begin behavior parity verification in runtime loop and then proceed to cleanup of any remaining runtime `.js` compatibility wrappers outside `src/sim/asteroids` if needed.
+
 ### 2026-02-25 12:45 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`

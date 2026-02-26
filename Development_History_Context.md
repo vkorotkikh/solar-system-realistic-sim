@@ -55,6 +55,38 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-26 09:00:00 UTC — Phase 4 asteroids migration cleanup complete
+Status: DONE
+
+What changed:
+- Completed final Phase 4 request for `src/sim/asteroids/*`: no obsolete `.js` shims remain in this directory and no `src` callsites/imports are required to target deleted shim entrypoints.
+- Added/updated parity-facing documentation in `src/sim/asteroids/README.md` to reference TS module names and import paths.
+- Updated `typescript_migration_plan.md` to mark Phase 4 asteroids cleanup items as complete.
+
+Why it changed:
+- User asked for explicit Phase 4 execution and shim removal, with completion parity tracking.
+
+Evidence/validation:
+- Verified `rg --files src/sim/asteroids` returns only four `.ts` implementation files and README.
+- Verified no active `src` imports reference `asteroidDistributions.js`, `asteroidGeometry.js`, `asteroidPipeline.js`, or `asteroidShaders.js`.
+
+Files touched:
+- `src/sim/asteroids/README.md`
+- `src/sim/asteroids/asteroidDistributions.ts`
+- `src/sim/asteroids/asteroidGeometry.ts`
+- `src/sim/asteroids/asteroidPipeline.ts`
+- `src/sim/asteroids/asteroidShaders.ts`
+- `typescript_migration_plan.md`
+- `Development_Improvements.md`
+- Removed:
+  - `src/sim/asteroids/asteroidDistributions.js`
+  - `src/sim/asteroids/asteroidGeometry.js`
+  - `src/sim/asteroids/asteroidPipeline.js`
+  - `src/sim/asteroids/asteroidShaders.js`
+
+Follow-ups / open questions:
+- If you want behavior-level parity guarantees, run `npx vite build` and smoke paths that render asteroid pipeline wiring.
+
 ### 2026-02-25 12:45:00 UTC — Phase 3 rendering+asteroids migration completed
 Status: DONE
 
