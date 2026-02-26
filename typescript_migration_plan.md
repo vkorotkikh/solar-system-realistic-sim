@@ -4,14 +4,14 @@
 
 - Logical module count in `src` (unique stems): `53`
 - TypeScript modules: `53`
-- JavaScript modules: `39`
+- JavaScript modules: `0`
 - File-based completion (logical): `53/53 = 100%`
-- Files on disk (including legacy JS): `92` total (`53` `.ts`, `39` `.js`)
-- Combined source LOC on disk: `15,757`
-- TypeScript LOC: `15,718`
-- TypeScript LOC ratio on disk: `15,718 / 15,757 = 99.75%`
-- Phases 1, 2, 3, and 4 are complete on the asteroids/shim-removal scope;
-- `src/sim/asteroids` is now TS-native with obsolete shims removed.
+- Files on disk (including legacy JS): `82` total (`53` `.ts`, `0` `.js`)
+- Combined source LOC on disk: `15,715`
+- TypeScript LOC: `15,715`
+- TypeScript LOC ratio on disk: `15,715 / 15,715 = 100%`
+- Phases 1, 2, 3, and 4 are complete on the full in-`src` shim-removal scope;
+- All `src` modules are now TypeScript-native.
 
 ## What is currently done
 
@@ -45,7 +45,7 @@
 ## Remaining JS workload (in `src`)
 
 - `0` JavaScript-only modules remain (all remaining stems have `.ts` equivalents).
-- `frontend/app`: no JavaScript-only modules remain; all app modules in this path are shims over `.ts`.
+- `src`: no JavaScript-only modules remain (all `.js` in this tree have been removed).
 
 ## Phase plan (priority order)
 
@@ -74,20 +74,21 @@
 - [x] `src/frontend/rendering/{lodManager,milkyWay,orbitRenderer}.ts`
 - [x] `src/sim/asteroids/{asteroidDistributions,asteroidGeometry,asteroidPipeline,asteroidShaders}.ts`
 - [x] Remove obsolete `.js` shims after TS-native imports and file paths are in place.
-- [ ] Clean up bootstrap exports once app and features are on TS.
-- [ ] `src/sim` runtime callsites touched by previous phases.
+- [x] Clean up bootstrap exports once app and features are on TS.
+- [x] `src/sim` runtime callsites touched by previous phases.
 
 ### Phase 4 — Runtime hardening and remaining cleanup
 - [x] Audit `src/sim/asteroids/*` imports/callers for remaining shim usage and update parity references.
 - [x] Remove obsolete `.js` shims for asteroids (`asteroidDistributions`, `asteroidGeometry`, `asteroidPipeline`, `asteroidShaders`).
 - [x] Refresh `src/sim/asteroids/README.md` parity notes for the TS migration.
+- [x] Remove remaining `src` shim files that became obsolete after TS-native callsite migration (`main`, `sim/catalog`, `textures`, constants, rendering/app/features/runtime).
 - [ ] Final lint/build smoke pass plus behavior parity checks.
 
 ## Milestones
 
 - Milestone A (runtime loop stable): end of Phase 1 — **completed in this iteration**
 - Milestone B (feature parity): end of Phase 2 — **completed in this iteration**
-- Milestone C (migration complete): end of Phase 4
+- Milestone C (migration complete): end of Phase 4 — **TS shim removal complete in `src`, parity smoke validation pending**
 
 ## Smoke-test command
 

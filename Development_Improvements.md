@@ -47,6 +47,40 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-26 10:15 UTC
+Status: `DONE`
+Type: `TECH-DEBT`
+Summary:
+- Removed the remaining in-`src` shim wrappers and migrated remaining runtime/feature callsites to TypeScript-first imports.
+
+Context / rationale:
+- The remaining compatibility shims were one-line re-exports only.
+- Deleting them reduces module indirection and keeps the migration goal aligned with a TypeScript-native module graph.
+
+Proposed approach:
+- Deleted all remaining shim `.js` files in `src` that mirrored already-migrated `.ts` files.
+- Updated local imports/callers from `.js` specifiers to extensionless TypeScript source paths.
+- Fixed `src/sim/asteroids/asteroidDistributions.ts` by removing the obsolete `../physics.js` dependency and using `MU_SUN_AU3_DAY2` from `../../constants`.
+- Switched app entry script from `/src/main.js` to `/src/main.ts` in `index.html`.
+
+Expected impact:
+- Cleaner module resolution and less maintenance overhead for future refactors.
+- No runtime behavior changes intended; migration remains parity-preserving by construction.
+- Removes one more layer of accidental coupling around shim filenames.
+
+Affected files/systems:
+- `index.html`
+- `src/main.ts`
+- `src/sim/asteroids/asteroidDistributions.ts`
+- `src/sim/{catalog.ts,asteroids/README.md}`
+- `src/sunController.ts`
+- `src/data/planets.ts`
+- `src/frontend/app/{inputHandler.ts,sceneSetup.ts}`
+- `src/frontend/features/{planetary/moonTexturePipeline.ts,trajectory/index.ts,trajectory/localPlanner.ts,solar/sunVisuals.ts,solar/solarFlares.ts,solar/solarObservationTexture.ts,solar/solarFeatureBlending.ts,planetary/satelliteSystem.ts}`
+
+Next step:
+- Run behavioral verification (build + smoke checks) and close the parity pass in this migration cycle.
+
 ### 2026-02-26 09:00 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`

@@ -87,6 +87,74 @@ Files touched:
 Follow-ups / open questions:
 - If you want behavior-level parity guarantees, run `npx vite build` and smoke paths that render asteroid pipeline wiring.
 
+### 2026-02-26 10:15:00 UTC — src shim removal sweep across runtime and feature imports
+Status: DONE
+
+What changed:
+- Completed the remaining shim-removal pass requested for `src` after the phase-1 through phase-4 migration sequence by deleting legacy `.js` compatibility wrappers that now had no purpose.
+- Updated entrypoints and internal imports to consume `.ts` modules directly (extensionless module paths where supported).
+- Removed the stale runtime shim entry `src/main.js` and switched the app bootstrap in `index.html` to `/src/main.ts`.
+- Fixed a lingering missing import in `src/sim/asteroids/asteroidDistributions.ts` by replacing the non-existent `../physics.js` fallback import with `../../constants` and using `MU_SUN_AU3_DAY2`.
+- Updated `typescript_migration_plan.md` to mark the `src` shim-removal task as complete.
+
+Why it changed:
+- The remaining shims were one-line re-export wrappers only, and they were adding module-resolution indirection without runtime benefit.
+- Keeping them made dependency graphs harder to reason about and required duplicate maintenance when touching callsites.
+
+Evidence/validation:
+- `rg --files src -g '*.js'` returns no results after this pass.
+- `rg -n "from './...\\.js'" src` / `rg -n "new URL\\('./...\\.js'" src` no longer returns local shim import references.
+
+Files touched:
+- Removed:
+  - `src/constants.js`
+  - `src/data/planets.js`
+  - `src/main.js`
+  - `src/sim/catalog.js`
+  - `src/textures.js`
+  - `src/frontend/app/timeController.js`
+  - `src/frontend/app/temp_nearbySystemsRenderer.js`
+  - `src/frontend/app/stateStore.js`
+  - `src/frontend/app/textureManager.js`
+  - `src/frontend/app/sceneSetup.js`
+  - `src/frontend/app/uiBindings.js`
+  - `src/frontend/camera/transitions.js`
+  - `src/frontend/features/planetary/terrainSynthesis.js`
+  - `src/frontend/features/planetary/moonTextureCatalog.js`
+  - `src/frontend/features/planetary/cloudDataPipeline.js`
+  - `src/frontend/features/planetary/moonTexturePipeline.js`
+  - `src/frontend/features/planetary/visualProfiles.js`
+  - `src/frontend/features/planetary/satellitePropagationWorker.js`
+  - `src/frontend/features/planetary/satelliteSystem.js`
+  - `src/frontend/features/solar/solarProminences.js`
+  - `src/frontend/features/solar/solarPhysicsClient.js`
+  - `src/frontend/features/solar/gravitationalWaves.js`
+  - `src/frontend/features/solar/solarObservationTexture.js`
+  - `src/frontend/features/solar/solarMagnetics.js`
+  - `src/frontend/features/solar/solarFeatureBlending.js`
+  - `src/frontend/features/solar/solarFlares.js`
+  - `src/frontend/features/solar/sunVisuals.js`
+  - `src/frontend/features/solar/solarWind.js`
+  - `src/frontend/features/trajectory/localPlanner.js`
+  - `src/frontend/features/trajectory/index.js`
+- Updated:
+  - `index.html`
+  - `src/main.ts`
+  - `src/sunController.ts`
+  - `src/data/planets.ts`
+  - `src/sim/catalog.ts`
+  - `src/sim/asteroids/asteroidDistributions.ts`
+  - `src/frontend/app/inputHandler.ts`
+  - `src/frontend/app/sceneSetup.ts`
+  - `src/frontend/features/planetary/satelliteSystem.ts`
+  - `src/frontend/features/planetary/moonTexturePipeline.ts`
+  - `src/frontend/features/solar/{solarFeatureBlending.ts,sunVisuals.ts,solarObservationTexture.ts,solarFlares.ts,solarMagnetics.ts,solarPhysicsClient.ts,solarProminences.ts,solarWind.ts,gravitationalWaves.ts}`
+  - `src/frontend/features/trajectory/{index.ts,localPlanner.ts}`
+
+Follow-ups / open questions:
+- Run your behavior and smoke checks (especially launch/animation loop rendering path) after this cleanup.
+- If any remaining `.js` references are reported by tooling outside `src`, update callsites or keep compatibility wrappers as needed.
+
 ### 2026-02-25 12:45:00 UTC — Phase 3 rendering+asteroids migration completed
 Status: DONE
 
