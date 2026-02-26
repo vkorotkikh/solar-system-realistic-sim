@@ -4,7 +4,7 @@ import {
   buildTransferCurvePoints,
   describeRoute,
   planInterplanetaryRoute as planLocalRoute
-} from './localPlanner.js';
+} from './localPlanner';
 
 const DEFAULT_BACKEND_HOST = 'localhost';
 const DEFAULT_BACKEND_PORT = 8042;

@@ -1,8 +1,5 @@
 // @ts-nocheck
-import { MU_SUN_AU3_DAY2 } from '../physics.js'; // Assuming physics.js exports this, or define it locally if not
-
-// Define local constant just in case it's not exported
-const MU_SUN = 2.959122082855911e-4;
+import { MU_SUN_AU3_DAY2 } from '../../constants';
 
 /**
  * Asteroid Taxonomies with their approximate albedos and colors.
@@ -171,7 +168,7 @@ export function generateAsteroidElement(population = 'main-belt') {
         meanAnomalyDeg = Math.random() * 360;
     }
 
-    const periodDays = 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN);
+    const periodDays = 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN_AU3_DAY2);
 
     return {
         aAu: a,

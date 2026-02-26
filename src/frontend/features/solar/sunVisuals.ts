@@ -16,7 +16,7 @@ import {
   SpriteMaterial,
   Vector4
 } from 'three';
-import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending.js';
+import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 
 const TWO_PI = Math.PI * 2;
 
