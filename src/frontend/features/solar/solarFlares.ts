@@ -14,7 +14,7 @@ import {
     Vector3,
     Quaternion
 } from 'three';
-import { AU_M } from '../../../constants.js';
+import { AU_M } from '../../../constants';
 
 // Average CME speed ~480 km/s. We allow bounds of 200 - 3200.
 // Physics note: AU_M is astronomical unit in meters.
