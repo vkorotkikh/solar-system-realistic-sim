@@ -1,11 +1,12 @@
-// Updated asteroidPipeline.js configured for GPU Shader injection.
+// @ts-nocheck
+// Updated asteroidPipeline.ts configured for GPU Shader injection.
 import { Object3D, Color, Group, Vector3, Matrix4 } from 'three';
 import {
     generateAsteroidElement,
     sampleTaxonomy,
     samplePowerLawSize
-} from './asteroidDistributions.js';
-import { createAsteroidInstancedBuckets } from './asteroidGeometry.js';
+} from './asteroidDistributions';
+import { createAsteroidInstancedBuckets } from './asteroidGeometry';
 
 // Configuration: Massive counts for GPU phase
 const POPULATION_COUNTS = {

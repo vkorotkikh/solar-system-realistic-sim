@@ -1,4 +1,5 @@
-// Updated asteroidGeometry.js configured for GPU Shader injection.
+// @ts-nocheck
+// Updated asteroidGeometry.ts configured for GPU Shader injection.
 import {
     IcosahedronGeometry,
     MeshStandardMaterial,
@@ -9,8 +10,8 @@ import {
     DynamicDrawUsage,
     StaticDrawUsage
 } from 'three';
-import { TAXONOMIES } from './asteroidDistributions.js';
-import { patchAsteroidMaterial } from './asteroidShaders.js';
+import { TAXONOMIES } from './asteroidDistributions';
+import { patchAsteroidMaterial } from './asteroidShaders';
 
 export function generateAsteroidGeometry(detail = 1, distortionAmount = 0.35) {
     const geometry = new IcosahedronGeometry(1.0, detail);
