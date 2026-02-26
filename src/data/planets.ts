@@ -1,4 +1,4 @@
-import { J2000_JD } from '../constants.js';
+import { J2000_JD } from '../constants';
 
 export const SUN = {
   id: 'sun',

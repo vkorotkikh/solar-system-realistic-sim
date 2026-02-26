@@ -30,19 +30,19 @@ import {
   MU_SUN_AU3_DAY2,
   currentJulianDate,
   formatJulianAsDate
-} from './constants.js';
-import { createSolarSystemCatalog } from './sim/catalog.js';
+} from './constants';
+import { createSolarSystemCatalog } from './sim/catalog';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
-import { generatePlanetTexture } from './textures.js';
-import { createSimulationState } from './frontend/app/stateStore.js';
+import { generatePlanetTexture } from './textures';
+import { createSimulationState } from './frontend/app/stateStore';
 import {
   createRuntimeUiConfig,
   createSceneSetup,
   addDefaultLighting
-} from './frontend/app/sceneSetup.js';
-import { createTextureManager } from './frontend/app/textureManager.js';
-import { createTimeController } from './frontend/app/timeController.js';
+} from './frontend/app/sceneSetup';
+import { createTextureManager } from './frontend/app/textureManager';
+import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────

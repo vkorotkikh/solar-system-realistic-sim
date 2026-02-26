@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Group } from 'three';
-import { J2000_JD } from './constants.js';
-import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient.js';
+import { J2000_JD } from './constants';
+import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient';
 import {
   createSunSurfaceMaterial,
   createSunGlow,
@@ -20,22 +20,22 @@ import {
   updateSunFlaresUniforms,
   createChromosphereLayer,
   updateChromosphereLayer
-} from './frontend/features/solar/sunVisuals.js';
-import { SolarFlareManager } from './frontend/features/solar/solarFlares.js';
-import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics.js';
+} from './frontend/features/solar/sunVisuals';
+import { SolarFlareManager } from './frontend/features/solar/solarFlares';
+import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
 import {
   clampUnit,
   normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
-} from './frontend/features/solar/solarFeatureBlending.js';
-import { createGWVisualization } from './frontend/features/solar/gravitationalWaves.js';
+} from './frontend/features/solar/solarFeatureBlending';
+import { createGWVisualization } from './frontend/features/solar/gravitationalWaves';
 import { createAgnShockwaveEngine } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
   pickAiaObservationChannel
-} from './frontend/features/solar/solarObservationTexture.js';
+} from './frontend/features/solar/solarObservationTexture';
 
 const TWO_PI = Math.PI * 2;
 const CYCLE_25_START_JD = 2_458_849.5;
