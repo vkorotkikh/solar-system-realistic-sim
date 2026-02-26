@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { setupUiBindings } from './uiBindings.js';
+import { setupUiBindings } from './uiBindings';
 
 export function setupInputHandlers({
   timeController,
