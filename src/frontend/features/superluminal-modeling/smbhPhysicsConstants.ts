@@ -19,30 +19,30 @@
 // FUNDAMENTAL CONSTANTS (CGS unless noted)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const C_CM_S  = 2.998e10;
-export const C_KM_S  = 2.998e5;
+export const C_CM_S = 2.998e10;
+export const C_KM_S = 2.998e5;
 export const C_AU_YR = 63241.1;
 
-export const G_CGS       = 6.674e-8;       // cm³/(g·s²)
-export const M_SUN_G     = 1.989e33;       // g
-export const M_PROTON_G  = 1.673e-24;      // g
-export const K_B_CGS     = 1.381e-16;      // erg/K
-export const SIGMA_T     = 6.652e-25;      // Thomson cross-section, cm²
-export const E_CHARGE    = 4.803e-10;      // elementary charge, esu
-export const EV_ERG      = 1.602e-12;      // erg per eV
-export const HBAR_CGS    = 1.055e-27;      // erg·s
+export const G_CGS = 6.674e-8;       // cm³/(g·s²)
+export const M_SUN_G = 1.989e33;       // g
+export const M_PROTON_G = 1.673e-24;      // g
+export const K_B_CGS = 1.381e-16;      // erg/K
+export const SIGMA_T = 6.652e-25;      // Thomson cross-section, cm²
+export const E_CHARGE = 4.803e-10;      // elementary charge, esu
+export const EV_ERG = 1.602e-12;      // erg per eV
+export const HBAR_CGS = 1.055e-27;      // erg·s
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UNIT CONVERSIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const PC_CM   = 3.086e18;
-export const KPC_CM  = 3.086e21;
-export const MPC_CM  = 3.086e24;
-export const LY_CM   = 9.461e17;
-export const AU_CM   = 1.496e13;
-export const YR_S    = 3.15576e7;
-export const MYR_S   = 3.15576e13;
+export const PC_CM = 3.086e18;
+export const KPC_CM = 3.086e21;
+export const MPC_CM = 3.086e24;
+export const LY_CM = 9.461e17;
+export const AU_CM = 1.496e13;
+export const YR_S = 3.15576e7;
+export const MYR_S = 3.15576e13;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SMBH SOURCE CATALOG
@@ -54,16 +54,16 @@ export const SGR_A = Object.freeze({
     galaxy: 'Milky Way',
     type: 'quiescent SMBH',
 
-    massMsun:     4.154e6,
-    massG:        4.154e6 * 1.989e33,
-    distanceKpc:  8.178,
-    distanceCm:   8.178 * 3.086e21,
-    distanceLy:   26_673,
+    massMsun: 4.154e6,
+    massG: 4.154e6 * 1.989e33,
+    distanceKpc: 8.178,
+    distanceCm: 8.178 * 3.086e21,
+    distanceLy: 26_673,
 
     rSchwarzschildCm: 1.24e10,          // 0.083 AU
-    rIscoCm:          3.72e10,          // Schwarzschild ISCO = 3 R_s
-    rPhotonCm:        1.86e10,          // 1.5 R_s
-    angularSizeUas:   52,               // μas on sky (EHT)
+    rIscoCm: 3.72e10,          // Schwarzschild ISCO = 3 R_s
+    rPhotonCm: 1.86e10,          // 1.5 R_s
+    angularSizeUas: 52,               // μas on sky (EHT)
 
     luminosityCurrent: 1e36,            // erg/s
     luminosityEddington: 5.2e44,        // erg/s
@@ -91,24 +91,24 @@ export const CEN_A = Object.freeze({
     galaxy: 'NGC 5128',
     type: 'active AGN (nearest)',
 
-    massMsun:     5.5e7,
-    massG:        5.5e7 * 1.989e33,
-    distanceMpc:  3.8,
-    distanceCm:   3.8 * 3.086e24,
-    distanceLy:   12_400_000,
+    massMsun: 5.5e7,
+    massG: 5.5e7 * 1.989e33,
+    distanceMpc: 3.8,
+    distanceCm: 3.8 * 3.086e24,
+    distanceLy: 12_400_000,
 
-    jetBetaSpine:  0.94,                // X-ray fast core (Bogensberger+ 2024)
+    jetBetaSpine: 0.94,                // X-ray fast core (Bogensberger+ 2024)
     jetBetaSheath: 0.80,                // radio slower envelope
     jetBetaAppXray: 2.7,                // apparent superluminal (confirmed)
-    jetThetaDeg:   15,                  // estimated viewing angle
-    jetPowerErgS:  1e43,
+    jetThetaDeg: 15,                  // estimated viewing angle
+    jetPowerErgS: 1e43,
     jetOpeningDeg: 12,
 
-    lobeSizeKpc:   500,                 // giant radio lobes (~600 kpc diameter)
+    lobeSizeKpc: 500,                 // giant radio lobes (~600 kpc diameter)
 
     uhecrDominant: true,                // Pierre Auger 2025: main UHECR source
     uhecrExcessAboveEeV: 5,             // dominates above ~5 EeV
-    uhecrMaxEeV:   100,
+    uhecrMaxEeV: 100,
     uhecrComposition: 'CNO at tens EeV, Si/Fe above 50 EeV',
     egmfUpperLimitNG: 6.7,              // nG·Mpc^(1/2)
     activityTimescaleMyr: 30,           // active within past ~30 Myr
@@ -122,11 +122,11 @@ export const MAFFEI_1 = Object.freeze({
     galaxy: 'Maffei 1',
     type: 'giant elliptical (Zone of Avoidance)',
 
-    massMsun:     3e8,                  // M-σ estimate — NO direct measurement
-    massG:        3e8 * 1.989e33,
-    distanceMpc:  2.85,
-    distanceCm:   2.85 * 3.086e24,
-    distanceLy:   9_300_000,
+    massMsun: 3e8,                  // M-σ estimate — NO direct measurement
+    massG: 3e8 * 1.989e33,
+    distanceMpc: 2.85,
+    distanceCm: 2.85 * 3.086e24,
+    distanceLy: 9_300_000,
 
     extinctionAv: 4.7,                  // visual magnitudes of extinction
     agnStatus: 'unknown',               // cannot observe through MW disk
@@ -144,15 +144,15 @@ export const M87 = Object.freeze({
     galaxy: 'M87',
     type: 'giant cD elliptical (educational)',
 
-    massMsun:     6.5e9,
-    massG:        6.5e9 * 1.989e33,
-    distanceMpc:  16.8,
-    distanceCm:   16.8 * 3.086e24,
-    distanceLy:   54_700_000,
+    massMsun: 6.5e9,
+    massG: 6.5e9 * 1.989e33,
+    distanceMpc: 16.8,
+    distanceCm: 16.8 * 3.086e24,
+    distanceLy: 54_700_000,
 
     rSchwarzschildCm: 1.9e13,           // 127 AU — bigger than Pluto's orbit
-    jetBeta:     0.98,
-    jetBetaApp:  6.3,                   // Biretta+ 1999
+    jetBeta: 0.98,
+    jetBetaApp: 6.3,                   // Biretta+ 1999
     jetPowerErgS: 1e44,
     jetLengthLy: 5000,                  // visible optical
     jetLengthRadioKpc: 100,
@@ -172,22 +172,22 @@ export const SOURCE_CATALOG = Object.freeze({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const ISM = Object.freeze({
-    diskDensityCgs:    1e-24,           // g/cm³ (warm ionized medium)
-    haloDensityCgs:    1e-27,           // g/cm³ (hot halo)
-    coldNeutralCgs:    5e-23,           // g/cm³ (cold neutral medium)
-    hotIonizedCgs:     5e-27,           // g/cm³ (hot ionized medium)
+    diskDensityCgs: 1e-24,           // g/cm³ (warm ionized medium)
+    haloDensityCgs: 1e-27,           // g/cm³ (hot halo)
+    coldNeutralCgs: 5e-23,           // g/cm³ (cold neutral medium)
+    hotIonizedCgs: 5e-27,           // g/cm³ (hot ionized medium)
 
-    bFieldDiskG:       5e-6,            // 5 μG (disk average)
-    bFieldHaloG:       1e-6,            // 1 μG (halo)
-    bCoherencePc:      100,             // coherence length
+    bFieldDiskG: 5e-6,            // 5 μG (disk average)
+    bFieldHaloG: 1e-6,            // 1 μG (halo)
+    bCoherencePc: 100,             // coherence length
 
     soundSpeedWarmKmS: 10,              // warm neutral
-    soundSpeedHotKmS:  150,             // hot ionized (T ~ 10⁶ K)
+    soundSpeedHotKmS: 150,             // hot ionized (T ~ 10⁶ K)
 
-    crDiffCoeffGeV:    2.8e28,          // cm²/s at 1 GeV
-    crDiffCoeffTeV:    4.5e29,          // cm²/s at 1 TeV
-    crDiffCoeffPeV:    7e30,            // cm²/s at 1 PeV
-    crDiffIndex:       0.4,             // δ in D ∝ E^δ
+    crDiffCoeffGeV: 2.8e28,          // cm²/s at 1 GeV
+    crDiffCoeffTeV: 4.5e29,          // cm²/s at 1 TeV
+    crDiffCoeffPeV: 7e30,            // cm²/s at 1 PeV
+    crDiffIndex: 0.4,             // δ in D ∝ E^δ
     crDiffRefRigidityGV: 4.0            // reference rigidity
 });
 
@@ -196,19 +196,19 @@ export const ISM = Object.freeze({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const HELIO = Object.freeze({
-    heliopauseAu:        120,           // upwind (Voyager)
+    heliopauseAu: 120,           // upwind (Voyager)
     heliopauseDownwindAu: 300,          // estimated tail
-    terminationShockAu:  90,            // average (Voyager 1: 94 AU)
+    terminationShockAu: 90,            // average (Voyager 1: 94 AU)
     helioshealthWidthAu: 30,
 
-    lismVelocityKmS:     26,            // local ISM velocity relative to Sun
-    lismPressureCgs:     2e-12,         // dyn/cm² (total external pressure)
+    lismVelocityKmS: 26,            // local ISM velocity relative to Sun
+    lismPressureCgs: 2e-12,         // dyn/cm² (total external pressure)
 
     alfvenSpeedHeliosheath: 40,         // km/s
-    soundSpeedHeliosheath:  150,        // km/s (hot shocked solar wind)
+    soundSpeedHeliosheath: 150,        // km/s (hot shocked solar wind)
 
-    resonantPeriodYr:    2.3,           // fundamental cavity mode
-    qualityFactor:       5              // estimated Q of heliosphere cavity
+    resonantPeriodYr: 2.3,           // fundamental cavity mode
+    qualityFactor: 5              // estimated Q of heliosphere cavity
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -216,20 +216,24 @@ export const HELIO = Object.freeze({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const FERMI_BUBBLES = Object.freeze({
-    innerHeightKpc:   10,               // Fermi Bubble height (Su+ 2010)
-    outerHeightKpc:   15,               // eROSITA Bubble (Predehl+ 2020)
-    innerAgeMyr:      5,                // Owen+ 2025 (double-episode)
-    outerAgeMyr:      15,               // Owen+ 2025
-    energyErg:        1e56,             // total energy
-    temperatureK:     3e7,              // 3-4 × 10⁶ K (eROSITA)
-    expansionKmS:     2000,             // current velocity (inner)
+    innerHeightKpc: 10,               // Fermi Bubble height (Su+ 2010)
+    outerHeightKpc: 15,               // eROSITA Bubble (Predehl+ 2020)
+    innerAgeMyr: 5,                // Owen+ 2025 (double-episode)
+    outerAgeMyr: 15,               // Owen+ 2025
+    energyErg: 1e56,             // total energy
+    temperatureK: 3e7,              // 3-4 × 10⁶ K (eROSITA)
+    expansionKmS: 2000,             // current velocity (inner)
     expansionOuterKmS: 1000,            // current velocity (outer)
-    gammaRayFlux:     5e-7              // E² dN/dE (GeV/cm²/s/sr)
+    gammaRayFlux: 5e-7              // E² dN/dE (GeV/cm²/s/sr)
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVENT PRESETS
 // ═══════════════════════════════════════════════════════════════════════════
+
+export const WARP_BUBBLE_THICKNESS_RATIO = 0.05; // σ/r₀
+export const WARP_AMPLITUDE_SCALE = 1e-6; // Base shift-vector amplitude scaling
+export const WARP_DISSIPATION_POWER = 1.0; // scales as 1/r
 
 export const EVENT_PRESETS = Object.freeze({
     SgrA_CurrentFlare: {
@@ -287,11 +291,18 @@ export const EVENT_PRESETS = Object.freeze({
         energyErg: 1e62,
         lorentzFactor: 100,
         description: 'Future merger: h ~ 10⁻⁸, ΔL(1 AU) = 1,500 m per GW cycle'
+    },
+    SgrA_WarpWave_H29: {
+        label: 'H29: The Metric-Frame-Dragging Slipstream',
+        sourceKey: 'SagittariusA',
+        energyErg: 5e54,
+        lorentzFactor: 1.0,
+        description: 'Solitary Alcubierre-like warp bubble. Pure spatial translation, no kinetic acceleration.'
     }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CHANNEL DEFINITIONS (7-channel system)
+// CHANNEL DEFINITIONS (8-channel system including H29)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const CHANNEL_DEFS = Object.freeze([
@@ -369,7 +380,7 @@ export const CHANNEL_DEFS = Object.freeze([
 export const NANOGRAV = Object.freeze({
     characteristicStrain: 2.4e-15,      // h_c at f_ref
     referenceFreqHz: 3.17e-8,           // 1/yr ≈ 31.7 nHz
-    spectralIndex: -2/3,                // expected for SMBH binary population
+    spectralIndex: -2 / 3,                // expected for SMBH binary population
     bayesFactor: 1e14,                  // over noise-only models
     gwSpeedConstraint: 5e-16            // |v_GW/c - 1| upper limit
 });
@@ -381,5 +392,5 @@ export const NANOGRAV = Object.freeze({
 export const QED = Object.freeze({
     schwingerBCrit: 4.414e13,           // Gauss
     schwingerECrit: 1.32e18,            // V/m
-    fineStructure: 1/137.036
+    fineStructure: 1 / 137.036
 });

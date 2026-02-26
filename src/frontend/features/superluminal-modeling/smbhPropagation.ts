@@ -93,6 +93,85 @@ function applyH29SlipstreamCompression(arrivalTimeSec, propagation, h29, lightTr
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// METRIC-FRAME-DRAGGING SLIPSTREAM (H29)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * The solitary wave shape function.
+ * @param xi - Normalized coordinate (r - c*t) / sigma
+ * @returns f(xi) in [0,1] using a smooth sech² soliton profile
+ */
+export function warpBubbleProfile(xi: number): number {
+    const coshXi = Math.cosh(xi);
+    // return sech^2(xi) = 1 / cosh^2(xi)
+    return 1.0 / (coshXi * coshXi);
+}
+
+/**
+ * Computes the ADM shift-vector magnitude |βⁱ| at a given radial distance and time.
+ * @param distanceCm - distance from source
+ * @param timeSec - time since event peak
+ * @param energyErg - total event energy
+ * @param smbhMassG - mass of source SMBH
+ * @returns The local shift-vector value (dimensionless fraction of c)
+ */
+export function metricFrameDragShift(
+    distanceCm: number,
+    timeSec: number,
+    energyErg: number,
+    smbhMassG: number = SGR_A.massG
+): number {
+    if (timeSec <= 0) return 0;
+
+    // Bubble center propagates at c
+    const r0 = C_CM_S * timeSec;
+
+    // Energy/Mass scaling factor
+    const cSquared = C_CM_S * C_CM_S;
+    const massEnergyEq = smbhMassG * cSquared;
+    const energyRatio = Math.pow(energyErg / massEnergyEq, 1 / 3);
+
+    // Bubble thickness broadens with distance
+    const sigma = Math.max(distanceCm * 0.05, energyRatio * Math.sqrt(r0) * 1e8);
+
+    // Normalize coordinate
+    const xi = (distanceCm - r0) / sigma;
+
+    // Peak amplitude decays as 1/r
+    const betaPeak = (G_CGS * energyRatio) / (cSquared * C_CM_S * Math.max(r0, 1e13)) * 1e45;
+
+    return betaPeak * warpBubbleProfile(xi);
+}
+
+/**
+ * Multiplicative factor for local spatial distances.
+ * Returns (1 + ε) where ε = ∂βⁱ/∂r * Δt
+ */
+export function coordinateStretchFactor(
+    distanceCm: number,
+    timeSec: number,
+    energyErg: number,
+    smbhMassG: number = SGR_A.massG
+): number {
+    if (timeSec <= 0) return 1.0;
+
+    // Evaluate spatial derivative of shift vector (finite difference)
+    const deltaCm = 1e8; // 1,000 km baseline
+    const beta1 = metricFrameDragShift(distanceCm - deltaCm / 2, timeSec, energyErg, smbhMassG);
+    const beta2 = metricFrameDragShift(distanceCm + deltaCm / 2, timeSec, energyErg, smbhMassG);
+
+    // Gradient of shift vector
+    const dBeta_dr = (beta2 - beta1) / deltaCm;
+
+    // Time interval (integration step approx, use a characteristic time like light crossing time of delta)
+    const dt = deltaCm / C_CM_S;
+
+    const strain = dBeta_dr * C_CM_S * dt * 1e12; // Exaggerate for visible effect
+
+    return 1.0 + strain;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BLAST WAVE DYNAMICS
 // ═══════════════════════════════════════════════════════════════════════════
 

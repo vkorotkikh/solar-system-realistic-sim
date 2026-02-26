@@ -47,6 +47,42 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-02-26 10:16:00 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Renamed `src/frontend/features/galactic-superluminal-v` to `src/frontend/features/superluminal-modeling` and migrated the H29/SMBH hypothesis stack into TypeScript files.
+
+Context / rationale:
+- The user requested the superluminal hypothesis feature to be separated from solar-owned feature space and moved into a dedicated `superluminal-modeling` namespace.
+- The same pass also requested converting the newly moved files plus the integrating controller entrypoint into TypeScript.
+
+Proposed approach:
+- Renamed the directory and moved:
+  - `agnShockwaveEngine.js` → `agnShockwaveEngine.ts`
+  - `smbhPropagation.js` → `smbhPropagation.ts`
+  - `smbhPhysicsConstants.js` → `smbhPhysicsConstants.ts`
+- Renamed `src/sunController.js` → `src/sunController.ts`.
+- Updated import graph to the new feature path:
+  - `src/sunController.ts` imports `./frontend/features/superluminal-modeling/agnShockwaveEngine`
+  - `src/main.ts` imports `./sunController`
+- Repointed internal feature module imports in the new directory to extensionless `.ts`-compatible paths.
+
+Expected impact:
+- New feature boundary now lives under `src/frontend/features/superluminal-modeling`, matching requested domain ownership.
+- Runtime call path remains parity-preserving (no behavior edits to channel physics/rendering logic).
+- TypeScript conversion is in place for these modules, though explicit typing is deferred.
+
+Affected files/systems:
+- `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`
+- `src/frontend/features/superluminal-modeling/smbhPropagation.ts`
+- `src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts`
+- `src/sunController.ts`
+- `src/main.ts`
+
+Next step:
+- Replace temporary `// @ts-nocheck` in these TS files with concrete interface/type definitions to make migration compile-strong instead of syntax-only.
+
 ### 2026-02-26 10:15 UTC
 Status: `DONE`
 Type: `TECH-DEBT`

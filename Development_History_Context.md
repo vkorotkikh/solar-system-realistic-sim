@@ -55,6 +55,38 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-02-26 10:16:00 UTC — Superluminal modeling feature moved and TS-converted
+Status: DONE
+
+What changed:
+- Renamed `src/frontend/features/galactic-superluminal-v` to `src/frontend/features/superluminal-modeling`.
+- Converted the superluminal hypothesis stack to TypeScript filenames:
+  - `agnShockwaveEngine.ts`
+  - `smbhPropagation.ts`
+  - `smbhPhysicsConstants.ts`
+- Renamed `src/sunController.js` to `src/sunController.ts`.
+- Rewired imports to maintain runtime wiring:
+  - `src/sunController.ts` now consumes `./frontend/features/superluminal-modeling/agnShockwaveEngine`.
+  - `src/main.ts` consumes `./sunController` (extensionless).
+
+Why it changed:
+- User requested the hypothesis feature to move out of `solar` scope, adopt the domain folder `superluminal-modeling`, and be represented as TypeScript modules.
+
+Evidence/validation:
+- Verified active references now point to `superluminal-modeling` only (`rg` sweep over `src`, `index.html`, and migration logs).
+- Verified `src/main.ts` is the active entrypoint in `index.html`.
+- Verified old `.js` module filenames are no longer present in `src/frontend/features/galactic-superluminal-v` (directory removed/renamed).
+
+Files touched:
+- `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`
+- `src/frontend/features/superluminal-modeling/smbhPropagation.ts`
+- `src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts`
+- `src/sunController.ts`
+- `src/main.ts`
+
+Follow-ups / open questions:
+- All three TypeScript files plus `sunController.ts` currently include `// @ts-nocheck`; should be replaced with typed interfaces (`source`, timeline/channel/event, and responder callback contracts) in a follow-up pass.
+
 ### 2026-02-26 09:00:00 UTC — Phase 4 asteroids migration cleanup complete
 Status: DONE
 
