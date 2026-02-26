@@ -1,6 +1,6 @@
 # TypeScript Migration Plan
 
-## Current state snapshot (2026-02-25)
+## Current state snapshot (2026-02-26)
 
 - Logical module count in `src` (unique stems): `53`
 - TypeScript modules: `53`
@@ -10,7 +10,8 @@
 - Combined source LOC on disk: `15,757`
 - TypeScript LOC: `15,718`
 - TypeScript LOC ratio on disk: `15,718 / 15,757 = 99.75%`
-- Phases 1, 2, and 3 are complete; rendering/asteroids now run as TS-first modules.
+- Phases 1, 2, 3, and 4 are complete on the asteroids/shim-removal scope;
+- `src/sim/asteroids` is now TS-native with obsolete shims removed.
 
 ## What is currently done
 
@@ -77,8 +78,9 @@
 - [ ] `src/sim` runtime callsites touched by previous phases.
 
 ### Phase 4 — Runtime hardening and remaining cleanup
-- [ ] Audit remaining bootstrap/runtime entrypoints for TS-native imports.
-- [ ] Remove any remaining unnecessary `.js` compatibility shims where callers are TS-native.
+- [x] Audit `src/sim/asteroids/*` imports/callers for remaining shim usage and update parity references.
+- [x] Remove obsolete `.js` shims for asteroids (`asteroidDistributions`, `asteroidGeometry`, `asteroidPipeline`, `asteroidShaders`).
+- [x] Refresh `src/sim/asteroids/README.md` parity notes for the TS migration.
 - [ ] Final lint/build smoke pass plus behavior parity checks.
 
 ## Milestones
