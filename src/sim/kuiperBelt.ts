@@ -1,0 +1,235 @@
+import { J2000_JD } from '../constants';
+import type { KeplerOrbit } from './orbitMath';
+
+// ── Taxonomy ─────────────────────────────────────────────────────────────────
+// Kuiper-belt dynamical classes following Gladman+ 2008 classification.
+
+export const enum KBOClass {
+  Classical   = 0, // "Cubewanos" — low-e, 42–48 AU
+  Resonant    = 1, // Plutinos (3:2), twotinos (2:1), etc.
+  Scattered   = 2, // High-e, perihelia near Neptune
+  Detached    = 3, // High-a, perihelia beyond Neptune influence (Sedna-like)
+}
+
+// Surface color groups from Peixinho+ 2015 taxonomy.
+export const enum KBOColor {
+  Neutral = 0, // Grey-blue, icy
+  Red     = 1, // Ultra-red matter (tholins, organics)
+  Inter   = 2, // Intermediate
+}
+
+export interface KBODef {
+  orbit: KeplerOrbit;
+  dynClass: KBOClass;
+  surfaceColor: KBOColor;
+  diameterKm: number;
+  albedo: number;
+  /** packed sRGB 0xRRGGBB */
+  color: number;
+  irregularity: number;
+}
+
+// ── Named KBOs ───────────────────────────────────────────────────────────────
+// Dwarf planets and notable trans-Neptunian objects.
+
+export const NAMED_KBOS: readonly KBODef[] = [
+  { orbit: { epochJd: J2000_JD, aAu: 67.864, e: 0.4366, iDeg: 44.04, ascendingNodeDeg: 35.951, argPeriapsisDeg: 151.639, meanAnomalyDeg: 205.989, periodDays: 203_830 }, dynClass: KBOClass.Scattered, surfaceColor: KBOColor.Neutral, diameterKm: 2326, albedo: 0.96, color: 0xc7c0b7, irregularity: 0.02 },
+  { orbit: { epochJd: J2000_JD, aAu: 45.43, e: 0.1613, iDeg: 28.984, ascendingNodeDeg: 79.382, argPeriapsisDeg: 297.24, meanAnomalyDeg: 153.27, periodDays: 111_845 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Red, diameterKm: 1430, albedo: 0.81, color: 0xc9b8a0, irregularity: 0.03 },
+  { orbit: { epochJd: J2000_JD, aAu: 43.218, e: 0.1951, iDeg: 28.213, ascendingNodeDeg: 122.167, argPeriapsisDeg: 239.041, meanAnomalyDeg: 205.22, periodDays: 103_774 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Neutral, diameterKm: 1632, albedo: 0.51, color: 0xd5cdc3, irregularity: 0.08 },
+  { orbit: { epochJd: J2000_JD, aAu: 506.8, e: 0.8496, iDeg: 11.929, ascendingNodeDeg: 144.514, argPeriapsisDeg: 311.122, meanAnomalyDeg: 358.117, periodDays: 4_163_000 }, dynClass: KBOClass.Detached, surfaceColor: KBOColor.Red, diameterKm: 996, albedo: 0.32, color: 0xd4735e, irregularity: 0.05 },
+  { orbit: { epochJd: J2000_JD, aAu: 43.694, e: 0.0389, iDeg: 7.985, ascendingNodeDeg: 188.927, argPeriapsisDeg: 147.48, meanAnomalyDeg: 282.48, periodDays: 105_480 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Red, diameterKm: 1110, albedo: 0.11, color: 0xb8a090, irregularity: 0.04 },
+  { orbit: { epochJd: J2000_JD, aAu: 39.419, e: 0.2271, iDeg: 20.573, ascendingNodeDeg: 268.799, argPeriapsisDeg: 73.1, meanAnomalyDeg: 181.735, periodDays: 90_470 }, dynClass: KBOClass.Resonant, surfaceColor: KBOColor.Neutral, diameterKm: 916, albedo: 0.23, color: 0xa0a0a0, irregularity: 0.04 },
+  { orbit: { epochJd: J2000_JD, aAu: 67.485, e: 0.501, iDeg: 30.739, ascendingNodeDeg: 336.859, argPeriapsisDeg: 207.667, meanAnomalyDeg: 107.46, periodDays: 202_370 }, dynClass: KBOClass.Scattered, surfaceColor: KBOColor.Red, diameterKm: 1230, albedo: 0.14, color: 0xc47060, irregularity: 0.03 },
+  { orbit: { epochJd: J2000_JD, aAu: 43.178, e: 0.0525, iDeg: 17.138, ascendingNodeDeg: 97.210, argPeriapsisDeg: 273.221, meanAnomalyDeg: 115.029, periodDays: 103_632 }, dynClass: KBOClass.Classical, surfaceColor: KBOColor.Red, diameterKm: 900, albedo: 0.09, color: 0xb9a7a0, irregularity: 0.06 },
+];
+
+// ── Distribution parameters ──────────────────────────────────────────────────
+
+const CLASSICAL_INNER_AU = 42.0;
+const CLASSICAL_OUTER_AU = 48.0;
+const PLUTINO_RESONANCE_AU = 39.4;
+const TWOTINO_RESONANCE_AU = 47.8;
+
+// ── Seeded PRNG (Mulberry32) ────────────────────────────────────────────────
+
+function mulberry32(seed: number) {
+  let s = seed | 0;
+  return (): number => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ── Procedural generation ────────────────────────────────────────────────────
+
+function sampleDynClass(rand: () => number): KBOClass {
+  const r = rand();
+  if (r < 0.35) return KBOClass.Classical;
+  if (r < 0.58) return KBOClass.Resonant;
+  if (r < 0.82) return KBOClass.Scattered;
+  return KBOClass.Detached;
+}
+
+function sampleOrbitForClass(
+  dynClass: KBOClass,
+  rand: () => number
+): { aAu: number; e: number; iDeg: number } {
+  switch (dynClass) {
+    case KBOClass.Classical: {
+      const cold = rand() < 0.6;
+      const aAu = CLASSICAL_INNER_AU + rand() * (CLASSICAL_OUTER_AU - CLASSICAL_INNER_AU);
+      const e = cold ? rand() * 0.08 : rand() * 0.15;
+      const iDeg = cold ? rand() * 5 : 5 + rand() * 25;
+      return { aAu, e, iDeg };
+    }
+    case KBOClass.Resonant: {
+      const resonance = rand() < 0.7 ? PLUTINO_RESONANCE_AU : TWOTINO_RESONANCE_AU;
+      const aAu = resonance + (rand() - 0.5) * 1.0;
+      const e = 0.05 + rand() * 0.25;
+      const iDeg = rand() * 30;
+      return { aAu, e, iDeg };
+    }
+    case KBOClass.Scattered: {
+      const aAu = 35 + rand() * 80;
+      const e = 0.2 + rand() * 0.5;
+      const iDeg = rand() * 40;
+      return { aAu, e, iDeg };
+    }
+    case KBOClass.Detached: {
+      const aAu = 50 + rand() * 400;
+      const e = 0.3 + rand() * 0.55;
+      const iDeg = 5 + rand() * 25;
+      return { aAu, e, iDeg };
+    }
+  }
+}
+
+function surfaceColorFromClass(dynClass: KBOClass, rand: () => number): KBOColor {
+  // Cold classicals are almost always ultra-red; others mixed
+  if (dynClass === KBOClass.Classical && rand() < 0.75) return KBOColor.Red;
+  const r = rand();
+  if (r < 0.35) return KBOColor.Red;
+  if (r < 0.65) return KBOColor.Inter;
+  return KBOColor.Neutral;
+}
+
+function packedColorForKBO(sc: KBOColor, rand: () => number): number {
+  const v = (lo: number, hi: number) => Math.floor(lo + (hi - lo) * rand());
+  switch (sc) {
+    case KBOColor.Red:     return (v(170, 210) << 16) | (v(100, 140) << 8) | v(70, 110);
+    case KBOColor.Inter:   return (v(150, 190) << 16) | (v(140, 175) << 8) | v(130, 165);
+    case KBOColor.Neutral: return (v(140, 180) << 16) | (v(145, 185) << 8) | v(150, 195);
+  }
+}
+
+function sampleDiameterKm(rand: () => number): number {
+  const u = rand();
+  const dMin = 20;
+  const dMax = 800;
+  const alpha = 3.5; // steeper than main belt — Fuentes & Holman 2008
+  return dMin * Math.pow(1 - u * (1 - Math.pow(dMin / dMax, alpha - 1)), -1 / (alpha - 1));
+}
+
+export interface KuiperBeltPopulation {
+  count: number;
+  kbos: KBODef[];
+}
+
+export function generateKuiperBelt(
+  count = 5_000,
+  seed = 137
+): KuiperBeltPopulation {
+  const rand = mulberry32(seed);
+  const kbos: KBODef[] = [...NAMED_KBOS];
+
+  const remaining = Math.max(0, count - kbos.length);
+  for (let i = 0; i < remaining; i++) {
+    const dynClass = sampleDynClass(rand);
+    const { aAu, e, iDeg } = sampleOrbitForClass(dynClass, rand);
+    const periodDays = 365.25 * Math.pow(aAu, 1.5);
+
+    const sc = surfaceColorFromClass(dynClass, rand);
+    const diameterKm = sampleDiameterKm(rand);
+    const irregularity = diameterKm > 500 ? 0.02 + rand() * 0.06
+      : diameterKm > 100 ? 0.06 + rand() * 0.15
+      : 0.10 + rand() * 0.25;
+
+    kbos.push({
+      orbit: {
+        epochJd: J2000_JD,
+        aAu,
+        e,
+        iDeg,
+        ascendingNodeDeg: rand() * 360,
+        argPeriapsisDeg: rand() * 360,
+        meanAnomalyDeg: rand() * 360,
+        periodDays,
+      },
+      dynClass,
+      surfaceColor: sc,
+      diameterKm,
+      albedo: sc === KBOColor.Red ? 0.04 + rand() * 0.08
+        : sc === KBOColor.Inter ? 0.06 + rand() * 0.10
+        : 0.08 + rand() * 0.15,
+      color: packedColorForKBO(sc, rand),
+      irregularity,
+    });
+  }
+
+  return { count: kbos.length, kbos };
+}
+
+// ── Fast batch orbit propagation ─────────────────────────────────────────────
+
+const DEG = Math.PI / 180;
+const TWO_PI = Math.PI * 2;
+
+function solveKeplerFast(M: number, e: number): number {
+  let E = M;
+  for (let i = 0; i < 6; i++) {
+    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  }
+  return E;
+}
+
+export function propagateKBOPositions(
+  kbos: readonly KBODef[],
+  julianDate: number,
+  out: Float32Array
+): void {
+  const n = kbos.length;
+  for (let i = 0; i < n; i++) {
+    const orb = kbos[i].orbit;
+    const dt = julianDate - orb.epochJd;
+    const meanMotion = TWO_PI / orb.periodDays;
+    const M = ((orb.meanAnomalyDeg! * DEG) + meanMotion * dt) % TWO_PI;
+    const ecc = orb.e ?? 0;
+    const E = solveKeplerFast(M < 0 ? M + TWO_PI : M, ecc);
+
+    const cosE = Math.cos(E);
+    const sinE = Math.sin(E);
+    const sqrtE = Math.sqrt(1 - ecc * ecc);
+    const trueX = orb.aAu * (cosE - ecc);
+    const trueY = orb.aAu * sqrtE * sinE;
+
+    const iRad = (orb.iDeg ?? 0) * DEG;
+    const omegaRad = (orb.ascendingNodeDeg ?? 0) * DEG;
+    const wRad = (orb.argPeriapsisDeg ?? 0) * DEG;
+    const cosW = Math.cos(wRad);
+    const sinW = Math.sin(wRad);
+    const cosO = Math.cos(omegaRad);
+    const sinO = Math.sin(omegaRad);
+    const cosI = Math.cos(iRad);
+    const sinI = Math.sin(iRad);
+
+    const px = trueX * cosW - trueY * sinW;
+    const py = trueX * sinW + trueY * cosW;
+
+    const off = i * 3;
+    out[off]     = cosO * px - sinO * cosI * py;
+    out[off + 1] = sinO * px + cosO * cosI * py;
+    out[off + 2] = sinI * py;
+  }
+}
