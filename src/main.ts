@@ -23,11 +23,13 @@ import {
 } from 'three';
 import {
   AU_KM,
+  AU_M,
   DEFAULT_TIME_SCALE_DAYS_PER_SEC,
+  DAY_SECONDS,
   J2000_JD,
   MIN_TIME_SCALE_DAYS_PER_SEC,
   MAX_TIME_SCALE_DAYS_PER_SEC,
-  MU_SUN_AU3_DAY2,
+  G_SI,
   currentJulianDate,
   formatJulianAsDate
 } from './constants';
@@ -45,7 +47,7 @@ import {
 import { createTextureManager } from './frontend/app/textureManager';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
-import { generateAsteroidBelt, propagateBeltPositions } from './sim/asteroidBelt';
+import { generateAsteroidBelt } from './sim/asteroidBelt';
 import { generateKuiperBelt, propagateKBOPositions } from './sim/kuiperBelt';
 import { loadPhase1AsteroidCatalog, PHASE1_CATALOG_URL } from './sim/phase1AsteroidCatalog';
 import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
@@ -113,6 +115,11 @@ function bodyBaseRadiusAu(body) {
 function normalizeRadians(angle) {
   const wrapped = angle % TWO_PI;
   return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
+}
+
+function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
+  if (!Number.isFinite(massKg) || massKg <= 0) return 0;
+  return (G_SI * massKg * DAY_SECONDS * DAY_SECONDS) / (AU_M * AU_M * AU_M);
 }
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
@@ -349,11 +356,16 @@ for (const body of catalog.bodies) {
 let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { includeNamed: true });
 const kuiperPop   = generateKuiperBelt(5_000);
 
-let asteroidPositions = new Float32Array(asteroidPop.count * 3);
 const kuiperPositions   = new Float32Array(kuiperPop.count * 3);
+
+const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
+const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.massKg);
+const asteroidJupiterPositionAu = new Vector3();
+const asteroidSaturnPositionAu = new Vector3();
 
 let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
 const kuiperBeltRenderer   = createKuiperBeltRenderer(kuiperPop.kbos);
+asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
 solarSystemGroup.add(kuiperBeltRenderer.mesh);
@@ -362,11 +374,29 @@ function refreshAsteroidBeltRenderer(population) {
   solarSystemGroup.remove(asteroidBeltRenderer.mesh);
   asteroidBeltRenderer.dispose();
   asteroidPop = population;
-  asteroidPositions = new Float32Array(asteroidPop.count * 3);
   asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
+  asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
   solarSystemGroup.add(asteroidBeltRenderer.mesh);
-  propagateBeltPositions(asteroidPop.asteroids, simState.julianDate, asteroidPositions);
-  asteroidBeltRenderer.updatePositions(asteroidPositions);
+}
+
+function syncAsteroidBeltInputs() {
+  const jupiterState = model.getState('jupiter');
+  const saturnState = model.getState('saturn');
+
+  if (jupiterState) {
+    asteroidJupiterPositionAu.copy(jupiterState.worldPosition);
+  } else {
+    asteroidJupiterPositionAu.set(0, 0, 0);
+  }
+
+  if (saturnState) {
+    asteroidSaturnPositionAu.copy(saturnState.worldPosition);
+  } else {
+    asteroidSaturnPositionAu.set(0, 0, 0);
+  }
+
+  asteroidBeltRenderer.setJulianDate(simState.julianDate);
+  asteroidBeltRenderer.setPerturberPositions(asteroidJupiterPositionAu, asteroidSaturnPositionAu);
 }
 
 function initPhaseOneAsteroids() {
@@ -396,11 +426,10 @@ function initPhaseOneAsteroids() {
   });
 }
 
-propagateBeltPositions(asteroidPop.asteroids, simState.julianDate, asteroidPositions);
-asteroidBeltRenderer.updatePositions(asteroidPositions);
 propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
 kuiperBeltRenderer.updatePositions(kuiperPositions);
 initPhaseOneAsteroids();
+syncAsteroidBeltInputs();
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
 
@@ -746,8 +775,7 @@ function animate(timestamp) {
   updateSceneBodies();
   updateBodyRotations(simState.julianDate);
 
-  propagateBeltPositions(asteroidPop.asteroids, simState.julianDate, asteroidPositions);
-  asteroidBeltRenderer.updatePositions(asteroidPositions);
+  syncAsteroidBeltInputs();
   propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
   kuiperBeltRenderer.updatePositions(kuiperPositions);
 
