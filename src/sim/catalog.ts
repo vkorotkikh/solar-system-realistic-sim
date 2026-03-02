@@ -1,8 +1,6 @@
 import rawMoons from '../data/moons.json';
 import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
 import {
-  ASTEROID_BELT_OBJECTS,
-  KUIPER_BELT_OBJECTS,
   MAJOR_MOON_RADII_KM,
   MOON_ROTATION_PERIOD_HOURS,
   MAJOR_MOON_SHAPE_KM,
@@ -372,40 +370,6 @@ export function createSolarSystemCatalog(): SolarCatalog {
     });
   }
 
-  for (const ast of ASTEROID_BELT_OBJECTS) {
-    usedIds.add(ast.id);
-    bodies.push({
-      ...ast,
-      parentId: 'sun',
-      isMajor: true,
-      equatorialRadiusKm: ast.radiusKm,
-      polarRadiusKm: ast.radiusKm,
-      displayRadiusAu: displayRadiusAu(ast.radiusKm, ast.type === 'dwarf' ? 'dwarf' : 'planet'),
-      realRadiusAu: ast.radiusKm / AU_KM,
-      orbit: {
-        ...ast.orbit,
-        epochJd: ast.orbit.epochJd
-      }
-    });
-  }
-
-  for (const kbo of KUIPER_BELT_OBJECTS) {
-    usedIds.add(kbo.id);
-    bodies.push({
-      ...kbo,
-      parentId: 'sun',
-      isMajor: true,
-      equatorialRadiusKm: kbo.radiusKm,
-      polarRadiusKm: kbo.radiusKm,
-      displayRadiusAu: displayRadiusAu(kbo.radiusKm, kbo.type),
-      realRadiusAu: kbo.radiusKm / AU_KM,
-      orbit: {
-        ...kbo.orbit,
-        epochJd: kbo.orbit.epochJd
-      }
-    });
-  }
-
   const planetNameToId = new Map([
     ['Earth', 'earth'],
     ['Mars', 'mars'],
@@ -460,13 +424,8 @@ export function createSolarSystemCatalog(): SolarCatalog {
 
   applyDisplayScaleConstraints(bodies);
 
-  const asteroidIds = ASTEROID_BELT_OBJECTS.map((a) => a.id);
-  const kboIds = KUIPER_BELT_OBJECTS.map((k) => k.id);
-
   const jumpBodyIds = [
     ...MAJOR_BODY_IDS,
-    ...asteroidIds,
-    ...kboIds,
     ...bodies
       .filter((body) => body.type === 'moon' && body.isMajor)
       .map((body) => body.id)
