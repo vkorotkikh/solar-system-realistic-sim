@@ -30,6 +30,7 @@ import {
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl
 } from './frontend/features/solar/solarFeatureBlending';
 import { createGWVisualization } from './frontend/features/solar/gravitationalWaves';
+import { createWarpSlipstreamVisualization } from './frontend/features/superluminal-modeling/warpSlipstreamVisuals';
 import { createAgnShockwaveEngine } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import {
   buildAiaProxyTextureUrl,
@@ -104,6 +105,7 @@ export function createSunController({
   let sunParkerSpiralGroup = null;
 
   let gwDisplayer = null;
+  let warpDisplayer = null;
   let agnEngine = null;
 
   let solarPhysicsState = null;
@@ -260,6 +262,9 @@ export function createSunController({
     gwDisplayer = createGWVisualization(400); // Massive grid
     node.add(gwDisplayer.mesh);
 
+    warpDisplayer = createWarpSlipstreamVisualization(400);
+    node.add(warpDisplayer.mesh);
+
     // Inject flare callbacks used by the multi-messenger AGN engine.
     agnEngine = createAgnShockwaveEngine(gwDisplayer, {
       triggerFlareBurst: (intensity = 0.5, count = 1) => {
@@ -279,6 +284,11 @@ export function createSunController({
           solarFlareManager.spawnRandomFlare(intensity * 1.5, currentSunRadiusAu);
           solarFlareManager.spawnRandomFlare(intensity * 2.0, currentSunRadiusAu);
         }
+      },
+      triggerWarpWaveImpact: (energyErg, smbhMassG) => {
+        // The Warp wave hit (silent - no UI flares, just metric stretch)
+        console.log(`[H29] Warp Wave Impacted! ${energyErg / 1e50}e50 erg`);
+        if (warpDisplayer) warpDisplayer.toggle(true);
       }
     });
   }
@@ -347,8 +357,14 @@ export function createSunController({
     if (gwDisplayer && gwDisplayer.mesh.visible) {
       gwDisplayer.update(dtSec);
     }
+    if (warpDisplayer && warpDisplayer.mesh.visible) {
+      warpDisplayer.update(dtSec);
+    }
     if (agnEngine && agnEngine.isActive()) {
       agnEngine.update(dtSec);
+      if (warpDisplayer) {
+        warpDisplayer.setWarpState(agnEngine.getWarpState());
+      }
     }
   }
 
@@ -425,6 +441,10 @@ export function createSunController({
     getAgnEventPresets: () => agnEngine?.getEventPresets?.() ?? {},
     getAgnSourceCatalog: () => agnEngine?.getSourceCatalog?.() ?? {},
     get magneticFieldGroup() { return sunMagneticFieldGroup; },
-    get surfaceMaterial() { return sunSurfaceMaterial; }
+    get surfaceMaterial() { return sunSurfaceMaterial; },
+
+    // Expose warp engine state for solar systemic orbital perturbation
+    getWarpState: () => agnEngine?.getWarpState?.() ?? null,
+    getWarpInfoText: () => warpDisplayer?.getInfoText?.() ?? null
   };
 }
