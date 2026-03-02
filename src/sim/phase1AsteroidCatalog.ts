@@ -18,7 +18,7 @@ export interface Phase1CatalogLoadResult {
 const PHASE1_DEFAULT_URL = '/data/asteroid-phase1/asteroid_phase1_main_100000.bin';
 const PHASE1_DEFAULT_MAX_RECORDS = 15_000;
 const HEADER_MAGIC = 'ASPH';
-const HEADER_SIZE_BYTES = 11;
+const HEADER_SIZE_BYTES = 12;
 const STRIDE_FLOATS = 11;
 const STRIDE_BYTES = STRIDE_FLOATS * 4;
 
