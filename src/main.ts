@@ -34,6 +34,7 @@ import {
 import { createSolarSystemCatalog } from './sim/catalog';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
+import { coordinateStretchFactor } from './frontend/features/superluminal-modeling/smbhPropagation';
 import { generatePlanetTexture } from './textures';
 import { createSimulationState } from './frontend/app/stateStore';
 import {
@@ -612,7 +613,7 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
 
   const options = {};
   if (preset) options.preset = preset;
-  options.hypothesis = hypothesis;
+  if (hypothesis !== 'compound') options.hypothesis = hypothesis;
 
   sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
 });
@@ -623,6 +624,15 @@ dom.agnObserverFrame?.addEventListener('change', () => {
 
 dom.agnStochastic?.addEventListener('change', () => {
   sunCtrl.setAgnStochasticFlaring(Boolean(dom.agnStochastic?.checked));
+});
+
+dom.agnHypothesis?.addEventListener('change', () => {
+  const hypothesis = dom.agnHypothesis.value;
+  if (hypothesis === 'h29' && dom.bodyInfo) {
+    dom.bodyInfo.textContent = sunCtrl.getWarpInfoText?.() || 'H29 Warp Wave Selected';
+  } else {
+    updateBodyInfoPanel(simState.focusedBodyId || 'sun');
+  }
 });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
@@ -656,6 +666,18 @@ function animate(timestamp) {
 
   timeController.advanceLocalTime(deltaSeconds);
   model.update(simState.julianDate);
+
+  // H29 Metric Stretch
+  const warpState = sunCtrl.getWarpState();
+  if (warpState && warpState.direction) {
+    // timeSec is real world elapsed seconds since timeline start, approx proportional to distance / c
+    const stretchAmplitude = coordinateStretchFactor(warpState.positionCm, 0, warpState.energyErg, warpState.smbhMassG);
+    // scale up the stretch heavily for visual debug, if amplitude > 1.0
+    if (stretchAmplitude > 1.0) {
+      model.applyMetricStretch(1.0 + (stretchAmplitude - 1.0) * 10.0, warpState.direction);
+    }
+  }
+
   updateSceneBodies();
   updateBodyRotations(simState.julianDate);
 
