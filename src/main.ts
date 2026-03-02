@@ -47,6 +47,7 @@ import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt, propagateBeltPositions } from './sim/asteroidBelt';
 import { generateKuiperBelt, propagateKBOPositions } from './sim/kuiperBelt';
+import { loadPhase1AsteroidCatalog, PHASE1_CATALOG_URL } from './sim/phase1AsteroidCatalog';
 import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
@@ -91,6 +92,8 @@ const simState = createSimulationState({
   currentJulianDate,
   defaultTimeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC
 });
+const ASTEROID_BELT_TARGET_COUNT = 15_000;
+const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
@@ -343,22 +346,61 @@ for (const body of catalog.bodies) {
 
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
-const asteroidPop = generateAsteroidBelt(15_000);
+let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { includeNamed: true });
 const kuiperPop   = generateKuiperBelt(5_000);
 
-const asteroidPositions = new Float32Array(asteroidPop.count * 3);
+let asteroidPositions = new Float32Array(asteroidPop.count * 3);
 const kuiperPositions   = new Float32Array(kuiperPop.count * 3);
 
-const asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
+let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
 const kuiperBeltRenderer   = createKuiperBeltRenderer(kuiperPop.kbos);
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
 solarSystemGroup.add(kuiperBeltRenderer.mesh);
 
+function refreshAsteroidBeltRenderer(population) {
+  solarSystemGroup.remove(asteroidBeltRenderer.mesh);
+  asteroidBeltRenderer.dispose();
+  asteroidPop = population;
+  asteroidPositions = new Float32Array(asteroidPop.count * 3);
+  asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
+  solarSystemGroup.add(asteroidBeltRenderer.mesh);
+  propagateBeltPositions(asteroidPop.asteroids, simState.julianDate, asteroidPositions);
+  asteroidBeltRenderer.updatePositions(asteroidPositions);
+}
+
+function initPhaseOneAsteroids() {
+  loadPhase1AsteroidCatalog({
+    maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT
+  }).then((catalog) => {
+    if (!catalog.asteroids.length) return;
+    const phaseOnePopulation = generateAsteroidBelt(
+      ASTEROID_BELT_TARGET_COUNT,
+      42,
+      {
+        deterministicAsteroids: catalog.asteroids,
+        includeNamed: false
+      }
+    );
+    if (phaseOnePopulation.count <= 0) return;
+    refreshAsteroidBeltRenderer(phaseOnePopulation);
+    refillBodyList();
+    console.info(
+      `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
+      `${catalog.sourceCount.toLocaleString()} source rows, ` +
+      `${catalog.asteroids.length.toLocaleString()} parsed records, ` +
+      `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
+    );
+  }).catch((error) => {
+    console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
+  });
+}
+
 propagateBeltPositions(asteroidPop.asteroids, simState.julianDate, asteroidPositions);
 asteroidBeltRenderer.updatePositions(asteroidPositions);
 propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
 kuiperBeltRenderer.updatePositions(kuiperPositions);
+initPhaseOneAsteroids();
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
 

@@ -19,6 +19,13 @@ export interface AsteroidDef {
   /** packed sRGB 0xRRGGBB */
   color: number;
   irregularity: number;
+  sourceId?: string;
+  sourceName?: string;
+}
+
+export interface AsteroidBeltOptions {
+  deterministicAsteroids?: readonly AsteroidDef[];
+  includeNamed?: boolean;
 }
 
 // ── Named bodies ─────────────────────────────────────────────────────────────
@@ -83,20 +90,22 @@ function taxonomyFromSemiMajor(aAu: number, roll: number): AsteroidTaxonomy {
   return AsteroidTaxonomy.M;
 }
 
-function colorForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): number {
+export function colorForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): number {
   const v = (lo: number, hi: number) => Math.floor(lo + (hi - lo) * rand());
   switch (tax) {
     case AsteroidTaxonomy.C: { const g = v(50, 90); return (g << 16) | ((g - 4) << 8) | (g - 8); }
     case AsteroidTaxonomy.S: { return (v(150, 190) << 16) | (v(120, 155) << 8) | v(90, 120); }
     case AsteroidTaxonomy.M: { const g = v(140, 195); return (g << 16) | (g << 8) | (g + 5); }
+    default: return 0x7a7a72;
   }
 }
 
-function albedoForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): number {
+export function albedoForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): number {
   switch (tax) {
     case AsteroidTaxonomy.C: return 0.03 + rand() * 0.07;
     case AsteroidTaxonomy.S: return 0.10 + rand() * 0.15;
     case AsteroidTaxonomy.M: return 0.10 + rand() * 0.10;
+    default: return 0.10 + rand() * 0.08;
   }
 }
 
@@ -126,10 +135,38 @@ export interface AsteroidBeltPopulation {
 
 export function generateAsteroidBelt(
   count = 15_000,
-  seed = 42
+  seed = 42,
+  options: AsteroidBeltOptions = {}
 ): AsteroidBeltPopulation {
   const rand = mulberry32(seed);
-  const asteroids: AsteroidDef[] = [...NAMED_ASTEROIDS];
+  const deterministicAsteroids = options.deterministicAsteroids ?? [];
+  const includeNamed = options.includeNamed ?? true;
+
+  const asteroids: AsteroidDef[] = [];
+  const seen = new Set<string>();
+
+  const identityKey = (entry: AsteroidDef): string => {
+    const o = entry.orbit;
+    return `${(o.aAu ?? 0).toFixed(7)}|${(o.e ?? 0).toFixed(7)}|${(o.iDeg ?? 0).toFixed(5)}|${(o.meanAnomalyDeg ?? 0).toFixed(4)}`;
+  };
+
+  for (const entry of deterministicAsteroids) {
+    if (asteroids.length >= count) break;
+    const key = identityKey(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    asteroids.push(entry);
+  }
+
+  if (includeNamed) {
+    for (const named of NAMED_ASTEROIDS) {
+      if (asteroids.length >= count) break;
+      const key = identityKey(named);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      asteroids.push(named);
+    }
+  }
 
   const remaining = Math.max(0, count - asteroids.length);
   for (let i = 0; i < remaining; i++) {
