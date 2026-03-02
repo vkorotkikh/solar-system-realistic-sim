@@ -2,7 +2,6 @@ import {
   BufferGeometry,
   Color,
   DodecahedronGeometry,
-  Float32BufferAttribute,
   IcosahedronGeometry,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -10,17 +9,18 @@ import {
   MeshStandardMaterial,
   OctahedronGeometry,
   Quaternion,
-  Vector3,
+  Vector3
 } from 'three';
 
 import type { AsteroidDef } from '../../../sim/asteroidBelt';
 import type { KBODef } from '../../../sim/kuiperBelt';
-import { AU_KM } from '../../../constants';
+import { J2000_JD } from '../../../constants';
 
 // ── Geometry generation ──────────────────────────────────────────────────────
-// Creates a small library of deformed polyhedra for visual variety.
-// Each instance picks one at random; within the InstancedMesh we use a single
-// merged geometry but vary scale + rotation per instance.
+
+const DEG_TO_RAD = Math.PI / 180;
+const DEFAULT_PERTURBATION_SCALE_AU = 1.0e-10;
+const MAX_PERTURB_AGE_DAYS = 40_000;
 
 function mulberry32(seed: number) {
   let s = seed | 0;
@@ -55,14 +55,232 @@ function createIrregularGeometry(
   return base;
 }
 
+// Shader source for Kepler propagation + perturbation.
+const ASTEROID_ORBIT_VERTEX_SHADER = {
+  header: /* glsl */`
+    attribute vec4 aOrbitParams1; // x = aAu, y = e, z = iRad, w = Omega
+    attribute vec4 aOrbitParams2; // x = omega, y = M0, z = periodDays, w = epochJd
+    attribute vec4 aSpinParams;   // xyz = spinAxis, w = spinRateRadPerDay
+
+    uniform float uJulianDate;
+    uniform vec3 uJupiterPositionAu;
+    uniform vec3 uSaturnPositionAu;
+    uniform float uJupiterMuAu3Day2;
+    uniform float uSaturnMuAu3Day2;
+    uniform float uPerturbationScale;
+    uniform float uOrbitScaleAu;
+    const float PI2 = 6.283185307179586;
+    const float MAX_PERTURB_AGE_DAYS = ${MAX_PERTURB_AGE_DAYS.toFixed(1)};
+
+    vec3 vOrbitOffset;
+
+    float solveKepler(float meanAnomaly, float eccentricity) {
+      float eccentricAnomaly = meanAnomaly;
+      for (int i = 0; i < 8; i++) {
+        float f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly;
+        float fPrime = 1.0 - eccentricity * cos(eccentricAnomaly);
+        float delta = f / max(fPrime, 1e-6);
+        eccentricAnomaly -= delta;
+      }
+      return eccentricAnomaly;
+    }
+
+    vec3 rotateAroundAxis(vec3 value, vec3 axis, float angle) {
+      float s = sin(angle);
+      float c = cos(angle);
+      float oc = 1.0 - c;
+      return value * c
+        + cross(axis, value) * s
+        + axis * dot(axis, value) * oc;
+    }
+
+    vec3 gravityPerturbation(vec3 planetPositionAu, float planetMu, vec3 currentPositionAu) {
+      vec3 offset = planetPositionAu - currentPositionAu;
+      float distSq = max(dot(offset, offset), 1e-12);
+      float invDist = inversesqrt(distSq);
+      float invDist3 = invDist * invDist * invDist;
+      return planetMu * (offset * invDist3);
+    }
+  `,
+
+  normalVertex: /* glsl */`
+    float spinLenSq = dot(aSpinParams.xyz, aSpinParams.xyz);
+    vec3 spinAxis = aSpinParams.xyz;
+    float spinAngle = aSpinParams.w * (uJulianDate - aOrbitParams2.w);
+    if (spinLenSq > 1e-6) {
+      spinAxis /= sqrt(spinLenSq);
+      objectNormal = rotateAroundAxis(objectNormal, spinAxis, spinAngle);
+    }
+  `,
+
+  beginVertex: /* glsl */`
+    float a = aOrbitParams1.x;
+    float e = clamp(aOrbitParams1.y, 0.0, 0.999999);
+    float i = aOrbitParams1.z;
+    float omegaNode = aOrbitParams1.w;
+    float argPeriapsis = aOrbitParams2.x;
+    float meanAnomaly0 = aOrbitParams2.y;
+    float periodDays = max(aOrbitParams2.z, 1.0);
+    float epochJd = aOrbitParams2.w;
+
+    float meanMotion = (PI2 / periodDays);
+    float deltaDays = uJulianDate - epochJd;
+    float meanAnomaly = meanAnomaly0 + meanMotion * deltaDays;
+    meanAnomaly = mod(meanAnomaly, PI2);
+    if (meanAnomaly < 0.0) {
+      meanAnomaly += PI2;
+    }
+    float eccentricAnomaly = solveKepler(meanAnomaly, e);
+
+    float sqrtTerm = sqrt(max(1.0 - e * e, 1e-6));
+    vec3 orbital = vec3(
+      a * (cos(eccentricAnomaly) - e),
+      a * sqrtTerm * sin(eccentricAnomaly),
+      0.0
+    );
+
+    float cosOmega = cos(omegaNode);
+    float sinOmega = sin(omegaNode);
+    float cosArg = cos(argPeriapsis);
+    float sinArg = sin(argPeriapsis);
+    float cosI = cos(i);
+    float sinI = sin(i);
+    float sinEps = sinArg * cosI;
+
+    vec3 orbitPosition = vec3(
+      orbital.x * (cosOmega * cosArg - sinOmega * sinArg * cosI) + orbital.y * (-cosOmega * sinArg - sinOmega * cosArg * cosI),
+      orbital.x * (sinOmega * cosArg + cosOmega * sinArg * cosI) + orbital.y * (-sinOmega * sinArg + cosOmega * cosArg * cosI),
+      orbital.x * (sinArg * sinI) + orbital.y * (cosArg * sinI)
+    );
+
+    vec3 perturb = vec3(0.0);
+    if (uJupiterMuAu3Day2 > 0.0) {
+      perturb += gravityPerturbation(uJupiterPositionAu, uJupiterMuAu3Day2, orbitPosition);
+    }
+    if (uSaturnMuAu3Day2 > 0.0) {
+      perturb += gravityPerturbation(uSaturnPositionAu, uSaturnMuAu3Day2, orbitPosition);
+    }
+
+    float age = clamp(abs(deltaDays), 0.0, MAX_PERTURB_AGE_DAYS);
+    orbitPosition += perturb * (age * age) * uPerturbationScale;
+    vOrbitOffset = orbitPosition * uOrbitScaleAu;
+
+    float spinLenSqLocal = dot(aSpinParams.xyz, aSpinParams.xyz);
+    transformed = position.xyz;
+    float localSpin = aSpinParams.w * deltaDays;
+    if (spinLenSqLocal > 1e-6) {
+      vec3 spinAxis = normalize(aSpinParams.xyz);
+      transformed = rotateAroundAxis(position.xyz, spinAxis, localSpin);
+    }
+  `,
+
+  worldPosition: /* glsl */`
+    vec4 worldPositionWithOrbit = vec4( transformed, 1.0 );
+    worldPositionWithOrbit.xyz += vOrbitOffset;
+
+    #ifdef USE_BATCHING
+      worldPositionWithOrbit = batchingMatrix * worldPositionWithOrbit;
+    #endif
+
+    #ifdef USE_INSTANCING
+      worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
+    #endif
+
+    worldPosition = modelMatrix * worldPositionWithOrbit;
+  `,
+
+  projectVertex: /* glsl */`
+    vec4 worldPositionWithOrbit = vec4( transformed, 1.0 );
+    worldPositionWithOrbit.xyz += vOrbitOffset;
+
+    #ifdef USE_BATCHING
+      worldPositionWithOrbit = batchingMatrix * worldPositionWithOrbit;
+    #endif
+
+    #ifdef USE_INSTANCING
+      worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
+    #endif
+
+    vec4 mvPosition = modelViewMatrix * worldPositionWithOrbit;
+    gl_Position = projectionMatrix * mvPosition;
+  `
+};
+
+function getOrbitFloat(value: number | undefined, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return value;
+}
+
+interface OrbitUniforms {
+  uJulianDate: { value: number };
+  uJupiterPositionAu: { value: Vector3 };
+  uSaturnPositionAu: { value: Vector3 };
+  uJupiterMuAu3Day2: { value: number };
+  uSaturnMuAu3Day2: { value: number };
+  uPerturbationScale: { value: number };
+  uOrbitScaleAu: { value: number };
+}
+
+function createOrbitMaterial() {
+  const uniforms: OrbitUniforms = {
+    uJulianDate: { value: J2000_JD },
+    uJupiterPositionAu: { value: new Vector3(0, 0, 0) },
+    uSaturnPositionAu: { value: new Vector3(0, 0, 0) },
+    uJupiterMuAu3Day2: { value: 0 },
+    uSaturnMuAu3Day2: { value: 0 },
+    uPerturbationScale: { value: DEFAULT_PERTURBATION_SCALE_AU },
+    uOrbitScaleAu: { value: 1 },
+  };
+
+  const material = new MeshStandardMaterial({
+    roughness: 0.85,
+    metalness: 0.08,
+    flatShading: true,
+    vertexColors: true
+  });
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uJulianDate = uniforms.uJulianDate;
+    shader.uniforms.uJupiterPositionAu = uniforms.uJupiterPositionAu;
+    shader.uniforms.uSaturnPositionAu = uniforms.uSaturnPositionAu;
+    shader.uniforms.uJupiterMuAu3Day2 = uniforms.uJupiterMuAu3Day2;
+    shader.uniforms.uSaturnMuAu3Day2 = uniforms.uSaturnMuAu3Day2;
+    shader.uniforms.uPerturbationScale = uniforms.uPerturbationScale;
+    shader.uniforms.uOrbitScaleAu = uniforms.uOrbitScaleAu;
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `#include <common>\n${ASTEROID_ORBIT_VERTEX_SHADER.header}`
+    );
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <beginnormal_vertex>',
+      `#include <beginnormal_vertex>\n${ASTEROID_ORBIT_VERTEX_SHADER.normalVertex}`
+    );
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      ASTEROID_ORBIT_VERTEX_SHADER.beginVertex
+    );
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <worldpos_vertex>',
+      ASTEROID_ORBIT_VERTEX_SHADER.worldPosition
+    );
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <project_vertex>',
+      ASTEROID_ORBIT_VERTEX_SHADER.projectVertex
+    );
+  };
+
+  return { material, uniforms };
+}
+
 // ── Display scale ────────────────────────────────────────────────────────────
-// Asteroids are tiny in AU. We exaggerate size to make them visible while
-// keeping relative proportions roughly correct.
 
 function displayRadiusAu(diameterKm: number, isKuiper: boolean): number {
   const radiusKm = diameterKm / 2;
-  const realAu = radiusKm / AU_KM;
-  // Exaggerate: smallest ~0.003 AU, Ceres ~0.012 AU
   const minDisplay = isKuiper ? 0.008 : 0.003;
   const scale = isKuiper ? 0.00025 : 0.00035;
   return Math.max(minDisplay, Math.sqrt(radiusKm) * scale);
@@ -73,6 +291,9 @@ function displayRadiusAu(diameterKm: number, isKuiper: boolean): number {
 export interface BeltRendererHandle {
   mesh: InstancedMesh;
   updatePositions: (positions: Float32Array) => void;
+  setJulianDate: (julianDate: number) => void;
+  setPerturberPositions: (jupiterPositionAu: Vector3, saturnPositionAu: Vector3) => void;
+  setPerturberMasses: (jupiterMuAu3Day2: number, saturnMuAu3Day2: number) => void;
   setVisible: (visible: boolean) => void;
   dispose: () => void;
 }
@@ -82,6 +303,54 @@ const _pos = new Vector3();
 const _quat = new Quaternion();
 const _scale = new Vector3();
 
+function addInstanceColorData(colors: Float32Array, index: number, value: number): void {
+  const offset = index * 3;
+  const color = new Color(value);
+  colors[offset] = color.r;
+  colors[offset + 1] = color.g;
+  colors[offset + 2] = color.b;
+}
+
+function fillAsteroidOrbits(
+  count: number,
+  asteroids: readonly AsteroidDef[],
+  orbitParam1: Float32Array,
+  orbitParam2: Float32Array,
+  spinParams: Float32Array,
+  colors: Float32Array
+) {
+  for (let i = 0; i < count; i++) {
+    const ast = asteroids[i];
+    const orbit = ast.orbit;
+    const offset4 = i * 4;
+
+    orbitParam1[offset4] = getOrbitFloat(orbit.aAu, 2.5);
+    orbitParam1[offset4 + 1] = getOrbitFloat(orbit.e, 0);
+    orbitParam1[offset4 + 2] = getOrbitFloat(orbit.iDeg, 0) * DEG_TO_RAD;
+    orbitParam1[offset4 + 3] = getOrbitFloat(orbit.ascendingNodeDeg, 0) * DEG_TO_RAD;
+
+    orbitParam2[offset4] = getOrbitFloat(orbit.argPeriapsisDeg, 0) * DEG_TO_RAD;
+    orbitParam2[offset4 + 1] = getOrbitFloat(orbit.meanAnomalyDeg, 0) * DEG_TO_RAD;
+    const period = getOrbitFloat(orbit.periodDays, 0);
+    orbitParam2[offset4 + 2] = period < 1 ? 365.25 : period;
+    orbitParam2[offset4 + 3] = getOrbitFloat(orbit.epochJd, J2000_JD);
+
+    addInstanceColorData(colors, i, ast.color);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const i4 = i * 4;
+    const angle = (i + 1) * 0.6180339887498949;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const spin = 2.0 * (i + 7.3) * 1e-4;
+    spinParams[i4] = cosA;
+    spinParams[i4 + 1] = sinA;
+    spinParams[i4 + 2] = cosA * sinA * (1 - (Math.abs(sinA)));
+    spinParams[i4 + 3] = spin;
+  }
+}
+
 export function createAsteroidBeltRenderer(
   asteroids: readonly AsteroidDef[],
   seed = 99
@@ -90,83 +359,68 @@ export function createAsteroidBeltRenderer(
   const count = asteroids.length;
 
   const geometry = createIrregularGeometry(1, 0.20, rand);
-
-  const material = new MeshStandardMaterial({
-    roughness: 0.85,
-    metalness: 0.08,
-    flatShading: true,
-    vertexColors: false,
-  });
+  const { material, uniforms } = createOrbitMaterial();
 
   const mesh = new InstancedMesh(geometry, material, count);
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
 
-  // Per-instance color
   const colors = new Float32Array(count * 3);
-  const tmpColor = new Color();
+  const orbitParam1 = new Float32Array(count * 4);
+  const orbitParam2 = new Float32Array(count * 4);
+  const spinParams = new Float32Array(count * 4);
+
+  fillAsteroidOrbits(count, asteroids, orbitParam1, orbitParam2, spinParams, colors);
+
+  geometry.setAttribute('aOrbitParams1', new InstancedBufferAttribute(orbitParam1, 4));
+  geometry.setAttribute('aOrbitParams2', new InstancedBufferAttribute(orbitParam2, 4));
+  geometry.setAttribute('aSpinParams', new InstancedBufferAttribute(spinParams, 4));
+
+  mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
 
   for (let i = 0; i < count; i++) {
     const ast = asteroids[i];
-    const r = displayRadiusAu(ast.diameterKm, false);
-
-    // Random rotation for visual variety
+    const diameterRenderScale = displayRadiusAu(ast.diameterKm, false);
     _quat.set(rand() - 0.5, rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
-    // Slight elongation for irregular shapes
     const stretch = 1 + ast.irregularity * (rand() - 0.3);
-    _scale.set(r * stretch, r, r / (1 + ast.irregularity * rand() * 0.4));
+    _scale.set(
+      diameterRenderScale * stretch,
+      diameterRenderScale,
+      diameterRenderScale / (1 + ast.irregularity * rand() * 0.4)
+    );
     _pos.set(0, 0, 0);
     _mat4.compose(_pos, _quat, _scale);
     mesh.setMatrixAt(i, _mat4);
-
-    tmpColor.set(ast.color);
-    colors[i * 3]     = tmpColor.r;
-    colors[i * 3 + 1] = tmpColor.g;
-    colors[i * 3 + 2] = tmpColor.b;
   }
-
-  mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
   mesh.instanceMatrix.needsUpdate = true;
-
-  // Pre-store per-instance quaternion and scale for position-only updates
-  const storedQuats = new Float32Array(count * 4);
-  const storedScales = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    mesh.getMatrixAt(i, _mat4);
-    _mat4.decompose(_pos, _quat, _scale);
-    storedQuats[i * 4]     = _quat.x;
-    storedQuats[i * 4 + 1] = _quat.y;
-    storedQuats[i * 4 + 2] = _quat.z;
-    storedQuats[i * 4 + 3] = _quat.w;
-    storedScales[i * 3]     = _scale.x;
-    storedScales[i * 3 + 1] = _scale.y;
-    storedScales[i * 3 + 2] = _scale.z;
-  }
-
-  function updatePositions(positions: Float32Array) {
-    for (let i = 0; i < count; i++) {
-      const off = i * 3;
-      _pos.set(positions[off], positions[off + 1], positions[off + 2]);
-      _quat.set(
-        storedQuats[i * 4], storedQuats[i * 4 + 1],
-        storedQuats[i * 4 + 2], storedQuats[i * 4 + 3]
-      );
-      _scale.set(storedScales[off], storedScales[off + 1], storedScales[off + 2]);
-      _mat4.compose(_pos, _quat, _scale);
-      mesh.setMatrixAt(i, _mat4);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  }
 
   return {
     mesh,
-    updatePositions,
-    setVisible(v: boolean) { mesh.visible = v; },
+    updatePositions(_positions: Float32Array) {
+      // Kept for renderer interface compatibility.
+      // Main belt asteroids are now fully GPU-propagated from orbital attributes.
+      return;
+    },
+    setJulianDate(julianDate: number) {
+      const safe = Number.isFinite(julianDate) ? julianDate : J2000_JD;
+      uniforms.uJulianDate.value = safe;
+    },
+    setPerturberPositions(jupiterPositionAu: Vector3, saturnPositionAu: Vector3) {
+      uniforms.uJupiterPositionAu.value.copy(jupiterPositionAu);
+      uniforms.uSaturnPositionAu.value.copy(saturnPositionAu);
+    },
+    setPerturberMasses(jupiterMuAu3Day2: number, saturnMuAu3Day2: number) {
+      uniforms.uJupiterMuAu3Day2.value = getOrbitFloat(jupiterMuAu3Day2, 0);
+      uniforms.uSaturnMuAu3Day2.value = getOrbitFloat(saturnMuAu3Day2, 0);
+    },
+    setVisible(v: boolean) {
+      mesh.visible = v;
+    },
     dispose() {
       geometry.dispose();
       material.dispose();
-    },
+    }
   };
 }
 
@@ -178,11 +432,10 @@ export function createKuiperBeltRenderer(
   const count = kbos.length;
 
   const geometry = createIrregularGeometry(0, 0.25, rand);
-
   const material = new MeshStandardMaterial({
     roughness: 0.90,
     metalness: 0.02,
-    flatShading: true,
+    flatShading: true
   });
 
   const mesh = new InstancedMesh(geometry, material, count);
@@ -192,20 +445,33 @@ export function createKuiperBeltRenderer(
 
   const colors = new Float32Array(count * 3);
   const tmpColor = new Color();
+  const baseQuats = new Float32Array(count * 4);
+  const baseScales = new Float32Array(count * 3);
 
   for (let i = 0; i < count; i++) {
     const kbo = kbos[i];
-    const r = displayRadiusAu(kbo.diameterKm, true);
+    const radius = displayRadiusAu(kbo.diameterKm, true);
 
     _quat.set(rand() - 0.5, rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
     const stretch = 1 + kbo.irregularity * (rand() - 0.3);
-    _scale.set(r * stretch, r, r / (1 + kbo.irregularity * rand() * 0.4));
+    _scale.set(
+      radius * stretch,
+      radius,
+      radius / (1 + kbo.irregularity * rand() * 0.4)
+    );
+    baseScales[i * 3] = _scale.x;
+    baseScales[i * 3 + 1] = _scale.y;
+    baseScales[i * 3 + 2] = _scale.z;
     _pos.set(0, 0, 0);
     _mat4.compose(_pos, _quat, _scale);
     mesh.setMatrixAt(i, _mat4);
+    baseQuats[i * 4] = _quat.x;
+    baseQuats[i * 4 + 1] = _quat.y;
+    baseQuats[i * 4 + 2] = _quat.z;
+    baseQuats[i * 4 + 3] = _quat.w;
 
     tmpColor.set(kbo.color);
-    colors[i * 3]     = tmpColor.r;
+    colors[i * 3] = tmpColor.r;
     colors[i * 3 + 1] = tmpColor.g;
     colors[i * 3 + 2] = tmpColor.b;
   }
@@ -213,42 +479,39 @@ export function createKuiperBeltRenderer(
   mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
   mesh.instanceMatrix.needsUpdate = true;
 
-  const storedQuats = new Float32Array(count * 4);
-  const storedScales = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    mesh.getMatrixAt(i, _mat4);
-    _mat4.decompose(_pos, _quat, _scale);
-    storedQuats[i * 4]     = _quat.x;
-    storedQuats[i * 4 + 1] = _quat.y;
-    storedQuats[i * 4 + 2] = _quat.z;
-    storedQuats[i * 4 + 3] = _quat.w;
-    storedScales[i * 3]     = _scale.x;
-    storedScales[i * 3 + 1] = _scale.y;
-    storedScales[i * 3 + 2] = _scale.z;
-  }
-
-  function updatePositions(positions: Float32Array) {
-    for (let i = 0; i < count; i++) {
-      const off = i * 3;
-      _pos.set(positions[off], positions[off + 1], positions[off + 2]);
-      _quat.set(
-        storedQuats[i * 4], storedQuats[i * 4 + 1],
-        storedQuats[i * 4 + 2], storedQuats[i * 4 + 3]
-      );
-      _scale.set(storedScales[off], storedScales[off + 1], storedScales[off + 2]);
-      _mat4.compose(_pos, _quat, _scale);
-      mesh.setMatrixAt(i, _mat4);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  }
-
   return {
     mesh,
-    updatePositions,
-    setVisible(v: boolean) { mesh.visible = v; },
+    updatePositions(positions: Float32Array) {
+      for (let i = 0; i < count; i++) {
+        const off = i * 3;
+        const q = i * 4;
+        const s = i * 3;
+        _pos.set(positions[off], positions[off + 1], positions[off + 2]);
+        _quat.set(
+          baseQuats[q],
+          baseQuats[q + 1],
+          baseQuats[q + 2],
+          baseQuats[q + 3]
+        );
+        _scale.set(
+          baseScales[s],
+          baseScales[s + 1],
+          baseScales[s + 2]
+        );
+        _mat4.compose(_pos, _quat, _scale);
+        mesh.setMatrixAt(i, _mat4);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    },
+    setJulianDate() { return; },
+    setPerturberPositions() { return; },
+    setPerturberMasses() { return; },
+    setVisible(v: boolean) {
+      mesh.visible = v;
+    },
     dispose() {
       geometry.dispose();
       material.dispose();
-    },
+    }
   };
 }
