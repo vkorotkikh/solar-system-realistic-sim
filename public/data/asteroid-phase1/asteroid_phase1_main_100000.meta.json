@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "generated_utc": "2026-03-02T04:52:39Z",
+  "description": "Phase-1 deterministic main-belt-oriented asteroid corpus.",
+  "query": {
+    "endpoint": "https://ssd-api.jpl.nasa.gov/sbdb_query.api",
+    "fields": [
+      "spkid",
+      "full_name",
+      "H",
+      "diameter",
+      "e",
+      "a",
+      "i",
+      "om",
+      "w",
+      "ma",
+      "per",
+      "epoch",
+      "class",
+      "spec_B",
+      "spec_T"
+    ],
+    "sb_kind": "a",
+    "sort": "-diameter",
+    "limit": 100000
+  },
+  "source_rows": 100000,
+  "stored_count": 100000,
+  "record_layout": {
+    "format": "f11_le",
+    "fields": [
+      "epoch_jd",
+      "a_au",
+      "e",
+      "i_deg",
+      "ascending_node_deg",
+      "arg_periapsis_deg",
+      "mean_anomaly_deg",
+      "period_days",
+      "diameter_km",
+      "albedo",
+      "taxonomy_index"
+    ],
+    "header": {
+      "magic": "ASPH",
+      "version": 1,
+      "count_u32": true,
+      "stride_f32": 11
+    }
+  },
+  "taxonomy_map": {
+    "C": 0,
+    "S": 1,
+    "M": 2
+  },
+  "counts": {
+    "taxonomy": {
+      "C": 68288,
+      "S": 13261,
+      "M": 18451
+    },
+    "orbit_class": {
+      "MBA": 90161,
+      "OMB": 7505,
+      "TJN": 1879,
+      "MCA": 204,
+      "IMB": 110,
+      "CEN": 49,
+      "AMO": 40,
+      "APO": 32,
+      "TNO": 12,
+      "AST": 7,
+      "ATE": 1
+    }
+  },
+  "warnings": []
+}
