@@ -15,7 +15,7 @@
 import { Vector3 } from 'three';
 import {
     SOURCE_CATALOG, EVENT_PRESETS,
-    SGR_A
+    SGR_A, C_CM_S
 } from './smbhPhysicsConstants';
 import {
     computeMultiMessengerTimeline,
@@ -32,17 +32,17 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const SAGITTARIUS_A_DIR = new Vector3(-0.05, -0.86, 0.5).normalize();
-export const CENTAURUS_A_DIR   = new Vector3(-0.35, -0.45, 0.8).normalize();
-export const MAFFEI_1_DIR     = new Vector3(0.23, 0.18, 0.96).normalize();
-export const M87_DIR           = new Vector3(0.1, 0.9, 0.4).normalize();
+export const CENTAURUS_A_DIR = new Vector3(-0.35, -0.45, 0.8).normalize();
+export const MAFFEI_1_DIR = new Vector3(0.23, 0.18, 0.96).normalize();
+export const M87_DIR = new Vector3(0.1, 0.9, 0.4).normalize();
 
 const SOURCE_DIRECTIONS = {
     SagittariusA: SAGITTARIUS_A_DIR,
-    CentaurusA:   CENTAURUS_A_DIR,
-    Maffei1:      MAFFEI_1_DIR,
-    M87:          M87_DIR
+    CentaurusA: CENTAURUS_A_DIR,
+    Maffei1: MAFFEI_1_DIR,
+    M87: M87_DIR
 };
-const H29_CHANNELS = new Set(['metric_slipstream']);
+const H29_CHANNELS = new Set(['metric_slipstream', 'warpMetric']);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -56,8 +56,8 @@ function toRadians(deg) {
     return (deg * Math.PI) / 180;
 }
 
-function channelShaderParams(channel, elapsedFraction) {
-    const freqMap = {
+function channelShaderParams(channel: any, elapsedFraction: number) {
+    const freqMap: any = {
         gw: 12,
         em: 18,
         neutrino: 15,
@@ -65,9 +65,10 @@ function channelShaderParams(channel, elapsedFraction) {
         cr_tsunami: 6,
         alfven: 7,
         blast: 5,
-        metric_slipstream: 3
+        metric_slipstream: 3,
+        warpMetric: 2
     };
-    const strainScale = {
+    const strainScale: any = {
         gw: 0.04,
         em: 0.06,
         neutrino: 0.02,
@@ -75,7 +76,8 @@ function channelShaderParams(channel, elapsedFraction) {
         cr_tsunami: 0.07,
         alfven: 0.05,
         blast: 0.10,
-        metric_slipstream: 0.18
+        metric_slipstream: 0.18,
+        warpMetric: 0.25
     };
     return {
         frequency: freqMap[channel.key] || 10,
@@ -140,7 +142,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
 
     function triggerSolarResponse(channel) {
         if (!solarResponder) return;
-        if (isMetricSlipstreamChannel(channel)) return;
+        if (isMetricSlipstreamChannel(channel) || channel.key === 'warpMetric') return; // Warp wave is "silent"
         const amp = channel.baseAmplitude;
 
         if (channel.key === 'blast' && solarResponder.triggerMassiveAgnFlare) {
@@ -177,11 +179,17 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
 
     function emitChannel(channel, elapsedFraction) {
         channel.fired = true;
+
+        // Let the sunController know if the warp wave hit
+        if (channel.key === 'warpMetric' && solarResponder.triggerWarpWaveImpact) {
+            solarResponder.triggerWarpWaveImpact(currentEnergyErg, SGR_A.massG);
+        }
+
         triggerSolarResponse(channel);
 
         if (!gwDisplayer) return;
 
-        if (channel.key === 'gw') {
+        if (channel.key === 'gw' || channel.key === 'warpMetric') {
             gwDisplayer.toggle(true);
         }
 
@@ -201,7 +209,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         });
 
         const gwChannel = channels.find(c => c.key === 'gw');
-        const slipstreamChannel = channels.find(c => c.key === 'metric_slipstream');
+        const slipstreamChannel = channels.find(c => c.key === 'metric_slipstream' || c.key === 'warpMetric');
         const gwArrivalDisplaySec = gwChannel ? gwChannel.arrivalDisplaySec : 8.0;
         const frontAnchorSec = (slipstreamChannel ? slipstreamChannel.arrivalDisplaySec : gwArrivalDisplaySec);
 
@@ -313,7 +321,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
             if (stochasticActive) {
                 stochasticElapsed += dt;
                 while (stochasticIndex < stochasticFlares.length &&
-                       stochasticFlares[stochasticIndex].time <= stochasticElapsed) {
+                    stochasticFlares[stochasticIndex].time <= stochasticElapsed) {
                     const flare = stochasticFlares[stochasticIndex];
                     const scaledIntensity = Math.log10(flare.energy) / 43;
                     if (solarResponder?.triggerFlareBurst) {
@@ -399,6 +407,24 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         },
 
         getEventPresets() { return EVENT_PRESETS; },
-        getSourceCatalog() { return SOURCE_CATALOG; }
+        getSourceCatalog() { return SOURCE_CATALOG; },
+
+        /**
+         * Get current warp state for the H29 Warp Wave visualization/physics.
+         */
+        getWarpState() {
+            if (!isActive || !currentTimeline || !currentTimeline.isH29Mode) return null;
+
+            // Warp propagates at c
+            const speed = C_CM_S;
+
+            return {
+                energyErg: currentEnergyErg,
+                smbhMassG: currentSource.massG,
+                positionCm: currentDistanceUnits * 1.496e13, // Rough conversion AU -> cm for scaling
+                amplitude: 1.0,
+                thickness: 0.05
+            };
+        }
     };
 }
