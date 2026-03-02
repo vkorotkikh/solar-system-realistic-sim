@@ -147,6 +147,31 @@ export class SolarSystemModel {
     return target.copy(state.worldVelocity);
   }
 
+  /**
+   * Applies a pure metric spatial stretching to world distances relative to the origin.
+   * This operates only on the visual coordinates and does not alter orbital velocity or
+   * Keplerian state, matching the Alcubierre "pure translation" effect.
+   *
+   * @param stretchFactor - multiplier (e.g. 1.05 = 5% stretch)
+   * @param direction - the propagation direction of the wave
+   */
+  applyMetricStretch(stretchFactor: number, direction: Vector3): void {
+    if (stretchFactor <= 1.0) return;
+
+    for (const bodyId of this.updateOrder) {
+      const state = this.stateById.get(bodyId);
+      if (!state) continue;
+
+      // Translate position outward along the wave propagation direction
+      // The amount of translation is proportional to the object's current 
+      // projection distance along that axis
+      const projectedDist = state.worldPosition.dot(direction);
+      const shiftMagnitude = projectedDist * (stretchFactor - 1.0);
+
+      state.worldPosition.addScaledVector(direction, shiftMagnitude);
+    }
+  }
+
   sampleBodyStateAt(
     id: string,
     julianDate: number,
