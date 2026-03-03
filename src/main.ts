@@ -36,7 +36,7 @@ import {
 import { createSolarSystemCatalog } from './sim/catalog';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
-import { coordinateStretchFactor } from './frontend/features/superluminal-modeling/smbhPropagation';
+import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/features/superluminal-modeling/smbhPropagation';
 import { generatePlanetTexture } from './textures';
 import { createSimulationState } from './frontend/app/stateStore';
 import {
@@ -354,9 +354,9 @@ for (const body of catalog.bodies) {
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
 let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { includeNamed: true });
-const kuiperPop   = generateKuiperBelt(5_000);
+const kuiperPop = generateKuiperBelt(5_000);
 
-const kuiperPositions   = new Float32Array(kuiperPop.count * 3);
+const kuiperPositions = new Float32Array(kuiperPop.count * 3);
 
 const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
 const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.massKg);
@@ -364,7 +364,7 @@ const asteroidJupiterPositionAu = new Vector3();
 const asteroidSaturnPositionAu = new Vector3();
 
 let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
-const kuiperBeltRenderer   = createKuiperBeltRenderer(kuiperPop.kbos);
+const kuiperBeltRenderer = createKuiperBeltRenderer(kuiperPop.kbos);
 asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
@@ -761,15 +761,17 @@ function animate(timestamp) {
   timeController.advanceLocalTime(deltaSeconds);
   model.update(simState.julianDate);
 
-  // H29 Metric Stretch
+  // H29 Metric Kinematics (ADM Shift Vector)
   const warpState = sunCtrl.getWarpState();
   if (warpState && warpState.direction) {
-    // timeSec is real world elapsed seconds since timeline start, approx proportional to distance / c
-    const stretchAmplitude = coordinateStretchFactor(warpState.positionCm, 0, warpState.energyErg, warpState.smbhMassG);
-    // scale up the stretch heavily for visual debug, if amplitude > 1.0
-    if (stretchAmplitude > 1.0) {
-      model.applyMetricStretch(1.0 + (stretchAmplitude - 1.0) * 10.0, warpState.direction);
-    }
+    const peakData = metricFrameDragPeak(warpState.timeSec, warpState.energyErg, warpState.smbhMassG);
+    model.applyMetricKinematics(
+      warpState.direction,
+      deltaSeconds,
+      (distCm) => evaluateLocalMetricShift(distCm, peakData),
+      warpState.sourceDistanceCm,
+      1e12 // visual exaggeration factor so the shift is visible
+    );
   }
 
   updateSceneBodies();
