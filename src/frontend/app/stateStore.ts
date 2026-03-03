@@ -68,10 +68,12 @@ export function createBodyIdResolver(catalog: { bodies: CatalogBodyLike[] }): Bo
 
   const isEarthMoonBody = (
     body: Partial<Pick<CatalogBodyLike, 'type' | 'parentId' | 'id'>> | null | undefined
-  ): boolean => Boolean(body)
-    && body.type === 'moon'
-    && body.parentId === 'earth'
-    && body.id === CANONICAL_BODY_IDS.moon;
+  ): boolean => {
+    if (!body) return false;
+    return body.type === 'moon'
+      && body.parentId === 'earth'
+      && body.id === CANONICAL_BODY_IDS.moon;
+  };
 
   return {
     CANONICAL_BODY_IDS,
