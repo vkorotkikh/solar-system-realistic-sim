@@ -152,23 +152,44 @@ export class SolarSystemModel {
    * This operates only on the visual coordinates and does not alter orbital velocity or
    * Keplerian state, matching the Alcubierre "pure translation" effect.
    *
-   * @param stretchFactor - multiplier (e.g. 1.05 = 5% stretch)
    * @param direction - the propagation direction of the wave
+   * @param dtSec - time delta in real seconds
+   * @param shiftVelocityFn - function that takes a real-world distance in cm from source along axis and returns shift velocity fraction (beta)
+   * @param sourceDistanceCm - absolute distance from the origin (Sun) to the AGN source
+   * @param visualExaggeration - factor to multiply the shift displacement for visual effect
    */
-  applyMetricStretch(stretchFactor: number, direction: Vector3): void {
-    if (stretchFactor <= 1.0) return;
+  applyMetricKinematics(
+    direction: Vector3,
+    dtSec: number,
+    shiftVelocityFn: (distanceCm: number) => number,
+    sourceDistanceCm: number,
+    visualExaggeration: number = 1e10
+  ): void {
+    if (dtSec <= 0) return;
 
     for (const bodyId of this.updateOrder) {
       const state = this.stateById.get(bodyId);
       if (!state) continue;
 
-      // Translate position outward along the wave propagation direction
-      // The amount of translation is proportional to the object's current 
-      // projection distance along that axis
-      const projectedDist = state.worldPosition.dot(direction);
-      const shiftMagnitude = projectedDist * (stretchFactor - 1.0);
+      // Project position onto propagation axis (distance in AU from Sun)
+      const projectedDistAu = state.worldPosition.dot(direction);
+      const projectedDistCm = projectedDistAu * 1.495978707e13; // AU to cm
 
-      state.worldPosition.addScaledVector(direction, shiftMagnitude);
+      // Distance from the source to this specific body
+      const bodyDistFromSourceCm = sourceDistanceCm + projectedDistCm;
+
+      // Evaluate local shift velocity fraction (dimensionless beta)
+      const localBeta = shiftVelocityFn(bodyDistFromSourceCm);
+      if (localBeta === 0) continue;
+
+      // Velocity in AU/s = beta * c_in_AU_per_s
+      const cAuPerSec = 29979245800 / 1.495978707e13;
+      const shiftVelocityAuS = localBeta * cAuPerSec;
+
+      // Shift displacement in AU over dtSec
+      const shiftDispAu = shiftVelocityAuS * dtSec * visualExaggeration;
+
+      state.worldPosition.addScaledVector(direction, shiftDispAu);
     }
   }
 

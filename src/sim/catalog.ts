@@ -69,7 +69,7 @@ interface OrbitNormal {
   z: number;
 }
 
-const PARENT_TINTS = {
+const PARENT_TINTS: Record<string, string> = {
   Earth: '#d2d8e3',
   Mars: '#c9b8a7',
   Jupiter: '#cab8a0',
@@ -86,16 +86,16 @@ const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
   PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function normalizeDegrees(value) {
+function normalizeDegrees(value: number): number {
   const mod = value % 360;
   return mod < 0 ? mod + 360 : mod;
 }
 
-function orbitNormalFromElements(iDeg, ascendingNodeDeg) {
+function orbitNormalFromElements(iDeg: number | undefined, ascendingNodeDeg: number | undefined): OrbitNormal {
   const i = (iDeg ?? 0) * DEG_TO_RAD;
   const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
   const sinI = Math.sin(i);
@@ -132,7 +132,7 @@ function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
   };
 }
 
-function rotateVectorAroundX(vector, angleDeg) {
+function rotateVectorAroundX(vector: OrbitNormal, angleDeg: number): OrbitNormal {
   const angle = angleDeg * DEG_TO_RAD;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
@@ -143,7 +143,7 @@ function rotateVectorAroundX(vector, angleDeg) {
   };
 }
 
-function elementsFromOrbitNormal(normal) {
+function elementsFromOrbitNormal(normal: OrbitNormal): { iDeg: number; ascendingNodeDeg: number } {
   const z = clamp(normal.z, -1, 1);
   const iRad = Math.acos(z);
   const ascendingNodeRad = Math.atan2(-normal.x, normal.y);
@@ -153,7 +153,7 @@ function elementsFromOrbitNormal(normal) {
   };
 }
 
-function raDecToEquatorialUnit(raDeg, decDeg) {
+function raDecToEquatorialUnit(raDeg: number | null | undefined, decDeg: number | null | undefined): OrbitNormal {
   const ra = (raDeg ?? 0) * DEG_TO_RAD;
   const dec = (decDeg ?? 0) * DEG_TO_RAD;
   const cosDec = Math.cos(dec);
@@ -164,7 +164,7 @@ function raDecToEquatorialUnit(raDeg, decDeg) {
   };
 }
 
-function equatorialToEcliptic(vectorEq) {
+function equatorialToEcliptic(vectorEq: OrbitNormal): OrbitNormal {
   const obliquity = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
   const cosOb = Math.cos(obliquity);
   const sinOb = Math.sin(obliquity);
@@ -175,23 +175,23 @@ function equatorialToEcliptic(vectorEq) {
   };
 }
 
-function sourcePoleInEcliptic(moon, parentId, sourceFrame) {
+function sourcePoleInEcliptic(moon: RawMoonRecord, parentId: string, sourceFrame: string): OrbitNormal {
   if (Number.isFinite(moon.poleRaDeg) && Number.isFinite(moon.poleDecDeg)) {
     const poleEq = raDecToEquatorialUnit(moon.poleRaDeg, moon.poleDecDeg);
     return normalizeVector(equatorialToEcliptic(poleEq));
   }
 
   const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
-  const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? moon.poleTiltDeg : 0;
+  const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? (moon.poleTiltDeg as number) : 0;
   const frameTiltDeg = sourceFrame === 'laplace'
     ? parentTilt + laplaceTilt
     : parentTilt;
   return normalizeVector(rotateVectorAroundX({ x: 0, y: 0, z: 1 }, frameTiltDeg));
 }
 
-function convertElementsFromPlaneToEcliptic(moon, sourceFrame, parentId) {
+function convertElementsFromPlaneToEcliptic(moon: RawMoonRecord, sourceFrame: string, parentId: string): { iDeg: number; ascendingNodeDeg: number } {
   const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
-  const eclipticNorth = { x: 0, y: 0, z: 1 };
+  const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
   let planeXAxis = crossProduct(eclipticNorth, sourcePole);
   if (vectorMagnitude(planeXAxis) < 1e-9) {
     planeXAxis = { x: 1, y: 0, z: 0 };
@@ -209,7 +209,7 @@ function convertElementsFromPlaneToEcliptic(moon, sourceFrame, parentId) {
   return elementsFromOrbitNormal(eclipticNormal);
 }
 
-function normalizeMoonOrbitFrame(moon, parentId) {
+function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg: number; ascendingNodeDeg: number; sourceFrame: string } {
   const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
   if (sourceFrame === 'ecliptic' || sourceFrame.length === 0) {
     return {
@@ -229,7 +229,7 @@ function normalizeMoonOrbitFrame(moon, parentId) {
   };
 }
 
-function stableHash(input) {
+function stableHash(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
     hash = (hash << 5) - hash + input.charCodeAt(i);
@@ -238,13 +238,14 @@ function stableHash(input) {
   return Math.abs(hash);
 }
 
-function estimateMoonRadiusKm(moon) {
-  if (MAJOR_MOON_RADII_KM[moon.name]) {
-    return MAJOR_MOON_RADII_KM[moon.name];
+function estimateMoonRadiusKm(moon: RawMoonRecord): number {
+  const knownRadius = (MAJOR_MOON_RADII_KM as Record<string, number | undefined>)[moon.name];
+  if (knownRadius) {
+    return knownRadius;
   }
 
   const hash = stableHash(`${moon.planet}:${moon.name}`);
-  const parentScale = {
+  const parentScale: Record<string, [number, number]> = {
     Earth: [5, 15],
     Mars: [3, 20],
     Jupiter: [2, 45],
@@ -263,7 +264,7 @@ function estimateMoonRadiusKm(moon) {
   return Math.max(1.5, base * distanceFactor);
 }
 
-function displayRadiusAu(radiusKm, type) {
+function displayRadiusAu(radiusKm: number, type: string): number {
   if (type === 'star') {
     return Math.sqrt(radiusKm) * 0.00045;
   }
@@ -279,11 +280,11 @@ function displayRadiusAu(radiusKm, type) {
   return Math.max(0.00055, Math.sqrt(radiusKm) * 0.00018);
 }
 
-function moonColor(planet) {
+function moonColor(planet: string): string {
   return PARENT_TINTS[planet] ?? '#c5c5c5';
 }
 
-function makeMoonId(moon, usedIds) {
+function makeMoonId(moon: RawMoonRecord, usedIds: Set<string>): string {
   const baseId = `moon-${sanitizeIdPart(moon.planet)}-${sanitizeIdPart(moon.name)}`;
   if (!usedIds.has(baseId)) {
     usedIds.add(baseId);
@@ -300,7 +301,7 @@ function makeMoonId(moon, usedIds) {
   return id;
 }
 
-function applyDisplayScaleConstraints(bodies) {
+function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
   const minMoonOrbitByParent = new Map();
 
   for (const body of bodies) {
@@ -352,8 +353,12 @@ export function createSolarSystemCatalog(): SolarCatalog {
   bodies.push(sunBody);
 
   for (const planet of PLANETS) {
-    const equatorialRadiusKm = Number.isFinite(planet.equatorialRadiusKm) ? planet.equatorialRadiusKm : planet.radiusKm;
-    const polarRadiusKm = Number.isFinite(planet.polarRadiusKm) ? planet.polarRadiusKm : planet.radiusKm;
+    const equatorialRadiusKm = Number.isFinite((planet as Record<string, unknown>).equatorialRadiusKm)
+      ? (planet as Record<string, unknown>).equatorialRadiusKm as number
+      : planet.radiusKm;
+    const polarRadiusKm = Number.isFinite((planet as Record<string, unknown>).polarRadiusKm)
+      ? (planet as Record<string, unknown>).polarRadiusKm as number
+      : planet.radiusKm;
     usedIds.add(planet.id);
     bodies.push({
       ...planet,
@@ -387,9 +392,9 @@ export function createSolarSystemCatalog(): SolarCatalog {
     }
 
     const radiusKm = estimateMoonRadiusKm(moon);
-    const moonShape = MAJOR_MOON_SHAPE_KM[moon.name];
-    const equatorialRadiusKm = Number.isFinite(moonShape?.equatorialRadiusKm) ? moonShape.equatorialRadiusKm : radiusKm;
-    const polarRadiusKm = Number.isFinite(moonShape?.polarRadiusKm) ? moonShape.polarRadiusKm : radiusKm;
+    const moonShape = (MAJOR_MOON_SHAPE_KM as Record<string, { equatorialRadiusKm: number; polarRadiusKm: number } | undefined>)[moon.name];
+    const equatorialRadiusKm = Number.isFinite(moonShape?.equatorialRadiusKm) ? moonShape!.equatorialRadiusKm : radiusKm;
+    const polarRadiusKm = Number.isFinite(moonShape?.polarRadiusKm) ? moonShape!.polarRadiusKm : radiusKm;
     const id = makeMoonId(moon, usedIds);
     const frameNormalized = normalizeMoonOrbitFrame(moon, parentId);
 
@@ -406,7 +411,7 @@ export function createSolarSystemCatalog(): SolarCatalog {
       realRadiusAu: radiusKm / AU_KM,
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
-      rotationPeriodHours: MOON_ROTATION_PERIOD_HOURS[moon.name] ?? null,
+      rotationPeriodHours: (MOON_ROTATION_PERIOD_HOURS as Record<string, number | undefined>)[moon.name] ?? null,
       reference: moon.reference,
       orbitFrameSource: frameNormalized.sourceFrame,
       orbit: {
