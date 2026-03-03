@@ -11,6 +11,7 @@ interface TimeControllerState {
   julianDate: number;
   timeScaleDaysPerSec: number;
   timeScaleDirty: boolean;
+  paused?: boolean;
 }
 
 export interface TimeController {
