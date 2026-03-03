@@ -6,19 +6,33 @@
 const W = 1024;
 const H = 512;
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type RGB = [number, number, number];
+
+interface SpherePoint {
+  x: number;
+  y: number;
+  z: number;
+  lat: number;
+  lon: number;
+}
+
+type ColorFn = (s: SpherePoint) => RGB;
+
 // ── 3D Value Noise ──────────────────────────────────────────────────────────
 
-function hash3(ix, iy, iz) {
+function hash3(ix: number, iy: number, iz: number): number {
   let h = (ix * 374761393 + iy * 668265263 + iz * 1274126177) | 0;
   h = ((h ^ (h >> 13)) * 1103515245 + 12345) | 0;
   return (h & 0x7fffffff) / 2147483647.0;
 }
 
-function smoothstep(t) {
+function smoothstep(t: number): number {
   return t * t * (3.0 - 2.0 * t);
 }
 
-function noise3(x, y, z) {
+function noise3(x: number, y: number, z: number): number {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
   const iz = Math.floor(z);
@@ -44,36 +58,37 @@ function noise3(x, y, z) {
   return v;
 }
 
-function fbm(x, y, z, octaves = 5, lacunarity = 2.0, gain = 0.5) {
+function fbm(x: number, y: number, z: number, octaves = 5, lacunarity = 2.0, gain = 0.5): number {
   let v = 0;
   let a = 1;
   let total = 0;
+  let cx = x, cy = y, cz = z;
   for (let i = 0; i < octaves; i++) {
-    v += a * noise3(x, y, z);
+    v += a * noise3(cx, cy, cz);
     total += a;
     a *= gain;
-    x *= lacunarity;
-    y *= lacunarity;
-    z *= lacunarity;
+    cx *= lacunarity;
+    cy *= lacunarity;
+    cz *= lacunarity;
   }
   return v / total;
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
-function clamp01(v) {
+function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
-function lerp(a, b, t) {
+function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-function lerpRGB(r1, g1, b1, r2, g2, b2, t) {
+function lerpRGB(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number, t: number): RGB {
   return [lerp(r1, r2, t), lerp(g1, g2, t), lerp(b1, b2, t)];
 }
 
-function sphereCoords(px, py, width = W, height = H) {
+function sphereCoords(px: number, py: number, width = W, height = H): SpherePoint {
   const colat = (py / height) * Math.PI;
   const lon = (px / width) * Math.PI * 2;
   const sc = Math.sin(colat);
@@ -86,11 +101,12 @@ function sphereCoords(px, py, width = W, height = H) {
   };
 }
 
-function fillPixelsSized(width, height, colorFn) {
+function fillPixelsSized(width: number, height: number, colorFn: ColorFn): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
   const img = ctx.createImageData(width, height);
   const d = img.data;
   for (let py = 0; py < height; py++) {
@@ -108,14 +124,14 @@ function fillPixelsSized(width, height, colorFn) {
   return canvas;
 }
 
-function fillPixels(colorFn) {
+function fillPixels(colorFn: ColorFn): HTMLCanvasElement {
   return fillPixelsSized(W, H, colorFn);
 }
 
 // ── Planet Textures ──────────────────────────────────────────────────────────
 
-function sunTexture() {
-  return fillPixels((s) => {
+function sunTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 5, s.y * 5, s.z * 5, 6, 2.0, 0.55);
     const n2 = fbm(s.x * 14 + 50, s.y * 14, s.z * 14, 4, 2.0, 0.5);
     const granulation = fbm(s.x * 30 + 100, s.y * 30 + 100, s.z * 30, 3, 2.0, 0.4);
@@ -125,8 +141,8 @@ function sunTexture() {
   });
 }
 
-function mercuryTexture() {
-  return fillPixels((s) => {
+function mercuryTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 8, s.y * 8, s.z * 8, 5, 2.1, 0.5);
     const craters = fbm(s.x * 22 + 10, s.y * 22, s.z * 22 + 10, 4, 2.0, 0.5);
     const fine = fbm(s.x * 40, s.y * 40, s.z * 40, 3, 2.0, 0.45);
@@ -137,8 +153,8 @@ function mercuryTexture() {
   });
 }
 
-function venusTexture() {
-  return fillPixels((s) => {
+function venusTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const dx = fbm(s.x * 3 + 10, s.y * 3, s.z * 3, 3, 2.0, 0.5) * 0.6;
     const n = fbm(s.x * 4 + dx, s.y * 4 + s.z * 2, s.z * 3 + dx, 5, 2.2, 0.45);
     const n2 = fbm(s.x * 7 + dx * 2, s.y * 7, s.z * 7 + dx, 4, 2.0, 0.5);
@@ -147,8 +163,8 @@ function venusTexture() {
   });
 }
 
-function earthTexture() {
-  return fillPixels((s) => {
+function earthTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const continental = fbm(s.x * 3.2 + 1.5, s.y * 3.2 + 0.8, s.z * 3.2, 6, 2.0, 0.52);
     const detail = fbm(s.x * 14, s.y * 14, s.z * 14, 4, 2.0, 0.5);
     const fine = fbm(s.x * 28 + 5, s.y * 28, s.z * 28, 3, 2.0, 0.45);
@@ -194,9 +210,9 @@ function earthTexture() {
       // Ocean
       const depth = clamp01((landThreshold - continental) / landThreshold);
       const coastBlend = clamp01((landThreshold - continental) / 0.05);
-      const shallow = [0.04, 0.22, 0.52];
-      const deep = [0.01, 0.06, 0.28];
-      const coast = [0.06, 0.3, 0.55];
+      const shallow: RGB = [0.04, 0.22, 0.52];
+      const deep: RGB = [0.01, 0.06, 0.28];
+      const coast: RGB = [0.06, 0.3, 0.55];
       if (coastBlend < 0.3) {
         return lerpRGB(...coast, ...shallow, coastBlend / 0.3);
       }
@@ -205,8 +221,8 @@ function earthTexture() {
   });
 }
 
-function marsTexture() {
-  return fillPixels((s) => {
+function marsTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 5, s.y * 5, s.z * 5, 5, 2.0, 0.5);
     const detail = fbm(s.x * 16, s.y * 16, s.z * 16, 4, 2.0, 0.5);
     const fine = fbm(s.x * 30 + 20, s.y * 30, s.z * 30, 3, 2.0, 0.45);
@@ -229,8 +245,8 @@ function marsTexture() {
   });
 }
 
-function jupiterTexture() {
-  return fillPixels((s) => {
+function jupiterTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const lat = s.lat;
     const bandFreq = 12;
     const band = Math.sin(lat * bandFreq);
@@ -247,11 +263,10 @@ function jupiterTexture() {
     const grsDist = Math.sqrt(dlon * dlon * 4 + dlat * dlat * 9);
 
     if (grsDist < 0.35) {
-      const grsBlend = 1 - grsDist / 0.35;
       const swirl = fbm(s.x * 25 + 100, s.y * 25, s.z * 25, 3, 2.0, 0.5);
       return [
         0.78 + swirl * 0.08,
-        0.3 + swirl * 0.06 - grsBlend * 0.12,
+        0.3 + swirl * 0.06 - (1 - grsDist / 0.35) * 0.12,
         0.16 + swirl * 0.04
       ];
     }
@@ -267,8 +282,8 @@ function jupiterTexture() {
   });
 }
 
-function saturnTexture() {
-  return fillPixels((s) => {
+function saturnTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const lat = s.lat;
     const band = Math.sin(lat * 10) * 0.5 + 0.5;
     const n = fbm(s.x * 5, s.y * 5, s.z * 5, 4, 2.0, 0.45);
@@ -284,8 +299,8 @@ function saturnTexture() {
   });
 }
 
-function uranusTexture() {
-  return fillPixels((s) => {
+function uranusTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 4, s.y * 4, s.z * 4, 4, 2.0, 0.4);
     const detail = fbm(s.x * 10, s.y * 10, s.z * 10, 3, 2.0, 0.45);
     const base = 0.56 + n * 0.08 + detail * 0.04;
@@ -294,8 +309,8 @@ function uranusTexture() {
   });
 }
 
-function neptuneTexture() {
-  return fillPixels((s) => {
+function neptuneTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 5, s.y * 5, s.z * 5, 5, 2.0, 0.45);
     const bands = Math.sin(s.lat * 8) * 0.04;
     const detail = fbm(s.x * 14 + 3, s.y * 14, s.z * 14, 4, 2.0, 0.5);
@@ -310,8 +325,8 @@ function neptuneTexture() {
   });
 }
 
-function plutoTexture() {
-  return fillPixels((s) => {
+function plutoTexture(): HTMLCanvasElement {
+  return fillPixels((s: SpherePoint): RGB => {
     const n = fbm(s.x * 4, s.y * 4, s.z * 4, 5, 2.0, 0.5);
     const detail = fbm(s.x * 12 + 30, s.y * 12, s.z * 12, 4, 2.0, 0.5);
 
@@ -337,7 +352,7 @@ function plutoTexture() {
   });
 }
 
-function hashString(input) {
+function hashString(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     hash = (hash << 5) - hash + input.charCodeAt(i);
@@ -346,8 +361,8 @@ function hashString(input) {
   return Math.abs(hash);
 }
 
-function moonParentPalette(parentId, variant) {
-  const palettes = {
+function moonParentPalette(parentId: string, variant: number): RGB {
+  const palettes: Record<string, RGB> = {
     earth: [0.79, 0.78, 0.75],
     mars: [0.72, 0.64, 0.56],
     jupiter: [0.68, 0.63, 0.57],
@@ -367,7 +382,7 @@ function moonParentPalette(parentId, variant) {
   ];
 }
 
-function moonTexture(seedKey, parentId = 'default', width = 256, height = 128) {
+function moonTexture(seedKey: string, parentId = 'default', width = 256, height = 128): HTMLCanvasElement {
   const seed = hashString(`${parentId}:${seedKey}`);
   const variantA = ((seed % 9_973) + 1) / 9_973;
   const variantB = (((seed >> 7) % 8_191) + 1) / 8_191;
@@ -379,7 +394,7 @@ function moonTexture(seedKey, parentId = 'default', width = 256, height = 128) {
   const streakScale = 26 + ((seed >> 4) % 9);
   const craterThreshold = 0.57 + variantB * 0.08;
 
-  return fillPixelsSized(width, height, (s) => {
+  return fillPixelsSized(width, height, (s: SpherePoint): RGB => {
     const nLarge = fbm(
       s.x * largeScale + variantA * 7.0,
       s.y * largeScale + variantB * 11.0,
@@ -434,8 +449,8 @@ function moonTexture(seedKey, parentId = 'default', width = 256, height = 128) {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-export function generatePlanetTexture(bodyId) {
-  const generators = {
+export function generatePlanetTexture(bodyId: string): HTMLCanvasElement | null {
+  const generators: Record<string, () => HTMLCanvasElement> = {
     sun: sunTexture,
     mercury: mercuryTexture,
     venus: venusTexture,
@@ -452,6 +467,6 @@ export function generatePlanetTexture(bodyId) {
   return gen ? gen() : null;
 }
 
-export function generateMoonTexture(moonId, parentId = 'default', { width = 256, height = 128 } = {}) {
+export function generateMoonTexture(moonId: string, parentId = 'default', { width = 256, height = 128 } = {}): HTMLCanvasElement {
   return moonTexture(moonId, parentId, width, height);
 }
