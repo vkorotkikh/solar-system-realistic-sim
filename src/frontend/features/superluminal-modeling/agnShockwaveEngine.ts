@@ -349,7 +349,8 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
             const frontSpeed = currentTimeline.isH29Mode
                 ? Math.max(apparentFactor, h29FrontSpeed)
                 : apparentFactor;
-            const frontProgress = clamp((elapsedSec * frontSpeed) / frontTravelSec, 0.0, 1.0);
+            // Allow front to propagate past the origin (frontProgress from 0.0 to 2.0)
+            const frontProgress = clamp((elapsedSec * frontSpeed) / frontTravelSec, 0.0, 2.0);
             currentDistanceUnits = frontStartUnits * (1.0 - frontProgress);
 
             if (gwDisplayer) {
@@ -415,14 +416,21 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         getWarpState() {
             if (!isActive || !currentTimeline || !currentTimeline.isH29Mode) return null;
 
-            // Warp propagates at c
-            const speed = C_CM_S;
+            const slipstreamChannel = currentTimeline.channels.find(c => c.key === 'warpMetric' || c.key === 'metric_slipstream');
+            const frontArrivalDisplaySec = slipstreamChannel ? slipstreamChannel.arrivalDisplaySec : 8.0;
+            const physicalArrivalSec = slipstreamChannel ? slipstreamChannel.arrivalTimeSec : currentSource.distanceCm / C_CM_S;
+            // time compression between simulation display seconds and physical seconds since the event at Sgr A*
+            const timeCompression = physicalArrivalSec / frontArrivalDisplaySec;
+            const currentPhysicalTimeSec = Math.max(0.1, elapsedSec * timeCompression);
 
             return {
+                direction,
                 energyErg: currentEnergyErg,
                 smbhMassG: currentSource.massG,
-                positionCm: currentDistanceUnits * 1.496e13, // Rough conversion AU -> cm for scaling
-                amplitude: 1.0,
+                sourceDistanceCm: currentSource.distanceCm,
+                timeSec: currentPhysicalTimeSec,
+                positionCm: currentDistanceUnits * 1.496e13, // Rough conversion AU -> cm for simple visual scaling
+                amplitude: 1.0, // base physical amplitude handled by smbhPropagation, this is just a modifier
                 thickness: 0.05
             };
         }
