@@ -108,20 +108,18 @@ export function warpBubbleProfile(xi: number): number {
 }
 
 /**
- * Computes the ADM shift-vector magnitude |βⁱ| at a given radial distance and time.
- * @param distanceCm - distance from source
+ * Computes the ADM shift-vector peak properties at a given time.
  * @param timeSec - time since event peak
  * @param energyErg - total event energy
  * @param smbhMassG - mass of source SMBH
- * @returns The local shift-vector value (dimensionless fraction of c)
+ * @returns The peak shift properties and characteristic scales
  */
-export function metricFrameDragShift(
-    distanceCm: number,
+export function metricFrameDragPeak(
     timeSec: number,
     energyErg: number,
     smbhMassG: number = SGR_A.massG
-): number {
-    if (timeSec <= 0) return 0;
+) {
+    if (timeSec <= 0) return { peak: 0, r0: 0, sigmaBase: 0 };
 
     // Bubble center propagates at c
     const r0 = C_CM_S * timeSec;
@@ -132,43 +130,24 @@ export function metricFrameDragShift(
     const energyRatio = Math.pow(energyErg / massEnergyEq, 1 / 3);
 
     // Bubble thickness broadens with distance
-    const sigma = Math.max(distanceCm * 0.05, energyRatio * Math.sqrt(r0) * 1e8);
-
-    // Normalize coordinate
-    const xi = (distanceCm - r0) / sigma;
+    const sigmaBase = energyRatio * Math.sqrt(r0) * 1e8;
 
     // Peak amplitude decays as 1/r
     const betaPeak = (G_CGS * energyRatio) / (cSquared * C_CM_S * Math.max(r0, 1e13)) * 1e45;
 
-    return betaPeak * warpBubbleProfile(xi);
+    return { peak: betaPeak, r0, sigmaBase };
 }
 
 /**
- * Multiplicative factor for local spatial distances.
- * Returns (1 + ε) where ε = ∂βⁱ/∂r * Δt
+ * Evaluates the local shift velocity fraction (β) at a specific radial distance.
+ * @param distanceCm - exact local distance from source
+ * @param peakData - struct returned by metricFrameDragPeak
  */
-export function coordinateStretchFactor(
-    distanceCm: number,
-    timeSec: number,
-    energyErg: number,
-    smbhMassG: number = SGR_A.massG
-): number {
-    if (timeSec <= 0) return 1.0;
-
-    // Evaluate spatial derivative of shift vector (finite difference)
-    const deltaCm = 1e8; // 1,000 km baseline
-    const beta1 = metricFrameDragShift(distanceCm - deltaCm / 2, timeSec, energyErg, smbhMassG);
-    const beta2 = metricFrameDragShift(distanceCm + deltaCm / 2, timeSec, energyErg, smbhMassG);
-
-    // Gradient of shift vector
-    const dBeta_dr = (beta2 - beta1) / deltaCm;
-
-    // Time interval (integration step approx, use a characteristic time like light crossing time of delta)
-    const dt = deltaCm / C_CM_S;
-
-    const strain = dBeta_dr * C_CM_S * dt * 1e12; // Exaggerate for visible effect
-
-    return 1.0 + strain;
+export function evaluateLocalMetricShift(distanceCm: number, peakData: { peak: number, r0: number, sigmaBase: number }): number {
+    if (peakData.peak === 0) return 0;
+    const sigma = Math.max(distanceCm * 0.05, peakData.sigmaBase);
+    const xi = (distanceCm - peakData.r0) / sigma;
+    return peakData.peak * warpBubbleProfile(xi);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
