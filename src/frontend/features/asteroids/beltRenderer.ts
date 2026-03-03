@@ -69,7 +69,7 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     uniform float uSaturnMuAu3Day2;
     uniform float uPerturbationScale;
     uniform float uOrbitScaleAu;
-    const float PI2 = 6.283185307179586;
+    const float TWO_PI = 6.283185307179586;
     const float MAX_PERTURB_AGE_DAYS = ${MAX_PERTURB_AGE_DAYS.toFixed(1)};
 
     vec3 vOrbitOffset;
@@ -123,12 +123,12 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     float periodDays = max(aOrbitParams2.z, 1.0);
     float epochJd = aOrbitParams2.w;
 
-    float meanMotion = (PI2 / periodDays);
+    float meanMotion = (TWO_PI / periodDays);
     float deltaDays = uJulianDate - epochJd;
     float meanAnomaly = meanAnomaly0 + meanMotion * deltaDays;
-    meanAnomaly = mod(meanAnomaly, PI2);
+    meanAnomaly = mod(meanAnomaly, TWO_PI);
     if (meanAnomaly < 0.0) {
-      meanAnomaly += PI2;
+      meanAnomaly += TWO_PI;
     }
     float eccentricAnomaly = solveKepler(meanAnomaly, e);
 
@@ -145,8 +145,6 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     float sinArg = sin(argPeriapsis);
     float cosI = cos(i);
     float sinI = sin(i);
-    float sinEps = sinArg * cosI;
-
     vec3 orbitPosition = vec3(
       orbital.x * (cosOmega * cosArg - sinOmega * sinArg * cosI) + orbital.y * (-cosOmega * sinArg - sinOmega * cosArg * cosI),
       orbital.x * (sinOmega * cosArg + cosOmega * sinArg * cosI) + orbital.y * (-sinOmega * sinArg + cosOmega * cosArg * cosI),
@@ -166,7 +164,7 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     vOrbitOffset = orbitPosition * uOrbitScaleAu;
 
     float spinLenSqLocal = dot(aSpinParams.xyz, aSpinParams.xyz);
-    transformed = position.xyz;
+    vec3 transformed = position.xyz;
     float localSpin = aSpinParams.w * deltaDays;
     if (spinLenSqLocal > 1e-6) {
       vec3 spinAxis = normalize(aSpinParams.xyz);
@@ -186,28 +184,28 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
       worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
     #endif
 
-    worldPosition = modelMatrix * worldPositionWithOrbit;
+    vec4 worldPosition = modelMatrix * worldPositionWithOrbit;
   `,
 
   projectVertex: /* glsl */`
-    vec4 worldPositionWithOrbit = vec4( transformed, 1.0 );
-    worldPositionWithOrbit.xyz += vOrbitOffset;
+    vec4 mvPositionWithOrbit = vec4( transformed, 1.0 );
+    mvPositionWithOrbit.xyz += vOrbitOffset;
 
     #ifdef USE_BATCHING
-      worldPositionWithOrbit = batchingMatrix * worldPositionWithOrbit;
+      mvPositionWithOrbit = batchingMatrix * mvPositionWithOrbit;
     #endif
 
     #ifdef USE_INSTANCING
-      worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
+      mvPositionWithOrbit = instanceMatrix * mvPositionWithOrbit;
     #endif
 
-    vec4 mvPosition = modelViewMatrix * worldPositionWithOrbit;
+    vec4 mvPosition = modelViewMatrix * mvPositionWithOrbit;
     gl_Position = projectionMatrix * mvPosition;
   `
 };
 
-function getOrbitFloat(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
+function getOrbitFloat(value: number | null | undefined, fallback: number): number {
+  if (value == null || !Number.isFinite(value)) return fallback;
   return value;
 }
 
@@ -376,8 +374,12 @@ export function createAsteroidBeltRenderer(
   geometry.setAttribute('aOrbitParams1', new InstancedBufferAttribute(orbitParam1, 4));
   geometry.setAttribute('aOrbitParams2', new InstancedBufferAttribute(orbitParam2, 4));
   geometry.setAttribute('aSpinParams', new InstancedBufferAttribute(spinParams, 4));
+  geometry.getAttribute('aOrbitParams1').needsUpdate = true;
+  geometry.getAttribute('aOrbitParams2').needsUpdate = true;
+  geometry.getAttribute('aSpinParams').needsUpdate = true;
 
   mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
+  mesh.instanceColor.needsUpdate = true;
 
   for (let i = 0; i < count; i++) {
     const ast = asteroids[i];
