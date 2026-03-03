@@ -9,7 +9,7 @@ import puppeteer from 'puppeteer';
     page.on('console', msg => {
         if (msg.type() === 'error') {
             hasErrors = true;
-            console.error(`Browser Console Error: ${msg.text()}`);
+            console.error(`Browser Console Error at ${msg.location().url}: ${msg.text()}`);
         }
     });
 
@@ -17,9 +17,8 @@ import puppeteer from 'puppeteer';
         hasErrors = true;
         console.error(`Page Error: ${error.message}`);
     });
-
-    console.log('Navigating to http://localhost:5173/');
-    await page.goto('http://localhost:5173/', { waitUntil: 'networkidle2' });
+    console.log('Navigating to http://localhost:5174/');
+    await page.goto('http://localhost:5174/', { waitUntil: 'networkidle2' });
 
     console.log('Waiting 2 seconds for initial render...');
     await new Promise(resolve => setTimeout(resolve, 2000));
