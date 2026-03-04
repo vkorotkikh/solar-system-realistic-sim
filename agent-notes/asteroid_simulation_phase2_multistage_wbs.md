@@ -44,6 +44,12 @@ This baseline is required before declaring the model suitable for mining operati
 4. **Performance**
    - Stable framerate envelope at target workload tiers with graceful LOD and deterministic object pools.
 
+## Common Shared Header for AI Agents ##
+- You are working in repo: /home/nomad/Documents/solar-system-realistic-sim
+- Primary doc: agent-notes/asteroid_simulation_phase2_multistage_wbs.md
+- Objective: [SEE AGENT PROMPT BELOW]
+- Do not modify code outside your ownership boundaries.
+
 ## Stage-Based WBS (No Week Breakdown)
 
 ### Stage 1 — Coordination Baseline and Workstream Lock

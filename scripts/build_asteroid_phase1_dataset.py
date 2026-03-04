@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import hashlib
 import re
 import struct
 from dataclasses import dataclass
@@ -192,7 +193,7 @@ def _build_records(rows: list[dict[str, Any]]) -> tuple[list[dict[str, float]], 
     return records, taxonomy_counts, class_counts
 
 
-def _pack_binary(records: list[dict[str, float]], out_path: Path) -> None:
+def _pack_binary(records: list[dict[str, float]]) -> bytes:
     stride = 11
     header = struct.pack("<4sBBBBI", b"ASPH", 1, stride, 0, 0, len(records))
     payload = []
@@ -211,12 +212,18 @@ def _pack_binary(records: list[dict[str, float]], out_path: Path) -> None:
             record["taxonomy_index"],
         ])
 
-    binary = header + struct.pack(f"<{len(payload)}f", *payload)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_bytes(binary)
+    return header + struct.pack(f"<{len(payload)}f", *payload)
 
 
-def _write_meta(meta_path: Path, records: list[dict[str, float]], taxonomy_counts: dict[str, int], class_counts: dict[str, int], source_rows: int) -> None:
+def _write_meta(
+    meta_path: Path,
+    records: list[dict[str, float]],
+    taxonomy_counts: dict[str, int],
+    class_counts: dict[str, int],
+    source_rows: int,
+    checksum: str | None = None,
+    checksum_sha256: str | None = None,
+) -> None:
     payload = {
         "version": 1,
         "generated_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
@@ -263,6 +270,13 @@ def _write_meta(meta_path: Path, records: list[dict[str, float]], taxonomy_count
         },
         "warnings": [],
     }
+    if checksum is not None:
+        payload["checksum"] = checksum
+        payload["checksum_algorithm"] = "fnv1a32"
+    if checksum_sha256 is not None:
+        payload["checksum_sha256"] = checksum_sha256
+        payload["checksum_algorithm_sha256"] = "sha256"
+        payload["checksum"] = f"0x{checksum[:8]}"
 
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -279,8 +293,24 @@ def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -
     bin_path = output_dir / bin_name
     meta_path = output_dir / meta_name
 
-    _pack_binary(records, bin_path)
-    _write_meta(meta_path, records, taxonomy_counts, class_counts, source_rows=len(rows))
+    binary = _pack_binary(records)
+    bin_path.parent.mkdir(parents=True, exist_ok=True)
+    bin_path.write_bytes(binary)
+    checksum_sha256 = hashlib.sha256(binary).hexdigest()
+    checksum_fnv = 0x811C9DC5
+    for byte in binary:
+        checksum_fnv ^= byte
+        checksum_fnv = (checksum_fnv * 0x01000193) % (1 << 32)
+    checksum_fnv_hex = f"0x{checksum_fnv:08x}"
+    _write_meta(
+        meta_path,
+        records,
+        taxonomy_counts,
+        class_counts,
+        source_rows=len(rows),
+        checksum=checksum_fnv_hex,
+        checksum_sha256=checksum_sha256
+    )
 
     output_dir.joinpath("sample_top_10.json").write_text(
         json.dumps(records[:10], indent=2), encoding="utf-8"

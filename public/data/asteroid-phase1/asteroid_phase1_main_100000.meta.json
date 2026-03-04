@@ -74,5 +74,9 @@
       "ATE": 1
     }
   },
-  "warnings": []
+  "warnings": [],
+  "checksum_sha256": "c63a7b4bafed186a635e2ef40b18ba97a7f472a74f5a6593187edb5266fb5268",
+  "checksum": "0xf524bf82",
+  "checksum_algorithm_sha256": "sha256",
+  "checksum_algorithm": "fnv1a32"
 }
