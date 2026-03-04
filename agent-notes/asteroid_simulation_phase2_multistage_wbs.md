@@ -193,3 +193,48 @@ This baseline is required before declaring the model suitable for mining operati
 ## Notes on "80%+ Real Object Coverage" Readiness
 
 At present, the simulation has made partial progress but is not yet suitable for a strict 80% object-fidelity claim. GPU propagation and phase-structure are now present, but full coverage for mining-grade realism still requires deterministic catalog depth, Oort implementation, expanded Kuiper model, and mission target infrastructure.
+
+## Additinal Notes - Prompt instructions for each agent for Phase 1 ##
+
+Short answer: not fully.
+
+The file agent-notes/asteroid_simulation_phase2_multistage_wbs.md currently has:
+Stage 1 (coordination/orchestration)
+Stage 3 (data/catalog/taxonomy)
+This covers Phase 1 work, but not as an explicit phase-specific prompt set.
+So the division exists, but it’s mapped to stages, not written as a “Phase 1 playbook” yet.
+If you want strict Phase 1 prompts, use this now (copy/paste per agent):
+
+Phase 1 Agent 1 — Source Acquisition Lead
+
+Focus only on: selecting and fetching asteroid targets from MPC/JPL, scheduling fetches, data normalization.
+Deliverables:
+scripts/asteroid/catalog_fetcher.ts
+rate-limit + retry policy
+raw schema snapshot + provenance metadata (source, timestamp, version)
+Do not touch rendering or shader code.
+
+Phase 1 Agent 2 — Data Compression Engineer
+
+Focus only on: building compact typed-array/binary pack for orbital elements and IDs.
+Deliverables:
+src/data/asteroidCatalogLoader.ts or equivalent
+packed binary format docs (field order, scales, ranges)
+versioned reader/writer test for a 100k-body sample
+Do not touch fetch logic or taxonomy rules.
+
+Phase 1 Agent 3 — Taxonomy Mapping Owner
+
+Focus only on: cross-referencing taxonomy/albedo/mass class and emitting material/mission class fields.
+Deliverables:
+src/data/asteroidTaxonomyResolver.ts
+deterministic taxonomy assignment + fallback rules
+quality checks for coverage by semi-major axis bins
+Do not touch fetch/compression or renderer internals.
+
+Phase 1 Overseer — Integration Gate
+
+Focus only on merge contracts and handoff.
+Deliverables:
+defines Phase1Bundle interface consumed by Stage/Phase 2
+acceptance gates: row counts, checksum/version, taxonomy completeness, load latency budget
