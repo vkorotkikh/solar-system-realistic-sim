@@ -49,7 +49,12 @@ import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt } from './sim/asteroidBelt';
 import { generateKuiperBelt, propagateKBOPositions } from './sim/kuiperBelt';
-import { loadPhase1AsteroidCatalog, PHASE1_CATALOG_URL } from './sim/phase1AsteroidCatalog';
+import {
+  loadPhase1AsteroidCatalog,
+  PHASE1_CATALOG_URL,
+  PHASE1_CATALOG_META_URL,
+  PHASE1_LOAD_LATENCY_BUDGET_MS
+} from './sim/phase1AsteroidCatalog';
 import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
@@ -401,8 +406,22 @@ function syncAsteroidBeltInputs() {
 
 function initPhaseOneAsteroids() {
   loadPhase1AsteroidCatalog({
-    maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT
+    maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
+    loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
+    metaUrl: PHASE1_CATALOG_META_URL
   }).then((catalog) => {
+    const gate = catalog.acceptance;
+    if (!catalog.accepted) {
+      const reasons: string[] = [];
+      if (!gate.version.passed && gate.version.reason) reasons.push(gate.version.reason);
+      if (!gate.rows.passed && gate.rows.reason) reasons.push(gate.rows.reason);
+      if (!gate.taxonomy.passed && gate.taxonomy.reason) reasons.push(gate.taxonomy.reason);
+      if (!gate.checksum.passed && gate.checksum.reason) reasons.push(gate.checksum.reason);
+      if (!gate.latency.passed && gate.latency.reason) reasons.push(gate.latency.reason);
+      console.warn('[phase-1] Acceptance gates failed:', reasons.join(' | '));
+      return;
+    }
+
     if (!catalog.asteroids.length) return;
     const phaseOnePopulation = generateAsteroidBelt(
       ASTEROID_BELT_TARGET_COUNT,
@@ -419,6 +438,12 @@ function initPhaseOneAsteroids() {
       `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
       `${catalog.sourceCount.toLocaleString()} source rows, ` +
       `${catalog.asteroids.length.toLocaleString()} parsed records, ` +
+      `version=${catalog.catalogVersion}, ` +
+      `checksum=${catalog.checksumActual}, ` +
+      `load=${catalog.loadMs.toFixed(1)}ms (budget ${catalog.loadLatencyBudgetMs}ms), ` +
+      `taxonomyC=${catalog.taxonomyCheck.counts.C}, ` +
+      `taxonomyS=${catalog.taxonomyCheck.counts.S}, ` +
+      `taxonomyM=${catalog.taxonomyCheck.counts.M}, ` +
       `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
     );
   }).catch((error) => {
@@ -515,6 +540,9 @@ function applyScaleMode() {
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   }
   sunCtrl.onScaleChange();
+  // Notify belt renderers so asteroids use physical sizes in realistic mode
+  asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
+  kuiperBeltRenderer.setScaleMode(simState.useRealisticScale);
   if (simState.focusedBodyId) focusBody(simState.focusedBodyId, true);
 }
 
