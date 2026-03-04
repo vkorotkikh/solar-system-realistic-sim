@@ -98,6 +98,7 @@ export function createSunController({
   let sunGlowSprite = null;
   let sunEruptionLayer = null;
   let sunChromosphereLayer = null;
+  let sunCoronaMesh = null;
   let sunFlareGroup = null;
   let solarFlareManager = null;
   let sunMagneticFieldGroup = null;
@@ -218,6 +219,7 @@ export function createSunController({
     coronaMesh.scale.setScalar(sunRadiusAu * (coronaMesh.userData.surfaceScale ?? 1.15));
     spinGroup.add(coronaMesh);
     sunCoronaMaterial = coronaMesh.material;
+    sunCoronaMesh = coronaMesh;
 
     sunEruptionLayer = createSunEruptionLayer(sunRadiusAu);
     sunEruptionLayer.userData.rotationPeriodHours = sunBody.rotationPeriodHours ?? null;
@@ -307,6 +309,7 @@ export function createSunController({
       : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
     const observationControls = deriveSunObservationControls(solarPhysicsState, activity, userAiaChannelOverride);
     const effectiveActivity = clampUnit(activity + (observationControls.activityBoost ?? 0));
+    const sunRadiusAu = getSunRadiusAu();
 
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
@@ -315,11 +318,10 @@ export function createSunController({
       activity: effectiveActivity,
       observationBlend: observationControls.observationBlend,
       observationEmission: observationControls.observationEmission,
-      coronaHue: observationControls.coronaHue
+      coronaHue: observationControls.coronaHue,
+      sunDisplayRadius: sunRadiusAu
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec);
-
-    const sunRadiusAu = getSunRadiusAu();
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu);
@@ -410,6 +412,15 @@ export function createSunController({
     const r = getSunRadiusAu();
     setSunGlowScaleImpl(sunGlowSprite, r);
     setSunEruptionBaseRadiusImpl(sunEruptionLayer, r);
+    // Rescale the corona shell to match the new sun radius
+    if (sunCoronaMesh) {
+      sunCoronaMesh.scale.setScalar(r * (sunCoronaMesh.userData.surfaceScale ?? 1.15));
+    }
+    // Rescale the chromosphere layer
+    if (sunChromosphereLayer) {
+      const chromoScale = r * (sunChromosphereLayer.userData.surfaceScale ?? 1.02);
+      sunChromosphereLayer.scale.setScalar(chromoScale);
+    }
     const bv = buildSolarFeatureBlendView(Date.now(), 220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, bv, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, r, 6, 120, 0, camera);
