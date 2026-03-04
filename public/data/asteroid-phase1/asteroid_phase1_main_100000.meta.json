@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_utc": "2026-03-02T04:52:39Z",
+  "generated_utc": "2026-03-04T07:23:05Z",
   "description": "Phase-1 deterministic main-belt-oriented asteroid corpus.",
   "query": {
     "endpoint": "https://ssd-api.jpl.nasa.gov/sbdb_query.api",
@@ -28,8 +28,9 @@
   "source_rows": 100000,
   "stored_count": 100000,
   "record_layout": {
-    "format": "f11_le",
+    "format": "mixed_f32",
     "fields": [
+      "source_id",
       "epoch_jd",
       "a_au",
       "e",
@@ -44,9 +45,9 @@
     ],
     "header": {
       "magic": "ASPH",
-      "version": 1,
+      "version": 2,
       "count_u32": true,
-      "stride_f32": 11
+      "stride_f32": 12
     }
   },
   "taxonomy_map": {
@@ -56,9 +57,9 @@
   },
   "counts": {
     "taxonomy": {
-      "C": 68288,
+      "C": 68046,
       "S": 13261,
-      "M": 18451
+      "M": 18693
     },
     "orbit_class": {
       "MBA": 90161,
@@ -75,8 +76,8 @@
     }
   },
   "warnings": [],
-  "checksum_sha256": "c63a7b4bafed186a635e2ef40b18ba97a7f472a74f5a6593187edb5266fb5268",
-  "checksum": "0xf524bf82",
-  "checksum_algorithm_sha256": "sha256",
-  "checksum_algorithm": "fnv1a32"
+  "checksum": "0x9072eca1",
+  "checksum_algorithm": "fnv1a32",
+  "checksum_sha256": "b9e850cc4a51ab7cf2ef1ed97acc0052d3fa1fa4872cde2dc51ff8b9299f7eb7",
+  "checksum_algorithm_sha256": "sha256"
 }
