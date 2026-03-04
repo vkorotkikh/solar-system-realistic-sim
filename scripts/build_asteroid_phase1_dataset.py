@@ -2,8 +2,8 @@
 """Build Phase-1 deterministic asteroid dataset artifacts.
 
 This queries the JPL Small-Body Database for the largest asteroids,
-packs the selected orbital/physical fields into a compact Float32 binary blob,
-and writes compact JSON metadata.
+filters to the main-belt population, packs the selected orbital/physical
+fields into the canonical ACBF binary format, and writes compact JSON metadata.
 """
 
 from __future__ import annotations
@@ -27,6 +27,23 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "public" / "data" / "asteroid-phase1"
 DEFAULT_BIN_NAME = "asteroid_phase1_main_100000.bin"
 DEFAULT_META_NAME = "asteroid_phase1_main_100000.meta.json"
 
+ACBF_MAGIC = b"ACBF"
+ACBF_VERSION = 1
+ACBF_STRIDE_BYTES = 36
+ANGLE_SCALE_U16 = 65535
+ANGLE_BOUNDS = {
+    "eccentricity": (0.0, 1.0),
+    "inclination": (0.0, 180.0),
+    "angle": (0.0, 360.0),
+    "albedo": (0.0, 1.0),
+}
+
+MAIN_BELT_CLASS_WHITELIST = {"MBA", "IMB", "OMB"}
+MAIN_BELT_AU_MIN = 2.0
+MAIN_BELT_AU_MAX = 3.5
+DEFAULT_MAIN_BELT_FETCH_LIMIT = 20_000
+MAX_MAIN_BELT_FETCH_LIMIT = 1_000_000
+
 
 @dataclass(frozen=True)
 class TaxonomyMapping:
@@ -43,7 +60,7 @@ TAXONOMY_BY_CHAR = {
     "P": TaxonomyMapping("C", 0),
     "D": TaxonomyMapping("C", 0),
     "T": TaxonomyMapping("C", 0),
-    "X": TaxonomyMapping("C", 0),
+    "X": TaxonomyMapping("M", 2),
     # Silicaceous classes
     "S": TaxonomyMapping("S", 1),
     "Q": TaxonomyMapping("S", 1),
@@ -73,8 +90,22 @@ def _safe_number(value: Any, default: float | None = None) -> float | None:
     except (TypeError, ValueError):
         return default
     if not math.isfinite(num):
-        return default
+    return default
     return num
+
+
+def _is_main_belt(row: dict[str, Any]) -> bool:
+    raw_class = row.get("class")
+    orbit_class = str(raw_class).strip().upper() if isinstance(raw_class, str) else ""
+    a_au = _safe_number(row.get("a"), None)
+
+    if orbit_class and orbit_class not in MAIN_BELT_CLASS_WHITELIST:
+        return False
+
+    if a_au is None:
+        return False
+
+    return MAIN_BELT_AU_MIN <= a_au <= MAIN_BELT_AU_MAX
 
 
 def _clean_orbit_value(raw: Any, default: float) -> float:
@@ -130,14 +161,33 @@ def _strip_space_name(full_name: str) -> str:
 
 
 def _fetch_asteroids(limit: int) -> list[dict[str, Any]]:
-    def _fetch():
-        return fetch_sbdb(sb_kind="a", sort="-diameter", limit=limit, cache_name=f"sbdb_phase1_diameter_{limit}")
+    if limit <= 0:
+        return []
 
-    return load_or_fetch(
-        PROJECT_ROOT / "scripts" / ".cache" / f"phase1_diameter_{limit}.json",
-        _fetch,
-        max_age_hours=24.0,
-    )
+    fetch_limit = max(limit, DEFAULT_MAIN_BELT_FETCH_LIMIT)
+    while True:
+        limited_fetch = min(fetch_limit, MAX_MAIN_BELT_FETCH_LIMIT)
+        cache_name = f"sbdb_phase1_diameter_{limited_fetch}"
+        cache_path = PROJECT_ROOT / "scripts" / ".cache" / f"phase1_diameter_{limited_fetch}.json"
+
+        def _fetch():
+            return fetch_sbdb(sb_kind="a", sort="-diameter", limit=limited_fetch, cache_name=cache_name)
+
+        rows = load_or_fetch(
+            cache_path,
+            _fetch,
+            max_age_hours=24.0,
+        )
+
+        filtered_rows = [row for row in rows if _is_main_belt(row)]
+        if len(filtered_rows) >= limit:
+            return filtered_rows[:limit]
+        if limited_fetch >= MAX_MAIN_BELT_FETCH_LIMIT or len(rows) < limited_fetch:
+            return filtered_rows
+
+        fetch_limit = min(fetch_limit * 2, MAX_MAIN_BELT_FETCH_LIMIT)
+        if fetch_limit <= limited_fetch:
+            return filtered_rows
 
 
 def _build_records(rows: list[dict[str, Any]]) -> tuple[list[dict[str, float]], dict[str, int], dict[str, int]]:
@@ -146,6 +196,8 @@ def _build_records(rows: list[dict[str, Any]]) -> tuple[list[dict[str, float]], 
     taxonomy_counts: dict[str, int] = {"C": 0, "S": 0, "M": 0}
 
     for row in rows:
+        if not _is_main_belt(row):
+            continue
         a_au = _safe_number(row.get("a"), None)
         e = _clean_orbit_value(row.get("e"), 0.0)
         i_deg = _clean_orbit_value(row.get("i"), 0.0)
@@ -193,26 +245,59 @@ def _build_records(rows: list[dict[str, Any]]) -> tuple[list[dict[str, float]], 
     return records, taxonomy_counts, class_counts
 
 
-def _pack_binary(records: list[dict[str, float]]) -> bytes:
-    stride = 11
-    header = struct.pack("<4sBBBBI", b"ASPH", 1, stride, 0, 0, len(records))
-    payload = []
-    for record in records:
-        payload.extend([
-            record["epoch_jd"],
-            record["a_au"],
-            record["e"],
-            record["i_deg"],
-            record["ascending_node_deg"],
-            record["arg_periapsis_deg"],
-            record["mean_anomaly_deg"],
-            record["period_days"],
-            record["diameter_km"],
-            record["albedo"],
-            record["taxonomy_index"],
-        ])
+def _pack_u16(raw: Any, min_value: float, max_value: float) -> int:
+    value = _safe_number(raw, min_value)
+    if value is None:
+        value = min_value
+    value = max(min_value, min(max_value, value))
+    ratio = (value - min_value) / (max_value - min_value)
+    return int(round(ratio * ANGLE_SCALE_U16))
 
-    return header + struct.pack(f"<{len(payload)}f", *payload)
+
+def _pack_source_id(value: Any) -> int:
+    source_id = int(_safe_number(value, 0.0) or 0)
+    if source_id < 0:
+        return 0
+    if source_id > 0xFFFF_FFFF:
+        return 0xFFFF_FFFF
+    return source_id
+
+
+def _pack_binary(records: list[dict[str, float]]) -> bytes:
+    header = struct.pack("<4sBBBBI", ACBF_MAGIC, ACBF_VERSION, 0, ACBF_STRIDE_BYTES, 0, len(records))
+    payload = bytearray()
+    for record in records:
+        e_q = _pack_u16(record["e"], *ANGLE_BOUNDS["eccentricity"])
+        i_q = _pack_u16(record["i_deg"], *ANGLE_BOUNDS["inclination"])
+        asc_q = _pack_u16(record["ascending_node_deg"], *ANGLE_BOUNDS["angle"])
+        arg_q = _pack_u16(record["arg_periapsis_deg"], *ANGLE_BOUNDS["angle"])
+        ma_q = _pack_u16(record["mean_anomaly_deg"], *ANGLE_BOUNDS["angle"])
+        albedo_q = _pack_u16(record["albedo"], *ANGLE_BOUNDS["albedo"])
+        taxonomy = int(record["taxonomy_index"])
+        if taxonomy < 0:
+            taxonomy = 0
+        elif taxonomy > 255:
+            taxonomy = 255
+
+        payload.extend(struct.pack(
+            "<IffHHHHHffHBBH",
+            _pack_source_id(record["source_id"]),
+            float(record["epoch_jd"]),
+            float(record["a_au"]),
+            e_q,
+            i_q,
+            asc_q,
+            arg_q,
+            ma_q,
+            float(record["period_days"]),
+            float(record["diameter_km"]),
+            albedo_q,
+            taxonomy,
+            0,
+            0
+        ))
+
+    return header + payload
 
 
 def _write_meta(
@@ -238,8 +323,9 @@ def _write_meta(
         "source_rows": source_rows,
         "stored_count": len(records),
         "record_layout": {
-            "format": "f11_le",
+            "format": "mixed_f32",
             "fields": [
+                "source_id",
                 "epoch_jd",
                 "a_au",
                 "e",
@@ -254,9 +340,9 @@ def _write_meta(
             ],
             "header": {
                 "magic": "ASPH",
-                "version": 1,
+                "version": 2,
                 "count_u32": True,
-                "stride_f32": 11,
+                "stride_f32": 12,
             },
         },
         "taxonomy_map": {
@@ -276,7 +362,6 @@ def _write_meta(
     if checksum_sha256 is not None:
         payload["checksum_sha256"] = checksum_sha256
         payload["checksum_algorithm_sha256"] = "sha256"
-        payload["checksum"] = f"0x{checksum[:8]}"
 
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
