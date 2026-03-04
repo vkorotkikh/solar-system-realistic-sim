@@ -34,32 +34,24 @@ uniform float shockwaveDist;   // Current distance of shockwave from origin
 
 varying vec2 vUv;
 varying float vDistortion;
-varying float vAgnGlow;
+varying vec3 vWorldPosition;
 
 void main() {
   vUv = uv;
   
-  // Wave phase based on position along propagation axis and time
-  float phasePos = dot(position, propagationDir) * 0.5;
+  float axisPos = dot(position, propagationDir);
+  float phasePos = axisPos * 0.5;
   float phase = time * frequency * 6.28318 + phasePos;
   
-  // + polarization: stretch x, squeeze y
   float hPlus = strainAmplitude * sin(phase) * enabled;
   
   // If AGN event, compute shockwave front
-  float axisPos = dot(position, propagationDir);
-  vAgnGlow = 0.0;
   if (isAgnEvent > 0.5) {
-      // Scale space drastically behind the shockwave front
       float distBehind = axisPos - shockwaveDist;
       if (distBehind < 0.0) {
           // Sharp compression at the front, exponential decay behind
-          hPlus += strainAmplitude * exp(distBehind * 0.5) * sin(time * 20.0);
-          
-          // High energy particle glow at the wavefront boundary
-          if (distBehind > -2.0) {
-              vAgnGlow = 1.0 - (abs(distBehind) / 2.0);
-          }
+          float envelope = exp(distBehind * 0.4);
+          hPlus += strainAmplitude * 1.5 * envelope * sin(distBehind * 8.0 - time * 15.0);
       } else {
           // Flat ahead of the tsunami
           hPlus = 0.0;
@@ -69,14 +61,20 @@ void main() {
   vec3 displaced = position;
   displaced.x *= (1.0 + hPlus);
   displaced.z *= (1.0 - hPlus);
+  
   // Add some vertical FTL turbulence
   if (isAgnEvent > 0.5 && axisPos < shockwaveDist) {
-      displaced.y += sin(position.x * 5.0 + time * 10.0) * exp((axisPos - shockwaveDist) * 0.5);
+      float distBehind = axisPos - shockwaveDist;
+      float envelope = exp(distBehind * 0.5);
+      displaced.y += sin(position.x * 2.0 + position.z * 1.5 + time * 12.0) * envelope * 2.5 * strainAmplitude;
   }
   
   vDistortion = abs(hPlus);
   
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+  vec4 worldPos = modelMatrix * vec4(displaced, 1.0);
+  vWorldPosition = worldPos.xyz;
+  
+  gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
 `;
 
@@ -84,30 +82,55 @@ const GW_FRAGMENT_SHADER = `
 uniform float enabled;
 uniform float isAgnEvent;
 uniform vec3 waveColor;
+uniform vec3 propagationDir;
+uniform float shockwaveDist;
+uniform float time;
 
 varying vec2 vUv;
 varying float vDistortion;
-varying float vAgnGlow;
+varying vec3 vWorldPosition;
+
+// Simple random function
+float hash12(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
 
 void main() {
   if (enabled < 0.5) discard;
   
   // Grid lines
-  vec2 grid = abs(fract(vUv * 20.0 - 0.5) - 0.5) / fwidth(vUv * 20.0);
+  vec2 grid = abs(fract(vUv * 40.0 - 0.5) - 0.5) / fwidth(vUv * 40.0);
   float line = min(grid.x, grid.y);
   float gridAlpha = 1.0 - min(line, 1.0);
   
   // Color distorted regions
-  vec3 color = mix(waveColor * 0.3, waveColor, vDistortion * 10.0);
+  vec3 color = mix(waveColor * 0.3, waveColor, clamp(vDistortion * 10.0, 0.0, 1.0));
   float alpha = gridAlpha * 0.4 + vDistortion * 2.0;
   
   // AGN Tsunami gamma-ray glowing front
-  if (isAgnEvent > 0.5 && vAgnGlow > 0.01) {
-      color = mix(color, vec3(1.0, 0.9, 1.0) * 2.0, vAgnGlow); // Blinding white/purple
-      alpha += vAgnGlow * 2.5;
+  if (isAgnEvent > 0.5) {
+      float axisPos = dot(vWorldPosition, propagationDir);
+      float distBehind = axisPos - shockwaveDist;
+      
+      float agnGlow = 0.0;
+      if (distBehind < 0.0 && distBehind > -3.0) {
+          agnGlow = pow(1.0 - (abs(distBehind) / 3.0), 2.0);
+      }
+      
+      float streaks = hash12(vWorldPosition.xz + vec2(time));
+      agnGlow *= 0.7 + 0.3 * streaks;
+      
+      if (agnGlow > 0.01) {
+          // Violet (0.5, 0.0, 1.0) mixing into Light Blue (0.4, 0.8, 1.0) and Ultraviolet/Deep Violet
+          vec3 extremeColor = mix(vec3(0.4, 0.0, 0.8), vec3(0.4, 0.8, 1.0), agnGlow);
+          color = mix(color, extremeColor, agnGlow * 1.5);
+          alpha += agnGlow * 3.0;
+      }
   }
   
-  gl_FragColor = vec4(color, alpha * 0.5);
+  gl_FragColor = vec4(color, min(alpha * 0.6, 1.0));
 }
 `;
 
@@ -118,7 +141,7 @@ void main() {
  * @returns {Object} GW visualization object with mesh, update, toggle methods
  */
 export function createGWVisualization(size = 10) {
-    const geometry = new PlaneGeometry(size, size, 64, 64);
+    const geometry = new PlaneGeometry(size, size, 384, 384);
     geometry.rotateX(-Math.PI / 2); // Lay flat on ecliptic plane
 
     const material = new ShaderMaterial({
