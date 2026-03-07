@@ -5,7 +5,8 @@ import {
     sampleTaxonomy,
     samplePowerLawSize
 } from './asteroidDistributions';
-import { createAsteroidInstancedBuckets } from './asteroidGeometry';
+import { createAsteroidInstancedBuckets, type AsteroidBucketMap } from './asteroidGeometry';
+import type { AsteroidShaderUniforms } from './asteroidShaders';
 
 // Configuration: Massive counts for GPU phase
 const POPULATION_COUNTS = {
@@ -17,15 +18,18 @@ const POPULATION_COUNTS = {
 };
 
 export class AsteroidSimulationPipeline {
+    rootGroup: Group;
+    buckets: AsteroidBucketMap;
+    shaderUniforms: AsteroidShaderUniforms;
+
     constructor() {
         this.rootGroup = new Group();
         this.rootGroup.name = 'UltraRealisticAsteroidBeltGPU';
         this.buckets = {};
 
-        // Shared uniforms across all asteroid materials
         this.shaderUniforms = {
             uTimeDays: { value: 0 },
-            uViewScaleAu: { value: 1.0 } // Should be the same scale used to convert AU to screen units
+            uViewScaleAu: { value: 1.0 }
         };
     }
 
@@ -116,7 +120,7 @@ export class AsteroidSimulationPipeline {
      * Extremely lightweight CPU update loop. 
      * Array iteration has been fully eliminated. Only updating uniforms.
      */
-    update(jd) {
+    update(jd: number) {
         const epochJd = 2451545.0; // J2000
         this.shaderUniforms.uTimeDays.value = jd - epochJd;
     }
