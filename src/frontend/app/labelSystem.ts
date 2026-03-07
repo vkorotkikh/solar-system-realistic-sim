@@ -11,6 +11,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     canvas.width = 768;
     canvas.height = 192;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return new Sprite();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -59,6 +60,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     canvas.width = 160;
     canvas.height = 160;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return new Sprite();
 
     const c = canvas.width / 2;
     const outer = 62;
@@ -89,6 +91,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     canvas.width = 768;
     canvas.height = 188;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return new Sprite();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';

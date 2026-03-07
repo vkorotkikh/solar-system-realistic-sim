@@ -5,19 +5,9 @@ import {
   Line,
   LineBasicMaterial
 } from 'three';
+import { disposeThreeMaterial } from './textureManager';
 
 const ROUTE_SEGMENTS = 90;
-
-function disposeThreeMaterial(material) {
-  if (!material) return;
-  if (Array.isArray(material)) {
-    material.forEach(disposeThreeMaterial);
-    return;
-  }
-  if (typeof material.dispose === 'function') {
-    material.dispose();
-  }
-}
 
 function disposeRouteVisualizationResources(routeGroup) {
   for (const child of routeGroup.children) {

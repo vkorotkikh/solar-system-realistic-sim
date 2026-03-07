@@ -59,6 +59,7 @@ export function createNearbySystemsRenderer({
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return new CanvasTexture(canvas);
     const center = canvas.width * 0.5;
     const radius = canvas.width * 0.46;
 
