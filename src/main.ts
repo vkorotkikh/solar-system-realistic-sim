@@ -223,8 +223,8 @@ const sunCtrl = createSunController({
 const bodyNodes = new Map();
 const bodyMeshes = new Map();
 const bodySpinGroups = new Map();
-const orbitLines = [];
-const labels = [];
+const orbitLines: Line[] = [];
+const labels: { bodyId: string; sprite: Sprite }[] = [];
 
 function createLabelCanvas(text) {
   const canvas = document.createElement('canvas');
@@ -232,6 +232,7 @@ function createLabelCanvas(text) {
   canvas.width = size;
   canvas.height = 64;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
   ctx.font = 'bold 28px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -1070,7 +1071,6 @@ function animate(timestamp) {
   backgroundStars.position.copy(camera.position);
   controls.update();
   updateCameraClipPlanes();
-  resizeRenderer();
   renderer.render(scene, camera);
   timeController.updateHud();
 
@@ -1081,3 +1081,51 @@ function animate(timestamp) {
 }
 
 requestAnimationFrame(animate);
+
+// ── Resource Cleanup ──────────────────────────────────────────────────────────
+
+window.addEventListener('beforeunload', () => {
+  if (modelWorker) {
+    modelWorker.terminate();
+    modelWorker = null;
+  }
+
+  asteroidBeltRenderer.dispose();
+  kuiperBeltRenderer.dispose();
+
+  for (const mesh of bodyMeshes.values()) {
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((m: { dispose: () => void }) => m.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    }
+  }
+
+  for (const line of orbitLines) {
+    line.geometry.dispose();
+    if (Array.isArray(line.material)) {
+      line.material.forEach((m: { dispose: () => void }) => m.dispose());
+    } else {
+      line.material.dispose();
+    }
+  }
+
+  for (const entry of labels) {
+    const sprite = entry.sprite;
+    if (sprite.material.map) sprite.material.map.dispose();
+    sprite.material.dispose();
+  }
+
+  backgroundStars.geometry.dispose();
+  if (Array.isArray(backgroundStars.material)) {
+    backgroundStars.material.forEach((m: { dispose: () => void }) => m.dispose());
+  } else {
+    backgroundStars.material.dispose();
+  }
+
+  if (sunTexture) sunTexture.dispose();
+  renderer.dispose();
+});
