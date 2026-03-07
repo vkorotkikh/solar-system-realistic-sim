@@ -72,46 +72,46 @@ curl http://127.0.0.1:8042/benchmark/accuracy
 
 ```
 ├── src/
-│   ├── main.js                         # Application entry point
-│   ├── constants.js                    # Shared constants (AU, scale factors)
-│   ├── textures.js                     # Texture path definitions
+│   ├── main.ts                         # Application entry point
+│   ├── constants.ts                    # Shared constants (AU, scale factors)
+│   ├── textures.ts                     # Texture path definitions
 │   ├── style.css
 │   ├── data/
-│   │   ├── planets.js                  # Planet orbital elements + metadata
+│   │   ├── planets.ts                  # Planet orbital elements + metadata
 │   │   ├── moons.json                  # 424-moon catalog (JPL SSD)
 │   │   └── stars_catalog.json          # Background star catalog
 │   ├── sim/
 │   │   ├── orbitMath.ts                # Kepler solver, coordinate transforms
 │   │   ├── solarSystemModel.ts         # Canonical solar system model
-│   │   ├── catalog.js                  # Body catalog utilities
+│   │   ├── catalog.ts                  # Body catalog utilities
 │   │   └── asteroids/                  # Asteroid belt pipeline + shaders
 │   ├── frontend/
 │   │   ├── app/
-│   │   │   ├── sceneSetup.js           # Three.js scene, renderer, lights
-│   │   │   ├── bodyManager.js          # Celestial body lifecycle
-│   │   │   ├── animationLoop.js        # Render + simulation tick loop
-│   │   │   ├── cameraController.js     # Focus, follow, clip-plane logic
-│   │   │   ├── textureManager.js       # Texture load, cache, fallback
-│   │   │   ├── stateStore.js           # Application state
-│   │   │   ├── inputHandler.js         # Keyboard / mouse / touch
-│   │   │   ├── timeController.js       # Simulation clock controls
-│   │   │   ├── labelSystem.js          # 3D label rendering
+│   │   │   ├── sceneSetup.ts           # Three.js scene, renderer, lights
+│   │   │   ├── bodyManager.ts          # Celestial body lifecycle
+│   │   │   ├── animationLoop.ts        # Render + simulation tick loop
+│   │   │   ├── cameraController.ts     # Focus, follow, clip-plane logic
+│   │   │   ├── textureManager.ts       # Texture load, cache, fallback
+│   │   │   ├── stateStore.ts           # Application state
+│   │   │   ├── inputHandler.ts         # Keyboard / mouse / touch
+│   │   │   ├── timeController.ts       # Simulation clock controls
+│   │   │   ├── labelSystem.ts          # 3D label rendering
 │   │   │   ├── simulationClient.ts     # Backend WebSocket client
-│   │   │   ├── plannerController.js    # Trajectory planner UI bridge
-│   │   │   ├── routeRenderer.js        # Transfer-arc visualization
-│   │   │   ├── uiBindings.js           # DOM ↔ state bindings
-│   │   │   ├── localSystemRenderer.js  # Local solar system renderer
-│   │   │   └── nearbySystemsRenderer.js# Nearby star systems renderer
+│   │   │   ├── plannerController.ts    # Trajectory planner UI bridge
+│   │   │   ├── routeRenderer.ts        # Transfer-arc visualization
+│   │   │   ├── uiBindings.ts           # DOM ↔ state bindings
+│   │   │   ├── localSystemRenderer.ts  # Local solar system renderer
+│   │   │   └── nearbySystemsRenderer.ts# Nearby star systems renderer
 │   │   ├── camera/
-│   │   │   └── transitions.js          # Smooth camera transitions
+│   │   │   └── transitions.ts          # Smooth camera transitions
 │   │   ├── features/
 │   │   │   ├── planetary/              # Clouds, terrain, satellites, moon textures
 │   │   │   ├── solar/                  # Sun visuals, flares, magnetics, corona
 │   │   │   └── trajectory/             # Local patched-conic planner
 │   │   └── rendering/
-│   │       ├── milkyWay.js             # Milky Way background layer
-│   │       ├── orbitRenderer.js        # Orbit-line drawing
-│   │       └── lodManager.js           # Level-of-detail management
+│   │       ├── milkyWay.ts             # Milky Way background layer
+│   │       ├── orbitRenderer.ts        # Orbit-line drawing
+│   │       └── lodManager.ts           # Level-of-detail management
 │   └── assets/textures/                # Planet day maps, normals, clouds, relief
 ├── backend/
 │   ├── server.py                       # FastAPI entry point
@@ -242,7 +242,7 @@ npm run ingest:moon-textures
 |---|---|
 | 3D engine | [Three.js](https://threejs.org/) r182 |
 | Build tool | [Vite](https://vite.dev/) 7 |
-| Language | JavaScript + TypeScript (incremental migration) |
+| Language | TypeScript |
 | Backend | [FastAPI](https://fastapi.tiangolo.com/) + WebSocket |
 | N-body integrator | [REBOUND](https://rebound.readthedocs.io/) (IAS15) |
 | Optional integrator | [TudatPy](https://docs.tudat.space/) |

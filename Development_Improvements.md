@@ -47,6 +47,62 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-07 UTC
+Status: `DONE`
+Type: `FIX` / `OPTIMIZATION` / `TECH-DEBT`
+Summary:
+- Completed comprehensive codebase audit fix pass addressing 15 medium/low severity issues (#9–#23).
+
+Context / rationale:
+- A full codebase analysis identified issues ranging from performance (main-thread blocking during asteroid generation, per-frame resize calls, O(n) BFS dequeue), correctness (non-deterministic PRNG, stale cache policy, naive CSV parsing, const enum erasure), memory safety (missing resource disposal, canvas context null-checks), and maintainability (dead code, duplicated utilities, typos, shader patching fragility).
+
+Proposed approach:
+- Applied targeted fixes for each issue with minimal blast radius. Key patterns:
+  - Chunked async iteration with yields for heavy initialization loops
+  - Object pooling for Three.js types (Color, Vector3) in hot paths
+  - Seeded PRNG (mulberry32) replacing Math.random() for simulation determinism
+  - Index-counter BFS replacing Array.shift() for O(1) dequeue
+  - beforeunload cleanup handler for full Three.js resource disposal
+  - Canonical utility deduplication (clamp, lerp, solveKeplerFast, disposeThreeMaterial)
+
+Expected impact:
+- Eliminates main-thread blocking during 1.9M asteroid initialization
+- Reduces GC pressure in hot rendering paths
+- Ensures deterministic asteroid generation across sessions
+- Prevents GPU/memory leaks in long browser sessions
+- Removes ~1,200 lines of dead code
+- Improves maintainability through utility consolidation and corrected naming
+
+Affected files/systems:
+- 22 files modified, 2 files deleted across `src/sim/`, `src/frontend/`, `src/data/`, `scripts/`
+- See `Development_History_Context.md` entry "2026-03-07" for full file list
+
+Next step:
+- Address pre-existing `implicit any` TypeScript errors (~80+) through gradual typing passes.
+
+### 2026-03-07 UTC
+Status: `DONE` (partial)
+Type: `FIX`
+Summary:
+- GPU memory cleanup on session teardown now implemented via `beforeunload` handler.
+
+Context / rationale:
+- Previously tracked as item 5 in the 2026-02-23 OPEN problem list: "No GPU memory cleanup (`geometry.dispose()`, `material.dispose()`) when toggling feature systems or switching between solar/local system views."
+- The `beforeunload` handler addresses session-end cleanup. Feature-toggle and view-switch cleanup remains open.
+
+Proposed approach:
+- Handler disposes: web worker, belt renderers, body mesh geometries/materials, orbit line geometries/materials, label sprite materials/maps, background star geometry, sun texture, and WebGL renderer.
+
+Expected impact:
+- Prevents GPU memory leaks across page refreshes and tab closures.
+- Does not yet address mid-session cleanup during feature toggling.
+
+Affected files/systems:
+- `src/main.ts`
+
+Next step:
+- Add dispose calls when toggling asteroid/Kuiper/Oort visibility or switching between solar/local system views.
+
 ### 2026-02-26 10:16:00 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`
@@ -350,7 +406,7 @@ Proposed approach:
   2. Moon texture loading has a potential race condition — procedural texture set immediately, then async curated texture replaces it without checking if the material was disposed.
   3. Earthshine phase calculation uses a simplified dot-product model that may not match actual lunar phase geometry.
   4. Asteroid detail N-body perturbation integration doesn't validate Jupiter/Saturn mass data before use (potential NaN).
-  5. No GPU memory cleanup (`geometry.dispose()`, `material.dispose()`) when toggling feature systems or switching between solar/local system views.
+  5. ~~No GPU memory cleanup~~ — session-end cleanup added via `beforeunload` (2026-03-07). Mid-session cleanup during feature toggling/view switching remains OPEN.
   6. Kepler solver clamps eccentricity at 0.9999999, preventing near-parabolic and hyperbolic orbit propagation for comets.
   7. Camera clip plane logic could benefit from HUD diagnostics (`near/far` values) during interstellar zoom tuning.
 

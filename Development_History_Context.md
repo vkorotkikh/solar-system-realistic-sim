@@ -55,6 +55,65 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-07 — Comprehensive Codebase Audit: Medium/Low Severity Fix Pass
+Status: DONE
+
+What changed:
+- Completed a 15-item fix pass addressing medium and low severity issues from a comprehensive codebase analysis (issues #9–#23). All fixes applied, one issue (#11) was already resolved.
+
+Summary of fixes:
+1. **Chunked async asteroid pipeline (#9):** Added chunked processing (10k per batch) with `setTimeout(0)` yields and reused `Vector3`/`Color` objects to prevent main-thread blocking and GC pressure during ~1.9M asteroid generation.
+2. **Reusable Color in beltRenderer (#10):** Added module-level `_reusableColor` object for `addInstanceColorData` to eliminate per-call allocations.
+3. **Sequential fetches (#11):** Already fixed — `Promise.all` was in place at line 634 of `phase1AsteroidCatalog.ts`.
+4. **force-cache → no-cache (#12):** Changed `cache: 'force-cache'` to `cache: 'no-cache'` in `loadPhase1CatalogMetadata()` to prevent stale metadata causing checksum mismatches.
+5. **CSV parser (#13):** Replaced naive comma-split parser in `scripts/fetch_utils.py` with Python `csv.DictReader` for RFC-compliant field handling.
+6. **Resource cleanup (#14):** Added `beforeunload` handler in `main.ts` disposing worker, belt renderers, body meshes (geometry + materials), orbit lines, label sprites, background stars, sun texture, and renderer.
+7. **resizeRenderer every frame (#15):** Removed redundant `resizeRenderer()` call from animation loop — already handled by `window.addEventListener('resize')`.
+8. **Deduplicate utilities (#16):** Consolidated `clamp()` imports to `constants.ts` across 4 files, `lerp()` to `constants.ts` in `textures.ts`, extracted `solveKeplerFast()` to `orbitMath.ts`, and exported `disposeThreeMaterial` from `textureManager.ts`.
+9. **Dead code (#17):** Deleted `temp_nearbySystemsRenderer.ts` (1127 lines), deleted fake `asteroidCatalogLoader.test.ts`, removed unused `MU_SUN_AU3_DAY2` import and `Math.sqrt(1)` no-op from `asteroidBelt.ts`.
+10. **Typo (#18):** Renamed `ALCBEO_SCALE_U16` → `ALBEDO_SCALE_U16` in `asteroidCatalogLoader.ts`.
+11. **BFS Array.shift() (#19):** Replaced O(n) `Array.shift()` in `buildUpdateOrder()` with O(1) index counter pattern in `solarSystemModel.ts`.
+12. **Math.random() → seeded PRNG (#20):** Added module-level mulberry32 seeded PRNG to `asteroidDistributions.ts`, replaced all `Math.random()` calls with `_rng()`, exported `seedDistributionRng()`.
+13. **const enum → enum (#21):** Changed `const enum` to regular `enum` in `asteroidBelt.ts`, `kuiperBelt.ts`, and `asteroidTaxonomyResolver.ts` (7 enums total) to prevent erasure breaking web worker imports.
+14. **Null-checks (#22):** Added `getContext('2d')` null guards in `main.ts`, `labelSystem.ts` (3 functions), and `nearbySystemsRenderer.ts`.
+15. **Shader patching warning (#23):** Added fragility warning comment before `onBeforeCompile` in `beltRenderer.ts`.
+
+Why it changed:
+- Codebase analysis identified these as remaining medium/low severity issues after severe/high issues were already addressed.
+
+Evidence/validation:
+- Build check confirmed no new TypeScript errors introduced. All pre-existing `implicit any` errors are unchanged.
+- Each fix verified against the specific issue description and affected code.
+
+Files touched:
+- `src/sim/asteroids/asteroidPipeline.ts` — chunked processing, object reuse
+- `src/frontend/features/asteroids/beltRenderer.ts` — reusable Color, shader warning
+- `src/sim/phase1AsteroidCatalog.ts` — cache policy fix
+- `scripts/fetch_utils.py` — CSV parser replacement
+- `src/main.ts` — resource cleanup handler, resize removal, null-checks, type annotations
+- `src/sim/solarSystemModel.ts` — BFS optimization
+- `src/sim/asteroids/asteroidDistributions.ts` — seeded PRNG
+- `src/data/asteroidCatalogLoader.ts` — typo fix (ALBEDO)
+- `src/sim/asteroidBelt.ts` — dead code removal, const enum → enum, solveKeplerFast import
+- `src/sim/kuiperBelt.ts` — const enum → enum, solveKeplerFast import
+- `src/data/asteroidTaxonomyResolver.ts` — const enum → enum
+- `src/frontend/app/labelSystem.ts` — null-checks
+- `src/frontend/app/nearbySystemsRenderer.ts` — null-check
+- `src/sim/orbitMath.ts` — exported solveKeplerFast
+- `src/constants.ts` — canonical clamp/lerp exports
+- `src/textures.ts` — lerp import from constants
+- `src/sim/catalog.ts` — clamp import from constants
+- `src/frontend/features/planetary/cloudDataPipeline.ts` — clamp import from constants
+- `src/frontend/features/solar/solarPhysicsClient.ts` — clamp import from constants
+- `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts` — clamp import from constants
+- `src/frontend/app/textureManager.ts` — disposeThreeMaterial export
+- `src/frontend/app/routeRenderer.ts` — disposeThreeMaterial import
+- Deleted: `src/frontend/app/temp_nearbySystemsRenderer.ts`, `src/data/asteroidCatalogLoader.test.ts`
+
+Follow-ups / open questions:
+- OPEN: ~80+ pre-existing `implicit any` TypeScript errors across many files need gradual typing (animationLoop.ts, cameraController.ts, inputHandler.ts, etc.).
+- OPEN: `asteroidPipeline.ts` still uses `Math.random()` for bucket selection and spin axis generation (lines 59, 74-76, 81) — these were intentionally left as non-deterministic since they affect rendering only, not orbital mechanics.
+
 ### 2026-02-26 10:16:00 UTC — Superluminal modeling feature moved and TS-converted
 Status: DONE
 
