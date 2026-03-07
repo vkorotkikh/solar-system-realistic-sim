@@ -4,6 +4,7 @@ import {
   colorForTaxonomy,
   albedoForTaxonomy
 } from './asteroidBelt';
+import { readAsteroidCatalogBinary, type PackedAsteroidRecord } from '../data/asteroidCatalogLoader';
 
 export type Phase1TaxonomyCode = 'C' | 'S' | 'M';
 
@@ -70,8 +71,8 @@ export interface Phase1CatalogLatencyAcceptance {
 }
 
 export interface Phase1CatalogVersionAcceptance {
-  expected: number;
-  actual: number;
+  expected: string;
+  actual: string;
   passed: boolean;
   reason?: string;
 }
@@ -101,12 +102,13 @@ export interface Phase1Bundle {
   taxonomyCheck: Phase1CatalogTaxonomyAcceptance;
 }
 
-export interface Phase1CatalogLoadResult extends Phase1Bundle {}
+export interface Phase1CatalogLoadResult extends Phase1Bundle { }
 
 interface ParsedPhase1Catalog {
   asteroids: AsteroidDef[];
   sourceCount: number;
   catalogVersion: number;
+  catalogMagic: string;
 }
 
 type Phase1TaxonomyCounts = Record<Phase1TaxonomyCode, number>;
@@ -115,12 +117,12 @@ const PHASE1_DEFAULT_URL = '/data/asteroid-phase1/asteroid_phase1_main_100000.bi
 const PHASE1_DEFAULT_META_URL = '/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json';
 const PHASE1_DEFAULT_MAX_RECORDS = 15_000;
 export const PHASE1_LOAD_LATENCY_BUDGET_MS = 2_000;
-const HEADER_MAGIC = 'ASPH';
+const ASPH_MAGIC = 'ASPH';
+const ACBF_MAGIC = 'ACBF';
 const HEADER_SIZE_BYTES = 12;
-const STRIDE_FLOATS = 11;
-const STRIDE_BYTES = STRIDE_FLOATS * 4;
-const EXPECTED_PHASE1_VERSION = 1;
+const EXPECTED_PHASE1_VERSION = ['ASPH-v1', 'ASPH-v2', 'ACBF-v1'];
 const EXPECTED_TAXONOMIES: readonly Phase1TaxonomyCode[] = ['C', 'S', 'M'];
+const DEFAULT_PHASE1_EPOCH_JD = 2_451_545.0;
 
 const TAXONOMY_LABEL_BY_VALUE: Record<AsteroidTaxonomy, Phase1TaxonomyCode> = {
   [AsteroidTaxonomy.C]: 'C',
@@ -154,6 +156,140 @@ function mulberry32(seed: number): () => number {
 function clampRange(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, value));
+}
+
+function buildOrbitSeed(aAu: number, i: number, taxonomy: AsteroidTaxonomy, anomalyDeg: number): number {
+  return (Math.trunc(aAu * 100_000) ^ (i * 97) ^ (Math.trunc(anomalyDeg * 100))) >>> 0;
+}
+
+function buildPaletteColor(taxonomy: AsteroidTaxonomy, seed: number): number {
+  const baseColor = makeColor(taxonomy, seed);
+  return Number.isFinite(baseColor) ? baseColor : colorForTaxonomy(taxonomy, mulberry32(seed + 1));
+}
+
+function safeOrbitNumber(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function safePositiveOrbitNumber(value: number, fallback: number): number {
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return value;
+}
+
+function safePeriodDays(value: number, fallbackAu: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 365.25 * Math.pow(fallbackAu, 1.5);
+  return value;
+}
+
+interface SourceOrbitRecord {
+  sourceIdRaw: number;
+  epochJd: number;
+  aAu: number;
+  e: number;
+  iDeg: number;
+  ascendingNodeDeg: number;
+  argPeriapsisDeg: number;
+  meanAnomalyDeg: number;
+  periodDays: number;
+  diameterKm: number;
+  albedo: number;
+  taxonomyIndex: number;
+}
+
+function toAsteroidDef(record: SourceOrbitRecord, index: number): AsteroidDef {
+  const aAu = safePositiveOrbitNumber(record.aAu, 2.8);
+  const taxonomy = taxonomyFromIndex(record.taxonomyIndex, aAu);
+  const taxonomySeed = buildOrbitSeed(aAu, index, taxonomy, record.meanAnomalyDeg);
+  const safeE = clampRange(record.e, 0, 1);
+  const safeDiameter = safePositiveOrbitNumber(record.diameterKm, 1.0);
+  const safeAlbedo = safeOrbitNumber(record.albedo, albedoForTaxonomy(taxonomy, mulberry32(taxonomySeed + 2)));
+  const safeAlbedoFinal = safeAlbedo <= 0 ? albedoForTaxonomy(taxonomy, mulberry32(taxonomySeed + 3)) : safeAlbedo;
+  const color = buildPaletteColor(taxonomy, taxonomySeed);
+
+  return {
+    orbit: {
+      epochJd: safeOrbitNumber(record.epochJd, DEFAULT_PHASE1_EPOCH_JD),
+      aAu,
+      e: safeE,
+      iDeg: safeOrbitNumber(record.iDeg, 0),
+      ascendingNodeDeg: safeOrbitNumber(record.ascendingNodeDeg, 0),
+      argPeriapsisDeg: safeOrbitNumber(record.argPeriapsisDeg, 0),
+      meanAnomalyDeg: safeOrbitNumber(record.meanAnomalyDeg, 0),
+      periodDays: safePeriodDays(record.periodDays, aAu),
+    },
+    taxonomy,
+    diameterKm: safeDiameter,
+    albedo: safeAlbedoFinal,
+    color,
+    irregularity: irregularityFromDiameter(safeDiameter),
+    sourceId: String(record.sourceIdRaw),
+  };
+}
+
+function parseAcbfRecord(record: PackedAsteroidRecord, index: number): AsteroidDef {
+  return toAsteroidDef({
+    sourceIdRaw: record.sourceId,
+    epochJd: record.epochJd,
+    aAu: record.aAu,
+    e: record.e,
+    iDeg: record.iDeg,
+    ascendingNodeDeg: record.ascendingNodeDeg,
+    argPeriapsisDeg: record.argPeriapsisDeg,
+    meanAnomalyDeg: record.meanAnomalyDeg,
+    periodDays: record.periodDays,
+    diameterKm: record.diameterKm,
+    albedo: record.albedo,
+    taxonomyIndex: record.taxonomyIndex,
+  }, index);
+}
+
+interface ParsedAsphRecord {
+  version: number;
+  sourceIdRaw: number;
+  epochJd: number;
+  aAu: number;
+  e: number;
+  iDeg: number;
+  ascendingNodeDeg: number;
+  argPeriapsisDeg: number;
+  meanAnomalyDeg: number;
+  periodDays: number;
+  diameterKm: number;
+  albedo: number;
+  taxonomyIndex: number;
+}
+
+function parseAsphRecord(payload: DataView, dataOffset: number, index: number, version: number): ParsedAsphRecord {
+  const read = (offset: number) => payload.getFloat32(offset, true);
+  const sourceIdRaw = version === 2 ? payload.getUint32(dataOffset, true) : index + 1;
+  const baseOffset = version === 2 ? dataOffset + 4 : dataOffset;
+  const epochJd = read(baseOffset);
+  const aAu = read(baseOffset + 4);
+  const e = read(baseOffset + 8);
+  const iDeg = read(baseOffset + 12);
+  const ascendingNodeDeg = read(baseOffset + 16);
+  const argPeriapsisDeg = read(baseOffset + 20);
+  const meanAnomalyDeg = read(baseOffset + 24);
+  const periodDays = read(baseOffset + 28);
+  const diameterKm = read(baseOffset + 32);
+  const albedo = read(baseOffset + 36);
+  const taxonomyIndex = read(baseOffset + 40);
+
+  return {
+    version,
+    sourceIdRaw,
+    epochJd,
+    aAu,
+    e,
+    iDeg,
+    ascendingNodeDeg,
+    argPeriapsisDeg,
+    meanAnomalyDeg,
+    periodDays,
+    diameterKm,
+    albedo,
+    taxonomyIndex,
+  };
 }
 
 function taxonomyFromIndex(raw: number, aAu: number): AsteroidTaxonomy {
@@ -333,13 +469,15 @@ function buildAcceptance(
     checksumActual: string;
   }
 ): Phase1Bundle['acceptance'] {
+  const catalogSignature = `${parsed.catalogMagic}-v${parsed.catalogVersion}`;
+  const expected = EXPECTED_PHASE1_VERSION.includes(catalogSignature);
   const version = {
-    expected: EXPECTED_PHASE1_VERSION,
-    actual: parsed.catalogVersion,
-    passed: parsed.catalogVersion === EXPECTED_PHASE1_VERSION,
-    reason: parsed.catalogVersion === EXPECTED_PHASE1_VERSION
+    expected: EXPECTED_PHASE1_VERSION.join(', '),
+    actual: catalogSignature,
+    passed: expected,
+    reason: expected
       ? undefined
-      : `Unsupported catalog version ${parsed.catalogVersion} (expected ${EXPECTED_PHASE1_VERSION}).`
+      : `Unsupported catalog signature ${catalogSignature} (expected ${EXPECTED_PHASE1_VERSION.join(', ')}).`
   };
   const rows = buildRowAcceptance(
     parsed.sourceCount,
@@ -391,77 +529,60 @@ function parseOrbitCatalog(
 
   const headerBytes = new Uint8Array(buffer, 0, 4);
   const magic = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
-  if (magic !== HEADER_MAGIC) {
-    throw new Error(`Unknown phase-1 magic "${magic}", expected ${HEADER_MAGIC}.`);
-  }
+  if (magic === ASPH_MAGIC) {
+    const header = new DataView(buffer);
+    const version = header.getUint8(4);
+    if (version !== 1 && version !== 2) {
+      throw new Error(`Unsupported ASPH catalog version: ${version}`);
+    }
 
-  const header = new DataView(buffer);
-  const version = header.getUint8(4);
-  if (version !== 1) {
-    throw new Error(`Unsupported phase-1 catalog version: ${version}`);
-  }
+    const stride = header.getUint8(5);
+    const expectedStride = version === 2 ? 12 : 11;
+    if (stride !== expectedStride) {
+      throw new Error(`Unexpected ASPH stride: ${stride} (expected ${expectedStride})`);
+    }
 
-  const stride = header.getUint8(5);
-  if (stride !== STRIDE_FLOATS) {
-    throw new Error(`Unexpected phase-1 stride: ${stride} (expected ${STRIDE_FLOATS})`);
-  }
+    const count = header.getUint32(8, true);
+    const payloadStart = HEADER_SIZE_BYTES;
+    const strideBytes = stride * 4;
+    const expectedBytes = payloadStart + count * strideBytes;
+    if (buffer.byteLength < expectedBytes) {
+      throw new Error(`ASPH payload truncated: expected ${expectedBytes}, got ${buffer.byteLength}`);
+    }
 
-  const count = header.getUint32(8, true);
-  const payloadStart = HEADER_SIZE_BYTES;
-  const expectedBytes = payloadStart + count * STRIDE_BYTES;
-  if (buffer.byteLength < expectedBytes) {
-    throw new Error(`Phase-1 payload truncated: expected ${expectedBytes}, got ${buffer.byteLength}`);
-  }
+    const payload = new DataView(buffer, payloadStart, count * strideBytes);
+    const limit = Math.max(0, Math.min(maxCount, count));
+    const asteroids: AsteroidDef[] = [];
+    asteroids.length = limit;
 
-  const payload = new DataView(buffer, payloadStart, count * STRIDE_BYTES);
-  const limit = Math.max(0, Math.min(maxCount, count));
-  const asteroids: AsteroidDef[] = [];
-  asteroids.length = limit;
+    for (let i = 0; i < limit; i += 1) {
+      const baseOffset = i * strideBytes;
+      const parsed = parseAsphRecord(payload, baseOffset, i, version);
+      asteroids[i] = toAsteroidDef(parsed, i);
+    }
 
-  for (let i = 0; i < limit; i++) {
-    const baseOffset = i * STRIDE_BYTES;
-    const read = (index: number) => payload.getFloat32(baseOffset + index * 4, true);
-
-    const epochJd = read(0);
-    const aAu = clampRange(read(1), 0.5, 10);
-    const e = clampRange(read(2), 0, 0.98);
-    const iDeg = read(3);
-    const ascendingNodeDeg = read(4);
-    const argPeriapsisDeg = read(5);
-    const meanAnomalyDeg = read(6);
-    const periodDays = read(7);
-    const diameterKm = read(8);
-    const albedo = read(9);
-    const taxonomyIndex = read(10);
-    const taxonomy = taxonomyFromIndex(taxonomyIndex, aAu);
-    const radiusSeed = (Math.trunc(aAu * 100_000) ^ (i * 97) ^ (Math.trunc(meanAnomalyDeg * 100))) >>> 0;
-    const baseColor = makeColor(taxonomy, radiusSeed);
-    const color = Number.isFinite(baseColor) ? baseColor : colorForTaxonomy(taxonomy, mulberry32(radiusSeed + 1));
-    const safeDiameter = Number.isFinite(diameterKm) && diameterKm > 0 ? diameterKm : 1.0;
-    const safeAlbedo = Number.isFinite(albedo) && albedo > 0 ? albedo : albedoForTaxonomy(taxonomy, mulberry32(radiusSeed + 2));
-    const sourceId = `${i + 1}`;
-
-    asteroids[i] = {
-      orbit: {
-        epochJd: Number.isFinite(epochJd) ? epochJd : 2_451_545.0,
-        aAu: Number.isFinite(aAu) && aAu > 0 ? aAu : 2.8,
-        e,
-        iDeg: Number.isFinite(iDeg) ? iDeg : 0,
-        ascendingNodeDeg: Number.isFinite(ascendingNodeDeg) ? ascendingNodeDeg : 0,
-        argPeriapsisDeg: Number.isFinite(argPeriapsisDeg) ? argPeriapsisDeg : 0,
-        meanAnomalyDeg: Number.isFinite(meanAnomalyDeg) ? meanAnomalyDeg : 0,
-        periodDays: Number.isFinite(periodDays) && periodDays > 0 ? periodDays : 365.25 * Math.pow(aAu, 1.5),
-      },
-      taxonomy,
-      diameterKm: safeDiameter,
-      albedo: safeAlbedo,
-      color,
-      irregularity: irregularityFromDiameter(safeDiameter),
-      sourceId,
+    return {
+      asteroids,
+      sourceCount: count,
+      catalogVersion: version,
+      catalogMagic: ASPH_MAGIC
     };
   }
 
-  return { asteroids, sourceCount: count, catalogVersion: version };
+  if (magic === ACBF_MAGIC) {
+    const parsed = readAsteroidCatalogBinary(buffer, { maxRecords: maxCount });
+    const limit = Math.max(0, Math.min(maxCount, parsed.records.length));
+    const asteroids = Array.from({ length: limit }, (_, i) => parseAcbfRecord(parsed.records[i], i));
+
+    return {
+      asteroids,
+      sourceCount: parsed.header.recordCount,
+      catalogVersion: parsed.header.version,
+      catalogMagic: ACBF_MAGIC
+    };
+  }
+
+  throw new Error(`Unknown phase-1 magic "${magic}". Expected ${ASPH_MAGIC} or ${ACBF_MAGIC}.`);
 }
 
 export async function loadPhase1AsteroidCatalog(
