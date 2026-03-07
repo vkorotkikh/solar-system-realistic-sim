@@ -78,20 +78,11 @@ def load_or_fetch(
 
 def parse_csv_text(text: str) -> list[dict[str, str]]:
     """Parse CSV text into list of dicts using first row as headers."""
-    lines = text.strip().splitlines()
-    if len(lines) < 2:
-        return []
-    headers = [h.strip().strip('"') for h in lines[0].split(",")]
-    rows = []
-    for line in lines[1:]:
-        if not line.strip():
-            continue
-        values = [v.strip().strip('"') for v in line.split(",")]
-        row = {}
-        for i, header in enumerate(headers):
-            row[header] = values[i] if i < len(values) else ""
-        rows.append(row)
-    return rows
+    import csv
+    import io
+
+    reader = csv.DictReader(io.StringIO(text.strip()))
+    return [dict(row) for row in reader]
 
 
 def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:

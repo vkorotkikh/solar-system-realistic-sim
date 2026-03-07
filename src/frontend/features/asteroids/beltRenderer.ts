@@ -237,6 +237,9 @@ function createOrbitMaterial() {
     vertexColors: true
   });
 
+  // WARNING: Fragile shader patching — uses string replacement on Three.js
+  // shader includes (e.g. #include <common>). These include names may change
+  // across Three.js versions. Verify after any Three.js upgrade.
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uJulianDate = uniforms.uJulianDate;
     shader.uniforms.uJupiterPositionAu = uniforms.uJupiterPositionAu;
@@ -306,12 +309,14 @@ const _pos = new Vector3();
 const _quat = new Quaternion();
 const _scale = new Vector3();
 
+const _reusableColor = new Color();
+
 function addInstanceColorData(colors: Float32Array, index: number, value: number): void {
   const offset = index * 3;
-  const color = new Color(value);
-  colors[offset] = color.r;
-  colors[offset + 1] = color.g;
-  colors[offset + 2] = color.b;
+  _reusableColor.set(value);
+  colors[offset] = _reusableColor.r;
+  colors[offset + 1] = _reusableColor.g;
+  colors[offset + 2] = _reusableColor.b;
 }
 
 function fillAsteroidOrbits(
