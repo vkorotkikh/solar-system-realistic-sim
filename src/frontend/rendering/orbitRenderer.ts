@@ -6,11 +6,23 @@ import {
   Vector3
 } from 'three';
 
+interface OrbitLineParams {
+  body: {
+    type: string;
+    orbit?: {
+      periodDays: number;
+      [key: string]: unknown;
+    };
+  };
+  propagateKeplerOrbit: (orbit: Record<string, unknown>, elapsedDays: number, out: Vector3) => void;
+  orbitLines: Line[];
+}
+
 export function createOrbitLine({
   body,
   propagateKeplerOrbit,
   orbitLines
-}) {
+}: OrbitLineParams) {
   if (!body.orbit) {
     return null;
   }
