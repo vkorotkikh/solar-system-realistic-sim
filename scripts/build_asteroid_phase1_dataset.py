@@ -90,7 +90,7 @@ def _safe_number(value: Any, default: float | None = None) -> float | None:
     except (TypeError, ValueError):
         return default
     if not math.isfinite(num):
-    return default
+        return default
     return num
 
 
@@ -160,11 +160,16 @@ def _strip_space_name(full_name: str) -> str:
     return clean.strip()
 
 
-def _fetch_asteroids(limit: int) -> list[dict[str, Any]]:
+def _fetch_asteroids(
+    limit: int,
+    *,
+    initial_fetch_limit: int | None = None
+) -> list[dict[str, Any]]:
     if limit <= 0:
         return []
 
-    fetch_limit = max(limit, DEFAULT_MAIN_BELT_FETCH_LIMIT)
+    initial_fetch = DEFAULT_MAIN_BELT_FETCH_LIMIT if initial_fetch_limit is None else initial_fetch_limit
+    fetch_limit = max(limit, initial_fetch)
     while True:
         limited_fetch = min(fetch_limit, MAX_MAIN_BELT_FETCH_LIMIT)
         cache_name = f"sbdb_phase1_diameter_{limited_fetch}"
@@ -308,7 +313,9 @@ def _write_meta(
     source_rows: int,
     checksum: str | None = None,
     checksum_sha256: str | None = None,
+    warnings: list[str] | None = None,
 ) -> None:
+    warnings = warnings or []
     payload = {
         "version": 1,
         "generated_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
@@ -319,11 +326,16 @@ def _write_meta(
             "sb_kind": "a",
             "sort": "-diameter",
             "limit": len(records),
+            "filters": {
+                "main_belt_class_whitelist": sorted(MAIN_BELT_CLASS_WHITELIST),
+                "main_belt_au_min": MAIN_BELT_AU_MIN,
+                "main_belt_au_max": MAIN_BELT_AU_MAX,
+            },
         },
         "source_rows": source_rows,
         "stored_count": len(records),
         "record_layout": {
-            "format": "mixed_f32",
+            "format": "acbf_v1",
             "fields": [
                 "source_id",
                 "epoch_jd",
@@ -339,10 +351,10 @@ def _write_meta(
                 "taxonomy_index",
             ],
             "header": {
-                "magic": "ASPH",
-                "version": 2,
+                "magic": "ACBF",
+                "version": ACBF_VERSION,
                 "count_u32": True,
-                "stride_f32": 12,
+                "stride_bytes": ACBF_STRIDE_BYTES,
             },
         },
         "taxonomy_map": {
@@ -354,7 +366,7 @@ def _write_meta(
             "taxonomy": taxonomy_counts,
             "orbit_class": dict(sorted(class_counts.items(), key=lambda item: (-item[1], item[0]))),
         },
-        "warnings": [],
+        "warnings": warnings,
     }
     if checksum is not None:
         payload["checksum"] = checksum
@@ -373,6 +385,12 @@ def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -
         raise RuntimeError("SBDB query returned zero asteroid rows")
 
     records, taxonomy_counts, class_counts = _build_records(rows)
+    warnings: list[str] = []
+    if len(records) < limit:
+        warnings.append(
+            f"Filtered dataset contains {len(records)} objects, below requested limit={limit}."
+            " Non-belt rows were excluded."
+        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     bin_path = output_dir / bin_name
@@ -394,7 +412,8 @@ def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -
         class_counts,
         source_rows=len(rows),
         checksum=checksum_fnv_hex,
-        checksum_sha256=checksum_sha256
+        checksum_sha256=checksum_sha256,
+        warnings=warnings,
     )
 
     output_dir.joinpath("sample_top_10.json").write_text(
@@ -402,6 +421,9 @@ def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -
     )
 
     print(f"[phase1] Built: {bin_path.relative_to(PROJECT_ROOT)} ({len(records):,} records)")
+    if warnings:
+        for warning in warnings:
+            print(f"[phase1] warning: {warning}")
     print(f"[phase1] Metadata: {meta_path.relative_to(PROJECT_ROOT)}")
     print(f"[phase1] Taxonomy counts: {taxonomy_counts}")
     print(f"[phase1] Orbit class sample: {dict(list(class_counts.items())[:10])}")
@@ -421,7 +443,8 @@ def main() -> None:
         raise ValueError("--limit must be > 0")
 
     if args.dry_run:
-        rows = _fetch_asteroids(min(args.limit, 10))
+        probe_limit = min(args.limit, 10)
+        rows = _fetch_asteroids(probe_limit, initial_fetch_limit=probe_limit)
         print(f"[phase1] dry-run OK (query works, got {len(rows)} sample rows)")
         return
 
