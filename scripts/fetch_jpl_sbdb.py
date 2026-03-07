@@ -279,15 +279,23 @@ def process_sbdb_rows(
 
 # ── File modification ──
 
+def _escape_py_str(value: str) -> str:
+    """Escape a string for safe inclusion inside double quotes in Python source."""
+    return json.dumps(value)[1:-1]
+
+
 def generate_py_entry(body: dict) -> str:
     """Generate a Python dict literal for one asteroid body."""
     orbit = body["orbit"]
     mass_line = "None" if body["mass_kg"] is None else str(body["mass_kg"])
+    safe_id = _escape_py_str(body['id'])
+    safe_name = _escape_py_str(body['name'])
+    safe_type = _escape_py_str(body['type'])
     return textwrap.dedent(f"""\
     {{
-        "id": "{body['id']}",
-        "name": "{body['name']}",
-        "type": "{body['type']}",
+        "id": "{safe_id}",
+        "name": "{safe_name}",
+        "type": "{safe_type}",
         "mass_kg": {mass_line},
         "radius_km": {body['radius_km']},
         "orbit": {{
@@ -303,18 +311,27 @@ def generate_py_entry(body: dict) -> str:
     }}""")
 
 
+def _escape_js_str(value: str) -> str:
+    """Escape a string for safe inclusion inside single quotes in JS source."""
+    return value.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r")
+
+
 def generate_js_entry(body: dict) -> str:
     """Generate a JS object literal for one asteroid body."""
     orbit = body["orbit"]
     mass_line = "null" if body["mass_kg"] is None else str(body["mass_kg"])
+    safe_id = _escape_js_str(body['id'])
+    safe_name = _escape_js_str(body['name'])
+    safe_type = _escape_js_str(body['type'])
+    safe_color = _escape_js_str(body['color'])
     return textwrap.dedent(f"""\
   {{
-    id: '{body['id']}',
-    name: '{body['name']}',
-    type: '{body['type']}',
+    id: '{safe_id}',
+    name: '{safe_name}',
+    type: '{safe_type}',
     massKg: {mass_line},
     radiusKm: {body['radius_km']},
-    color: '{body['color']}',
+    color: '{safe_color}',
     orbit: {{
       epochJd: {orbit['epoch_jd']},
       aAu: {orbit['a_au']},

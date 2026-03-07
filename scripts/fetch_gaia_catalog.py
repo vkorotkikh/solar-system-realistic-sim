@@ -127,7 +127,7 @@ def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
                 if stars:
                     print(f"  Got {len(stars)} stars from {label}")
                     return stars
-            except (URLError, OSError, Exception) as exc:
+            except (URLError, OSError) as exc:
                 print(f"  {label} failed: {exc}")
                 continue
 
@@ -155,7 +155,7 @@ def fetch_nearby_stars(min_parallax_mas: float = 100.0) -> list[dict]:
                 if stars:
                     print(f"  Got {len(stars)} nearby stars from {label}")
                     return stars
-            except (URLError, OSError, Exception) as exc:
+            except (URLError, OSError) as exc:
                 print(f"  {label} failed: {exc}")
                 continue
         print("  Warning: Could not fetch nearby stars from any TAP endpoint")
@@ -404,16 +404,17 @@ def main():
     print(f"  Existing CSV rows: {len(existing_rows)}")
 
     if nearby_stars:
-        enriched_rows = cross_match_nearby(
+        final_rows = cross_match_nearby(
             existing_rows, nearby_stars, match_radius_arcsec=args.match_radius
         )
-        write_nearby_csv(enriched_rows, NEARBY_CSV_PATH)
+        write_nearby_csv(final_rows, NEARBY_CSV_PATH)
     else:
+        final_rows = existing_rows
         print("  No Gaia nearby data available; CSV unchanged")
 
     print("\n=== Done ===")
     print(f"  Stars catalog: {len(catalog)} entries")
-    print(f"  Nearby systems: {len(enriched_rows) if nearby_stars else len(existing_rows)} entries")
+    print(f"  Nearby systems: {len(final_rows)} entries")
 
 
 if __name__ == "__main__":
