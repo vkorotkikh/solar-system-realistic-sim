@@ -135,7 +135,7 @@ export function generateAsteroidElement(population = 'main-belt') {
     else if (population === 'hilda') {
         // 3:2 resonance with Jupiter (~3.96 AU)
         a = randomGaussian(3.96, 0.02);
-        e = randomGaussian(0.15, 0.05); // Noticeable eccentricity
+        e = Math.abs(randomGaussian(0.15, 0.05));
         i = Math.abs(randomGaussian(8.0, 4.0));
         // Hildas avoid Jupiter at perihelion through a specific resonance angle
         meanAnomalyDeg = Math.random() * 360;
