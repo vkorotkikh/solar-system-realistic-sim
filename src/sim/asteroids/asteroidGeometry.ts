@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Updated asteroidGeometry.ts configured for GPU Shader injection.
 import {
     IcosahedronGeometry,

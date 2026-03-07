@@ -1,4 +1,3 @@
-// @ts-nocheck
 // WebGL Shaders for calculating Keplerian orbits purely on the GPU.
 
 /**

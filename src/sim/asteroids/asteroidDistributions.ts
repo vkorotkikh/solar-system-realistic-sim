@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { MU_SUN_AU3_DAY2 } from '../../constants';
 
 /**

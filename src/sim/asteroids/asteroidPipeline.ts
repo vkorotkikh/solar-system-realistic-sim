@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Updated asteroidPipeline.ts configured for GPU Shader injection.
 import { Object3D, Color, Group, Vector3, Matrix4 } from 'three';
 import {
