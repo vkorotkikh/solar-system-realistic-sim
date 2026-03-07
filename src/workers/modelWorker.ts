@@ -195,21 +195,19 @@ self.onmessage = (event: MessageEvent<ModelWorkerInboundMessage>) => {
       const safeSourceDistanceCm = Number(sourceDistanceCm);
       const safeMassG = Number.isFinite(Number(smbhMassG)) ? Number(smbhMassG) : 1;
 
-      if (!Number.isFinite(safeTimeSec) || !Number.isFinite(safeEnergyErg) || !Number.isFinite(safeSourceDistanceCm)) {
-        return;
-      }
-
-      vectorScratch.set(direction[0], direction[1], direction[2]);
-      if (vectorScratch.lengthSq() > 0) {
-        vectorScratch.normalize();
-        const peakData = metricFrameDragPeak(safeTimeSec, safeEnergyErg, safeMassG);
-        model.applyMetricKinematics(
-          vectorScratch,
-          deltaSeconds,
-          (distCm) => evaluateLocalMetricShift(distCm, peakData),
-          safeSourceDistanceCm,
-          WORKER_WARP_EXAGGERATION
-        );
+      if (Number.isFinite(safeTimeSec) && Number.isFinite(safeEnergyErg) && Number.isFinite(safeSourceDistanceCm)) {
+        vectorScratch.set(direction[0], direction[1], direction[2]);
+        if (vectorScratch.lengthSq() > 0) {
+          vectorScratch.normalize();
+          const peakData = metricFrameDragPeak(safeTimeSec, safeEnergyErg, safeMassG);
+          model.applyMetricKinematics(
+            vectorScratch,
+            deltaSeconds,
+            (distCm) => evaluateLocalMetricShift(distCm, peakData),
+            safeSourceDistanceCm,
+            WORKER_WARP_EXAGGERATION
+          );
+        }
       }
     }
 
