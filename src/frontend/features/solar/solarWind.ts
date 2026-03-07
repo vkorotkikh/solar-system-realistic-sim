@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Solar Wind Physics Enhancement — Phase 11
  * 
