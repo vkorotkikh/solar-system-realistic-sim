@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_utc": "2026-03-04T07:23:05Z",
+  "generated_utc": "2026-03-04T09:18:40Z",
   "description": "Phase-1 deterministic main-belt-oriented asteroid corpus.",
   "query": {
     "endpoint": "https://ssd-api.jpl.nasa.gov/sbdb_query.api",
@@ -23,12 +23,21 @@
     ],
     "sb_kind": "a",
     "sort": "-diameter",
-    "limit": 100000
+    "limit": 100000,
+    "filters": {
+      "main_belt_class_whitelist": [
+        "IMB",
+        "MBA",
+        "OMB"
+      ],
+      "main_belt_au_min": 2.0,
+      "main_belt_au_max": 3.5
+    }
   },
   "source_rows": 100000,
   "stored_count": 100000,
   "record_layout": {
-    "format": "mixed_f32",
+    "format": "acbf_v1",
     "fields": [
       "source_id",
       "epoch_jd",
@@ -44,10 +53,10 @@
       "taxonomy_index"
     ],
     "header": {
-      "magic": "ASPH",
-      "version": 2,
+      "magic": "ACBF",
+      "version": 1,
       "count_u32": true,
-      "stride_f32": 12
+      "stride_bytes": 36
     }
   },
   "taxonomy_map": {
@@ -57,27 +66,18 @@
   },
   "counts": {
     "taxonomy": {
-      "C": 68046,
-      "S": 13261,
-      "M": 18693
+      "C": 66362,
+      "S": 14009,
+      "M": 19629
     },
     "orbit_class": {
-      "MBA": 90161,
-      "OMB": 7505,
-      "TJN": 1879,
-      "MCA": 204,
-      "IMB": 110,
-      "CEN": 49,
-      "AMO": 40,
-      "APO": 32,
-      "TNO": 12,
-      "AST": 7,
-      "ATE": 1
+      "MBA": 93733,
+      "OMB": 6267
     }
   },
   "warnings": [],
-  "checksum": "0x9072eca1",
+  "checksum": "0xf1f80244",
   "checksum_algorithm": "fnv1a32",
-  "checksum_sha256": "b9e850cc4a51ab7cf2ef1ed97acc0052d3fa1fa4872cde2dc51ff8b9299f7eb7",
+  "checksum_sha256": "a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d",
   "checksum_algorithm_sha256": "sha256"
 }
