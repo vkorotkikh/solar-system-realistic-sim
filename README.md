@@ -9,8 +9,8 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 - **Adjustable simulation clock** with pause, reverse, time-warp, and jump-to-date
 - **Catalog-driven background stars** with proper-motion propagation and synthetic Milky Way band
 - **Nearby star systems** (Alpha Centauri, Barnard's Star, Sirius, etc.) with navigable 3D manifests
-- **Asteroid belt** with element-driven orbits and adaptive close-up detail refinement
-- **Kuiper belt** particle field and approximate **Oort cloud** shell
+- **Asteroid belt** with GPU-propagated Keplerian instance orbits, Jupiter/Saturn perturbation uniforms, and deterministic phase-1 catalog assets
+- **Kuiper belt** procedural population with CPU orbit refresh; **Oort cloud** remains placeholder navigation context rather than a mission-grade subsystem
 - **Earth satellite layer** (ISS + sampled GEO) with TLE propagation and optional J2 perturbations
 - **Real-time Earth clouds** via NASA GIBS WMS tiled pipeline with cache
 - **Interplanetary route planner** supporting direct transfers and multi-gravity-assist trajectories
@@ -20,6 +20,7 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 
 - `src` is now fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
 - The current browser runtime is still mostly driven from the main thread via [`src/main.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/main.ts), with one existing workerized path for satellite propagation.
+- Small-body data tooling now includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts), but the live runtime ingestion path is not yet unified on that contract.
 - The next modernization phase is architectural rather than filename migration: stricter types, worker contracts, frame-budget instrumentation, and targeted offload for orbital model, solar feature logic, SMBH/AGN timelines, and heavy asteroid generation.
 
 ## Quick Start
@@ -83,6 +84,7 @@ curl http://127.0.0.1:8042/benchmark/accuracy
 │   ├── textures.ts                     # Texture path definitions
 │   ├── style.css
 │   ├── data/
+│   │   ├── asteroidCatalogLoader.ts    # Compact asteroid binary pack/read utilities
 │   │   ├── planets.ts                  # Planet orbital elements + metadata
 │   │   ├── moons.json                  # 424-moon catalog (JPL SSD)
 │   │   └── stars_catalog.json          # Background star catalog
@@ -90,6 +92,7 @@ curl http://127.0.0.1:8042/benchmark/accuracy
 │   │   ├── orbitMath.ts                # Kepler solver, coordinate transforms
 │   │   ├── solarSystemModel.ts         # Canonical solar system model
 │   │   ├── catalog.ts                  # Body catalog utilities
+│   │   ├── phase1AsteroidCatalog.ts    # Current runtime loader for phase-1 asteroid payloads
 │   │   └── asteroids/                  # Asteroid belt pipeline + shaders
 │   ├── frontend/
 │   │   ├── app/
@@ -130,9 +133,11 @@ curl http://127.0.0.1:8042/benchmark/accuracy
 │   ├── data/                           # Body definitions, nearby systems catalog
 │   └── tests/                          # 13 pytest modules (contracts, regression, benchmarks)
 ├── public/
+│   ├── data/asteroid-phase1/           # Deterministic phase-1 asteroid catalog artifacts
 │   ├── textures/moons/                 # Moon texture assets
 │   └── solar-systems/manifests/        # Nearby system JSON manifests
 ├── scripts/
+│   ├── build_asteroid_phase1_dataset.py # JPL SBDB -> phase-1 asteroid artifact builder
 │   ├── update-moons-data.mjs           # Refresh moon catalog from JPL
 │   ├── ingest-moon-textures.mjs        # Download moon texture assets
 │   ├── run-ui-dev.mjs                  # Dev server with CLI resolution args
@@ -204,6 +209,9 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 - Non-ecliptic moon element frames normalized into an ecliptic approximation at catalog-build time.
 - Planet entries include axial-tilt and spin-period metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data.
+- Deterministic asteroid phase-1 assets are built from JPL Small-Body Database queries and stored under `public/data/asteroid-phase1/`.
+- Compact asteroid binary tooling now lives in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts) with the `ACBF` v1 format documented in [`src/data/asteroidCatalogBinaryFormat.md`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogBinaryFormat.md).
+- The current runtime still uses [`src/sim/phase1AsteroidCatalog.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/sim/phase1AsteroidCatalog.ts) for live loading, so catalog format consolidation remains an active follow-up rather than completed ingestion work.
 
 Refresh moon data:
 
@@ -217,6 +225,12 @@ Ingest moon textures:
 npm run ingest:moon-textures
 ```
 
+Rebuild deterministic asteroid phase-1 data:
+
+```bash
+npm run phase1:asteroid-dataset
+```
+
 ## Physics Notes and Limitations
 
 - Frontend orbital propagation uses Keplerian two-body elements (parent-body centered), not a full N-body integrator.
@@ -225,10 +239,11 @@ npm run ingest:moon-textures
 - Real-time Earth cloud mode uses daily products from NASA GIBS; this is near-real-time visualization, not NWP assimilation.
 - Gravity vectors are computed from currently modeled massive bodies; objects without mass data are excluded.
 - Moon frame normalization for equatorial/Laplace inputs is an approximation for a unified ecliptic frame.
-- Asteroid close-up refinement uses massless test particles under Sun/Jupiter/Saturn perturbations.
+- Main-belt asteroid rendering now has a GPU Kepler solve path with Jupiter/Saturn perturbation uniforms, but deterministic target promotion, family-level taxonomy coverage, and mission-selection infrastructure are still incomplete.
+- Kuiper belt objects are still refreshed on the CPU rather than through the main-belt shader propagation path.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; frontend fallback remains patched-conic.
 - Transfer arcs in the UI are drawn as smooth visual curves, not numerically integrated finite-burn trajectories.
-- Oort cloud is an approximate synthetic shell population for navigation context.
+- Oort cloud support is still placeholder navigation context and should not be treated as a mission-grade long-period small-body simulation.
 
 ## Data Sources
 
@@ -242,6 +257,7 @@ npm run ingest:moon-textures
 | Survey Milky Way texture | NASA/JPL 2MASS all-sky (PIA04250), remapped to equirectangular |
 | Earth clouds | NASA GIBS WMS |
 | Satellite TLEs | CelesTrak |
+| Deterministic asteroid corpus | NASA/JPL Small-Body Database (phase-1 query/export pipeline) |
 
 ## Tech Stack
 

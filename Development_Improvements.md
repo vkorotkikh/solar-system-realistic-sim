@@ -47,6 +47,62 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-07 05:56:36 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Added a compact `ACBF` v1 asteroid catalog contract with reader/writer utilities, field-order documentation, and a 100k-body roundtrip validation entrypoint.
+
+Context / rationale:
+- The phase-1 asteroid dataset already existed, but the repo did not yet have a clearly documented compact binary ABI for stable numeric IDs plus orbital-element payloads.
+- This thread's scoped work was limited to data compression ownership only: no fetch-logic changes and no taxonomy-rule edits.
+
+Proposed approach:
+- Added `src/data/asteroidCatalogLoader.ts` with strict header/stride validation and typed pack/unpack helpers.
+- Added `src/data/asteroidCatalogBinaryFormat.md` to pin the exact byte layout, scales, and version rules.
+- Added `src/data/asteroidCatalogLoader.test.ts` exposing a versioned 100k roundtrip validation helper.
+- Refreshed `README.md` and the development logs so they describe the new compact catalog layer and the current small-body realism limits accurately.
+
+Expected impact:
+- Gives later ingestion and mission-targeting work a stable binary contract instead of ad hoc field-order assumptions.
+- Reduces context drift around asteroid data work and avoids overstating Kuiper/Oort runtime completeness.
+
+Affected files/systems:
+- `src/data/asteroidCatalogLoader.ts`
+- `src/data/asteroidCatalogBinaryFormat.md`
+- `src/data/asteroidCatalogLoader.test.ts`
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Next step:
+- Unify the live runtime ingestion path on the new contract once fetch/checksum/taxonomy ownership is in scope.
+
+### 2026-03-07 05:56:36 UTC
+Status: `OPEN`
+Type: `ARCHITECTURE`
+Summary:
+- Asteroid ingestion currently has two binary paths: legacy runtime `ASPH` loading and new compact `ACBF` packing utilities.
+
+Context / rationale:
+- The new compact loader was intentionally delivered without touching fetch logic or taxonomy rules.
+- That preserves ownership boundaries, but it leaves the runtime on `src/sim/phase1AsteroidCatalog.ts` while the new format lives in `src/data/asteroidCatalogLoader.ts`.
+
+Proposed approach:
+- Pick one canonical on-disk asteroid format, add checksum/version metadata at the dataset layer, and move the runtime loader onto that single contract.
+
+Expected impact:
+- Removes schema drift risk between offline dataset generation, runtime ingestion, and future mission-target promotion APIs.
+
+Affected files/systems:
+- `src/sim/phase1AsteroidCatalog.ts`
+- `src/data/asteroidCatalogLoader.ts`
+- `scripts/build_asteroid_phase1_dataset.py`
+- `public/data/asteroid-phase1/*`
+
+Next step:
+- Fold this into Stage 3 Data Pipeline work when fetch integration and taxonomy enrichment are allowed to change together.
+
 ### 2026-03-07 05:47:00 UTC
 Status: `DONE`
 Type: `TECH-DEBT`

@@ -55,6 +55,36 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-07 05:56:36 UTC — Compact asteroid catalog contract added and documented
+Status: DONE
+
+What changed:
+- Added `src/data/asteroidCatalogLoader.ts` with a compact `ACBF` v1 binary reader/writer for asteroid orbital elements and stable numeric IDs.
+- Added `src/data/asteroidCatalogBinaryFormat.md` documenting header bytes, field order, quantization ranges, and version rules.
+- Added `src/data/asteroidCatalogLoader.test.ts` exposing a 100k-body roundtrip validation entrypoint.
+- Updated `README.md`, `Development_Improvements.md`, and `Development_History_Context.md` so the repo context reflects the new compact catalog layer and the current realism state of asteroid/Kuiper/Oort systems more accurately.
+
+Why it changed:
+- The active thread delivered the Data Compression Engineer scope for the asteroid simulation plan: compact typed-array/binary packing plus versioned validation, while explicitly avoiding fetch-logic and taxonomy-rule changes.
+- Existing docs did not mention the new compact catalog contract and still risked overstating how complete the distant small-body runtime is.
+
+Evidence/validation:
+- Verified the new contract lives in `src/data/asteroidCatalogLoader.ts` with fixed-width `ACBF` v1 records and strict header validation.
+- Verified the format documentation and validation entrypoint were added alongside it.
+- Verified the live runtime ingestion path remains separate in `src/sim/phase1AsteroidCatalog.ts`, so the new binary contract is available but not yet the canonical runtime path.
+
+Files touched:
+- `src/data/asteroidCatalogLoader.ts`
+- `src/data/asteroidCatalogBinaryFormat.md`
+- `src/data/asteroidCatalogLoader.test.ts`
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Follow-ups / open questions:
+- Consolidate legacy `ASPH` loading and new `ACBF` tooling into one canonical ingestion path once fetch/taxonomy ownership is available.
+- Add checksum/version stamping at the dataset-generation layer before mission-target promotion depends on the binary contract.
+
 ### 2026-03-07 05:47:00 UTC — Documentation refreshed after TS migration and runtime analysis
 Status: DONE
 
