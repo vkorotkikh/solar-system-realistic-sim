@@ -1,4 +1,19 @@
-// @ts-nocheck
+export interface SceneBodyLike {
+  id: string;
+  parentId?: string | null;
+  type: string;
+  orbit?: unknown;
+}
+
+export interface SceneBodyStateLike {
+  relativePosition: { x: number; y: number; z: number };
+  worldPosition: { x: number; y: number; z: number };
+}
+
+export interface SceneModelLike {
+  getState: (id: string) => SceneBodyStateLike | null;
+}
+
 export function mountSceneGraph({
   catalog,
   createBodyNode,
@@ -45,7 +60,20 @@ export function updateSceneBodiesFromModel({
     if (!state || !node) continue;
 
     if (body.parentId) {
-      node.position.copy(state.relativePosition);
+      if (body.parentId === 'sun') {
+        node.position.copy(state.worldPosition);
+      } else {
+        const parentState = model.getState(body.parentId);
+        if (parentState) {
+          node.position.set(
+            state.worldPosition.x - parentState.worldPosition.x,
+            state.worldPosition.y - parentState.worldPosition.y,
+            state.worldPosition.z - parentState.worldPosition.z
+          );
+          continue;
+        }
+        node.position.set(state.relativePosition.x, state.relativePosition.y, state.relativePosition.z);
+      }
     } else {
       node.position.copy(state.worldPosition);
     }
