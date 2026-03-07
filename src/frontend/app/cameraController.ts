@@ -1,4 +1,3 @@
-// @ts-nocheck
 function formatAu(au) {
   if (au >= 1_000) return `${au.toFixed(1)} AU`;
   if (au >= 10) return `${au.toFixed(2)} AU`;
