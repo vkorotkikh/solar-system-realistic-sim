@@ -258,7 +258,7 @@ export function resolveTaxonomy(input: TaxonomyResolverInput): {
   if (bySpec) {
     return {
       taxonomy: bySpec,
-      evidence: specT ? 'specT' : 'specB',
+      evidence: classifySpecTaxonomy(specT) ? 'specT' : 'specB',
     };
   }
 
