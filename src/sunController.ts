@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Group } from 'three';
 import { J2000_JD } from './constants';
 import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient';
