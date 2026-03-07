@@ -1,6 +1,4 @@
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
+import { clamp } from '../../../constants';
 
 export class SolarPhysicsClient {
   constructor({

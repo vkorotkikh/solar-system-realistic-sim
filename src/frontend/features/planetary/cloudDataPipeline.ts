@@ -1,11 +1,8 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
+import { clamp } from '../../../constants';
 
 function toIsoDateUtc(date) {
   return date.toISOString().slice(0, 10);
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function tileBoundsLatLon(x, y, tilesX, tilesY) {

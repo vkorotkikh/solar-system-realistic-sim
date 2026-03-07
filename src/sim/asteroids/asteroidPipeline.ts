@@ -1,5 +1,5 @@
 // Updated asteroidPipeline.ts configured for GPU Shader injection.
-import { Object3D, Color, Group, Vector3, Matrix4 } from 'three';
+import { Color, Group, Vector3, Matrix4 } from 'three';
 import {
     generateAsteroidElement,
     sampleTaxonomy,
@@ -43,56 +43,62 @@ export class AsteroidSimulationPipeline {
 
         let globalIndex = 0;
         const dummyMatrix = new Matrix4();
+        const reusableSpinAxis = new Vector3();
+        const reusableColor = new Color();
+        const CHUNK_SIZE = 10_000;
 
         for (const [populationType, count] of Object.entries(POPULATION_COUNTS)) {
-            for (let i = 0; i < count; i++) {
-                const element = generateAsteroidElement(populationType);
-                const taxonomyClass = sampleTaxonomy(element.aAu);
+            for (let chunkStart = 0; chunkStart < count; chunkStart += CHUNK_SIZE) {
+                const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, count);
 
-                const taxBuckets = this.buckets[taxonomyClass.type];
-                const targetBucket = taxBuckets[Math.floor(Math.random() * taxBuckets.length)];
-                const localIdx = targetBucket.mesh.count;
-                targetBucket.mesh.count++;
+                for (let i = chunkStart; i < chunkEnd; i++) {
+                    const element = generateAsteroidElement(populationType);
+                    const taxonomyClass = sampleTaxonomy(element.aAu);
 
-                // 1. Pack Orbit Data
-                // aOrbitParams1: aAu, e, i, Omega
-                targetBucket.oParam1[localIdx * 4 + 0] = element.aAu;
-                targetBucket.oParam1[localIdx * 4 + 1] = element.e;
-                targetBucket.oParam1[localIdx * 4 + 2] = element.iDeg * (Math.PI / 180.0);
-                targetBucket.oParam1[localIdx * 4 + 3] = element.ascendingNodeDeg * (Math.PI / 180.0);
+                    const taxBuckets = this.buckets[taxonomyClass.type];
+                    const targetBucket = taxBuckets[Math.floor(Math.random() * taxBuckets.length)];
+                    const localIdx = targetBucket.mesh.count;
+                    targetBucket.mesh.count++;
 
-                // aOrbitParams2: omega, M0, period
-                targetBucket.oParam2[localIdx * 3 + 0] = element.argPeriapsisDeg * (Math.PI / 180.0);
-                targetBucket.oParam2[localIdx * 3 + 1] = element.meanAnomalyDeg * (Math.PI / 180.0);
-                targetBucket.oParam2[localIdx * 3 + 2] = element.periodDays;
+                    // 1. Pack Orbit Data
+                    targetBucket.oParam1[localIdx * 4 + 0] = element.aAu;
+                    targetBucket.oParam1[localIdx * 4 + 1] = element.e;
+                    targetBucket.oParam1[localIdx * 4 + 2] = element.iDeg * (Math.PI / 180.0);
+                    targetBucket.oParam1[localIdx * 4 + 3] = element.ascendingNodeDeg * (Math.PI / 180.0);
 
-                // 2. Pack Spin Data
-                const spinAxis = new Vector3(
-                    (Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)
-                ).normalize().multiplyScalar(0.02 + Math.random() * 0.1); // Rate
+                    targetBucket.oParam2[localIdx * 3 + 0] = element.argPeriapsisDeg * (Math.PI / 180.0);
+                    targetBucket.oParam2[localIdx * 3 + 1] = element.meanAnomalyDeg * (Math.PI / 180.0);
+                    targetBucket.oParam2[localIdx * 3 + 2] = element.periodDays;
 
-                targetBucket.sParam[localIdx * 4 + 0] = spinAxis.x;
-                targetBucket.sParam[localIdx * 4 + 1] = spinAxis.y;
-                targetBucket.sParam[localIdx * 4 + 2] = spinAxis.z;
-                targetBucket.sParam[localIdx * 4 + 3] = Math.random() * Math.PI * 2; // Initial phase
+                    // 2. Pack Spin Data — reuse Vector3
+                    reusableSpinAxis.set(
+                        Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5
+                    ).normalize().multiplyScalar(0.02 + Math.random() * 0.1);
 
-                // 3. Static InstanceMatrix (Scale only, since translation is in Shader)
-                // Adjust sample sizing rules. A realistic scale is very small;
-                const radiusKm = samplePowerLawSize(0.5, 300, 2.5);
-                const AU_IN_KM = 149597870.7;
-                const baseRenderScale = (radiusKm / AU_IN_KM) * sceneScaleAu;
-                // Increase scalar so they are visible on screen
-                const scaleVal = baseRenderScale * 25000.0;
-                dummyMatrix.makeScale(scaleVal, scaleVal, scaleVal);
-                targetBucket.mesh.setMatrixAt(localIdx, dummyMatrix);
+                    targetBucket.sParam[localIdx * 4 + 0] = reusableSpinAxis.x;
+                    targetBucket.sParam[localIdx * 4 + 1] = reusableSpinAxis.y;
+                    targetBucket.sParam[localIdx * 4 + 2] = reusableSpinAxis.z;
+                    targetBucket.sParam[localIdx * 4 + 3] = Math.random() * Math.PI * 2;
 
-                // 4. Color
-                const cHex = taxonomyClass.colorRange[Math.floor(Math.random() * taxonomyClass.colorRange.length)];
-                const color = new Color(cHex);
-                color.offsetHSL(0.0, 0.0, (Math.random() - 0.5) * 0.1);
-                targetBucket.mesh.setColorAt(localIdx, color);
+                    // 3. Static InstanceMatrix (Scale only)
+                    const radiusKm = samplePowerLawSize(0.5, 300, 2.5);
+                    const AU_IN_KM = 149597870.7;
+                    const baseRenderScale = (radiusKm / AU_IN_KM) * sceneScaleAu;
+                    const scaleVal = baseRenderScale * 25000.0;
+                    dummyMatrix.makeScale(scaleVal, scaleVal, scaleVal);
+                    targetBucket.mesh.setMatrixAt(localIdx, dummyMatrix);
 
-                globalIndex++;
+                    // 4. Color — reuse Color object
+                    const cHex = taxonomyClass.colorRange[Math.floor(Math.random() * taxonomyClass.colorRange.length)];
+                    reusableColor.set(cHex);
+                    reusableColor.offsetHSL(0.0, 0.0, (Math.random() - 0.5) * 0.1);
+                    targetBucket.mesh.setColorAt(localIdx, reusableColor);
+
+                    globalIndex++;
+                }
+
+                // Yield to main thread between chunks to prevent UI freezing
+                await new Promise<void>((resolve) => setTimeout(resolve, 0));
             }
         }
 
