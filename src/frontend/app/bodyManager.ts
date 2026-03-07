@@ -1,8 +1,10 @@
+import type { Object3D } from 'three';
+
 export interface SceneBodyLike {
   id: string;
   parentId?: string | null;
   type: string;
-  orbit?: unknown;
+  orbit?: { epochJd: number; [key: string]: unknown } | null;
 }
 
 export interface SceneBodyStateLike {
@@ -14,12 +16,31 @@ export interface SceneModelLike {
   getState: (id: string) => SceneBodyStateLike | null;
 }
 
+interface SceneCatalogLike {
+  bodies: SceneBodyLike[];
+}
+
+interface ServerBodyState {
+  pos: [number, number, number];
+}
+
+interface ServerState {
+  jd: number;
+  bodies: Record<string, ServerBodyState>;
+}
+
 export function mountSceneGraph({
   catalog,
   createBodyNode,
   bodyNodes,
   createOrbitLine,
   solarSystemGroup
+}: {
+  catalog: SceneCatalogLike;
+  createBodyNode: (body: SceneBodyLike) => void;
+  bodyNodes: Map<string, Object3D>;
+  createOrbitLine: (body: SceneBodyLike) => Object3D | null;
+  solarSystemGroup: Object3D;
 }) {
   for (const body of catalog.bodies) {
     createBodyNode(body);
@@ -52,6 +73,11 @@ export function updateSceneBodiesFromModel({
   model,
   bodyNodes,
   showMoons
+}: {
+  catalog: SceneCatalogLike;
+  model: SceneModelLike;
+  bodyNodes: Map<string, Object3D>;
+  showMoons: boolean;
 }) {
   for (const body of catalog.bodies) {
     const state = model.getState(body.id);
@@ -61,7 +87,7 @@ export function updateSceneBodiesFromModel({
 
     if (body.parentId) {
       if (body.parentId === 'sun') {
-        node.position.copy(state.worldPosition);
+        node.position.copy(state.worldPosition as Parameters<typeof node.position.copy>[0]);
       } else {
         const parentState = model.getState(body.parentId);
         if (parentState) {
@@ -75,7 +101,7 @@ export function updateSceneBodiesFromModel({
         node.position.set(state.relativePosition.x, state.relativePosition.y, state.relativePosition.z);
       }
     } else {
-      node.position.copy(state.worldPosition);
+      node.position.copy(state.worldPosition as Parameters<typeof node.position.copy>[0]);
     }
 
     if (body.type === 'moon') {
@@ -91,6 +117,13 @@ export function applyServerStateToScene({
   bodyNodes,
   propagateKeplerOrbit,
   showMoons
+}: {
+  state: ServerState | null;
+  simState: { julianDate: number };
+  catalog: SceneCatalogLike;
+  bodyNodes: Map<string, Object3D>;
+  propagateKeplerOrbit: (orbit: NonNullable<SceneBodyLike['orbit']>, elapsedDays: number, outPosition: Object3D['position']) => void;
+  showMoons: boolean;
 }) {
   if (!state || !state.bodies) return;
 

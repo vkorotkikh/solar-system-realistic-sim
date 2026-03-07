@@ -50,6 +50,11 @@ export interface ModelWorkerTickMessage {
 
 export type ModelWorkerInboundMessage = ModelWorkerInitMessage | ModelWorkerTickMessage;
 
+export interface ModelWorkerReadyMessage {
+  type: 'ready';
+  bodyCount: number;
+}
+
 export interface ModelWorkerStateMessage {
   type: 'state';
   sequence: number;
@@ -57,6 +62,8 @@ export interface ModelWorkerStateMessage {
   tickJd: number;
   profilerMs?: number;
 }
+
+export type ModelWorkerOutboundMessage = ModelWorkerReadyMessage | ModelWorkerStateMessage;
 
 const WORKER_WARP_EXAGGERATION = 1e12;
 
@@ -143,6 +150,12 @@ self.onmessage = (event: MessageEvent<ModelWorkerInboundMessage>) => {
       model = new SolarSystemModel(createSimulationCatalog(catalog));
       model.update(message.simStartJd);
       lastSequence = Number(message.sequence);
+
+      const readyMsg: ModelWorkerReadyMessage = {
+        type: 'ready',
+        bodyCount: contract.idByIndex.length
+      };
+      self.postMessage(readyMsg);
     } catch (error) {
       throw new Error(`model worker init failed: ${error instanceof Error ? error.message : String(error)}`);
     }
