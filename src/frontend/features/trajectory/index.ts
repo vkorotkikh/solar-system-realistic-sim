@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Vector3 } from 'three';
 import {
   buildTransferCurvePoints,

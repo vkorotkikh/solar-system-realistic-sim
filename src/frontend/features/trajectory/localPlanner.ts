@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Vector3 } from 'three';
 import { AU_M, AU_KM, DAY_SECONDS, G_SI, MU_SUN_AU3_DAY2, auPerDayToKmPerSec } from '../../../constants';
 
