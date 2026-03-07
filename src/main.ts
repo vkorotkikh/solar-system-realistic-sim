@@ -38,7 +38,16 @@ import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
 import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/features/superluminal-modeling/smbhPropagation';
 import { generatePlanetTexture } from './textures';
+import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
+import {
+  buildCatalogIndexContract,
+  type CatalogIndexContract,
+  type ModelWorkerCatalog,
+  type ModelWorkerInitMessage,
+  type ModelWorkerStateMessage,
+  type ModelWorkerTickMessage
+} from './workers/modelWorker';
 import {
   createRuntimeUiConfig,
   createSceneSetup,
@@ -94,11 +103,34 @@ const dom = {
 
 const catalog = createSolarSystemCatalog();
 const model = new SolarSystemModel(catalog);
+const modelWorkerCatalog: ModelWorkerCatalog = {
+  bodies: catalog.bodies.map((body) => ({
+    id: body.id,
+    parentId: body.parentId ?? null,
+    orbit: body.orbit ?? null
+  }))
+};
+const catalogIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
+const catalogParentIndexByIndex = catalogIndexContract.parentIndexByIndex;
+const catalogBodyCount = catalogIndexContract.idByIndex.length;
 const bodyById = new Map(catalog.bodies.map((b) => [b.id, b]));
 const simState = createSimulationState({
   currentJulianDate,
   defaultTimeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC
 });
+const modelWorkerWorldX = new Float32Array(catalogBodyCount);
+const modelWorkerWorldY = new Float32Array(catalogBodyCount);
+const modelWorkerWorldZ = new Float32Array(catalogBodyCount);
+const modelWorkerWorldVx = new Float32Array(catalogBodyCount);
+const modelWorkerWorldVy = new Float32Array(catalogBodyCount);
+const modelWorkerWorldVz = new Float32Array(catalogBodyCount);
+const modelWorkerPositionsDirty = new Uint8Array(catalogBodyCount);
+let modelWorker: Worker | null = null;
+let modelWorkerEnabled = false;
+let modelWorkerReady = false;
+let modelWorkerSequence = 0;
+let latestModelWorkerState: ModelWorkerStateMessage | null = null;
+const MODEL_WORKER_RECORD_SIZE = 7;
 const ASTEROID_BELT_TARGET_COUNT = 15_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
@@ -341,6 +373,7 @@ function createBackgroundStars(count = 6000, radius = 15000) {
 
 const backgroundStars = createBackgroundStars();
 scene.add(backgroundStars);
+const surveyMilkySphere = { position: new Vector3() };
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
@@ -567,24 +600,254 @@ function updateBodyRotations(julianDate) {
 
 // ── Scene Body Positions ─────────────────────────────────────────────────────
 
-function updateSceneBodies() {
-  for (const body of catalog.bodies) {
+function disableModelWorkerIntegration() {
+  if (modelWorker) {
+    modelWorker.terminate();
+  }
+  modelWorker = null;
+  modelWorkerEnabled = false;
+  modelWorkerReady = false;
+  latestModelWorkerState = null;
+}
+
+function initializeModelWorker() {
+  if (!('Worker' in window)) {
+    return;
+  }
+  if (modelWorker) {
+    return;
+  }
+
+  try {
+    modelWorker = new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' });
+  } catch (error) {
+    console.warn('[modelWorker] unavailable:', error);
+    return;
+  }
+
+  modelWorker.onmessage = (event) => {
+    const message = event.data;
+    if (!message || typeof message !== 'object') return;
+
+    if (message.type === 'state') {
+      const stateMessage = message;
+      const sequence = Number(stateMessage.sequence);
+      if (!Number.isFinite(sequence) || sequence < 0) return;
+
+      const bodies = stateMessage.bodies instanceof Float32Array
+        ? stateMessage.bodies
+        : new Float32Array(stateMessage.bodies ?? 0);
+
+      if (bodies.length !== catalogBodyCount * MODEL_WORKER_RECORD_SIZE) return;
+
+      latestModelWorkerState = {
+        type: 'state',
+        sequence,
+        bodies,
+        tickJd: Number(stateMessage.tickJd),
+        profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
+      };
+      modelWorkerReady = true;
+    }
+  };
+
+  modelWorker.onerror = (event) => {
+    const errorMessage = event.message || 'unknown worker error';
+    console.warn('[modelWorker] stopped:', errorMessage);
+    disableModelWorkerIntegration();
+  };
+
+  const initMessage: ModelWorkerInitMessage = {
+    type: 'init',
+    catalog: modelWorkerCatalog,
+    simStartJd: simState.julianDate,
+    sequence: ++modelWorkerSequence
+  };
+
+  modelWorker.postMessage(initMessage);
+  modelWorkerEnabled = true;
+}
+
+function updateModelLocally(deltaSeconds) {
+  model.update(simState.julianDate);
+
+  const warpState = sunCtrl.getWarpState();
+  if (warpState && warpState.direction && Number.isFinite(deltaSeconds) && deltaSeconds > 0) {
+    const peakData = metricFrameDragPeak(warpState.timeSec, warpState.energyErg, warpState.smbhMassG);
+    model.applyMetricKinematics(
+      warpState.direction,
+      deltaSeconds,
+      (distCm) => evaluateLocalMetricShift(distCm, peakData),
+      warpState.sourceDistanceCm,
+      1e12
+    );
+  }
+}
+
+function dispatchModelWorkerTick(deltaSeconds) {
+  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady) return;
+
+  const warpState = sunCtrl.getWarpState();
+  const metricState = warpState && warpState.direction
+    ? {
+      direction: [warpState.direction.x, warpState.direction.y, warpState.direction.z],
+      sourceDistanceCm: warpState.sourceDistanceCm,
+      energyErg: warpState.energyErg,
+      timeSec: warpState.timeSec,
+      smbhMassG: warpState.smbhMassG
+    }
+    : null;
+
+  const tickMessage: ModelWorkerTickMessage = {
+    type: 'tick',
+    simState: {
+      julianDate: simState.julianDate,
+      stepMs: deltaSeconds * 1000,
+      metricState
+    },
+    sequence: ++modelWorkerSequence
+  };
+
+  try {
+    modelWorker.postMessage(tickMessage);
+  } catch (error) {
+    console.warn('[modelWorker] tick failed:', error);
+    disableModelWorkerIntegration();
+  }
+}
+
+function applyLatestWorkerSnapshot() {
+  if (!latestModelWorkerState || !modelWorkerReady) return false;
+
+  const message = latestModelWorkerState;
+  const bodies = message.bodies;
+  const expectedCount = catalogBodyCount;
+  if (bodies.length !== expectedCount * MODEL_WORKER_RECORD_SIZE) return false;
+
+  modelWorkerPositionsDirty.fill(0);
+
+  for (let i = 0; i < expectedCount; i += 1) {
+    const record = i * MODEL_WORKER_RECORD_SIZE;
+    const rawIndex = bodies[record];
+    const bodyIndex = Math.trunc(rawIndex);
+
+    if (!Number.isInteger(bodyIndex) || bodyIndex < 0 || bodyIndex >= expectedCount) {
+      continue;
+    }
+
+    modelWorkerWorldX[bodyIndex] = bodies[record + 1];
+    modelWorkerWorldY[bodyIndex] = bodies[record + 2];
+    modelWorkerWorldZ[bodyIndex] = bodies[record + 3];
+    modelWorkerWorldVx[bodyIndex] = bodies[record + 4];
+    modelWorkerWorldVy[bodyIndex] = bodies[record + 5];
+    modelWorkerWorldVz[bodyIndex] = bodies[record + 6];
+    modelWorkerPositionsDirty[bodyIndex] = 1;
+  }
+
+  for (let bodyIndex = 0; bodyIndex < expectedCount; bodyIndex += 1) {
+    if (!modelWorkerPositionsDirty[bodyIndex]) continue;
+
+    const body = catalog.bodies[bodyIndex];
+    if (!body) continue;
+
     const node = bodyNodes.get(body.id);
     if (!node) continue;
+
+    const wx = modelWorkerWorldX[bodyIndex];
+    const wy = modelWorkerWorldY[bodyIndex];
+    const wz = modelWorkerWorldZ[bodyIndex];
+    const vx = modelWorkerWorldVx[bodyIndex];
+    const vy = modelWorkerWorldVy[bodyIndex];
+    const vz = modelWorkerWorldVz[bodyIndex];
+
+    if (body.parentId) {
+      if (body.parentId === 'sun') {
+        node.position.set(wx, wy, wz);
+      } else {
+        const parentIndex = catalogParentIndexByIndex[bodyIndex];
+        if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
+          node.position.set(
+            wx - modelWorkerWorldX[parentIndex],
+            wy - modelWorkerWorldY[parentIndex],
+            wz - modelWorkerWorldZ[parentIndex]
+          );
+        } else {
+          node.position.set(wx, wy, wz);
+        }
+      }
+    } else {
+      node.position.set(wx, wy, wz);
+    }
+
+    if (body.type === 'moon') {
+      node.visible = showMoons;
+    }
+
     const state = model.getState(body.id);
     if (!state) continue;
-    if (body.parentId && body.parentId !== 'sun') {
-      const parentState = model.getState(body.parentId);
-      if (parentState) {
-        node.position.set(
-          state.worldPosition.x - parentState.worldPosition.x,
-          state.worldPosition.y - parentState.worldPosition.y,
-          state.worldPosition.z - parentState.worldPosition.z
-        );
-        continue;
-      }
+
+    state.worldPosition.set(wx, wy, wz);
+    state.worldVelocity.set(vx, vy, vz);
+
+    const parentIndex = catalogParentIndexByIndex[bodyIndex];
+    if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
+      state.relativePosition.set(
+        wx - modelWorkerWorldX[parentIndex],
+        wy - modelWorkerWorldY[parentIndex],
+        wz - modelWorkerWorldZ[parentIndex]
+      );
+      state.relativeVelocity.set(
+        vx - modelWorkerWorldVx[parentIndex],
+        vy - modelWorkerWorldVy[parentIndex],
+        vz - modelWorkerWorldVz[parentIndex]
+      );
+    } else {
+      state.relativePosition.set(wx, wy, wz);
+      state.relativeVelocity.set(vx, vy, vz);
     }
-    node.position.copy(state.worldPosition);
+  }
+
+  return true;
+}
+
+function updateModelState(deltaSeconds) {
+  let snapshotApplied = false;
+
+  if (modelWorkerEnabled && modelWorker && modelWorkerReady) {
+    dispatchModelWorkerTick(deltaSeconds);
+    if (latestModelWorkerState) {
+      snapshotApplied = applyLatestWorkerSnapshot();
+    }
+  }
+
+  if (snapshotApplied) {
+    return true;
+  }
+
+  updateModelLocally(deltaSeconds);
+  applyModelSceneAndStateFallback();
+  return true;
+}
+
+function updateSceneBodiesFromWorkerSnapshot() {
+  if (!modelWorkerEnabled || !latestModelWorkerState) return false;
+  return applyLatestWorkerSnapshot();
+}
+
+function applyModelSceneAndStateFallback() {
+  updateSceneBodiesFromModel({
+    catalog,
+    model,
+    bodyNodes,
+    showMoons
+  });
+}
+
+function updateSceneBodies() {
+  if (modelWorkerEnabled && modelWorkerReady && latestModelWorkerState) {
+    updateSceneBodiesFromWorkerSnapshot();
+  } else {
+    applyModelSceneAndStateFallback();
   }
 }
 
@@ -761,6 +1024,7 @@ dom.agnHypothesis?.addEventListener('change', () => {
 
 refillBodyList();
 model.update(simState.julianDate);
+initializeModelWorker();
 updateSceneBodies();
 focusBody('sun', true);
 controls.update();
@@ -787,22 +1051,7 @@ function animate(timestamp) {
   prevTimestamp = timestamp;
 
   timeController.advanceLocalTime(deltaSeconds);
-  model.update(simState.julianDate);
-
-  // H29 Metric Kinematics (ADM Shift Vector)
-  const warpState = sunCtrl.getWarpState();
-  if (warpState && warpState.direction) {
-    const peakData = metricFrameDragPeak(warpState.timeSec, warpState.energyErg, warpState.smbhMassG);
-    model.applyMetricKinematics(
-      warpState.direction,
-      deltaSeconds,
-      (distCm) => evaluateLocalMetricShift(distCm, peakData),
-      warpState.sourceDistanceCm,
-      1e12 // visual exaggeration factor so the shift is visible
-    );
-  }
-
-  updateSceneBodies();
+  updateModelState(deltaSeconds);
   updateBodyRotations(simState.julianDate);
 
   syncAsteroidBeltInputs();
