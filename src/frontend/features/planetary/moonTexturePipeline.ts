@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { RepeatWrapping } from 'three';
 import { moonTextureCatalogEntryForBody } from './moonTextureCatalog';
 

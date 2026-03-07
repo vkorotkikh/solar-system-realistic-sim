@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
 
 function toIsoDateUtc(date) {

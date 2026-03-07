@@ -1,4 +1,3 @@
-// @ts-nocheck
 const TWO_PI = Math.PI * 2;
 const DAY_SECONDS = 86_400;
 const DEG_TO_RAD = Math.PI / 180;

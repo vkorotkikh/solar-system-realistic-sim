@@ -1,4 +1,3 @@
-// @ts-nocheck
 function normalizeMoonToken(value) {
   return `${value ?? ''}`.trim().toLowerCase();
 }
