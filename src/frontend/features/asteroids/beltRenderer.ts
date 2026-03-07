@@ -14,7 +14,7 @@ import {
 
 import type { AsteroidDef } from '../../../sim/asteroidBelt';
 import type { KBODef } from '../../../sim/kuiperBelt';
-import { J2000_JD } from '../../../constants';
+import { J2000_JD, AU_KM } from '../../../constants';
 
 // ── Geometry generation ──────────────────────────────────────────────────────
 
@@ -284,6 +284,10 @@ function displayRadiusAu(diameterKm: number, isKuiper: boolean): number {
   return Math.max(minDisplay, Math.sqrt(radiusKm) * scale);
 }
 
+function realRadiusAu(diameterKm: number): number {
+  return (diameterKm / 2) / AU_KM;
+}
+
 // ── Belt renderer ────────────────────────────────────────────────────────────
 
 export interface BeltRendererHandle {
@@ -292,6 +296,7 @@ export interface BeltRendererHandle {
   setJulianDate: (julianDate: number) => void;
   setPerturberPositions: (jupiterPositionAu: Vector3, saturnPositionAu: Vector3) => void;
   setPerturberMasses: (jupiterMuAu3Day2: number, saturnMuAu3Day2: number) => void;
+  setScaleMode: (useRealisticScale: boolean) => void;
   setVisible: (visible: boolean) => void;
   dispose: () => void;
 }
@@ -381,21 +386,54 @@ export function createAsteroidBeltRenderer(
   mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
   mesh.instanceColor.needsUpdate = true;
 
+  // Store per-instance orientation & irregularity factors for scale-mode switching
+  const instanceQuats = new Float32Array(count * 4);
+  const instanceStretch = new Float32Array(count * 2); // [stretchX, squishZ]
+
   for (let i = 0; i < count; i++) {
     const ast = asteroids[i];
     const diameterRenderScale = displayRadiusAu(ast.diameterKm, false);
     _quat.set(rand() - 0.5, rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
     const stretch = 1 + ast.irregularity * (rand() - 0.3);
+    const squishZ = 1 / (1 + ast.irregularity * rand() * 0.4);
+    instanceQuats[i * 4] = _quat.x;
+    instanceQuats[i * 4 + 1] = _quat.y;
+    instanceQuats[i * 4 + 2] = _quat.z;
+    instanceQuats[i * 4 + 3] = _quat.w;
+    instanceStretch[i * 2] = stretch;
+    instanceStretch[i * 2 + 1] = squishZ;
     _scale.set(
       diameterRenderScale * stretch,
       diameterRenderScale,
-      diameterRenderScale / (1 + ast.irregularity * rand() * 0.4)
+      diameterRenderScale * squishZ
     );
     _pos.set(0, 0, 0);
     _mat4.compose(_pos, _quat, _scale);
     mesh.setMatrixAt(i, _mat4);
   }
   mesh.instanceMatrix.needsUpdate = true;
+
+  function rebuildInstanceScales(useRealistic: boolean) {
+    for (let i = 0; i < count; i++) {
+      const ast = asteroids[i];
+      const baseR = useRealistic
+        ? realRadiusAu(ast.diameterKm)
+        : displayRadiusAu(ast.diameterKm, false);
+      _quat.set(
+        instanceQuats[i * 4],
+        instanceQuats[i * 4 + 1],
+        instanceQuats[i * 4 + 2],
+        instanceQuats[i * 4 + 3]
+      );
+      const stretch = instanceStretch[i * 2];
+      const squishZ = instanceStretch[i * 2 + 1];
+      _scale.set(baseR * stretch, baseR, baseR * squishZ);
+      _pos.set(0, 0, 0);
+      _mat4.compose(_pos, _quat, _scale);
+      mesh.setMatrixAt(i, _mat4);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
 
   return {
     mesh,
@@ -415,6 +453,9 @@ export function createAsteroidBeltRenderer(
     setPerturberMasses(jupiterMuAu3Day2: number, saturnMuAu3Day2: number) {
       uniforms.uJupiterMuAu3Day2.value = getOrbitFloat(jupiterMuAu3Day2, 0);
       uniforms.uSaturnMuAu3Day2.value = getOrbitFloat(saturnMuAu3Day2, 0);
+    },
+    setScaleMode(useRealisticScale: boolean) {
+      rebuildInstanceScales(useRealisticScale);
     },
     setVisible(v: boolean) {
       mesh.visible = v;
@@ -508,6 +549,10 @@ export function createKuiperBeltRenderer(
     setJulianDate() { return; },
     setPerturberPositions() { return; },
     setPerturberMasses() { return; },
+    setScaleMode(_useRealisticScale: boolean) {
+      // KBOs are far from the Sun; no visual conflict in realism mode.
+      return;
+    },
     setVisible(v: boolean) {
       mesh.visible = v;
     },
