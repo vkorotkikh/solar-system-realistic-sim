@@ -96,9 +96,9 @@ export function updateSceneBodiesFromModel({
             state.worldPosition.y - parentState.worldPosition.y,
             state.worldPosition.z - parentState.worldPosition.z
           );
-          continue;
+        } else {
+          node.position.set(state.relativePosition.x, state.relativePosition.y, state.relativePosition.z);
         }
-        node.position.set(state.relativePosition.x, state.relativePosition.y, state.relativePosition.z);
       }
     } else {
       node.position.copy(state.worldPosition as Parameters<typeof node.position.copy>[0]);
