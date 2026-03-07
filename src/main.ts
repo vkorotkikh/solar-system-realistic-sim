@@ -45,6 +45,7 @@ import {
   type CatalogIndexContract,
   type ModelWorkerCatalog,
   type ModelWorkerInitMessage,
+  type ModelWorkerOutboundMessage,
   type ModelWorkerStateMessage,
   type ModelWorkerTickMessage
 } from './workers/modelWorker';
@@ -625,9 +626,14 @@ function initializeModelWorker() {
     return;
   }
 
-  modelWorker.onmessage = (event) => {
+  modelWorker.onmessage = (event: MessageEvent<ModelWorkerOutboundMessage>) => {
     const message = event.data;
     if (!message || typeof message !== 'object') return;
+
+    if (message.type === 'ready') {
+      modelWorkerReady = true;
+      return;
+    }
 
     if (message.type === 'state') {
       const stateMessage = message;
@@ -647,7 +653,6 @@ function initializeModelWorker() {
         tickJd: Number(stateMessage.tickJd),
         profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
       };
-      modelWorkerReady = true;
     }
   };
 
