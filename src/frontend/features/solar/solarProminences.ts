@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Solar Prominences & Filaments — Phase 8A
  * 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function clampUnit(value) {
   return Math.max(0, Math.min(1, value));
 }

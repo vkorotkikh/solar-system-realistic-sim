@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { clampUnit } from './solarFeatureBlending';
 
 const DEFAULT_AIA_CHANNEL_PRIORITY = ['aia_193', 'aia_211', 'aia_171', 'aia_094', 'aia_304'];

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { CanvasTexture, RepeatWrapping } from 'three';
 
 function fract(value) {

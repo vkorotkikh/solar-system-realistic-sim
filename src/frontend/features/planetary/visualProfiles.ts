@@ -1,4 +1,3 @@
-// @ts-nocheck
 export const PLANET_VISUAL_PROFILES = {
   earth: {
     id: 'earth',

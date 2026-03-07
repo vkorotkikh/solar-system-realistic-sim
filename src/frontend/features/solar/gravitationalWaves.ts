@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Gravitational Wave Spacetime Visualization — Phase 12 (Experimental)
  * 
