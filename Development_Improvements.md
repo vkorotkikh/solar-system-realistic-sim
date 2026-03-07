@@ -47,6 +47,137 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-07 ~08:00 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Fixed checksum algorithm mismatch in phase-1 asteroid catalog loader.
+
+Context / rationale:
+- The loader computed an FNV-1a 32-bit hash but the metadata could store SHA-256 hashes. A direct comparison between an 8-char FNV hex and a 64-char SHA-256 hex would always fail.
+- The build script (`scripts/build_asteroid_phase1_dataset.py`) writes both `checksum` (FNV-1a with `0x` prefix) and `checksum_sha256` into metadata, but the loader had no algorithm detection.
+
+Proposed approach:
+- Added `checksumSHA256()` using WebCrypto `crypto.subtle.digest('SHA-256', buffer)`.
+- Replaced flat `extractExpectedChecksum` with a structured `ExpectedChecksum` type carrying `{ value, algorithm }`.
+- Detection logic: SHA-256 keys checked first (64-char hex → `sha256`), then FNV-1a keys (8-char hex → `fnv1a32`), with fallback by hash length.
+- `computeChecksum()` dispatches to the matching algorithm before comparison.
+- Binary and metadata fetches parallelized with `Promise.all` (also removed `cache: 'force-cache'` from binary fetch to avoid stale-data mismatches).
+
+Expected impact:
+- Checksum verification now works correctly regardless of which hash algorithm the metadata declares.
+- Catalog load time reduced by parallelizing independent network requests.
+
+Affected files/systems:
+- `src/sim/phase1AsteroidCatalog.ts`
+
+Next step:
+- No immediate follow-up; works correctly with current metadata format.
+
+### 2026-03-07 ~08:00 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Fixed code injection vulnerability in `scripts/fetch_jpl_sbdb.py`.
+
+Context / rationale:
+- Body names from JPL API were interpolated directly into generated Python and JavaScript source via f-strings. A name containing quotes (e.g., `O'Brien`) would break syntax; a crafted name could inject arbitrary code.
+
+Proposed approach:
+- Added `_escape_py_str()` using `json.dumps()` to properly escape strings for Python double-quoted literals.
+- Added `_escape_js_str()` with explicit backslash, single-quote, newline, and carriage-return escaping for JS single-quoted literals.
+- Applied both escape functions to all user-data fields (`id`, `name`, `type`, `color`) in `generate_py_entry()` and `generate_js_entry()`.
+
+Expected impact:
+- Generated source files are safe regardless of special characters in JPL body names.
+
+Affected files/systems:
+- `scripts/fetch_jpl_sbdb.py`
+
+Next step:
+- No immediate follow-up.
+
+### 2026-03-07 ~08:00 UTC
+Status: `DONE`
+Type: `FIX`
+Summary:
+- Fixed `NameError` crash in `scripts/fetch_gaia_catalog.py` and narrowed exception handling.
+
+Context / rationale:
+- If `nearby_stars` was empty/falsy, `enriched_rows` was never defined, but line 416 referenced it in a print statement, causing a runtime crash.
+- Two `except` blocks caught `(URLError, OSError, Exception)`, which silently swallowed all exceptions including programming bugs.
+
+Proposed approach:
+- Refactored to use `final_rows` assigned in both the truthy and falsy branches of the `nearby_stars` check.
+- Narrowed both exception catches from `(URLError, OSError, Exception)` to `(URLError, OSError)`.
+
+Expected impact:
+- Script no longer crashes when no nearby stars are available from TAP endpoints.
+- Programming errors in TAP fetch logic are no longer silently swallowed.
+
+Affected files/systems:
+- `scripts/fetch_gaia_catalog.py`
+
+Next step:
+- No immediate follow-up.
+
+### 2026-03-07 ~08:00 UTC
+Status: `IN-PROGRESS`
+Type: `TECH-DEBT`
+Summary:
+- Removed `// @ts-nocheck` from all 41 source files and began adding proper type annotations.
+
+Context / rationale:
+- The comprehensive codebase audit identified `@ts-nocheck` across 41 files as the single biggest systemic issue, disabling all compile-time type safety for the majority of the frontend. This was the #1 critical finding.
+
+Proposed approach:
+- Phase 1 (DONE): Remove `@ts-nocheck` from all files.
+- Phase 2 (IN-PROGRESS): Add proper type annotations file by file, starting with simulation and rendering modules, then features, then app orchestration.
+- Phase 3 (OPEN): Fix remaining type errors in the largest files (`satelliteSystem.ts`, `sunController.ts`, `cloudDataPipeline.ts`, `main.ts`).
+
+Expected impact:
+- TypeScript now catches null dereferences, wrong argument types, and property access errors at compile time across the entire codebase.
+- ~15 files fully typed so far; ~30 files still need annotations.
+
+Affected files/systems:
+- All 41 previously `@ts-nocheck` files in `src/`
+- New interfaces added in `sim/asteroids/`, `frontend/rendering/`, `frontend/features/solar/`, `frontend/features/planetary/`, `frontend/features/trajectory/`
+
+Next step:
+- Continue adding type annotations to remaining files, prioritizing the largest error counts: `satelliteSystem.ts` (311 errors), `sunController.ts` (109), `cloudDataPipeline.ts` (91), `smbhPropagation.ts` (81), `main.ts` (72).
+
+### 2026-03-07 ~08:00 UTC
+Status: `OPEN`
+Type: `PROBLEM`
+Summary:
+- Comprehensive codebase audit identified 23 issues; critical and high-severity items fixed, medium/low items tracked here.
+
+Context / rationale:
+- Full inspection of all `src/`, `scripts/`, and `src/workers/` files performed. Findings categorized by severity.
+
+Proposed approach:
+- Track remaining medium/low issues for future passes:
+  1. **1.925M synchronous asteroid generation** (`asteroidPipeline.ts`): `async initialize()` has no `await`; blocks main thread for seconds. Should use chunked processing or a web worker.
+  2. **`new Color()`/`new Vector3()` in hot loops**: `beltRenderer.ts:311` and `asteroidPipeline.ts` allocate throwaway objects per instance. Reuse module-level temporaries.
+  3. **`resizeRenderer()` every frame** (`main.ts`): includes `setPixelRatio()` each frame. Should only fire on actual window resize.
+  4. **No resource cleanup on teardown**: No `dispose()` calls for textures, geometries, materials, or the web worker on page unload.
+  5. **Duplicated utilities**: `mulberry32` (3 copies), `clamp` (3 copies), `lerp` (2 copies), `solveKeplerFast` (2 copies), `disposeThreeMaterial` (2 copies). Should consolidate.
+  6. **Dead code**: `temp_nearbySystemsRenderer.ts` (~1129 lines, mostly commented-out archive). `asteroidCatalogLoader.test.ts` is not a real test.
+  7. **Typo**: `ALCBEO_SCALE_U16` in `asteroidCatalogLoader.ts:55` should be `ALBEDO_SCALE_U16`.
+  8. **BFS uses `Array.shift()`** in `solarSystemModel.ts:80` — O(n) per call.
+  9. **`Math.random()` in `asteroidDistributions.ts`** makes GPU asteroid pipeline non-deterministic, inconsistent with seeded PRNG elsewhere.
+  10. **`const enum` in `asteroidTaxonomyResolver.ts`** erased at compile time; breaks cross-bundle imports.
+  11. **Fragile `onBeforeCompile` shader patching** in `beltRenderer.ts` — will break silently on Three.js updates.
+
+Expected impact:
+- Items 1-4 affect performance and memory in long sessions. Items 5-6 are maintainability debt. Items 7-11 are correctness and fragility risks.
+
+Affected files/systems:
+- `src/sim/asteroids/asteroidPipeline.ts`, `src/frontend/features/asteroids/beltRenderer.ts`, `src/main.ts`, `src/sim/asteroidBelt.ts`, `src/sim/kuiperBelt.ts`, `src/data/asteroidCatalogLoader.ts`, `src/sim/solarSystemModel.ts`, `src/data/asteroidTaxonomyResolver.ts`, `src/frontend/app/temp_nearbySystemsRenderer.ts`
+
+Next step:
+- Prioritize synchronous asteroid generation offload (item 1) and resource cleanup (item 4) for next pass.
+
 ### 2026-03-07 05:56:36 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`
@@ -130,36 +261,32 @@ Next step:
 - Keep the next runtime pass focused on worker contracts, frame-loop normalization, and replacing `// @ts-nocheck` in hot-path modules.
 
 ### 2026-03-07 05:47:00 UTC
-Status: `OPEN`
+Status: `IN-PROGRESS`
 Type: `ARCHITECTURE`
 Summary:
-- TypeScript migration in `src` is functionally complete, but the runtime still does not fully exploit TypeScript for strong contracts, worker boundaries, or frame-budget control.
+- TypeScript migration in `src` is functionally complete. `@ts-nocheck` has been removed from all files. Worker contracts and type hardening are in progress.
 
 Context / rationale:
-- Current analysis shows `src/main.ts` still owns a mostly monolithic `requestAnimationFrame` loop while one reusable scheduler exists in `src/frontend/app/animationLoop.ts`.
-- The only active workerized path in the frontend is satellite propagation; solar-system propagation, sun feature logic, SMBH/AGN timelines, and heavy asteroid generation remain main-thread dominated.
-- Many converted files still carry `// @ts-nocheck`, which means the codebase has gained TS filenames but not yet the full compile-time guarantees that make larger refactors safer.
+- As of 2026-03-07 ~08:00 UTC, all `// @ts-nocheck` directives have been removed and ~15 files have full type annotations. ~30 files still need annotations.
+- `src/workers/modelWorker.ts` provides an off-thread solar-system model propagation path with typed message contracts.
+- The runtime still uses a mostly monolithic `requestAnimationFrame` loop in `src/main.ts`.
 
 Proposed approach:
+- Complete type annotation work across remaining ~30 files (see IN-PROGRESS entry above).
 - Normalize the runtime around a single frame scheduler and add phase-level timing instrumentation.
-- Introduce typed worker contracts for `modelWorker`, `sunWorker`, `smbhWorker`, and `asteroidWorker`, using packed transferable arrays for snapshots.
-- Remove `// @ts-nocheck` first from high-value boundary modules after message contracts and domain interfaces are established.
+- Introduce additional typed worker contracts for `sunWorker`, `smbhWorker`, and `asteroidWorker`.
 
 Expected impact:
-- Lower main-thread frame pressure and fewer regressions when moving compute domains off-thread.
-- Better use of TypeScript where it matters most: cross-module contracts, worker payloads, and simulation-state invariants.
+- Full compile-time type safety across the entire codebase.
+- Lower main-thread frame pressure via additional worker offload.
 
 Affected files/systems:
-- `src/main.ts`
-- `src/frontend/app/animationLoop.ts`
-- `src/sim/{orbitMath.ts,solarSystemModel.ts}`
-- `src/sunController.ts`
-- `src/frontend/features/solar/*`
-- `src/frontend/features/superluminal-modeling/*`
-- `src/sim/asteroids/*`
+- All `src/**/*.ts` files (type annotations)
+- `src/main.ts`, `src/frontend/app/animationLoop.ts` (frame scheduler)
+- `src/sunController.ts`, `src/frontend/features/solar/*`, `src/frontend/features/superluminal-modeling/*`, `src/sim/asteroids/*` (worker candidates)
 
 Next step:
-- Implement the first workerized runtime slice with the solar-system model/orbit path, then layer in sun and asteroid generation offload.
+- Finish type annotations for the largest remaining files, then implement sun and asteroid worker offload.
 
 ### 2026-02-26 10:16:00 UTC
 Status: `DONE`
@@ -195,7 +322,7 @@ Affected files/systems:
 - `src/main.ts`
 
 Next step:
-- Replace temporary `// @ts-nocheck` in these TS files with concrete interface/type definitions to make migration compile-strong instead of syntax-only.
+- **UPDATE 2026-03-07:** `@ts-nocheck` removed. Add concrete interface/type definitions for these modules (109 errors in `sunController.ts`, 81 in `smbhPropagation.ts`, 55 in `agnShockwaveEngine.ts`).
 
 ### 2026-02-26 10:15 UTC
 Status: `DONE`
@@ -539,16 +666,16 @@ Next step:
 - Start with Phase A and include API-style integration tests for visibility toggles and LOD behavior.
 
 ### 2026-02-18 11:38:22 UTC
-Status: `OPEN`
+Status: `IN-PROGRESS`
 Type: `TECH-DEBT`
 Summary:
 - TypeScript continuation plan for physics and frontend contract safety.
 
 Context / rationale:
-- Initial TS migration of `orbitMath`, `solarSystemModel`, and `simulationClient` is complete; unit/contract safety should now expand to sources feeding those modules.
+- **UPDATE 2026-03-07:** `constants.ts` and `catalog.ts` are already TypeScript-native. All `@ts-nocheck` directives removed. Type annotations added to ~15 files so far; ~30 still need annotations.
+- Unit brands/types and CI gates remain open.
 
 Proposed approach:
-- Convert `src/constants.js` and `src/sim/catalog.js` to TS next.
 - Add shared unit brands/types (`Au`, `Km`, `JulianDay`, `Radians`) and apply in orbital interfaces.
 - Add explicit wire types for solar/API payloads (`solarPhysicsClient`, observation texture metadata).
 - Add CI gate requiring both `npm run typecheck` and `npm run build`.
@@ -558,8 +685,7 @@ Expected impact:
 - Stronger compile-time guardrails for future physics/model upgrades.
 
 Affected files/systems:
-- `src/constants.js`
-- `src/sim/catalog.js`
+- `src/sim/orbitMath.ts`, `src/sim/solarSystemModel.ts`
 - `src/frontend/features/solar/*`
 - CI pipeline config
 

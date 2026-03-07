@@ -18,10 +18,12 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 
 ## Current TypeScript Status
 
-- `src` is now fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
-- The current browser runtime is still mostly driven from the main thread via [`src/main.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/main.ts), with one existing workerized path for satellite propagation.
-- Small-body data tooling now includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts), but the live runtime ingestion path is not yet unified on that contract.
-- The next modernization phase is architectural rather than filename migration: stricter types, worker contracts, frame-budget instrumentation, and targeted offload for orbital model, solar feature logic, SMBH/AGN timelines, and heavy asteroid generation.
+- `src` is fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
+- All `// @ts-nocheck` directives have been removed across the entire `src` tree. Strict type checking is now active on every source file.
+- Type annotations have been added to simulation, rendering, solar-feature, planetary-feature, and asteroid-pipeline modules. Remaining files still require explicit type definitions for full compile-time safety.
+- The browser runtime is driven from [`src/main.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/main.ts) with two workerized paths: satellite propagation and solar-system model propagation ([`src/workers/modelWorker.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/workers/modelWorker.ts)).
+- Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts). The phase-1 runtime loader now supports algorithm-aware checksum verification (SHA-256 via WebCrypto, FNV-1a fallback) and parallelized binary+metadata fetching.
+- Ongoing hardening: replacing implicit `any` types with concrete interfaces across app, rendering, and feature modules.
 
 ## Quick Start
 
@@ -92,8 +94,10 @@ curl http://127.0.0.1:8042/benchmark/accuracy
 │   │   ├── orbitMath.ts                # Kepler solver, coordinate transforms
 │   │   ├── solarSystemModel.ts         # Canonical solar system model
 │   │   ├── catalog.ts                  # Body catalog utilities
-│   │   ├── phase1AsteroidCatalog.ts    # Current runtime loader for phase-1 asteroid payloads
+│   │   ├── phase1AsteroidCatalog.ts    # Runtime loader for phase-1 asteroid payloads
 │   │   └── asteroids/                  # Asteroid belt pipeline + shaders
+│   ├── workers/
+│   │   └── modelWorker.ts             # Off-thread solar system model propagation
 │   ├── frontend/
 │   │   ├── app/
 │   │   │   ├── sceneSetup.ts           # Three.js scene, renderer, lights
@@ -210,8 +214,8 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 - Planet entries include axial-tilt and spin-period metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data.
 - Deterministic asteroid phase-1 assets are built from JPL Small-Body Database queries and stored under `public/data/asteroid-phase1/`.
-- Compact asteroid binary tooling now lives in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts) with the `ACBF` v1 format documented in [`src/data/asteroidCatalogBinaryFormat.md`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogBinaryFormat.md).
-- The current runtime still uses [`src/sim/phase1AsteroidCatalog.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/sim/phase1AsteroidCatalog.ts) for live loading, so catalog format consolidation remains an active follow-up rather than completed ingestion work.
+- Compact asteroid binary tooling lives in [`src/data/asteroidCatalogLoader.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogLoader.ts) with the `ACBF` v1 format documented in [`src/data/asteroidCatalogBinaryFormat.md`](/home/nomad/Documents/solar-system-realistic-sim/src/data/asteroidCatalogBinaryFormat.md).
+- The runtime loader in [`src/sim/phase1AsteroidCatalog.ts`](/home/nomad/Documents/solar-system-realistic-sim/src/sim/phase1AsteroidCatalog.ts) now computes checksums using the same algorithm declared in metadata (SHA-256 via WebCrypto when available, FNV-1a for legacy data), and fetches binary and metadata in parallel.
 
 Refresh moon data:
 
