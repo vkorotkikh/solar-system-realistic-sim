@@ -19,7 +19,7 @@ const SOURCE_SURFACE_R = 2.5;
  * Calculates a simplified, analytical potential magnetic field vector at position (x, y, z)
  * using a mix of dipole and quadrupole terms scaled by solar activity.
  */
-function computeMagneticField(x, y, z, activity) {
+function computeMagneticField(x: number, y: number, z: number, activity: number): Vector3 {
     const r2 = x * x + y * y + z * z;
     const r = Math.sqrt(r2);
     if (r < 0.0001) return new Vector3(0, 1, 0);
@@ -83,7 +83,7 @@ function computeMagneticField(x, y, z, activity) {
 /**
  * Traces a magnetic field line starting from a footpoint on the surface.
  */
-function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
+function traceFieldLine(startX: number, startY: number, startZ: number, stepSize: number, maxSteps: number, activity: number) {
     let pos = new Vector3(startX, startY, startZ);
     const points = [pos.clone()];
     let isOpen = false;
@@ -136,7 +136,7 @@ function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
 /**
  * Creates the PFSS magnetic field visualization group.
  */
-export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, numLines = 60) {
+export function createMagneticFieldLines(sunRadiusAu: number, activity = 0.5, numLines = 60) {
     const group = new Group();
     const maxSteps = 200;
     const stepSize = 0.05;
@@ -203,6 +203,7 @@ export function createMagnetogramTexture(size = 512, activity = 0.5) {
     canvas.width = size;
     canvas.height = size / 2;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return new CanvasTexture(canvas);
 
     // Fill with neutral gray (zero magnetic field)
     ctx.fillStyle = '#808080';
@@ -278,19 +279,19 @@ export function createMagnetogramTexture(size = 512, activity = 0.5) {
 /**
  * Updates the field lines animation (breathing effect).
  */
-export function updateMagneticFieldLines(group, timeSec) {
+export function updateMagneticFieldLines(group: Group | null, timeSec: number) {
     if (!group || !group.visible) return;
 
-    for (const line of group.children) {
-        if (!line.userData) continue;
-        const base = line.userData.baseOpacity ?? 0.2;
-        const phase = line.userData.phaseOffset ?? 0;
+    for (const child of group.children) {
+        if (!child.userData) continue;
+        const base = child.userData.baseOpacity ?? 0.2;
+        const phase = child.userData.phaseOffset ?? 0;
 
         // Slow pulsation
         const pulse = Math.sin(timeSec * 0.5 + phase) * 0.3 + 0.7; // 0.4 to 1.0 variation
 
-        if (line.material) {
-            line.material.opacity = base * pulse;
+        if (child instanceof Line && !Array.isArray(child.material)) {
+            child.material.opacity = base * pulse;
         }
     }
 }

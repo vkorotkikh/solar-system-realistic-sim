@@ -1,24 +1,86 @@
-export function clampUnit(value) {
+type ArcPoint = [number, number, number];
+
+interface SolarFeature {
+  id: string;
+  kind: string;
+  brightness: number;
+  speedFactor: number;
+  peakExtent: number;
+  arc: ArcPoint[];
+}
+
+interface SolarFeatureSet {
+  features: SolarFeature[];
+  featureById: Map<string, SolarFeature>;
+  activityIndex: number | null;
+  epochJd: number;
+}
+
+interface BlendEntry {
+  id: string;
+  kind: string;
+  fromFeature: SolarFeature | null;
+  toFeature: SolarFeature | null;
+  fromWeight: number;
+  toWeight: number;
+}
+
+interface BlendViewInput {
+  currentFeatureSet: SolarFeatureSet | null;
+  targetFeatureSet: SolarFeatureSet | null;
+  blendStartMs: number;
+  blendDurationMs: number;
+  nowMs?: number;
+  featureLimit?: number;
+}
+
+interface BlendView {
+  blendAlpha: number;
+  activityIndex: number | null;
+  entries: BlendEntry[];
+  [key: string]: unknown;
+}
+
+interface PhysicsState {
+  corona?: { features?: unknown[] };
+  activity_index?: unknown;
+  epoch_jd?: unknown;
+}
+
+interface RawFeature {
+  id?: string;
+  kind?: string;
+  brightness?: unknown;
+  expansion_speed_kms?: unknown;
+  peak_extent_solar_radii?: unknown;
+  arc?: unknown;
+}
+
+export function clampUnit(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-export function lerpNumber(a, b, t) {
+export function lerpNumber(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-export function normalizeSolarFeatureSetFromState(physicsState, fallbackEpochJd, featureLimit = 220) {
+export function normalizeSolarFeatureSetFromState(
+  physicsState: PhysicsState | null | undefined,
+  fallbackEpochJd: number,
+  featureLimit = 220
+): SolarFeatureSet | null {
   const sourceFeatures = physicsState?.corona?.features;
   if (!Array.isArray(sourceFeatures) || sourceFeatures.length === 0) return null;
 
   const safeLimit = Math.max(8, Math.min(2_048, Math.floor(Number(featureLimit) || 220)));
-  const features = [];
-  const featureById = new Map();
+  const features: SolarFeature[] = [];
+  const featureById = new Map<string, SolarFeature>();
   for (let i = 0; i < sourceFeatures.length && features.length < safeLimit; i += 1) {
-    const feature = sourceFeatures[i];
-    const arcRaw = Array.isArray(feature?.arc) ? feature.arc : null;
+    const feature = sourceFeatures[i] as RawFeature | null;
+    const arcRaw = Array.isArray(feature?.arc) ? (feature!.arc as unknown[]) : null;
     if (!arcRaw || arcRaw.length < 2) continue;
 
-    const arc = [];
+    const arc: ArcPoint[] = [];
     for (const sample of arcRaw) {
       if (!Array.isArray(sample) || sample.length !== 3) continue;
       const x = Number(sample[0]);
@@ -43,7 +105,7 @@ export function normalizeSolarFeatureSetFromState(physicsState, fallbackEpochJd,
     const peakExtentRaw = Number(feature?.peak_extent_solar_radii);
     const peakExtent = Number.isFinite(peakExtentRaw) ? Math.max(1, peakExtentRaw) : 1.0;
 
-    const normalized = {
+    const normalizedFeature: SolarFeature = {
       id,
       kind,
       brightness,
@@ -51,8 +113,8 @@ export function normalizeSolarFeatureSetFromState(physicsState, fallbackEpochJd,
       peakExtent,
       arc
     };
-    features.push(normalized);
-    featureById.set(id, normalized);
+    features.push(normalizedFeature);
+    featureById.set(id, normalizedFeature);
   }
 
   if (features.length === 0) return null;
@@ -66,16 +128,16 @@ export function normalizeSolarFeatureSetFromState(physicsState, fallbackEpochJd,
   };
 }
 
-export function sampleCoronalArcPoint(arc, phase) {
+export function sampleCoronalArcPoint(arc: unknown, phase: number): ArcPoint | null {
   if (!Array.isArray(arc) || arc.length === 0) return null;
-  if (arc.length === 1) return arc[0];
+  if (arc.length === 1) return arc[0] as ArcPoint;
   const t = Math.max(0, Math.min(0.999999, phase));
   const scaled = t * (arc.length - 1);
   const idx = Math.floor(scaled);
   const next = Math.min(arc.length - 1, idx + 1);
   const frac = scaled - idx;
-  const p0 = arc[idx];
-  const p1 = arc[next];
+  const p0 = arc[idx] as unknown[];
+  const p1 = arc[next] as unknown[];
   if (!Array.isArray(p0) || !Array.isArray(p1) || p0.length !== 3 || p1.length !== 3) return null;
   const x = Number(p0[0]) + (Number(p1[0]) - Number(p0[0])) * frac;
   const y = Number(p0[1]) + (Number(p1[1]) - Number(p0[1])) * frac;
@@ -84,7 +146,11 @@ export function sampleCoronalArcPoint(arc, phase) {
   return [x, y, z];
 }
 
-export function sampleSolarFeatureEntryPoint(entry, phase, blendAlpha) {
+export function sampleSolarFeatureEntryPoint(
+  entry: BlendEntry | null | undefined,
+  phase: number,
+  blendAlpha: number
+): ArcPoint | null {
   const fromWeight = Number(entry?.fromWeight);
   const toWeight = Number(entry?.toWeight);
   const hasFrom = Number.isFinite(fromWeight) ? fromWeight > 0.5 : true;
@@ -102,7 +168,7 @@ export function sampleSolarFeatureEntryPoint(entry, phase, blendAlpha) {
   return toPoint ?? fromPoint;
 }
 
-export function solarFeatureEntryBrightness(entry, blendAlpha) {
+export function solarFeatureEntryBrightness(entry: BlendEntry | null | undefined, blendAlpha: number): number {
   const fromBrightnessRaw = Number(entry?.fromFeature?.brightness);
   const toBrightnessRaw = Number(entry?.toFeature?.brightness);
   const fromBrightness = Number.isFinite(fromBrightnessRaw) ? Math.max(0, fromBrightnessRaw) : 0;
@@ -127,12 +193,12 @@ export function buildSolarFeatureBlendView({
   blendDurationMs,
   nowMs = Date.now(),
   featureLimit = 220
-}) {
+}: BlendViewInput) {
   if (!currentFeatureSet && !targetFeatureSet) {
     return {
       blendAlpha: 1,
       activityIndex: null,
-      entries: [],
+      entries: [] as BlendEntry[],
       nextCurrentFeatureSet: currentFeatureSet,
       nextTargetFeatureSet: targetFeatureSet,
       nextBlendStartMs: blendStartMs,
@@ -141,7 +207,7 @@ export function buildSolarFeatureBlendView({
   }
 
   let nextCurrentFeatureSet = currentFeatureSet;
-  let nextTargetFeatureSet = targetFeatureSet;
+  let nextTargetFeatureSet: SolarFeatureSet | null = targetFeatureSet;
   let nextBlendStartMs = blendStartMs;
 
   if (!nextCurrentFeatureSet && nextTargetFeatureSet) {
@@ -152,7 +218,7 @@ export function buildSolarFeatureBlendView({
     return {
       blendAlpha: 1,
       activityIndex: null,
-      entries: [],
+      entries: [] as BlendEntry[],
       nextCurrentFeatureSet,
       nextTargetFeatureSet,
       nextBlendStartMs,
@@ -162,7 +228,7 @@ export function buildSolarFeatureBlendView({
 
   const safeLimit = Math.max(8, Math.min(2_048, Math.floor(Number(featureLimit) || 220)));
   if (!nextTargetFeatureSet) {
-    const entries = nextCurrentFeatureSet.features
+    const entries: BlendEntry[] = nextCurrentFeatureSet.features
       .slice(0, safeLimit)
       .map((feature) => ({
         id: feature.id,
@@ -186,8 +252,8 @@ export function buildSolarFeatureBlendView({
   const durationMs = Math.max(240, Number(blendDurationMs) || 900);
   const linearAlpha = clampUnit((nowMs - nextBlendStartMs) / durationMs);
   const blendAlpha = linearAlpha * linearAlpha * (3 - 2 * linearAlpha);
-  const entries = [];
-  const seen = new Set();
+  const entries: BlendEntry[] = [];
+  const seen = new Set<string>();
 
   for (const targetFeature of nextTargetFeatureSet.features) {
     const fromFeature = nextCurrentFeatureSet.featureById.get(targetFeature.id) ?? targetFeature;
@@ -218,7 +284,7 @@ export function buildSolarFeatureBlendView({
     }
   }
 
-  let activityIndex = nextCurrentFeatureSet.activityIndex;
+  let activityIndex: number | null = nextCurrentFeatureSet.activityIndex;
   const currentActivity = Number(nextCurrentFeatureSet.activityIndex);
   const targetActivity = Number(nextTargetFeatureSet.activityIndex);
   if (Number.isFinite(currentActivity) && Number.isFinite(targetActivity)) {
@@ -238,7 +304,7 @@ export function buildSolarFeatureBlendView({
     blendAlpha: complete ? 1 : blendAlpha,
     activityIndex: complete ? nextCurrentFeatureSet.activityIndex : activityIndex,
     entries: complete
-      ? nextCurrentFeatureSet.features.slice(0, safeLimit).map((feature) => ({
+      ? nextCurrentFeatureSet.features.slice(0, safeLimit).map((feature): BlendEntry => ({
           id: feature.id,
           kind: feature.kind,
           fromFeature: feature,
@@ -254,17 +320,20 @@ export function buildSolarFeatureBlendView({
   };
 }
 
-export function materializeSolarFeatureSetFromBlendView(blendView, fallbackEpochJd) {
+export function materializeSolarFeatureSetFromBlendView(
+  blendView: BlendView | null | undefined,
+  fallbackEpochJd: number
+): SolarFeatureSet | null {
   if (!blendView || !Array.isArray(blendView.entries) || blendView.entries.length === 0) return null;
   const blendAlpha = clampUnit(Number(blendView.blendAlpha) || 0);
-  const features = [];
-  const featureById = new Map();
+  const features: SolarFeature[] = [];
+  const featureById = new Map<string, SolarFeature>();
 
   for (const entry of blendView.entries) {
     const fromCount = entry?.fromFeature?.arc?.length ?? 0;
     const toCount = entry?.toFeature?.arc?.length ?? 0;
     const pointCount = Math.max(2, fromCount, toCount);
-    const arc = [];
+    const arc: ArcPoint[] = [];
 
     for (let i = 0; i < pointCount; i += 1) {
       const phase = pointCount <= 1 ? 0 : i / (pointCount - 1);
@@ -287,7 +356,7 @@ export function materializeSolarFeatureSetFromBlendView(blendView, fallbackEpoch
       ? lerpNumber(peakFrom, peakTo, blendAlpha)
       : (Number.isFinite(peakTo) ? peakTo : (Number.isFinite(peakFrom) ? peakFrom : 1.0));
 
-    const normalized = {
+    const normalizedFeature: SolarFeature = {
       id: `${entry?.id ?? `feature-${features.length}`}`,
       kind: `${entry?.kind ?? 'loop'}`.toLowerCase(),
       brightness,
@@ -295,9 +364,9 @@ export function materializeSolarFeatureSetFromBlendView(blendView, fallbackEpoch
       peakExtent,
       arc
     };
-    if (featureById.has(normalized.id)) continue;
-    features.push(normalized);
-    featureById.set(normalized.id, normalized);
+    if (featureById.has(normalizedFeature.id)) continue;
+    features.push(normalizedFeature);
+    featureById.set(normalizedFeature.id, normalizedFeature);
   }
 
   if (features.length === 0) return null;

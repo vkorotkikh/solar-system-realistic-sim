@@ -73,8 +73,8 @@ void main() {
 `;
 
 // Shared geometry for all CME shells (half sphere)
-let sharedCmeGeometries = {};
-function getCmeGeometry(angularWidthRad = Math.PI * 2) {
+let sharedCmeGeometries: Record<number, SphereGeometry> = {};
+function getCmeGeometry(angularWidthRad: number = Math.PI * 2): SphereGeometry {
     // Round to nearest 10° for geometry caching
     const key = Math.round(angularWidthRad * 180 / Math.PI / 10) * 10;
     if (!sharedCmeGeometries[key]) {
@@ -84,13 +84,17 @@ function getCmeGeometry(angularWidthRad = Math.PI * 2) {
 }
 
 // Generate a soft radial glow texture for the flare sprite
-let sharedFlareTexture = null;
-function getFlareTexture() {
+let sharedFlareTexture: CanvasTexture | null = null;
+function getFlareTexture(): CanvasTexture {
     if (!sharedFlareTexture) {
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            sharedFlareTexture = new CanvasTexture(canvas);
+            return sharedFlareTexture;
+        }
         const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
         grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
         grad.addColorStop(0.15, 'rgba(255, 240, 200, 0.8)');
@@ -107,6 +111,25 @@ function getFlareTexture() {
 /**
  * Creates a Solar Flare and CME event.
  */
+interface CreateSolarFlareEventOpts {
+    latitudeRad: number;
+    longitudeRad: number;
+    sunRadiusAu: number;
+    velocityKms?: number;
+    intensity?: number;
+    angularWidthDeg?: number;
+}
+
+interface SolarFlareEvent {
+    group: Group;
+    longitude: number;
+    latitude: number;
+    intensity: number;
+    update(dtSec: number): void;
+    isExpired(): boolean;
+    dispose(): void;
+}
+
 export function createSolarFlareEvent({
     latitudeRad,
     longitudeRad,
@@ -114,7 +137,7 @@ export function createSolarFlareEvent({
     velocityKms = 489,
     intensity = 0.5,
     angularWidthDeg = 60
-}) {
+}: CreateSolarFlareEventOpts): SolarFlareEvent {
     const group = new Group();
 
     // 1. Position calculation (spherical to Cartesian)
@@ -183,7 +206,7 @@ export function createSolarFlareEvent({
         latitude: latitudeRad,
         intensity,
 
-        update(dtSec) {
+        update(dtSec: number) {
             if (_expired) return;
 
             elapsedSec += dtSec;
@@ -231,14 +254,19 @@ export function createSolarFlareEvent({
  * Manager class to handle multiple flare events and auto-spawn them
  */
 export class SolarFlareManager {
-    constructor(sunGroup) {
+    sunGroup: Group;
+    events: SolarFlareEvent[];
+    maxEvents: number;
+    timeSinceLastSpawn: number;
+
+    constructor(sunGroup: Group) {
         this.sunGroup = sunGroup;
         this.events = [];
         this.maxEvents = 3;
         this.timeSinceLastSpawn = 0;
     }
 
-    update(dtSec, activity, sunRadiusAu) {
+    update(dtSec: number, activity: number, sunRadiusAu: number) {
         this.timeSinceLastSpawn += dtSec;
 
         // Probabilistic spawn
@@ -264,7 +292,7 @@ export class SolarFlareManager {
         }
     }
 
-    spawnRandomFlare(activity, sunRadiusAu) {
+    spawnRandomFlare(activity: number, sunRadiusAu: number) {
         // Spörer's law roughly: active belts between 5 and 35 degrees
         const sign = Math.random() > 0.5 ? 1 : -1;
         const maxLat = 0.05 + activity * 0.55; // 0.05 to ~0.6 rad (34 deg)
