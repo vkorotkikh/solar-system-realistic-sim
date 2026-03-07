@@ -199,6 +199,15 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isKnownTaxonomy(value: string | null | undefined): value is TaxonomyClass {
+  return (
+    value === TaxonomyClass.C ||
+    value === TaxonomyClass.S ||
+    value === TaxonomyClass.M ||
+    value === TaxonomyClass.Unknown
+  );
+}
+
 function clamp01(value: number): number {
   if (value < 0) return 0;
   if (value > 1) return 1;
@@ -386,8 +395,8 @@ export function validateSemiMajorAxisCoverage(
       continue;
     }
 
-    const taxonomy = record.taxonomy && Object.values(TaxonomyClass).includes(record.taxonomy as TaxonomyClass)
-      ? (record.taxonomy as TaxonomyClass)
+    const taxonomy = isKnownTaxonomy(record.taxonomy)
+      ? record.taxonomy
       : resolveTaxonomy(record).taxonomy;
 
     const matchingBin = binAccumulators.find((bin) => classifyBin(aAu, bin));
