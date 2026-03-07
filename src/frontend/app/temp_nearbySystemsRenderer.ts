@@ -1,4 +1,3 @@
-// @ts-nocheck
 /*
 TEMP ARCHIVE: nearbySystemsRenderer experiment rollback (2026-02-17)
 This file keeps:
