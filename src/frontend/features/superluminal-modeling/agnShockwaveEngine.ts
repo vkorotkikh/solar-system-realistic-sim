@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * AGN Compound Shockwave Engine — Multi-Messenger SMBH Event Simulation
  *

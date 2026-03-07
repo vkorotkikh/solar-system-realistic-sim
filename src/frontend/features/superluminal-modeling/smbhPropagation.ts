@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * SMBH Compound Shockwave — Propagation Physics
  *
