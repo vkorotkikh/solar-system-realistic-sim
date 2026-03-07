@@ -75,15 +75,15 @@ export class SolarSystemModel {
     const order: string[] = [];
     const roots = this.bodies.filter((body) => !body.parentId).map((body) => body.id);
 
-    const stack = [...roots];
-    while (stack.length > 0) {
-      const id = stack.shift();
-      if (!id) break;
+    const queue = [...roots];
+    let head = 0;
+    while (head < queue.length) {
+      const id = queue[head++];
       order.push(id);
       const children = this.childrenById.get(id);
       if (children) {
         for (const childId of children) {
-          stack.push(childId);
+          queue.push(childId);
         }
       }
     }

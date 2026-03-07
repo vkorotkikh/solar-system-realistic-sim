@@ -544,7 +544,7 @@ async function loadPhase1CatalogMetadata(
 ): Promise<Phase1CatalogMeta | undefined> {
   if (!url) return undefined;
   try {
-    const response = await fetch(url, { cache: 'force-cache' });
+    const response = await fetch(url, { cache: 'no-cache' });
     if (!response.ok) return undefined;
     const payload = await response.json();
     if (typeof payload === 'object' && payload !== null) {

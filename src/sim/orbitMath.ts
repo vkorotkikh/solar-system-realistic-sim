@@ -23,6 +23,14 @@ function normalizeRadians(angle: number): number {
   return reduced >= 0 ? reduced : reduced + TWO_PI;
 }
 
+export function solveKeplerFast(M: number, e: number): number {
+  let E = M;
+  for (let i = 0; i < 6; i++) {
+    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  }
+  return E;
+}
+
 export function solveKepler(
   meanAnomalyRad: number,
   eccentricity: number,

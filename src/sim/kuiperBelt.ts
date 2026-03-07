@@ -1,10 +1,11 @@
 import { J2000_JD } from '../constants';
+import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
 
 // ── Taxonomy ─────────────────────────────────────────────────────────────────
 // Kuiper-belt dynamical classes following Gladman+ 2008 classification.
 
-export const enum KBOClass {
+export enum KBOClass {
   Classical   = 0, // "Cubewanos" — low-e, 42–48 AU
   Resonant    = 1, // Plutinos (3:2), twotinos (2:1), etc.
   Scattered   = 2, // High-e, perihelia near Neptune
@@ -12,7 +13,7 @@ export const enum KBOClass {
 }
 
 // Surface color groups from Peixinho+ 2015 taxonomy.
-export const enum KBOColor {
+export enum KBOColor {
   Neutral = 0, // Grey-blue, icy
   Red     = 1, // Ultra-red matter (tholins, organics)
   Inter   = 2, // Intermediate
@@ -185,14 +186,6 @@ export function generateKuiperBelt(
 
 const DEG = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
-
-function solveKeplerFast(M: number, e: number): number {
-  let E = M;
-  for (let i = 0; i < 6; i++) {
-    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-  }
-  return E;
-}
 
 export function propagateKBOPositions(
   kbos: readonly KBODef[],

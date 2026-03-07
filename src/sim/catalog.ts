@@ -1,5 +1,5 @@
 import rawMoons from '../data/moons.json';
-import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
+import { AU_KM, MAJOR_BODY_IDS, clamp, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
 import {
   MAJOR_MOON_RADII_KM,
   MOON_ROTATION_PERIOD_HOURS,
@@ -85,10 +85,6 @@ const EARTH_OBLIQUITY_DEG = 23.439281;
 const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
   PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 function normalizeDegrees(value: number): number {
   const mod = value % 360;
