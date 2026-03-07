@@ -55,6 +55,36 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-07 05:47:00 UTC — Documentation refreshed after TS migration and runtime analysis
+Status: DONE
+
+What changed:
+- Updated `README.md` so it no longer describes the frontend/runtime tree as a JS/TS hybrid.
+- Corrected the documented `src` module graph from deleted `.js` entrypoints to the current `.ts` files, including the `superluminal-modeling` feature namespace.
+- Recorded the current runtime state from this thread's analysis:
+  - `src` is fully TypeScript-native and no longer contains shim `.js` files.
+  - The active render loop still lives directly in `src/main.ts`.
+  - `src/frontend/app/animationLoop.ts` exists as a reusable scheduler but is not yet the sole runtime entry path.
+  - The only existing frontend workerized compute path is satellite propagation.
+
+Why it changed:
+- Recent work in this thread focused on evaluating what remains after the filename migration: stricter typing, performance hardening, and thread/domain partitioning for the simulation.
+- Without a docs refresh, the repo context continued to imply that core JS migration work was still pending, which is no longer true.
+
+Evidence/validation:
+- Verified `src` contains no `.js` files during the analysis pass.
+- Verified `src/main.ts` owns the active `requestAnimationFrame` loop while `src/frontend/app/animationLoop.ts` remains available but not yet the normalized entry.
+- Verified worker usage is currently limited to `src/frontend/features/planetary/satelliteSystem.ts` and `src/frontend/features/planetary/satellitePropagationWorker.ts`.
+
+Files touched:
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Follow-ups / open questions:
+- The next runtime pass should be architectural, not cosmetic: worker contracts for orbital propagation, sun feature state, SMBH/AGN timeline computation, and asteroid generation.
+- Strong typing is still incomplete in several hot-path files due to `// @ts-nocheck`; that should be addressed alongside worker boundary design rather than as an isolated cleanup pass.
+
 ### 2026-02-26 10:16:00 UTC — Superluminal modeling feature moved and TS-converted
 Status: DONE
 

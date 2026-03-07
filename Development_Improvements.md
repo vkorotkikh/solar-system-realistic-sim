@@ -47,6 +47,64 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-07 05:47:00 UTC
+Status: `DONE`
+Type: `TECH-DEBT`
+Summary:
+- Refreshed project documentation to match the current TypeScript-native `src` tree and the latest performance/concurrency analysis.
+
+Context / rationale:
+- The public-facing README still described `src` as a mixed JS/TS tree and referenced deleted `.js` entrypoints.
+- Recent thread work established that migration in `src` is complete, while the next major effort is workerization and stricter type hardening rather than more filename conversion.
+
+Proposed approach:
+- Updated `README.md` to reflect the current `.ts` module graph, note that `src` has no remaining JS shims, and summarize the next modernization priorities.
+- Added fresh top-of-log context in both development tracking files so future sessions do not assume the migration is still in an incremental JS-to-TS state.
+
+Expected impact:
+- Reduces stale context and prevents future work from targeting already-removed shim files or outdated JS entrypoints.
+- Keeps project-facing and internal documentation aligned around the current status: TS migration complete in `src`, concurrency hardening still open.
+
+Affected files/systems:
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Next step:
+- Keep the next runtime pass focused on worker contracts, frame-loop normalization, and replacing `// @ts-nocheck` in hot-path modules.
+
+### 2026-03-07 05:47:00 UTC
+Status: `OPEN`
+Type: `ARCHITECTURE`
+Summary:
+- TypeScript migration in `src` is functionally complete, but the runtime still does not fully exploit TypeScript for strong contracts, worker boundaries, or frame-budget control.
+
+Context / rationale:
+- Current analysis shows `src/main.ts` still owns a mostly monolithic `requestAnimationFrame` loop while one reusable scheduler exists in `src/frontend/app/animationLoop.ts`.
+- The only active workerized path in the frontend is satellite propagation; solar-system propagation, sun feature logic, SMBH/AGN timelines, and heavy asteroid generation remain main-thread dominated.
+- Many converted files still carry `// @ts-nocheck`, which means the codebase has gained TS filenames but not yet the full compile-time guarantees that make larger refactors safer.
+
+Proposed approach:
+- Normalize the runtime around a single frame scheduler and add phase-level timing instrumentation.
+- Introduce typed worker contracts for `modelWorker`, `sunWorker`, `smbhWorker`, and `asteroidWorker`, using packed transferable arrays for snapshots.
+- Remove `// @ts-nocheck` first from high-value boundary modules after message contracts and domain interfaces are established.
+
+Expected impact:
+- Lower main-thread frame pressure and fewer regressions when moving compute domains off-thread.
+- Better use of TypeScript where it matters most: cross-module contracts, worker payloads, and simulation-state invariants.
+
+Affected files/systems:
+- `src/main.ts`
+- `src/frontend/app/animationLoop.ts`
+- `src/sim/{orbitMath.ts,solarSystemModel.ts}`
+- `src/sunController.ts`
+- `src/frontend/features/solar/*`
+- `src/frontend/features/superluminal-modeling/*`
+- `src/sim/asteroids/*`
+
+Next step:
+- Implement the first workerized runtime slice with the solar-system model/orbit path, then layer in sun and asteroid generation offload.
+
 ### 2026-02-26 10:16:00 UTC
 Status: `DONE`
 Type: `ARCHITECTURE`
