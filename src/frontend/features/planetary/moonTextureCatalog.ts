@@ -1,8 +1,8 @@
-function normalizeMoonToken(value) {
+function normalizeMoonToken(value: unknown): string {
   return `${value ?? ''}`.trim().toLowerCase();
 }
 
-export function moonTextureKey(parentId, moonName) {
+export function moonTextureKey(parentId: string, moonName: string): string {
   return `${normalizeMoonToken(parentId)}:${normalizeMoonToken(moonName)}`;
 }
 
@@ -135,11 +135,11 @@ export const CURATED_MOON_TEXTURE_CATALOG = Object.freeze([
 
 const CATALOG_BY_KEY = new Map(CURATED_MOON_TEXTURE_CATALOG.map((entry) => [entry.key, entry]));
 
-export function moonTextureCatalogEntryForKey(key) {
+export function moonTextureCatalogEntryForKey(key: string) {
   return CATALOG_BY_KEY.get(`${key ?? ''}`.toLowerCase()) ?? null;
 }
 
-export function moonTextureCatalogEntryForBody(body) {
+export function moonTextureCatalogEntryForBody(body: { parentId: string; name?: string; id: string } | null) {
   if (!body) return null;
   const key = moonTextureKey(body.parentId, body.name ?? body.id);
   return moonTextureCatalogEntryForKey(key);
