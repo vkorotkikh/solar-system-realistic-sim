@@ -284,6 +284,7 @@ export class SolarFlareManager {
             this.events.length < this.maxEvents
             && activity > 0.1
             && (!hasBackendCmes || !usedPhysicsDrivers)
+            && (timeSec - this.lastPhysicsDrivenSpawnSec > 18 || !Number.isFinite(timeSec))
         ) {
             // higher activity = lower threshold
             // E.g. at activity=1.0, mean time between fallback spawns ~ 35s

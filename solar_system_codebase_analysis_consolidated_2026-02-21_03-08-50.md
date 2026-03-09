@@ -593,3 +593,74 @@ The project’s next leap is not adding one more headline feature; it is tighten
 - Extra perturbation gaps: SRP, tides, harmonics.
 - Multi-revolution Lambert critique.
 - Gradecard format and deployment readiness framing.
+
+## Status Addendum - 2026-03-08
+
+This section revisits the report against the current repository state and records what is now resolved, partially resolved, still open, and newly started in the latest implementation pass.
+
+### Current Status Summary
+
+#### Resolved or materially improved since the original analysis
+
+- The original `src/main.js` monolith no longer exists in that form. The app now has `src/main.ts` plus extracted modules under `src/frontend/app/`.
+- Frontend TypeScript coverage is materially broader than in the earlier reviews, although strict typing is still incomplete across many modules.
+- The old archived nearby-systems temp file concern appears resolved via `src/frontend/app/nearbySystemsRenderer.ts`; the earlier `temp_nearbySystemsRenderer.js` issue is no longer present.
+- Root screenshot clutter is already mitigated by `.gitignore` containing `Screenshot *.png`.
+- REBOUND checkpoint-assisted seeking is present in `backend/sim/rebound_nbody.py`, so earlier warnings about always reinitializing from J2000 are outdated.
+- Explicit resource disposal exists in several rendering paths and in the `beforeunload` cleanup path.
+
+#### Partially resolved
+
+- Frontend architecture: improved, but `src/main.ts` is still large and still owns too much orchestration.
+- State management: a centralized state module exists, but broad app migration to reactive patterns remains incomplete.
+- Web-worker offload: implemented for the main solar-system model and satellite propagation, but not yet generalized across all heavy frontend systems.
+- Type safety: the codebase is increasingly TS-based, but strict typing still fails across a large number of frontend files.
+- Socket protocol hardening existed only as a recommendation; this pass adds protocol-version support and reconnect/stale-state logic in the socket client/server path, but that path is not yet fully wired into the current `src/main.ts` bootstrap.
+
+#### Still open / not yet implemented
+
+- General relativity correction in REBOUND.
+- Satellite drag for LEO and lunisolar perturbations for GEO.
+- Eclipse/umbra/penumbra geometry.
+- Light-time correction mode.
+- Lunar ephemeris upgrade beyond the present Keplerian-style approximation.
+- Low-thrust mission design support.
+- Multi-revolution Lambert support.
+- CI/CD, Docker/containerization, and broader deployment hardening.
+- Full frontend test coverage and full TS cleanup across all modules.
+
+### Codebase Check Against Main Report Points
+
+| Area | Status | Notes |
+|---|---|---|
+| Frontend monolith breakup | Partial | `src/main.ts` is down to ~1.1k lines and many app modules exist, but orchestration is still centralized. |
+| Mixed JS/TS / type safety | Partial | TS is widespread now, but strict `tsc --noEmit` still fails heavily across frontend files. |
+| Duplicate Kepler/propagation logic | Improved | Satellite propagation duplication was reduced in this pass via a shared propagation core module. |
+| Frontend test gap | Started | Vitest added in this pass with deterministic tests for orbit math and the state store. |
+| Mutable global state | Improved | `stateStore` now exposes subscription and batched updates while preserving existing direct property writes. |
+| WebSocket reconnect / stale state / protocol versioning | Improved | Implemented in `src/frontend/app/simulationClient.ts` and `backend/server.py` in this pass. |
+| Dead files / repo hygiene | Mostly resolved | The temp nearby-systems archive file concern appears resolved; screenshot ignore already exists. |
+| Secular drift corrections in frontend orbit propagation | Improved | Implemented in `src/sim/orbitMath.ts` and applied to major planetary data in `src/data/planets.ts` in this pass. |
+| Lambert root-finding performance | Improved | The root solve moved from pure bisection to a hybrid bracketed secant/bisection approach in this pass. |
+| REBOUND GR correction | Open | Not implemented yet. |
+| Satellite drag / higher-order perturbations | Open | J2 remains the main frontend satellite perturbation model. |
+| Eclipse / light-time / lunar theory upgrades | Open | Still not implemented. |
+| CI/CD / Docker | Open | No workflow or container definition is present. |
+
+### Implementation Work Started in This Pass
+
+1. Added lightweight secular drift support to frontend orbital propagation in `src/sim/orbitMath.ts`.
+2. Added major-planet secular drift data in `src/data/planets.ts`.
+3. Upgraded `src/frontend/app/stateStore.ts` into a reactive proxy-backed store with subscription and batched patch support.
+4. Reduced duplicated satellite propagation logic by extracting `src/frontend/features/planetary/satellitePropagationCore.ts`.
+5. Added protocol version reporting plus reconnect/backoff/stale-state handling in `src/frontend/app/simulationClient.ts`.
+6. Added server-side WebSocket protocol-version reporting/warnings in `backend/server.py`.
+7. Replaced pure Lambert bisection with a hybrid bracketed root solve in `backend/trajectory/lambert.py`.
+8. Added test scaffolding via Vitest plus focused deterministic tests for orbit math and state store behavior.
+
+### Verification Notes
+
+- `npm test` passes.
+- `pytest backend/tests/test_trajectory_regression.py` passes.
+- `npm run build` passes.
+- Full `npm run typecheck` does not pass on the current codebase because there are extensive pre-existing strict-typing issues across many frontend files outside the scope of this implementation batch.

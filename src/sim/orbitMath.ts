@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
+const JULIAN_CENTURY_DAYS = 36_525;
 
 export interface KeplerOrbit {
   aAu: number;
@@ -12,6 +13,26 @@ export interface KeplerOrbit {
   ascendingNodeDeg?: number;
   argPeriapsisDeg?: number;
   meanAnomalyDeg?: number;
+  secularRates?: KeplerOrbitSecularRates;
+}
+
+export interface KeplerOrbitSecularRates {
+  aAuPerCentury?: number;
+  ePerCentury?: number;
+  iDegPerCentury?: number;
+  ascendingNodeDegPerCentury?: number;
+  argPeriapsisDegPerCentury?: number;
+}
+
+export interface ResolvedKeplerOrbit {
+  aAu: number;
+  e: number;
+  iRad: number;
+  ascendingNodeRad: number;
+  argPeriapsisRad: number;
+  meanAnomalyRad: number;
+  periodDays: number;
+  centuriesSinceEpoch: number;
 }
 
 export function degToRad(deg: number): number {
@@ -53,22 +74,58 @@ export function solveKepler(
   return eccentricAnomaly;
 }
 
+function clampEccentricity(eccentricity: number): number {
+  return Math.max(0, Math.min(0.9999999, eccentricity));
+}
+
+export function resolveKeplerOrbitAtElapsedDays(
+  orbit: KeplerOrbit,
+  elapsedDays: number
+): ResolvedKeplerOrbit {
+  const centuriesSinceEpoch = elapsedDays / JULIAN_CENTURY_DAYS;
+  const secularRates = orbit.secularRates;
+  const baseA = Math.max(1e-9, orbit.aAu);
+  const a = Math.max(1e-9, baseA + (secularRates?.aAuPerCentury ?? 0) * centuriesSinceEpoch);
+  const e = clampEccentricity((orbit.e ?? 0) + (secularRates?.ePerCentury ?? 0) * centuriesSinceEpoch);
+  const iRad = degToRad((orbit.iDeg ?? 0) + (secularRates?.iDegPerCentury ?? 0) * centuriesSinceEpoch);
+  const ascendingNodeRad = degToRad(
+    (orbit.ascendingNodeDeg ?? 0) + (secularRates?.ascendingNodeDegPerCentury ?? 0) * centuriesSinceEpoch
+  );
+  const argPeriapsisRad = degToRad(
+    (orbit.argPeriapsisDeg ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0) * centuriesSinceEpoch
+  );
+
+  const basePeriodDays = Math.max(1e-9, orbit.periodDays);
+  const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
+  const meanMotion = TWO_PI / periodDays;
+  const meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotion * elapsedDays);
+
+  return {
+    aAu: a,
+    e,
+    iRad,
+    ascendingNodeRad,
+    argPeriapsisRad,
+    meanAnomalyRad,
+    periodDays,
+    centuriesSinceEpoch
+  };
+}
+
 export function propagateKeplerOrbit(
   orbit: KeplerOrbit,
   elapsedDays: number,
   outPosition: Vector3,
   outVelocity: Vector3 | null = null
 ): void {
-  const a = orbit.aAu;
-  const e = Math.max(0, Math.min(0.9999999, orbit.e ?? 0));
-  const i = degToRad(orbit.iDeg ?? 0);
-  const ascendingNode = degToRad(orbit.ascendingNodeDeg ?? 0);
-  const argPeriapsis = degToRad(orbit.argPeriapsisDeg ?? 0);
-  const meanAnomaly0 = degToRad(orbit.meanAnomalyDeg ?? 0);
-  const period = orbit.periodDays;
-
-  const meanMotion = TWO_PI / period;
-  const meanAnomaly = normalizeRadians(meanAnomaly0 + meanMotion * elapsedDays);
+  const resolved = resolveKeplerOrbitAtElapsedDays(orbit, elapsedDays);
+  const a = resolved.aAu;
+  const e = resolved.e;
+  const i = resolved.iRad;
+  const ascendingNode = resolved.ascendingNodeRad;
+  const argPeriapsis = resolved.argPeriapsisRad;
+  const meanAnomaly = resolved.meanAnomalyRad;
+  const meanMotion = TWO_PI / resolved.periodDays;
   const eccentricAnomaly = solveKepler(meanAnomaly, e);
 
   const cosE = Math.cos(eccentricAnomaly);

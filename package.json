@@ -8,6 +8,7 @@
     "dev:full": "node ./scripts/dev-full.mjs",
     "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
+    "test": "vitest run",
     "phase1:asteroid-dataset": "python3 scripts/build_asteroid_phase1_dataset.py",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
@@ -17,7 +18,8 @@
   "devDependencies": {
     "@types/three": "^0.182.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "three": "^0.182.0"
