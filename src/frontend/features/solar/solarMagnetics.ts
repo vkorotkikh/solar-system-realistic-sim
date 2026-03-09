@@ -15,6 +15,63 @@ import {
 
 const SOURCE_SURFACE_R = 2.5;
 
+function clampUnit(value) {
+    return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function seededNoise(seed) {
+    const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453123;
+    return x - Math.floor(x);
+}
+
+function normalizeDirection(sample) {
+    if (!Array.isArray(sample) || sample.length !== 3) return null;
+    const x = Number(sample[0]);
+    const y = Number(sample[1]);
+    const z = Number(sample[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+    const len = Math.hypot(x, y, z);
+    if (len < 1e-6) return null;
+    return new Vector3(x / len, y / len, z / len);
+}
+
+function extractFeatureSeedDirections(physicsState, targetCount) {
+    const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
+    if (features.length === 0) return [];
+
+    const seeds = [];
+    const seen = new Set();
+    const ranked = features
+        .map((feature) => {
+            const brightness = clampUnit(Number(feature?.brightness) || 0);
+            const emergence = clampUnit(Number(feature?.emergence) || brightness);
+            const extent = clampUnit((Number(feature?.peak_extent_solar_radii) - 1.0) / 3.8);
+            const kind = `${feature?.kind ?? 'loop'}`.toLowerCase();
+            const kindBoost = kind === 'cme' ? 0.12 : (kind === 'loop' ? 0.06 : 0);
+            return {
+                feature,
+                score: brightness * 0.55 + emergence * 0.25 + extent * 0.20 + kindBoost
+            };
+        })
+        .sort((a, b) => b.score - a.score);
+
+    for (const candidate of ranked) {
+        const baseDir = normalizeDirection(candidate.feature?.base_dir) ?? normalizeDirection(candidate.feature?.arc?.[0]);
+        const pairedDir = normalizeDirection(candidate.feature?.paired_dir)
+            ?? normalizeDirection(candidate.feature?.arc?.[candidate.feature?.arc?.length - 1]);
+        for (const dir of [baseDir, pairedDir]) {
+            if (!dir) continue;
+            const key = `${dir.x.toFixed(2)}:${dir.y.toFixed(2)}:${dir.z.toFixed(2)}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            seeds.push({ direction: dir, score: candidate.score });
+            if (seeds.length >= targetCount) return seeds;
+        }
+    }
+
+    return seeds;
+}
+
 /**
  * Calculates a simplified, analytical potential magnetic field vector at position (x, y, z)
  * using a mix of dipole and quadrupole terms scaled by solar activity.
@@ -136,23 +193,40 @@ function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
 /**
  * Creates the PFSS magnetic field visualization group.
  */
-export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, numLines = 60) {
+export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, {
+    numLines = null,
+    physicsState = null
+} = {}) {
     const group = new Group();
     const maxSteps = 200;
     const stepSize = 0.05;
+    const lineTarget = Math.max(
+        24,
+        Math.min(132, Math.round(Number(numLines) || (36 + clampUnit(activity) * 72)))
+    );
 
     const closedColor = new Color('#ffe8d6');
-    const openPosColor = new Color('#42f57a'); // green
-    const openNegColor = new Color('#f542e6'); // magenta
+    const openPosColor = new Color('#5df0b4');
+    const openNegColor = new Color('#ff6f91');
+    const seededDirections = extractFeatureSeedDirections(physicsState, Math.round(lineTarget * 0.7));
 
-    for (let i = 0; i < numLines; i++) {
-        // Seed footpoints uniformly on sphere using Fibonacci spiral or random
-        const phi = Math.acos(1 - 2 * (i + 0.5) / numLines);
-        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-
-        const x = Math.sin(phi) * Math.cos(theta);
-        const y = Math.sin(phi) * Math.sin(theta);
-        const z = Math.cos(phi);
+    for (let i = 0; i < lineTarget; i++) {
+        let x;
+        let y;
+        let z;
+        const seeded = seededDirections[i] ?? null;
+        if (seeded?.direction) {
+            x = seeded.direction.x;
+            y = seeded.direction.y;
+            z = seeded.direction.z;
+        } else {
+            // Fill remaining lines with a quasi-uniform quiet-Sun distribution.
+            const phi = Math.acos(1 - 2 * (i + 0.5) / lineTarget);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+            x = Math.sin(phi) * Math.cos(theta);
+            y = Math.sin(phi) * Math.sin(theta);
+            z = Math.cos(phi);
+        }
 
         const trace = traceFieldLine(x, y, z, stepSize, maxSteps, activity);
 
@@ -171,10 +245,12 @@ export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, numLines =
         geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 
         let lineColor = closedColor;
-        let opacity = 0.15 + Math.random() * 0.1;
+        const seedScore = seeded?.score ?? (0.18 + clampUnit(activity) * 0.18);
+        const jitter = seededNoise(i * 1.37 + activity * 7.1);
+        let opacity = 0.12 + seedScore * 0.16 + jitter * 0.05;
         if (trace.isOpen) {
             lineColor = trace.polarity > 0 ? openPosColor : openNegColor;
-            opacity = 0.3 + Math.random() * 0.2;
+            opacity = 0.24 + seedScore * 0.24 + jitter * 0.08;
         }
 
         const material = new LineBasicMaterial({
@@ -186,12 +262,16 @@ export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, numLines =
         });
 
         const line = new Line(geometry, material);
-        // Store original opacity for animation
         line.userData.baseOpacity = opacity;
-        line.userData.phaseOffset = Math.random() * Math.PI * 2;
+        line.userData.phaseOffset = seededNoise(i * 3.11 + 0.7) * Math.PI * 2;
+        line.userData.pulseRate = trace.isOpen
+            ? 0.55 + seedScore * 0.8
+            : 0.28 + seedScore * 0.45;
+        line.userData.isOpen = trace.isOpen;
         group.add(line);
     }
 
+    group.userData.activity = clampUnit(activity);
     return group;
 }
 
@@ -278,16 +358,25 @@ export function createMagnetogramTexture(size = 512, activity = 0.5) {
 /**
  * Updates the field lines animation (breathing effect).
  */
-export function updateMagneticFieldLines(group, timeSec) {
+export function updateMagneticFieldLines(group, timeSec, activity = null) {
     if (!group || !group.visible) return;
+    const activityLevel = clampUnit(
+        Number.isFinite(Number(activity))
+            ? Number(activity)
+            : Number(group.userData?.activity)
+    );
 
     for (const line of group.children) {
         if (!line.userData) continue;
         const base = line.userData.baseOpacity ?? 0.2;
         const phase = line.userData.phaseOffset ?? 0;
+        const pulseRate = line.userData.pulseRate ?? 0.5;
 
-        // Slow pulsation
-        const pulse = Math.sin(timeSec * 0.5 + phase) * 0.3 + 0.7; // 0.4 to 1.0 variation
+        const pulseFloor = line.userData.isOpen ? 0.52 : 0.62;
+        const pulseCeil = line.userData.isOpen
+            ? (0.88 + activityLevel * 0.12)
+            : (0.82 + activityLevel * 0.08);
+        const pulse = pulseFloor + (Math.sin(timeSec * pulseRate + phase) * 0.5 + 0.5) * (pulseCeil - pulseFloor);
 
         if (line.material) {
             line.material.opacity = base * pulse;
