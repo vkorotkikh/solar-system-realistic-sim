@@ -47,6 +47,37 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-09 04:49 UTC
+Status: `DONE`
+Type: `ARCHITECTURE` / `FIX`
+Summary:
+- Added binary KBO (Kuiper Belt Object) support across the full stack. Approximately 20% of generated KBOs now have gravitationally-bound binary companions with physically-motivated mutual orbits.
+
+Context / rationale:
+- ~30% of cold classical KBOs are observed as binary systems (Noll+ 2008, Fraser+ 2017). This was the top-rated gap in the Kuiper Belt simulation (7/10 score with "No binary KBOs" as the biggest gap).
+
+Proposed approach:
+- Frontend: `BinaryCompanionDef` interface with mutual orbit elements (separation, period via Kepler's 3rd law, eccentricity, inclination). `generateBinaryCompanion()` uses observationally-calibrated distributions (log-normal size ratio ~0.8, log-uniform separation 1,000–200,000 km). Binary fraction per dynamical class from Noll+ 2008.
+- Rendering: Second `InstancedMesh` in `beltRenderer.ts` for companion bodies, with proper size/color/orientation setup.
+- Backend: Binary pair generation in `kuiper.py` with 20% fraction, companion particles placed at realistic separations. `get_state()` now returns `{"positions": [...], "binary_pairs": [[primary, companion], ...]}`.
+- Tests: `test_kuiper_binary.py` with 8 test cases covering generation, index validity, separation distance, non-overlapping indices, state format, and lifecycle.
+
+Expected impact:
+- Visual: Binary companions visibly orbit their primaries when simulation clock advances.
+- Performance: Minimal — companion mesh adds ~20% more KBO instances, propagation is lightweight.
+- Scientific: More accurate representation of the Kuiper Belt's observed structure.
+
+Affected files/systems:
+- `src/sim/kuiperBelt.ts` — `BinaryCompanionDef`, `BINARY_FRACTION`, `generateBinaryCompanion()`, `propagateBinaryKBOPositions()`
+- `src/frontend/features/asteroids/beltRenderer.ts` — companion `InstancedMesh`, `updateBinaryPositions()`
+- `src/main.ts` — import, initialization, animation loop, cleanup integration
+- `backend/sim/kuiper.py` — binary pair generation, `get_state()` dict return format
+- `backend/tests/test_kuiper_binary.py` — [NEW] 8 pytest test cases
+
+Next step:
+- Consider adding visual indicators (e.g., tidal bridge lines) for the closest binary pairs.
+- Future: support real named binary KBOs (e.g., 1998 WW31, (66652) Borasisi–Pabu).
+
 ### 2026-03-07 UTC
 Status: `DONE`
 Type: `FIX` / `OPTIMIZATION` / `TECH-DEBT`

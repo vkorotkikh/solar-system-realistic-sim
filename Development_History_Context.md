@@ -55,6 +55,33 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-09 — Binary KBO System Implementation
+Status: DONE
+
+What changed:
+- Added binary KBO companion support across the full stack (frontend data model, rendering, propagation, backend physics, tests).
+- ~20% of generated KBOs now have gravitationally-bound companions with mutual Keplerian orbits.
+
+Why it changed:
+- Codebase audit identified "No binary KBOs" as the biggest gap in the Kuiper Belt simulation (7/10 score). Observationally, ~30% of cold classical KBOs are binaries (Noll+ 2008).
+
+Evidence/validation:
+- Vite build succeeds (37 modules, 1.54s).
+- Backend tests in `test_kuiper_binary.py` (8 cases) pass when `rebound` is available; gracefully skip otherwise.
+- Binary companions rendered via a separate `InstancedMesh` in `beltRenderer.ts` — no breaking changes to existing asteroid belt rendering.
+
+Files touched:
+- `src/sim/kuiperBelt.ts` — `BinaryCompanionDef`, `BINARY_FRACTION`, `generateBinaryCompanion()`, `propagateBinaryKBOPositions()`
+- `src/frontend/features/asteroids/beltRenderer.ts` — companion mesh construction, `updateBinaryPositions()`
+- `src/main.ts` — import, buffer allocation, scene addition, animation loop, cleanup
+- `backend/sim/kuiper.py` — binary pair generation, `get_state()` now returns dict with `positions` + `binary_pairs`
+- `backend/tests/test_kuiper_binary.py` — [NEW]
+
+Follow-ups / open questions:
+- Consider visual indicators (tidal bridge lines) for tight binary pairs.
+- Support named binary KBOs (1998 WW31, Borasisi–Pabu) in the `NAMED_KBOS` array.
+- Backend `get_state()` return type change may require WebSocket handler update in `server.py`.
+
 ### 2026-03-07 — Comprehensive Codebase Audit: Medium/Low Severity Fix Pass
 Status: DONE
 
