@@ -74,6 +74,81 @@ def _transfer_angle(r1: Sequence[float], r2: Sequence[float], *, prograde: bool)
     return theta
 
 
+def _solve_bracketed_z(
+    z_left: float,
+    z_right: float,
+    tof_target: float,
+    r1_mag: float,
+    r2_mag: float,
+    A: float,
+    mu: float,
+    *,
+    max_iter: int,
+    tol_days: float,
+) -> Optional[Tuple[float, Tuple[float, float, float, float]]]:
+    left_state = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
+    right_state = _tof_from_z(z_right, r1_mag, r2_mag, A, mu)
+    if left_state is None or right_state is None:
+        return None
+
+    f_left = left_state[0] - tof_target
+    f_right = right_state[0] - tof_target
+    if abs(f_left) <= tol_days:
+        return z_left, left_state
+    if abs(f_right) <= tol_days:
+        return z_right, right_state
+    if f_left * f_right > 0.0:
+        return None
+
+    best_z = z_left if abs(f_left) <= abs(f_right) else z_right
+    best_state = left_state if best_z == z_left else right_state
+    best_abs = min(abs(f_left), abs(f_right))
+
+    for _ in range(max_iter):
+        if abs(f_right - f_left) > 1e-14:
+            z_trial = z_right - f_right * (z_right - z_left) / (f_right - f_left)
+        else:
+            z_trial = 0.5 * (z_left + z_right)
+
+        lower = min(z_left, z_right)
+        upper = max(z_left, z_right)
+        if not math.isfinite(z_trial) or z_trial <= lower or z_trial >= upper:
+            z_trial = 0.5 * (z_left + z_right)
+
+        midpoint = 0.5 * (z_left + z_right)
+        if abs(z_trial - midpoint) > 0.8 * abs(z_right - z_left):
+            z_trial = midpoint
+
+        trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
+        if trial_state is None:
+            z_trial = midpoint
+            trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
+            if trial_state is None:
+                return best_z, best_state
+
+        f_trial = trial_state[0] - tof_target
+        if abs(f_trial) < best_abs:
+            best_z = z_trial
+            best_state = trial_state
+            best_abs = abs(f_trial)
+        if abs(f_trial) <= tol_days:
+            return z_trial, trial_state
+
+        if f_left * f_trial <= 0.0:
+            z_right = z_trial
+            right_state = trial_state
+            f_right = f_trial
+        else:
+            z_left = z_trial
+            left_state = trial_state
+            f_left = f_trial
+
+        if abs(z_right - z_left) <= 1e-8:
+            break
+
+    return best_z, best_state
+
+
 def solve_lambert_universal(
     r1: Sequence[float],
     r2: Sequence[float],
@@ -145,37 +220,20 @@ def solve_lambert_universal(
         if tof_state is None:
             return None
     else:
-        z_left = root_low
-        z_right = root_high
-        z_star = 0.5 * (z_left + z_right)
-        tof_state = None
-
-        for _ in range(max_iter):
-            z_star = 0.5 * (z_left + z_right)
-            tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-            if tof_state is None:
-                z_left = z_star + 1e-4
-                continue
-
-            f_mid = tof_state[0] - tof_target
-            if abs(f_mid) <= tol_days:
-                break
-
-            tof_left = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
-            if tof_left is None:
-                z_left += 1e-4
-                continue
-
-            f_left = tof_left[0] - tof_target
-            if f_left * f_mid <= 0.0:
-                z_right = z_star
-            else:
-                z_left = z_star
-
-        if tof_state is None:
-            tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-            if tof_state is None:
-                return None
+        root_solution = _solve_bracketed_z(
+            root_low,
+            root_high,
+            tof_target,
+            r1_mag,
+            r2_mag,
+            A,
+            mu,
+            max_iter=max_iter,
+            tol_days=tol_days,
+        )
+        if root_solution is None:
+            return None
+        z_star, tof_state = root_solution
 
     tof_value, y, _, _ = tof_state
     f = 1.0 - y / r1_mag
@@ -231,6 +289,8 @@ def compute_lambert_leg(
         "departureJd": float(departure_jd),
         "arrivalJd": arrival_jd,
         "tofDays": float(tof_days),
+        "computedTofDays": float(lambert["computedTofDays"]),
+        "solverZ": float(lambert["z"]),
         "pathLengthAu": chord,
         "transferAngleDeg": float(lambert["transferAngleDeg"]),
         "deltaVDepartureKmS": delta_v_depart,

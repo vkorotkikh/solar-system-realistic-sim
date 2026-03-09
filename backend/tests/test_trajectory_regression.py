@@ -39,6 +39,7 @@ def test_direct_lambert_solution_exists() -> None:
     solution = result["solution"]
     assert solution["deltaVDepartureKmS"] >= 0.0
     assert solution["deltaVArrivalKmS"] >= 0.0
+    assert abs(solution["computedTofDays"] - 120.0) < 1e-3
 
 
 def test_porkchop_scan_returns_ranked_points() -> None:

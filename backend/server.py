@@ -93,6 +93,7 @@ app.add_middleware(
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
 DEFAULT_ENGINE = "rebound"
+WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
@@ -1071,10 +1072,25 @@ async def simulation_websocket(websocket: WebSocket):
     # Select engine and integrator from query params
     engine_requested = websocket.query_params.get("engine", DEFAULT_ENGINE).lower()
     integrator_requested = websocket.query_params.get("integrator", DEFAULT_INTEGRATOR).lower()
+    protocol_requested_raw = websocket.query_params.get("protocol_version")
     integrator = integrator_requested if integrator_requested in SUPPORTED_INTEGRATORS else DEFAULT_INTEGRATOR
 
     # Initialize requested engine
     warnings = []
+    protocol_requested: int | None = None
+    if protocol_requested_raw is not None:
+        try:
+            protocol_requested = int(protocol_requested_raw)
+        except (TypeError, ValueError):
+            warnings.append(
+                f"Invalid protocol_version `{protocol_requested_raw}`; server uses `{WS_PROTOCOL_VERSION}`"
+            )
+            protocol_requested = None
+    if protocol_requested is not None and protocol_requested != WS_PROTOCOL_VERSION:
+        warnings.append(
+            f"Protocol version mismatch: client `{protocol_requested}` vs server `{WS_PROTOCOL_VERSION}`"
+        )
+
     if integrator != integrator_requested:
         warnings.append(
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
@@ -1146,6 +1162,8 @@ async def simulation_websocket(websocket: WebSocket):
     # Notify client of connection
     await websocket.send_text(json.dumps({
         "type": "connected",
+        "protocol_version": WS_PROTOCOL_VERSION,
+        "protocol_version_requested": protocol_requested,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,
