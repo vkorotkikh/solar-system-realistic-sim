@@ -484,43 +484,104 @@ export function createSunSurfaceMaterial(sunMap) {
   return material;
 }
 
+function clampSunspotSeedValue(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeFeatureDirection(sample) {
+  if (!Array.isArray(sample) || sample.length !== 3) return null;
+  const x = Number(sample[0]);
+  const y = Number(sample[1]);
+  const z = Number(sample[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+  const len = Math.hypot(x, y, z);
+  if (len < 1e-6) return null;
+  return [x / len, y / len, z / len];
+}
+
+function collectPhysicsDrivenSunspotGroups(physicsState, activity) {
+  const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
+  if (features.length === 0) return [];
+
+  const grouped = new Map();
+  for (const feature of features) {
+    const kind = `${feature?.kind ?? 'loop'}`.toLowerCase();
+    if (kind !== 'loop' && kind !== 'cme') continue;
+
+    const baseDir = normalizeFeatureDirection(feature?.base_dir) ?? normalizeFeatureDirection(feature?.arc?.[0]);
+    const pairedDir = normalizeFeatureDirection(feature?.paired_dir)
+      ?? normalizeFeatureDirection(feature?.arc?.[feature?.arc?.length - 1]);
+    if (!baseDir || !pairedDir) continue;
+
+    const centerX = baseDir[0] + pairedDir[0];
+    const centerY = baseDir[1] + pairedDir[1];
+    const centerZ = baseDir[2] + pairedDir[2];
+    const centerLen = Math.hypot(centerX, centerY, centerZ);
+    if (centerLen < 1e-6) continue;
+
+    const brightness = clampUnit(Number(feature?.brightness) || 0.2);
+    const emergence = clampUnit(Number(feature?.emergence) || brightness);
+    const dot = clampSunspotSeedValue(
+      baseDir[0] * pairedDir[0] + baseDir[1] * pairedDir[1] + baseDir[2] * pairedDir[2],
+      -1,
+      1
+    );
+    const separation = Math.acos(dot);
+    const centerDir = [centerX / centerLen, centerY / centerLen, centerZ / centerLen];
+    const lon = Math.atan2(centerDir[2], centerDir[0]);
+    const lat = Math.asin(clampSunspotSeedValue(centerDir[1], -1, 1));
+    const intensity = clampUnit(0.22 + brightness * 0.5 + emergence * 0.28 + activity * 0.08);
+    const angularRadius = clampSunspotSeedValue(0.018 + separation * 0.38 + intensity * 0.022, 0.018, 0.105);
+    const score = brightness * 0.62 + emergence * 0.28 + (kind === 'cme' ? 0.10 : 0.04);
+    const regionId = `${feature?.active_region_id ?? feature?.region_id ?? feature?.id ?? `sunspot-${grouped.size}`}`;
+    const existing = grouped.get(regionId);
+    if (!existing || score > existing.score) {
+      grouped.set(regionId, { lon, lat, angularRadius, intensity, score });
+    }
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+}
+
 /**
  * Procedurally update sunspot positions based on current activity level.
  * Sunspots follow Spörer's law: appear at ~±35° lat at cycle start, migrate to ~±5° at end.
  * Called once per second from the animation loop.
  */
-export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
+export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec, physicsState = null) {
   if (!sunSurfaceMaterial?.uniforms?.sunspotSeeds) return;
 
   const TWO_PI = Math.PI * 2;
-  // Number of visible sunspot GROUPS scales with activity (each group = 2-5 individual spots)
-  // At solar max: 8 groups × up to 5 spots = up to 40 visible spots
-  const count = Math.min(8, Math.round(activity * 7) + 1);
-
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
-  for (let i = 0; i < 8; i++) {
-    if (i >= count) {
-      // Zero out intensity so the early-exit guard in the shader skips this slot
+  const physicsDrivenGroups = collectPhysicsDrivenSunspotGroups(physicsState, activity);
+  let seedIndex = 0;
+
+  for (const group of physicsDrivenGroups) {
+    seeds[seedIndex].set(group.lon, group.lat, group.angularRadius, group.intensity);
+    seedIndex += 1;
+    if (seedIndex >= seeds.length) return;
+  }
+
+  // Fill any remaining slots with deterministic synthetic spots so the Sun still reads correctly
+  // when the backend has not produced enough active-region structure yet.
+  const targetCount = Math.min(8, Math.round(activity * 7) + 1);
+  for (let i = seedIndex; i < 8; i++) {
+    if (i >= targetCount) {
       seeds[i].set(0, 0, 0, 0);
       continue;
     }
 
-    // Stable seed from index (so spots don't jump every frame)
-    const s = (i * 0.618033 + activity * 0.3) % 1;
-    const s2 = ((i + 3) * 0.382 + activity * 0.5) % 1;
-
-    // Longitude: drift with differential rotation (~13 deg/day at equator)
+    const syntheticIndex = i - seedIndex;
+    const s = (syntheticIndex * 0.618033 + activity * 0.3) % 1;
+    const s2 = ((syntheticIndex + 3) * 0.382 + activity * 0.5) % 1;
     const baseLon = (s * TWO_PI + timeSec * 0.000261) % TWO_PI;
-
-    // Spörer's law: active latitude band (~5°–35°) scales with activity
     const maxLat = 0.05 + activity * 0.55;
-    const latSign = (i % 2 === 0) ? 1.0 : -1.0;
+    const latSign = (syntheticIndex % 2 === 0) ? 1.0 : -1.0;
     const baseLat = latSign * (maxLat * 0.3 + s2 * maxLat * 0.7);
-
     const angularRadius = 0.025 + s * 0.08 * activity;
-    const intensity = 0.6 + s2 * 0.4;
-
-    // Vector4.set(x, y, z, w) — correct API for Three.js Vector4
+    const intensity = 0.55 + s2 * 0.35;
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
   }
 }
@@ -677,6 +738,9 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
 
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-chromosphere';
+  points.userData.baseRadiusAu = sunDisplayRadius;
+  points.userData.radiusScale = 1;
+  points.userData.activityScale = 1.004;
   points.renderOrder = 4;
   points.frustumCulled = false;
   return points;
@@ -687,22 +751,37 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
  * @param {Points} chromospherePoints - The object returned by createChromosphereLayer
  * @param {number} timeSec - Current wall-clock seconds
  * @param {number} activity - [0,1] solar activity level
- * @param {boolean} is304Mode - True when the 304Å channel is selected
  */
-export function updateChromosphereLayer(chromospherePoints, timeSec, activity, is304Mode = false) {
+export function updateChromosphereLayer(chromospherePoints, timeSec, activity, {
+  activeChannel = null,
+  observationBlend = 0,
+  observationEmission = 0,
+  observedConfidence = 0,
+  observedFreshness = 0
+} = {}) {
   if (!chromospherePoints?.material?.uniforms) return;
   const u = chromospherePoints.material.uniforms;
   u.time.value = timeSec;
   u.chromoActivity.value = activity;
-  // In 304Å mode: deep magenta-red, highly opaque (transition region plasma at ~50,000 K)
-  // In other modes: warm orange, subtle (visible but not distracting)
-  if (is304Mode) {
-    u.chromoColor.value.set('#ff3888');
-    u.chromoOpacity.value = 1.0;
+  const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+  const observationWeight = clampUnit(observationBlend * 0.55 + observationEmission * 0.30 + observedConfidence * 0.15);
+  const confidenceWeight = clampUnit(observedConfidence * 0.6 + observedFreshness * 0.4);
+
+  if (channelKey === 'aia_304') {
+    u.chromoColor.value.set('#ff3d78');
+    u.chromoOpacity.value = 0.48 + activity * 0.18 + confidenceWeight * 0.24 + observationWeight * 0.14;
+  } else if (channelKey === 'aia_171') {
+    u.chromoColor.value.set('#ff9d4d');
+    u.chromoOpacity.value = 0.16 + activity * 0.08 + observationWeight * 0.06;
   } else {
     u.chromoColor.value.set('#ff8842');
-    u.chromoOpacity.value = 0.22;
+    u.chromoOpacity.value = 0.14 + activity * 0.10 + observationWeight * 0.08;
   }
+
+  const radiusScale = Number(chromospherePoints.userData?.radiusScale) || 1;
+  const activityScale = 1.004 + activity * 0.010 + observationEmission * 0.012 + (channelKey === 'aia_304' ? 0.010 : 0);
+  chromospherePoints.userData.activityScale = activityScale;
+  chromospherePoints.scale.setScalar(radiusScale * activityScale);
 }
 
 export function createSunGlow(sunDisplayRadius) {
