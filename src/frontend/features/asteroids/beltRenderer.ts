@@ -13,7 +13,7 @@ import {
 } from 'three';
 
 import type { AsteroidDef } from '../../../sim/asteroidBelt';
-import type { KBODef } from '../../../sim/kuiperBelt';
+import type { KBODef, BinaryCompanionDef } from '../../../sim/kuiperBelt';
 import { J2000_JD, AU_KM } from '../../../constants';
 
 // ── Geometry generation ──────────────────────────────────────────────────────
