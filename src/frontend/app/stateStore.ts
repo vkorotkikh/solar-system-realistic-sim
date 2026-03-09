@@ -139,14 +139,16 @@ export function createSimulationState({
   };
 
   const setState = (patch: SimulationStatePatch): void => {
-    const changed: SimulationStatePatch = {};
-    const changedRecord = changed as Partial<Record<keyof SimulationState, SimulationState[keyof SimulationState]>>;
+    const changedEntries: Array<[keyof SimulationState, SimulationState[keyof SimulationState]]> = [];
+    const assignStateValue = <K extends keyof SimulationState>(key: K, value: SimulationState[K]): void => {
+      baseState[key] = value;
+      changedEntries.push([key, value]);
+    };
     for (const [rawKey, nextValue] of Object.entries(patch) as [keyof SimulationState, SimulationState[keyof SimulationState]][]) {
       if (baseState[rawKey] === nextValue) continue;
-      baseState[rawKey] = nextValue;
-      changedRecord[rawKey] = nextValue;
+      assignStateValue(rawKey, nextValue);
     }
-    notify(changed);
+    notify(Object.fromEntries(changedEntries) as SimulationStatePatch);
   };
 
   const subscribe = (listener: SimulationStateListener): (() => void) => {
