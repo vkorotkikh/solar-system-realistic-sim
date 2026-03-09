@@ -57,7 +57,7 @@ import { createTextureManager } from './frontend/app/textureManager';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt } from './sim/asteroidBelt';
-import { generateKuiperBelt, propagateKBOPositions } from './sim/kuiperBelt';
+import { generateKuiperBelt, propagateKBOPositions, propagateBinaryKBOPositions } from './sim/kuiperBelt';
 import {
   loadPhase1AsteroidCatalog,
   PHASE1_CATALOG_URL,
@@ -396,6 +396,8 @@ let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { include
 const kuiperPop = generateKuiperBelt(5_000);
 
 const kuiperPositions = new Float32Array(kuiperPop.count * 3);
+const kuiperBinaryPositions = new Float32Array(kuiperPop.binaryCount * 3);
+const kuiperBinaryIndices: number[] = new Array(kuiperPop.binaryCount).fill(0);
 
 const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
 const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.massKg);
@@ -408,6 +410,9 @@ asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbatio
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
 solarSystemGroup.add(kuiperBeltRenderer.mesh);
+if (kuiperBeltRenderer.companionMesh) {
+  solarSystemGroup.add(kuiperBeltRenderer.companionMesh);
+}
 
 function refreshAsteroidBeltRenderer(population) {
   solarSystemGroup.remove(asteroidBeltRenderer.mesh);
@@ -487,6 +492,10 @@ function initPhaseOneAsteroids() {
 
 propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
 kuiperBeltRenderer.updatePositions(kuiperPositions);
+if (kuiperPop.binaryCount > 0) {
+  propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
+  kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
+}
 initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
@@ -1062,6 +1071,10 @@ function animate(timestamp) {
   syncAsteroidBeltInputs();
   propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
   kuiperBeltRenderer.updatePositions(kuiperPositions);
+  if (kuiperPop.binaryCount > 0) {
+    propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
+    kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
+  }
 
   sunCtrl.update(simState.julianDate, timestamp * 0.001);
   sunCtrl.maybeRefreshPhysics();
