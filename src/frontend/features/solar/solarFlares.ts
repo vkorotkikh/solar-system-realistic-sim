@@ -15,11 +15,34 @@ import {
 } from 'three';
 import { AU_M } from '../../../constants';
 
-// Average CME speed ~480 km/s. We allow bounds of 200 - 3200.
+// Average CME speed ~480 km/s. We allow a broad physical envelope for quiet-to-extreme CMEs.
 // Physics note: AU_M is astronomical unit in meters.
 // AU/s = (km/s * 1000) / AU_M.
-const CME_SPEED_KMS_MIN = 200;
-const CME_SPEED_KMS_MAX = 3200;
+const CME_SPEED_KMS_MIN = 20;
+const CME_SPEED_KMS_MAX = 3500;
+
+function clampUnit(value) {
+    return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function normalizeDirection(sample) {
+    if (!Array.isArray(sample) || sample.length !== 3) return null;
+    const x = Number(sample[0]);
+    const y = Number(sample[1]);
+    const z = Number(sample[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+    const len = Math.hypot(x, y, z);
+    if (len < 1e-6) return null;
+    return { x: x / len, y: y / len, z: z / len };
+}
+
+function directionToLatLon(direction) {
+    if (!direction) return null;
+    return {
+        latitudeRad: Math.asin(Math.max(-1, Math.min(1, direction.y))),
+        longitudeRad: Math.atan2(direction.z, direction.x)
+    };
+}
 
 const CME_VERTEX_SHADER = `
 uniform float uElapsedSec;
@@ -108,6 +131,7 @@ function getFlareTexture() {
  * Creates a Solar Flare and CME event.
  */
 export function createSolarFlareEvent({
+    featureId = null,
     latitudeRad,
     longitudeRad,
     sunRadiusAu,
@@ -179,9 +203,14 @@ export function createSolarFlareEvent({
 
     return {
         group,
+        featureId,
         longitude: longitudeRad,
         latitude: latitudeRad,
         intensity,
+        velocityKms,
+        getSurfaceEnvelope() {
+            return Math.max(0, Math.min(1, flareSprite.material.opacity / Math.max(0.001, intensity)));
+        },
 
         update(dtSec) {
             if (_expired) return;
@@ -234,18 +263,31 @@ export class SolarFlareManager {
     constructor(sunGroup) {
         this.sunGroup = sunGroup;
         this.events = [];
-        this.maxEvents = 3;
+        this.maxEvents = 4;
         this.timeSinceLastSpawn = 0;
+        this.featureCooldowns = new Map();
+        this.lastPhysicsDrivenSpawnSec = -Infinity;
     }
 
-    update(dtSec, activity, sunRadiusAu) {
+    update(dtSec, activity, sunRadiusAu, physicsState = null, timeSec = 0) {
         this.timeSinceLastSpawn += dtSec;
+        let usedPhysicsDrivers = false;
 
-        // Probabilistic spawn
-        if (this.events.length < this.maxEvents && activity > 0.1) {
+        if (physicsState && Number.isFinite(timeSec)) {
+            usedPhysicsDrivers = this.syncFromPhysicsState(physicsState, sunRadiusAu, timeSec, activity) > 0;
+        }
+
+        // Probabilistic fallback when no strong backend-driven eruptive feature is available.
+        const hasBackendCmes = Array.isArray(physicsState?.corona?.features)
+            && physicsState.corona.features.some((feature) => `${feature?.kind ?? ''}`.toLowerCase() === 'cme');
+        if (
+            this.events.length < this.maxEvents
+            && activity > 0.1
+            && (!hasBackendCmes || !usedPhysicsDrivers)
+        ) {
             // higher activity = lower threshold
-            // E.g. at activity=1.0, mean time between spawns ~ 20s
-            const spawnChance = (activity * activity) * 0.05 * dtSec;
+            // E.g. at activity=1.0, mean time between fallback spawns ~ 35s
+            const spawnChance = (activity * activity) * 0.028 * dtSec;
             if (Math.random() < spawnChance && this.timeSinceLastSpawn > 10.0) {
                 this.spawnRandomFlare(activity, sunRadiusAu);
                 this.timeSinceLastSpawn = 0;
@@ -262,6 +304,84 @@ export class SolarFlareManager {
                 this.events.splice(i, 1);
             }
         }
+    }
+
+    syncFromPhysicsState(physicsState, sunRadiusAu, timeSec, activity = 0.5) {
+        const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
+        if (features.length === 0 || this.events.length >= this.maxEvents) return 0;
+
+        const candidates = features
+            .filter((feature) => `${feature?.kind ?? ''}`.toLowerCase() === 'cme')
+            .map((feature) => {
+                const brightness = clampUnit(Number(feature?.brightness) || 0);
+                const emergence = clampUnit(Number(feature?.emergence) || brightness);
+                const extent = clampUnit((Number(feature?.peak_extent_solar_radii) - 1.0) / 3.8);
+                return {
+                    feature,
+                    score: brightness * 0.52 + emergence * 0.28 + extent * 0.20
+                };
+            })
+            .filter((candidate) => candidate.score > Math.max(0.38, 0.56 - activity * 0.14))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 6);
+
+        let spawned = 0;
+        for (const candidate of candidates) {
+            if (this.events.length >= this.maxEvents) break;
+            const id = `${candidate.feature?.id ?? candidate.feature?.active_region_id ?? `cme-${spawned}`}`;
+            const nextEligible = Number(this.featureCooldowns.get(id) ?? -Infinity);
+            if (timeSec < nextEligible) continue;
+            this.spawnFeatureFlare(candidate.feature, sunRadiusAu, activity, candidate.score);
+            this.featureCooldowns.set(id, timeSec + 16 + (1 - candidate.score) * 42);
+            this.lastPhysicsDrivenSpawnSec = timeSec;
+            this.timeSinceLastSpawn = 0;
+            spawned += 1;
+        }
+
+        for (const [id, nextEligible] of this.featureCooldowns.entries()) {
+            if (Number(nextEligible) < timeSec - 120) {
+                this.featureCooldowns.delete(id);
+            }
+        }
+        return spawned;
+    }
+
+    spawnFeatureFlare(feature, sunRadiusAu, activity = 0.5, featureScore = 0.6) {
+        const direction = normalizeDirection(feature?.base_dir) ?? normalizeDirection(feature?.arc?.[0]);
+        const latLon = directionToLatLon(direction);
+        if (!latLon) {
+            this.spawnRandomFlare(activity, sunRadiusAu);
+            return;
+        }
+
+        const brightness = clampUnit(Number(feature?.brightness) || featureScore);
+        const emergence = clampUnit(Number(feature?.emergence) || brightness);
+        const peakExtent = Math.max(1, Number(feature?.peak_extent_solar_radii) || 1);
+        const intensity = Math.max(
+            0.22,
+            Math.min(1.4, 0.18 + brightness * 0.7 + emergence * 0.32 + activity * 0.12)
+        );
+        const velocityKms = Math.max(
+            CME_SPEED_KMS_MIN,
+            Math.min(CME_SPEED_KMS_MAX, Number(feature?.expansion_speed_kms) || (250 + featureScore * 1_400))
+        );
+        const angularWidthDeg = Math.max(
+            24,
+            Math.min(140, 24 + (peakExtent - 1) * 28 + brightness * 34)
+        );
+
+        const flare = createSolarFlareEvent({
+            featureId: `${feature?.id ?? feature?.active_region_id ?? 'solar-feature'}`,
+            latitudeRad: latLon.latitudeRad,
+            longitudeRad: latLon.longitudeRad,
+            sunRadiusAu,
+            velocityKms,
+            intensity,
+            angularWidthDeg
+        });
+
+        this.events.push(flare);
+        this.sunGroup.add(flare.group);
     }
 
     spawnRandomFlare(activity, sunRadiusAu) {
@@ -297,15 +417,20 @@ export class SolarFlareManager {
             0, 0, 0, 0,
             0, 0, 0, 0
         ];
-        for (let i = 0; i < Math.min(3, this.events.length); i++) {
-            const e = this.events[i];
-            // Quick way to get elapsed from the opacity of the flare sprite, or just compute an envelope
-            // Let's rely on intensity and whether the surface should still glow
-            // Actually we need `e.latitude`, `e.longitude`
+        const ranked = this.events
+            .slice()
+            .sort((a, b) => {
+                const aScore = (a.getSurfaceEnvelope?.() ?? 1) * (Number(a.intensity) || 0);
+                const bScore = (b.getSurfaceEnvelope?.() ?? 1) * (Number(b.intensity) || 0);
+                return bScore - aScore;
+            });
+        for (let i = 0; i < Math.min(3, ranked.length); i++) {
+            const e = ranked[i];
+            const envelope = e.getSurfaceEnvelope?.() ?? 1;
             params[i * 4 + 0] = e.longitude;
             params[i * 4 + 1] = e.latitude;
-            params[i * 4 + 2] = e.intensity;
-            params[i * 4 + 3] = 1.0; // In a full implementation, could pass time scale here
+            params[i * 4 + 2] = e.intensity * envelope;
+            params[i * 4 + 3] = envelope;
         }
         return params;
     }
