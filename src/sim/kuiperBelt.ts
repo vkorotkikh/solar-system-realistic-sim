@@ -6,17 +6,38 @@ import type { KeplerOrbit } from './orbitMath';
 // Kuiper-belt dynamical classes following Gladman+ 2008 classification.
 
 export enum KBOClass {
-  Classical   = 0, // "Cubewanos" — low-e, 42–48 AU
-  Resonant    = 1, // Plutinos (3:2), twotinos (2:1), etc.
-  Scattered   = 2, // High-e, perihelia near Neptune
-  Detached    = 3, // High-a, perihelia beyond Neptune influence (Sedna-like)
+  Classical = 0, // "Cubewanos" — low-e, 42–48 AU
+  Resonant = 1, // Plutinos (3:2), twotinos (2:1), etc.
+  Scattered = 2, // High-e, perihelia near Neptune
+  Detached = 3, // High-a, perihelia beyond Neptune influence (Sedna-like)
 }
 
 // Surface color groups from Peixinho+ 2015 taxonomy.
 export enum KBOColor {
   Neutral = 0, // Grey-blue, icy
-  Red     = 1, // Ultra-red matter (tholins, organics)
-  Inter   = 2, // Intermediate
+  Red = 1, // Ultra-red matter (tholins, organics)
+  Inter = 2, // Intermediate
+}
+
+export interface BinaryCompanionDef {
+  /** Companion diameter [km] — typically 0.3–1.0× primary */
+  diameterKm: number;
+  /** Mutual orbit semi-major axis [km] — typically 1,000–200,000 km */
+  separationKm: number;
+  /** Mutual orbit period [days] — from Kepler's 3rd law */
+  periodDays: number;
+  /** Mean anomaly at epoch [deg] */
+  meanAnomalyDeg: number;
+  /** Mutual orbit eccentricity — typically ~0 to 0.1 for CKBOs */
+  eccentricity: number;
+  /** Mutual orbit inclination [deg] relative to heliocentric orbital plane */
+  inclinationDeg: number;
+  /** Packed sRGB 0xRRGGBB */
+  color: number;
+  /** Albedo */
+  albedo: number;
+  /** Irregularity for companion mesh */
+  irregularity: number;
 }
 
 export interface KBODef {
@@ -28,6 +49,8 @@ export interface KBODef {
   /** packed sRGB 0xRRGGBB */
   color: number;
   irregularity: number;
+  /** Binary companion — null/undefined = single object */
+  binary?: BinaryCompanionDef | null;
 }
 
 // ── Named KBOs ───────────────────────────────────────────────────────────────
@@ -50,6 +73,92 @@ const CLASSICAL_INNER_AU = 42.0;
 const CLASSICAL_OUTER_AU = 48.0;
 const PLUTINO_RESONANCE_AU = 39.4;
 const TWOTINO_RESONANCE_AU = 47.8;
+
+// ── Binary KBO parameters (Noll+ 2008, Fraser+ 2017, Parker+ 2011) ──────────
+// Binary fraction by dynamical class:
+//   Cold classical: ~30%, Hot classical: ~10%, Resonant/Scattered/Detached: ~5%
+
+const BINARY_FRACTION: Record<KBOClass, number> = {
+  [KBOClass.Classical]: 0.22, // weighted avg cold (30%) + hot (10%)
+  [KBOClass.Resonant]: 0.05,
+  [KBOClass.Scattered]: 0.05,
+  [KBOClass.Detached]: 0.05,
+};
+
+// Gravitational constant × density for mutual Keplerian period estimation
+// Assume ρ = 1000 kg/m³ (icy body), G = 6.674e-11 m³/(kg·s²)
+const KBO_DENSITY_KG_M3 = 1000;
+const G_CONST = 6.674e-11;
+
+/**
+ * Generate a binary companion for a KBO.
+ *
+ * Size ratio: log-normal centered near 0.8 (equal-mass pairs are common
+ * among cold classicals; Noll+ 2008).
+ * Separation: log-uniform 1,000–200,000 km (Parker+ 2011).
+ * Mutual orbit period: Kepler's 3rd law from separation + combined mass.
+ */
+function generateBinaryCompanion(
+  primaryDiameterKm: number,
+  primarySurfaceColor: KBOColor,
+  rand: () => number
+): BinaryCompanionDef {
+  // Size ratio: log-normal centered at 0.8, σ≈0.3, clamped [0.3, 1.0]
+  const rawRatio = 0.8 * Math.exp((rand() - 0.5) * 0.6);
+  const sizeRatio = Math.max(0.3, Math.min(1.0, rawRatio));
+  const companionDiameterKm = primaryDiameterKm * sizeRatio;
+
+  // Separation: log-uniform 1,000–200,000 km
+  const logSepMin = Math.log(1_000);
+  const logSepMax = Math.log(200_000);
+  const separationKm = Math.exp(logSepMin + rand() * (logSepMax - logSepMin));
+
+  // Mutual orbit period via Kepler's 3rd law
+  // mass = (4/3)π(r)³ρ for each body
+  const rPrimaryM = (primaryDiameterKm * 1000) / 2;
+  const rCompanionM = (companionDiameterKm * 1000) / 2;
+  const massPrimary = (4 / 3) * Math.PI * rPrimaryM ** 3 * KBO_DENSITY_KG_M3;
+  const massCompanion = (4 / 3) * Math.PI * rCompanionM ** 3 * KBO_DENSITY_KG_M3;
+  const totalMass = massPrimary + massCompanion;
+  const separationM = separationKm * 1000;
+  const periodSec = 2 * Math.PI * Math.sqrt(separationM ** 3 / (G_CONST * totalMass));
+  const periodDays = periodSec / 86400;
+
+  // Eccentricity: tidally damped, low
+  const eccentricity = rand() * 0.1;
+
+  // Inclination: typically near-coplanar with heliocentric orbit, low scatter
+  const inclinationDeg = rand() * 30;
+
+  // Companion color: similar to primary but slightly varied
+  const companionColor = packedColorForKBO(primarySurfaceColor, rand);
+
+  // Albedo: close to primary
+  const albedo = primarySurfaceColor === KBOColor.Red
+    ? 0.04 + rand() * 0.08
+    : primarySurfaceColor === KBOColor.Inter
+      ? 0.06 + rand() * 0.10
+      : 0.08 + rand() * 0.15;
+
+  // Irregularity: smaller bodies are more irregular
+  const irregularity = companionDiameterKm > 200
+    ? 0.04 + rand() * 0.08
+    : companionDiameterKm > 50
+      ? 0.08 + rand() * 0.15
+      : 0.12 + rand() * 0.25;
+
+  return {
+    diameterKm: companionDiameterKm,
+    separationKm,
+    periodDays,
+    meanAnomalyDeg: rand() * 360,
+    eccentricity,
+    inclinationDeg,
+    color: companionColor,
+    albedo,
+    irregularity,
+  };
+}
 
 // ── Seeded PRNG (Mulberry32) ────────────────────────────────────────────────
 
@@ -119,8 +228,8 @@ function surfaceColorFromClass(dynClass: KBOClass, rand: () => number): KBOColor
 function packedColorForKBO(sc: KBOColor, rand: () => number): number {
   const v = (lo: number, hi: number) => Math.floor(lo + (hi - lo) * rand());
   switch (sc) {
-    case KBOColor.Red:     return (v(170, 210) << 16) | (v(100, 140) << 8) | v(70, 110);
-    case KBOColor.Inter:   return (v(150, 190) << 16) | (v(140, 175) << 8) | v(130, 165);
+    case KBOColor.Red: return (v(170, 210) << 16) | (v(100, 140) << 8) | v(70, 110);
+    case KBOColor.Inter: return (v(150, 190) << 16) | (v(140, 175) << 8) | v(130, 165);
     case KBOColor.Neutral: return (v(140, 180) << 16) | (v(145, 185) << 8) | v(150, 195);
   }
 }
@@ -135,6 +244,7 @@ function sampleDiameterKm(rand: () => number): number {
 
 export interface KuiperBeltPopulation {
   count: number;
+  binaryCount: number;
   kbos: KBODef[];
 }
 
@@ -155,7 +265,13 @@ export function generateKuiperBelt(
     const diameterKm = sampleDiameterKm(rand);
     const irregularity = diameterKm > 500 ? 0.02 + rand() * 0.06
       : diameterKm > 100 ? 0.06 + rand() * 0.15
-      : 0.10 + rand() * 0.25;
+        : 0.10 + rand() * 0.25;
+
+    // Binary assignment based on dynamical class fraction (Noll+ 2008)
+    const binaryFrac = BINARY_FRACTION[dynClass];
+    const binary = (rand() < binaryFrac && diameterKm > 40)
+      ? generateBinaryCompanion(diameterKm, sc, rand)
+      : null;
 
     kbos.push({
       orbit: {
@@ -173,13 +289,15 @@ export function generateKuiperBelt(
       diameterKm,
       albedo: sc === KBOColor.Red ? 0.04 + rand() * 0.08
         : sc === KBOColor.Inter ? 0.06 + rand() * 0.10
-        : 0.08 + rand() * 0.15,
+          : 0.08 + rand() * 0.15,
       color: packedColorForKBO(sc, rand),
       irregularity,
+      binary,
     });
   }
 
-  return { count: kbos.length, kbos };
+  const binaryCount = kbos.filter(k => k.binary != null).length;
+  return { count: kbos.length, binaryCount, kbos };
 }
 
 // ── Fast batch orbit propagation ─────────────────────────────────────────────
@@ -221,8 +339,100 @@ export function propagateKBOPositions(
     const py = trueX * sinW + trueY * cosW;
 
     const off = i * 3;
-    out[off]     = cosO * px - sinO * cosI * py;
+    out[off] = cosO * px - sinO * cosI * py;
     out[off + 1] = sinO * px + cosO * cosI * py;
     out[off + 2] = sinI * py;
+  }
+}
+
+// ── Binary companion position propagation ────────────────────────────────────
+// Conversion factor: 1 AU = 149,597,870.7 km
+const KM_PER_AU = 149_597_870.7;
+
+/**
+ * Compute heliocentric positions of binary companions.
+ *
+ * For each KBO with a `binary` companion, computes the companion's
+ * position offset from the primary using the mutual orbit elements,
+ * then adds it to the primary's heliocentric position.
+ *
+ * @param kbos - KBO array (same order as propagateKBOPositions output)
+ * @param julianDate - Current Julian date
+ * @param primaryPositions - Heliocentric primary positions from propagateKBOPositions
+ * @param binaryIndices - Output: array of primary KBO indices that have companions
+ * @param companionOut - Output: companion heliocentric positions (binaryCount * 3)
+ */
+export function propagateBinaryKBOPositions(
+  kbos: readonly KBODef[],
+  julianDate: number,
+  primaryPositions: Float32Array,
+  binaryIndices: number[],
+  companionOut: Float32Array
+): void {
+  let bIdx = 0;
+  const n = kbos.length;
+  for (let i = 0; i < n; i++) {
+    const bin = kbos[i].binary;
+    if (!bin) continue;
+
+    binaryIndices[bIdx] = i;
+
+    // Mutual orbit: simplified near-circular Keplerian
+    const dt = julianDate - J2000_JD;
+    const meanMotion = TWO_PI / bin.periodDays;
+    let M = (bin.meanAnomalyDeg * DEG) + meanMotion * dt;
+    M = M % TWO_PI;
+    if (M < 0) M += TWO_PI;
+
+    // Solve Kepler equation for mutual orbit
+    const ecc = bin.eccentricity;
+    const E = solveKeplerFast(M, ecc);
+
+    // Position in mutual orbital plane (in km, then convert to AU)
+    const cosE = Math.cos(E);
+    const sinE = Math.sin(E);
+    const sqrtE = Math.sqrt(1 - ecc * ecc);
+    const sepAu = bin.separationKm / KM_PER_AU;
+    const localX = sepAu * (cosE - ecc);
+    const localY = sepAu * sqrtE * sinE;
+
+    // Rotate by mutual orbit inclination (tilted relative to helio-orbital plane)
+    const iMut = bin.inclinationDeg * DEG;
+    const cosIMut = Math.cos(iMut);
+    const sinIMut = Math.sin(iMut);
+
+    // Use the primary's heliocentric orbital plane as reference:
+    // apply a simplified rotation using the primary's orbital elements.
+    // For visual fidelity, we rotate the companion offset using the
+    // primary's ascending node and argument of periapsis.
+    const orb = kbos[i].orbit;
+    const omegaRad = (orb.ascendingNodeDeg ?? 0) * DEG;
+    const wRad = (orb.argPeriapsisDeg ?? 0) * DEG;
+    const iRad = (orb.iDeg ?? 0) * DEG;
+    const cosW = Math.cos(wRad);
+    const sinW = Math.sin(wRad);
+    const cosO = Math.cos(omegaRad);
+    const sinO = Math.sin(omegaRad);
+    const cosI = Math.cos(iRad);
+    const sinI = Math.sin(iRad);
+
+    // Rotate mutual orbit offset into primary's orbital plane
+    const ox = localX * cosW - localY * sinW;
+    const oy = (localX * sinW + localY * cosW) * cosIMut;
+    const oz = (localX * sinW + localY * cosW) * sinIMut;
+
+    // Rotate into ecliptic frame
+    const dx = cosO * ox - sinO * cosI * oy + sinO * sinI * oz;
+    const dy = sinO * ox + cosO * cosI * oy - cosO * sinI * oz;
+    const dz = sinI * oy + cosI * oz;
+
+    // Companion heliocentric = primary heliocentric + offset
+    const pOff = i * 3;
+    const cOff = bIdx * 3;
+    companionOut[cOff] = primaryPositions[pOff] + dx;
+    companionOut[cOff + 1] = primaryPositions[pOff + 1] + dy;
+    companionOut[cOff + 2] = primaryPositions[pOff + 2] + dz;
+
+    bIdx++;
   }
 }
