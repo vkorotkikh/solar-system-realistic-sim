@@ -295,7 +295,9 @@ function realRadiusAu(diameterKm: number): number {
 
 export interface BeltRendererHandle {
   mesh: InstancedMesh;
+  companionMesh?: InstancedMesh;
   updatePositions: (positions: Float32Array) => void;
+  updateBinaryPositions?: (companionPositions: Float32Array) => void;
   setJulianDate: (julianDate: number) => void;
   setPerturberPositions: (jupiterPositionAu: Vector3, saturnPositionAu: Vector3) => void;
   setPerturberMasses: (jupiterMuAu3Day2: number, saturnMuAu3Day2: number) => void;
@@ -527,8 +529,69 @@ export function createKuiperBeltRenderer(
   mesh.instanceColor = new InstancedBufferAttribute(colors, 3);
   mesh.instanceMatrix.needsUpdate = true;
 
+  // ── Binary companion mesh ──────────────────────────────────────────────────
+  const binaryKBOs: { idx: number; bin: NonNullable<KBODef['binary']> }[] = [];
+  for (let i = 0; i < count; i++) {
+    if (kbos[i].binary) binaryKBOs.push({ idx: i, bin: kbos[i].binary! });
+  }
+  const binCount = binaryKBOs.length;
+
+  let companionMesh: InstancedMesh | undefined;
+  let companionQuats: Float32Array | undefined;
+  let companionScales: Float32Array | undefined;
+
+  if (binCount > 0) {
+    const compGeometry = createIrregularGeometry(0, 0.30, rand);
+    const compMaterial = new MeshStandardMaterial({
+      roughness: 0.92,
+      metalness: 0.02,
+      flatShading: true
+    });
+
+    companionMesh = new InstancedMesh(compGeometry, compMaterial, binCount);
+    companionMesh.frustumCulled = false;
+    companionMesh.castShadow = false;
+    companionMesh.receiveShadow = false;
+
+    const compColors = new Float32Array(binCount * 3);
+    companionQuats = new Float32Array(binCount * 4);
+    companionScales = new Float32Array(binCount * 3);
+
+    for (let j = 0; j < binCount; j++) {
+      const { bin } = binaryKBOs[j];
+      const radius = displayRadiusAu(bin.diameterKm, true);
+
+      _quat.set(rand() - 0.5, rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
+      const stretch = 1 + bin.irregularity * (rand() - 0.3);
+      _scale.set(
+        radius * stretch,
+        radius,
+        radius / (1 + bin.irregularity * rand() * 0.4)
+      );
+      companionScales[j * 3] = _scale.x;
+      companionScales[j * 3 + 1] = _scale.y;
+      companionScales[j * 3 + 2] = _scale.z;
+      _pos.set(0, 0, 0);
+      _mat4.compose(_pos, _quat, _scale);
+      companionMesh.setMatrixAt(j, _mat4);
+      companionQuats[j * 4] = _quat.x;
+      companionQuats[j * 4 + 1] = _quat.y;
+      companionQuats[j * 4 + 2] = _quat.z;
+      companionQuats[j * 4 + 3] = _quat.w;
+
+      tmpColor.set(bin.color);
+      compColors[j * 3] = tmpColor.r;
+      compColors[j * 3 + 1] = tmpColor.g;
+      compColors[j * 3 + 2] = tmpColor.b;
+    }
+
+    companionMesh.instanceColor = new InstancedBufferAttribute(compColors, 3);
+    companionMesh.instanceMatrix.needsUpdate = true;
+  }
+
   return {
     mesh,
+    companionMesh,
     updatePositions(positions: Float32Array) {
       for (let i = 0; i < count; i++) {
         const off = i * 3;
@@ -551,6 +614,29 @@ export function createKuiperBeltRenderer(
       }
       mesh.instanceMatrix.needsUpdate = true;
     },
+    updateBinaryPositions(companionPositions: Float32Array) {
+      if (!companionMesh || !companionQuats || !companionScales) return;
+      for (let j = 0; j < binCount; j++) {
+        const off = j * 3;
+        const q = j * 4;
+        const s = j * 3;
+        _pos.set(companionPositions[off], companionPositions[off + 1], companionPositions[off + 2]);
+        _quat.set(
+          companionQuats[q],
+          companionQuats[q + 1],
+          companionQuats[q + 2],
+          companionQuats[q + 3]
+        );
+        _scale.set(
+          companionScales[s],
+          companionScales[s + 1],
+          companionScales[s + 2]
+        );
+        _mat4.compose(_pos, _quat, _scale);
+        companionMesh.setMatrixAt(j, _mat4);
+      }
+      companionMesh.instanceMatrix.needsUpdate = true;
+    },
     setJulianDate() { return; },
     setPerturberPositions() { return; },
     setPerturberMasses() { return; },
@@ -560,10 +646,15 @@ export function createKuiperBeltRenderer(
     },
     setVisible(v: boolean) {
       mesh.visible = v;
+      if (companionMesh) companionMesh.visible = v;
     },
     dispose() {
       geometry.dispose();
       material.dispose();
+      if (companionMesh) {
+        companionMesh.geometry.dispose();
+        (companionMesh.material as MeshStandardMaterial).dispose();
+      }
     }
   };
 }
