@@ -31,6 +31,15 @@ class KuiperBeltEngine:
         self.particle_count = particle_count
         self._massive_count = 0  # number of massive bodies (Sun + planets)
         self._frame_counter = 0
+        self._binary_pairs: List[List[int]] = []  # [[primary_idx, companion_idx], ...]
+
+    # ── Binary KBO parameters ─────────────────────────────────────────
+    # ~30% of cold classical KBOs are binaries (Noll+ 2008)
+    # We use a blended fraction of ~20% for the overall Kuiper belt region.
+    BINARY_FRACTION = 0.20
+    # Separation range in AU (1,000–200,000 km ≈ 6.7e-6–1.3e-3 AU)
+    BINARY_SEP_MIN_AU = 1_000 / 149_597_870.7
+    BINARY_SEP_MAX_AU = 200_000 / 149_597_870.7
 
     # ── Lifecycle ─────────────────────────────────────────────────────
 
@@ -102,7 +111,10 @@ class KuiperBeltEngine:
 
         rng = np.random.default_rng()
 
-        for _ in range(self.particle_count):
+        self._binary_pairs = []
+        test_particle_start = self.sim.N  # index of first test particle
+
+        for particle_idx in range(self.particle_count):
             # ── Population-based Sampling ─────────────────────────────
             # We mix populations based on proximity to the camera (center_r).
             # 1. Plutinos (3:2 Resonance): ~39.4 AU
@@ -155,6 +167,34 @@ class KuiperBeltEngine:
                 primary=self.sim.particles[0],
             )
 
+            # ── Binary companion generation ───────────────────────────
+            # Generate a nearby companion particle for a fraction of KBOs
+            if rng.random() < self.BINARY_FRACTION:
+                # Separation: log-uniform in AU
+                log_sep = rng.uniform(
+                    math.log(self.BINARY_SEP_MIN_AU),
+                    math.log(self.BINARY_SEP_MAX_AU),
+                )
+                sep_au = math.exp(log_sep)
+
+                # Place companion at a random angular offset from primary
+                angle = rng.uniform(0, 2 * math.pi)
+                primary_p = self.sim.particles[-1]
+                self.sim.add(
+                    m=0,
+                    x=primary_p.x + sep_au * math.cos(angle),
+                    y=primary_p.y + sep_au * math.sin(angle),
+                    z=primary_p.z,
+                    vx=primary_p.vx,
+                    vy=primary_p.vy,
+                    vz=primary_p.vz,
+                )
+
+                # Track pair indices (relative to test particle start)
+                primary_test_idx = self.sim.N - 2 - test_particle_start
+                companion_test_idx = self.sim.N - 1 - test_particle_start
+                self._binary_pairs.append([primary_test_idx, companion_test_idx])
+
         self.sim.move_to_com()
         self.active = True
         self._frame_counter = 0
@@ -163,6 +203,7 @@ class KuiperBeltEngine:
         self.active = False
         self.sim = None
         self._massive_count = 0
+        self._binary_pairs = []
 
     # ── Integration ───────────────────────────────────────────────────
 
@@ -179,17 +220,21 @@ class KuiperBeltEngine:
         """Send Kuiper state every 5th frame to reduce bandwidth."""
         return self.active and self._frame_counter % 5 == 0
 
-    def get_state(self) -> Optional[List[List[float]]]:
-        """Return flat list of [x, y, z] for each test particle."""
+    def get_state(self) -> Optional[Dict[str, Any]]:
+        """Return particle positions + binary pair metadata."""
         if not self.active or self.sim is None:
             return None
 
-        particles = []
+        positions = []
         for i in range(self._massive_count, self.sim.N):
             p = self.sim.particles[i]
-            particles.append([
+            positions.append([
                 round(p.x, 5),
                 round(p.y, 5),
                 round(p.z, 5),
             ])
-        return particles
+        return {
+            "positions": positions,
+            "binary_pairs": self._binary_pairs,
+        }
+
