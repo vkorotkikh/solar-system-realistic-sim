@@ -131,7 +131,7 @@ let modelWorkerReady = false;
 let modelWorkerSequence = 0;
 let latestModelWorkerState: ModelWorkerStateMessage | null = null;
 const MODEL_WORKER_RECORD_SIZE = 7;
-const ASTEROID_BELT_TARGET_COUNT = 15_000;
+const ASTEROID_BELT_TARGET_COUNT = 50_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
