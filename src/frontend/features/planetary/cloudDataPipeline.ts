@@ -1,11 +1,32 @@
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
+import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from 'three';
 import { clamp } from '../../../constants';
 
-function toIsoDateUtc(date) {
+interface WmsProvider {
+  id: string;
+  layer: string;
+  wmsEndpoint: string;
+  format?: string;
+  tileWidth?: number;
+  tileHeight?: number;
+  canvasSize?: number;
+  tilesX?: number;
+  tilesY?: number;
+  refreshMinutes?: number;
+  timeMode?: string;
+}
+
+interface TileBounds {
+  lonMin: number;
+  lonMax: number;
+  latMin: number;
+  latMax: number;
+}
+
+function toIsoDateUtc(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function tileBoundsLatLon(x, y, tilesX, tilesY) {
+function tileBoundsLatLon(x: number, y: number, tilesX: number, tilesY: number): TileBounds {
   const lonMin = -180 + (360 * x) / tilesX;
   const lonMax = -180 + (360 * (x + 1)) / tilesX;
   const latMax = 90 - (180 * y) / tilesY;
@@ -13,7 +34,7 @@ function tileBoundsLatLon(x, y, tilesX, tilesY) {
   return { lonMin, lonMax, latMin, latMax };
 }
 
-function wmsUrl(provider, bounds, timeKey) {
+function wmsUrl(provider: WmsProvider, bounds: TileBounds, timeKey: string): string {
   const params = new URLSearchParams({
     SERVICE: 'WMS',
     REQUEST: 'GetMap',
@@ -32,7 +53,7 @@ function wmsUrl(provider, bounds, timeKey) {
   return `${provider.wmsEndpoint}?${params.toString()}`;
 }
 
-function configureTexture(texture) {
+function configureTexture(texture: CanvasTexture): void {
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
   texture.colorSpace = SRGBColorSpace;
@@ -40,7 +61,7 @@ function configureTexture(texture) {
   texture.needsUpdate = true;
 }
 
-function closeBitmapIfPossible(bitmap) {
+function closeBitmapIfPossible(bitmap: ImageBitmap | null | undefined): void {
   if (!bitmap || typeof bitmap.close !== 'function') return;
   try {
     bitmap.close();
@@ -50,7 +71,25 @@ function closeBitmapIfPossible(bitmap) {
 }
 
 export class PlanetCloudDataPipeline {
-  constructor({ provider, fallbackTexture = null }) {
+  provider: WmsProvider;
+  fallbackTexture: Texture | null;
+  canvasSize: number;
+  tilesX: number;
+  tilesY: number;
+  refreshIntervalMs: number;
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  texture: CanvasTexture;
+  tileCache: Map<string, ImageBitmap>;
+  cacheOrder: string[];
+  maxCacheEntries: number;
+  lastRefreshMs: number;
+  lastSuccessMs: number;
+  lastError: string | null;
+  refreshPromise: Promise<boolean> | null;
+  hasLiveData: boolean;
+
+  constructor({ provider, fallbackTexture = null }: { provider: WmsProvider; fallbackTexture?: Texture | null }) {
     this.provider = provider;
     this.fallbackTexture = fallbackTexture;
 
@@ -62,7 +101,11 @@ export class PlanetCloudDataPipeline {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.canvasSize;
     this.canvas.height = this.canvasSize;
-    this.ctx = this.canvas.getContext('2d');
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('2D canvas context unavailable for cloud pipeline');
+    }
+    this.ctx = ctx;
 
     this.texture = new CanvasTexture(this.canvas);
     configureTexture(this.texture);
@@ -78,14 +121,15 @@ export class PlanetCloudDataPipeline {
 
     this.hasLiveData = false;
 
-    if (this.fallbackTexture?.image) {
+    const fallbackImage = this.fallbackTexture?.image;
+    if (fallbackImage) {
       this.ctx.clearRect(0, 0, this.canvasSize, this.canvasSize);
-      this.ctx.drawImage(this.fallbackTexture.image, 0, 0, this.canvasSize, this.canvasSize);
+      this.ctx.drawImage(fallbackImage as CanvasImageSource, 0, 0, this.canvasSize, this.canvasSize);
       this.texture.needsUpdate = true;
     }
   }
 
-  shouldRefresh(nowMs = Date.now()) {
+  shouldRefresh(nowMs = Date.now()): boolean {
     if (this.refreshPromise) return false;
     if (!this.lastRefreshMs) return true;
     return nowMs - this.lastRefreshMs >= this.refreshIntervalMs;
@@ -101,7 +145,7 @@ export class PlanetCloudDataPipeline {
     };
   }
 
-  async maybeRefresh(now = new Date(), force = false) {
+  async maybeRefresh(now = new Date(), force = false): Promise<boolean> {
     const nowMs = now.getTime();
     if (!force && !this.shouldRefresh(nowMs)) {
       return false;
@@ -123,7 +167,7 @@ export class PlanetCloudDataPipeline {
     return this.refreshPromise;
   }
 
-  buildTimeKey(now) {
+  buildTimeKey(now: Date): string {
     const mode = `${this.provider.timeMode ?? 'utc-date'}`.toLowerCase();
     if (mode === 'utc-hour') {
       const z = new Date(now);
@@ -133,7 +177,7 @@ export class PlanetCloudDataPipeline {
     return toIsoDateUtc(now);
   }
 
-  async refresh(now = new Date()) {
+  async refresh(now = new Date()): Promise<boolean> {
     const timeKey = this.buildTimeKey(now);
     const tasks = [];
 
@@ -171,7 +215,7 @@ export class PlanetCloudDataPipeline {
     return true;
   }
 
-  async fetchTileBitmap(url) {
+  async fetchTileBitmap(url: string): Promise<ImageBitmap> {
     const cached = this.tileCache.get(url);
     if (cached) {
       return cached;
@@ -188,7 +232,7 @@ export class PlanetCloudDataPipeline {
     return bitmap;
   }
 
-  putCache(url, bitmap) {
+  putCache(url: string, bitmap: ImageBitmap): void {
     const existing = this.tileCache.get(url);
     if (existing && existing !== bitmap) {
       closeBitmapIfPossible(existing);
