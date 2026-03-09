@@ -94,6 +94,7 @@ export function createSunController({
 }) {
   let sunSurfaceMaterial = null;
   let sunCoronaMaterial = null;
+  let sunVisualNode = null;
   let sunGlowSprite = null;
   let sunEruptionLayer = null;
   let sunChromosphereLayer = null;
@@ -101,6 +102,7 @@ export function createSunController({
   let sunFlareGroup = null;
   let solarFlareManager = null;
   let sunMagneticFieldGroup = null;
+  let sunMagneticFieldSignature = null;
   let sunCoronalLoopGroup = null;
   let sunParkerSpiralGroup = null;
 
@@ -163,6 +165,58 @@ export function createSunController({
     setSunObservationTexture({ sunSurfaceMaterial, observationTexture: solarObservationTexture });
   }
 
+  function buildMagneticFieldSignature(activity) {
+    const quantizedActivity = Math.round(clampUnit(activity) * 12);
+    const topFeatures = Array.isArray(solarPhysicsState?.corona?.features)
+      ? solarPhysicsState.corona.features
+        .slice(0, 12)
+        .map((feature) => `${feature?.id ?? 'feature'}:${Number(feature?.brightness ?? 0).toFixed(2)}`)
+        .join('|')
+      : 'synthetic';
+    return `${quantizedActivity}:${topFeatures}`;
+  }
+
+  function disposeMagneticFieldGroup(group) {
+    if (!group) return;
+    for (const line of group.children ?? []) {
+      if (line.geometry && typeof line.geometry.dispose === 'function') {
+        line.geometry.dispose();
+      }
+      if (line.material) {
+        if (Array.isArray(line.material)) {
+          for (const material of line.material) {
+            if (material && typeof material.dispose === 'function') material.dispose();
+          }
+        } else if (typeof line.material.dispose === 'function') {
+          line.material.dispose();
+        }
+      }
+    }
+  }
+
+  function rebuildMagneticFieldLines(force = false, activityOverride = null) {
+    if (!sunVisualNode) return;
+    const activity = Number.isFinite(Number(activityOverride))
+      ? clampUnit(Number(activityOverride))
+      : clampUnit(Number(solarPhysicsState?.activity_index) || 0.5);
+    const nextSignature = buildMagneticFieldSignature(activity);
+    if (!force && sunMagneticFieldGroup && sunMagneticFieldSignature === nextSignature) return;
+
+    const nextGroup = createMagneticFieldLines(getSunRadiusAu(), activity, {
+      physicsState: solarPhysicsState
+    });
+    nextGroup.visible = isMagneticFieldEnabled();
+    nextGroup.userData.bodyId = 'sun-magnetic-field';
+
+    if (sunMagneticFieldGroup?.parent) {
+      sunMagneticFieldGroup.parent.remove(sunMagneticFieldGroup);
+    }
+    disposeMagneticFieldGroup(sunMagneticFieldGroup);
+    sunMagneticFieldGroup = nextGroup;
+    sunMagneticFieldSignature = nextSignature;
+    sunVisualNode.add(nextGroup);
+  }
+
   function maybeRefreshObservationTexture(nowMs = Date.now(), force = false) {
     if (solarObservationTextureLoadInFlight || !solarPhysicsState) return;
 
@@ -209,6 +263,7 @@ export function createSunController({
   }
 
   function initSunVisuals({ spinGroup, node, sunBody, sunGeometry, meshRotationOffsetRad = 0 }) {
+    sunVisualNode = node;
     const sunRadiusAu = getSunRadiusAu();
 
     sunGlowSprite = createSunGlow(sunRadiusAu);
@@ -235,9 +290,7 @@ export function createSunController({
     spinGroup.add(sunFlareGroup);
     solarFlareManager = new SolarFlareManager(sunFlareGroup);
 
-    sunMagneticFieldGroup = createMagneticFieldLines(sunRadiusAu, 0.5);
-    sunMagneticFieldGroup.visible = isMagneticFieldEnabled();
-    node.add(sunMagneticFieldGroup);
+    rebuildMagneticFieldLines(true, 0.5);
 
     if (sunCoronalLoopGroup?.parent) {
       clearSunCoronalLoopsImpl(sunCoronalLoopGroup);
@@ -306,7 +359,18 @@ export function createSunController({
     const activity = Number.isFinite(blendedActivityRaw)
       ? clampUnit(blendedActivityRaw)
       : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
-    const observationControls = deriveSunObservationControls(solarPhysicsState, activity, userAiaChannelOverride);
+    const observationSelection = pickAiaObservationChannel(solarPhysicsState, undefined, userAiaChannelOverride);
+    const activeObservationChannel = `${solarObservationTextureChannel ?? observationSelection?.channel ?? userAiaChannelOverride ?? ''}`.toLowerCase() || null;
+    const observationControls = deriveSunObservationControls(
+      solarPhysicsState,
+      activity,
+      activeObservationChannel,
+      {
+        selectedChannel: observationSelection?.channel ?? activeObservationChannel,
+        selectedImageDate: observationSelection?.imageDate ?? null,
+        hasObservationTexture: !!solarObservationTexture
+      }
+    );
     const effectiveActivity = clampUnit(activity + (observationControls.activityBoost ?? 0));
     const sunRadiusAu = getSunRadiusAu();
 
@@ -320,17 +384,17 @@ export function createSunController({
       coronaHue: observationControls.coronaHue,
       sunDisplayRadius: sunRadiusAu
     });
-    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec);
+    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, solarPhysicsState);
 
     if (solarFlareManager) {
-      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu);
+      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, solarPhysicsState, timeSec);
       updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareManager.getActiveFlaresParams());
     }
 
     if (sunMagneticFieldGroup) {
       sunMagneticFieldGroup.visible = isMagneticFieldEnabled();
       if (sunMagneticFieldGroup.visible) {
-        updateMagneticFieldLines(sunMagneticFieldGroup, timeSec);
+        updateMagneticFieldLines(sunMagneticFieldGroup, timeSec, effectiveActivity);
       }
     }
 
@@ -352,8 +416,13 @@ export function createSunController({
       activity: effectiveActivity
     });
 
-    const is304Mode = userAiaChannelOverride === 'aia_304';
-    updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, is304Mode);
+    updateChromosphereLayer(sunChromosphereLayer, timeSec, effectiveActivity, {
+      activeChannel: activeObservationChannel,
+      observationBlend: observationControls.observationBlend,
+      observationEmission: observationControls.observationEmission,
+      observedConfidence: observationControls.observedConfidence,
+      observedFreshness: observationControls.observedFreshness
+    });
 
     if (gwDisplayer && gwDisplayer.mesh.visible) {
       gwDisplayer.update(dtSec);
@@ -401,6 +470,7 @@ export function createSunController({
               solarPhysicsBlendDurationMs = Math.max(520, Math.min(1_350, (Number.isFinite(pollMs) ? pollMs : 900) * 0.9));
             }
           }
+          rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
         }
         solarPhysicsNextRefreshMs = nowMs + (status.lastError ? 6_000 : status.pollIntervalMs);
       })
@@ -417,9 +487,13 @@ export function createSunController({
     }
     // Rescale the chromosphere layer
     if (sunChromosphereLayer) {
-      const chromoScale = r * (sunChromosphereLayer.userData.surfaceScale ?? 1.02);
-      sunChromosphereLayer.scale.setScalar(chromoScale);
+      const baseRadius = Number(sunChromosphereLayer.userData?.baseRadiusAu) || r;
+      const radiusScale = baseRadius > 0 ? (r / baseRadius) : 1;
+      const activityScale = Number(sunChromosphereLayer.userData?.activityScale) || 1;
+      sunChromosphereLayer.userData.radiusScale = radiusScale;
+      sunChromosphereLayer.scale.setScalar(radiusScale * activityScale);
     }
+    rebuildMagneticFieldLines(true);
     const bv = buildSolarFeatureBlendView(Date.now(), 220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, bv, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, r, 6, 120, 0, camera);
