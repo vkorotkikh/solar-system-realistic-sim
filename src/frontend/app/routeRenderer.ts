@@ -3,24 +3,71 @@ import {
   Color,
   Float32BufferAttribute,
   Line,
-  LineBasicMaterial
+  LineBasicMaterial,
+  Object3D,
+  Vector3,
+  type Material,
+  type Group
 } from 'three';
 import { disposeThreeMaterial } from './textureManager';
 
 const ROUTE_SEGMENTS = 90;
 
-function disposeRouteVisualizationResources(routeGroup) {
+interface RouteLeg {
+  fromId?: string;
+  toId?: string;
+  startPosition?: Vector3;
+  endPosition?: Vector3;
+}
+
+interface RouteLike {
+  bodyRoute: string[];
+  legs: RouteLeg[];
+}
+
+interface RouteNode extends Object3D {
+  geometry?: BufferGeometry & { dispose: () => void; attributes: { position: { count: number; setXYZ: (index: number, x: number, y: number, z: number) => void; needsUpdate: boolean } } };
+  material?: Material | Material[] | null;
+}
+
+interface StatusElementLike {
+  textContent: string | null;
+}
+
+interface ClearRouteVisualizationArgs {
+  routeGroup: Group;
+  simState: { route: RouteLike | null };
+  statusRouteElement: StatusElementLike;
+}
+
+interface PlotRouteArgs extends ClearRouteVisualizationArgs {
+  route: RouteLike;
+  bodyById: Map<string, { name?: string }>;
+  buildTransferCurvePoints: (leg: RouteLeg, segments: number) => Vector3[];
+}
+
+interface UpdateRouteVisualizationArgs {
+  routeGroup: Group;
+  route: RouteLike | null;
+  bodyNodes: Map<string, Object3D>;
+  buildTransferCurvePoints: (leg: RouteLeg, segments: number) => Vector3[];
+  tempStart: Vector3;
+  tempEnd: Vector3;
+}
+
+function disposeRouteVisualizationResources(routeGroup: Group): void {
   for (const child of routeGroup.children) {
     child.traverse((node) => {
-      if (node.geometry && typeof node.geometry.dispose === 'function') {
-        node.geometry.dispose();
+      const routeNode = node as RouteNode;
+      if (routeNode.geometry && typeof routeNode.geometry.dispose === 'function') {
+        routeNode.geometry.dispose();
       }
-      disposeThreeMaterial(node.material);
+      disposeThreeMaterial(routeNode.material);
     });
   }
 }
 
-export function clearRouteVisualization({ routeGroup, simState, statusRouteElement }) {
+export function clearRouteVisualization({ routeGroup, simState, statusRouteElement }: ClearRouteVisualizationArgs): void {
   disposeRouteVisualizationResources(routeGroup);
   routeGroup.clear();
   simState.route = null;
@@ -34,11 +81,11 @@ export function plotRoute({
   simState,
   statusRouteElement,
   buildTransferCurvePoints
-}) {
+}: PlotRouteArgs): void {
   disposeRouteVisualizationResources(routeGroup);
   routeGroup.clear();
 
-  route.legs.forEach((leg, index) => {
+  route.legs.forEach((leg: RouteLeg, index: number) => {
     const points = buildTransferCurvePoints(leg, ROUTE_SEGMENTS);
     const positions = new Float32Array((ROUTE_SEGMENTS + 1) * 3);
 
@@ -64,7 +111,7 @@ export function plotRoute({
   });
 
   simState.route = route;
-  const routeNames = route.bodyRoute.map((bodyId) => bodyById.get(bodyId)?.name ?? bodyId).join(' -> ');
+  const routeNames = route.bodyRoute.map((bodyId: string) => bodyById.get(bodyId)?.name ?? bodyId).join(' -> ');
   statusRouteElement.textContent = `Route: ${routeNames}`;
 }
 
@@ -75,14 +122,15 @@ export function updateRouteVisualization({
   buildTransferCurvePoints,
   tempStart,
   tempEnd
-}) {
+}: UpdateRouteVisualizationArgs): void {
   if (!route) return;
 
   const legs = route.legs;
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i];
-    const line = routeGroup.children[i];
-    if (!line) continue;
+    const line = routeGroup.children[i] as RouteNode | undefined;
+    if (!line?.geometry) continue;
+    if (!leg.fromId || !leg.toId) continue;
 
     const fromNode = bodyNodes.get(leg.fromId);
     const toNode = bodyNodes.get(leg.toId);

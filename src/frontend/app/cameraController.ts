@@ -1,4 +1,57 @@
-function formatAu(au) {
+import { Object3D, PerspectiveCamera, Vector3 } from 'three';
+import type { SimulationStateStore } from './stateStore';
+
+interface ControlsLike {
+  target: Vector3;
+  zoomSpeed: number;
+  minDistance: number;
+}
+
+interface DistanceConstants {
+  AU_PER_LIGHT_YEAR: number;
+  AU_KM: number;
+}
+
+interface CameraDomLike {
+  toggleNearbySystems?: { checked?: boolean } | null;
+  zoomSensitivityValue?: { textContent: string | null } | null;
+  zoomDistanceValue?: { textContent: string | null } | null;
+  viewScaleValue?: { textContent: string | null } | null;
+  statusZoom?: { textContent: string | null } | null;
+  statusScale?: { textContent: string | null } | null;
+}
+
+interface AdaptiveZoomProfile {
+  minClearanceKm: number;
+  dampingBandKm: number;
+  minSpeedFactor: number;
+}
+
+interface InterstellarStateLike {
+  nearbySystemsLoaded: boolean;
+  nearbySystemsMaxDistanceAu: number;
+}
+
+interface CreateCameraControllerArgs {
+  camera: PerspectiveCamera;
+  controls: ControlsLike;
+  dom: CameraDomLike;
+  simState: SimulationStateStore;
+  resolveBodyId: (bodyId: string | null | undefined) => string | null | undefined;
+  bodyById: Map<string, Record<string, unknown>>;
+  bodyNodes: Map<string, Object3D>;
+  adaptiveZoomProfiles: Record<string, AdaptiveZoomProfile>;
+  bodyDistanceAuAtAltitude: (body: Record<string, unknown>, altitudeKm: number) => number;
+  distanceConstants: DistanceConstants;
+  systemViewMode: { SYSTEM_LOCAL: string };
+  interstellarMarkerVisibilityMinRangeAu: number;
+  interstellarMaxDistanceAu: number;
+  getInterstellarState: () => InterstellarStateLike;
+  isCameraTransitionActive: () => boolean;
+  tempVector: Vector3;
+}
+
+function formatAu(au: number): string {
   if (au >= 1_000) return `${au.toFixed(1)} AU`;
   if (au >= 10) return `${au.toFixed(2)} AU`;
   if (au >= 1) return `${au.toFixed(3)} AU`;
@@ -6,7 +59,7 @@ function formatAu(au) {
   return `${au.toFixed(6)} AU`;
 }
 
-function formatDistanceScale(au, realisticMode, { AU_PER_LIGHT_YEAR, AU_KM }) {
+function formatDistanceScale(au: number, realisticMode: boolean, { AU_PER_LIGHT_YEAR, AU_KM }: DistanceConstants): string {
   const safeAu = Math.max(0, au);
   const ly = safeAu / AU_PER_LIGHT_YEAR;
   const km = safeAu * AU_KM;
@@ -30,7 +83,7 @@ function formatDistanceScale(au, realisticMode, { AU_PER_LIGHT_YEAR, AU_KM }) {
   return `${km.toFixed(0)} km (${auText})`;
 }
 
-function clamp01(value) {
+function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
@@ -51,7 +104,7 @@ export function createCameraController({
   getInterstellarState,
   isCameraTransitionActive,
   tempVector
-}) {
+}: CreateCameraControllerArgs) {
   function updateZoomMetricsUI() {
     const rangeAu = camera.position.distanceTo(controls.target);
     const halfFovRad = (camera.fov * Math.PI) / 360;
