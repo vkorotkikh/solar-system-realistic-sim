@@ -11,6 +11,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   Sprite,
   SpriteMaterial,
   SphereGeometry,
@@ -148,48 +149,70 @@ function normalizeCatalogSatellite(entry: SatelliteCatalogEntry, primaryModel: P
   const periodHours = Number(entry.periodHours);
   const periodDays = Number(entry.periodDays);
   const altitudeKm = Number(entry.altitudeKm);
-
-  const meanMotionRevDay = Number.isFinite(entry.meanMotionRevDay)
+  const providedMeanMotionRevDay = typeof entry.meanMotionRevDay === 'number' && Number.isFinite(entry.meanMotionRevDay)
     ? entry.meanMotionRevDay
-    : Number.isFinite(periodHours)
-      ? 24 / periodHours
-      : Number.isFinite(periodDays)
-        ? 1 / periodDays
-        : null;
-
-  const aKm = Number.isFinite(entry.aKm)
+    : null;
+  const providedAKm = typeof entry.aKm === 'number' && Number.isFinite(entry.aKm)
     ? entry.aKm
-    : Number.isFinite(altitudeKm)
-      ? primaryModel.equatorialRadiusKm + altitudeKm
-      : meanMotionRevDay
-        ? semimajorAxisFromMeanMotion(meanMotionRevDay, primaryModel.muKm3S2)
-        : null;
+    : null;
 
-  if (!Number.isFinite(aKm) || aKm <= 0) {
+  const meanMotionRevDay = providedMeanMotionRevDay
+    ?? (
+      Number.isFinite(periodHours)
+        ? 24 / periodHours
+        : Number.isFinite(periodDays)
+          ? 1 / periodDays
+          : null
+    );
+
+  const aKm = providedAKm
+    ?? (
+      Number.isFinite(altitudeKm)
+        ? primaryModel.equatorialRadiusKm + altitudeKm
+        : typeof meanMotionRevDay === 'number'
+          ? semimajorAxisFromMeanMotion(meanMotionRevDay, primaryModel.muKm3S2)
+          : null
+    );
+
+  if (typeof aKm !== 'number' || !Number.isFinite(aKm) || aKm <= 0) {
     return null;
   }
 
-  const resolvedMeanMotion = Number.isFinite(meanMotionRevDay)
+  const resolvedMeanMotion = typeof meanMotionRevDay === 'number' && Number.isFinite(meanMotionRevDay)
     ? meanMotionRevDay
     : meanMotionFromSemimajorAxis(aKm, primaryModel.muKm3S2);
 
-  if (!Number.isFinite(resolvedMeanMotion) || resolvedMeanMotion <= 0) {
+  if (typeof resolvedMeanMotion !== 'number' || !Number.isFinite(resolvedMeanMotion) || resolvedMeanMotion <= 0) {
     return null;
   }
+
+  const eccentricity = typeof entry.e === 'number' && Number.isFinite(entry.e)
+    ? Math.max(0, Math.min(0.9999, entry.e))
+    : 0;
+  const inclinationDeg = typeof entry.iDeg === 'number' && Number.isFinite(entry.iDeg) ? entry.iDeg : 0;
+  const ascendingNodeDeg = typeof entry.ascendingNodeDeg === 'number' && Number.isFinite(entry.ascendingNodeDeg)
+    ? entry.ascendingNodeDeg
+    : 0;
+  const argPeriapsisDeg = typeof entry.argPeriapsisDeg === 'number' && Number.isFinite(entry.argPeriapsisDeg)
+    ? entry.argPeriapsisDeg
+    : 0;
+  const meanAnomalyDeg = typeof entry.meanAnomalyDeg === 'number' && Number.isFinite(entry.meanAnomalyDeg)
+    ? entry.meanAnomalyDeg
+    : 0;
 
   return {
     id,
     name,
     category,
     epochJd: Number.isFinite(entry.epochJd) ? Number(entry.epochJd) : J2000_JD,
-    aKm: Number(aKm),
-    e: Number.isFinite(entry.e) ? Math.max(0, Math.min(0.9999, entry.e)) : 0,
-    iRad: (Number.isFinite(entry.iDeg) ? entry.iDeg : 0) * DEG_TO_RAD,
-    raanRad: (Number.isFinite(entry.ascendingNodeDeg) ? entry.ascendingNodeDeg : 0) * DEG_TO_RAD,
-    argPeriapsisRad: (Number.isFinite(entry.argPeriapsisDeg) ? entry.argPeriapsisDeg : 0) * DEG_TO_RAD,
-    meanAnomalyRad: (Number.isFinite(entry.meanAnomalyDeg) ? entry.meanAnomalyDeg : 0) * DEG_TO_RAD,
-    meanMotionRevDay: Number(resolvedMeanMotion),
-    meanMotionRadSec: (Number(resolvedMeanMotion) * TWO_PI) / DAY_SECONDS,
+    aKm,
+    e: eccentricity,
+    iRad: inclinationDeg * DEG_TO_RAD,
+    raanRad: ascendingNodeDeg * DEG_TO_RAD,
+    argPeriapsisRad: argPeriapsisDeg * DEG_TO_RAD,
+    meanAnomalyRad: meanAnomalyDeg * DEG_TO_RAD,
+    meanMotionRevDay: resolvedMeanMotion,
+    meanMotionRadSec: (resolvedMeanMotion * TWO_PI) / DAY_SECONDS,
     frame: `${entry.frame ?? 'ecliptic'}`.toLowerCase()
   };
 }
@@ -396,7 +419,7 @@ function markerColor(category: string, colorOverrides: MarkerColorOverrides | nu
 }
 
 function markerScaleAu(realisticMode: boolean, primaryModel: PrimaryModel, markerBaseScaleAu: number | null = null): number {
-  if (Number.isFinite(markerBaseScaleAu) && markerBaseScaleAu > 0) {
+  if (typeof markerBaseScaleAu === 'number' && Number.isFinite(markerBaseScaleAu) && markerBaseScaleAu > 0) {
     return markerBaseScaleAu;
   }
   if (!realisticMode) return 0.00062;
@@ -424,7 +447,7 @@ function createSatelliteSpriteTexture(category: string, colorOverrides: MarkerCo
   const paletteKey = markerColor(category, colorOverrides);
   const cacheKey = `${category}:${paletteKey}`;
   if (SATELLITE_ICON_TEXTURES.has(cacheKey)) {
-    return SATELLITE_ICON_TEXTURES.get(cacheKey);
+    return SATELLITE_ICON_TEXTURES.get(cacheKey) ?? null;
   }
 
   const canvas = document.createElement('canvas');
@@ -581,12 +604,12 @@ export class OrbitalSatelliteSystem {
     this.orbitLinesClamped = false;
   }
 
-  attachTo(parentNode) {
+  attachTo(parentNode: Object3D | null | undefined): void {
     if (!parentNode) return;
     parentNode.add(this.group);
   }
 
-  status() {
+  status(): Record<string, unknown> {
     return {
       initialized: this.initialized,
       primaryId: this.primaryId,
@@ -603,10 +626,10 @@ export class OrbitalSatelliteSystem {
     };
   }
 
-  async initialize() {
+  async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    let loaded = [];
+    let loaded: NormalizedSatellite[] = [];
     try {
       if (this.tleSources && Object.keys(this.tleSources).length > 0) {
         const entries = Object.entries(this.tleSources);
@@ -621,18 +644,18 @@ export class OrbitalSatelliteSystem {
           loaded = parsedByGroup.flat();
         }
       }
-    } catch (error) {
-      this.lastError = error?.message ?? String(error);
+    } catch (error: unknown) {
+      this.lastError = error instanceof Error ? error.message : String(error);
       loaded = [];
     }
 
     const catalog = this.catalogSatellites
       .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
-      .filter(Boolean);
+      .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
 
     const merged = [...loaded, ...catalog];
-    const deduped = [];
-    const seen = new Set();
+    const deduped: NormalizedSatellite[] = [];
+    const seen = new Set<string>();
     for (const sat of merged) {
       if (seen.has(sat.id)) continue;
       seen.add(sat.id);
@@ -644,7 +667,7 @@ export class OrbitalSatelliteSystem {
     if (this.satellites.length === 0) {
       this.satellites = fallbackByPrimary(this.primaryId)
         .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
-        .filter(Boolean);
+        .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
     }
 
     this.buildSceneObjects();
@@ -654,7 +677,7 @@ export class OrbitalSatelliteSystem {
     this.initialized = true;
   }
 
-  initializeWorker() {
+  initializeWorker(): void {
     if (!this.useWorkerPropagation || typeof Worker === 'undefined' || this.worker) {
       return;
     }
@@ -715,7 +738,7 @@ export class OrbitalSatelliteSystem {
     });
   }
 
-  disableWorker() {
+  disableWorker(): void {
     if (this.worker) {
       this.worker.terminate();
     }
@@ -726,7 +749,7 @@ export class OrbitalSatelliteSystem {
     this.useWorkerPropagation = false;
   }
 
-  buildSceneObjects() {
+  buildSceneObjects(): void {
     this.group.clear();
     this.meshById.clear();
     this.meshByIndex.length = 0;
@@ -755,7 +778,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  buildInstancedMarkers() {
+  buildInstancedMarkers(): void {
     const material = new MeshBasicMaterial({
       color: new Color('#ffffff'),
       vertexColors: true
@@ -786,7 +809,7 @@ export class OrbitalSatelliteSystem {
     this.markerInstancedMesh = instancedMesh;
   }
 
-  buildIndividualMarkers() {
+  buildIndividualMarkers(): void {
     for (let i = 0; i < this.satellites.length; i += 1) {
       const sat = this.satellites[i];
       let marker;
@@ -816,7 +839,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  createOrbitLine(satellite) {
+  createOrbitLine(satellite: NormalizedSatellite): Line {
     const segments = satellite.category === 'geo' ? 220 : satellite.category === 'nrho' ? 280 : 180;
     const positions = new Float32Array((segments + 1) * 3);
     const point = new Vector3();
@@ -843,22 +866,22 @@ export class OrbitalSatelliteSystem {
     );
   }
 
-  setVisible(visible) {
+  setVisible(visible: boolean): void {
     this.group.visible = Boolean(visible);
   }
 
-  setOrbitVisibility(visible) {
+  setOrbitVisibility(visible: boolean): void {
     this.showOrbits = Boolean(visible);
     for (const orbitLine of this.orbitLineById.values()) {
       orbitLine.visible = this.showOrbits;
     }
   }
 
-  setJ2Enabled(enabled) {
+  setJ2Enabled(enabled: boolean): void {
     this.useJ2 = Boolean(enabled);
   }
 
-  applyScaleMode(realisticMode) {
+  applyScaleMode(realisticMode: boolean): void {
     this.currentMarkerScaleAu = markerScaleAu(Boolean(realisticMode), this.primaryModel, this.markerBaseScaleAu);
     if (this.markerInstancedMesh) {
       this.rebuildInstancedMatricesFromPositions();
@@ -869,7 +892,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  rebuildInstancedMatricesFromPositions() {
+  rebuildInstancedMatricesFromPositions(): void {
     if (!this.markerInstancedMesh) return;
 
     for (let i = 0; i < this.satellites.length; i += 1) {
@@ -886,18 +909,25 @@ export class OrbitalSatelliteSystem {
     this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  updateJdRateEstimate(jd) {
+  updateJdRateEstimate(jd: number): void {
     const now = nowMs();
-    if (Number.isFinite(this.lastJdSample) && Number.isFinite(this.lastPerfSampleMs)) {
-      const dtSeconds = Math.max(1e-6, (now - this.lastPerfSampleMs) / 1_000);
-      const rawRate = (jd - this.lastJdSample) / dtSeconds;
+    const lastJdSample = this.lastJdSample;
+    const lastPerfSampleMs = this.lastPerfSampleMs;
+    if (
+      typeof lastJdSample === 'number'
+      && Number.isFinite(lastJdSample)
+      && typeof lastPerfSampleMs === 'number'
+      && Number.isFinite(lastPerfSampleMs)
+    ) {
+      const dtSeconds = Math.max(1e-6, (now - lastPerfSampleMs) / 1_000);
+      const rawRate = (jd - lastJdSample) / dtSeconds;
       this.estimatedJdRate = this.estimatedJdRate * 0.75 + rawRate * 0.25;
     }
     this.lastJdSample = jd;
     this.lastPerfSampleMs = now;
   }
 
-  applyWorkerSnapshot(jd) {
+  applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
     if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
@@ -918,7 +948,7 @@ export class OrbitalSatelliteSystem {
     return true;
   }
 
-  shouldRequestWorkerSnapshot(jd) {
+  shouldRequestWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return true;
 
     const minJd = Math.min(this.workerSnapshot.jd0, this.workerSnapshot.jd1);
@@ -931,7 +961,7 @@ export class OrbitalSatelliteSystem {
     return jd <= minJd + margin || jd >= maxJd - margin;
   }
 
-  requestWorkerSnapshot(jd) {
+  requestWorkerSnapshot(jd: number): void {
     if (!this.worker || !this.workerReady || this.workerBusy) return;
 
     const now = nowMs();
@@ -953,7 +983,7 @@ export class OrbitalSatelliteSystem {
     this.workerLastRequestAtMs = now;
   }
 
-  applyMarkerPositionByIndex(index, x, y, z) {
+  applyMarkerPositionByIndex(index: number, x: number, y: number, z: number): void {
     const base = index * 3;
     this.currentPositionsAu[base] = x;
     this.currentPositionsAu[base + 1] = y;
@@ -971,12 +1001,12 @@ export class OrbitalSatelliteSystem {
     mesh.position.set(x, y, z);
   }
 
-  flushMarkerPositionUpdates() {
+  flushMarkerPositionUpdates(): void {
     if (!this.markerInstancedMesh) return;
     this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  applyScreenSpaceMarkerScaling(viewState) {
+  applyScreenSpaceMarkerScaling(viewState: SatelliteViewState | null): void {
     if (this.markerInstancedMesh || !this.markerPixelSize) return;
     const camera = viewState?.camera ?? null;
     const viewportHeight = Number(viewState?.viewportHeight ?? 0);
@@ -995,7 +1025,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  update(jd, viewState = null) {
+  update(jd: number, viewState: SatelliteViewState | null = null): void {
     if (!this.initialized) return;
 
     this.updateJdRateEstimate(jd);
