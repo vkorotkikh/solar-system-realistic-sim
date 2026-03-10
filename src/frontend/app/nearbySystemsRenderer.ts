@@ -3,14 +3,141 @@ import {
   BufferGeometry,
   CanvasTexture,
   Float32BufferAttribute,
+  Group,
   Points,
   PointsMaterial,
+  PerspectiveCamera,
   Raycaster,
   Sprite,
   SpriteMaterial,
   Vector2,
   Vector3
 } from 'three';
+import type { SimulationStateStore, SystemViewMode } from './stateStore';
+
+interface ToggleLike {
+  checked?: boolean | null;
+}
+
+interface StatusElementLike {
+  textContent: string | null;
+}
+
+interface NearbySystemsDomBindings {
+  canvas: HTMLCanvasElement;
+  bodyInfo: StatusElementLike;
+  statusFocus: StatusElementLike;
+  toggleNearbySystems?: ToggleLike | null;
+}
+
+interface NearbySystemsControls {
+  target: Vector3;
+  minDistance: number;
+  maxDistance: number;
+}
+
+interface NearbySystemConstants {
+  SYSTEM_VIEW_MODE: {
+    SOLAR: SystemViewMode;
+    INTERSTELLAR: SystemViewMode;
+    SYSTEM_LOCAL: SystemViewMode;
+  };
+  DEG_TO_RAD: number;
+  PC_TO_AU: number;
+  INTERSTELLAR_LABEL_LIMIT: number;
+  INTERSTELLAR_NEARBY_HALO_MAX_DISTANCE_LY: number;
+  INTERSTELLAR_PICK_RADIUS_PX_MIN: number;
+  INTERSTELLAR_PICK_RADIUS_PX_MAX: number;
+  INTERSTELLAR_POSITION_UPDATE_MIN_JD_DELTA: number;
+  INTERSTELLAR_MARKER_VISIBILITY_MIN_RANGE_AU: number;
+  INTERSTELLAR_LABEL_VISIBILITY_MIN_RANGE_AU: number;
+  INTERSTELLAR_MAX_DISTANCE_AU: number;
+  SOLAR_SYSTEM_MAX_DISTANCE_AU: number;
+  INTERSTELLAR_MAX_DISTANCE_LY: number;
+  NEARBY_SYSTEM_NAME_OVERRIDES_BY_SYS_ID: Record<number, string>;
+  LOCAL_SYSTEM_MANIFEST_BY_NEARBY_ID: Record<string, string>;
+}
+
+interface NearbySystemRawEntry {
+  sys_id?: unknown;
+  rank?: unknown;
+  ra_deg?: unknown;
+  dec_deg?: unknown;
+  parallax_mas?: unknown;
+  distance_ly?: unknown;
+  distance_pc?: unknown;
+  pm_ra_mas_per_yr?: unknown;
+  pm_dec_mas_per_yr?: unknown;
+  epoch_year?: unknown;
+  gmag?: unknown;
+  rv_km_s?: unknown;
+  catalog_name?: unknown;
+  identifier?: unknown;
+  obj_type?: unknown;
+  spectral_type?: unknown;
+}
+
+interface NearbySystemEntry {
+  id: string;
+  sysId: number;
+  rank: number;
+  name: string;
+  identifier: string;
+  objType: string;
+  spectralType: string;
+  distanceLy: number;
+  distancePc: number;
+  distanceAu: number;
+  raDeg: number;
+  decDeg: number;
+  parallaxMas: number;
+  epochYear: number;
+  pmRaMasYr: number;
+  pmDecMasYr: number;
+  rvKmS: number | null;
+  gmag: number | null;
+  localManifestPath: string | null;
+  worldPosition: Vector3;
+}
+
+interface NearbySystemSpriteEntry {
+  systemId: string;
+  sprite: Sprite;
+}
+
+interface NearbySystemsState {
+  nearbySystemsPoints: Points<BufferGeometry, PointsMaterial> | null;
+  nearbySystemLabelEntries: NearbySystemSpriteEntry[];
+  nearbySystemCloseHaloEntries: NearbySystemSpriteEntry[];
+  nearbySystemHoverHalo: Sprite | null;
+  nearbySystemsById: Map<string, NearbySystemEntry>;
+  nearbySystemsCatalog: NearbySystemEntry[];
+  nearbySystemsMaxDistanceAu: number;
+  nearbySystemsLoaded: boolean;
+  nearbySystemsLastUpdateJd: number;
+}
+
+interface NearbySystemScreenPosition {
+  x: number;
+  y: number;
+  ndcZ: number;
+}
+
+interface CreateNearbySystemsRendererArgs {
+  dom: NearbySystemsDomBindings;
+  camera: PerspectiveCamera;
+  controls: NearbySystemsControls;
+  simState: SimulationStateStore;
+  state: NearbySystemsState;
+  nearbySystemsGroup: Group;
+  constants: NearbySystemConstants;
+  createInterstellarLabelSprite: (text: string) => Sprite;
+  julianDateToJulianYear: (julianDate: number) => number;
+  equatorialDegToCartesian: (raDeg: number, decDeg: number, radiusAu: number) => [number, number, number];
+  backendBaseUrl: () => string;
+  setSystemViewMode: (mode: SystemViewMode) => void;
+  refreshStarSystemListOptions: () => void;
+}
 
 export function createNearbySystemsRenderer({
   dom,
@@ -26,7 +153,7 @@ export function createNearbySystemsRenderer({
   backendBaseUrl,
   setSystemViewMode,
   refreshStarSystemListOptions
-}) {
+}: CreateNearbySystemsRendererArgs) {
   const {
     SYSTEM_VIEW_MODE,
     DEG_TO_RAD,
@@ -54,12 +181,16 @@ export function createNearbySystemsRenderer({
     innerColor = 'rgba(103, 232, 255, 0.64)',
     midColor = 'rgba(66, 156, 255, 0.28)',
     ringColor = 'rgba(101, 223, 255, 0.84)'
-  } = {}) {
+  }: {
+    innerColor?: string;
+    midColor?: string;
+    ringColor?: string;
+  } = {}): Sprite {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return new CanvasTexture(canvas);
+    if (!ctx) return new Sprite();
     const center = canvas.width * 0.5;
     const radius = canvas.width * 0.46;
 
@@ -90,7 +221,10 @@ export function createNearbySystemsRenderer({
     return sprite;
   }
 
-  function normalizeNearbySystemEntry(entry, fallbackRank) {
+  function normalizeNearbySystemEntry(
+    entry: NearbySystemRawEntry | null | undefined,
+    fallbackRank: number
+  ): NearbySystemEntry | null {
     const sysId = Number(entry?.sys_id);
     const rank = Number(entry?.rank);
     const raDeg = Number(entry?.ra_deg);
@@ -143,7 +277,7 @@ export function createNearbySystemsRenderer({
     };
   }
 
-  function setHoveredNearbySystem(system) {
+  function setHoveredNearbySystem(system: NearbySystemEntry | null): void {
     const hoveredId = system?.id ?? null;
     simState.hoveredNearbySystemId = hoveredId;
     if (dom.canvas) {
@@ -151,7 +285,7 @@ export function createNearbySystemsRenderer({
     }
   }
 
-  function clearNearbySystemsLayer() {
+  function clearNearbySystemsLayer(): void {
     nearbySystemsGroup.clear();
     state.nearbySystemsPoints = null;
     state.nearbySystemLabelEntries.length = 0;
@@ -168,7 +302,10 @@ export function createNearbySystemsRenderer({
     }
   }
 
-  function nearbySystemRaDecAtJulianDate(system, julianDate) {
+  function nearbySystemRaDecAtJulianDate(
+    system: NearbySystemEntry,
+    julianDate: number
+  ): [number, number] {
     const dtYears = julianDateToJulianYear(julianDate) - system.epochYear;
     const cosDec = Math.max(1e-6, Math.abs(Math.cos(system.decDeg * DEG_TO_RAD)));
     const deltaRaDeg = (system.pmRaMasYr * dtYears) / (3_600_000 * cosDec);
@@ -178,18 +315,22 @@ export function createNearbySystemsRenderer({
     return [ra, dec];
   }
 
-  function nearbySystemWorldPosition(system, julianDate, outVector) {
+  function nearbySystemWorldPosition(
+    system: NearbySystemEntry,
+    julianDate: number,
+    outVector: Vector3
+  ): Vector3 {
     const [raDeg, decDeg] = nearbySystemRaDecAtJulianDate(system, julianDate);
     const [x, y, z] = equatorialDegToCartesian(raDeg, decDeg, system.distanceAu);
     outVector.set(x, y, z);
     return outVector;
   }
 
-  function nearbySystemPickRadiusPx(system) {
-    const brightBoost = Number.isFinite(system?.gmag)
+  function nearbySystemPickRadiusPx(system: NearbySystemEntry): number {
+    const brightBoost = typeof system.gmag === 'number' && Number.isFinite(system.gmag)
       ? Math.max(0, (7 - system.gmag) * 1.8)
       : 2.0;
-    const distanceBoost = Number.isFinite(system?.distanceLy)
+    const distanceBoost = Number.isFinite(system.distanceLy)
       ? Math.max(0, (12 - system.distanceLy) * 1.25)
       : 0;
     return Math.max(
@@ -198,7 +339,11 @@ export function createNearbySystemsRenderer({
     );
   }
 
-  function projectNearbySystemToScreen(system, rect, outVector) {
+  function projectNearbySystemToScreen(
+    system: NearbySystemEntry,
+    rect: DOMRect,
+    outVector: Vector3
+  ): NearbySystemScreenPosition | null {
     outVector.copy(system.worldPosition).project(camera);
     if (outVector.z < -1 || outVector.z > 1) return null;
     return {
@@ -208,7 +353,7 @@ export function createNearbySystemsRenderer({
     };
   }
 
-  function buildNearbySystemsLayer(systems) {
+  function buildNearbySystemsLayer(systems: NearbySystemEntry[]): void {
     clearNearbySystemsLayer();
     state.nearbySystemsCatalog = systems;
     if (systems.length === 0) return;
@@ -221,7 +366,9 @@ export function createNearbySystemsRenderer({
       state.nearbySystemsById.set(system.id, system);
       state.nearbySystemsMaxDistanceAu = Math.max(state.nearbySystemsMaxDistanceAu, system.distanceAu);
 
-      const apparentMag = Number.isFinite(system.gmag) ? system.gmag : 10.5;
+      const apparentMag = typeof system.gmag === 'number' && Number.isFinite(system.gmag)
+        ? system.gmag
+        : 10.5;
       const intensity = Math.max(0.18, Math.min(1.0, 1.08 - apparentMag * 0.055));
       colors[i * 3] = intensity * 0.72;
       colors[i * 3 + 1] = intensity * 0.84;
@@ -286,7 +433,7 @@ export function createNearbySystemsRenderer({
     state.nearbySystemsLoaded = true;
   }
 
-  function updateNearbySystemsPositions(julianDate, force = false) {
+  function updateNearbySystemsPositions(julianDate: number, force = false): void {
     if (!state.nearbySystemsLoaded || !state.nearbySystemsPoints) return;
     if (
       !force
@@ -296,7 +443,7 @@ export function createNearbySystemsRenderer({
       return;
     }
 
-    const positions = state.nearbySystemsPoints.geometry.attributes.position.array;
+    const positions = state.nearbySystemsPoints.geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < state.nearbySystemsCatalog.length; i += 1) {
       const system = state.nearbySystemsCatalog[i];
       nearbySystemWorldPosition(system, julianDate, system.worldPosition);
@@ -335,7 +482,7 @@ export function createNearbySystemsRenderer({
     state.nearbySystemsLastUpdateJd = julianDate;
   }
 
-  function applyNearbySystemsVisibility() {
+  function applyNearbySystemsVisibility(): void {
     if (simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) {
       nearbySystemsGroup.visible = false;
       return;
@@ -373,19 +520,19 @@ export function createNearbySystemsRenderer({
     }
   }
 
-  async function loadNearbySystemsCatalog() {
+  async function loadNearbySystemsCatalog(): Promise<void> {
     const url = `${backendBaseUrl()}/nearby-systems?limit=500&max_distance_ly=${INTERSTELLAR_MAX_DISTANCE_LY}`;
     try {
       const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Nearby systems API unavailable (${response.status})`);
       }
-      const payload = await response.json();
+      const payload = await response.json() as { systems?: unknown[] };
       const rows = Array.isArray(payload?.systems) ? payload.systems : [];
       const systems = rows
-        .map((entry, index) => normalizeNearbySystemEntry(entry, index + 1))
-        .filter(Boolean)
-        .sort((a, b) => a.rank - b.rank);
+        .map((entry, index) => normalizeNearbySystemEntry(entry as NearbySystemRawEntry, index + 1))
+        .filter((system): system is NearbySystemEntry => Boolean(system))
+        .sort((a: NearbySystemEntry, b: NearbySystemEntry) => a.rank - b.rank);
       buildNearbySystemsLayer(systems);
       updateNearbySystemsPositions(simState.julianDate, true);
       applyNearbySystemsVisibility();
@@ -396,7 +543,7 @@ export function createNearbySystemsRenderer({
     }
   }
 
-  function pickNearbySystemAtClientPosition(clientX, clientY) {
+  function pickNearbySystemAtClientPosition(clientX: number, clientY: number): NearbySystemEntry | null {
     if (!state.nearbySystemsLoaded || simState.systemViewMode === SYSTEM_VIEW_MODE.SYSTEM_LOCAL) return null;
     const rect = dom.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
@@ -406,7 +553,7 @@ export function createNearbySystemsRenderer({
     pickPointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     pickRaycaster.setFromCamera(pickPointerNdc, camera);
 
-    const pickTargets = [];
+    const pickTargets: Sprite[] = [];
     for (const entry of state.nearbySystemLabelEntries) {
       if (entry.sprite.visible) {
         pickTargets.push(entry.sprite);
@@ -417,14 +564,14 @@ export function createNearbySystemsRenderer({
       for (const hit of intersections) {
         const systemId = hit.object?.userData?.nearbySystemId;
         if (typeof systemId === 'string' && state.nearbySystemsById.has(systemId)) {
-          return state.nearbySystemsById.get(systemId);
+          return state.nearbySystemsById.get(systemId) ?? null;
         }
       }
     }
 
     if (!state.nearbySystemsPoints?.visible) return null;
 
-    let bestSystem = null;
+    let bestSystem: NearbySystemEntry | null = null;
     let bestScore = Number.POSITIVE_INFINITY;
 
     for (const system of state.nearbySystemsCatalog) {
@@ -447,12 +594,12 @@ export function createNearbySystemsRenderer({
     return bestSystem;
   }
 
-  function updateNearbySystemHoverAtClientPosition(clientX, clientY) {
+  function updateNearbySystemHoverAtClientPosition(clientX: number, clientY: number): void {
     const hovered = pickNearbySystemAtClientPosition(clientX, clientY);
     setHoveredNearbySystem(hovered);
   }
 
-  function focusNearbySystem(systemId, hardSnap = false) {
+  function focusNearbySystem(systemId: string, hardSnap = false): void {
     const system = state.nearbySystemsById.get(systemId);
     if (!system) return;
 

@@ -1,3 +1,172 @@
+import type { SolarSystemModel } from '../../sim/solarSystemModel';
+import type { SimulationStateStore } from './stateStore';
+
+interface BodyNameLike {
+  name: string;
+}
+
+interface RouteLegLike {
+  fromId?: string;
+  toId?: string;
+  deltaVDepartureKmS?: number;
+  deltaVArrivalKmS?: number;
+  pathLengthAu?: number;
+  tofDays?: number;
+}
+
+interface RouteLike {
+  bodyRoute: string[];
+  legs: RouteLegLike[];
+  assists: unknown[];
+  objective: string;
+  totalAssistGainKmS: number;
+  totalDeltaVKmS: number;
+  totalPathLengthAu: number;
+  totalTimeDays: number;
+  turnDeficitPenalty: number;
+}
+
+interface MissionRecommendation {
+  outbound?: RouteLike | null;
+  return?: RouteLike | null;
+  payloadClosure?: {
+    returnedPayloadKg?: number;
+  } | null;
+  risk?: {
+    failureProbability?: number;
+  } | null;
+  verification?: {
+    valid?: boolean;
+    reasons?: string[];
+  } | null;
+  objectiveBreakdown?: {
+    propellantUsedKg?: number;
+  } | null;
+  missionScore?: number;
+}
+
+interface LambertResult {
+  solution?: RouteLegLike | null;
+  ephemerisProvider?: string | null;
+}
+
+interface PorkchopBestPoint {
+  departureJd: number;
+  arrivalJd: number;
+  totalDeltaVKmS: number;
+}
+
+interface PorkchopWindowResult {
+  best?: PorkchopBestPoint | null;
+  count: number;
+  ephemerisProvider?: string | null;
+}
+
+interface PlannerResult {
+  best?: RouteLike | null;
+  source?: string;
+}
+
+interface MissionPlannerResult {
+  recommendation?: MissionRecommendation | null;
+}
+
+interface PlannerDomBindings {
+  plannerFrom: HTMLSelectElement;
+  plannerTo: HTMLSelectElement;
+  plannerDate: HTMLInputElement;
+  plannerArrivalDate: HTMLInputElement;
+  plannerEphemeris: HTMLSelectElement;
+  plannerPayloadMass: HTMLInputElement;
+  plannerPrograde: HTMLInputElement;
+  plannerAssists: HTMLInputElement | HTMLSelectElement;
+  plannerObjective: HTMLSelectElement;
+  plannerOutput: { textContent: string | null };
+  planDirect: HTMLButtonElement;
+  planOptimal: HTMLButtonElement;
+  planLambert: HTMLButtonElement;
+  planPorkchop: HTMLButtonElement;
+  planMission: HTMLButtonElement;
+  clearRoute: HTMLButtonElement;
+}
+
+interface PlannerOptions {
+  fromId: string;
+  toId: string;
+  departureJd: number;
+  ephemerisProvider: string;
+  prograde: boolean;
+}
+
+interface PlannerServices {
+  describeRoute: (route: RouteLike, bodyById: Map<string, BodyNameLike>) => string;
+  planInterplanetaryRoute: (
+    model: SolarSystemModel,
+    bodyById: Map<string, BodyNameLike>,
+    options: {
+      fromId: string;
+      toId: string;
+      departureJd: number;
+      objective: string;
+      maxAssists: number;
+      ephemerisProvider: string;
+      prograde: boolean;
+    }
+  ) => Promise<PlannerResult>;
+  planMissionProfile: (options: {
+    fromId: string;
+    targetId: string;
+    returnId: string;
+    departureJd: number;
+    objective: string;
+    maxAssists: number;
+    ephemerisProvider: string;
+    prograde: boolean;
+    payloadMassKg: number;
+  }) => Promise<MissionPlannerResult>;
+  scanPorkchopWindow: (options: {
+    fromId: string;
+    toId: string;
+    departureStartJd: number;
+    departureEndJd: number;
+    departureStepDays: number;
+    tofMinDays: number;
+    tofMaxDays: number;
+    tofStepDays: number;
+    ephemerisProvider: string;
+    prograde: boolean;
+  }) => Promise<PorkchopWindowResult>;
+  solveLambertTransfer: (options: {
+    fromId: string;
+    toId: string;
+    departureJd: number;
+    arrivalJd: number;
+    ephemerisProvider: string;
+    prograde: boolean;
+  }) => Promise<LambertResult>;
+}
+
+interface RouteApi {
+  plotRoute: (route: RouteLike) => void;
+  clearRouteVisualization: () => void;
+}
+
+interface DateUtils {
+  formatJulianAsDate: (julianDate: number) => string;
+  parseDateInputToJulian: (value: string) => number | null;
+}
+
+interface CreatePlannerControllerArgs {
+  dom: PlannerDomBindings;
+  simState: SimulationStateStore;
+  model: SolarSystemModel;
+  plannerBodyIds: string[];
+  bodyById: Map<string, BodyNameLike>;
+  planners: PlannerServices;
+  routeApi: RouteApi;
+  dateUtils: DateUtils;
+}
+
 export function createPlannerController({
   dom,
   simState,
@@ -7,7 +176,7 @@ export function createPlannerController({
   planners,
   routeApi,
   dateUtils
-}) {
+}: CreatePlannerControllerArgs) {
   const {
     describeRoute,
     planInterplanetaryRoute,
@@ -18,12 +187,13 @@ export function createPlannerController({
   const { formatJulianAsDate, parseDateInputToJulian } = dateUtils;
   const { plotRoute, clearRouteVisualization } = routeApi;
 
-  function fillPlannerSelects() {
+  function fillPlannerSelects(): void {
     dom.plannerFrom.innerHTML = '';
     dom.plannerTo.innerHTML = '';
 
     for (const bodyId of plannerBodyIds) {
       const body = bodyById.get(bodyId);
+      if (!body) continue;
       const optionFrom = document.createElement('option');
       const optionTo = document.createElement('option');
 
@@ -45,10 +215,12 @@ export function createPlannerController({
     dom.plannerPrograde.checked = true;
   }
 
-  function buildRouteFromLambert(solution, objective = 'min_distance') {
+  function buildRouteFromLambert(solution: RouteLegLike, objective = 'min_distance'): RouteLike {
     const totalDeltaVKmS = Number(solution.deltaVDepartureKmS) + Number(solution.deltaVArrivalKmS);
+    const fromId = solution.fromId ?? '';
+    const toId = solution.toId ?? '';
     return {
-      bodyRoute: [solution.fromId, solution.toId],
+      bodyRoute: [fromId, toId],
       legs: [solution],
       assists: [],
       objective,
@@ -60,7 +232,7 @@ export function createPlannerController({
     };
   }
 
-  function plannerCommonOptions() {
+  function plannerCommonOptions(): PlannerOptions {
     const fromId = dom.plannerFrom.value;
     const toId = dom.plannerTo.value;
     const departureJd = parseDateInputToJulian(dom.plannerDate.value) ?? simState.julianDate;
@@ -69,7 +241,7 @@ export function createPlannerController({
     return { fromId, toId, departureJd, ephemerisProvider, prograde };
   }
 
-  function formatMissionSummary(recommendation) {
+  function formatMissionSummary(recommendation: MissionRecommendation): string {
     const outbound = recommendation?.outbound;
     const inbound = recommendation?.return;
     const closure = recommendation?.payloadClosure ?? {};
@@ -89,7 +261,7 @@ export function createPlannerController({
     ].join('\n');
   }
 
-  async function runPlanner({ directOnly }) {
+  async function runPlanner({ directOnly }: { directOnly: boolean }): Promise<void> {
     const {
       fromId,
       toId,
@@ -108,7 +280,7 @@ export function createPlannerController({
 
     dom.plannerOutput.textContent = 'Planning route...';
 
-    let result = null;
+    let result: PlannerResult | null = null;
     try {
       result = await planInterplanetaryRoute(model, bodyById, {
         fromId,
@@ -136,7 +308,7 @@ export function createPlannerController({
     dom.plannerOutput.textContent = `${describeRoute(result.best, bodyById)}\nSolver: ${solver}`;
   }
 
-  async function runLambertPlanner() {
+  async function runLambertPlanner(): Promise<void> {
     const {
       fromId,
       toId,
@@ -150,7 +322,7 @@ export function createPlannerController({
       dom.plannerOutput.textContent = 'Select different departure and destination bodies.';
       return;
     }
-    if (!Number.isFinite(arrivalJd) || arrivalJd <= departureJd) {
+    if (arrivalJd == null || !Number.isFinite(arrivalJd) || arrivalJd <= departureJd) {
       dom.plannerOutput.textContent = 'Lambert mode requires an arrival date after departure date.';
       return;
     }
@@ -182,7 +354,7 @@ export function createPlannerController({
     }
   }
 
-  async function runPorkchopPlanner() {
+  async function runPorkchopPlanner(): Promise<void> {
     const {
       fromId,
       toId,
@@ -247,7 +419,7 @@ export function createPlannerController({
     }
   }
 
-  async function runMissionPlanner() {
+  async function runMissionPlanner(): Promise<void> {
     const {
       fromId,
       toId,
@@ -293,7 +465,7 @@ export function createPlannerController({
     }
   }
 
-  function bindPlannerUi() {
+  function bindPlannerUi(): void {
     dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
     dom.planOptimal.addEventListener('click', () => runPlanner({ directOnly: false }));
     dom.planLambert.addEventListener('click', () => runLambertPlanner());
