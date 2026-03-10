@@ -15,16 +15,43 @@ import {
 
 const SOURCE_SURFACE_R = 2.5;
 
-function clampUnit(value) {
+interface SolarMagneticFeatureLike {
+    brightness?: unknown;
+    emergence?: unknown;
+    peak_extent_solar_radii?: unknown;
+    kind?: unknown;
+    base_dir?: unknown;
+    paired_dir?: unknown;
+    arc?: unknown[] | null;
+}
+
+interface SolarMagneticPhysicsStateLike {
+    corona?: {
+        features?: SolarMagneticFeatureLike[] | null;
+    } | null;
+}
+
+interface MagneticSeedDirection {
+    direction: Vector3;
+    score: number;
+}
+
+interface MagneticTraceResult {
+    points: Vector3[];
+    isOpen: boolean;
+    polarity: number;
+}
+
+function clampUnit(value: unknown): number {
     return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
-function seededNoise(seed) {
+function seededNoise(seed: number): number {
     const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453123;
     return x - Math.floor(x);
 }
 
-function normalizeDirection(sample) {
+function normalizeDirection(sample: unknown): Vector3 | null {
     if (!Array.isArray(sample) || sample.length !== 3) return null;
     const x = Number(sample[0]);
     const y = Number(sample[1]);
@@ -35,14 +62,17 @@ function normalizeDirection(sample) {
     return new Vector3(x / len, y / len, z / len);
 }
 
-function extractFeatureSeedDirections(physicsState, targetCount) {
+function extractFeatureSeedDirections(
+    physicsState: SolarMagneticPhysicsStateLike | null | undefined,
+    targetCount: number
+): MagneticSeedDirection[] {
     const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
     if (features.length === 0) return [];
 
-    const seeds = [];
-    const seen = new Set();
+    const seeds: MagneticSeedDirection[] = [];
+    const seen = new Set<string>();
     const ranked = features
-        .map((feature) => {
+        .map((feature: SolarMagneticFeatureLike) => {
             const brightness = clampUnit(Number(feature?.brightness) || 0);
             const emergence = clampUnit(Number(feature?.emergence) || brightness);
             const extent = clampUnit((Number(feature?.peak_extent_solar_radii) - 1.0) / 3.8);
@@ -76,7 +106,7 @@ function extractFeatureSeedDirections(physicsState, targetCount) {
  * Calculates a simplified, analytical potential magnetic field vector at position (x, y, z)
  * using a mix of dipole and quadrupole terms scaled by solar activity.
  */
-function computeMagneticField(x, y, z, activity) {
+function computeMagneticField(x: number, y: number, z: number, activity: number): Vector3 {
     const r2 = x * x + y * y + z * z;
     const r = Math.sqrt(r2);
     if (r < 0.0001) return new Vector3(0, 1, 0);
@@ -140,7 +170,14 @@ function computeMagneticField(x, y, z, activity) {
 /**
  * Traces a magnetic field line starting from a footpoint on the surface.
  */
-function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
+function traceFieldLine(
+    startX: number,
+    startY: number,
+    startZ: number,
+    stepSize: number,
+    maxSteps: number,
+    activity: number
+): MagneticTraceResult {
     let pos = new Vector3(startX, startY, startZ);
     const points = [pos.clone()];
     let isOpen = false;
@@ -193,10 +230,14 @@ function traceFieldLine(startX, startY, startZ, stepSize, maxSteps, activity) {
 /**
  * Creates the PFSS magnetic field visualization group.
  */
-export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, {
+export function createMagneticFieldLines(sunRadiusAu: number, activity = 0.5, {
     numLines = null,
     physicsState = null
-} = {}) {
+}: {
+    numLines?: number | null;
+    physicsState?: SolarMagneticPhysicsStateLike | null;
+} = {}): Group {
+    sunRadiusAu = Number(sunRadiusAu);
     const group = new Group();
     const maxSteps = 200;
     const stepSize = 0.05;
@@ -278,11 +319,16 @@ export function createMagneticFieldLines(sunRadiusAu, activity = 0.5, {
 /**
  * Creates a procedural grayscale magnetogram texture.
  */
-export function createMagnetogramTexture(size = 512, activity = 0.5) {
+export function createMagnetogramTexture(size = 512, activity = 0.5): CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size / 2;
     const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        const fallbackTexture = new CanvasTexture(canvas);
+        fallbackTexture.needsUpdate = true;
+        return fallbackTexture;
+    }
 
     // Fill with neutral gray (zero magnetic field)
     ctx.fillStyle = '#808080';
@@ -358,7 +404,11 @@ export function createMagnetogramTexture(size = 512, activity = 0.5) {
 /**
  * Updates the field lines animation (breathing effect).
  */
-export function updateMagneticFieldLines(group, timeSec, activity = null) {
+export function updateMagneticFieldLines(
+  group: Group | null | undefined,
+  timeSec: number,
+    activity: number | null = null
+): void {
     if (!group || !group.visible) return;
     const activityLevel = clampUnit(
         Number.isFinite(Number(activity))
@@ -366,7 +416,8 @@ export function updateMagneticFieldLines(group, timeSec, activity = null) {
             : Number(group.userData?.activity)
     );
 
-    for (const line of group.children) {
+    for (const child of group.children) {
+        const line = child as Line;
         if (!line.userData) continue;
         const base = line.userData.baseOpacity ?? 0.2;
         const phase = line.userData.phaseOffset ?? 0;
@@ -378,7 +429,7 @@ export function updateMagneticFieldLines(group, timeSec, activity = null) {
             : (0.82 + activityLevel * 0.08);
         const pulse = pulseFloor + (Math.sin(timeSec * pulseRate + phase) * 0.5 + 0.5) * (pulseCeil - pulseFloor);
 
-        if (line.material) {
+        if (line.material instanceof LineBasicMaterial) {
             line.material.opacity = base * pulse;
         }
     }

@@ -19,12 +19,51 @@ export const CHANNEL_VISUAL_WEIGHTS = {
   aia_304: { blendBoost: 0.35, emissionBoost: 0.55, activityBoost: 0.35, coronaHue: [1.0, 0.18, 0.08] },
 };
 
-function asFiniteNumber(value) {
+type AiaChannelKey = keyof typeof CHANNEL_VISUAL_WEIGHTS;
+
+interface AiaChannelEntryLike {
+  image_id?: unknown;
+  image_date?: unknown;
+  tile_url?: unknown;
+}
+
+interface AiaSourceLike {
+  freshness_proxy?: unknown;
+  activity_proxy?: unknown;
+  channel_activity_proxy?: Record<string, unknown> | null;
+  visualization?: {
+    preferred_channel?: unknown;
+  } | null;
+  channels?: Record<string, AiaChannelEntryLike> | null;
+}
+
+interface SolarObservationPhysicsStateLike {
+  data_assimilation?: {
+    applied?: unknown;
+    observed_confidence?: unknown;
+    sources?: {
+      sdo_aia?: AiaSourceLike | null;
+    } | null;
+  } | null;
+}
+
+interface PickedAiaChannel {
+  channel: string;
+  imageId: string;
+  imageDate: string | null;
+  tileUrl: string;
+}
+
+function isKnownAiaChannel(value: string): value is AiaChannelKey {
+  return Object.prototype.hasOwnProperty.call(CHANNEL_VISUAL_WEIGHTS, value);
+}
+
+function asFiniteNumber(value: unknown): number | null {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function asFreshnessProxy(imageDate) {
+function asFreshnessProxy(imageDate: unknown): number | null {
   if (typeof imageDate !== 'string' || !imageDate) return null;
   const parsedMs = Date.parse(imageDate);
   if (!Number.isFinite(parsedMs)) return null;
@@ -32,7 +71,11 @@ function asFreshnessProxy(imageDate) {
   return clampUnit(1 - ageMs / (6 * 3_600_000));
 }
 
-export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY, overrideChannel = null) {
+export function pickAiaObservationChannel(
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
+  preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY,
+  overrideChannel: string | null = null
+): PickedAiaChannel | null {
   const sdoAia = physicsState?.data_assimilation?.sources?.sdo_aia;
   if (!sdoAia || typeof sdoAia !== 'object') return null;
 
@@ -74,7 +117,11 @@ export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT
   return null;
 }
 
-export function buildAiaProxyTextureUrl(baseUrl, channel, imageId = null) {
+export function buildAiaProxyTextureUrl(
+  baseUrl: string | null | undefined,
+  channel: string | null | undefined,
+  imageId: string | null = null
+): string | null {
   const base = `${baseUrl ?? ''}`.trim().replace(/\/+$/, '');
   const normalizedChannel = `${channel ?? ''}`.trim().toLowerCase();
   if (!base || !normalizedChannel) return null;
@@ -88,9 +135,9 @@ export function buildAiaProxyTextureUrl(baseUrl, channel, imageId = null) {
 }
 
 export function deriveSunObservationControls(
-  physicsState,
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
   fallbackActivity = 0.5,
-  activeChannel = null,
+  activeChannel: string | null = null,
   {
     hasObservationTexture = false,
     selectedChannel = null,
@@ -158,7 +205,9 @@ export function deriveSunObservationControls(
   }
 
   const channelKey = selectedChannelKey && selectedChannelKey !== 'auto' ? selectedChannelKey : null;
-  const weights = channelKey ? (CHANNEL_VISUAL_WEIGHTS[channelKey] ?? null) : null;
+  const weights = channelKey && isKnownAiaChannel(channelKey)
+    ? CHANNEL_VISUAL_WEIGHTS[channelKey]
+    : null;
 
   let coronaHue = null;
   let activityBoost = 0;
