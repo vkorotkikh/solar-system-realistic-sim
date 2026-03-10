@@ -30,7 +30,7 @@ const AU_M = 1.496e11;
  * @param {number} v_sw_kms - solar wind speed in km/s
  * @returns {number} spiral angle in radians (0 = radial, π/2 = azimuthal)
  */
-export function parkerSpiralAngle(r_au, latRad, v_sw_kms) {
+export function parkerSpiralAngle(r_au: number, latRad: number, v_sw_kms: number): number {
     const r_m = r_au * AU_M;
     const v_sw = v_sw_kms * 1000; // m/s
     const sinTheta = Math.cos(latRad); // colatitude = π/2 - lat
@@ -49,7 +49,7 @@ export function parkerSpiralAngle(r_au, latRad, v_sw_kms) {
  * @param {number} activity - solar activity level [0, 1]
  * @returns {number} wind speed in km/s
  */
-export function solarWindSpeed(latRad, activity) {
+export function solarWindSpeed(latRad: number, activity: number): number {
     const absLat = Math.abs(latRad);
 
     // Slow wind baseline
@@ -81,7 +81,11 @@ export function solarWindSpeed(latRad, activity) {
  * @param {number} v_sw_kms - wind speed in km/s
  * @returns {{ Br: number, Bphi: number, Bmag: number }} IMF in nT
  */
-export function interplanetaryMagneticField(r_au, latRad, v_sw_kms) {
+export function interplanetaryMagneticField(
+    r_au: number,
+    latRad: number,
+    v_sw_kms: number
+): { Br: number; Bphi: number; Bmag: number } {
     const B0 = 5.0; // nT at 1 AU (typical)
     const Br = B0 / (r_au * r_au);
 
@@ -103,8 +107,11 @@ export function interplanetaryMagneticField(r_au, latRad, v_sw_kms) {
  * @param {number} numBands - number of latitude bands
  * @returns {Array} Array of { latRad, speed, density, spiralAngle }
  */
-export function generateWindProfile(activity, numBands = 12) {
-    const profile = [];
+export function generateWindProfile(
+    activity: number,
+    numBands = 12
+): Array<{ latRad: number; speed: number; density: number; spiralAngle: number }> {
+    const profile: Array<{ latRad: number; speed: number; density: number; spiralAngle: number }> = [];
 
     for (let i = 0; i < numBands; i++) {
         const latRad = (i / (numBands - 1) - 0.5) * Math.PI; // -90° to +90°
@@ -137,7 +144,7 @@ export function generateWindProfile(activity, numBands = 12) {
  * @param {number} v_kms - wind speed [km/s]
  * @returns {number} dynamic pressure in nPa
  */
-export function windDynamicPressure(n_cm3, v_kms) {
+export function windDynamicPressure(n_cm3: number, v_kms: number): number {
     const m_proton = 1.672e-27; // kg
     const n_m3 = n_cm3 * 1e6;
     const v_ms = v_kms * 1000;
