@@ -1,12 +1,55 @@
 import {
   CanvasTexture,
+  Object3D,
+  PerspectiveCamera,
   Sprite,
   SpriteMaterial,
-  Vector3
+  Vector3,
+  WebGLRenderer
 } from 'three';
+import type { SimulationStateStore } from './stateStore';
 
-export function createLabelSystemOps({ pointerTipOffsetNorm }) {
-  function createLabelSprite(text) {
+interface ToggleLike {
+  checked?: boolean | null;
+}
+
+interface LabelDomBindings {
+  toggleLocators?: ToggleLike | null;
+  toggleLabels?: ToggleLike | null;
+}
+
+interface LabelEntry {
+  bodyId: string;
+  sprite: Sprite;
+}
+
+interface LocatorHaloEntry {
+  bodyId: string;
+  sprite: Sprite;
+}
+
+interface LocalBodyEntry {
+  body: unknown;
+  label: Sprite | null;
+}
+
+interface UpdateLocatorOverlaysArgs {
+  dom: LabelDomBindings;
+  simState: SimulationStateStore;
+  labels: LabelEntry[];
+  locatorHalos: LocatorHaloEntry[];
+  bodyById: Map<string, unknown>;
+  bodyNodes: Map<string, Object3D>;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
+  bodyRenderRadiusAu: (body: unknown, realisticMode: boolean) => number;
+  localBodyEntries?: LocalBodyEntry[] | null;
+  localBodyRenderRadiusAu?: ((body: unknown, realisticMode: boolean) => number) | null;
+  labelPointerTipOffsetNorm: number;
+}
+
+export function createLabelSystemOps({ pointerTipOffsetNorm }: { pointerTipOffsetNorm: number }) {
+  function createLabelSprite(text: string): Sprite {
     const canvas = document.createElement('canvas');
     canvas.width = 768;
     canvas.height = 192;
@@ -86,7 +129,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     return sprite;
   }
 
-  function createInterstellarLabelSprite(text) {
+  function createInterstellarLabelSprite(text: string): Sprite {
     const canvas = document.createElement('canvas');
     canvas.width = 768;
     canvas.height = 188;
@@ -120,7 +163,11 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     return sprite;
   }
 
-  function worldUnitsPerPixelAt(distanceToCamera, camera, renderer) {
+  function worldUnitsPerPixelAt(
+    distanceToCamera: number,
+    camera: PerspectiveCamera,
+    renderer: WebGLRenderer
+  ): number {
     const canvasHeight = Math.max(1, renderer.domElement.clientHeight || window.innerHeight);
     return (2 * distanceToCamera * Math.tan((camera.fov * Math.PI) / 360)) / canvasHeight;
   }
@@ -142,7 +189,7 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
     localBodyEntries,
     localBodyRenderRadiusAu,
     labelPointerTipOffsetNorm
-  }) {
+  }: UpdateLocatorOverlaysArgs): void {
     const locatorMode = Boolean(dom.toggleLocators?.checked);
     const labelsEnabled = Boolean(dom.toggleLabels?.checked);
 
@@ -195,7 +242,9 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }) {
       }
     }
 
-    const halosByBodyId = new Map(locatorHalos.map((item) => [item.bodyId, item.sprite]));
+    const halosByBodyId = new Map<string, Sprite>(
+      locatorHalos.map((item: LocatorHaloEntry): [string, Sprite] => [item.bodyId, item.sprite])
+    );
     for (const [bodyId, haloSprite] of halosByBodyId.entries()) {
       const body = bodyById.get(bodyId);
       const node = bodyNodes.get(bodyId);

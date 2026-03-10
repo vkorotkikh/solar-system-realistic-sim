@@ -5,12 +5,187 @@ import {
   Group,
   Line,
   LineBasicMaterial,
+  Object3D,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  PerspectiveCamera,
   RepeatWrapping,
+  Sprite,
+  Texture,
   Vector3
 } from 'three';
+import type { SimulationStateStore } from './stateStore';
+
+interface ToggleLike {
+  checked?: boolean | null;
+}
+
+interface StatusElementLike {
+  textContent: string | null;
+}
+
+interface LocalSystemDomBindings {
+  toggleLabels?: ToggleLike | null;
+  toggleOrbits?: ToggleLike | null;
+  statusFocus: StatusElementLike;
+}
+
+interface LocalOrbitDefinition {
+  aAu: number;
+  e: number;
+  iDeg: number;
+  ascendingNodeDeg: number;
+  argPeriapsisDeg: number;
+  meanAnomalyDeg: number;
+  periodDays: number;
+  epochJd: number;
+}
+
+interface RawLocalOrbit {
+  a_au?: unknown;
+  e?: unknown;
+  i_deg?: unknown;
+  ascending_node_deg?: unknown;
+  arg_periapsis_deg?: unknown;
+  mean_anomaly_deg?: unknown;
+  period_days?: unknown;
+  epoch_jd?: unknown;
+}
+
+interface RawLocalSystemBody {
+  id?: unknown;
+  name?: unknown;
+  type?: unknown;
+  mass_kg?: unknown;
+  radius_km?: unknown;
+  equatorial_radius_km?: unknown;
+  polar_radius_km?: unknown;
+  display_radius_au?: unknown;
+  parent_id?: unknown;
+  color?: unknown;
+  texture_template?: unknown;
+  moon_texture_seed?: unknown;
+  observed_texture?: unknown;
+  notes?: unknown;
+  rotation_period_hours?: unknown;
+  rotation_phase_deg?: unknown;
+  orbit?: RawLocalOrbit | null;
+}
+
+interface LocalSystemBody {
+  id: string;
+  name: string;
+  type: string;
+  massKg: number | null;
+  radiusKm: number;
+  equatorialRadiusKm: number;
+  polarRadiusKm: number;
+  realRadiusAu: number;
+  parentId: string | null;
+  color: string;
+  textureTemplate: string | null;
+  moonTextureSeed: string | null;
+  observedTexture: string | null;
+  notes: string | null;
+  rotationPeriodHours: number | null;
+  rotationPhaseDeg: number;
+  orbit: LocalOrbitDefinition | null;
+  displayRadiusAu: number;
+}
+
+interface LocalSystemManifest {
+  id?: unknown;
+  name?: unknown;
+  epoch_jd?: unknown;
+  primary_star_id?: unknown;
+  stars?: RawLocalSystemBody[] | null;
+  planets?: RawLocalSystemBody[] | null;
+}
+
+interface LocalSystemConstants {
+  AU_KM: number;
+  J2000_JD: number;
+  TWO_PI: number;
+}
+
+interface LocalSystemControls {
+  target: Vector3;
+  minDistance: number;
+}
+
+interface GeometryCache {
+  sun: BufferGeometry;
+  planet: BufferGeometry;
+}
+
+interface LocalBodySceneEntry {
+  body: LocalSystemBody;
+  node: Group;
+  mesh: Mesh;
+  label: Sprite;
+  glow: Object3D | null;
+}
+
+interface ActiveLocalSystemState {
+  id: string;
+  name: string;
+  primaryBodyId: string;
+  preferredDistanceAu: number;
+  manifest: LocalSystemManifest;
+}
+
+interface LocalSystemRendererState {
+  activeLocalSystem: ActiveLocalSystemState | null;
+  localTextureCache: Map<string, Texture>;
+  localOrbitLines: Line[];
+  localBodyEntries: LocalBodySceneEntry[];
+  localBodyById: Map<string, LocalSystemBody>;
+  localBodyMeshById: Map<string, Mesh>;
+  localBodyNodeById: Map<string, Group>;
+  localSystemManifestCache: Map<string, LocalSystemManifest>;
+}
+
+interface TextureTools {
+  loadHiResTexture: (path: string, options: { isColorMap: boolean }) => Texture;
+  configureLoadedTexture: (texture: Texture, options?: { isColorMap?: boolean }) => void;
+  generateMoonTexture: (
+    seed: string,
+    parentId: string,
+    options: { width: number; height: number }
+  ) => HTMLCanvasElement | OffscreenCanvas | null;
+  generatePlanetTexture: (template: string) => HTMLCanvasElement | OffscreenCanvas | null;
+}
+
+interface MathTools {
+  stableHash: (value: string) => number;
+  normalizeRadians: (angle: number) => number;
+}
+
+interface OrbitTools {
+  propagateKeplerOrbit: (
+    orbit: LocalOrbitDefinition,
+    elapsedDays: number,
+    position: Vector3
+  ) => void;
+}
+
+interface CreateLocalSystemRendererArgs {
+  dom: LocalSystemDomBindings;
+  simState: SimulationStateStore;
+  camera: PerspectiveCamera;
+  controls: LocalSystemControls;
+  constants: LocalSystemConstants;
+  state: LocalSystemRendererState;
+  localSystemGroup: Group;
+  geometryCache: GeometryCache;
+  createLabelSprite: (text: string) => Sprite;
+  createSunGlow: (radiusAu: number) => Object3D;
+  textureTools: TextureTools;
+  mathTools: MathTools;
+  orbitTools: OrbitTools;
+  disposeThreeMaterial: (material: Mesh['material'] | Line['material'] | null | undefined) => void;
+}
 
 export function createLocalSystemRenderer({
   dom,
@@ -27,7 +202,7 @@ export function createLocalSystemRenderer({
   mathTools,
   orbitTools,
   disposeThreeMaterial
-}) {
+}: CreateLocalSystemRendererArgs) {
   const {
     AU_KM,
     J2000_JD,
@@ -53,22 +228,28 @@ export function createLocalSystemRenderer({
   const tempFocusA = new Vector3();
   const tempFocusB = new Vector3();
 
-  function normalizeLocalSystemBody(rawBody, fallbackType, epochJd) {
+  function normalizeLocalSystemBody(
+    rawBody: RawLocalSystemBody | null | undefined,
+    fallbackType: string,
+    epochJd: number
+  ): LocalSystemBody | null {
     if (!rawBody || typeof rawBody.id !== 'string') return null;
     const id = rawBody.id.trim();
     if (!id) return null;
 
     const orbitRaw = rawBody.orbit;
-    let orbit = null;
-    if (orbitRaw && Number.isFinite(orbitRaw.a_au) && Number.isFinite(orbitRaw.period_days) && orbitRaw.period_days > 0) {
+    let orbit: LocalOrbitDefinition | null = null;
+    const orbitSemiMajorAu = Number(orbitRaw?.a_au);
+    const orbitPeriodDays = Number(orbitRaw?.period_days);
+    if (orbitRaw && Number.isFinite(orbitSemiMajorAu) && Number.isFinite(orbitPeriodDays) && orbitPeriodDays > 0) {
       orbit = {
-        aAu: Number(orbitRaw.a_au),
+        aAu: orbitSemiMajorAu,
         e: Number.isFinite(orbitRaw.e) ? Number(orbitRaw.e) : 0,
         iDeg: Number.isFinite(orbitRaw.i_deg) ? Number(orbitRaw.i_deg) : 0,
         ascendingNodeDeg: Number.isFinite(orbitRaw.ascending_node_deg) ? Number(orbitRaw.ascending_node_deg) : 0,
         argPeriapsisDeg: Number.isFinite(orbitRaw.arg_periapsis_deg) ? Number(orbitRaw.arg_periapsis_deg) : 0,
         meanAnomalyDeg: Number.isFinite(orbitRaw.mean_anomaly_deg) ? Number(orbitRaw.mean_anomaly_deg) : 0,
-        periodDays: Number(orbitRaw.period_days),
+        periodDays: orbitPeriodDays,
         epochJd: Number.isFinite(orbitRaw.epoch_jd) ? Number(orbitRaw.epoch_jd) : epochJd
       };
     }
@@ -116,12 +297,16 @@ export function createLocalSystemRenderer({
     };
   }
 
-  function localBodyBaseRadiusAu(body, realisticMode = simState.useRealisticScale) {
+  function localBodyBaseRadiusAu(body: LocalSystemBody, realisticMode = simState.useRealisticScale): number {
     const realRadius = Number.isFinite(body?.realRadiusAu) ? body.realRadiusAu : ((body?.radiusKm ?? 1) / AU_KM);
     return realisticMode ? realRadius : (body?.displayRadiusAu ?? realRadius);
   }
 
-  function localBodyRenderScaleAu(body, realisticMode = simState.useRealisticScale, scaleMultiplier = 1) {
+  function localBodyRenderScaleAu(
+    body: LocalSystemBody,
+    realisticMode = simState.useRealisticScale,
+    scaleMultiplier = 1
+  ): { x: number; y: number; z: number } {
     const meanRadiusKm = Math.max(1e-9, body?.radiusKm ?? 1);
     const equatorialScale = (Number.isFinite(body?.equatorialRadiusKm) ? body.equatorialRadiusKm : meanRadiusKm) / meanRadiusKm;
     const polarScale = (Number.isFinite(body?.polarRadiusKm) ? body.polarRadiusKm : meanRadiusKm) / meanRadiusKm;
@@ -135,20 +320,25 @@ export function createLocalSystemRenderer({
     };
   }
 
-  function setLocalBodyMeshScale(mesh, body, realisticMode = simState.useRealisticScale, scaleMultiplier = 1) {
+  function setLocalBodyMeshScale(
+    mesh: Mesh,
+    body: LocalSystemBody,
+    realisticMode = simState.useRealisticScale,
+    scaleMultiplier = 1
+  ): void {
     const scale = localBodyRenderScaleAu(body, realisticMode, scaleMultiplier);
     mesh.scale.set(scale.x, scale.y, scale.z);
   }
 
-  function localBodyRenderRadiusAu(body, realisticMode = simState.useRealisticScale) {
+  function localBodyRenderRadiusAu(body: LocalSystemBody, realisticMode = simState.useRealisticScale): number {
     const scale = localBodyRenderScaleAu(body, realisticMode, 1);
     return Math.max(scale.x, scale.y, scale.z);
   }
 
-  function createLocalOrbitLine(body) {
+  function createLocalOrbitLine(body: LocalSystemBody): Line | null {
     if (!body.orbit) return null;
     const segments = body.orbit.periodDays > 1_000 ? 240 : 180;
-    const points = [];
+    const points: Vector3[] = [];
     const point = new Vector3();
 
     for (let i = 0; i <= segments; i += 1) {
@@ -167,10 +357,14 @@ export function createLocalSystemRenderer({
     );
   }
 
-  function buildLocalBodySurfaceTexture(body, localSystemId = state.activeLocalSystem?.id ?? 'local') {
+  function buildLocalBodySurfaceTexture(
+    body: LocalSystemBody,
+    localSystemId = state.activeLocalSystem?.id ?? 'local'
+  ): Texture | null {
     const key = `${localSystemId}:${body.id}`;
-    if (state.localTextureCache.has(key)) {
-      return state.localTextureCache.get(key);
+    const cachedTexture = state.localTextureCache.get(key);
+    if (cachedTexture) {
+      return cachedTexture;
     }
 
     if (typeof body.observedTexture === 'string' && body.observedTexture.trim()) {
@@ -182,7 +376,7 @@ export function createLocalSystemRenderer({
       return observedTexture;
     }
 
-    let canvas = null;
+    let canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
     if (body.type === 'moon') {
       const moonSeed = body.moonTextureSeed ?? body.id;
       const moonParent = body.parentId ?? 'default';
@@ -205,7 +399,7 @@ export function createLocalSystemRenderer({
     return texture;
   }
 
-  function clearActiveLocalSystemScene() {
+  function clearActiveLocalSystemScene(): void {
     for (const orbitLine of state.localOrbitLines) {
       if (orbitLine.geometry && typeof orbitLine.geometry.dispose === 'function') {
         orbitLine.geometry.dispose();
@@ -222,17 +416,20 @@ export function createLocalSystemRenderer({
     state.activeLocalSystem = null;
   }
 
-  function buildLocalSystemScene(manifest) {
+  function buildLocalSystemScene(manifest: LocalSystemManifest | null | undefined): boolean {
     clearActiveLocalSystemScene();
-    const localSystemId = typeof manifest?.id === 'string' ? manifest.id : 'local-system';
-    const epochJd = Number.isFinite(manifest?.epoch_jd) ? Number(manifest.epoch_jd) : J2000_JD;
+    const resolvedManifest: LocalSystemManifest = manifest ?? {};
+    const localSystemId = typeof resolvedManifest.id === 'string' ? resolvedManifest.id : 'local-system';
+    const epochJd = Number.isFinite(resolvedManifest.epoch_jd)
+      ? Number(resolvedManifest.epoch_jd)
+      : J2000_JD;
 
-    const bodies = [];
-    for (const star of (Array.isArray(manifest?.stars) ? manifest.stars : [])) {
+    const bodies: LocalSystemBody[] = [];
+    for (const star of (Array.isArray(resolvedManifest.stars) ? resolvedManifest.stars : [])) {
       const normalized = normalizeLocalSystemBody(star, 'star', epochJd);
       if (normalized) bodies.push(normalized);
     }
-    for (const planet of (Array.isArray(manifest?.planets) ? manifest.planets : [])) {
+    for (const planet of (Array.isArray(resolvedManifest.planets) ? resolvedManifest.planets : [])) {
       const normalized = normalizeLocalSystemBody(planet, 'planet', epochJd);
       if (normalized) bodies.push(normalized);
     }
@@ -241,7 +438,7 @@ export function createLocalSystemRenderer({
       state.localBodyById.set(body.id, body);
     }
 
-    const nodesById = new Map();
+    const nodesById = new Map<string, LocalBodySceneEntry>();
     for (const body of bodies) {
       const node = new Group();
       const surfaceTexture = body.type === 'star' ? null : buildLocalBodySurfaceTexture(body, localSystemId);
@@ -280,15 +477,16 @@ export function createLocalSystemRenderer({
       label.visible = Boolean(dom.toggleLabels?.checked);
       node.add(label);
 
-      nodesById.set(body.id, { body, node, mesh, label });
+      nodesById.set(body.id, { body, node, mesh, label, glow });
       state.localBodyEntries.push({ body, node, label, mesh, glow });
       state.localBodyMeshById.set(body.id, mesh);
       state.localBodyNodeById.set(body.id, node);
     }
 
     for (const entry of nodesById.values()) {
-      if (entry.body.parentId && nodesById.has(entry.body.parentId)) {
-        nodesById.get(entry.body.parentId).node.add(entry.node);
+      const parentEntry = entry.body.parentId ? nodesById.get(entry.body.parentId) : null;
+      if (parentEntry) {
+        parentEntry.node.add(entry.node);
       } else {
         localSystemGroup.add(entry.node);
       }
@@ -296,8 +494,8 @@ export function createLocalSystemRenderer({
       const orbitLine = createLocalOrbitLine(entry.body);
       if (orbitLine) {
         state.localOrbitLines.push(orbitLine);
-        if (entry.body.parentId && nodesById.has(entry.body.parentId)) {
-          nodesById.get(entry.body.parentId).node.add(orbitLine);
+        if (parentEntry) {
+          parentEntry.node.add(orbitLine);
         } else {
           localSystemGroup.add(orbitLine);
         }
@@ -311,19 +509,22 @@ export function createLocalSystemRenderer({
       }
     }
     const preferredDistanceAu = Math.max(0.12, Math.min(2.6, maxOrbitAu * 2.8 + 0.12));
-    const primaryId = typeof manifest?.primary_star_id === 'string' ? manifest.primary_star_id : bodies[0].id;
+    const primaryId = typeof resolvedManifest.primary_star_id === 'string'
+      ? resolvedManifest.primary_star_id
+      : bodies[0].id;
+    const manifestName = typeof resolvedManifest.name === 'string' ? resolvedManifest.name : 'Local System';
 
     state.activeLocalSystem = {
       id: localSystemId,
-      name: manifest.name ?? 'Local System',
+      name: manifestName,
       primaryBodyId: primaryId,
       preferredDistanceAu,
-      manifest
+      manifest: resolvedManifest
     };
     return true;
   }
 
-  function updateLocalSystemScene(julianDate) {
+  function updateLocalSystemScene(julianDate: number): void {
     if (!state.activeLocalSystem) return;
 
     const elapsedSeconds = (julianDate - J2000_JD) * 86_400;
@@ -360,7 +561,7 @@ export function createLocalSystemRenderer({
     }
   }
 
-  function focusLocalBody(bodyId, hardSnap = false) {
+  function focusLocalBody(bodyId: string, hardSnap = false): boolean {
     const body = state.localBodyById.get(bodyId);
     const node = state.localBodyNodeById.get(bodyId);
     if (!body || !node) return false;
@@ -393,18 +594,20 @@ export function createLocalSystemRenderer({
     return true;
   }
 
-  async function loadLocalSystemManifestForNearbySystem(system) {
+  async function loadLocalSystemManifestForNearbySystem(
+    system: { localManifestPath?: string | null } | null | undefined
+  ): Promise<LocalSystemManifest | null> {
     const manifestPath = system?.localManifestPath;
     if (typeof manifestPath !== 'string' || manifestPath.length === 0) return null;
     if (state.localSystemManifestCache.has(manifestPath)) {
-      return state.localSystemManifestCache.get(manifestPath);
+      return state.localSystemManifestCache.get(manifestPath) ?? null;
     }
 
     const response = await fetch(manifestPath, { cache: 'no-store' });
     if (!response.ok) {
       throw new Error(`Local system manifest unavailable (${response.status})`);
     }
-    const manifest = await response.json();
+    const manifest = await response.json() as LocalSystemManifest;
     state.localSystemManifestCache.set(manifestPath, manifest);
     return manifest;
   }
