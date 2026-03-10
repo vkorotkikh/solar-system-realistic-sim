@@ -30,6 +30,32 @@ import {
 
 const AU_M = 1.496e11;
 
+interface ProminenceOptions {
+    footLon1: number;
+    footLat1: number;
+    footLon2: number;
+    footLat2: number;
+    maxHeight?: number;
+    sunDisplayRadius: number;
+    particleCount?: number;
+    lifetime?: number;
+    isQuiescent?: boolean;
+    eruptionChance?: number;
+}
+
+interface ProminenceInstance {
+    group: Group;
+    footLon1: number;
+    footLat1: number;
+    footLon2: number;
+    footLat2: number;
+    maxHeight: number;
+    isQuiescent: boolean;
+    update: (dtSec: number) => void;
+    isExpired: () => boolean;
+    dispose: () => void;
+}
+
 // ─── Prominence Vertex Shader ─────────────────────────────────────────────────
 const PROMINENCE_VERTEX_SHADER = `
 uniform float time;
@@ -122,11 +148,11 @@ export function createProminence({
     lifetime = 600, // seconds before fading
     isQuiescent = true,
     eruptionChance = 0.05
-}) {
+}: ProminenceOptions): ProminenceInstance {
     const group = new Group();
 
     // Convert spherical to Cartesian at sun surface
-    function sphereToCart(lon, lat, r) {
+    function sphereToCart(lon: number, lat: number, r: number): Vector3 {
         return new Vector3(
             r * Math.cos(lat) * Math.cos(lon),
             r * Math.sin(lat),
@@ -196,8 +222,7 @@ export function createProminence({
         },
         transparent: true,
         blending: AdditiveBlending,
-        depthWrite: false,
-        sizeAttenuation: true
+        depthWrite: false
     });
 
     const points = new Points(geometry, material);
@@ -219,7 +244,7 @@ export function createProminence({
         maxHeight,
         isQuiescent,
 
-        update(dtSec) {
+        update(dtSec: number) {
             if (_expired) return;
             elapsedSec += dtSec;
             material.uniforms.time.value = elapsedSec;
@@ -263,14 +288,19 @@ export function createProminence({
  * Manages the creation and lifecycle of prominences around the Sun.
  */
 export class ProminenceManager {
-    constructor(sunGroup) {
+    sunGroup: Group;
+    prominences: ProminenceInstance[];
+    maxProminences: number;
+    timeSinceLastSpawn: number;
+
+    constructor(sunGroup: Group) {
         this.sunGroup = sunGroup;
         this.prominences = [];
         this.maxProminences = 6;
         this.timeSinceLastSpawn = 0;
     }
 
-    update(dtSec, activity, sunDisplayRadius) {
+    update(dtSec: number, activity: number, sunDisplayRadius: number): void {
         this.timeSinceLastSpawn += dtSec;
 
         // Spawn new prominences based on activity
@@ -294,7 +324,7 @@ export class ProminenceManager {
         }
     }
 
-    spawnProminence(activity, sunDisplayRadius) {
+    spawnProminence(activity: number, sunDisplayRadius: number): void {
         const TWO_PI = Math.PI * 2;
 
         // Two footpoints near each other (prominence spans ~15-60° of arc)
@@ -332,7 +362,7 @@ export class ProminenceManager {
         this.sunGroup.add(prominence.group);
     }
 
-    dispose() {
+    dispose(): void {
         for (const prom of this.prominences) {
             prom.dispose();
             this.sunGroup.remove(prom.group);
