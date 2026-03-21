@@ -23,6 +23,10 @@ class StateUpdate(TypedDict, total=False):
     engine: str
     fidelity: EngineFidelity
     jd: float
+    position_frame: str
+    velocity_frame: str
+    position_units: str
+    velocity_units: str
     force_models: Dict[str, Any]
     bodies: Dict[str, BodyState]
     paused: bool
@@ -88,6 +92,10 @@ class SimulationEngine(ABC):
               "engine": str,
               "fidelity": str,
               "jd": float,
+              "position_frame": str,
+              "velocity_frame": str,
+              "position_units": str,
+              "velocity_units": str,
               "force_models": {...},
               "bodies": {id: {"pos": [x,y,z], "vel": [vx,vy,vz]}, ...},
             }
