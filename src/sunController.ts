@@ -18,7 +18,9 @@ import {
   updateSunspotUniforms,
   updateSunFlaresUniforms,
   createChromosphereLayer,
-  updateChromosphereLayer
+  updateChromosphereLayer,
+  createTransitionRegionShell,
+  updateTransitionRegionShell
 } from './frontend/features/solar/sunVisuals';
 import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
@@ -105,6 +107,7 @@ export function createSunController({
   let sunMagneticFieldSignature = null;
   let sunCoronalLoopGroup = null;
   let sunParkerSpiralGroup = null;
+  let sunTransitionRegionMesh = null;
 
   let gwDisplayer = null;
   let warpDisplayer = null;
@@ -285,6 +288,10 @@ export function createSunController({
     sunChromosphereLayer.userData.rotationPeriodHours = sunBody.rotationPeriodHours ?? null;
     spinGroup.add(sunChromosphereLayer);
 
+    // Transition Region shell — thin emissive layer between chromosphere and corona
+    sunTransitionRegionMesh = createTransitionRegionShell(sunGeometry, sunRadiusAu);
+    spinGroup.add(sunTransitionRegionMesh);
+
     sunFlareGroup = new Group();
     sunFlareGroup.userData.bodyId = 'sun-flares';
     spinGroup.add(sunFlareGroup);
@@ -382,7 +389,8 @@ export function createSunController({
       observationBlend: observationControls.observationBlend,
       observationEmission: observationControls.observationEmission,
       coronaHue: observationControls.coronaHue,
-      sunDisplayRadius: sunRadiusAu
+      sunDisplayRadius: sunRadiusAu,
+      activeChannel: activeObservationChannel
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, solarPhysicsState);
 
@@ -398,7 +406,7 @@ export function createSunController({
       }
     }
 
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarBlendView, sunRadiusAu, 144, timeSec);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
     updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, sunRadiusAu, 6, 120, timeSec, camera);
 
     const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + effectiveActivity * 0.045;
@@ -422,6 +430,11 @@ export function createSunController({
       observationEmission: observationControls.observationEmission,
       observedConfidence: observationControls.observedConfidence,
       observedFreshness: observationControls.observedFreshness
+    });
+
+    // Transition Region update — responds to AIA channel selection
+    updateTransitionRegionShell(sunTransitionRegionMesh, timeSec, effectiveActivity, {
+      activeChannel: activeObservationChannel
     });
 
     if (gwDisplayer && gwDisplayer.mesh.visible) {
@@ -492,6 +505,11 @@ export function createSunController({
       const activityScale = Number(sunChromosphereLayer.userData?.activityScale) || 1;
       sunChromosphereLayer.userData.radiusScale = radiusScale;
       sunChromosphereLayer.scale.setScalar(radiusScale * activityScale);
+    }
+    // Rescale the transition region shell
+    if (sunTransitionRegionMesh) {
+      const trScale = sunTransitionRegionMesh.userData.surfaceScale ?? 1.006;
+      sunTransitionRegionMesh.scale.setScalar(r * trScale);
     }
     rebuildMagneticFieldLines(true);
     const bv = buildSolarFeatureBlendView(Date.now(), 220);

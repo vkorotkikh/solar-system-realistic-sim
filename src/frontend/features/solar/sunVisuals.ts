@@ -348,6 +348,12 @@ uniform float observationBlend;
 uniform float observationEmission;
 uniform float sunRadius;  // display radius of the sun in scene units
 
+// ─── DEM Channel Response ────────────────────────────────────────────────────
+// channelMode: 0.0 = default (no channel), 1.0 = 094, 2.0 = 171, 3.0 = 193,
+//              4.0 = 211, 5.0 = 304
+// Each AIA channel has a temperature response function peaked at a specific T.
+uniform float channelMode;
+
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 
@@ -383,6 +389,47 @@ float fbm(vec3 p) {
   return sum / max(1e-6, norm);
 }
 
+// ─── DEM Temperature-Channel Response Function ───────────────────────────────
+// Computes the response of a specific AIA passband to plasma at temperature T(MK).
+// Based on instrument response functions from Lemen et al. 2012, Solar Physics 275.
+// Returns a [0..1] factor: 1.0 = peak sensitivity, 0.0 = invisible to this channel.
+//
+// Channel peak temperatures (log T):
+//   094Å: Fe XVIII  → 6.3 MK (log T = 6.8)  — flare plasma only
+//   171Å: Fe IX     → 0.63 MK (log T = 5.8) — quiet corona loops
+//   193Å: Fe XII    → 1.6 MK (log T = 6.2)  — hot corona, active regions
+//   211Å: Fe XIV    → 2.0 MK (log T = 6.3)  — active region loops
+//   304Å: He II     → 0.05 MK (log T = 4.7) — chromosphere / transition region
+float demChannelResponse(float temperatureMK, float channelId) {
+  if (channelId < 0.5) return 1.0;  // No channel active → show everything
+
+  float logT = log(max(temperatureMK, 0.01)) / log(10.0) + 6.0; // log10(T in K)
+
+  // Channel peak log T and width (sigma of Gaussian response)
+  float peakLogT;
+  float sigma;
+
+  if (channelId < 1.5) {
+    // 094Å — Fe XVIII, 6.3 MK → log T = 6.8
+    peakLogT = 6.8; sigma = 0.22;
+  } else if (channelId < 2.5) {
+    // 171Å — Fe IX, 0.63 MK → log T = 5.8
+    peakLogT = 5.8; sigma = 0.28;
+  } else if (channelId < 3.5) {
+    // 193Å — Fe XII, 1.6 MK → log T = 6.2
+    peakLogT = 6.2; sigma = 0.32;
+  } else if (channelId < 4.5) {
+    // 211Å — Fe XIV, 2.0 MK → log T = 6.3
+    peakLogT = 6.3; sigma = 0.25;
+  } else {
+    // 304Å — He II, 0.05 MK → log T = 4.7
+    peakLogT = 4.7; sigma = 0.35;
+  }
+
+  float delta = (logT - peakLogT) / sigma;
+  return exp(-0.5 * delta * delta);
+}
+
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
@@ -403,6 +450,16 @@ void main() {
   float coronaRadial = 0.036 * pow(fragR, -1.5) + 1.55 * pow(fragR, -6.0);
   coronaRadial = coronaRadial / 1.586; // normalize to ~1.0 at r=1
   alpha *= coronaRadial;
+
+  // ─── DEM Channel Modulation ────────────────────────────────────────────────
+  // Corona temperature varies radially: ~1 MK inner → ~2 MK mid → ~1.5 MK outer.
+  // This is a simplified radial temperature profile.
+  float coronaTempMK = mix(1.0, 2.2, smoothstep(1.0, 2.0, fragR))
+                     * mix(1.0, 0.7, smoothstep(2.0, 4.0, fragR));
+  // Burst regions are hotter (flare-heated plasma)
+  coronaTempMK += burst * activity * 3.5;
+  float demResponse = demChannelResponse(coronaTempMK, channelMode);
+  alpha *= mix(1.0, demResponse, step(0.5, channelMode));
 
   // ─── Helmet Streamer Structure ─────────────────────────────────────────────
   // During solar minimum: bright equatorial streamer belt
@@ -435,6 +492,24 @@ void main() {
   vec3 baseCorona = mix(innerCorona * 0.3 + hotWhite * 0.7, coronaColor * 0.8, tempGradient);
   vec3 color = mix(baseCorona, hotWhite, 0.16 + burst * 0.36 + activity * 0.12);
   color = mix(color, hotWhite, observationBlend * (0.08 + observationEmission * 0.28));
+
+  // ─── DEM Channel Color Override ────────────────────────────────────────────
+  // When a specific channel is active, tint the corona to match SDO/AIA false-color.
+  if (channelMode > 0.5) {
+    vec3 channelColor;
+    if (channelMode < 1.5) {
+      channelColor = vec3(0.1, 0.9, 0.1);  // 094Å: green (Fe XVIII)
+    } else if (channelMode < 2.5) {
+      channelColor = vec3(0.7, 0.7, 1.0);  // 171Å: blue-white (Fe IX)
+    } else if (channelMode < 3.5) {
+      channelColor = vec3(0.8, 0.5, 0.2);  // 193Å: brown-gold (Fe XII)
+    } else if (channelMode < 4.5) {
+      channelColor = vec3(0.6, 0.2, 0.8);  // 211Å: purple (Fe XIV)
+    } else {
+      channelColor = vec3(0.9, 0.15, 0.12); // 304Å: red (He II)
+    }
+    color = mix(color, channelColor * (0.6 + 0.4 * demResponse), 0.65);
+  }
 
   gl_FragColor = vec4(color, alpha);
 }
@@ -829,7 +904,8 @@ export function createSunCoronaShell(geometry) {
       coronaColor: { value: new Color('#ffb877') },
       observationBlend: { value: 0 },
       observationEmission: { value: 0.25 },
-      sunRadius: { value: 1.0 }  // updated by updateSunMaterialUniforms
+      sunRadius: { value: 1.0 },  // updated by updateSunMaterialUniforms
+      channelMode: { value: 0.0 }  // DEM channel: 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
     },
     transparent: true,
     blending: AdditiveBlending,
@@ -841,6 +917,180 @@ export function createSunCoronaShell(geometry) {
   // Expanded to ~4 solar radii for physical K-corona radial falloff
   mesh.userData.surfaceScale = 4.0;
   return mesh;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSITION REGION SHELL
+// ─────────────────────────────────────────────────────────────────────────────
+// The transition region (TR) is a thin (~100 km, or ~1.4×10⁻⁴ R☉) layer
+// between the chromosphere (~20,000 K) and corona (~1 MK). Temperature jumps
+// 50× over just a few hundred km. The TR produces characteristic EUV emission
+// visible in SDO/AIA 304Å (He II at ~50,000 K).
+
+const TR_VERTEX_SHADER = `
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+varying float vNdotV;
+
+void main() {
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec3 viewDir = normalize(cameraPosition - worldPosition.xyz);
+  vNdotV = dot(vWorldNormal, viewDir);
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const TR_FRAGMENT_SHADER = `
+uniform float time;
+uniform float activity;
+uniform float channelMode;  // 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
+uniform float trOpacity;    // base opacity multiplier
+
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+varying float vNdotV;
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float noise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash13(i), hash13(i + vec3(1,0,0)), u.x),
+        mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), u.x), u.y),
+    mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), u.x),
+        mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), u.x), u.y),
+    u.z
+  );
+}
+
+void main() {
+  // TR is a limb-brightened emission layer
+  float mu = abs(vNdotV);
+  float limbBright = pow(1.0 - mu, 2.8);  // strong limb brightening
+
+  // Emission network pattern — TR has a reticulated, web-like structure
+  // matching supergranulation cell boundaries (~30 Mm cells)
+  vec3 nDir = normalize(vWorldNormal);
+  float n1 = noise3(nDir * 18.0 + vec3(time * 0.04, -time * 0.03, time * 0.02));
+  float n2 = noise3(nDir * 42.0 + vec3(-time * 0.06, time * 0.05, -time * 0.03));
+  float network = smoothstep(0.35, 0.55, n1) * (0.6 + 0.4 * n2);
+
+  // Activity-dependent brightening (more network emission at solar max)
+  float emission = (0.12 + network * 0.38 + activity * 0.22) * limbBright;
+  emission += 0.04;  // floor emission even at disk center
+
+  // ─── Channel-dependent appearance ──────────────────────────────────────────
+  // 304Å: TR is the PRIMARY emission source → very bright, magenta-red
+  // 171Å: TR is secondarily visible → moderate
+  // 193/211Å: TR barely visible
+  // 094Å: TR invisible (too cool for Fe XVIII)
+  vec3 baseColor;
+  float channelBoost = 1.0;
+
+  if (channelMode > 4.5) {
+    // 304Å — He II at 50,000K: TR is the dominant feature
+    baseColor = vec3(0.85, 0.10, 0.25);  // magenta-red (He II 304)
+    channelBoost = 3.2;  // TR becomes very prominent
+  } else if (channelMode > 1.5 && channelMode < 2.5) {
+    // 171Å — Fe IX at 0.63 MK: TR weakly visible
+    baseColor = vec3(0.5, 0.5, 0.9);
+    channelBoost = 0.6;
+  } else if (channelMode > 0.5 && channelMode < 1.5) {
+    // 094Å — Fe XVIII at 6.3 MK: TR is invisible
+    discard;
+  } else if (channelMode > 2.5 && channelMode < 4.5) {
+    // 193Å or 211Å: very faint TR
+    baseColor = vec3(0.55, 0.30, 0.45);
+    channelBoost = 0.25;
+  } else {
+    // Default (no channel): warm UV glow
+    baseColor = vec3(0.50, 0.08, 0.18);
+    channelBoost = 1.0;
+  }
+
+  float alpha = emission * trOpacity * channelBoost;
+  alpha = clamp(alpha, 0.0, 0.85);
+
+  if (alpha < 0.005) discard;
+  gl_FragColor = vec4(baseColor, alpha);
+}
+`;
+
+/**
+ * Creates the transition region (TR) shell — a thin emissive layer at ~1.004 R☉.
+ * The TR is the interface between the chromosphere (20,000K) and corona (1 MK).
+ * Brightest in AIA 304Å, visible at the limb in white-light as a thin strip.
+ *
+ * @param geometry - A SphereGeometry to use (shared with other shells or dedicated)
+ * @param sunDisplayRadius - The Sun's display radius in scene units
+ */
+export function createTransitionRegionShell(geometry, sunDisplayRadius: number) {
+  const material = new ShaderMaterial({
+    vertexShader: TR_VERTEX_SHADER,
+    fragmentShader: TR_FRAGMENT_SHADER,
+    uniforms: {
+      time: { value: 0 },
+      activity: { value: 0.5 },
+      channelMode: { value: 0.0 },
+      trOpacity: { value: 0.18 }
+    },
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: BackSide
+  });
+
+  const mesh = new Mesh(geometry, material);
+  mesh.userData.bodyId = 'sun-transition-region';
+  // TR sits at ~1.004 R☉ (2,800 km above photosphere)
+  // Use 1.006× scale to account for shell geometry thickness
+  mesh.userData.surfaceScale = 1.006;
+  mesh.scale.setScalar(sunDisplayRadius * 1.006);
+  mesh.renderOrder = 3;  // between chromosphere (4) and corona (default)
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/**
+ * Update the transition region shell per frame.
+ * @param trMesh - The mesh returned by createTransitionRegionShell
+ * @param timeSec - Current wall-clock seconds
+ * @param activity - Solar activity [0..1]
+ * @param options.activeChannel - AIA channel key (e.g. 'aia_304')
+ */
+export function updateTransitionRegionShell(
+  trMesh: Mesh | null | undefined,
+  timeSec: number,
+  activity: number,
+  { activeChannel = null as string | null } = {}
+) {
+  if (!trMesh || !(trMesh as any).material?.uniforms) return;
+  const u = (trMesh as any).material.uniforms;
+  u.time.value = timeSec * 0.4;
+  u.activity.value = activity;
+
+  // Map channel key to channelMode float
+  const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+  let mode = 0.0;
+  if (channelKey === 'aia_094') mode = 1.0;
+  else if (channelKey === 'aia_171') mode = 2.0;
+  else if (channelKey === 'aia_193') mode = 3.0;
+  else if (channelKey === 'aia_211') mode = 4.0;
+  else if (channelKey === 'aia_304') mode = 5.0;
+  u.channelMode.value = mode;
+
+  // Base opacity: faint normally, very bright in 304Å
+  u.trOpacity.value = channelKey === 'aia_304'
+    ? 0.55 + activity * 0.25
+    : 0.12 + activity * 0.08;
 }
 
 export function createSunEruptionLayer(sunDisplayRadius) {
@@ -1055,7 +1305,8 @@ export function updateSunCoronalLoopsFromBlendView(
   blendView,
   sunRadiusAu,
   maxLoops = 144,
-  timeSec = 0
+  timeSec = 0,
+  activeChannel: string | null = null
 ) {
   if (!sunCoronalLoopGroup) return;
   const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
@@ -1132,17 +1383,44 @@ export function updateSunCoronalLoopsFromBlendView(
     geometry.setDrawRange(0, pointCount);
 
     const kind = `${entry?.kind ?? 'loop'}`.toLowerCase();
-    const color = kind === 'cme'
+    // Default (white-light) colors per feature type
+    let color = kind === 'cme'
       ? '#ffb67f'
       : kind === 'plume'
         ? '#ffd7a7'
         : '#fff1d2';
+
+    // DEM channel-aware coloring for coronal loops
+    const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+    let demOpacityMod = 1.0;  // channel-based opacity multiplier
+    if (channelKey === 'aia_094') {
+      // 094Å (Fe XVIII, 6.3 MK): only flare-heated loops visible
+      color = kind === 'cme' ? '#44ff44' : '#22cc22';
+      demOpacityMod = kind === 'cme' ? 1.8 : 0.15;  // dim quiet loops, boost CMEs
+    } else if (channelKey === 'aia_171') {
+      // 171Å (Fe IX, 0.63 MK): quiet coronal loops are brightest
+      color = kind === 'cme' ? '#8888ff' : '#aabbff';
+      demOpacityMod = kind === 'cme' ? 0.4 : 1.6;  // boost quiet loops
+    } else if (channelKey === 'aia_193') {
+      // 193Å (Fe XII, 1.6 MK): hot active region loops
+      color = kind === 'cme' ? '#cc8844' : '#ddaa55';
+      demOpacityMod = 1.3;
+    } else if (channelKey === 'aia_211') {
+      // 211Å (Fe XIV, 2.0 MK): active region loops
+      color = kind === 'cme' ? '#9944cc' : '#bb66dd';
+      demOpacityMod = 1.2;
+    } else if (channelKey === 'aia_304') {
+      // 304Å (He II, 0.05 MK): coronal loops are too hot — dim them
+      color = '#992222';
+      demOpacityMod = 0.2;
+    }
+
     if (loop.material?.isLineBasicMaterial) {
       loop.material.color.set(color);
       const baseOpacity = kind === 'cme' ? 0.05 : 0.065;
       const gain = kind === 'cme' ? 0.2 : 0.31;
       const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.9 + speedFactor * 0.8) + featureSeed * TWO_PI * 1.3);
-      loop.material.opacity = Math.max(0.028, Math.min(0.46, (baseOpacity + brightness * gain) * flicker));
+      loop.material.opacity = Math.max(0.015, Math.min(0.55, (baseOpacity + brightness * gain) * flicker * demOpacityMod));
     }
     loop.visible = brightness > 0.003;
   }
@@ -1317,7 +1595,8 @@ export function updateSunMaterialUniforms({
   observationBlend = 0,
   observationEmission = 0.25,
   coronaHue = null,
-  sunDisplayRadius = 1.0
+  sunDisplayRadius = 1.0,
+  activeChannel = null as string | null
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
   const obsEmission = clampUnit(Number(observationEmission) || 0.25);
@@ -1356,6 +1635,18 @@ export function updateSunMaterialUniforms({
         // Default activity-driven orange tint
         coronaColor.setRGB(1.0, 0.66 + activity * 0.14, 0.34 + activity * 0.1);
       }
+    }
+
+    // DEM channel mode: map AIA channel key to numeric mode
+    if (sunCoronaMaterial.uniforms.channelMode) {
+      const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+      let mode = 0.0;
+      if (channelKey === 'aia_094') mode = 1.0;
+      else if (channelKey === 'aia_171') mode = 2.0;
+      else if (channelKey === 'aia_193') mode = 3.0;
+      else if (channelKey === 'aia_211') mode = 4.0;
+      else if (channelKey === 'aia_304') mode = 5.0;
+      sunCoronaMaterial.uniforms.channelMode.value = mode;
     }
   }
 }
