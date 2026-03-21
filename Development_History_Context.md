@@ -55,6 +55,45 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-21 — Data-Driven Coronal Hole Detection & Fast-Wind Coupling
+Status: DONE
+
+What changed:
+- **AIA 193Å Coronal Hole Detection (`solar_realtime_data.py`):** Added `detect_coronal_holes()` method (163 lines). Thresholds AIA 193Å tiles at `0.25 × median(disk)` — inspired by CATCHES (Heinemann+ 2019) and SPoCA (Verbeeck+ 2014). Pipeline: grayscale conversion → disk mask via circle geometry → intensity thresholding → morphological erode/dilate cleanup (3×3 kernel, scipy-free) → BFS connected component labeling → heliographic lat/lon bounding box mapping via plate-carrée approximation. Returns up to 8 regions sorted by area, with coverage fraction, polar open flux, and per-hole type classification (polar >50° lat, equatorial otherwise). Integrated into `_fetch_sdo_aia()` reusing the already-cached 193Å tile.
+- **Synthetic Coronal Hole Fallback (`solar_physics.py`):** Added `_synthetic_coronal_holes()` static method. Generates physically plausible holes from activity index: polar holes centered at ±72° lat with extent that shrinks 70% from solar min to max; stochastic equatorial holes appear when `activity > 0.35` (seeded PRNG from JD for reproducibility). Fallback activates automatically when realtime data is unavailable.
+- **Parker Spiral Fast-Wind Coupling (`solar_physics.py`):** Updated `_build_parker_spiral()` to accept `coronal_holes` parameter. Polar coronal holes feed fast wind (660-780 km/s) to 4/6 spiral arms at solar minimum via super-radial expansion model (coupling diminishes toward solar max). Equatorial holes use direct HCS-tilt-based latitude matching. Each spiral line now includes `in_coronal_hole: bool` flag and physically meaningful wind speed (fast: 660-780 km/s, slow: 350-450 km/s). `sample_state()` extracts coronal holes from realtime data or synthesizes, passes to Parker spiral, includes in output under `coronal_holes`.
+- **Corona Shader Upgrade (`sunVisuals.ts`):** Added `coronalHoles[8]` vec4 array (center_lon, center_lat, extent_lon, extent_lat) and `coronalHoleCount` float uniform. Fragment shader computes per-fragment lat/lon from normal direction, matches against hole boundaries with longitude wrap-around and smooth edge falloff via `smoothstep`. Emission drops ~5× inside holes (`alpha *= mix(1.0, 0.2, inHole)`). Falls back to `coronalHoleActivity`-driven polar darkening when `coronalHoleCount == 0`. Uniform update in `updateSunMaterialUniforms()`, 8-element Vector4 initialization in `createSunCoronaShell()`.
+- **Solar Wind Enhancement (`solarWind.ts`):** Added `solarWindSpeedWithHoles()` — checks if latitude falls inside any coronal hole boundary for fast/slow wind assignment with fallback to existing `solarWindSpeed()`.
+- **Controller Wiring (`sunController.ts`):** Passes `solarPhysicsState?.coronal_holes ?? null` as `coronalHoleData` to `updateSunMaterialUniforms()`.
+- **Bug Found & Fixed:** Initial implementation only checked `source_lat = hcs_tilt * sin(phase)` against coronal hole boundaries, but HCS tilt at solar minimum (~7°) never reaches polar hole boundaries at ±72°. Fixed by adding polar super-radial expansion coupling: polar holes feed fast wind to most spiral arms at solar minimum regardless of HCS tilt, with coupling strength diminishing toward solar max.
+
+Why it changed:
+- SOTA evaluation identified coronal hole detection as a 🔴 Major gap. The simulation had no mechanism to identify or visualize coronal holes, and the Parker spiral used a generic latitude-only wind model that didn't distinguish fast/slow wind channels.
+
+Evidence/validation:
+- `pytest tests/test_solar_physics_model.py tests/test_solar_physics_api.py -v` — **15/15 passed** (0.51s), including 4 new tests:
+  - `test_synthetic_coronal_holes_present_at_solar_minimum` — verifies polar holes exist, coverage > 5%
+  - `test_synthetic_coronal_holes_coverage_decreases_at_solar_max` — verifies polar area shrinks
+  - `test_parker_spiral_fast_wind_in_coronal_holes` — verifies fast wind > 600 km/s in holes, slow < 500 km/s outside
+  - `test_solar_physics_returns_coronal_hole_section` — verifies API response includes all required fields
+- Smoke test output at solar minimum (activity 0.107): 4/6 spiral arms ⚡ fast wind (663-778 km/s), 2/6 🌊 slow wind (399-414 km/s) — matches Ulysses observations.
+- Smoke test output at solar maximum (activity 0.919): 2/6 ⚡ fast wind from equatorial holes, 4/6 🌊 slow wind — matches mixed streamer-dominated heliosphere.
+
+Files touched:
+- `backend/sim/solar_realtime_data.py` — `detect_coronal_holes()`, `_fetch_sdo_aia()` integration, `coronal_holes` field
+- `backend/sim/solar_physics.py` — `_synthetic_coronal_holes()`, `_build_parker_spiral()` (coronal hole coupling), `sample_state()` (extraction/synthesis/output)
+- `src/frontend/features/solar/sunVisuals.ts` — corona shader uniforms, fragment matching logic, uniform update
+- `src/frontend/features/solar/solarWind.ts` — `solarWindSpeedWithHoles()`
+- `src/sunController.ts` — data flow wiring
+- `backend/tests/test_solar_physics_model.py` — 3 new tests
+- `backend/tests/test_solar_physics_api.py` — 1 new test
+
+Follow-ups / open questions:
+- OPEN: Add coronal hole debug overlay panel showing detected boundaries on the solar disk.
+- OPEN: Replace BFS flood-fill with `scipy.ndimage.label` when available for ~10× faster connected-component labeling.
+- OPEN: Wire `solarWindSpeedWithHoles()` into the frontend wind profile generation loop (`generateWindProfile()`).
+- OPEN: Visual verification of corona darkening at coronal hole boundaries in browser.
+
 ### 2026-03-12 — DEM Channel Response, Transition Region Shell & HCS Tilt Physics Fix
 Status: IN-PROGRESS
 
