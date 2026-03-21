@@ -390,7 +390,8 @@ export function createSunController({
       observationEmission: observationControls.observationEmission,
       coronaHue: observationControls.coronaHue,
       sunDisplayRadius: sunRadiusAu,
-      activeChannel: activeObservationChannel
+      activeChannel: activeObservationChannel,
+      coronalHoleData: solarPhysicsState?.coronal_holes ?? null
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, solarPhysicsState);
 
