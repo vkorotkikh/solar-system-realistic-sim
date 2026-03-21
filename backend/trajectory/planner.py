@@ -13,6 +13,40 @@ TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist", "min_time")
 DEFAULT_ASSIST_POOL = ["mercury", "venus", "earth", "mars", "jupiter", "saturn"]
 
 
+def _summarize_state_sources(*source_groups: Any) -> str:
+    labels: list[str] = []
+    for group in source_groups:
+        if isinstance(group, dict):
+            for key in ("from", "to"):
+                value = group.get(key)
+                if isinstance(value, str) and value.strip():
+                    labels.append(value.strip())
+        elif isinstance(group, (list, tuple)):
+            for item in group:
+                if isinstance(item, dict):
+                    labels.extend(
+                        value.strip()
+                        for value in (
+                            item.get("from"),
+                            item.get("to"),
+                        )
+                        if isinstance(value, str) and value.strip()
+                    )
+
+    unique_labels = list(dict.fromkeys(labels))
+    if not unique_labels:
+        return "unknown"
+    if len(unique_labels) == 1:
+        return unique_labels[0]
+    return "mixed"
+
+
+def _summarize_leg_sources(legs: Any) -> str:
+    if not isinstance(legs, (list, tuple)):
+        return "unknown"
+    return _summarize_state_sources(*(leg.get("stateSource") for leg in legs if isinstance(leg, dict)))
+
+
 def plan_interplanetary_route(
     bodies: Sequence[Dict[str, Any]],
     *,
@@ -38,6 +72,7 @@ def plan_interplanetary_route(
     assist_candidates = [candidate for candidate in assist_candidates if candidate in body_by_id]
 
     ephemeris = EphemerisService(bodies, provider=ephemeris_provider)
+    ephemeris_chain = ephemeris.provider_chain()
 
     optimized = optimize_mga_route(
         bodies,
@@ -87,7 +122,9 @@ def plan_interplanetary_route(
         "best": best,
         "alternatives": alternatives,
         "solver": "lambert_mga",
-        "ephemerisProvider": ephemeris.provider,
+        "ephemerisProvider": _summarize_leg_sources(best.get("legs", [])) if isinstance(best, dict) else ephemeris.provider,
+        "ephemerisProviderRequested": ephemeris.provider,
+        "ephemerisProviderChain": ephemeris_chain,
     }
 
 
@@ -116,9 +153,13 @@ def solve_direct_lambert(
     if leg is None:
         return {"solution": None, "error": "No Lambert solution for requested geometry/time"}
 
+    resolved_provider = _summarize_state_sources(leg.get("stateSource"))
+
     return {
         "solution": leg,
-        "ephemerisProvider": ephemeris.provider,
+        "ephemerisProvider": resolved_provider,
+        "ephemerisProviderRequested": ephemeris.provider,
+        "ephemerisProviderChain": ephemeris.provider_chain(),
         "solver": "lambert_universal",
     }
 
@@ -151,6 +192,8 @@ def run_porkchop_scan(
         prograde=prograde,
     )
     result["solver"] = "lambert_porkchop"
+    result["ephemerisProviderRequested"] = ephemeris.provider
+    result["ephemerisProviderChain"] = ephemeris.provider_chain()
     result["ephemerisProvider"] = ephemeris.provider
     return result
 
