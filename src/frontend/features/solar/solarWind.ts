@@ -150,3 +150,44 @@ export function windDynamicPressure(n_cm3: number, v_kms: number): number {
     const v_ms = v_kms * 1000;
     return 0.5 * m_proton * n_m3 * v_ms * v_ms * 1e9; // Pa → nPa
 }
+
+/**
+ * Coronal-hole-aware solar wind speed.
+ *
+ * Checks if the given latitude falls inside any of the provided coronal hole
+ * boundaries.  Inside a coronal hole: fast wind (650-800 km/s).  Outside: slow
+ * wind (350-450 km/s).
+ *
+ * This replaces the pure latitude-based transition of `solarWindSpeed` when
+ * coronal hole data is available from the backend.
+ *
+ * @param latRad       Heliographic latitude in radians
+ * @param activity     Solar activity [0, 1]
+ * @param coronalHoles Array of coronal hole descriptors from the backend
+ * @returns Wind speed in km/s
+ */
+export function solarWindSpeedWithHoles(
+    latRad: number,
+    activity: number,
+    coronalHoles: Array<{ center_lat_rad: number; extent_lat_rad: number }> | null
+): number {
+    if (!coronalHoles || coronalHoles.length === 0) {
+        // Fallback to generic latitude-based model
+        return solarWindSpeed(latRad, activity);
+    }
+
+    // Check if this latitude is inside any coronal hole
+    for (const hole of coronalHoles) {
+        const cLat = Number(hole.center_lat_rad);
+        const eLat = Number(hole.extent_lat_rad);
+        if (Number.isFinite(cLat) && Number.isFinite(eLat)) {
+            if (Math.abs(latRad - cLat) < eLat) {
+                // Inside coronal hole → fast wind
+                return 650 + Math.random() * 150; // 650-800 km/s
+            }
+        }
+    }
+
+    // Outside all coronal holes → slow wind
+    return 350 + Math.random() * 100; // 350-450 km/s
+}

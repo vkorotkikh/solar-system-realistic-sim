@@ -354,6 +354,11 @@ uniform float sunRadius;  // display radius of the sun in scene units
 // Each AIA channel has a temperature response function peaked at a specific T.
 uniform float channelMode;
 
+// ─── Data-Driven Coronal Holes ───────────────────────────────────────────────
+// Each vec4: (centerLon_rad, centerLat_rad, extentLon_rad, extentLat_rad)
+uniform vec4 coronalHoles[8];
+uniform float coronalHoleCount;
+
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 
@@ -473,15 +478,34 @@ void main() {
   alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
 
   // ─── Magnetically-Driven Coronal Holes ─────────────────────────────────────
-  // Polar holes (always present) + equatorial holes (appear at solar max)
-  float polarHole = abs(normalDir.y);
-  float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
-  float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
-  // Noise-modulated equatorial holes at high activity
-  float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
-  float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
-  float holeStrength = max(polarFade, equatorialHole);
-  alpha *= mix(0.08, 1.0, 1.0 - holeStrength * (1.0 - coronalHoleActivity * 0.7));
+  // Data-driven when coronalHoleCount > 0, otherwise fallback to polar darkening
+  float inHole = 0.0;
+  if (coronalHoleCount > 0.5) {
+    float fragLon = atan(normalDir.z, normalDir.x);
+    float fragLat = asin(clamp(normalDir.y, -1.0, 1.0));
+    for (int i = 0; i < 8; i++) {
+      if (float(i) >= coronalHoleCount) break;
+      vec4 hole = coronalHoles[i];
+      float dLon = abs(fragLon - hole.x);
+      dLon = min(dLon, 6.28318 - dLon);  // wrap-around
+      float dLat = abs(fragLat - hole.y);
+      if (dLon < hole.z && dLat < hole.w) {
+        // Smooth edge falloff (1.0 at center → 0.0 at edge)
+        float edgeFade = smoothstep(1.0, 0.65, max(dLon / max(hole.z, 0.01), dLat / max(hole.w, 0.01)));
+        inHole = max(inHole, edgeFade);
+      }
+    }
+  } else {
+    // Fallback: generic polar + equatorial hole pattern from coronalHoleActivity
+    float polarHole = abs(normalDir.y);
+    float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
+    float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
+    float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
+    float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
+    inHole = max(polarFade, equatorialHole);
+  }
+  // Emission measure drops ~5× in coronal holes (alpha → 0.2)
+  alpha *= mix(1.0, 0.2, inHole);
 
   // ─── Temperature-Dependent Corona Color ────────────────────────────────────
   // Inner corona (~1 MK): Fe XIV green line at 530.3 nm contribution
@@ -905,7 +929,16 @@ export function createSunCoronaShell(geometry) {
       observationBlend: { value: 0 },
       observationEmission: { value: 0.25 },
       sunRadius: { value: 1.0 },  // updated by updateSunMaterialUniforms
-      channelMode: { value: 0.0 }  // DEM channel: 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
+      channelMode: { value: 0.0 },  // DEM channel: 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
+      coronalHoles: {
+        value: [
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)
+        ]
+      },
+      coronalHoleCount: { value: 0.0 }
     },
     transparent: true,
     blending: AdditiveBlending,
@@ -1596,7 +1629,8 @@ export function updateSunMaterialUniforms({
   observationEmission = 0.25,
   coronaHue = null,
   sunDisplayRadius = 1.0,
-  activeChannel = null as string | null
+  activeChannel = null as string | null,
+  coronalHoleData = null as any
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
   const obsEmission = clampUnit(Number(observationEmission) || 0.25);
@@ -1647,6 +1681,33 @@ export function updateSunMaterialUniforms({
       else if (channelKey === 'aia_211') mode = 4.0;
       else if (channelKey === 'aia_304') mode = 5.0;
       sunCoronaMaterial.uniforms.channelMode.value = mode;
+    }
+
+    // ─── Coronal Hole Uniform Update ────────────────────────────────────────
+    if (sunCoronaMaterial.uniforms.coronalHoles && sunCoronaMaterial.uniforms.coronalHoleCount) {
+      const holesArray = sunCoronaMaterial.uniforms.coronalHoles.value;
+      const holesList = coronalHoleData?.holes;
+      if (Array.isArray(holesList) && holesList.length > 0) {
+        const count = Math.min(8, holesList.length);
+        for (let i = 0; i < count; i++) {
+          const h = holesList[i];
+          const cLon = Number(h?.center_lon_rad) || 0;
+          const cLat = Number(h?.center_lat_rad) || 0;
+          const eLon = Number(h?.extent_lon_rad) || 0.1;
+          const eLat = Number(h?.extent_lat_rad) || 0.1;
+          holesArray[i].set(cLon, cLat, eLon, eLat);
+        }
+        for (let i = count; i < 8; i++) {
+          holesArray[i].set(0, 0, 0, 0);
+        }
+        sunCoronaMaterial.uniforms.coronalHoleCount.value = count;
+      } else {
+        // No data — reset to fallback (coronalHoleActivity-driven)
+        sunCoronaMaterial.uniforms.coronalHoleCount.value = 0.0;
+        for (let i = 0; i < 8; i++) {
+          holesArray[i].set(0, 0, 0, 0);
+        }
+      }
     }
   }
 }
