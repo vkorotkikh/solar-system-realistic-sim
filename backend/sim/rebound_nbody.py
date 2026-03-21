@@ -18,6 +18,10 @@ from .base import SimulationEngine
 MSUN_KG = 1.98847e30
 J2000_JD = 2_451_545.0
 DAYS_PER_YEAR = 365.25
+STATE_POSITION_FRAME = "barycentric"
+STATE_VELOCITY_FRAME = "barycentric"
+STATE_POSITION_UNITS = "AU"
+STATE_VELOCITY_UNITS = "AU/day"
 CHECKPOINT_INTERVAL_YEARS = 10.0
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
@@ -51,6 +55,22 @@ class REBOUNDEngine(SimulationEngine):
 
     def list_body_ids(self) -> List[str]:
         return list(self.body_ids)
+
+    def _base_state(self) -> Dict[str, Any]:
+        return {
+            "type": "state_update",
+            "engine": self.engine_name,
+            "fidelity": self.fidelity_level,
+            "position_frame": STATE_POSITION_FRAME,
+            "velocity_frame": STATE_VELOCITY_FRAME,
+            "position_units": STATE_POSITION_UNITS,
+            "velocity_units": STATE_VELOCITY_UNITS,
+            "force_models": {
+                "n_body_point_mass": True,
+                "integrator": self._integrator,
+            },
+            "bodies": {},
+        }
 
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
         if rebound is None:
@@ -121,34 +141,26 @@ class REBOUNDEngine(SimulationEngine):
 
     def get_state(self) -> Dict[str, Any]:
         if self.sim is None:
-            return {
-                "type": "state_update",
-                "engine": self.engine_name,
-                "fidelity": self.fidelity_level,
-                "jd": 0,
-                "force_models": {"n_body_point_mass": True, "integrator": self._integrator},
-                "bodies": {},
-            }
+            payload = self._base_state()
+            payload["jd"] = 0
+            return payload
 
         bodies: Dict[str, Dict] = {}
         for i, body_id in enumerate(self.body_ids):
             p = self.sim.particles[i]
             bodies[body_id] = {
                 "pos": [round(p.x, 10), round(p.y, 10), round(p.z, 10)],
-                "vel": [round(p.vx, 10), round(p.vy, 10), round(p.vz, 10)],
+                "vel": [
+                    round(p.vx / DAYS_PER_YEAR, 10),
+                    round(p.vy / DAYS_PER_YEAR, 10),
+                    round(p.vz / DAYS_PER_YEAR, 10),
+                ],
             }
 
-        return {
-            "type": "state_update",
-            "engine": self.engine_name,
-            "fidelity": self.fidelity_level,
-            "jd": self.get_julian_date(),
-            "force_models": {
-                "n_body_point_mass": True,
-                "integrator": self._integrator,
-            },
-            "bodies": bodies,
-        }
+        payload = self._base_state()
+        payload["jd"] = self.get_julian_date()
+        payload["bodies"] = bodies
+        return payload
 
     def get_julian_date(self) -> float:
         if self.sim is None:
