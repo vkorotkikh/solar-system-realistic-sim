@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from data.bodies import ALL_BODIES
+from mission.ephemeris_service import EphemerisSample, EphemerisService
+from mission.orbital import sample_body_state_from_elements
 from trajectory import plan_interplanetary_route, run_porkchop_scan, solve_direct_lambert
 
 
@@ -40,6 +42,57 @@ def test_direct_lambert_solution_exists() -> None:
     assert solution["deltaVDepartureKmS"] >= 0.0
     assert solution["deltaVArrivalKmS"] >= 0.0
     assert abs(solution["computedTofDays"] - 120.0) < 1e-3
+    assert result["ephemerisProvider"] == "kepler"
+    assert result["ephemerisProviderRequested"] == "kepler"
+    assert result["ephemerisProviderChain"] == ["kepler"]
+
+
+def test_auto_ephemeris_prefers_horizons_before_kepler(monkeypatch) -> None:
+    call_order: list[str] = []
+    body_by_id = {body["id"]: body for body in ALL_BODIES}
+
+    def _sample(source: str, body_id: str, jd: float) -> EphemerisSample:
+        state = sample_body_state_from_elements(body_by_id[body_id], jd)
+        return EphemerisSample(
+            body_id=body_id,
+            jd=jd,
+            position_au=list(state["position"]),
+            velocity_au_day=list(state["velocity"]),
+            source=source,
+        )
+
+    def fake_spice(self, body_id: str, jd: float):
+        call_order.append("spice")
+        return None
+
+    def fake_horizons(self, body_id: str, jd: float):
+        call_order.append("horizons")
+        return _sample("horizons", body_id, jd)
+
+    def fake_kepler(self, body_id: str, jd: float):
+        call_order.append("kepler")
+        return _sample("kepler", body_id, jd)
+
+    monkeypatch.setattr(EphemerisService, "_sample_spice", fake_spice)
+    monkeypatch.setattr(EphemerisService, "_sample_horizons", fake_horizons)
+    monkeypatch.setattr(EphemerisService, "_sample_kepler", fake_kepler)
+
+    result = solve_direct_lambert(
+        ALL_BODIES,
+        from_id="earth",
+        to_id="venus",
+        departure_jd=2_460_400.5,
+        arrival_jd=2_460_520.5,
+        ephemeris_provider="auto",
+    )
+
+    assert result["solution"] is not None
+    assert result["ephemerisProviderRequested"] == "auto"
+    assert result["ephemerisProvider"] == "horizons"
+    assert result["ephemerisProviderChain"] == ["spice", "horizons", "kepler"]
+    assert result["solution"]["stateSource"] == {"from": "horizons", "to": "horizons"}
+    assert "kepler" not in call_order
+    assert call_order[:2] == ["spice", "horizons"]
 
 
 def test_porkchop_scan_returns_ranked_points() -> None:
@@ -59,3 +112,5 @@ def test_porkchop_scan_returns_ranked_points() -> None:
     assert result["count"] > 0
     assert result["best"] is not None
     assert result["best"]["totalDeltaVKmS"] <= result["points"][-1]["totalDeltaVKmS"]
+    assert result["ephemerisProviderRequested"] == "kepler"
+    assert result["ephemerisProvider"] == "kepler"

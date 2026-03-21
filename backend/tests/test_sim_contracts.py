@@ -7,6 +7,10 @@ def test_normalize_state_update_contract_shape() -> None:
     payload = {
         "engine": "rebound",
         "jd": "not-a-number",
+        "position_frame": "barycentric",
+        "velocity_frame": "barycentric",
+        "position_units": "AU",
+        "velocity_units": "AU/day",
         "bodies": {
             "earth": {"pos": [1, 2, 3], "vel": [0.1, 0.2, 0.3]},
             "mars": {"pos": [1, 2], "vel": [0.1, 0.2, 0.3, 0.4]},
@@ -24,6 +28,10 @@ def test_normalize_state_update_contract_shape() -> None:
     assert normalized["engine"] == "rebound"
     assert normalized["fidelity"] == "high"
     assert normalized["jd"] == 2_451_545.0
+    assert normalized["position_frame"] == "barycentric"
+    assert normalized["velocity_frame"] == "barycentric"
+    assert normalized["position_units"] == "AU"
+    assert normalized["velocity_units"] == "AU/day"
     assert normalized["bodies"]["earth"]["pos"] == [1.0, 2.0, 3.0]
     assert normalized["bodies"]["mars"]["pos"] == [0.0, 0.0, 0.0]
 

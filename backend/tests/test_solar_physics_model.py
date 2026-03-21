@@ -91,3 +91,74 @@ def test_parker_spiral_extends_to_multi_au_domain() -> None:
     assert spiral["point_count"] >= 80
     assert len(spiral["lines"]) == 6
     assert len(spiral["lines"][0]["arc"]) >= 80
+
+
+def test_synthetic_coronal_holes_present_at_solar_minimum() -> None:
+    """At solar minimum (low activity), synthetic polar coronal holes should be present."""
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    low_jd = CYCLE_25_START_JD + 0.2 * 365.25  # near cycle start
+
+    state = model.sample_state(
+        jd=low_jd,
+        fidelity="operational",
+        max_features=32,
+        forcing="synthetic",
+        realtime_data=None,
+    )
+    ch = state.get("coronal_holes")
+    assert ch is not None
+    assert ch["source"] == "synthetic"
+    assert ch["hole_count"] >= 2  # at least north + south polar holes
+    assert any(h["type"] == "polar" for h in ch["holes"])
+    assert ch["coverage_fraction"] > 0.05  # significant coverage at minimum
+
+
+def test_synthetic_coronal_holes_coverage_decreases_at_solar_max() -> None:
+    """Polar coronal hole coverage should be smaller at solar maximum."""
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    peak_days = HATHAWAY_B * math.sqrt(1.5) * MEAN_MONTH_DAYS
+
+    min_jd = CYCLE_25_START_JD + 0.2 * 365.25
+    max_jd = CYCLE_25_START_JD + peak_days
+
+    state_min = model.sample_state(jd=min_jd, fidelity="preview", max_features=16, forcing="synthetic")
+    state_max = model.sample_state(jd=max_jd, fidelity="preview", max_features=16, forcing="synthetic")
+
+    ch_min = state_min["coronal_holes"]
+    ch_max = state_max["coronal_holes"]
+
+    # Polar holes larger at minimum
+    polar_min = [h for h in ch_min["holes"] if h["type"] == "polar"]
+    polar_max = [h for h in ch_max["holes"] if h["type"] == "polar"]
+    assert len(polar_min) >= 2
+    sum_area_min = sum(h["area_fraction"] for h in polar_min)
+    sum_area_max = sum(h["area_fraction"] for h in polar_max) if polar_max else 0.0
+    assert sum_area_min > sum_area_max
+
+
+def test_parker_spiral_fast_wind_in_coronal_holes() -> None:
+    """Spiral lines flagged in_coronal_hole should have fast-wind speeds (> 600 km/s)."""
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    state = model.sample_state(
+        jd=CYCLE_25_START_JD + 0.2 * 365.25,
+        fidelity="operational",
+        max_features=32,
+        forcing="synthetic",
+        realtime_data=None,
+    )
+    spiral = state["heliosphere"]["parker_spiral"]
+    lines = spiral["lines"]
+    assert len(lines) == 6
+
+    in_hole = [line for line in lines if line.get("in_coronal_hole")]
+    out_hole = [line for line in lines if not line.get("in_coronal_hole")]
+
+    # At solar minimum, some lines should be in coronal holes
+    # (depends on geometry, so just check field exists and speeds are correct)
+    for line in lines:
+        assert "in_coronal_hole" in line
+        speed = float(line["wind_speed_kms"])
+        if line["in_coronal_hole"]:
+            assert speed > 600.0, f"Fast wind expected in coronal hole, got {speed}"
+        else:
+            assert speed < 500.0, f"Slow wind expected outside coronal hole, got {speed}"

@@ -139,3 +139,34 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("content-type", "").startswith("image/png")
     assert response.headers.get("x-solar-aia-channel") == "aia_193"
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
+
+
+def test_solar_physics_returns_coronal_hole_section() -> None:
+    """The /solar/physics response must include coronal_holes with required fields."""
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "operational",
+            "max_features": 32,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    ch = payload.get("coronal_holes")
+    assert ch is not None
+    assert "source" in ch
+    assert "holes" in ch
+    assert isinstance(ch["holes"], list)
+    assert "coverage_fraction" in ch
+    assert "hole_count" in ch
+    assert ch["hole_count"] == len(ch["holes"])
+    # Check that each hole has required fields
+    if ch["holes"]:
+        hole = ch["holes"][0]
+        assert "center_lat_rad" in hole
+        assert "center_lon_rad" in hole
+        assert "extent_lat_rad" in hole
+        assert "extent_lon_rad" in hole
+        assert "type" in hole
