@@ -92,6 +92,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │   ├── moons.json                         # 424-moon catalog (JPL SSD)
 │   │   ├── stars_catalog.json                 # Background star catalog
 │   │   ├── asteroidCatalogLoader.ts           # Phase 1 asteroid data loader
+│   │   ├── asteroidCatalogBinaryFormat.md     # Binary catalog format specification
 │   │   └── asteroidTaxonomyResolver.ts        # Asteroid taxonomy + color mapping
 │   ├── sim/
 │   │   ├── orbitMath.ts                       # Kepler solver, coordinate transforms
@@ -101,6 +102,10 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │   ├── kuiperBelt.ts                      # Kuiper belt + binary KBO pipeline
 │   │   ├── phase1AsteroidCatalog.ts           # Phase 1 real-data asteroid catalog
 │   │   └── asteroids/                         # Asteroid pipeline + shaders
+│   │       ├── asteroidDistributions.ts       #   Size/taxonomy/family distributions
+│   │       ├── asteroidGeometry.ts            #   Instanced mesh generation
+│   │       ├── asteroidPipeline.ts            #   Central simulation pipeline
+│   │       └── asteroidShaders.ts             #   GPU vertex/fragment shaders
 │   ├── frontend/
 │   │   ├── app/
 │   │   │   ├── sceneSetup.ts                  # Three.js scene, renderer, lights
@@ -123,13 +128,17 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │   ├── features/
 │   │   │   ├── asteroids/
 │   │   │   │   └── beltRenderer.ts            # Instanced asteroid belt renderer
-│   │   │   ├── planetary/                     # Clouds, terrain, satellites, moon textures
+│   │   │   ├── planetary/                     # Clouds, terrain, satellites, moon textures,
+│   │   │   │   │                              #   visual profiles
 │   │   │   ├── solar/                         # Sun visuals, flares, magnetics, corona,
 │   │   │   │   │                              #   prominences, wind, GW visualization,
-│   │   │   │   │                              #   observation textures, feature blending
+│   │   │   │   │                              #   observation textures, feature blending,
+│   │   │   │   │                              #   solar physics client
 │   │   │   ├── superluminal-modeling/         # SMBH/AGN shockwave engine,
-│   │   │   │   │                              #   propagation, warp visuals
+│   │   │   │   │                              #   propagation, warp slipstream visuals
 │   │   │   └── trajectory/                    # Local patched-conic planner
+│   │   │       ├── index.ts                   #   Trajectory feature exports
+│   │   │       └── localPlanner.ts            #   Local trajectory computation
 │   │   └── rendering/
 │   │       ├── milkyWay.ts                    # Milky Way background layer
 │   │       ├── orbitRenderer.ts               # Orbit-line drawing
@@ -141,6 +150,9 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── server.py                              # FastAPI entry point
 │   ├── requirements.txt
 │   ├── sim/
+│   │   ├── __init__.py                        # Sim package + engine registry
+│   │   ├── base.py                            # Abstract engine base class
+│   │   ├── contracts.py                       # API data contracts
 │   │   ├── rebound_nbody.py                   # REBOUND IAS15 integrator
 │   │   ├── tudatpy_hooks.py                   # TudatPy integration
 │   │   ├── solar_physics.py                   # Solar corona physics model (v3)
@@ -152,8 +164,9 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
 │   ├── data/                                  # Body definitions, nearby systems catalog
-│   └── tests/                                 # 13 pytest modules (contracts, regression, benchmarks)
+│   └── tests/                                 # 14 pytest modules (contracts, regression, benchmarks)
 ├── public/
+│   ├── data/asteroid-phase1/                  # Phase 1 asteroid catalog data files
 │   ├── textures/moons/                        # Moon texture assets
 │   └── solar-systems/manifests/               # Nearby system JSON manifests
 ├── scripts/
@@ -164,7 +177,8 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── build_asteroid_phase1_dataset.py       # Build Phase 1 asteroid real-data catalog
 │   ├── fetch_gaia_catalog.py                  # Gaia DR3 star catalog fetcher
 │   ├── fetch_jpl_sbdb.py                      # JPL Small-Body Database fetcher
-│   └── fetch_utils.py                         # Shared HTTP/cache utilities
+│   ├── fetch_utils.py                         # Shared HTTP/cache utilities
+│   └── asteroid/                              # Asteroid catalog fetcher utilities
 ├── index.html                                 # Main HTML shell with UI controls
 ├── package.json                               # Vite + Three.js + TypeScript
 └── tsconfig.json
@@ -341,6 +355,7 @@ npm run phase1:asteroid-dataset
 |---|---|
 | 3D engine | [Three.js](https://threejs.org/) r182 |
 | Build tool | [Vite](https://vite.dev/) 7 |
+| Test runner | [Vitest](https://vitest.dev/) |
 | Language | TypeScript |
 | Backend | [FastAPI](https://fastapi.tiangolo.com/) + WebSocket |
 | N-body integrator | [REBOUND](https://rebound.readthedocs.io/) (IAS15) |

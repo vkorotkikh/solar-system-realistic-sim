@@ -47,6 +47,176 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-12 UTC
+Status: `IN-PROGRESS`
+Type: `ARCHITECTURE` / `FIX`
+Summary:
+- Implementing DEM (Differential Emission Measure) channel response system for the solar corona, a new transition region atmospheric shell, and physics fixes for the heliospheric current sheet tilt and Parker spiral geometry.
+
+Context / rationale:
+- The AIA channel selector UI (added 2026-02-18) allowed channel switching but the corona rendered identically regardless of channel — a "false color skin" only. Real SDO/AIA channels are bandpass filters responding to plasma at specific temperatures; the same coronal structure looks dramatically different at 094Å vs 304Å because different ions dominate at different temperatures.
+- The transition region (TR) between chromosphere and corona is one of the most scientifically interesting layers of the solar atmosphere: temperature jumps 50× over ~100 km. It is the primary emission source for AIA 304Å (He II) and was the only major atmospheric layer not rendered.
+- The backend HCS tilt peaked at ~22° instead of the observed ~75° at solar maximum, producing unrealistically flat Parker spiral geometry.
+
+Proposed approach:
+- **DEM Channel Response (GLSL):** Gaussian instrument response `demChannelResponse(T_MK, channelId)` based on Lemen et al. 2012 peak temperatures and widths. Modulates corona alpha so hot channels (094Å) suppress cool plasma and vice versa.
+- **AIA False-Color Override:** When a channel is active, tint corona to standard SDO false-color mapping (green/blue-white/brown-gold/purple/red) at 65% blend weighted by DEM response.
+- **Transition Region Shell:** New `BackSide` additive-blended sphere at 1.006× R☉ with limb brightening (`pow(1-μ, 2.8)`), supergranulation network texture, and channel-dependent visibility (304Å dominant, 094Å invisible).
+- **DEM-Aware Coronal Loops:** Each AIA channel modifies loop color and opacity — e.g., 094Å shows only flare-heated loops, 171Å highlights quiet corona, 304Å dims everything (loops are too hot for He II).
+- **HCS Tilt Fix:** Polynomial `7.25 + 67.75 * activity^1.8` clamped [7°, 75°] from Wilcox Solar Observatory data. Removed 0.16× latitude damping so spiral arms show full tilt excursion.
+
+Expected impact:
+- Switching AIA channels now produces visually distinct, physically meaningful views of the corona — matching what solar physicists actually see on SDO imagery.
+- The transition region adds a new atmospheric feature especially dramatic in 304Å mode.
+- Parker spiral geometry becomes physically accurate across the full solar cycle range.
+
+Affected files/systems:
+- `src/frontend/features/solar/sunVisuals.ts` — DEM shader, TR shell, channel-aware loops
+- `backend/sim/solar_physics.py` — HCS tilt, Parker spiral latitude
+- `src/sunController.ts` — TR wiring, activeChannel threading
+
+Next step:
+- Commit and build-validate. Extend DEM response to the photosphere shader. Add dedicated TR geometry for finer resolution.
+
+### 2026-03-09 UTC
+Status: `DONE`
+Type: `ARCHITECTURE` / `TECH-DEBT`
+Summary:
+- Comprehensive TypeScript type safety pass across 15 modules in 7 focused commits. Added ~774 lines of explicit interfaces, parameter types, and return type annotations — the largest single typing effort since the JS→TS migration.
+
+Context / rationale:
+- The JS→TS migration (completed 2026-02-26) converted all `src/` modules to TypeScript filenames but used `// @ts-nocheck` and untyped function signatures. The result was "TypeScript in name only" with ~80+ `implicit any` errors. This pass targets the highest-risk modules first: solar physics stack, planetary systems, and navigation/rendering interfaces.
+
+Proposed approach:
+- Created structured interfaces for each module's domain:
+  - **Solar:** `WindParticleState`, `SolarPhysicsResponse`, `ProminenceArc`, `FieldLineConfig`, `ObservationControlState`, `GWVisualizationConfig`, `BlendViewState`, etc.
+  - **Planetary:** `SatelliteOrbitDef`, `SatellitePropagationResult`, `CloudTileDef`, `CloudBlendParams`, etc.
+  - **Navigation:** `NearbyStarMarker`, `MissionPlanLeg`, `LabelOverlayConfig`, `LocalBodyRenderState`, etc.
+  - **Camera:** `TransitionConfig`, `EasingProfile`, `InterpolationState`, etc.
+- Each interface mirrors the existing runtime shape — no behavioral changes, purely compile-time safety.
+- Grouped commits by domain for atomic rollback capability.
+
+Expected impact:
+- Eliminates the majority of `implicit any` errors in the typed modules.
+- IDE autocomplete and refactoring support now works across solar/planetary/navigation stacks.
+- Future physics/rendering changes get compile-time contract validation.
+
+Affected files/systems:
+- `src/frontend/features/solar/{solarWind,solarPhysicsClient,solarProminences,solarMagnetics,solarObservationTexture,gravitationalWaves,solarFeatureBlending}.ts`
+- `src/frontend/features/planetary/{satelliteSystem,cloudDataPipeline}.ts`
+- `src/frontend/app/{nearbySystemsRenderer,plannerController,labelSystem,localSystemRenderer}.ts`
+- `src/frontend/camera/transitions.ts`
+
+Next step:
+- Type the remaining untyped modules: `animationLoop.ts`, `cameraController.ts`, `inputHandler.ts`, `uiBindings.ts`, `main.ts`.
+- Consider a shared `src/types/` barrel exporting cross-module interfaces.
+
+### 2026-03-09 UTC
+Status: `DONE`
+Type: `ARCHITECTURE`
+Summary:
+- Added Vitest as the frontend unit testing framework and created initial test suites for `stateStore` and `orbitMath`.
+
+Context / rationale:
+- The project had backend pytest coverage but zero frontend unit tests. `stateStore` (simulation state, dirty flags) and `orbitMath` (Kepler solver, orbital elements) are the two highest-risk frontend modules — state correctness bugs and physics errors propagate silently through the entire rendering pipeline.
+- Vitest was chosen over Jest for native ESM/TypeScript support and zero-config Vite integration.
+
+Proposed approach:
+- Added `vitest` as devDependency alongside `@vitest/coverage-v8`.
+- `stateStore.test.ts`: Tests dirty-flag set/clear lifecycle, state mutation tracking, multi-property change batching.
+- `orbitMath.test.ts`: Tests Kepler solver convergence for circular/eccentric/near-parabolic orbits, mean-to-true anomaly conversion, orbital element edge cases.
+- Added WebSocket protocol version negotiation in `simulationClient.ts` for frontend-backend version compatibility.
+
+Expected impact:
+- Regression protection for the two most critical frontend logic modules.
+- Framework in place for expanding coverage to other simulation modules.
+- WebSocket version negotiation prevents silent incompatibility between frontend and backend releases.
+
+Affected files/systems:
+- `package.json`, `package-lock.json`
+- `src/frontend/app/stateStore.test.ts` [NEW]
+- `src/sim/orbitMath.test.ts` [NEW]
+- `src/frontend/app/simulationClient.ts`
+- `backend/tests/test_trajectory_regression.py`
+
+Next step:
+- Add `npm run test` script to package.json. Expand test coverage to `solarSystemModel.ts` and `asteroidDistributions.ts`.
+
+### 2026-03-09 UTC
+Status: `DONE`
+Type: `FIX` / `ARCHITECTURE`
+Summary:
+- Added secular orbital rate coefficients for all planets and refactored state management change tracking.
+
+Context / rationale:
+- Planetary osculating elements at J2000 drift over centuries — without secular correction terms (da/dt, de/dt, dI/dt, etc.), outer planet positions accumulate visible errors over simulation timescales of hundreds of years. Values sourced from Standish 1992 and Meeus astronomical tables.
+- State management refactor improves dirty-flag granularity so only changed properties trigger downstream updates, reducing unnecessary re-renders.
+
+Proposed approach:
+- Added `secularRates` object to each planet definition in `planets.ts` with per-century linear correction terms for all 6 Keplerian elements.
+- Refactored `stateStore.ts` with property-level change tracking instead of wholesale dirty marking.
+
+Expected impact:
+- Outer planet positions (Jupiter through Neptune) will be significantly more accurate over long simulation windows once secular rates are wired into the propagator.
+- State management becomes more efficient for high-frequency update loops.
+
+Affected files/systems:
+- `src/data/planets.ts`
+- `src/frontend/app/stateStore.ts`
+
+Next step:
+- Wire secular rates into `solarSystemModel.ts` propagation loop. Validate against JPL Horizons for ±500 year windows.
+
+### 2026-03-09 UTC
+Status: `OPEN`
+Type: `IDEA`
+Summary:
+- Solar corona physics engineering plan — roadmap for DEM-aware rendering and atmospheric layer completion.
+
+Context / rationale:
+- Created a detailed engineering plan document (in `my-notes/`) outlining the technical approach for implementing Phase 13 items that were deferred from the 2026-02-23 Sun physics overhaul: DEM-aware AIA channel rendering, transition region shell, irradiance variability model, and coronal loop temperature stratification.
+
+Proposed approach:
+- Plan specifies implementation order: (1) DEM channel response function in GLSL, (2) transition region shell, (3) channel-aware coronal loop coloring, (4) photospheric DEM response, (5) irradiance variability from activity/sunspot coverage.
+- DEM work partially started in the 2026-03-12 uncommitted changes.
+
+Expected impact:
+- Guides structured implementation of the remaining Sun model improvements without ad-hoc scope creep.
+
+Affected files/systems:
+- `my-notes/` — engineering plan document
+- Future: `sunVisuals.ts`, `solar_physics.py`, `sunController.ts`
+
+Next step:
+- Continue implementation per plan. First two items (DEM shader + TR shell) are in progress.
+
+### 2026-03-09 UTC
+Status: `OPEN`
+Type: `IDEA`
+Summary:
+- Brainstorming: channel-specific coronal heating diagnostics and observation-comparison mode.
+
+Context / rationale:
+- With DEM channel response now being implemented, there is an opportunity to add a split-screen or overlay mode where the synthetic corona can be compared side-by-side with actual SDO/AIA imagery. This would serve both as validation tooling and an educational feature.
+- Additionally, the per-channel temperature response data could be exposed as an interactive DEM plot (emission measure vs. temperature) that updates in real time as the user orbits the Sun.
+
+Proposed approach:
+- **Split-screen mode:** Divide the Sun view into left (synthetic) and right (SDO observation) halves, synchronized by channel and rotation angle.
+- **Interactive DEM curve:** Small overlay chart showing the Gaussian response curves for all 5 channels, with a vertical marker at the current corona region's estimated temperature.
+- **Temperature map overlay:** False-color the corona by estimated temperature (from the radial profile) rather than by channel response, toggled via a "T-map" checkbox.
+
+Expected impact:
+- Significant educational value — users can see why different channels reveal different structures.
+- Validation path for the DEM model against real data.
+
+Affected files/systems:
+- `index.html` — UI controls for split/overlay mode
+- `src/frontend/features/solar/sunVisuals.ts` — temperature map shader variant
+- `src/frontend/features/solar/solarObservationTexture.ts` — synchronized SDO tile loading
+
+Next step:
+- Prototype split-screen as a shader uniform toggle before committing to a full canvas split.
+
 ### 2026-03-09 04:49 UTC
 Status: `DONE`
 Type: `ARCHITECTURE` / `FIX`
@@ -512,32 +682,32 @@ Next step:
 - Start with Phase A and include API-style integration tests for visibility toggles and LOD behavior.
 
 ### 2026-02-18 11:38:22 UTC
-Status: `OPEN`
+Status: `IN-PROGRESS` (updated 2026-03-12: major typing pass completed 2026-03-09; remaining modules listed below)
 Type: `TECH-DEBT`
 Summary:
 - TypeScript continuation plan for physics and frontend contract safety.
 
 Context / rationale:
 - Initial TS migration of `orbitMath`, `solarSystemModel`, and `simulationClient` is complete; unit/contract safety should now expand to sources feeding those modules.
+- **Update 2026-03-09:** A comprehensive 7-commit type safety pass added ~774 lines of interfaces across 15 modules (solar, planetary, navigation, camera). The majority of solar/planetary/navigation modules now have explicit interfaces. `constants.ts` and `catalog.ts` are already TypeScript.
 
 Proposed approach:
-- Convert `src/constants.js` and `src/sim/catalog.js` to TS next.
+- ~~Convert `src/constants.js` and `src/sim/catalog.js` to TS next.~~ Done (completed during earlier migration).
 - Add shared unit brands/types (`Au`, `Km`, `JulianDay`, `Radians`) and apply in orbital interfaces.
-- Add explicit wire types for solar/API payloads (`solarPhysicsClient`, observation texture metadata).
+- ~~Add explicit wire types for solar/API payloads (`solarPhysicsClient`, observation texture metadata).~~ Done (2026-03-09 type safety pass).
 - Add CI gate requiring both `npm run typecheck` and `npm run build`.
+- Remaining untyped modules: `animationLoop.ts`, `cameraController.ts`, `inputHandler.ts`, `uiBindings.ts`, `main.ts`.
 
 Expected impact:
 - Reduced risk of unit confusion and payload-shape drift.
 - Stronger compile-time guardrails for future physics/model upgrades.
 
 Affected files/systems:
-- `src/constants.js`
-- `src/sim/catalog.js`
-- `src/frontend/features/solar/*`
+- Remaining: `src/frontend/app/{animationLoop,cameraController,inputHandler,uiBindings}.ts`, `src/main.ts`
 - CI pipeline config
 
 Next step:
-- Introduce a small `src/types/units.ts` and adopt it in `orbitMath.ts` first.
+- Introduce a `src/types/units.ts` barrel and adopt it in `orbitMath.ts` first. Type the remaining 5 modules.
 
 ### 2026-02-18 10:30:00 UTC
 Status: `DONE`
