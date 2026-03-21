@@ -248,6 +248,8 @@ def benchmark_against_references(
 
     ok_rows = [row for row in rows if row.get("status") == "ok"]
     pass_count = sum(1 for row in ok_rows if row.get("pass"))
+    fail_count = sum(1 for row in ok_rows if not row.get("pass"))
+    no_solution_count = len(rows) - len(ok_rows)
     mean_abs_error = (
         sum(float(row["absErrorKmS"]) for row in ok_rows) / len(ok_rows)
         if ok_rows
@@ -266,8 +268,11 @@ def benchmark_against_references(
         "referenceIntegrityOk": reference_integrity_ok,
         "scenarioCount": len(rows),
         "solvedCount": len(ok_rows),
+        "noSolutionCount": no_solution_count,
         "passCount": pass_count,
+        "failedCount": fail_count,
         "passRate": (pass_count / len(ok_rows)) if ok_rows else 0.0,
+        "validationCoverage": (len(ok_rows) / len(rows)) if rows else 0.0,
         "meanAbsErrorKmS": mean_abs_error,
         "rows": rows,
     }
@@ -283,7 +288,10 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
         "",
         f"- Scenarios: {summary.get('scenarioCount', 0)}",
         f"- Solved: {summary.get('solvedCount', 0)}",
+        f"- No solution: {summary.get('noSolutionCount', 0)}",
         f"- Passed tolerance: {summary.get('passCount', 0)}",
+        f"- Failed tolerance: {summary.get('failedCount', 0)}",
+        f"- Validation coverage: {float(summary.get('validationCoverage', 0.0)) * 100.0:.1f}%",
         f"- Pass rate: {float(summary.get('passRate', 0.0)) * 100.0:.1f}%",
         f"- Mean |delta-v error|: {float(summary.get('meanAbsErrorKmS', 0.0)):.3f} km/s",
         f"- Reference integrity OK: {summary.get('referenceIntegrityOk', False)}",

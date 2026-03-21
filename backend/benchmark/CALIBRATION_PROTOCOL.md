@@ -48,3 +48,4 @@ The benchmark loader verifies:
 
 - This protocol hardens benchmark integrity and prevents silent drift back to loose blended references.
 - If any checksum or required-tool row is missing, benchmark execution fails fast.
+- The benchmark test suite also validates pass/fail bookkeeping with a controlled solver stub so that reporting regressions are caught even when the live solver output changes.
