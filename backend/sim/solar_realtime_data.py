@@ -384,6 +384,169 @@ class SolarRealtimeDataProvider:
             "activity_proxy": activity_proxy,
         }
 
+    def detect_coronal_holes(self, tile_content: bytes) -> dict[str, Any] | None:
+        """Detect coronal holes from an AIA 193Å tile via intensity thresholding.
+
+        Coronal holes appear as dark regions in 193Å EUV images because there is
+        less hot (~1.6 MK) plasma in open-field regions.  This routine applies a
+        threshold at ``0.25 × median`` of the solar disk, finds connected dark
+        regions, and returns up to 8 bounding boxes in heliographic (lat/lon)
+        coordinates suitable for GPU shader consumption.
+
+        The approach mirrors the first pass of CATCHES (Heinemann+ 2019) and
+        SPoCA (Verbeeck+ 2014).
+        """
+        if Image is None:
+            return None
+        try:
+            with Image.open(io.BytesIO(tile_content)) as image:
+                grayscale = image.convert("L")
+                if grayscale.width > 512 or grayscale.height > 512:
+                    grayscale = grayscale.resize((512, 512))
+                arr = np.asarray(grayscale, dtype=np.float32) / 255.0
+        except Exception:
+            return None
+
+        if arr.size == 0 or arr.shape[0] < 8 or arr.shape[1] < 8:
+            return None
+
+        h, w = arr.shape
+        cx, cy = w / 2.0, h / 2.0
+        # Solar disk radius in pixels (~45% of tile width for Helioviewer tiles)
+        r_sun_px = min(cx, cy) * 0.90
+
+        # Build disk mask (only analyze pixels on the solar disk)
+        yy, xx = np.mgrid[:h, :w]
+        dist_sq = (xx - cx) ** 2 + (yy - cy) ** 2
+        disk_mask = dist_sq <= (r_sun_px * r_sun_px)
+        disk_pixels = arr[disk_mask]
+        if disk_pixels.size < 100:
+            return None
+
+        # Intensity threshold: coronal holes are < 0.25 × median(disk)
+        median_intensity = float(np.median(disk_pixels))
+        threshold = median_intensity * 0.25
+        ch_mask = (arr < threshold) & disk_mask
+
+        # Morphological cleanup: erode then dilate to remove noise
+        # Simple 3×3 binary operations without scipy dependency
+        kernel_size = 3
+        pad = kernel_size // 2
+        # Erode
+        eroded = np.zeros_like(ch_mask)
+        for dy in range(-pad, pad + 1):
+            for dx in range(-pad, pad + 1):
+                shifted = np.roll(np.roll(ch_mask, dy, axis=0), dx, axis=1)
+                if dy == -pad and dx == -pad:
+                    eroded = shifted.copy()
+                else:
+                    eroded &= shifted
+        # Dilate
+        dilated = np.zeros_like(eroded)
+        for dy in range(-pad, pad + 1):
+            for dx in range(-pad, pad + 1):
+                shifted = np.roll(np.roll(eroded, dy, axis=0), dx, axis=1)
+                dilated |= shifted
+        ch_mask = dilated & disk_mask
+
+        total_ch_pixels = int(ch_mask.sum())
+        total_disk_pixels = int(disk_mask.sum())
+        coverage_fraction = total_ch_pixels / max(1, total_disk_pixels)
+
+        # Find connected regions via simple flood-fill labeling
+        labels = np.zeros(ch_mask.shape, dtype=np.int32)
+        label_id = 0
+        min_region_pixels = max(10, total_disk_pixels // 500)
+
+        for y in range(h):
+            for x in range(w):
+                if ch_mask[y, x] and labels[y, x] == 0:
+                    label_id += 1
+                    # BFS flood fill
+                    stack = [(y, x)]
+                    region_pixels: list[tuple[int, int]] = []
+                    while stack:
+                        py, px = stack.pop()
+                        if py < 0 or py >= h or px < 0 or px >= w:
+                            continue
+                        if labels[py, px] != 0 or not ch_mask[py, px]:
+                            continue
+                        labels[py, px] = label_id
+                        region_pixels.append((py, px))
+                        stack.extend([(py - 1, px), (py + 1, px), (py, px - 1), (py, px + 1)])
+
+        # Extract bounding boxes for each labeled region that meets min size
+        holes: list[dict[str, Any]] = []
+        polar_open_north = 0.0
+        polar_open_south = 0.0
+
+        for lid in range(1, label_id + 1):
+            region_mask = labels == lid
+            region_size = int(region_mask.sum())
+            if region_size < min_region_pixels:
+                continue
+
+            ys, xs = np.where(region_mask)
+            y_min, y_max = int(ys.min()), int(ys.max())
+            x_min, x_max = int(xs.min()), int(xs.max())
+
+            # Map pixel coordinates to heliographic lat/lon
+            # Plate-carre approximation for the visible hemisphere:
+            # x: center = 0 lon, left/right = ±π/2
+            # y: center = 0 lat, top/bottom = ±π/2
+            center_x = (x_min + x_max) / 2.0
+            center_y = (y_min + y_max) / 2.0
+            ext_x = (x_max - x_min) / 2.0
+            ext_y = (y_max - y_min) / 2.0
+
+            center_lon = ((center_x - cx) / r_sun_px) * (math.pi / 2.0)
+            center_lat = -((center_y - cy) / r_sun_px) * (math.pi / 2.0)  # y-axis inverted
+            extent_lon = (ext_x / r_sun_px) * (math.pi / 2.0)
+            extent_lat = (ext_y / r_sun_px) * (math.pi / 2.0)
+
+            # Clamp to valid ranges
+            center_lon = _clamp(center_lon, -math.pi, math.pi)
+            center_lat = _clamp(center_lat, -math.pi / 2, math.pi / 2)
+            extent_lon = _clamp(extent_lon, 0.01, math.pi)
+            extent_lat = _clamp(extent_lat, 0.01, math.pi / 2)
+
+            area_fraction = region_size / max(1, total_disk_pixels)
+            hole_type = "polar" if abs(center_lat) > math.radians(50) else "equatorial"
+
+            if center_lat > math.radians(50):
+                polar_open_north += area_fraction
+            elif center_lat < math.radians(-50):
+                polar_open_south += area_fraction
+
+            holes.append({
+                "center_lat_rad": round(center_lat, 4),
+                "center_lon_rad": round(center_lon, 4),
+                "extent_lat_rad": round(extent_lat, 4),
+                "extent_lon_rad": round(extent_lon, 4),
+                "center_lat_deg": round(math.degrees(center_lat), 1),
+                "center_lon_deg": round(math.degrees(center_lon), 1),
+                "extent_lat_deg": round(math.degrees(extent_lat), 1),
+                "extent_lon_deg": round(math.degrees(extent_lon), 1),
+                "area_fraction": round(area_fraction, 5),
+                "pixel_count": region_size,
+                "type": hole_type,
+            })
+
+        # Sort by area descending, keep top 8
+        holes.sort(key=lambda h: h["area_fraction"], reverse=True)
+        holes = holes[:8]
+
+        return {
+            "source": "aia_193_threshold",
+            "threshold": round(threshold, 4),
+            "median_intensity": round(median_intensity, 4),
+            "coverage_fraction": round(coverage_fraction, 4),
+            "polar_open_flux_north": round(polar_open_north, 4),
+            "polar_open_flux_south": round(polar_open_south, 4),
+            "hole_count": len(holes),
+            "holes": holes,
+        }
+
     def _fetch_helioviewer_closest(self, source_id: int, date_utc: datetime) -> dict[str, Any]:
         date_tag = date_utc.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         query = urllib.parse.urlencode(
@@ -497,6 +660,18 @@ class SolarRealtimeDataProvider:
             else None
         )
 
+        # ─── Coronal Hole Detection from AIA 193Å ────────────────────────────
+        coronal_holes = None
+        aia_193_entry = channels.get("aia_193")
+        if isinstance(aia_193_entry, dict):
+            aia_193_tile_url = aia_193_entry.get("tile_url")
+            if isinstance(aia_193_tile_url, str) and aia_193_tile_url:
+                try:
+                    tile_bytes, _ = self._fetch_binary_cached(aia_193_tile_url, ttl_s=self.cache_ttl_s)
+                    coronal_holes = self.detect_coronal_holes(tile_bytes)
+                except Exception:
+                    pass
+
         return {
             "request_date_utc": request_date.isoformat().replace("+00:00", "Z"),
             "channels": channels,
@@ -505,6 +680,7 @@ class SolarRealtimeDataProvider:
             "freshness_s": freshness_s,
             "freshness_proxy": freshness_proxy,
             "activity_proxy": activity_proxy,
+            "coronal_holes": coronal_holes,
             "visualization": {
                 "preferred_channel": preferred_channel,
                 "preferred_image_id": preferred_image_id,
