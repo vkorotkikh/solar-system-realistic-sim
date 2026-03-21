@@ -854,7 +854,11 @@ class SolarCoronaPhysicsModel:
             )
             wind_speed_au_day = wind_speed_kms / (AU_KM / 86_400.0)
             polarity_sign = 1.0 if i % 2 == 0 else -1.0
-            hcs_tilt_rad = math.radians(7.25 + activity * 15.0)
+            # HCS tilt: ~7° at solar minimum → ~75° at solar maximum.
+            # Polynomial ramp matches Wilcox Solar Observatory observations:
+            # gentle rise at low activity, steep above activity ~ 0.5.
+            hcs_tilt_deg = 7.25 + 67.75 * (activity ** 1.8)
+            hcs_tilt_rad = math.radians(_clamp(hcs_tilt_deg, 7.0, 75.0))
             arc: list[list[float]] = []
 
             for p in range(safe_point_count):
@@ -862,7 +866,7 @@ class SolarCoronaPhysicsModel:
                 r_au = source_surface_au + (max_radius_au - source_surface_au) * (frac**1.45)
                 delta_r = r_au - source_surface_au
                 phi = arm_phase - (omega_sun_rad_day / max(1e-6, wind_speed_au_day)) * delta_r
-                lat = hcs_tilt_rad * 0.16 * math.sin(phi + i * 0.33)
+                lat = hcs_tilt_rad * math.sin(phi + i * 0.33)
                 direction = _vector_from_lat_lon(lat, phi)
                 r_solar = r_au / SOLAR_RADIUS_AU
                 arc.append([direction[0] * r_solar, direction[1] * r_solar, direction[2] * r_solar])
