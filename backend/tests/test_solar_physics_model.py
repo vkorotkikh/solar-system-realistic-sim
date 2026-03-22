@@ -162,3 +162,123 @@ def test_parker_spiral_fast_wind_in_coronal_holes() -> None:
             assert speed > 600.0, f"Fast wind expected in coronal hole, got {speed}"
         else:
             assert speed < 500.0, f"Slow wind expected outside coronal hole, got {speed}"
+
+
+def test_sample_state_is_deterministic_for_fixed_epoch() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    jd = CYCLE_25_START_JD + 2.75 * 365.25
+
+    state_a = model.sample_state(jd=jd, fidelity="high", max_features=64, forcing="synthetic")
+    state_b = model.sample_state(jd=jd, fidelity="high", max_features=64, forcing="synthetic")
+
+    assert state_a == state_b
+    assert state_a["wall_epoch_jd"] == state_a["epoch_jd"] == jd
+
+
+def test_carrington_rotation_number() -> None:
+    from sim.pfss_magnetogram import carrington_rotation_number
+    # jd=2460010.0 is cleanly inside a rotation (cr 2267)
+    cr1 = carrington_rotation_number(2460010.0)
+    cr2 = carrington_rotation_number(2460010.0 + 27.27)
+    assert cr2 == cr1 + 1
+
+
+def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
+    from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
+    br = synthetic_magnetogram(activity=0.8, jd=2460000.0)
+    g, h = decompose_spherical_harmonics(br, lmax=10)
+    field = pfss_solve(g, h, lmax=10)
+    
+    # 60 lines should be enough to capture both types
+    lines = trace_field_lines(field, n_lines=60, br_map=br)
+    
+    assert len(lines) > 20
+    open_count = sum(1 for line in lines if line["is_open"])
+    closed_count = sum(1 for line in lines if not line["is_open"])
+    
+    # Needs to be a mix
+    assert open_count > 0, "No open lines traced"
+    assert closed_count > 0, "No closed lines traced"
+
+
+def test_pfss_open_lines_reach_source_surface() -> None:
+    from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
+    br = synthetic_magnetogram(activity=0.5, jd=2460000.0)
+    g, h = decompose_spherical_harmonics(br, lmax=8)
+    field = pfss_solve(g, h, lmax=8)
+    lines = trace_field_lines(field, n_lines=40, br_map=br)
+    
+    for line in lines:
+        if line["is_open"]:
+            # Last point should be >= 2.4 R_sun
+            last_pt = line["arc"][-1]
+            r = (last_pt[0]**2 + last_pt[1]**2 + last_pt[2]**2)**0.5
+            assert r >= 2.4, f"Open line terminated too early at r={r}"
+
+
+def test_wsa_velocity_bounds() -> None:
+    """WSA formula must produce physically plausible velocities."""
+    from sim.pfss_magnetogram import _wsa_velocity
+
+    # Deep coronal hole: low expansion, far from boundary → fast wind
+    v_fast = _wsa_velocity(fs=1.5, theta_b=0.5)
+    assert 500 < v_fast <= 850, f"Expected fast wind, got {v_fast}"
+
+    # Streamer belt: high expansion, on boundary → slow wind
+    v_slow = _wsa_velocity(fs=50.0, theta_b=0.001)
+    assert 265 <= v_slow < 350, f"Expected slow wind, got {v_slow}"
+
+    # Moderate: intermediate expansion and distance
+    v_mid = _wsa_velocity(fs=10.0, theta_b=0.1)
+    assert 265 <= v_mid <= 850, f"Out of range: {v_mid}"
+
+
+def test_wsa_velocity_map_produces_speeds() -> None:
+    """WSA velocity map must produce valid speeds for open flux regions."""
+    from sim.pfss_magnetogram import (
+        synthetic_magnetogram, decompose_spherical_harmonics,
+        pfss_solve, compute_wsa_velocity_map,
+    )
+    import numpy as np
+
+    br = synthetic_magnetogram(activity=0.3, jd=2460000.0)
+    g, h = decompose_spherical_harmonics(br, lmax=8)
+    field = pfss_solve(g, h, lmax=8)
+
+    wsa = compute_wsa_velocity_map(field, br_map=br, n_lat=18, n_lon=36)
+
+    assert "velocity_map" in wsa
+    assert "open_mask" in wsa
+    assert "mean_velocity_kms" in wsa
+
+    v_map = wsa["velocity_map"]
+    open_mask = wsa["open_mask"]
+
+    # Must have some open flux
+    assert open_mask.any(), "No open flux found"
+
+    # All valid velocities must be in WSA range
+    valid = v_map[np.isfinite(v_map)]
+    assert valid.size > 0
+    assert valid.min() >= 265.0, f"Min velocity {valid.min()} below floor"
+    assert valid.max() <= 850.0, f"Max velocity {valid.max()} above ceiling"
+
+    # Mean should be physically plausible
+    mean_v = wsa["mean_velocity_kms"]
+    assert 265.0 <= mean_v <= 850.0
+
+
+def test_parker_spiral_uses_wsa_model() -> None:
+    """Parker spiral lines should report WSA as wind speed source when available."""
+    model = SolarCoronaPhysicsModel("hyper", "test_wsa")
+    state = model.sample_state(jd=2460000.5, fidelity="preview", max_features=8)
+
+    spiral = state.get("heliosphere", {}).get("parker_spiral", {})
+    assert "wind_speed_model" in spiral
+    assert spiral["wind_speed_model"] in ("wsa_arge_2003", "empirical_ch_bimodal")
+
+    # All lines should have wind_speed_source
+    for line in spiral.get("lines", []):
+        assert "wind_speed_source" in line
+        v = line["wind_speed_kms"]
+        assert 265.0 <= v <= 860.0, f"Spiral wind speed {v} out of range"

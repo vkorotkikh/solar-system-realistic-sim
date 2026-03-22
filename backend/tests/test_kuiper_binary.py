@@ -51,6 +51,7 @@ class TestBinaryKBOGeneration:
         assert state is not None
         assert "binary_pairs" in state
         assert "positions" in state
+        assert "velocities" in state
         pairs = state["binary_pairs"]
         assert isinstance(pairs, list)
         # With 20% binary fraction and 500 particles, expect roughly 80-120 pairs
@@ -63,20 +64,29 @@ class TestBinaryKBOGeneration:
         state = activated_engine.get_state()
         assert state is not None
         positions = state["positions"]
+        velocities = state["velocities"]
         pairs = state["binary_pairs"]
         n = len(positions)
+        assert len(velocities) == n
         for pair in pairs:
             assert len(pair) == 2, f"Each pair should have exactly 2 indices, got {len(pair)}"
             primary_idx, companion_idx = pair
             assert 0 <= primary_idx < n, f"Primary index {primary_idx} out of range [0, {n})"
             assert 0 <= companion_idx < n, f"Companion index {companion_idx} out of range [0, {n})"
             assert primary_idx != companion_idx, "Primary and companion should be distinct"
+            dv = math.sqrt(
+                (velocities[primary_idx][0] - velocities[companion_idx][0]) ** 2
+                + (velocities[primary_idx][1] - velocities[companion_idx][1]) ** 2
+                + (velocities[primary_idx][2] - velocities[companion_idx][2]) ** 2
+            )
+            assert dv > 0.0, "Binary companions should not be perfectly co-moving"
 
     def test_binary_pairs_are_close(self, activated_engine):
         """Companion should be within 200,000 km (~0.0013 AU) of its primary."""
         state = activated_engine.get_state()
         assert state is not None
         positions = state["positions"]
+        velocities = state["velocities"]
         pairs = state["binary_pairs"]
         max_sep_au = 200_000 / 149_597_870.7  # ~0.00134 AU
         for pair in pairs:
@@ -89,6 +99,10 @@ class TestBinaryKBOGeneration:
                 f"Companion at {dist:.6f} AU from primary, "
                 f"expected < {max_sep_au * 2:.6f} AU"
             )
+            pv = velocities[pair[0]]
+            cv = velocities[pair[1]]
+            dv = math.sqrt((pv[0] - cv[0]) ** 2 + (pv[1] - cv[1]) ** 2 + (pv[2] - cv[2]) ** 2)
+            assert dv > 1e-8, f"Binary pair {pair} still looks co-moving"
 
     def test_binary_pairs_no_overlap(self, activated_engine):
         """No particle should appear in more than one binary pair."""

@@ -55,6 +55,26 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-21 — Data-Driven Global Magnetic Field (PFSS solver)
+Status: DONE
+
+What changed:
+- **PFSS Backend Solver (`pfss_magnetogram.py`):** A custom numpy-based solver for the Altschuler-Newkirk PFSS model. Ingests GONG synoptic magnetograms, decomposes into spherical harmonics (up to ℓ=15), solves the potential field, and traces field lines out to the source surface (2.5 Rsun). Handles open/closed tagging based on footpoint and endpoint.
+- **Frontend Integration (`solarMagnetics.ts`, `sunController.ts`):** Renders the exact traced coordinates from the backend rather than using local analytical dipole/quadrupole approximations. Incorporates Carrington rotation into the caching signature to ensure visual updates on solar rotation boundaries.
+
+Why it changed:
+- SOTA evaluation showed our analytical model was unrealistic. We needed a true magnetogram-driven topology to hit SOTA benchmarks and reproduce actual streamer belts and coronal holes.
+
+Evidence/validation:
+- Pytest covers caching, fallback logic, Carrington rotation calculations, and geometry validation (open lines must reach > 2.4 Rsun).
+- Frontend successfully falls back to analytical when GONG is down, or correctly renders lines matching the exact GONG map state.
+
+Files touched:
+- `backend/sim/pfss_magnetogram.py`
+- `backend/sim/solar_physics.py`
+- `src/frontend/features/solar/solarMagnetics.ts`
+- `src/sunController.ts`
+
 ### 2026-03-21 — Data-Driven Coronal Hole Detection & Fast-Wind Coupling
 Status: DONE
 

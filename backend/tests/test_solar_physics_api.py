@@ -36,7 +36,7 @@ def test_solar_physics_returns_3d_coronal_features() -> None:
     payload = response.json()
     assert payload["source"] == "backend"
     assert payload["fidelity"] == "high"
-    assert payload["wall_epoch_jd"] >= payload["epoch_jd"] - 365_000
+    assert payload["wall_epoch_jd"] == payload["epoch_jd"]
     assert payload["surface"]["activity_cycle_model"] == "hathaway_2015_normalized"
     assert payload["corona"]["feature_count"] <= 64
     assert payload["corona"]["feature_count"] >= 8
@@ -170,3 +170,29 @@ def test_solar_physics_returns_coronal_hole_section() -> None:
         assert "extent_lat_rad" in hole
         assert "extent_lon_rad" in hole
         assert "type" in hole
+
+
+def test_solar_physics_returns_pfss_field_lines() -> None:
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "preview",  # Faster solve
+            "max_features": 64,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    
+    assert "pfss_field_lines" in payload
+    pfss = payload["pfss_field_lines"]
+    
+    assert "source" in pfss
+    assert "carrington_rotation" in pfss
+    assert "source_surface_radii" in pfss
+    assert "lines" in pfss
+    assert isinstance(pfss["lines"], list)
+    assert len(pfss["lines"]) > 0
+    assert "arc" in pfss["lines"][0]
+    assert "is_open" in pfss["lines"][0]

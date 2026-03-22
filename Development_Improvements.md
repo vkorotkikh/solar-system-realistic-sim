@@ -47,6 +47,33 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-21 UTC — Magnetogram-Driven Global Field (PFSS)
+Status: `DONE`
+Type: `ARCHITECTURE` / `FEATURE`
+Summary:
+- Implemented data-driven coronal magnetic topology by solving the Potential Field Source Surface (PFSS) model from GONG synoptic magnetograms. Closes the ❌ gap in the SOTA evaluation for accurate magnetic field modeling.
+
+Context / rationale:
+- The previous global magnetic field used a purely analytical dipole+quadrupole approximation scaled by solar activity. While qualitatively reasonable, it could not reproduce actual coronal hole locations or streamer belt geometry for specific dates.
+- High-fidelity modeling requires actual data assimilation (like AWSoM, MAS, COCONUT).
+- We use GONG synoptic maps rather than HMI because GONG provides continuous, consistent baseline data across multiple cycles, and a minimal FITS parser allowed us to do this without adding heavy dependencies like astropy.
+
+Proposed approach:
+- Created `pfss_magnetogram.py`: fetches GONG data (or uses synthetic fallback), computes spherical harmonic decomposition up to ℓ=15 using a numpy-only Legendre transform, solves the Altschuler-Newkirk (1969) model up to 2.5 R☉, and traces field lines via RK4.
+- Handled caching based on Carrington rotation (one-time ~0.3-1s solve, then fully cached).
+- Frontend parser added to `solarMagnetics.ts` to consume and render the backend polylines natively within the ThreeJS loop, falling back to analytical when no data exists.
+
+Expected impact:
+- Massive improvement in physical accuracy for the magnetic field geometry and 3D visual realism.
+- No new heavy dependencies were added; uses basic Numpy array math. 
+
+Affected files/systems:
+- `backend/sim/pfss_magnetogram.py` [NEW]
+- `backend/sim/solar_physics.py`
+- `backend/sim/solar_realtime_data.py`
+- `src/frontend/features/solar/solarMagnetics.ts`
+- `src/sunController.ts`
+
 ### 2026-03-21 UTC
 Status: `DONE`
 Type: `ARCHITECTURE` / `FIX`
