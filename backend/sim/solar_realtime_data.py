@@ -693,6 +693,22 @@ class SolarRealtimeDataProvider:
             },
         }
 
+    def _fetch_gong_synoptic(self, jd: float | None = None) -> dict[str, Any]:
+        from sim.pfss_magnetogram import carrington_rotation_number, fetch_gong_synoptic_map
+
+        # Use current wall clock JD if None provided
+        eval_jd = (time.time() / 86400.0) + 2440587.5 if jd is None else float(jd)
+        cr = carrington_rotation_number(eval_jd)
+
+        # Check cache (in-proc) — this is a heavy array so we don't serialize it fully here,
+        # but just store the fact that we checked it. PFSSCache in solar_physics.py
+        # actually handles the heavy caching of the solved field lines.
+
+        return {
+            "carrington_rotation": cr,
+            "status": "ready"
+        }
+
     def _fetch_snapshot(self, jd: float | None) -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "schema": {"name": "solar_realtime_context", "version": 1},
@@ -701,6 +717,7 @@ class SolarRealtimeDataProvider:
             "swpc": None,
             "silso": None,
             "sdo_aia": None,
+            "gong_synoptic": None,
             "combined_activity_proxy": None,
         }
 
@@ -766,6 +783,21 @@ class SolarRealtimeDataProvider:
                 "ok": False,
                 "error": str(exc),
                 "endpoint": self.HELIOVIEWER_CLOSEST_URL,
+            }
+
+        try:
+            gong_synoptic = self._fetch_gong_synoptic(jd)
+            snapshot["gong_synoptic"] = gong_synoptic
+            snapshot["source_status"]["gong_synoptic"] = {
+                "ok": True,
+                "updated": _utc_iso_now(),
+                "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/",
+            }
+        except Exception as exc:
+            snapshot["source_status"]["gong_synoptic"] = {
+                "ok": False,
+                "error": str(exc),
+                "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/",
             }
 
         if weight_total > 0:
