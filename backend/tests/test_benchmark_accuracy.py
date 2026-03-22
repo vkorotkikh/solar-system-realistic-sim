@@ -17,21 +17,36 @@ def test_benchmark_uses_strict_reference_integrity() -> None:
     assert summary["referenceIntegrityOk"] is True
     assert summary["requiredTools"] == ["gmat", "orekit", "tudat"]
     assert summary["scenarioCount"] >= 1
-    assert summary["solvedCount"] == summary["scenarioCount"]
-    assert summary["validationCoverage"] == pytest.approx(1.0)
+    assert summary["comparableScenarioCount"] == 0
+    assert summary["incomparableCount"] == summary["scenarioCount"]
+    assert summary["solvedCount"] == 0
+    assert summary["validationCoverage"] == pytest.approx(0.0)
 
     for row in summary["rows"]:
         reference = row.get("reference", {})
         assert reference.get("calibrationTier") == "strict"
         assert reference.get("requiredToolsPresent") is True
         assert reference.get("artifactChecksPassed") is True
+        assert row["status"] == "incomparable_reference"
         tools = reference.get("tools", {})
         assert set(tools.keys()) == {"gmat", "orekit", "tudat"}
+        comparison = reference.get("comparisonContract", {})
+        assert comparison.get("comparableToSolver") is False
+        assert comparison.get("problemType") == "window_optimization_legacy"
 
 
-def test_benchmark_reports_pass_fail_metrics(monkeypatch) -> None:
+def test_benchmark_reports_pass_fail_metrics(monkeypatch, tmp_path) -> None:
     reference_path = Path(__file__).resolve().parents[1] / "benchmark" / "reference_scenarios.json"
     scenarios = json.loads(reference_path.read_text(encoding="utf-8"))
+    for scenario in scenarios:
+        scenario["truth_calibration"]["comparison_contract"] = {
+            "problem_type": "fixed_state_lambert",
+            "comparable_to_solver": True,
+            "compatibility_note": "Unit-test comparable scenario.",
+        }
+    shutil.copytree(reference_path.parent / "artifacts", tmp_path / "artifacts")
+    comparable_path = tmp_path / "reference_scenarios_comparable_for_test.json"
+    comparable_path.write_text(json.dumps(scenarios, indent=2), encoding="utf-8")
     scenario_by_window = {
         (float(item["departure_jd"]), float(item["arrival_jd"])): item
         for item in scenarios
@@ -69,10 +84,16 @@ def test_benchmark_reports_pass_fail_metrics(monkeypatch) -> None:
 
     monkeypatch.setattr(benchmark_accuracy, "solve_direct_lambert", fake_solve_direct_lambert)
 
-    summary = benchmark_accuracy.benchmark_against_references(ALL_BODIES, ephemeris_provider="kepler")
+    summary = benchmark_accuracy.benchmark_against_references(
+        ALL_BODIES,
+        ephemeris_provider="kepler",
+        scenarios_path=comparable_path,
+    )
     rows = {row["id"]: row for row in summary["rows"]}
 
     assert summary["scenarioCount"] == 3
+    assert summary["comparableScenarioCount"] == 3
+    assert summary["incomparableCount"] == 0
     assert summary["solvedCount"] == 3
     assert summary["noSolutionCount"] == 0
     assert summary["passCount"] == 2

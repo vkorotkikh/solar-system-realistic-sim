@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 from trajectory import solve_direct_lambert
 
 REQUIRED_TOOLS: Tuple[str, str, str] = ("gmat", "orekit", "tudat")
+DEFAULT_PROBLEM_TYPE = "fixed_state_lambert"
 
 
 def _sha256(path: Path) -> str:
@@ -149,6 +150,16 @@ def _parse_strict_calibration(
     if provenance and not isinstance(provenance, dict):
         raise ValueError(f"Scenario `{scenario_id}` `provenance` must be an object when present")
 
+    comparison_contract = calibration.get("comparison_contract", {})
+    if comparison_contract and not isinstance(comparison_contract, dict):
+        raise ValueError(f"Scenario `{scenario_id}` `comparison_contract` must be an object when present")
+
+    problem_type = str(comparison_contract.get("problem_type", DEFAULT_PROBLEM_TYPE)).strip() or DEFAULT_PROBLEM_TYPE
+    comparable_to_solver = comparison_contract.get("comparable_to_solver", True)
+    if not isinstance(comparable_to_solver, bool):
+        raise ValueError(f"Scenario `{scenario_id}` `comparison_contract.comparable_to_solver` must be boolean")
+    compatibility_note = str(comparison_contract.get("compatibility_note", "")).strip()
+
     return {
         "tier": "strict",
         "consensusTotalDeltaVKmS": consensus_declared,
@@ -156,6 +167,11 @@ def _parse_strict_calibration(
         "toleranceKmS": tolerance,
         "tools": parsed_tools,
         "provenance": provenance,
+        "comparisonContract": {
+            "problemType": problem_type,
+            "comparableToSolver": comparable_to_solver,
+            "compatibilityNote": compatibility_note,
+        },
     }
 
 
@@ -168,6 +184,28 @@ def _scenario_row(
 ) -> Dict[str, Any]:
     scenario_id = str(scenario.get("id", "")).strip() or "unknown"
     calibration = _parse_strict_calibration(scenario, reference_file=reference_file)
+    comparison_contract = calibration["comparisonContract"]
+
+    reference_payload = {
+        "calibrationTier": calibration["tier"],
+        "requiredToolsPresent": True,
+        "artifactChecksPassed": True,
+        "consensusTotalDeltaVKmS": calibration["consensusTotalDeltaVKmS"],
+        "toolSpreadKmS": calibration["toolSpreadKmS"],
+        "toleranceKmS": calibration["toleranceKmS"],
+        "tools": calibration["tools"],
+        "provenance": calibration["provenance"],
+        "comparisonContract": comparison_contract,
+    }
+
+    if not comparison_contract["comparableToSolver"]:
+        return {
+            "id": scenario_id,
+            "description": scenario.get("description", ""),
+            "source": scenario.get("source", ""),
+            "status": "incomparable_reference",
+            "reference": reference_payload,
+        }
 
     result = solve_direct_lambert(
         bodies,
@@ -185,14 +223,7 @@ def _scenario_row(
             "description": scenario.get("description", ""),
             "source": scenario.get("source", ""),
             "status": "no_solution",
-            "reference": {
-                "calibrationTier": calibration["tier"],
-                "requiredToolsPresent": True,
-                "artifactChecksPassed": True,
-                "consensusTotalDeltaVKmS": calibration["consensusTotalDeltaVKmS"],
-                "toolSpreadKmS": calibration["toolSpreadKmS"],
-                "tools": calibration["tools"],
-            },
+            "reference": reference_payload,
         }
 
     solution = result["solution"]
@@ -212,16 +243,7 @@ def _scenario_row(
         "toleranceKmS": tolerance,
         "pass": abs_error <= tolerance,
         "ephemerisProvider": result.get("ephemerisProvider"),
-        "reference": {
-            "calibrationTier": calibration["tier"],
-            "requiredToolsPresent": True,
-            "artifactChecksPassed": True,
-            "consensusTotalDeltaVKmS": calibration["consensusTotalDeltaVKmS"],
-            "toolSpreadKmS": calibration["toolSpreadKmS"],
-            "toleranceKmS": calibration["toleranceKmS"],
-            "tools": calibration["tools"],
-            "provenance": calibration["provenance"],
-        },
+        "reference": reference_payload,
     }
 
 
@@ -247,9 +269,10 @@ def benchmark_against_references(
     ]
 
     ok_rows = [row for row in rows if row.get("status") == "ok"]
+    incomparable_count = sum(1 for row in rows if row.get("status") == "incomparable_reference")
     pass_count = sum(1 for row in ok_rows if row.get("pass"))
     fail_count = sum(1 for row in ok_rows if not row.get("pass"))
-    no_solution_count = len(rows) - len(ok_rows)
+    no_solution_count = sum(1 for row in rows if row.get("status") == "no_solution")
     mean_abs_error = (
         sum(float(row["absErrorKmS"]) for row in ok_rows) / len(ok_rows)
         if ok_rows
@@ -267,6 +290,8 @@ def benchmark_against_references(
         "requiredTools": list(REQUIRED_TOOLS),
         "referenceIntegrityOk": reference_integrity_ok,
         "scenarioCount": len(rows),
+        "comparableScenarioCount": len(ok_rows) + no_solution_count,
+        "incomparableCount": incomparable_count,
         "solvedCount": len(ok_rows),
         "noSolutionCount": no_solution_count,
         "passCount": pass_count,
@@ -287,6 +312,8 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
         "## Summary",
         "",
         f"- Scenarios: {summary.get('scenarioCount', 0)}",
+        f"- Comparable scenarios: {summary.get('comparableScenarioCount', 0)}",
+        f"- Incomparable references: {summary.get('incomparableCount', 0)}",
         f"- Solved: {summary.get('solvedCount', 0)}",
         f"- No solution: {summary.get('noSolutionCount', 0)}",
         f"- Passed tolerance: {summary.get('passCount', 0)}",
@@ -308,9 +335,13 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
         ref = row.get("reference", {})
         spread = ref.get("toolSpreadKmS", 0.0)
         if row.get("status") != "ok":
+            comparison_contract = ref.get("comparisonContract", {})
+            note = comparison_contract.get("compatibilityNote", "")
             lines.append(
                 f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.3f} | - | - |"
             )
+            if note:
+                lines.append(f"|  |  |  |  |  |  |  |  | note: {note} |")
             continue
 
         lines.append(

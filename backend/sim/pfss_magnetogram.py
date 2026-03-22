@@ -528,6 +528,120 @@ class PFSSField:
                 plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
                 dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
 
+    def evaluate_cartesian_batch(self, x: np.ndarray, y: np.ndarray, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Evaluate B vectorially at Cartesian positions (x, y, z) in solar radii. Returns (Bx, By, Bz)."""
+        r = np.sqrt(x * x + y * y + z * z)
+        
+        # Avoid division by zero at origin
+        r_safe = np.where(r < 0.01, 1.0, r)
+        theta = np.arccos(np.clip(z / r_safe, -1.0, 1.0))
+        phi = np.arctan2(y, x)
+        
+        br, bt, bp = self._evaluate_batch(r_safe, theta, phi)
+        
+        # Zero out origin points
+        br = np.where(r < 0.01, 0.0, br)
+        bt = np.where(r < 0.01, 0.0, bt)
+        bp = np.where(r < 0.01, 0.0, bp)
+        
+        sin_t = np.sin(theta)
+        cos_t = np.cos(theta)
+        sin_p = np.sin(phi)
+        cos_p = np.cos(phi)
+        
+        bx = sin_t * cos_p * br + cos_t * cos_p * bt - sin_p * bp
+        by = sin_t * sin_p * br + cos_t * sin_p * bt + cos_p * bp
+        bz = cos_t * br - sin_t * bt
+        
+        return bx, by, bz
+
+    def _evaluate_batch(self, r: np.ndarray, theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Vectorized B(r, θ, φ) integration."""
+        cos_t = np.cos(theta)
+        sin_t = np.maximum(1e-10, np.sin(theta))
+        n_points = len(r)
+        
+        plm_vals, dplm_vals = self._legendre_batch(cos_t, sin_t)
+
+        br_val = np.zeros(n_points)
+        bt_val = np.zeros(n_points)
+        bp_val = np.zeros(n_points)
+        
+        for l in range(1, self.lmax + 1):
+            rss_pow = (1.0 / self.r_ss) ** (2 * l + 1)
+            denominator = (l + 1) + l * rss_pow
+            if abs(denominator) < 1e-30:
+                continue
+
+            r_ratio_inv_l2 = r ** (-(l + 2))
+            r_ratio_l1 = r ** (l - 1)
+            
+            cl_br = ((l + 1) * r_ratio_inv_l2 + l * rss_pow * r_ratio_l1) / denominator
+            cl_bt = -(r_ratio_inv_l2 - rss_pow * r_ratio_l1) / denominator
+            cl_bp = cl_bt
+
+            for m in range(l + 1):
+                plm = plm_vals.get((l, m))
+                dplm = dplm_vals.get((l, m))
+                if plm is None:
+                    continue
+
+                cos_mp = np.cos(m * phi)
+                sin_mp = np.sin(m * phi)
+                
+                glm = self.g[l, m] if l < self.g.shape[0] and m < self.g.shape[1] else 0.0
+                hlm = self.h[l, m] if l < self.h.shape[0] and m < self.h.shape[1] else 0.0
+                
+                gh_cos = glm * cos_mp + hlm * sin_mp
+                gh_sin = -glm * sin_mp + hlm * cos_mp
+                
+                br_val += cl_br * plm * gh_cos
+                bt_val += cl_bt * dplm * gh_cos
+                bp_val += cl_bp * plm * m * gh_sin / sin_t
+                
+        return br_val, bt_val, bp_val
+
+    def _legendre_batch(self, cos_t: np.ndarray, sin_t: np.ndarray) -> tuple[dict[tuple[int, int], np.ndarray], dict[tuple[int, int], np.ndarray]]:
+        """Vectorized computation of P_l^m and dP_l^m/dθ."""
+        plm: dict[tuple[int, int], np.ndarray] = {}
+        dplm: dict[tuple[int, int], np.ndarray] = {}
+        n_points = len(cos_t)
+        
+        plm[(0, 0)] = np.ones(n_points)
+        dplm[(0, 0)] = np.zeros(n_points)
+        
+        for l in range(1, self.lmax + 1):
+            if l == 1:
+                plm[(1, 1)] = sin_t.copy()
+                dplm[(1, 1)] = cos_t.copy()
+            else:
+                fac = math.sqrt((2 * l - 1) / (2 * l))
+                plm[(l, l)] = fac * sin_t * plm[(l - 1, l - 1)]
+                dplm[(l, l)] = fac * (cos_t * plm[(l - 1, l - 1)] + sin_t * dplm[(l - 1, l - 1)])
+
+            fac_sub = math.sqrt(2 * l - 1)
+            plm[(l, l - 1)] = fac_sub * cos_t * plm[(l - 1, l - 1)]
+            dplm[(l, l - 1)] = fac_sub * (-sin_t * plm[(l - 1, l - 1)] + cos_t * dplm[(l - 1, l - 1)])
+
+            for m in range(l - 2, -1, -1):
+                a_num = (2 * l - 1) * (2 * l + 1)
+                a_den = (l - m) * (l + m)
+                a = math.sqrt(a_num / a_den)
+
+                b_num = (2 * l + 1) * (l + m - 1) * (l - m - 1)
+                b_den = (l - m) * (l + m) * (2 * l - 3)
+                b = math.sqrt(b_num / b_den) if b_den > 0 else 0.0
+
+                plm_prev = plm.get((l - 1, m), np.zeros(n_points))
+                dplm_prev = dplm.get((l - 1, m), np.zeros(n_points))
+                plm_prev2 = plm.get((l - 2, m), np.zeros(n_points))
+                dplm_prev2 = dplm.get((l - 2, m), np.zeros(n_points))
+
+                plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
+                dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
+
+        return plm, dplm
+
 
 # ─── Field Line Tracer ─────────────────────────────────────────────────────────
 
@@ -753,83 +867,112 @@ def compute_wsa_velocity_map(
     theta_arr = np.arccos(np.clip(cos_theta_arr, -0.999, 0.999))
     phi_arr = np.linspace(0, 2 * np.pi, n_lon, endpoint=False)
 
-    # Output arrays
-    open_mask = np.zeros((n_lat, n_lon), dtype=bool)
-    fs_map = np.full((n_lat, n_lon), np.nan)
-    ss_theta = np.full((n_lat, n_lon), np.nan)  # source surface angular coords
-    ss_phi = np.full((n_lat, n_lon), np.nan)
+    theta_grid, phi_grid = np.meshgrid(theta_arr, phi_arr, indexing="ij")
+    
+    n_points = n_lat * n_lon
+    theta_flat = theta_grid.ravel()
+    phi_flat = phi_grid.ravel()
 
-    for i_lat in range(n_lat):
-        theta_0 = float(theta_arr[i_lat])
-        for i_lon in range(n_lon):
-            phi_0 = float(phi_arr[i_lon])
+    # Initial footpoints at r=1.005
+    r_foot = 1.005
+    x0 = r_foot * np.sin(theta_flat) * np.cos(phi_flat)
+    y0 = r_foot * np.sin(theta_flat) * np.sin(phi_flat)
+    z0 = r_foot * np.cos(theta_flat)
 
-            # Evaluate |B| at footpoint
-            r_foot = 1.005
-            x0 = r_foot * math.sin(theta_0) * math.cos(phi_0)
-            y0 = r_foot * math.sin(theta_0) * math.sin(phi_0)
-            z0 = r_foot * math.cos(theta_0)
+    # Evaluate |B| at footpoint
+    bx0, by0, bz0 = field.evaluate_cartesian_batch(x0, y0, z0)
+    b_foot = np.sqrt(bx0**2 + by0**2 + bz0**2)
+    
+    # Polarity for trace direction
+    r_hat_x, r_hat_y, r_hat_z = x0 / r_foot, y0 / r_foot, z0 / r_foot
+    br_dot = bx0 * r_hat_x + by0 * r_hat_y + bz0 * r_hat_z
+    trace_sign = np.where(br_dot > 0, 1.0, -1.0)
 
-            bx0, by0, bz0 = field.evaluate_cartesian(x0, y0, z0)
-            b_foot = math.sqrt(bx0 * bx0 + by0 * by0 + bz0 * bz0)
-            if b_foot < 1e-12:
-                continue
+    # Active mask for RK4 (only trace lines with non-zero B)
+    active = b_foot > 1e-12
+    reached_ss = np.zeros(n_points, dtype=bool)
+    
+    px, py, pz = x0.copy(), y0.copy(), z0.copy()
 
-            # Polarity for trace direction
-            r_hat_x, r_hat_y, r_hat_z = x0 / r_foot, y0 / r_foot, z0 / r_foot
-            br_dot = bx0 * r_hat_x + by0 * r_hat_y + bz0 * r_hat_z
-            trace_sign = 1.0 if br_dot > 0 else -1.0
+    def _norm_batch(fx: np.ndarray, fy: np.ndarray, fz: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        tx, ty, tz = fx[mask], fy[mask], fz[mask]
+        ts = trace_sign[mask]
+        bx, by, bz = field.evaluate_cartesian_batch(tx, ty, tz)
+        mag = np.sqrt(bx*bx + by*by + bz*bz)
+        inv = np.where(mag > 1e-15, ts / mag, 0.0)
+        return bx * inv, by * inv, bz * inv
 
-            # RK4 trace
-            px, py, pz = x0, y0, z0
-            reached_ss = False
-            for step in range(max_steps):
-                k1x, k1y, k1z = _normalized_field(field, px, py, pz, trace_sign)
-                mx = px + k1x * step_size * 0.5
-                my = py + k1y * step_size * 0.5
-                mz = pz + k1z * step_size * 0.5
-                k2x, k2y, k2z = _normalized_field(field, mx, my, mz, trace_sign)
-                mx2 = px + k2x * step_size * 0.5
-                my2 = py + k2y * step_size * 0.5
-                mz2 = pz + k2z * step_size * 0.5
-                k3x, k3y, k3z = _normalized_field(field, mx2, my2, mz2, trace_sign)
-                ex = px + k3x * step_size
-                ey = py + k3y * step_size
-                ez = pz + k3z * step_size
-                k4x, k4y, k4z = _normalized_field(field, ex, ey, ez, trace_sign)
+    # Pre-allocate k arrays to avoid reassignment noise
+    k1x = np.zeros(n_points); k1y = np.zeros(n_points); k1z = np.zeros(n_points)
+    k2x = np.zeros(n_points); k2y = np.zeros(n_points); k2z = np.zeros(n_points)
+    k3x = np.zeros(n_points); k3y = np.zeros(n_points); k3z = np.zeros(n_points)
+    k4x = np.zeros(n_points); k4y = np.zeros(n_points); k4z = np.zeros(n_points)
 
-                px += step_size * (k1x + 2 * k2x + 2 * k3x + k4x) / 6
-                py += step_size * (k1y + 2 * k2y + 2 * k3y + k4y) / 6
-                pz += step_size * (k1z + 2 * k2z + 2 * k3z + k4z) / 6
+    for step in range(max_steps):
+        if not np.any(active):
+            break
+            
+        k1x[active], k1y[active], k1z[active] = _norm_batch(px, py, pz, active)
+        
+        mx = px + k1x * step_size * 0.5
+        my = py + k1y * step_size * 0.5
+        mz = pz + k1z * step_size * 0.5
+        k2x[active], k2y[active], k2z[active] = _norm_batch(mx, my, mz, active)
+        
+        mx2 = px + k2x * step_size * 0.5
+        my2 = py + k2y * step_size * 0.5
+        mz2 = pz + k2z * step_size * 0.5
+        k3x[active], k3y[active], k3z[active] = _norm_batch(mx2, my2, mz2, active)
+        
+        ex = px + k3x * step_size
+        ey = py + k3y * step_size
+        ez = pz + k3z * step_size
+        k4x[active], k4y[active], k4z[active] = _norm_batch(ex, ey, ez, active)
 
-                r = math.sqrt(px * px + py * py + pz * pz)
-                if r >= r_ss:
-                    reached_ss = True
-                    break
-                elif r <= 1.0 and step > 5:
-                    break
+        px[active] += step_size * (k1x[active] + 2*k2x[active] + 2*k3x[active] + k4x[active]) / 6.0
+        py[active] += step_size * (k1y[active] + 2*k2y[active] + 2*k3y[active] + k4y[active]) / 6.0
+        pz[active] += step_size * (k1z[active] + 2*k2z[active] + 2*k3z[active] + k4z[active]) / 6.0
 
-            if not reached_ss:
-                continue
+        r_current = np.sqrt(px*px + py*py + pz*pz)
+        
+        # Check termination condition
+        hit_ss = (r_current >= r_ss) & active
+        reached_ss[hit_ss] = True
+        active[hit_ss] = False
+        
+        if step > 5:
+            hit_surface = (r_current <= 1.0) & active
+            active[hit_surface] = False
 
-            # This footpoint is open flux
-            open_mask[i_lat, i_lon] = True
+    # This footpoint is open flux
+    open_mask_flat = reached_ss
+    open_mask = open_mask_flat.reshape(n_lat, n_lon)
 
-            # Evaluate |B| at source surface endpoint
-            bx_ss, by_ss, bz_ss = field.evaluate_cartesian(px, py, pz)
-            b_ss = math.sqrt(bx_ss * bx_ss + by_ss * by_ss + bz_ss * bz_ss)
+    # Evaluate |B| at source surface endpoint
+    bx_ss, by_ss, bz_ss = field.evaluate_cartesian_batch(px, py, pz)
+    b_ss = np.sqrt(bx_ss**2 + by_ss**2 + bz_ss**2)
 
-            # Expansion factor: f_s = (R_sun / R_ss)^2 * |B_foot| / |B_ss|
-            if b_ss > 1e-15:
-                fs_val = (1.0 / r_ss) ** 2 * b_foot / b_ss
-            else:
-                fs_val = 100.0  # Very high expansion = very slow wind
-            fs_map[i_lat, i_lon] = fs_val
+    # Expansion factor
+    fs_val = np.full(n_points, 100.0)
+    valid_b = b_ss > 1e-15
+    fs_val[valid_b] = ((1.0 / r_ss) ** 2) * (b_foot[valid_b] / b_ss[valid_b])
+    
+    # Mask out closed flux
+    fs_val[~open_mask_flat] = np.nan
+    fs_map = fs_val.reshape(n_lat, n_lon)
 
-            # Source surface coordinates (for later Parker spiral mapping)
-            r_end = math.sqrt(px * px + py * py + pz * pz)
-            ss_theta[i_lat, i_lon] = math.acos(_clamp(pz / r_end, -1.0, 1.0))
-            ss_phi[i_lat, i_lon] = math.atan2(py, px) % (2 * math.pi)
+    # Source surface coordinates
+    r_end = np.sqrt(px*px + py*py + pz*pz)
+    r_end_safe = np.where(r_end < 0.01, 1.0, r_end)
+    
+    ss_theta_flat = np.arccos(np.clip(pz / r_end_safe, -1.0, 1.0))
+    ss_phi_flat = np.arctan2(py, px) % (2.0 * np.pi)
+    
+    ss_theta_flat[~open_mask_flat] = np.nan
+    ss_phi_flat[~open_mask_flat] = np.nan
+    
+    ss_theta = ss_theta_flat.reshape(n_lat, n_lon)
+    ss_phi = ss_phi_flat.reshape(n_lat, n_lon)
 
     # ── Compute boundary distance θ_b ────────────────────────────────────
     # For each open footpoint, find the minimum great-circle distance to
