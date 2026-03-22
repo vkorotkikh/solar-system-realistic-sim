@@ -1,0 +1,330 @@
+# Sun Physics Model — SOTA Gap Analysis
+
+> **Branch:** `sun-focus` (intentionally simplified to focus on Sun simulation)  
+> **Audit date:** 2026-03-09  
+> **Codebase total:** Backend ~1600 LOC, Frontend ~4100 LOC (9 modules + controller)
+
+---
+
+## Executive Summary
+
+The current Sun physics model is **surprisingly deep for a real-time WebGL simulation** — already implementing several features that most Three.js solar visualizations lack entirely (Hathaway cycle forcing, real-time SWPC/SILSO data assimilation, Neckel-Labs limb darkening, RTV temperature scaling, Alfvén speed coupling). However, significant gaps remain versus state-of-the-art solar physics codes like COCONUT, AWSoM, and MAS.
+
+**Maturity grade: Intermediate-Advanced (~60-70% of achievable fidelity for a real-time web simulation)**
+
+The model excels at visual phenomena driven by observed scaling laws but lacks the underlying MHD physics that produces them. It's an "informed parametric model" rather than a physics solver.
+
+---
+
+## What's Already Implemented (✅)
+
+### Backend — [solar_physics.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_physics.py) (996 LOC)
+
+| Feature | Implementation | Physics Basis | Quality |
+|---------|---------------|---------------|---------|
+| Solar cycle forcing | Hathaway (2015) normalized envelope | Published analytical form | ⭐⭐⭐⭐ |
+| Differential rotation | Snodgrass (1983) 3-term profile | Peer-reviewed coefficients | ⭐⭐⭐⭐ |
+| Active region placement | Joy's law tilt, latitude butterfly | Observational scaling | ⭐⭐⭐⭐ |
+| Hale polarity cycle | Alternating leading polarity by hemisphere + cycle parity | Correct physics | ⭐⭐⭐⭐ |
+| Coronal temperature | RTV scaling: T ~ B^(2/7) | Rosner-Tucker-Vaiana (1978) | ⭐⭐⭐ |
+| Alfvén speed coupling | v_A = B / √(μ₀ρ) from field + density | First-principles MHD | ⭐⭐⭐ |
+| CME speed envelope | 20–3500 km/s with activity-dependent distribution | NASA CME catalog match | ⭐⭐⭐⭐ |
+| Parker spiral | Full 6-arm spiral with rotation-phase coupling | Parker (1958) | ⭐⭐⭐ |
+| Real-time data assimilation | SWPC solar wind, SILSO sunspot #, SDO AIA proxy | Multi-source weighted blend | ⭐⭐⭐⭐⭐ |
+| Flux tube topology | Bipolar active-region pairs with jitter, chirality, twist | Physically motivated | ⭐⭐⭐ |
+
+### Backend — [solar_realtime_data.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_realtime_data.py) (601 LOC)
+
+| Feature | Source | Quality |
+|---------|--------|---------|
+| NOAA SWPC plasma + IMF | services.swpc.noaa.gov | ⭐⭐⭐⭐ |
+| SILSO daily sunspot numbers | sidc.be/SILSO | ⭐⭐⭐⭐ |
+| SDO/AIA observation tile proxy | Helioviewer API + activity analysis | ⭐⭐⭐⭐ |
+| Multi-source activity proxy blend | Weighted fusion with staleness decay | ⭐⭐⭐⭐⭐ |
+
+### Frontend — Solar Rendering Stack (9 files, ~4100 LOC)
+
+| Module | Key Physics | Quality |
+|--------|------------|---------|
+| [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts) (1362 LOC) | Neckel-Labs 5th-order limb darkening (per-channel), Voronoi granulation (~22% contrast), structured sunspots with umbra/penumbra/faculae CLV (Topka 1997), Evershed-flow fibrils, Planck blackbody→sRGB, Type II spicules (De Pontieu 2007) | ⭐⭐⭐⭐ |
+| [solarMagnetics.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.ts) (437 LOC) | PFSS visualization, dipole+quadrupole analytical field, RK4 field-line tracing to source surface (2.5 R☉) | ⭐⭐⭐ |
+| [solarFlares.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.ts) (447 LOC) | CME expanding shells with physics velocity, angular width control, flare surface brightening | ⭐⭐⭐ |
+| [solarProminences.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarProminences.ts) (373 LOC) | Particle-based prominence arches, catenary approximation, eruption dynamics, Hα color | ⭐⭐⭐ |
+| [solarWind.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarWind.ts) (153 LOC) | Parker spiral angle, bimodal speed (Ulysses/McComas 2003), IMF components, dynamic pressure | ⭐⭐⭐⭐ |
+| [solarFeatureBlending.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFeatureBlending.ts) (391 LOC) | Smooth temporal interpolation of corona features between physics states | ⭐⭐⭐⭐ |
+| [solarObservationTexture.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarObservationTexture.ts) (236 LOC) | Multi-channel AIA overlay (171/193/211/304/094 Å) with channel-specific color grading | ⭐⭐⭐⭐ |
+| [gravitationalWaves.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/gravitationalWaves.ts) (242 LOC) | Educational GW visualization (correctly labeled as exaggerated 10¹⁸×) | ⭐⭐⭐ |
+
+---
+
+## What's Missing vs SOTA (❌)
+
+### Tier 1 — High-Impact, Achievable in Real-Time
+
+These are features that SOTA codes implement and that **can be approximated** for a real-time WebGL pipeline without an actual MHD solver.
+
+---
+
+#### ✅ 1. Magnetogram-Driven Global Field (PFSS from GONG Synoptic Maps)
+
+**Current Status:** SOTA Implemented (2026-03-21)
+- The backend features a custom `pfss_magnetogram.py` module executing the Altschuler-Newkirk (1969) PFSS solver with spherical harmonics up to ℓ=15 using numpy.
+- Fetches and parses GONG FITS files with a zero-dependency FITS reader to trace real active region topologies and open field lines.
+- Caches geometries per Carrington rotation. Fully integrated into the frontend 3D rendering pipeline.
+```
+1. Ingest SDO/HMI synoptic magnetogram coefficients (WSO or GONG)
+   - Available as FITS files or via SunPy APIs
+   - Spherical harmonic coefficients up to ℓ=15 are sufficient for coronal topology
+
+2. Implement PFSS solver on CPU (backend)
+   - Laplace equation with B_r = 0 at source surface (r = 2.5 R☉)
+   - Standard Altschuler-Newkirk (1969) method
+   - ~2000 field lines traced from photosphere to source surface
+   - Cached per Carrington rotation (~27 days)
+
+3. Stream field-line geometry to frontend as 3D polylines
+   - Same rendering pipeline as current coronal arcs
+   - Tag lines as open (coronal hole) vs closed (streamer)
+```
+
+**Impact:** This is the **single highest-fidelity improvement possible** — it makes the magnetic field match reality for any given date.
+
+---
+
+#### ❌ 2. Coronal Hole Detection & Visualization
+
+**Current:** No explicit coronal holes. The [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts) shader has a rudimentary polar darkening based on `abs(normalDir.y)`.  
+**SOTA:** Coronal holes are the dominant source of fast solar wind and are clearly visible in EUV (193/211 Å). CATCHES (Collection of Analysis Tools for Coronal Holes) and SPoCA algorithms detect them from AIA images.
+
+**Gap:** No coronal hole boundaries, no connection between open field lines and wind speed channels.
+
+**Solution:**
+```
+1. Use AIA 193Å tile (already fetched by solar_realtime_data.py)
+   to derive coronal hole contours via intensity thresholding
+
+2. Map contour boundaries to photospheric lat/lon coordinates
+
+3. Darken the corona shader in coronal hole regions (emission measure drops ~5×)
+
+4. Connect coronal hole open field lines to the fast wind channel
+   in the Parker spiral
+```
+
+---
+
+#### ❌ 3. Current Sheet / Heliospheric Current Sheet (HCS) Warping
+
+**Current:** The Parker spiral is planar (each arm at fixed latitude = 0 with small sinusoidal perturbation).  
+**SOTA:** The HCS follows the magnetic neutral line, which tilts and warps with activity. At solar minimum it's a gently tilted plane; at solar maximum it becomes highly warped (the "ballerina skirt" model — Schulz 1973).
+
+**Gap:** The HCS tilt angle varies from ~7° at solar minimum to ~75° at solar maximum, dramatically affecting sector boundary crossings at Earth. Current code uses a fixed `hcs_tilt_rad = math.radians(7.25 + activity * 15.0)` — maxing at 22.25°, which is far too low.
+
+**Solution:**
+```python
+# Fix in solar_physics.py _build_parker_spiral:
+hcs_tilt_rad = math.radians(7.25 + activity * 67.75)  # 7.25° → 75° range
+# Or better: derive from WSO HCS tilt observations (Stanford Wilcox Solar Observatory)
+```
+
+---
+
+#### ❌ 4. EUV/X-ray Emission Measure Synthesis
+
+**Current:** AIA channel switching overlays a fetched observation texture but doesn't modify procedural features.  
+**SOTA:** SDO/AIA's 7 channels sample different temperature plasmas. The model should compute a **differential emission measure (DEM)** from its temperature/density fields and synthesize what each channel would see.
+
+**Gap:** Switching from AIA 171Å to 304Å currently only changes the observation texture overlay. The procedural corona, loops, and prominences should also change appearance — 304Å should show the transition region and prominence Hα emission prominently, while 094Å should light up only with flare plasma.
+
+**Solution:**
+```glsl
+// Per-channel response function kernels (temperature sensitivity):
+// 094Å: peak at 6.3 MK (Fe XVIII) — flares only
+// 171Å: peak at 0.63 MK (Fe IX) — quiet corona
+// 193Å: peak at 1.6 MK (Fe XII) — hot corona
+// 211Å: peak at 2.0 MK (Fe XIV) — active regions
+// 304Å: peak at 0.05 MK (He II) — chromosphere/transition region
+
+// For each coronal feature, compute:
+float channelResponse = exp(-0.5 * pow((log(T_feature) - log(T_channel_peak)) / sigma, 2.0));
+// Modulate feature brightness by channelResponse when in observation mode
+```
+
+---
+
+#### ❌ 5. Transition Region (TR) Shell
+
+**Current:** Completely absent. The overhaul plan (Phase 8B) designed it but it wasn't implemented.  
+**SOTA:** The TR is a thin (~100 km) layer where temperature jumps from 20,000K to 1 MK over a few hundred km. It's visible in AIA 304Å and is the interface between chromosphere and corona.
+
+**Solution:** Add a thin emissive shell at 1.004 R☉ with temperature-dependent emission that responds to observation channel selection.
+
+---
+
+#### ❌ 6. Proper Baumbach-Allen / van de Hulst K-Corona Falloff
+
+**Current:** The corona shader uses a simple additive glow sprite at 3× solar radius. No physically-based radial electron density profile.  
+**SOTA:** K-corona brightness follows the Baumbach-Allen model: [N(r) = 10⁸ × (0.036·r^{-1.5} + 1.55·r^{-6} + 2.99·r^{-16})](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFeatureBlending.ts#59-62) cm⁻³.
+
+**Gap:** The overhaul plan (Phase 5A) specified this but it's not clear if it was fully implemented in the shader. The corona geometry should extend to 4 R☉ with this profile.
+
+---
+
+#### ❌ 7. Flare Temporal Profile (Neupert Effect)
+
+**Current:** Flares use a simple linear rise/fall opacity.  
+**SOTA:** Solar flares follow the Neupert effect: fast impulsive rise (~15% of duration) with slow exponential decay. GOES X-ray lightcurves are well-characterized.
+
+**Solution:** Already designed in overhaul plan Phase 6B — just needs implementation:
+```typescript
+if (t < impulsive) opacity = intensity * (1.0 - Math.exp(-4.0 * t / impulsive));
+else opacity = intensity * Math.exp(-2.5 * (t - impulsive) / gradual);
+```
+
+---
+
+### Tier 2 — Very High Fidelity, Computationally Expensive
+
+These go beyond what typical web simulations do but are achievable for a focused Sun-centric application.
+
+---
+
+#### ❌ 8. PFSS + SCS (Schatten Current Sheet) Coupled Model
+
+**SOTA:** The Wang-Sheeley-Arge (WSA) model couples PFSS (surface to 2.5 R☉) with the Schatten Current Sheet model (2.5 R☉ to 21.5 R☉) to predict solar wind speed at 1 AU. This is the operational model used by NOAA SWPC.
+
+**Gap:** The current model jumps directly from coronal features at the source surface to the Parker spiral, with no intermediate current-sheet region modeling.
+
+---
+
+#### ❌ 9. Time-Evolving Magnetogram Sequences
+
+**SOTA:** COCONUT (2024) drives coronal simulations with **hourly-updated HMI magnetograms**, capturing active region emergence and evolution in real-time. This is the frontier of operational solar physics.
+
+**Gap:** The current model uses a fixed-seed active region layout that doesn't evolve with time (active regions are generated once at startup and rotate differentially but don't emerge, evolve, or decay).
+
+**Solution:**
+```
+1. Fetch HMI synoptic maps every ~6 hours via SunPy/VSO API
+2. Decompose into spherical harmonics
+3. Blend between consecutive maps for smooth temporal evolution
+4. Re-seed active regions from magnetogram flux concentrations
+```
+
+---
+
+#### ❌ 10. Datasetted Hemispheric Sunspot Asymmetry
+
+**Current:** Equal probability of north/south hemisphere placement.  
+**SOTA:** Real cycles show strong hemispheric asymmetry — Cycle 25's north hemisphere peaked ~18 months before the south (SILSO 2024 data).
+
+**Solution:** Ingest SILSO monthly hemispheric sunspot numbers and use them to bias `hemisphere_sign` selection probability.
+
+---
+
+#### ❌ 11. Solar Radiation Pressure & Poynting-Robertson
+
+**Current:** Not implemented.  
+**SOTA:** Essential for: dust grain dynamics (β > 0.5 = blowout), spacecraft trajectory planning, Yarkovsky effect on asteroid orbits.
+
+**Status:** Fully designed in overhaul plan Phase 9 but not yet coded.
+
+---
+
+### Tier 3 — Research-Grade Enhancements
+
+These features are what separate research MHD codes from visualization tools. They're aspirational for a real-time web app.
+
+---
+
+#### ❌ 12. Full Resistive-MHD Solver (COCONUT/MPI-AMRVAC Level)
+
+**Current:** The model is explicitly labeled "not a full resistive-MHD solver" — it uses parametric scaling laws.  
+**SOTA:** COCONUT solves the full MHD equations implicitly on an unstructured grid, achieving time-evolving coronal solutions over a Carrington rotation.
+
+**Feasibility for real-time:** ❌ Not feasible in a browser. However, a **reduced MHD** or **flux-transport** model on a coarse spherical grid (64×128 cells) could be run on the backend at ~1 fps, producing evolving magnetic maps that feed the existing visualization pipeline.
+
+---
+
+#### ❌ 13. Alfvén Wave Turbulence Heating (AWSoM Level)
+
+**Current:** Alfvén speed is computed but not propagated. No wave energy injection or dissipation.  
+**SOTA:** AWSoM (Alfvén Wave Solar Model) injects Alfvén wave energy at the photosphere, propagates it along field lines, and dissipates it via turbulent cascade to heat the corona.
+
+**Feasibility:** An approximate 1D Alfvén wave transport along each traced field line is feasible:
+```
+∂e_w/∂t + (v_A + v_sw) ∂e_w/∂s = -e_w / L_diss
+```
+This would produce physically justified coronal heating and wind acceleration rather than imposed profiles.
+
+---
+
+#### ❌ 14. CME Initiation Physics (Flux Rope Eruption)
+
+**Current:** CMEs are spawned stochastically based on activity level and score thresholds.  
+**SOTA:** CME models (Titov-Démoulin flux rope, breakout model) derive eruption conditions from free magnetic energy exceeding a threshold — i.e., when the coronal field can no longer contain the accumulated flux.
+
+**Feasibility:** A simplified Titov-Démoulin criterion could trigger CMEs when accumulated twist exceeds a critical angle (~3.5π for kink instability).
+
+---
+
+## Comparison Matrix
+
+| Feature | Current Model | SOTA Research Code | Gap Severity |
+|---------|--------------|-------------------|-------------|
+| Solar cycle | ⭐⭐⭐⭐ Hathaway 2015 | ⭐⭐⭐⭐ Same | ✅ Matched |
+| Differential rotation | ⭐⭐⭐⭐ Snodgrass | ⭐⭐⭐⭐ Same | ✅ Matched |
+| Active region topology | ⭐⭐⭐ Parametric | ⭐⭐⭐⭐⭐ Data-driven | 🟡 Medium |
+| Coronal magnetic field | ⭐⭐ Dipole+quadrupole | ⭐⭐⭐⭐⭐ ℓ=150 PFSS | 🔴 **Major** |
+| Coronal heating | ⭐⭐ RTV scaling law | ⭐⭐⭐⭐⭐ Alfvén wave cascade | 🟡 Medium |
+| CME initiation | ⭐⭐ Stochastic | ⭐⭐⭐⭐ Flux rope instability | 🟡 Medium |
+| CME propagation | ⭐⭐⭐ Kinematic shells | ⭐⭐⭐⭐⭐ Full MHD + drag | 🟡 Medium |
+| Solar wind | ⭐⭐⭐ Bimodal empirical | ⭐⭐⭐⭐⭐ WSA + MHD | 🟡 Medium |
+| Limb darkening | ⭐⭐⭐⭐ Neckel-Labs 5th order | ⭐⭐⭐⭐ Same | ✅ Matched |
+| Granulation | ⭐⭐⭐⭐ Voronoi 22% contrast | ⭐⭐⭐⭐⭐ MURaM 3D rad-MHD | 🟢 Adequate |
+| Sunspot structure | ⭐⭐⭐⭐ Umbra/penumbra/faculae CLV | ⭐⭐⭐⭐⭐ MURaM radiative | 🟢 Adequate |
+| Observation overlays | ⭐⭐⭐⭐ Multi-channel AIA | ⭐⭐⭐⭐⭐ Full DEM synthesis | 🟡 Medium |
+| Real-time data | ⭐⭐⭐⭐⭐ SWPC+SILSO+AIA | ⭐⭐⭐⭐ Similar | ✅ Exceeds |
+| Coronal holes | ❌ Not implemented | ⭐⭐⭐⭐⭐ SPoCA/CATCH | 🔴 **Major** |
+| HCS warping | ⭐ Underestimated tilt | ⭐⭐⭐⭐⭐ Full 3D neutral line | 🟠 High |
+| Transition region | ❌ Not implemented | ⭐⭐⭐⭐ Standard feature | 🟠 High |
+| Prominences | ⭐⭐⭐ Particle arches | ⭐⭐⭐⭐ MHD suspended plasma | 🟢 Adequate |
+| DEM channel response | ❌ Not implemented | ⭐⭐⭐⭐⭐ Standard | 🟠 High |
+
+---
+
+## Prioritized Roadmap to "Hyper-Precise, Hyper-High-Fidelity"
+
+### Phase A — Immediate Impact (1-2 days each)
+
+| # | Feature | Files | Impact |
+|---|---------|-------|--------|
+| A1 | Fix HCS tilt range (7°→75°) | [solar_physics.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_physics.py) | Correct heliospheric sector structure |
+| A2 | Add transition region shell | [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts) | New visual layer, 304Å channel support |
+| A3 | Neupert-effect flare profile | [solarFlares.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarFlares.ts) | Physically accurate flare lightcurves |
+| A4 | Baumbach-Allen K-corona falloff | [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts) | Correct coronal brightness profile |
+| A5 | DEM channel response for procedural features | [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts), [solarObservationTexture.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarObservationTexture.ts) | AIA channel switching modifies all features |
+
+### Phase B — Major Fidelity Leap (3-5 days each)
+
+| # | Feature | Files | Impact |
+|---|---------|-------|--------|
+| B1 | **PFSS from HMI magnetogram harmonics** | New `pfss_solver.py`, [solarMagnetics.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarMagnetics.ts) | **Quantitatively correct coronal field for any date** |
+| B2 | Coronal hole detection + visualization | [solar_realtime_data.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_realtime_data.py), [sunVisuals.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/sunVisuals.ts) | Major missing visual feature |
+| B3 | Time-evolving active regions from magnetograms | [solar_physics.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_physics.py), [solar_realtime_data.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_realtime_data.py) | Active regions match reality |
+| B4 | WSA wind speed prediction from PFSS+SCS | New `wsa_model.py`, [solarWind.ts](file:///home/nomad/Documents/solar-system-realistic-sim/src/frontend/features/solar/solarWind.ts) | Physically justified wind speed at Earth |
+
+### Phase C — Research-Grade (1-2 weeks each)
+
+| # | Feature | Files | Impact |
+|---|---------|-------|--------|
+| C1 | Reduced flux-transport model on backend | New `flux_transport.py` | Self-consistent magnetic evolution |
+| C2 | 1D Alfvén wave transport along field lines | Extend [solar_physics.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_physics.py) | Physics-based coronal heating |
+| C3 | Titov-Démoulin flux rope CME triggering | [solar_physics.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/solar_physics.py) | Physics-based CME initiation |
+| C4 | Solar radiation pressure + Poynting-Robertson | [rebound_nbody.py](file:///home/nomad/Documents/solar-system-realistic-sim/backend/sim/rebound_nbody.py) | Dust/spacecraft dynamics |
+
+---
+
+## Bottom Line
+
+The model is **well above average** for a web-based solar visualization — it has genuine physics-based scaling laws, real-time data assimilation, and published observational coefficients throughout. The biggest gap to "hyper-fidelity" is **B1: data-driven PFSS from actual magnetograms**. This single feature would transform the model from "physically plausible parametric" to "observationally constrained" — making the coronal magnetic topology, coronal hole locations, and streamer belt geometry match reality for any given date.
