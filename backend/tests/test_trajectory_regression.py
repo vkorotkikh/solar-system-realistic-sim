@@ -42,6 +42,9 @@ def test_direct_lambert_solution_exists() -> None:
     assert solution["deltaVDepartureKmS"] >= 0.0
     assert solution["deltaVArrivalKmS"] >= 0.0
     assert abs(solution["computedTofDays"] - 120.0) < 1e-3
+    assert solution["rootResidualDays"] < 1e-3
+    assert solution["revolutions"] == 0
+    assert solution["pathSense"] == "prograde"
     assert result["ephemerisProvider"] == "kepler"
     assert result["ephemerisProviderRequested"] == "kepler"
     assert result["ephemerisProviderChain"] == ["kepler"]

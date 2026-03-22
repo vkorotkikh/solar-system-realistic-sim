@@ -270,7 +270,7 @@ def test_wsa_velocity_map_produces_speeds() -> None:
 
 def test_parker_spiral_uses_wsa_model() -> None:
     """Parker spiral lines should report WSA as wind speed source when available."""
-    model = SolarCoronaPhysicsModel("hyper", "test_wsa")
+    model = SolarCoronaPhysicsModel(seed=42, base_tube_count=100)
     state = model.sample_state(jd=2460000.5, fidelity="preview", max_features=8)
 
     spiral = state.get("heliosphere", {}).get("parker_spiral", {})

@@ -214,10 +214,14 @@ def solve_lambert_universal(
             root_high = z1
             break
 
-    if root_low is None or root_high is None:
+    root_bracketed = root_low is not None and root_high is not None
+
+    if not root_bracketed:
         z_star = best_z
         tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
         if tof_state is None:
+            return None
+        if abs(tof_state[0] - tof_target) > tol_days:
             return None
     else:
         root_solution = _solve_bracketed_z(
@@ -251,6 +255,56 @@ def solve_lambert_universal(
         "transferAngleDeg": math.degrees(theta),
         "computedTofDays": tof_value,
         "z": z_star,
+        "rootResidualDays": abs(tof_value - tof_target),
+        "rootBracketed": root_bracketed,
+        "revolutions": 0,
+        "pathSense": "prograde" if prograde else "retrograde",
+    }
+
+
+def compute_lambert_leg_from_state_vectors(
+    start_position_au: Sequence[float],
+    start_velocity_au_day: Sequence[float],
+    end_position_au: Sequence[float],
+    end_velocity_au_day: Sequence[float],
+    tof_days: float,
+    *,
+    prograde: bool = True,
+) -> Optional[Dict[str, Any]]:
+    lambert = solve_lambert_universal(
+        start_position_au,
+        end_position_au,
+        tof_days,
+        prograde=prograde,
+    )
+    if lambert is None:
+        return None
+
+    v_depart = lambert["v1"]
+    v_arrive = lambert["v2"]
+    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, start_velocity_au_day)))
+    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(end_velocity_au_day, v_arrive)))
+    chord = vector_length(vector_sub(end_position_au, start_position_au))
+
+    return {
+        "tofDays": float(tof_days),
+        "computedTofDays": float(lambert["computedTofDays"]),
+        "solverZ": float(lambert["z"]),
+        "rootResidualDays": float(lambert["rootResidualDays"]),
+        "rootBracketed": bool(lambert["rootBracketed"]),
+        "revolutions": int(lambert["revolutions"]),
+        "pathSense": str(lambert["pathSense"]),
+        "pathLengthAu": chord,
+        "transferAngleDeg": float(lambert["transferAngleDeg"]),
+        "deltaVDepartureKmS": delta_v_depart,
+        "deltaVArrivalKmS": delta_v_arrive,
+        "startPosition": list(start_position_au),
+        "endPosition": list(end_position_au),
+        "departureVelocityApprox": list(v_depart),
+        "arrivalVelocityApprox": list(v_arrive),
+        "fromPlanetVelocity": list(start_velocity_au_day),
+        "toPlanetVelocity": list(end_velocity_au_day),
+        "solver": "lambert_universal",
     }
 
 
@@ -267,43 +321,27 @@ def compute_lambert_leg(
     from_state = ephemeris.sample_state(from_id, departure_jd)
     to_state = ephemeris.sample_state(to_id, arrival_jd)
 
-    lambert = solve_lambert_universal(
+    leg = compute_lambert_leg_from_state_vectors(
         from_state.position_au,
+        from_state.velocity_au_day,
         to_state.position_au,
+        to_state.velocity_au_day,
         tof_days,
         prograde=prograde,
     )
-    if lambert is None:
+    if leg is None:
         return None
 
-    v_depart = lambert["v1"]
-    v_arrive = lambert["v2"]
-    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, from_state.velocity_au_day)))
-    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(to_state.velocity_au_day, v_arrive)))
-
-    chord = vector_length(vector_sub(to_state.position_au, from_state.position_au))
-
-    return {
+    leg.update(
+        {
         "fromId": from_id,
         "toId": to_id,
         "departureJd": float(departure_jd),
         "arrivalJd": arrival_jd,
-        "tofDays": float(tof_days),
-        "computedTofDays": float(lambert["computedTofDays"]),
-        "solverZ": float(lambert["z"]),
-        "pathLengthAu": chord,
-        "transferAngleDeg": float(lambert["transferAngleDeg"]),
-        "deltaVDepartureKmS": delta_v_depart,
-        "deltaVArrivalKmS": delta_v_arrive,
-        "startPosition": list(from_state.position_au),
-        "endPosition": list(to_state.position_au),
-        "departureVelocityApprox": list(v_depart),
-        "arrivalVelocityApprox": list(v_arrive),
-        "fromPlanetVelocity": list(from_state.velocity_au_day),
-        "toPlanetVelocity": list(to_state.velocity_au_day),
         "stateSource": {"from": from_state.source, "to": to_state.source},
-        "solver": "lambert_universal",
-    }
+        }
+    )
+    return leg
 
 
 def _pareto_by_tof(points: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
