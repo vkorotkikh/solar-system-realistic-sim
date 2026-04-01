@@ -127,8 +127,8 @@ function generateBinaryCompanion(
   // Eccentricity: tidally damped, low
   const eccentricity = rand() * 0.1;
 
-  // Inclination: typically near-coplanar with heliocentric orbit, low scatter
-  const inclinationDeg = rand() * 30;
+  // Inclination: binaries are usually low-tilt in the cold belt.
+  const inclinationDeg = rand() * 12;
 
   // Companion color: similar to primary but slightly varied
   const companionColor = packedColorForKBO(primarySurfaceColor, rand);
@@ -196,20 +196,26 @@ function sampleOrbitForClass(
     }
     case KBOClass.Resonant: {
       const resonance = rand() < 0.7 ? PLUTINO_RESONANCE_AU : TWOTINO_RESONANCE_AU;
-      const aAu = resonance + (rand() - 0.5) * 1.0;
-      const e = 0.05 + rand() * 0.25;
-      const iDeg = rand() * 30;
+      const aAu = resonance + (rand() - 0.5) * 0.5;
+      const e = 0.08 + rand() * 0.22;
+      const iDeg = rand() * 25;
       return { aAu, e, iDeg };
     }
     case KBOClass.Scattered: {
-      const aAu = 35 + rand() * 80;
-      const e = 0.2 + rand() * 0.5;
+      const aAu = 35 + rand() * 85;
+      const perihelionMax = Math.max(30.5, Math.min(40.0, aAu - 0.5));
+      const perihelionMin = Math.min(30.0, perihelionMax - 0.5);
+      const perihelionAu = perihelionMin + rand() * Math.max(0.5, perihelionMax - perihelionMin);
+      const e = 1.0 - perihelionAu / aAu;
       const iDeg = rand() * 40;
       return { aAu, e, iDeg };
     }
     case KBOClass.Detached: {
-      const aAu = 50 + rand() * 400;
-      const e = 0.3 + rand() * 0.55;
+      const aAu = 50 + rand() * 450;
+      const perihelionMax = Math.max(41.0, Math.min(80.0, aAu - 0.5));
+      const perihelionMin = Math.min(40.5, perihelionMax - 0.5);
+      const perihelionAu = perihelionMin + rand() * Math.max(0.5, perihelionMax - perihelionMin);
+      const e = 1.0 - perihelionAu / aAu;
       const iDeg = 5 + rand() * 25;
       return { aAu, e, iDeg };
     }
@@ -240,6 +246,119 @@ function sampleDiameterKm(rand: () => number): number {
   const dMax = 800;
   const alpha = 3.5; // steeper than main belt — Fuentes & Holman 2008
   return dMin * Math.pow(1 - u * (1 - Math.pow(dMin / dMax, alpha - 1)), -1 / (alpha - 1));
+}
+
+function computeBinaryBarycentricOffsets(
+  orbit: KeplerOrbit,
+  primaryDiameterKm: number,
+  binary: BinaryCompanionDef,
+  julianDate: number
+): {
+  primaryOffset: [number, number, number];
+  companionOffset: [number, number, number];
+} {
+  const dt = julianDate - orbit.epochJd;
+  const meanMotion = TWO_PI / binary.periodDays;
+  let meanAnomaly = (binary.meanAnomalyDeg * DEG) + meanMotion * dt;
+  meanAnomaly %= TWO_PI;
+  if (meanAnomaly < 0) meanAnomaly += TWO_PI;
+
+  const ecc = Math.max(0, Math.min(0.6, binary.eccentricity));
+  const E = solveKeplerFast(meanAnomaly, ecc);
+  const cosE = Math.cos(E);
+  const sinE = Math.sin(E);
+  const sqrtE = Math.sqrt(Math.max(0, 1 - ecc * ecc));
+  const sepAu = binary.separationKm / KM_PER_AU;
+  const trueX = sepAu * (cosE - ecc);
+  const trueY = sepAu * sqrtE * sinE;
+
+  const iRad = (orbit.iDeg ?? 0) * DEG;
+  const omegaRad = (orbit.ascendingNodeDeg ?? 0) * DEG;
+  const wRad = (orbit.argPeriapsisDeg ?? 0) * DEG;
+  const cosW = Math.cos(wRad);
+  const sinW = Math.sin(wRad);
+  const cosO = Math.cos(omegaRad);
+  const sinO = Math.sin(omegaRad);
+  const cosI = Math.cos(iRad);
+  const sinI = Math.sin(iRad);
+
+  const px = trueX * cosW - trueY * sinW;
+  const py = trueX * sinW + trueY * cosW;
+  const radial: [number, number, number] = [
+    cosO * px - sinO * cosI * py,
+    sinO * px + cosO * cosI * py,
+    sinI * py,
+  ];
+
+  const dxOrb = -sepAu * sinE;
+  const dyOrb = sepAu * sqrtE * cosE;
+  const dpx = dxOrb * cosW - dyOrb * sinW;
+  const dpy = dxOrb * sinW + dyOrb * cosW;
+  const tangential: [number, number, number] = [
+    cosO * dpx - sinO * cosI * dpy,
+    sinO * dpx + cosO * cosI * dpy,
+    sinI * dpy,
+  ];
+
+  const radialNorm = Math.hypot(radial[0], radial[1], radial[2]) || 1;
+  const tangentialNorm = Math.hypot(tangential[0], tangential[1], tangential[2]) || 1;
+  const radialUnit: [number, number, number] = [
+    radial[0] / radialNorm,
+    radial[1] / radialNorm,
+    radial[2] / radialNorm,
+  ];
+  const tangentialUnit: [number, number, number] = [
+    tangential[0] / tangentialNorm,
+    tangential[1] / tangentialNorm,
+    tangential[2] / tangentialNorm,
+  ];
+  const normal = [
+    radialUnit[1] * tangentialUnit[2] - radialUnit[2] * tangentialUnit[1],
+    radialUnit[2] * tangentialUnit[0] - radialUnit[0] * tangentialUnit[2],
+    radialUnit[0] * tangentialUnit[1] - radialUnit[1] * tangentialUnit[0],
+  ];
+  const normalNorm = Math.hypot(normal[0], normal[1], normal[2]) || 1;
+  const normalUnit: [number, number, number] = [
+    normal[0] / normalNorm,
+    normal[1] / normalNorm,
+    normal[2] / normalNorm,
+  ];
+
+  const tilt = (binary.inclinationDeg ?? 0) * DEG;
+  const planeY: [number, number, number] = [
+    tangentialUnit[0] * Math.cos(tilt) + normalUnit[0] * Math.sin(tilt),
+    tangentialUnit[1] * Math.cos(tilt) + normalUnit[1] * Math.sin(tilt),
+    tangentialUnit[2] * Math.cos(tilt) + normalUnit[2] * Math.sin(tilt),
+  ];
+  const planeYNorm = Math.hypot(planeY[0], planeY[1], planeY[2]) || 1;
+  const planeYUnit: [number, number, number] = [
+    planeY[0] / planeYNorm,
+    planeY[1] / planeYNorm,
+    planeY[2] / planeYNorm,
+  ];
+
+  const relPos: [number, number, number] = [
+    radialUnit[0] * trueX + planeYUnit[0] * trueY,
+    radialUnit[1] * trueX + planeYUnit[1] * trueY,
+    radialUnit[2] * trueX + planeYUnit[2] * trueY,
+  ];
+
+  const massRatio = Math.max(0.05, (binary.diameterKm / Math.max(1e-6, primaryDiameterKm)) ** 3);
+  const primaryScale = massRatio / (1 + massRatio);
+  const companionScale = 1 / (1 + massRatio);
+
+  return {
+    primaryOffset: [
+      -relPos[0] * primaryScale,
+      -relPos[1] * primaryScale,
+      -relPos[2] * primaryScale,
+    ],
+    companionOffset: [
+      relPos[0] * companionScale,
+      relPos[1] * companionScale,
+      relPos[2] * companionScale,
+    ],
+  };
 }
 
 export interface KuiperBeltPopulation {
@@ -342,6 +461,14 @@ export function propagateKBOPositions(
     out[off] = cosO * px - sinO * cosI * py;
     out[off + 1] = sinO * px + cosO * cosI * py;
     out[off + 2] = sinI * py;
+
+    const bin = kbos[i].binary;
+    if (bin) {
+      const offsets = computeBinaryBarycentricOffsets(orb, kbos[i].diameterKm, bin, julianDate);
+      out[off] += offsets.primaryOffset[0];
+      out[off + 1] += offsets.primaryOffset[1];
+      out[off + 2] += offsets.primaryOffset[2];
+    }
   }
 }
 
@@ -376,62 +503,13 @@ export function propagateBinaryKBOPositions(
     if (!bin) continue;
 
     binaryIndices[bIdx] = i;
-
-    // Mutual orbit: simplified near-circular Keplerian
-    const dt = julianDate - J2000_JD;
-    const meanMotion = TWO_PI / bin.periodDays;
-    let M = (bin.meanAnomalyDeg * DEG) + meanMotion * dt;
-    M = M % TWO_PI;
-    if (M < 0) M += TWO_PI;
-
-    // Solve Kepler equation for mutual orbit
-    const ecc = bin.eccentricity;
-    const E = solveKeplerFast(M, ecc);
-
-    // Position in mutual orbital plane (in km, then convert to AU)
-    const cosE = Math.cos(E);
-    const sinE = Math.sin(E);
-    const sqrtE = Math.sqrt(1 - ecc * ecc);
-    const sepAu = bin.separationKm / KM_PER_AU;
-    const localX = sepAu * (cosE - ecc);
-    const localY = sepAu * sqrtE * sinE;
-
-    // Rotate by mutual orbit inclination (tilted relative to helio-orbital plane)
-    const iMut = bin.inclinationDeg * DEG;
-    const cosIMut = Math.cos(iMut);
-    const sinIMut = Math.sin(iMut);
-
-    // Use the primary's heliocentric orbital plane as reference:
-    // apply a simplified rotation using the primary's orbital elements.
-    // For visual fidelity, we rotate the companion offset using the
-    // primary's ascending node and argument of periapsis.
     const orb = kbos[i].orbit;
-    const omegaRad = (orb.ascendingNodeDeg ?? 0) * DEG;
-    const wRad = (orb.argPeriapsisDeg ?? 0) * DEG;
-    const iRad = (orb.iDeg ?? 0) * DEG;
-    const cosW = Math.cos(wRad);
-    const sinW = Math.sin(wRad);
-    const cosO = Math.cos(omegaRad);
-    const sinO = Math.sin(omegaRad);
-    const cosI = Math.cos(iRad);
-    const sinI = Math.sin(iRad);
-
-    // Rotate mutual orbit offset into primary's orbital plane
-    const ox = localX * cosW - localY * sinW;
-    const oy = (localX * sinW + localY * cosW) * cosIMut;
-    const oz = (localX * sinW + localY * cosW) * sinIMut;
-
-    // Rotate into ecliptic frame
-    const dx = cosO * ox - sinO * cosI * oy + sinO * sinI * oz;
-    const dy = sinO * ox + cosO * cosI * oy - cosO * sinI * oz;
-    const dz = sinI * oy + cosI * oz;
-
-    // Companion heliocentric = primary heliocentric + offset
+    const offsets = computeBinaryBarycentricOffsets(orb, kbos[i].diameterKm, bin, julianDate);
     const pOff = i * 3;
     const cOff = bIdx * 3;
-    companionOut[cOff] = primaryPositions[pOff] + dx;
-    companionOut[cOff + 1] = primaryPositions[pOff + 1] + dy;
-    companionOut[cOff + 2] = primaryPositions[pOff + 2] + dz;
+    companionOut[cOff] = primaryPositions[pOff] + offsets.companionOffset[0];
+    companionOut[cOff + 1] = primaryPositions[pOff + 1] + offsets.companionOffset[1];
+    companionOut[cOff + 2] = primaryPositions[pOff + 2] + offsets.companionOffset[2];
 
     bIdx++;
   }
