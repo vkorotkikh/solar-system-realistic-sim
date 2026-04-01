@@ -15,6 +15,7 @@ import {
   Texture,
   Vector3
 } from 'three';
+import { PlanetQuadtree } from '../features/planetary/quadtreeLOD';
 import type { SimulationStateStore } from './stateStore';
 
 interface ToggleLike {
@@ -141,7 +142,7 @@ interface LocalSystemRendererState {
   localOrbitLines: Line[];
   localBodyEntries: LocalBodySceneEntry[];
   localBodyById: Map<string, LocalSystemBody>;
-  localBodyMeshById: Map<string, Mesh>;
+  localBodyMeshById: Map<string, Object3D>;
   localBodyNodeById: Map<string, Group>;
   localSystemManifestCache: Map<string, LocalSystemManifest>;
 }
@@ -263,8 +264,8 @@ export function createLocalSystemRenderer({
       : (
         radiusKm
           ? (type === 'star'
-              ? Math.max(0.006, Math.sqrt(radiusKm) * 0.00042)
-              : Math.max(0.0016, Math.sqrt(radiusKm) * 0.00018))
+            ? Math.max(0.006, Math.sqrt(radiusKm) * 0.00042)
+            : Math.max(0.0016, Math.sqrt(radiusKm) * 0.00018))
           : (type === 'star' ? 0.012 : 0.003)
       );
     const resolvedRadiusKm = radiusKm ?? Math.max(40, displayRadiusAu * AU_KM);
@@ -441,13 +442,25 @@ export function createLocalSystemRenderer({
     const nodesById = new Map<string, LocalBodySceneEntry>();
     for (const body of bodies) {
       const node = new Group();
-      const surfaceTexture = body.type === 'star' ? null : buildLocalBodySurfaceTexture(body, localSystemId);
-      const material = body.type === 'star'
-        ? new MeshBasicMaterial({
+
+      let mesh: Object3D;
+      let surfaceTexture: Texture | null = null;
+      let internalMeshRef: Mesh | undefined = undefined; // Reference to extract geometry scale logic
+
+      if (['earth', 'moon', 'mars'].includes(body.id)) {
+        const baseRadiusAu = localBodyRenderRadiusAu(body, simState.useRealisticScale);
+        const quadtree = new PlanetQuadtree(body.id, baseRadiusAu, camera);
+        mesh = quadtree.group;
+        mesh.userData.isQuadtree = true;
+        mesh.userData.quadtree = quadtree;
+      } else {
+        surfaceTexture = body.type === 'star' ? null : buildLocalBodySurfaceTexture(body, localSystemId);
+        const material = body.type === 'star'
+          ? new MeshBasicMaterial({
             color: new Color(body.color),
             map: surfaceTexture ?? undefined
           })
-        : new MeshStandardMaterial({
+          : new MeshStandardMaterial({
             color: surfaceTexture ? new Color('#ffffff') : new Color(body.color),
             map: surfaceTexture ?? undefined,
             emissive: new Color('#000000'),
@@ -455,9 +468,12 @@ export function createLocalSystemRenderer({
             roughness: body.type === 'moon' ? 0.88 : 0.8,
             metalness: 0.0
           });
-      const geometry = body.type === 'star' ? geometryCache.sun : geometryCache.planet;
-      const mesh = new Mesh(geometry, material);
-      setLocalBodyMeshScale(mesh, body, simState.useRealisticScale);
+        const geometry = body.type === 'star' ? geometryCache.sun : geometryCache.planet;
+        internalMeshRef = new Mesh(geometry, material);
+        setLocalBodyMeshScale(internalMeshRef, body, simState.useRealisticScale);
+        mesh = internalMeshRef;
+      }
+
       mesh.userData.localBodyId = body.id;
       mesh.userData.rotationPeriodHours = body.rotationPeriodHours;
       mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
@@ -477,8 +493,8 @@ export function createLocalSystemRenderer({
       label.visible = Boolean(dom.toggleLabels?.checked);
       node.add(label);
 
-      nodesById.set(body.id, { body, node, mesh, label, glow });
-      state.localBodyEntries.push({ body, node, label, mesh, glow });
+      nodesById.set(body.id, { body, node, mesh: mesh as Mesh, label, glow });
+      state.localBodyEntries.push({ body, node, label, mesh: mesh as Mesh, glow });
       state.localBodyMeshById.set(body.id, mesh);
       state.localBodyNodeById.set(body.id, node);
     }
@@ -543,6 +559,21 @@ export function createLocalSystemRenderer({
           ? entry.mesh.userData.rotationOffsetRad
           : 0;
         entry.mesh.rotation.y = normalizeRadians(rotationOffset + angularSpeed * elapsedSeconds);
+      }
+
+      if (entry.mesh && entry.mesh.userData.isQuadtree) {
+        entry.mesh.userData.quadtree.update();
+
+        // Update sunlight direction locally
+        const sunWorldPos = new Vector3(0, 0, 0);
+        const planetWorldPos = new Vector3();
+        entry.node.getWorldPosition(planetWorldPos);
+        const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+
+        // Transform to local space of the mesh
+        const meshInverse = entry.mesh.matrixWorld.clone().invert();
+        const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+        entry.mesh.userData.quadtree.setLightDirection(sunLocalDir);
       }
 
       if (entry.label) {

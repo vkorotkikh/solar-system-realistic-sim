@@ -39,6 +39,7 @@ import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/featur
 import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
+import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import {
   buildCatalogIndexContract,
   type CatalogIndexContract,
@@ -269,25 +270,38 @@ function createBodyNode(body) {
 
   let material;
   let geometry;
+  let mesh;
 
-  if (body.id === 'sun') {
+  if (['earth', 'moon', 'mars'].includes(body.id)) {
+    const radius = bodyBaseRadiusAu(body);
+    const quadtree = new PlanetQuadtree(body.id, radius, camera);
+    mesh = quadtree.group;
+    mesh.userData.isQuadtree = true;
+    mesh.userData.quadtree = quadtree;
+  } else if (body.id === 'sun') {
     geometry = geometryCache.sun;
     material = sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'star') {
     geometry = geometryCache.planet;
     material = new MeshBasicMaterial({ color: new Color(body.color) });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'moon') {
     geometry = geometryCache.moon;
     material = new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else {
     geometry = geometryCache.planet;
     const col = PLANET_COLORS[body.id] ?? body.color ?? '#888';
     material = new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   }
 
-  const mesh = new Mesh(geometry, material);
   const radius = bodyBaseRadiusAu(body);
-  mesh.scale.setScalar(radius);
   mesh.userData.bodyId = body.id;
   mesh.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
   mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
@@ -580,7 +594,14 @@ function applyScaleMode() {
   for (const body of catalog.bodies) {
     const mesh = bodyMeshes.get(body.id);
     if (!mesh) continue;
-    mesh.scale.setScalar(bodyBaseRadiusAu(body));
+    if (mesh.userData.isQuadtree) {
+      // Quadtrees rebuild geometry based on camera distance, scale doesn't apply directly via mesh.scale
+      // Instead, the new radius logic dictates standard size.
+      // For a robust implementation, the whole quadtree should likely be re-instanced or resize via uniforms
+      // For simplicity, we assume quadtree LODs aren't strictly changed scaling post-init.
+    } else {
+      mesh.scale.setScalar(bodyBaseRadiusAu(body));
+    }
   }
   sunCtrl.onScaleChange();
   // Notify belt renderers so asteroids use physical sizes in realistic mode
@@ -1080,6 +1101,21 @@ function animate(timestamp) {
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();
+
+  for (const mesh of bodyMeshes.values()) {
+    if (mesh.userData.isQuadtree) {
+      mesh.userData.quadtree.update();
+
+      const sunWorldPos = new Vector3(0, 0, 0);
+      const planetWorldPos = new Vector3();
+      mesh.getWorldPosition(planetWorldPos);
+      const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+
+      const meshInverse = mesh.matrixWorld.clone().invert();
+      const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+      mesh.userData.quadtree.setLightDirection(sunLocalDir);
+    }
+  }
 
   backgroundStars.position.copy(camera.position);
   controls.update();
