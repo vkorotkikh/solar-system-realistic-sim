@@ -29,6 +29,7 @@ interface SolarMagneticPhysicsStateLike {
     corona?: {
         features?: SolarMagneticFeatureLike[] | null;
     } | null;
+    pfss_field_lines?: any;
 }
 
 interface MagneticSeedDirection {
@@ -227,8 +228,70 @@ function traceFieldLine(
     return { points, isOpen, polarity };
 }
 
+export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: number, activity: number): Group {
+    const group = new Group();
+
+    if (!pfssData || !Array.isArray(pfssData.lines)) {
+        return group;
+    }
+
+    const closedColor = new Color('#ffe8d6');
+    const openPosColor = new Color('#5df0b4');
+    const openNegColor = new Color('#ff6f91');
+
+    for (let i = 0; i < pfssData.lines.length; i++) {
+        const trace = pfssData.lines[i];
+        if (!trace || !Array.isArray(trace.arc) || trace.arc.length < 2) continue;
+
+        const positions = new Float32Array(trace.arc.length * 3);
+        for (let p = 0; p < trace.arc.length; p++) {
+            const pt = trace.arc[p];
+            positions[p * 3] = pt[0] * sunRadiusAu;
+            positions[p * 3 + 1] = pt[1] * sunRadiusAu;
+            positions[p * 3 + 2] = pt[2] * sunRadiusAu;
+        }
+
+        const geometry = new BufferGeometry();
+        geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+
+        let lineColor = closedColor;
+        const jitter = seededNoise(i * 1.37 + activity * 7.1);
+        const pseudoScore = 0.5 + jitter * 0.3;
+        let opacity = 0.12 + pseudoScore * 0.16 + jitter * 0.05;
+
+        if (trace.is_open) {
+            lineColor = trace.polarity > 0 ? openPosColor : openNegColor;
+            opacity = 0.24 + pseudoScore * 0.24 + jitter * 0.08;
+        }
+
+        const material = new LineBasicMaterial({
+            color: lineColor,
+            transparent: true,
+            opacity: opacity,
+            blending: AdditiveBlending,
+            depthWrite: false
+        });
+
+        const line = new Line(geometry, material);
+        line.userData.baseOpacity = opacity;
+        line.userData.phaseOffset = seededNoise(i * 3.11 + 0.7) * Math.PI * 2;
+        line.userData.pulseRate = trace.is_open
+            ? 0.55 + pseudoScore * 0.8
+            : 0.28 + pseudoScore * 0.45;
+        line.userData.isOpen = trace.is_open;
+        group.add(line);
+    }
+
+    group.userData.activity = clampUnit(activity);
+    group.userData.isDataDriven = true;
+    group.userData.source = pfssData.source;
+    group.userData.carringtonRotation = pfssData.carrington_rotation;
+
+    return group;
+}
+
 /**
- * Creates the PFSS magnetic field visualization group.
+ * Creates the PFSS magnetic field visualization group using analytical calculation as a fallback.
  */
 export function createMagneticFieldLines(sunRadiusAu: number, activity = 0.5, {
     numLines = null,
@@ -237,6 +300,10 @@ export function createMagneticFieldLines(sunRadiusAu: number, activity = 0.5, {
     numLines?: number | null;
     physicsState?: SolarMagneticPhysicsStateLike | null;
 } = {}): Group {
+    if (physicsState?.pfss_field_lines?.lines) {
+        return createMagneticFieldLinesFromPFSS(physicsState.pfss_field_lines, sunRadiusAu, activity);
+    }
+
     sunRadiusAu = Number(sunRadiusAu);
     const group = new Group();
     const maxSteps = 200;
@@ -405,8 +472,8 @@ export function createMagnetogramTexture(size = 512, activity = 0.5): CanvasText
  * Updates the field lines animation (breathing effect).
  */
 export function updateMagneticFieldLines(
-  group: Group | null | undefined,
-  timeSec: number,
+    group: Group | null | undefined,
+    timeSec: number,
     activity: number | null = null
 ): void {
     if (!group || !group.visible) return;
