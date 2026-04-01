@@ -170,13 +170,16 @@ export function createSunController({
 
   function buildMagneticFieldSignature(activity) {
     const quantizedActivity = Math.round(clampUnit(activity) * 12);
+    const pfssSignature = solarPhysicsState?.pfss_field_lines
+      ? `pfss:${solarPhysicsState.pfss_field_lines.source}:${solarPhysicsState.pfss_field_lines.carrington_rotation}`
+      : 'analytical';
     const topFeatures = Array.isArray(solarPhysicsState?.corona?.features)
       ? solarPhysicsState.corona.features
         .slice(0, 12)
         .map((feature) => `${feature?.id ?? 'feature'}:${Number(feature?.brightness ?? 0).toFixed(2)}`)
         .join('|')
       : 'synthetic';
-    return `${quantizedActivity}:${topFeatures}`;
+    return `${quantizedActivity}:${pfssSignature}:${topFeatures}`;
   }
 
   function disposeMagneticFieldGroup(group) {
@@ -378,7 +381,7 @@ export function createSunController({
         hasObservationTexture: !!solarObservationTexture
       }
     );
-    const effectiveActivity = clampUnit(activity + (observationControls.activityBoost ?? 0));
+    const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
 
     updateSunMaterialUniforms({
