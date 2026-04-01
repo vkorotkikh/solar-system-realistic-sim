@@ -1,138 +1,114 @@
 {
   "id": "barnards-star",
   "name": "Barnard's Star System",
-  "version": 1,
+  "version": 2,
   "epoch_jd": 2451545.0,
   "fidelity_tier": "B",
   "sources": [
     "Gaia EDR3 / VizieR J/A+A/650/A201",
-    "NASA Exoplanet Archive (Barnard's Star entries)"
+    "NASA Exoplanet Archive Barnard's Star Overview (accessed 2026-03-21)",
+    "Gonzalez Hernandez et al. 2024",
+    "Basant et al. 2025"
   ],
-  "notes": "Starter local manifest using observed/candidate Barnard system planets with procedural surface treatment.",
+  "notes": "Observed compact RV system based on the current NASA Exoplanet Archive overview. Only the four confirmed short-period planets are included; the earlier speculative outer architecture and simulated moons have been removed.",
   "primary_star_id": "barnards-star",
   "stars": [
     {
       "id": "barnards-star",
       "name": "Barnard's Star",
       "type": "star",
-      "mass_kg": 2.84e29,
-      "radius_km": 137000,
+      "mass_kg": 3.2342663397e29,
+      "radius_km": 134635,
       "display_radius_au": 0.019,
       "color": "#ff9868",
-      "rotation_period_hours": 3168,
-      "notes": "Observed nearby M dwarf."
+      "rotation_period_hours": 3408,
+      "notes": "Observed nearby M dwarf. Stellar mass and radius follow the current archive stellar-parameter solution."
     }
   ],
   "planets": [
     {
-      "id": "bs-c",
-      "name": "Barnard c (candidate)",
-      "type": "planet",
-      "parent_id": "barnards-star",
-      "radius_km": 5600,
-      "display_radius_au": 0.0036,
-      "color": "#7d9cbf",
-      "texture_template": "mercury",
-      "rotation_period_hours": 288,
-      "orbit": {
-        "a_au": 0.059,
-        "e": 0.08,
-        "i_deg": 0.7,
-        "ascending_node_deg": 43.0,
-        "arg_periapsis_deg": 133.0,
-        "mean_anomaly_deg": 201.0,
-        "period_days": 12.95,
-        "epoch_jd": 2451545.0
-      },
-      "notes": "Candidate rocky inner world with simulated surface map."
-    },
-    {
       "id": "bs-d",
-      "name": "Barnard d (candidate)",
+      "name": "Barnard d",
       "type": "planet",
       "parent_id": "barnards-star",
-      "radius_km": 6200,
-      "display_radius_au": 0.0038,
-      "color": "#95ad8f",
-      "texture_template": "venus",
-      "rotation_period_hours": 360,
+      "radius_km": 4383,
+      "display_radius_au": 0.0031,
+      "color": "#8bb0c8",
+      "texture_template": "mercury",
       "orbit": {
-        "a_au": 0.089,
-        "e": 0.11,
-        "i_deg": 1.3,
-        "ascending_node_deg": 71.0,
-        "arg_periapsis_deg": 254.0,
-        "mean_anomaly_deg": 37.0,
-        "period_days": 18.16,
+        "a_au": 0.0188,
+        "e": 0.04,
+        "i_deg": 0.0,
+        "ascending_node_deg": 0.0,
+        "arg_periapsis_deg": 308.2,
+        "mean_anomaly_deg": 332.8331,
+        "period_days": 2.3402,
         "epoch_jd": 2451545.0
       },
-      "notes": "Candidate temperate planet with simulated cloud-layer coloration."
-    },
-    {
-      "id": "bs-e",
-      "name": "Barnard e (candidate)",
-      "type": "planet",
-      "parent_id": "barnards-star",
-      "radius_km": 7300,
-      "display_radius_au": 0.0040,
-      "color": "#78b9cc",
-      "texture_template": "earth",
-      "rotation_period_hours": 432,
-      "orbit": {
-        "a_au": 0.129,
-        "e": 0.09,
-        "i_deg": 2.1,
-        "ascending_node_deg": 115.0,
-        "arg_periapsis_deg": 311.0,
-        "mean_anomaly_deg": 173.0,
-        "period_days": 34.78,
-        "epoch_jd": 2451545.0
-      },
-      "notes": "Candidate planet rendered with a temperate procedural template."
+      "notes": "Confirmed RV planet from Basant et al. 2025. Radius is inferred from minimum mass for visualization only because no transit radius is measured."
     },
     {
       "id": "bs-b",
       "name": "Barnard b",
       "type": "planet",
       "parent_id": "barnards-star",
-      "radius_km": 9800,
-      "display_radius_au": 0.0044,
-      "color": "#9fbaa1",
+      "radius_km": 4544,
+      "display_radius_au": 0.0032,
+      "color": "#9fbf93",
       "texture_template": "mars",
-      "rotation_period_hours": 600,
       "orbit": {
-        "a_au": 0.404,
-        "e": 0.32,
-        "i_deg": 3.5,
-        "ascending_node_deg": 188.0,
-        "arg_periapsis_deg": 74.0,
-        "mean_anomaly_deg": 142.0,
-        "period_days": 232.8,
+        "a_au": 0.0229,
+        "e": 0.03,
+        "i_deg": 0.0,
+        "ascending_node_deg": 0.0,
+        "arg_periapsis_deg": 3.8,
+        "mean_anomaly_deg": 103.1311,
+        "period_days": 3.1542,
         "epoch_jd": 2451545.0
       },
-      "notes": "Observed long-period super-Earth candidate in the cold outer zone."
+      "notes": "Confirmed RV planet reported in 2024 and refined in 2025. Radius is inferred from minimum mass for visualization only because no transit radius is measured."
     },
     {
-      "id": "bs-b-i",
-      "name": "Barnard b I (simulated moon)",
-      "type": "moon",
-      "parent_id": "bs-b",
-      "radius_km": 2100,
-      "display_radius_au": 0.00155,
-      "color": "#b9c2cf",
-      "moon_texture_seed": "bs_b_i",
-      "rotation_period_hours": 160,
+      "id": "bs-c",
+      "name": "Barnard c",
+      "type": "planet",
+      "parent_id": "barnards-star",
+      "radius_km": 4691,
+      "display_radius_au": 0.0033,
+      "color": "#7d9cbf",
+      "texture_template": "mercury",
       "orbit": {
-        "a_au": 0.0048,
-        "e": 0.04,
-        "i_deg": 2.6,
-        "ascending_node_deg": 61.0,
-        "arg_periapsis_deg": 139.0,
-        "mean_anomaly_deg": 250.0,
-        "period_days": 6.3,
+        "a_au": 0.0274,
+        "e": 0.08,
+        "i_deg": 0.0,
+        "ascending_node_deg": 0.0,
+        "arg_periapsis_deg": 90.8,
+        "mean_anomaly_deg": 38.3707,
+        "period_days": 4.1244,
         "epoch_jd": 2451545.0
       },
-      "notes": "Simulated moon placeholder for close-range orbital navigation tests."
+      "notes": "Confirmed RV planet from Basant et al. 2025. Radius is inferred from minimum mass for visualization only because no transit radius is measured."
+    },
+    {
+      "id": "bs-e",
+      "name": "Barnard e",
+      "type": "planet",
+      "parent_id": "barnards-star",
+      "radius_km": 4019,
+      "display_radius_au": 0.0030,
+      "color": "#78b9cc",
+      "texture_template": "earth",
+      "orbit": {
+        "a_au": 0.0381,
+        "e": 0.04,
+        "i_deg": 0.0,
+        "ascending_node_deg": 0.0,
+        "arg_periapsis_deg": 332.5,
+        "mean_anomaly_deg": 0.3846,
+        "period_days": 6.7392,
+        "epoch_jd": 2451545.0
+      },
+      "notes": "Confirmed RV planet from Basant et al. 2025. Radius is inferred from minimum mass for visualization only because no transit radius is measured."
     }
   ]
 }
