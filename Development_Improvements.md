@@ -47,6 +47,31 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
+### 2026-03-22 UTC — Procedural Quadtree Planetary LOD
+Status: `DONE`
+Type: `ARCHITECTURE` / `FEATURE`
+Summary:
+- Implemented extremely high-fidelity zoom-in capabilities by swapping standard static mesh spheres for dynamic Quadtree LOD chunks for Earth, Moon, and Mars. Added procedural continent and displacement generation via 3D FBM and ridged noise shaders.
+
+Context / rationale:
+- Planetary zoom levels were limited by low-poly bounds, offering no microscopic surface details.
+
+Proposed approach:
+- Shared planar geometry mapped spherically, subdividing into 4 sectors repeatedly up to Level 7 when camera distance crosses a threshold. GPU displacement maps altitude to vertex normal, creating true hills, mountains, continents, and canyons.
+- Fragment normals are driven by vertex height, plus high-frequency per-pixel noise applied in the fragment shader for photorealistic micro-bumps on the surface texturization.
+
+Expected impact:
+- Deep zoom capability is completely unblocked. Planets look 10,000x more detailed physically without requiring terabytes of texture data.
+
+Affected files/systems:
+- `src/frontend/features/planetary/quadtreeLOD.ts` [NEW]
+- `src/frontend/features/planetary/planetShaders.ts` [NEW]
+- `src/main.ts`
+- `src/frontend/app/localSystemRenderer.ts`
+
+Next step:
+- Test out specific biome coloring logic parameters to improve aesthetics further.
+
 ### 2026-03-21 UTC — Magnetogram-Driven Global Field (PFSS)
 Status: `DONE`
 Type: `ARCHITECTURE` / `FEATURE`

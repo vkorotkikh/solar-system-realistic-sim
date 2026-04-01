@@ -55,6 +55,31 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-22 — Procedural Quadtree LOD and Shaders for Planetary Surfaces
+Status: DONE
+
+What changed:
+- **Quadtree LOD System (`quadtreeLOD.ts`):** Replaced static low-poly `SphereGeometry` for Earth, Moon, and Mars with a dynamic quadtree mesh generation system. Subdivides terrain chunks (up to level 7, spanning 6 cube faces) dynamically based on distance to the camera to ensure massive geometric detail when zoomed in.
+- **Procedural Displacement Shaders (`planetShaders.ts`):** Custom high-performance GLSL vertex and fragment shaders that compute dynamic terrain height using 3D Fractal Brownian Motion (FBM) and ridged noise. Normal vectors are calculated per-vertex using finite-differences. Added fragment-level micro-bump mapping and extended color blending to improve realism when hovering right above the surface. 
+- **Solar System Integration (`main.ts`, `localSystemRenderer.ts`):** Wired the Quadtree logic into the active animation loops `update()` call and instanced it in place of standard planet meshes. Calculates local-space lighting direction to correctly shade the planets.
+
+Why it changed:
+- The user requested realistic, high-fidelity modeling of planetary surfaces that could seamlessly scale from a deep space overview down to the level of surface details like the Grand Canyon.
+
+Evidence/validation:
+- Build pipeline and TypeScript typechecker passed with no errors regarding geometry substitution.
+- Verified visual detail down to surface level scaling dynamically via LOD patching.
+
+Files touched:
+- `src/frontend/features/planetary/quadtreeLOD.ts` [NEW]
+- `src/frontend/features/planetary/planetShaders.ts` [NEW]
+- `src/main.ts`
+- `src/frontend/app/localSystemRenderer.ts`
+
+Follow-ups / open questions:
+- OPEN: Consider extending procedural topology logic to other planets like Mercury and Venus.
+- OPEN: Test maximum hardware capacity for `MAX_LOD_LEVEL` on varying browsers.
+
 ### 2026-03-21 — Data-Driven Global Magnetic Field (PFSS solver)
 Status: DONE
 
