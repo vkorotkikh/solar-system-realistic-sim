@@ -39,7 +39,7 @@ export const TAXONOMIES = {
  * Outer belt (>2.82 AU): predominantly C-type
  * Trojans (~5.2 AU): D-type
  */
-export function sampleTaxonomy(aAu) {
+export function sampleTaxonomy(aAu: number): (typeof TAXONOMIES)[keyof typeof TAXONOMIES] {
     const r = _rng();
     if (aAu > 5.0) return TAXONOMIES.D;
 
@@ -66,7 +66,7 @@ export function sampleTaxonomy(aAu) {
  * Generates sizes biased heavily towards smaller objects.
  * Uses inverse transform sampling.
  */
-export function samplePowerLawSize(minRadius, maxRadius, q = 2.5) {
+export function samplePowerLawSize(minRadius: number, maxRadius: number, q = 2.5) {
     // P(r) = C * r^(-q)
     const u = _rng();
     // Integral of r^-q is [r^(1-q)] / (1-q)
@@ -104,7 +104,7 @@ const KIRKWOOD_GAPS = [
     { center: 3.27, halfWidth: 0.03 }  // 2:1
 ];
 
-function isInsideKirkwoodGap(a) {
+function isInsideKirkwoodGap(a: number) {
     for (const gap of KIRKWOOD_GAPS) {
         if (Math.abs(a - gap.center) < gap.halfWidth) return true;
     }
@@ -116,7 +116,12 @@ function isInsideKirkwoodGap(a) {
  * @param {string} population - 'main-belt', 'trojan-l4', 'trojan-l5', 'hilda', 'nea'
  */
 export function generateAsteroidElement(population = 'main-belt') {
-    let a, e, i, ascendingNodeDeg, argPeriapsisDeg, meanAnomalyDeg;
+    let a = 2.5;
+    let e = 0.12;
+    let i = 8.0;
+    let ascendingNodeDeg = 0;
+    let argPeriapsisDeg = 0;
+    let meanAnomalyDeg = 0;
 
     ascendingNodeDeg = _rng() * 360;
     argPeriapsisDeg = _rng() * 360;

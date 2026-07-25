@@ -1,4 +1,21 @@
 import { clamp } from '../../../constants';
+import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
+
+/** Subset of `GET /solar/physics` JSON used by the frontend sun stack. */
+export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLike {
+  activity_index?: number;
+  synthetic_activity_index?: number;
+  corona?: {
+    features?: Array<Record<string, unknown>>;
+  };
+  pfss_field_lines?: {
+    source?: string;
+    carrington_rotation?: number;
+  };
+  coronal_holes?: unknown;
+  heliosphere?: unknown;
+  [key: string]: unknown;
+}
 
 interface SolarPhysicsClientOptions {
   baseUrl: () => string;
@@ -24,7 +41,7 @@ export class SolarPhysicsClient {
   lastLatencyMs: number;
   inFlight: boolean;
   nextRefreshMs: number;
-  latest: unknown | null;
+  latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
   _reqId: number;
 
@@ -56,7 +73,7 @@ export class SolarPhysicsClient {
     this._reqId = 0;
   }
 
-  latestState(): unknown | null {
+  latestState(): SolarPhysicsStatePayload | null {
     return this.latest;
   }
 
@@ -125,7 +142,7 @@ export class SolarPhysicsClient {
       if (!response.ok) {
         throw new Error(`Solar physics request failed (${response.status})`);
       }
-      const payload = await response.json();
+      const payload = (await response.json()) as SolarPhysicsStatePayload;
       this.latest = payload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();

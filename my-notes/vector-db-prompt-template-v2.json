@@ -1,0 +1,774 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Enterprise Vector Database Platform — Unified Prompt Template v2",
+  "description": "A comprehensive structured prompt template for instructing an LLM to design, implement, and operationalize a production-ready, enterprise-grade vector database platform. Merges engine-level implementation depth with service-level operational maturity. Compatible with OpenAI and Anthropic Claude APIs.",
+  "version": "2.0.0",
+  "metadata": {
+    "use_cases": [
+      "RAG pipelines (standard ingestion + retrieval)",
+      "Agentic RAG workflows (tool-calling, chain-of-thought-aware retrieval)",
+      "Semantic search and recommendation systems",
+      "Graph-like metadata joins and multi-hop filtering",
+      "General-purpose ANN similarity workloads"
+    ],
+    "compatible_apis": ["openai", "anthropic_claude"],
+    "prompt_style": "system + user structured instruction"
+  },
+
+  "system_prompt": "You are a Principal Enterprise Search/AI Infrastructure Architect with deep expertise in distributed systems, vector databases, information retrieval, and production infrastructure. You design systems that are secure, scalable, observable, and operationally maintainable. You produce production-grade code with comprehensive error handling, observability, and operational tooling. You follow SOLID principles, write idiomatic code for the target language, and prioritize reliability and security over feature breadth. Correctness comes before performance; performance comes before convenience. All designs must be justified with explicit tradeoff analysis. Do not propose unsupported assumptions — state unknowns clearly.",
+
+  "prompt_template": {
+
+    "objective": {
+      "instruction": "Design and implement a production-ready, enterprise-grade vector database platform (architecture + implementation + operational model) that can be dropped into existing pipelines with minimal changes.",
+      "target_integration": [
+        "Drop-in compatible with existing RAG pipelines",
+        "Agentic RAG workflows with tool-calling and chain-of-thought-aware retrieval constraints",
+        "Semantic search and recommendation systems",
+        "Future workloads requiring graph-like metadata joins, filters, and re-ranking",
+        "General-purpose ANN similarity workloads"
+      ]
+    },
+
+    "environment_inputs": {
+      "instruction": "Fill in these parameters to contextualize the design. If unknown, state 'TBD' and the design must document assumptions made in their absence.",
+      "current_stack": {
+        "cloud_providers": "[e.g., AWS, GCP, Azure, on-prem, hybrid]",
+        "runtime": "[e.g., Kubernetes, ECS, bare metal]",
+        "orchestration": "[e.g., Helm, Terraform, Pulumi]",
+        "language_runtimes": "[e.g., Python 3.11, Node 20, Go 1.22, Rust 1.77]",
+        "vector_db_candidates_or_incumbents": "[e.g., Pinecone, pgvector, Qdrant, Milvus, Weaviate, Elasticsearch]",
+        "object_store": "[e.g., S3, GCS, MinIO]",
+        "message_bus": "[e.g., Kafka, SQS, NATS, Pulsar]",
+        "observability_stack": "[e.g., Prometheus + Grafana, Datadog, Splunk, ELK]"
+      },
+      "traffic_profile": {
+        "search_qps": "[e.g., 500 sustained, 2000 burst]",
+        "ingestion_docs_per_day": "[e.g., 100K documents/day]",
+        "average_document_size": "[e.g., 2KB chunked text]",
+        "average_query_window": "[e.g., top-10 results, 1536 dimensions]"
+      },
+      "sla_targets": {
+        "search_latency_p95_ms": "[e.g., 30]",
+        "search_latency_p99_ms": "[e.g., 50]",
+        "availability_target": "[e.g., 99.95%]",
+        "recovery_point_objective": "[e.g., < 1 minute data loss]",
+        "recovery_time_objective": "[e.g., < 5 minutes to serve reads]"
+      },
+      "compliance_requirements": "[e.g., SOC2 Type II, ISO 27001, HIPAA, GDPR, FedRAMP, region restrictions]",
+      "data_sensitivity": "[e.g., PII, PHI, private documents, classified, public only]",
+      "budget_constraints": {
+        "monthly_cost_ceiling": "[e.g., $15K/month]",
+        "preferred_cloud_provider": "[e.g., AWS]",
+        "expected_growth_12mo": "[e.g., 3x current volume]"
+      },
+      "team_context": {
+        "team_size": "[e.g., 3 engineers]",
+        "on_call_model": "[e.g., rotating weekly, follow-the-sun]",
+        "operational_maturity": "[e.g., early, intermediate, advanced]"
+      }
+    },
+
+    "core_engine": {
+      "distance_metrics": {
+        "required": ["cosine", "euclidean_l2", "dot_product"],
+        "optional": ["manhattan", "hamming"],
+        "instruction": "Distance metric must be configurable per collection at creation time."
+      },
+      "indexing": {
+        "algorithms": {
+          "primary": "HNSW",
+          "secondary": ["IVF-PQ", "flat_brute_force"],
+          "instruction": "Index strategy must be configurable per collection. Flat index is the fallback for collections under a configurable size threshold."
+        },
+        "build_behavior": "Background async index building that does not block reads or writes. Expose index build progress via metrics and admin API.",
+        "storage_layout": {
+          "instruction": "Define explicit storage layout: how vectors, metadata, inverted indexes, and WAL segments are organized on disk. Include file format versioning for forward compatibility."
+        }
+      },
+      "dimensionality": {
+        "range": { "min": 64, "max": 4096 },
+        "known_targets": {
+          "openai_small": 1536,
+          "openai_large": 3072,
+          "cohere_v3": 1024,
+          "open_source_range": "384–4096"
+        },
+        "instruction": "Must handle all major commercial and open-source embedding model output dimensions without recompilation or restart."
+      },
+      "crud_operations": {
+        "single": ["insert", "upsert", "get_by_id", "update", "delete"],
+        "batch": {
+          "operations": ["batch_insert", "batch_upsert", "batch_delete"],
+          "max_batch_size": 100000,
+          "instruction": "Batch operations must be atomic per-batch or report per-item success/failure. Support partial failure semantics."
+        },
+        "idempotency": {
+          "instruction": "All write operations must support idempotency keys. Retrying the same upsert with the same idempotency key must not create duplicates or increment version counters. Define idempotency window (e.g., 24 hours)."
+        },
+        "tombstone_semantics": {
+          "instruction": "Deletes create tombstone markers. Tombstones are excluded from search results immediately. Physical deletion occurs during compaction. Tombstone retention period is configurable (default: 72 hours) to support replication convergence."
+        }
+      },
+      "filtering": {
+        "approach": ["pre-filter", "post-filter"],
+        "operators": ["AND", "OR", "NOT", "IN", "NOT_IN", "RANGE", "EQ", "NEQ", "GT", "GTE", "LT", "LTE", "EXISTS", "CONTAINS"],
+        "target_fields": "Arbitrary metadata fields with boolean logic composition.",
+        "instruction": "Filter expressions must be composable via nested boolean logic. Pre-filter is the default; post-filter available as fallback when pre-filter cardinality is too low.",
+        "graph_like_joins": {
+          "instruction": "Support optional graph-like metadata joins for future workloads. Example: find all chunks where metadata.parent_document_id references a document with metadata.department = 'engineering'. This may be implemented as a two-phase query or a server-side join. Define the query syntax and execution model."
+        }
+      },
+      "hybrid_search": {
+        "dense": "Vector similarity (ANN)",
+        "sparse": "BM25 keyword scoring",
+        "fusion_strategies": ["reciprocal_rank_fusion", "weighted_linear_combination"],
+        "optional_reranking_pass": "Support an optional server-side reranking step after fusion (cross-encoder or custom model).",
+        "instruction": "Hybrid search must be a single API call. Fusion strategy and weights are caller-configurable per query."
+      },
+      "embedding_lifecycle": {
+        "chunking": {
+          "instruction": "Define the chunking contract: the vector DB accepts pre-chunked content but must store chunk metadata (source_document_id, chunk_index, chunk_overlap_tokens) to support re-assembly and re-chunking workflows."
+        },
+        "embedding_generation": {
+          "instruction": "The vector DB is embedding-model agnostic. It accepts pre-computed vectors. However, it must track embedding_model_id and embedding_model_version per vector to support re-embedding workflows when models change."
+        },
+        "re_embedding": {
+          "instruction": "Support bulk re-embedding workflows: query all documents with embedding_model_version < N, export their content, and accept updated vectors via batch upsert. The old vectors remain searchable until replaced. Define the state machine for a re-embedding migration."
+        },
+        "deduplication": {
+          "instruction": "Support optional content-hash-based deduplication at ingest time. If a document with the same content_hash already exists, skip insertion and return the existing document ID. Configurable per collection (enabled/disabled)."
+        }
+      }
+    },
+
+    "data_model": {
+      "collections": {
+        "properties": {
+          "name": "string — unique identifier",
+          "vector_dimensions": "integer",
+          "distance_metric": "enum",
+          "index_type": "enum",
+          "replication_factor": "integer (1–5)",
+          "sharding_strategy": "enum (consistent_hash | range)",
+          "embedding_model_id": "string — tracks which model produced vectors in this collection",
+          "embedding_model_version": "string — for re-embedding migration tracking"
+        },
+        "instruction": "Collections are the top-level namespace. Schema is defined at creation and supports non-breaking evolution."
+      },
+      "documents": {
+        "fields": {
+          "id": "UUID auto-generated or user-supplied string",
+          "vectors": {
+            "type": "map<string, float[]>",
+            "precision": ["float32", "float16", "binary_quantized"],
+            "instruction": "Support multiple named vector fields per document (e.g., title_embedding, body_embedding). Primary vector field is required; additional fields are optional."
+          },
+          "metadata": {
+            "type": "JSON object",
+            "supported_value_types": ["string", "integer", "float", "boolean", "string_array", "datetime"],
+            "indexing": "Metadata fields are indexed on demand. Support adding and removing metadata indexes without downtime.",
+            "reserved_fields": {
+              "source_document_id": "string — links chunk back to parent document",
+              "chunk_index": "integer — ordering within parent",
+              "chunk_overlap_tokens": "integer — overlap with adjacent chunks",
+              "content_hash": "string — SHA-256 of content for deduplication",
+              "embedding_model_id": "string — which model produced this vector",
+              "embedding_model_version": "string — model version for re-embedding tracking",
+              "ingested_at": "datetime — auto-populated at insert time",
+              "updated_at": "datetime — auto-populated at update time"
+            }
+          },
+          "content": {
+            "type": "string (optional)",
+            "instruction": "Raw text payload stored alongside the vector for direct retrieval in RAG pipelines without a secondary store lookup."
+          },
+          "token_count": {
+            "type": "integer (optional)",
+            "instruction": "Pre-computed token count of content field. Used by context-window-aware retrieval."
+          }
+        }
+      },
+      "schema_governance": {
+        "dimension_version_compatibility": {
+          "instruction": "Enforce that all vectors in a collection share the same dimensionality. If the embedding model changes dimension size, a new collection must be created and a migration executed. The system must reject mismatched dimensions at ingest with a clear error."
+        },
+        "metadata_normalization": {
+          "instruction": "Define and enforce metadata field naming conventions (snake_case, max length, allowed characters). Provide a metadata schema registry per collection that validates incoming metadata against declared types."
+        },
+        "namespace_isolation": {
+          "instruction": "Tenancy and namespace boundaries must be enforced at the storage and query engine level. A query scoped to tenant A must never touch tenant B's data pages, not just filter them out post-hoc."
+        },
+        "audit_event_fields": {
+          "required_on_all_mutations": ["actor_id", "timestamp", "operation", "collection", "document_id", "tenant_id", "source_ip", "idempotency_key"],
+          "instruction": "All audit fields are system-populated and immutable. They are stored in a separate audit log, not in the document metadata."
+        },
+        "schema_evolution": {
+          "supported_operations": [
+            "Add metadata index",
+            "Remove metadata index",
+            "Add named vector field",
+            "Update collection-level settings (replication factor, index params)"
+          ],
+          "constraint": "All schema evolution operations must be online (no downtime, no full rebuild)."
+        }
+      }
+    },
+
+    "scalability_and_distribution": {
+      "sharding": {
+        "strategies": ["consistent_hashing", "range_based"],
+        "instruction": "Sharding is transparent to the client. The router/coordinator layer handles shard resolution."
+      },
+      "replication": {
+        "factor_range": { "min": 1, "max": 5 },
+        "models": ["leader_follower", "leaderless_quorum"],
+        "consistency": "Configurable per-operation: strong (quorum write + quorum read) or eventual (single-node read).",
+        "consistency_guarantees": {
+          "instruction": "Document the exact consistency model. Define what 'read-your-writes' means in this system. Specify whether a search immediately after an upsert is guaranteed to include the new vector, and if not, the expected propagation delay."
+        }
+      },
+      "cluster_management": {
+        "dynamic_membership": true,
+        "auto_rebalancing": true,
+        "instruction": "Nodes can be added or removed without downtime. Data rebalancing happens in the background with configurable throughput limits to avoid impacting query latency."
+      },
+      "scale_targets": {
+        "instruction": "Scale targets are derived from the environment_inputs.traffic_profile and environment_inputs.sla_targets sections. The design must include a sizing calculator that maps (vector count, dimensions, QPS, latency target) → (node count, memory, disk, network). Provide reference benchmarks at 1M, 10M, 100M, and 1B vector scales."
+      }
+    },
+
+    "persistence_and_durability": {
+      "wal": {
+        "instruction": "Write-ahead log for all mutations. Configurable fsync policy: per-write, batched (N writes), or periodic (N ms). WAL segments are replicated before acknowledging writes in strong consistency mode."
+      },
+      "storage": {
+        "approach": "Disk-backed with memory-mapped index files.",
+        "constraint": "Must NOT require the entire index to fit in RAM. Gracefully degrade performance when working set exceeds available memory.",
+        "tiered_storage": {
+          "instruction": "Support hot/warm/cold storage tiers. Hot tier: local NVMe for active indexes. Warm tier: network-attached storage for less-accessed collections. Cold tier: S3-compatible object store for archived collections. Tier transitions are policy-driven and automated."
+        }
+      },
+      "compaction": {
+        "instruction": "Background compaction to reclaim space from deletes and updates. Configurable compaction strategy (size-tiered or leveled). Compaction must not degrade query latency by more than 10% during execution."
+      },
+      "snapshots": {
+        "instruction": "Point-in-time snapshots for backup. Support local filesystem and S3-compatible object store as snapshot targets. Snapshots must be consistent (no partial writes captured)."
+      }
+    },
+
+    "multi_tenancy": {
+      "isolation_model": {
+        "options": ["collection_per_tenant", "metadata_partition_key"],
+        "instruction": "Support both models. Metadata partition key approach is more resource-efficient; collection-per-tenant provides stronger isolation. Document the security and performance tradeoffs of each."
+      },
+      "quotas": {
+        "configurable_limits": ["max_vectors", "max_qps", "max_storage_bytes", "max_collections", "max_concurrent_queries"],
+        "enforcement": "Hard limits with clear error responses (HTTP 429 / gRPC RESOURCE_EXHAUSTED).",
+        "instruction": "Quota enforcement must be real-time (not eventually consistent). Include a quota dashboard and alerting when tenants approach limits."
+      },
+      "data_isolation": {
+        "constraint": "CRITICAL: A tenant's queries must NEVER return another tenant's data. This must be enforced at the engine level, not just the API layer. Include integration tests that specifically verify cross-tenant isolation under concurrent load."
+      }
+    },
+
+    "api_design": {
+      "protocols": {
+        "primary": {
+          "type": "gRPC",
+          "reason": "Performance-critical path for search and bulk operations."
+        },
+        "secondary": {
+          "type": "REST_HTTP",
+          "reason": "Broad compatibility, browser-based admin UIs, webhook integrations."
+        }
+      },
+      "endpoints": {
+        "collection_management": ["create", "get", "list", "update", "delete"],
+        "document_operations": ["insert", "upsert", "get", "update", "delete", "batch_insert", "batch_upsert", "batch_delete"],
+        "search": ["query", "batch_query", "hybrid_query"],
+        "admin": ["health", "readiness", "cluster_status", "trigger_compaction", "trigger_snapshot", "trigger_rebalance", "rebuild_index"],
+        "streaming": ["stream_insert"],
+        "governance": ["get_schema", "validate_metadata", "get_quota_usage"]
+      },
+      "api_contract": {
+        "idempotency": {
+          "instruction": "All mutating endpoints accept an optional Idempotency-Key header. Repeated calls with the same key within the idempotency window return the original response without re-executing the mutation."
+        },
+        "pagination": {
+          "strategy": "Cursor-based tokens. No offset-based pagination.",
+          "instruction": "Cursors must be opaque, stateless, and URL-safe."
+        },
+        "consistency_options": {
+          "instruction": "Search endpoints accept a consistency_level parameter: 'strong' (quorum read, guaranteed up-to-date) or 'eventual' (fastest, may serve stale data). Default is 'eventual'."
+        },
+        "error_contract": {
+          "instruction": "All errors return a structured body: { code: string, message: string, details: object, request_id: string, trace_id: string }. Error codes are stable and documented. Clients can programmatically switch on error codes."
+        }
+      },
+      "schema_artifacts": {
+        "protobuf": "Ship .proto files as first-class versioned artifacts.",
+        "openapi": "Auto-generate OpenAPI 3.1 spec from the REST layer with sample request/response payloads for every endpoint.",
+        "instruction": "Both schema definitions must be source-controlled and published with every release."
+      },
+      "client_sdks": {
+        "required": ["python", "typescript_node", "go", "rust"],
+        "guidelines": [
+          "Idiomatic to each language (e.g., async/await in Python and TS, channels in Go)",
+          "Auto-generated gRPC stubs with hand-written ergonomic wrappers",
+          "Connection pooling and automatic retry with exponential backoff and jitter",
+          "Type-safe builder pattern for filter expressions",
+          "Built-in circuit breaker for resilience"
+        ]
+      }
+    },
+
+    "security": {
+      "authentication": {
+        "methods": ["api_key", "jwt", "oauth2", "mtls_client_certs"],
+        "enterprise_iam_integration": {
+          "instruction": "Must integrate with enterprise IAM providers: OIDC-compliant IdPs (Okta, Azure AD, Auth0), SAML for legacy SSO, and LDAP/AD for on-prem. Auth is pluggable via a provider interface — never hardcode a specific IdP."
+        }
+      },
+      "authorization": {
+        "model": "RBAC with optional ABAC extensions",
+        "roles": {
+          "super_admin": "Cluster-wide management, tenant provisioning, security policy changes.",
+          "tenant_admin": "Full access within their tenant's collections. Cannot see other tenants.",
+          "read_write": "CRUD and search on scoped collections within their tenant.",
+          "read_only": "Search and get on scoped collections within their tenant.",
+          "ingestion_service": "Write-only role for automated pipelines. Cannot search or read back data."
+        },
+        "scoping": "Roles are scoped to tenant + collection(s). No implicit global access.",
+        "policy_engine": {
+          "instruction": "Support policy-as-code (OPA/Rego or Cedar) for fine-grained authorization rules beyond static RBAC. Example: 'users in group X can only search collections tagged as non-sensitive'."
+        }
+      },
+      "transport": {
+        "requirement": "Mutual TLS (mTLS) for all inter-node communication. TLS 1.3 for all client-to-node communication.",
+        "certificate_management": "Support automatic certificate rotation via cert-manager or Vault PKI."
+      },
+      "encryption_at_rest": {
+        "algorithm": "AES-256-GCM",
+        "key_management": ["local_keyfile", "aws_kms", "gcp_kms", "azure_key_vault", "hashicorp_vault"],
+        "instruction": "Bring-your-own-key (BYOK) must be supported. Key rotation without re-encryption of existing data (use envelope encryption)."
+      },
+      "field_level_security": {
+        "redaction": {
+          "instruction": "Support field-level redaction policies. Example: the 'content' field is redacted for users with read_only role, but returned for read_write users. Redaction is enforced at the query engine level, not the API gateway."
+        },
+        "masking": {
+          "instruction": "Support dynamic data masking for sensitive metadata fields (e.g., PII). Masking rules are defined per-field per-role. Masked fields return a deterministic hash or '[REDACTED]' instead of the raw value."
+        }
+      },
+      "audit_logging": {
+        "events": ["all_mutations", "admin_operations", "auth_failures", "schema_changes", "search_queries_optional", "policy_changes"],
+        "fields": ["timestamp", "actor_id", "tenant_id", "action", "resource", "result", "source_ip", "request_id", "trace_id"],
+        "instruction": "Audit log must be append-only and tamper-evident. Support forwarding to external SIEM (syslog, webhook, Kafka). Audit logs are retained independently of data lifecycle policies.",
+        "anomaly_detection": {
+          "instruction": "Define alert rules for anomalous access patterns: sudden spike in queries from a single tenant, bulk deletion operations, access from new IP ranges, failed auth attempts exceeding threshold. Alerts feed into the observability alerting pipeline."
+        }
+      }
+    },
+
+    "observability": {
+      "metrics": {
+        "export_format": ["prometheus", "opentelemetry"],
+        "required_metrics": [
+          "query_latency_histogram (p50, p95, p99) by collection and query_type",
+          "queries_per_second by collection and query_type",
+          "ingestion_rate_docs_per_second",
+          "index_build_progress_percent",
+          "memory_usage_bytes (heap, mmap, cache)",
+          "disk_usage_bytes (data, wal, snapshots)",
+          "wal_size_bytes and wal_lag_ms",
+          "replication_lag_ms per replica",
+          "active_connections by protocol",
+          "cache_hit_ratio",
+          "compaction_progress and compaction_duration",
+          "tenant_quota_utilization_percent",
+          "error_rate by error_code"
+        ]
+      },
+      "logging": {
+        "format": "Structured JSON",
+        "levels": ["debug", "info", "warn", "error"],
+        "instruction": "Configurable per-module log levels at runtime without restart. All log entries include request_id and trace_id for correlation."
+      },
+      "health_checks": {
+        "liveness": "Returns 200 if the process is running.",
+        "readiness": "Returns 200 only when the node can serve queries (index loaded, cluster joined, replication caught up).",
+        "startup": "Returns 200 only after initial index loading and WAL replay complete. Prevents premature traffic routing during cold start.",
+        "instruction": "Kubernetes-native probe endpoints with configurable thresholds."
+      },
+      "tracing": {
+        "standard": "OpenTelemetry",
+        "instruction": "Propagate trace context across all inter-node RPCs. Emit spans for: query parsing, filter evaluation, ANN search, result merging, reranking, WAL write, replication."
+      },
+      "dashboards_and_slos": {
+        "instruction": "Provide dashboard definitions (Grafana JSON or equivalent) for: cluster overview, per-collection deep-dive, per-tenant usage, and operational health.",
+        "slo_policy": {
+          "instruction": "Define SLO targets derived from environment_inputs.sla_targets. Define error budget policy: what happens when the error budget is exhausted (e.g., freeze deployments, page on-call). Include burn-rate alerting (fast-burn for pages, slow-burn for tickets)."
+        },
+        "synthetic_monitors": {
+          "instruction": "Define synthetic search and ingest probes that run every 60 seconds against a canary collection. Alert if synthetic latency exceeds 2x the p99 SLO target or if probes fail consecutively."
+        }
+      }
+    },
+
+    "rag_and_agentic_integration": {
+      "metadata_driven_retrieval": {
+        "instruction": "Support the compound filter patterns agentic frameworks use. Example: retrieve chunks from document_id=X AND uploaded_after=2024-01-01 AND tags IN ['architecture', 'api'] AND similarity > 0.75."
+      },
+      "mmr_diversification": {
+        "instruction": "Built-in Maximal Marginal Relevance option on search. Caller specifies lambda (diversity vs relevance tradeoff) and it is applied server-side before returning results.",
+        "parameter": "mmr_lambda (float, 0.0–1.0, default 0.5)"
+      },
+      "score_thresholding": {
+        "instruction": "Accept a min_score parameter on search. Only return results above the threshold. Do NOT return all results and expect the caller to filter.",
+        "parameter": "min_score (float, optional)"
+      },
+      "context_window_awareness": {
+        "instruction": "Accept an optional max_tokens budget on search. Return as many results as fit within the token budget, using the stored token_count field. Results are ordered by relevance; lower-ranked results are dropped first.",
+        "parameter": "max_tokens (integer, optional)"
+      },
+      "reranking": {
+        "approaches": [
+          "Two-stage: retrieve top-N, then rerank to top-K (N > K)",
+          "Native reranker plugin interface for server-side reranking (cross-encoder or custom model)",
+          "Return raw scores so the caller can rerank client-side"
+        ],
+        "instruction": "Support all three approaches. The two-stage retrieve-then-rerank must be expressible as a single API call with oversample_factor parameter."
+      },
+      "agentic_memory": {
+        "instruction": "Support per-session or per-agent vector partitions using metadata partition keys. These partitions must support TTL so stale agent memory is automatically purged.",
+        "parameters": {
+          "session_id": "string — partition key for agent memory isolation",
+          "ttl_seconds": "integer — auto-expire documents after this duration"
+        }
+      },
+      "chain_of_thought_constraints": {
+        "instruction": "Support query-time constraints that agentic frameworks pass during chain-of-thought reasoning. Examples: 'exclude documents already cited in this conversation' (via exclude_ids list), 'boost documents from the same source as the last retrieved chunk' (via boost_filter). These are query parameters, not index-time configurations."
+      }
+    },
+
+    "data_lifecycle_and_governance": {
+      "ttl": {
+        "granularity": ["per_document", "per_collection"],
+        "instruction": "TTL expiration runs as a background process. Expired documents are excluded from search results immediately but may be physically deleted asynchronously during compaction."
+      },
+      "retention_and_archival": {
+        "instruction": "Define per-collection retention policies: after N days, data transitions from hot → warm → cold → archived → purged. Archived data is queryable with higher latency (restored from object store on demand). Purged data is irrecoverably deleted.",
+        "tiers": ["hot (NVMe, indexed, sub-50ms)", "warm (network storage, indexed, sub-200ms)", "cold (object store, not indexed, seconds)", "archived (object store, restore required, minutes)", "purged (irrecoverable)"]
+      },
+      "legal_hold": {
+        "instruction": "Support legal hold flags on documents and collections. A document under legal hold CANNOT be deleted or purged regardless of TTL or retention policy. Legal holds are applied and released via the admin API with audit logging. This is required for GDPR litigation hold and eDiscovery compliance."
+      },
+      "gdpr_purge": {
+        "instruction": "Support right-to-erasure requests. Given a source_document_id or tenant_id, permanently delete all associated vectors, metadata, content, and audit references (or pseudonymize audit entries). The purge must be cryptographically verifiable (return a deletion certificate with affected document count and timestamp). Purge must propagate to all replicas and backup snapshots within a configurable window."
+      },
+      "data_lineage": {
+        "instruction": "Track the full lineage of every vector: source_document → chunk → embedding_model:version → vector. Lineage is queryable via the admin API. This enables impact analysis when an embedding model is deprecated or a source document is retracted.",
+        "fields": ["source_system", "source_document_id", "chunk_index", "embedding_model_id", "embedding_model_version", "ingested_at", "ingested_by_pipeline"]
+      },
+      "versioning": {
+        "instruction": "Optional document version history. Configurable max_versions per document. Support rollback to a specific version. Version history must be purgeable independently of the current version.",
+        "default": "disabled"
+      },
+      "dataset_versioning": {
+        "instruction": "Support tagging a collection's state at a point in time as a named dataset version (similar to git tags). Dataset versions are immutable snapshots used for reproducibility in ML/evaluation workflows. Support querying against a specific dataset version."
+      },
+      "bulk_export": {
+        "formats": ["parquet", "jsonl"],
+        "instruction": "Full collection export with progress reporting. Support streaming export for large collections. Include vector data, metadata, and content. Exports respect field-level redaction policies."
+      },
+      "bulk_import": {
+        "formats": ["parquet", "jsonl", "csv"],
+        "instruction": "Import with progress reporting, validation, and configurable error handling (skip_invalid | fail_fast)."
+      }
+    },
+
+    "deployment_and_operations": {
+      "packaging": {
+        "single_node": {
+          "instruction": "Single statically-linked binary for single-node mode. Zero external dependencies (no JVM, no external DB). Download-and-run experience."
+        },
+        "containerized": {
+          "docker": "Multi-stage Dockerfile. Final image < 100MB. Non-root user. Distroless or alpine base.",
+          "helm": "Helm chart for Kubernetes with configurable values for replicas, resources, storage class, ingress, TLS, and affinity rules."
+        },
+        "infrastructure_as_code": {
+          "instruction": "Provide Terraform/Pulumi modules for provisioning the vector database cluster on the target cloud. Include: compute, storage, networking, IAM roles, KMS keys, monitoring. Modules must be parameterized for single-region and multi-region topologies."
+        }
+      },
+      "configuration": {
+        "sources": ["yaml_file", "toml_file", "environment_variables", "cli_flags"],
+        "precedence": "CLI flags > env vars > config file > defaults",
+        "instruction": "Document every configuration option with type, default, description, and whether it requires a restart to take effect. Provide a config validation command that checks for errors before startup."
+      },
+      "deployment_strategies": {
+        "rolling": {
+          "instruction": "Default deployment strategy. One node at a time. New node must pass readiness checks before the next node is upgraded. Automatic rollback if the new version fails readiness within a configurable timeout."
+        },
+        "blue_green": {
+          "instruction": "Support blue/green deployment for major version upgrades. Both clusters run simultaneously. Traffic is switched via DNS or load balancer. Define the verification checklist before cutting over and the rollback procedure."
+        },
+        "canary": {
+          "instruction": "Support canary deployment: route a configurable percentage of traffic (e.g., 5%) to the new version. Monitor error rate and latency. Auto-promote if metrics are within SLO for N minutes; auto-rollback if they breach thresholds."
+        }
+      },
+      "high_availability": {
+        "single_region": {
+          "instruction": "Minimum 3-node cluster across 3 availability zones. Quorum-based writes survive 1 AZ failure. Reads remain available during any single-node failure."
+        },
+        "multi_region": {
+          "instruction": "Define active-passive and active-active multi-region topologies. Active-passive: async replication to DR region, RPO per environment_inputs.sla_targets. Active-active: conflict resolution strategy (last-writer-wins with vector clock, or region-primary for writes). Document the latency and consistency tradeoffs of each."
+        },
+        "failover": {
+          "instruction": "Automatic leader failover within a region (< 30 seconds). Cross-region failover is manual by default (requires operator confirmation) unless explicitly configured for auto-failover. Document the split-brain prevention mechanism."
+        }
+      },
+      "backup_and_disaster_recovery": {
+        "backup": {
+          "instruction": "Automated snapshots on a configurable schedule (e.g., every 6 hours). Snapshots stored in a separate fault domain (different AZ or region). Snapshot retention policy: keep last N snapshots or snapshots from the last N days."
+        },
+        "restore": {
+          "instruction": "Restore from snapshot to a new cluster or in-place. Provide estimated restore time based on dataset size. Document the exact steps and expected duration."
+        },
+        "dr_restore_testing": {
+          "instruction": "CRITICAL: Define a DR restore test cadence (e.g., monthly). The restore test must be automated: spin up a temporary cluster, restore from latest snapshot, run a validation suite (record count, sample queries, checksum), tear down, and report pass/fail. DR test results are tracked in the compliance dashboard."
+        }
+      },
+      "graceful_shutdown": {
+        "instruction": "On SIGTERM: stop accepting new connections, drain in-flight requests (configurable timeout, default 30s), flush WAL, create snapshot, deregister from cluster, then exit."
+      },
+      "upgrades": {
+        "strategy": "Rolling upgrades with zero downtime.",
+        "wire_protocol": "Versioned wire protocol. New nodes must communicate with nodes running the previous minor version (N and N-1 compatibility).",
+        "data_format": "Forward-compatible data format. Automatic migration on startup if needed. Migration progress is logged and exposed as a metric."
+      },
+      "operational_playbooks": {
+        "scale_up": {
+          "instruction": "Step-by-step procedure: provision new nodes → join cluster → verify rebalancing progress → validate query latency → update capacity plan. Include expected duration per node at reference dataset sizes."
+        },
+        "scale_down": {
+          "instruction": "Step-by-step procedure: drain node (migrate shards) → verify all shards relocated → remove from cluster → decommission. Include safety checks: do not scale below quorum, do not scale below replication factor."
+        },
+        "incident_triage": {
+          "instruction": "Decision-tree runbook: symptom → likely cause → diagnostic commands → remediation steps. Cover: high latency, elevated error rate, replication lag, disk full, OOM, split-brain, index corruption, certificate expiry."
+        },
+        "corruption_recovery": {
+          "instruction": "Procedure for recovering from index corruption: detect (checksum mismatch on read) → isolate affected node → rebuild index from WAL + replicas → verify recall against ground truth → rejoin cluster. Define the maximum acceptable data loss window."
+        },
+        "reindex": {
+          "instruction": "Full reindex procedure for when index parameters need to change (e.g., switching from HNSW to IVF-PQ). Build new index in background → swap atomically → verify recall → delete old index. Must not impact availability."
+        },
+        "on_call_and_escalation": {
+          "instruction": "Define escalation tiers: L1 (automated alerts, self-healing) → L2 (on-call engineer, 15-min response) → L3 (senior engineer, architecture-level issues) → L4 (vendor escalation). Define which alerts map to which tier. Include contact/PagerDuty integration points."
+        }
+      }
+    },
+
+    "performance_and_optimization": {
+      "quantization": {
+        "options": {
+          "scalar": "float32 → int8 (4x memory reduction, ~2-5% recall loss)",
+          "product": "PQ with configurable number of sub-quantizers",
+          "binary": "1-bit quantization for candidate pre-filtering"
+        },
+        "instruction": "Quantization is configurable per collection. Support re-quantization without full re-index."
+      },
+      "caching": {
+        "strategy": "LRU or clock cache for hot vectors and metadata.",
+        "instruction": "Cache size is configurable. Expose cache hit ratio as a metric. Cache invalidation must be consistent with write path (no stale reads after acknowledged writes in strong consistency mode)."
+      },
+      "simd": {
+        "instruction": "Distance computations must use SIMD intrinsics. Support AVX2, AVX-512 (x86), and NEON (ARM). Runtime detection with graceful fallback to scalar."
+      },
+      "io_optimization": {
+        "instruction": "Batch disk reads for batch queries. Use io_uring (Linux) or equivalent async I/O where available."
+      },
+      "benchmark_methodology": {
+        "instruction": "Define a reproducible benchmark methodology: fixed dataset (e.g., ANN-benchmarks suite), fixed hardware profile, fixed configuration. Measure: recall@k, QPS, latency (p50/p95/p99), memory footprint, disk footprint, index build time. Compare against brute-force ground truth for recall. Publish results with every release.",
+        "recall_precision_targets": {
+          "recall_at_10": ">= 0.95 with HNSW default parameters",
+          "recall_at_100": ">= 0.99 with HNSW default parameters",
+          "instruction": "Define the acceptable recall/latency tradeoff curve. Users can tune index parameters to move along this curve."
+        },
+        "load_test_plan": {
+          "instruction": "Define load test scenarios: sustained throughput (1x traffic for 24h), burst (10x traffic for 15min), mixed read/write (80/20, 50/50, 20/80), long-duration soak (72h). Define pass criteria for each: max p99 latency, max error rate, no memory leaks (RSS growth < 5% over soak)."
+        }
+      }
+    },
+
+    "testing_and_quality": {
+      "recall_benchmarks": {
+        "instruction": "Measure recall@k against brute-force ground truth.",
+        "datasets": ["1M vectors", "10M vectors", "100M vectors"],
+        "metrics": ["recall@1", "recall@10", "recall@100", "queries_per_second", "latency_p99"],
+        "instruction_2": "Publish benchmark results with every release. Include hardware specs and configuration."
+      },
+      "chaos_testing": {
+        "scenarios": [
+          "Node failure during write",
+          "Node failure during index build",
+          "Network partition (split-brain)",
+          "Disk full",
+          "OOM kill and recovery",
+          "Clock skew",
+          "Slow network (latency injection)",
+          "Certificate expiry mid-operation"
+        ],
+        "instruction": "Automated chaos test suite. All scenarios must result in correct behavior (no data loss, no silent corruption). Run chaos tests weekly in a staging environment."
+      },
+      "load_testing": {
+        "instruction": "Ship a built-in load testing harness. Support configurable read/write ratio, concurrency, dataset size, and duration. Output latency histograms and throughput. Include baseline profiles for reference hardware."
+      },
+      "property_testing": {
+        "instruction": "Fuzz insert/update/delete/search sequences to verify index consistency. After any sequence of mutations, a brute-force search must return the same results as an ANN search with recall@10 >= 0.95."
+      },
+      "cross_tenant_isolation_tests": {
+        "instruction": "Dedicated test suite that creates N tenants, ingests unique data per tenant, and runs concurrent searches verifying that no tenant ever sees another tenant's documents. Run under load to catch race conditions."
+      },
+      "ci_pipeline": {
+        "instruction": "Include CI pipeline definition (GitHub Actions). Stages: lint → unit test → integration test → cross-tenant isolation test → benchmark (gated on regression) → chaos test (nightly) → build artifacts → security scan (SAST + dependency audit) → publish.",
+        "policy_checks": ["No known CVEs in dependencies", "All public APIs have test coverage", "No secrets in codebase (trufflehog/gitleaks)", "Docker image passes Trivy scan"]
+      }
+    },
+
+    "compliance_and_security_checklist": {
+      "instruction": "Provide an explicit compliance matrix mapping each requirement to the system feature that satisfies it.",
+      "frameworks": {
+        "soc2_type_ii": {
+          "controls": ["Access control (CC6.1)", "Encryption (CC6.7)", "Monitoring (CC7.1)", "Change management (CC8.1)", "Incident response (CC7.3)"],
+          "instruction": "Map each SOC2 control to the specific system feature, configuration, or operational procedure that satisfies it."
+        },
+        "gdpr": {
+          "controls": ["Right to erasure (Art. 17)", "Data portability (Art. 20)", "Privacy by design (Art. 25)", "Data processing records (Art. 30)", "Breach notification (Art. 33)"],
+          "instruction": "Map each GDPR article to the specific system feature. The GDPR purge feature, bulk export, audit logging, and anomaly detection must be explicitly referenced."
+        },
+        "hipaa": {
+          "controls": ["Access controls (§164.312(a))", "Audit controls (§164.312(b))", "Integrity controls (§164.312(c))", "Transmission security (§164.312(e))"],
+          "instruction": "If HIPAA is required per environment_inputs, map each safeguard to the system feature. Field-level encryption of PHI must be addressed."
+        },
+        "iso_27001": {
+          "instruction": "If required, provide an Annex A control mapping for relevant controls (A.8 Asset management, A.9 Access control, A.10 Cryptography, A.12 Operations security, A.14 System acquisition)."
+        }
+      }
+    },
+
+    "migration": {
+      "initial_bootstrap": {
+        "instruction": "Define the procedure for initial data loading from an existing corpus. Support bulk import from: flat files (Parquet/JSONL), existing vector DBs (Pinecone, Qdrant, Milvus, Weaviate, pgvector), and Elasticsearch. Include: data extraction → validation → transformation → parallel loading → index building → verification (record count + sample recall check)."
+      },
+      "rolling_migration": {
+        "instruction": "Define a zero-downtime migration strategy for switching from an incumbent vector DB. Phase 1: Dual-write (new writes go to both old and new). Phase 2: Backfill historical data. Phase 3: Shadow reads (query both, compare results, log discrepancies). Phase 4: Cutover reads to new system. Phase 5: Decommission old system. Each phase must have explicit entry/exit criteria and rollback procedures."
+      },
+      "rollback_strategy": {
+        "instruction": "At every migration phase, define how to rollback to the previous state. Rollback must be tested as part of the migration plan, not just documented. Include maximum acceptable rollback time."
+      }
+    },
+
+    "sizing_and_cost_model": {
+      "instruction": "Provide a sizing calculator and cost model.",
+      "calculator_inputs": ["vector_count", "dimensions", "metadata_size_avg", "content_size_avg", "search_qps", "ingest_qps", "latency_target_p99", "replication_factor", "retention_days"],
+      "calculator_outputs": ["node_count", "vcpu_per_node", "memory_per_node_gb", "disk_per_node_gb", "network_bandwidth_gbps", "estimated_monthly_cost"],
+      "reference_profiles": {
+        "small": "10M vectors, 1536d, 100 QPS, 3 nodes",
+        "medium": "100M vectors, 1536d, 1000 QPS, 9 nodes",
+        "large": "1B vectors, 1536d, 5000 QPS, 30+ nodes"
+      },
+      "instruction_2": "Include cost projections at 1x, 3x, and 10x current scale for each reference profile on the target cloud provider."
+    }
+  },
+
+  "output_format": {
+    "instruction": "Structure the response using the following sections. Each section is mandatory.",
+    "sections": [
+      {
+        "name": "1_assumptions",
+        "description": "Explicit list of all assumptions made, especially where environment_inputs were TBD. Each assumption must state what changes if the assumption is wrong."
+      },
+      {
+        "name": "2_executive_summary",
+        "description": "One-page architecture summary suitable for engineering leadership. Problem statement, proposed solution, key tradeoffs, and expected outcomes."
+      },
+      {
+        "name": "3_architecture_overview",
+        "description": "High-level component diagram (textual representation acceptable). Data flow for ingest and query paths. Technology choices with justification for each."
+      },
+      {
+        "name": "4_component_design",
+        "description": "Detailed design for each component: coordinator/router, storage engine, index engine, WAL, replication manager, query executor, metadata store, cache layer, admin service."
+      },
+      {
+        "name": "5_api_contract",
+        "description": "OpenAPI-style endpoint definitions with sample request/response payloads for all operations. Protobuf message definitions for gRPC."
+      },
+      {
+        "name": "6_security_and_compliance",
+        "description": "Security architecture, threat model, compliance matrix, and hardening checklist."
+      },
+      {
+        "name": "7_operations",
+        "description": "Deployment model, HA topology, backup/DR strategy, monitoring dashboards, SLO policy, and all operational playbooks."
+      },
+      {
+        "name": "8_performance_and_quality",
+        "description": "Benchmark methodology, recall/precision targets, load test plan, and acceptance criteria with pass/fail definitions."
+      },
+      {
+        "name": "9_data_governance",
+        "description": "Retention policies, archival tiers, legal hold, GDPR purge, data lineage, and dataset versioning."
+      },
+      {
+        "name": "10_migration_and_rollout",
+        "description": "Migration plan (bootstrap + rolling), rollback strategy, and deployment phasing."
+      },
+      {
+        "name": "11_sizing_and_cost",
+        "description": "Sizing calculator, reference profiles, and cost projections."
+      },
+      {
+        "name": "12_implementation_artifacts",
+        "description": "Source code organized by module, Dockerfile, Helm chart, IaC modules, CI/CD pipeline definition, and Makefile/taskfile."
+      },
+      {
+        "name": "13_risks_and_mitigations",
+        "description": "Known risks, probability, impact, and mitigation strategy for each."
+      },
+      {
+        "name": "14_open_questions",
+        "description": "Unresolved questions that require stakeholder input before implementation."
+      },
+      {
+        "name": "15_roadmap",
+        "description": "Implementation phases with timeline, ownership matrix, and milestone definitions. Include a 90-day roadmap with phase gates."
+      }
+    ],
+    "nonfunctional_acceptance_criteria": {
+      "instruction": "Include as an appendix. Each criterion must have: description, measurement method, target threshold, and pass/fail definition.",
+      "examples": [
+        "Search latency p99 < {sla_target} ms at {traffic_profile.search_qps} QPS",
+        "Recall@10 >= 0.95 on ANN-benchmarks sift-128-euclidean",
+        "Zero cross-tenant data leakage under 10-tenant concurrent load test",
+        "Successful DR restore within {sla_target.rto} from latest snapshot",
+        "Rolling upgrade completes with zero dropped queries",
+        "GDPR purge completes within 24 hours for any single tenant"
+      ]
+    }
+  },
+
+  "constraints": {
+    "priorities": "Reliability and security over feature breadth. Correctness over performance. Performance over convenience.",
+    "vendor_lock_in": "Avoid lock-in where feasible. Recommend abstraction layers for cloud-specific services (KMS, object store, IAM). Document migration path for each cloud-specific dependency.",
+    "operational_complexity": "Keep operational complexity proportional to throughput and team size (see environment_inputs.team_context). A 3-person team should be able to operate this system without dedicated SRE staffing.",
+    "determinism": "Prefer deterministic, debuggable behavior over opaque settings. Every tunable must have a documented effect and a sensible default. No hidden auto-tuning that changes behavior unpredictably.",
+    "language_preference": "Rust or Go (justify choice based on the specific tradeoffs for this system).",
+    "license": "Apache-2.0",
+    "minimum_test_coverage": "80% line coverage for core engine, 95% for API layer",
+    "no_external_vector_db_dependency": "Must NOT wrap or embed an existing vector database (e.g., no embedding Qdrant, Milvus, or FAISS as the core engine). Purpose-built from the ground up.",
+    "backward_compatibility": "Wire protocol and data format must be backward compatible within a major version.",
+    "unknowns": "Do not propose unsupported assumptions. State unknowns clearly in the assumptions section and define what decision is needed to resolve each."
+  }
+}

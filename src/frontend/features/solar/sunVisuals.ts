@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   BackSide,
   BufferGeometry,
+  Camera,
   CanvasTexture,
   Color,
   Float32BufferAttribute,
@@ -649,7 +650,7 @@ function collectPhysicsDrivenSunspotGroups(physicsState, activity) {
  * Sunspots follow Spörer's law: appear at ~±35° lat at cycle start, migrate to ~±5° at end.
  * Called once per second from the animation loop.
  */
-export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec, physicsState = null) {
+export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec, physicsState: unknown | null = null) {
   if (!sunSurfaceMaterial?.uniforms?.sunspotSeeds) return;
 
   const TWO_PI = Math.PI * 2;
@@ -852,7 +853,7 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
  * @param {number} activity - [0,1] solar activity level
  */
 export function updateChromosphereLayer(chromospherePoints, timeSec, activity, {
-  activeChannel = null,
+  activeChannel = undefined as string | null | undefined,
   observationBlend = 0,
   observationEmission = 0,
   observedConfidence = 0,
@@ -1103,7 +1104,7 @@ export function updateTransitionRegionShell(
   trMesh: Mesh | null | undefined,
   timeSec: number,
   activity: number,
-  { activeChannel = null as string | null } = {}
+  { activeChannel = undefined as string | null | undefined } = {}
 ) {
   if (!trMesh || !(trMesh as any).material?.uniforms) return;
   const u = (trMesh as any).material.uniforms;
@@ -1470,7 +1471,7 @@ export function updateSunParkerSpiralFromPhysicsState(
   maxLines = 6,
   maxPoints = 96,
   timeSec = 0,
-  camera = null
+  camera: Camera | null = null
 ) {
   if (!sunParkerSpiralGroup) return;
   const sourceLines = Array.isArray(physicsState?.heliosphere?.parker_spiral?.lines)
@@ -1627,10 +1628,10 @@ export function updateSunMaterialUniforms({
   activity,
   observationBlend = 0,
   observationEmission = 0.25,
-  coronaHue = null,
+  coronaHue = undefined as number[] | null | undefined,
   sunDisplayRadius = 1.0,
-  activeChannel = null as string | null,
-  coronalHoleData = null as any
+  activeChannel = undefined as string | null | undefined,
+  coronalHoleData = undefined as unknown
 }) {
   const obsBlend = clampUnit(Number(observationBlend) || 0);
   const obsEmission = clampUnit(Number(observationEmission) || 0.25);

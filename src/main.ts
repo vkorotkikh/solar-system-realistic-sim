@@ -1047,7 +1047,7 @@ dom.agnStochastic?.addEventListener('change', () => {
 });
 
 dom.agnHypothesis?.addEventListener('change', () => {
-  const hypothesis = dom.agnHypothesis.value;
+  const hypothesis = (dom.agnHypothesis as HTMLSelectElement | null)?.value;
   if (hypothesis === 'h29' && dom.bodyInfo) {
     dom.bodyInfo.textContent = sunCtrl.getWarpInfoText?.() || 'H29 Warp Wave Selected';
   } else {
@@ -1067,11 +1067,11 @@ camera.lookAt(controls.target);
 updateCameraClipPlanes();
 updateBodyInfoPanel('sun');
 
-for (const line of orbitLines) line.visible = Boolean(dom.toggleOrbits?.checked);
-for (const entry of labels) entry.sprite.visible = Boolean(dom.toggleLabels?.checked);
+for (const line of orbitLines) line.visible = Boolean((dom.toggleOrbits as HTMLInputElement | null)?.checked);
+for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
-sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
+sunCtrl.setAgnObserverFrameMode(Boolean((dom.agnObserverFrame as HTMLInputElement | null)?.checked));
 
 resizeRenderer();
 renderer.render(scene, camera);
@@ -1080,7 +1080,7 @@ renderer.render(scene, camera);
 
 let prevTimestamp = performance.now();
 
-function animate(timestamp) {
+function animate(timestamp: number) {
   requestAnimationFrame(animate);
   const deltaSeconds = Math.max(0, (timestamp - prevTimestamp) / 1_000);
   prevTimestamp = timestamp;

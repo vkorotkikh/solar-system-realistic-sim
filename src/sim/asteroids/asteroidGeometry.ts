@@ -10,7 +10,7 @@ import {
     StaticDrawUsage
 } from 'three';
 import { TAXONOMIES } from './asteroidDistributions';
-import { patchAsteroidMaterial } from './asteroidShaders';
+import { patchAsteroidMaterial, type AsteroidOrbitUniforms } from './asteroidShaders';
 
 export function generateAsteroidGeometry(detail = 1, distortionAmount = 0.35) {
     const geometry = new IcosahedronGeometry(1.0, detail);
@@ -35,9 +35,19 @@ export function generateAsteroidGeometry(detail = 1, distortionAmount = 0.35) {
     return geometry;
 }
 
-export function createAsteroidInstancedBuckets(totalAsteroids, shapesPerTaxonomy, shaderUniforms) {
-    const buckets = {};
-    const taxKeys = Object.keys(TAXONOMIES);
+export function createAsteroidInstancedBuckets(
+    totalAsteroids: number,
+    shapesPerTaxonomy: number,
+    shaderUniforms: AsteroidOrbitUniforms
+) {
+    const buckets: Record<string, Array<{
+        mesh: InstancedMesh;
+        capacity: number;
+        oParam1: Float32Array;
+        oParam2: Float32Array;
+        sParam: Float32Array;
+    }>> = {};
+    const taxKeys = Object.keys(TAXONOMIES) as Array<keyof typeof TAXONOMIES>;
     const maxPerMesh = Math.ceil(totalAsteroids / (taxKeys.length * shapesPerTaxonomy));
 
     for (const key of taxKeys) {
@@ -74,10 +84,9 @@ export function createAsteroidInstancedBuckets(totalAsteroids, shapesPerTaxonomy
             buckets[key].push({
                 mesh: iMesh,
                 capacity: maxPerMesh,
-                // Keep tracking arrays for easy populating
-                oParam1: geom.attributes.aOrbitParams1.array,
-                oParam2: geom.attributes.aOrbitParams2.array,
-                sParam: geom.attributes.aSpinParams.array
+                oParam1: geom.attributes.aOrbitParams1.array as Float32Array,
+                oParam2: geom.attributes.aOrbitParams2.array as Float32Array,
+                sParam: geom.attributes.aSpinParams.array as Float32Array
             });
         }
     }

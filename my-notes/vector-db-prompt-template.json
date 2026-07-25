@@ -1,0 +1,437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Enterprise Vector Database — Prompt Template",
+  "description": "A structured prompt template for instructing an LLM to design and implement a production-ready, enterprise-grade vector database engine. Compatible with OpenAI and Anthropic Claude APIs.",
+  "version": "1.0.0",
+  "metadata": {
+    "use_cases": [
+      "RAG pipelines",
+      "Agentic RAG workflows",
+      "Semantic search",
+      "Recommendation systems",
+      "General-purpose vector similarity"
+    ],
+    "compatible_apis": ["openai", "anthropic_claude"],
+    "prompt_style": "system + user structured instruction"
+  },
+  "system_prompt": "You are a senior distributed systems engineer specializing in vector databases, information retrieval, and enterprise infrastructure. You produce production-grade code with comprehensive error handling, observability, and operational tooling. You follow SOLID principles, write idiomatic code for the target language, and prioritize correctness, performance, and operability in that order. All designs must be justified with explicit tradeoff analysis.",
+  "prompt_template": {
+    "objective": {
+      "instruction": "Design and implement a production-ready, enterprise-grade vector database engine.",
+      "target_integration": [
+        "Drop-in compatible with existing RAG pipelines",
+        "Agentic RAG workflows with per-agent memory partitions",
+        "Semantic search and recommendation systems",
+        "General-purpose ANN similarity workloads"
+      ]
+    },
+    "core_engine": {
+      "distance_metrics": {
+        "required": ["cosine", "euclidean_l2", "dot_product"],
+        "optional": ["manhattan", "hamming"],
+        "instruction": "Distance metric must be configurable per collection at creation time."
+      },
+      "indexing": {
+        "algorithms": {
+          "primary": "HNSW",
+          "secondary": ["IVF-PQ", "flat_brute_force"],
+          "instruction": "Index strategy must be configurable per collection. Flat index is the fallback for collections under a configurable size threshold."
+        },
+        "build_behavior": "Background async index building that does not block reads or writes. Expose index build progress via metrics and admin API."
+      },
+      "dimensionality": {
+        "range": { "min": 64, "max": 4096 },
+        "known_targets": {
+          "openai_small": 1536,
+          "openai_large": 3072,
+          "cohere_v3": 1024,
+          "open_source_range": "384–4096"
+        },
+        "instruction": "Must handle all major commercial and open-source embedding model output dimensions without recompilation or restart."
+      },
+      "crud_operations": {
+        "single": ["insert", "upsert", "get_by_id", "update", "delete"],
+        "batch": {
+          "operations": ["batch_insert", "batch_upsert", "batch_delete"],
+          "max_batch_size": 100000,
+          "instruction": "Batch operations must be atomic per-batch or report per-item success/failure. Support partial failure semantics."
+        }
+      },
+      "filtering": {
+        "approach": ["pre-filter", "post-filter"],
+        "operators": ["AND", "OR", "NOT", "IN", "NOT_IN", "RANGE", "EQ", "NEQ", "GT", "GTE", "LT", "LTE", "EXISTS"],
+        "target_fields": "Arbitrary metadata fields with boolean logic composition.",
+        "instruction": "Filter expressions must be composable via nested boolean logic. Pre-filter is the default; post-filter available as fallback when pre-filter cardinality is too low."
+      },
+      "hybrid_search": {
+        "dense": "Vector similarity (ANN)",
+        "sparse": "BM25 keyword scoring",
+        "fusion_strategies": ["reciprocal_rank_fusion", "weighted_linear_combination"],
+        "instruction": "Hybrid search must be a single API call. Fusion strategy and weights are caller-configurable per query."
+      }
+    },
+    "data_model": {
+      "collections": {
+        "properties": {
+          "name": "string — unique identifier",
+          "vector_dimensions": "integer",
+          "distance_metric": "enum",
+          "index_type": "enum",
+          "replication_factor": "integer (1–5)",
+          "sharding_strategy": "enum (consistent_hash | range)"
+        },
+        "instruction": "Collections are the top-level namespace. Schema is defined at creation and supports non-breaking evolution."
+      },
+      "documents": {
+        "fields": {
+          "id": "UUID auto-generated or user-supplied string",
+          "vectors": {
+            "type": "map<string, float[]>",
+            "precision": ["float32", "float16", "binary_quantized"],
+            "instruction": "Support multiple named vector fields per document (e.g., title_embedding, body_embedding). Primary vector field is required; additional fields are optional."
+          },
+          "metadata": {
+            "type": "JSON object",
+            "supported_value_types": ["string", "integer", "float", "boolean", "string_array", "datetime"],
+            "indexing": "Metadata fields are indexed on demand. Support adding and removing metadata indexes without downtime."
+          },
+          "content": {
+            "type": "string (optional)",
+            "instruction": "Raw text payload stored alongside the vector for direct retrieval in RAG pipelines without a secondary store lookup."
+          },
+          "token_count": {
+            "type": "integer (optional)",
+            "instruction": "Pre-computed token count of content field. Used by context-window-aware retrieval."
+          }
+        }
+      },
+      "schema_evolution": {
+        "supported_operations": [
+          "Add metadata index",
+          "Remove metadata index",
+          "Add named vector field",
+          "Update collection-level settings (replication factor, index params)"
+        ],
+        "constraint": "All schema evolution operations must be online (no downtime, no full rebuild)."
+      }
+    },
+    "scalability_and_distribution": {
+      "sharding": {
+        "strategies": ["consistent_hashing", "range_based"],
+        "instruction": "Sharding is transparent to the client. The router/coordinator layer handles shard resolution."
+      },
+      "replication": {
+        "factor_range": { "min": 1, "max": 5 },
+        "models": ["leader_follower", "leaderless_quorum"],
+        "consistency": "Configurable per-operation: strong (quorum write + quorum read) or eventual (single-node read)."
+      },
+      "cluster_management": {
+        "dynamic_membership": true,
+        "auto_rebalancing": true,
+        "instruction": "Nodes can be added or removed without downtime. Data rebalancing happens in the background with configurable throughput limits to avoid impacting query latency."
+      },
+      "scale_targets": {
+        "vectors_per_collection": "100M+",
+        "qps_per_node": "1000+",
+        "latency_p99_ms": 50,
+        "query_params": "top-k=10, dimensions=1536",
+        "instruction": "These are minimum targets. Include benchmark tooling to validate these on target hardware."
+      }
+    },
+    "persistence_and_durability": {
+      "wal": {
+        "instruction": "Write-ahead log for all mutations. Configurable fsync policy: per-write, batched (N writes), or periodic (N ms)."
+      },
+      "storage": {
+        "approach": "Disk-backed with memory-mapped index files.",
+        "constraint": "Must NOT require the entire index to fit in RAM. Gracefully degrade performance when working set exceeds available memory."
+      },
+      "compaction": {
+        "instruction": "Background compaction to reclaim space from deletes and updates. Configurable compaction strategy (size-tiered or leveled)."
+      },
+      "snapshots": {
+        "instruction": "Point-in-time snapshots for backup. Support local filesystem and S3-compatible object store as snapshot targets."
+      }
+    },
+    "multi_tenancy": {
+      "isolation_model": {
+        "options": ["collection_per_tenant", "metadata_partition_key"],
+        "instruction": "Support both models. Metadata partition key approach is more resource-efficient; collection-per-tenant provides stronger isolation."
+      },
+      "quotas": {
+        "configurable_limits": ["max_vectors", "max_qps", "max_storage_bytes"],
+        "enforcement": "Hard limits with clear error responses (HTTP 429 / gRPC RESOURCE_EXHAUSTED)."
+      },
+      "data_isolation": {
+        "constraint": "CRITICAL: A tenant's queries must NEVER return another tenant's data. This must be enforced at the engine level, not just the API layer. Include integration tests that specifically verify cross-tenant isolation."
+      }
+    },
+    "api_design": {
+      "protocols": {
+        "primary": {
+          "type": "gRPC",
+          "reason": "Performance-critical path for search and bulk operations."
+        },
+        "secondary": {
+          "type": "REST_HTTP",
+          "reason": "Broad compatibility, browser-based admin UIs, webhook integrations."
+        }
+      },
+      "endpoints": {
+        "collection_management": ["create", "get", "list", "update", "delete"],
+        "document_operations": ["insert", "upsert", "get", "update", "delete", "batch_insert", "batch_upsert", "batch_delete"],
+        "search": ["query", "batch_query", "hybrid_query"],
+        "admin": ["health", "readiness", "cluster_status", "trigger_compaction", "trigger_snapshot", "trigger_rebalance", "rebuild_index"],
+        "streaming": ["stream_insert"]
+      },
+      "pagination": {
+        "strategy": "Cursor-based tokens. No offset-based pagination.",
+        "instruction": "Cursors must be opaque, stateless, and URL-safe."
+      },
+      "schema_artifacts": {
+        "protobuf": "Ship .proto files as first-class versioned artifacts.",
+        "openapi": "Auto-generate OpenAPI 3.1 spec from the REST layer.",
+        "instruction": "Both schema definitions must be source-controlled and published with every release."
+      },
+      "client_sdks": {
+        "required": ["python", "typescript_node", "go", "rust"],
+        "guidelines": [
+          "Idiomatic to each language (e.g., async/await in Python and TS, channels in Go)",
+          "Auto-generated gRPC stubs with hand-written ergonomic wrappers",
+          "Connection pooling and automatic retry with exponential backoff",
+          "Type-safe builder pattern for filter expressions"
+        ]
+      }
+    },
+    "security": {
+      "authentication": {
+        "methods": ["api_key", "jwt", "oauth2"],
+        "instruction": "API key for service-to-service. JWT/OAuth2 for user-facing flows. All auth mechanisms must be pluggable."
+      },
+      "authorization": {
+        "model": "RBAC",
+        "roles": {
+          "admin": "Full access including cluster management and tenant provisioning.",
+          "read_write": "CRUD and search on scoped collections.",
+          "read_only": "Search and get on scoped collections."
+        },
+        "scoping": "Roles are scoped to one or more collections. No implicit global access."
+      },
+      "transport": {
+        "requirement": "Mutual TLS (mTLS) for all inter-node communication. TLS 1.3 for all client-to-node communication.",
+        "certificate_management": "Support automatic certificate rotation."
+      },
+      "encryption_at_rest": {
+        "algorithm": "AES-256-GCM",
+        "key_management": ["local_keyfile", "aws_kms", "gcp_kms", "azure_key_vault", "hashicorp_vault"],
+        "instruction": "Bring-your-own-key (BYOK) must be supported. Key rotation without re-encryption of existing data (use envelope encryption)."
+      },
+      "audit_logging": {
+        "events": ["all_mutations", "admin_operations", "auth_failures", "schema_changes"],
+        "fields": ["timestamp", "actor_id", "action", "resource", "result", "source_ip"],
+        "instruction": "Audit log must be append-only and tamper-evident. Support forwarding to external SIEM (syslog, webhook)."
+      }
+    },
+    "observability": {
+      "metrics": {
+        "export_format": ["prometheus", "opentelemetry"],
+        "required_metrics": [
+          "query_latency_histogram (p50, p95, p99)",
+          "queries_per_second",
+          "index_build_progress_percent",
+          "memory_usage_bytes",
+          "disk_usage_bytes",
+          "wal_size_bytes",
+          "replication_lag_ms",
+          "active_connections",
+          "cache_hit_ratio",
+          "compaction_progress"
+        ]
+      },
+      "logging": {
+        "format": "Structured JSON",
+        "levels": ["debug", "info", "warn", "error"],
+        "instruction": "Configurable per-module log levels at runtime without restart."
+      },
+      "health_checks": {
+        "liveness": "Returns 200 if the process is running.",
+        "readiness": "Returns 200 only when the node can serve queries (index loaded, cluster joined).",
+        "instruction": "Kubernetes-native probe endpoints."
+      },
+      "tracing": {
+        "standard": "OpenTelemetry",
+        "instruction": "Propagate trace context across all inter-node RPCs. Emit spans for: query parsing, filter evaluation, ANN search, result merging, reranking."
+      }
+    },
+    "rag_and_agentic_integration": {
+      "metadata_driven_retrieval": {
+        "instruction": "Support the compound filter patterns agentic frameworks use. Example: retrieve chunks from document_id=X AND uploaded_after=2024-01-01 AND tags IN ['architecture', 'api'] AND similarity > 0.75."
+      },
+      "mmr_diversification": {
+        "instruction": "Built-in Maximal Marginal Relevance option on search. Caller specifies lambda (diversity vs relevance tradeoff) and it is applied server-side before returning results.",
+        "parameter": "mmr_lambda (float, 0.0–1.0, default 0.5)"
+      },
+      "score_thresholding": {
+        "instruction": "Accept a min_score parameter on search. Only return results above the threshold. Do NOT return all results and expect the caller to filter.",
+        "parameter": "min_score (float, optional)"
+      },
+      "context_window_awareness": {
+        "instruction": "Accept an optional max_tokens budget on search. Return as many results as fit within the token budget, using the stored token_count field. Results are ordered by relevance; lower-ranked results are dropped first.",
+        "parameter": "max_tokens (integer, optional)"
+      },
+      "reranking": {
+        "approaches": [
+          "Two-stage: retrieve top-N, then rerank to top-K (N > K)",
+          "Native reranker plugin interface for server-side reranking",
+          "Return raw scores so the caller can rerank client-side"
+        ],
+        "instruction": "Support all three approaches. The two-stage retrieve-then-rerank must be expressible as a single API call with oversample_factor parameter."
+      },
+      "agentic_memory": {
+        "instruction": "Support per-session or per-agent vector partitions using metadata partition keys. These partitions must support TTL so stale agent memory is automatically purged.",
+        "parameters": {
+          "session_id": "string — partition key for agent memory isolation",
+          "ttl_seconds": "integer — auto-expire documents after this duration"
+        }
+      }
+    },
+    "data_lifecycle": {
+      "ttl": {
+        "granularity": ["per_document", "per_collection"],
+        "instruction": "TTL expiration runs as a background process. Expired documents are excluded from search results immediately but may be physically deleted asynchronously during compaction."
+      },
+      "versioning": {
+        "instruction": "Optional document version history. Configurable max_versions per document. Support rollback to a specific version.",
+        "default": "disabled"
+      },
+      "bulk_export": {
+        "formats": ["parquet", "jsonl"],
+        "instruction": "Full collection export with progress reporting. Support streaming export for large collections. Include vector data, metadata, and content."
+      },
+      "bulk_import": {
+        "formats": ["parquet", "jsonl", "csv"],
+        "instruction": "Import with progress reporting, validation, and configurable error handling (skip_invalid | fail_fast)."
+      }
+    },
+    "performance_and_optimization": {
+      "quantization": {
+        "options": {
+          "scalar": "float32 → int8 (4x memory reduction, ~2-5% recall loss)",
+          "product": "PQ with configurable number of sub-quantizers",
+          "binary": "1-bit quantization for candidate pre-filtering"
+        },
+        "instruction": "Quantization is configurable per collection. Support re-quantization without full re-index."
+      },
+      "caching": {
+        "strategy": "LRU or clock cache for hot vectors and metadata.",
+        "instruction": "Cache size is configurable. Expose cache hit ratio as a metric."
+      },
+      "simd": {
+        "instruction": "Distance computations must use SIMD intrinsics. Support AVX2, AVX-512 (x86), and NEON (ARM). Runtime detection with graceful fallback to scalar."
+      },
+      "io_optimization": {
+        "instruction": "Batch disk reads for batch queries. Use io_uring (Linux) or equivalent async I/O where available."
+      }
+    },
+    "testing_and_quality": {
+      "recall_benchmarks": {
+        "instruction": "Measure recall@k against brute-force ground truth.",
+        "datasets": ["1M vectors", "10M vectors", "100M vectors"],
+        "metrics": ["recall@1", "recall@10", "recall@100", "queries_per_second", "latency_p99"],
+        "instruction_2": "Publish benchmark results with every release. Include hardware specs and configuration."
+      },
+      "chaos_testing": {
+        "scenarios": [
+          "Node failure during write",
+          "Node failure during index build",
+          "Network partition (split-brain)",
+          "Disk full",
+          "OOM kill and recovery",
+          "Clock skew"
+        ],
+        "instruction": "Automated chaos test suite. All scenarios must result in correct behavior (no data loss, no silent corruption)."
+      },
+      "load_testing": {
+        "instruction": "Ship a built-in load testing harness. Support configurable read/write ratio, concurrency, dataset size, and duration. Output latency histograms and throughput."
+      },
+      "property_testing": {
+        "instruction": "Fuzz insert/update/delete/search sequences to verify index consistency. After any sequence of mutations, a brute-force search must return the same results as an ANN search with recall@10 >= 0.95."
+      },
+      "ci_pipeline": {
+        "instruction": "Include CI pipeline definition (GitHub Actions). Stages: lint, unit test, integration test, benchmark (gated on regression), build artifacts, publish."
+      }
+    },
+    "deployment_and_packaging": {
+      "single_node": {
+        "instruction": "Single statically-linked binary for single-node mode. Zero external dependencies (no JVM, no external DB). Download-and-run experience."
+      },
+      "containerized": {
+        "docker": "Multi-stage Dockerfile. Final image < 100MB. Non-root user. Distroless or alpine base.",
+        "helm": "Helm chart for Kubernetes with configurable values for replicas, resources, storage class, ingress, and TLS."
+      },
+      "configuration": {
+        "sources": ["yaml_file", "toml_file", "environment_variables", "cli_flags"],
+        "precedence": "CLI flags > env vars > config file > defaults",
+        "instruction": "Document every configuration option with type, default, and description."
+      },
+      "graceful_shutdown": {
+        "instruction": "On SIGTERM: stop accepting new connections, drain in-flight requests (configurable timeout), flush WAL, create snapshot, then exit."
+      },
+      "upgrades": {
+        "strategy": "Rolling upgrades with zero downtime.",
+        "wire_protocol": "Versioned wire protocol. New nodes must communicate with nodes running the previous minor version.",
+        "data_format": "Forward-compatible data format. Automatic migration on startup if needed."
+      }
+    },
+    "documentation_deliverables": {
+      "required": [
+        "Architecture decision records (ADRs) for all key design choices",
+        "API reference auto-generated from protobuf and OpenAPI specs",
+        "Operations runbook: deployment, backup/restore, scaling, monitoring, troubleshooting",
+        "Performance tuning guide: index selection, quantization tradeoffs, hardware sizing",
+        "Security hardening guide: TLS setup, key rotation, RBAC configuration",
+        "Migration guide: importing data from Pinecone, Weaviate, Qdrant, Milvus, pgvector"
+      ]
+    }
+  },
+  "output_format": {
+    "instruction": "When implementing, structure the response as follows:",
+    "sections": [
+      {
+        "name": "architecture_overview",
+        "description": "High-level component diagram and data flow description."
+      },
+      {
+        "name": "technology_choices",
+        "description": "Language, frameworks, libraries with justification for each."
+      },
+      {
+        "name": "implementation",
+        "description": "Source code organized by module with inline documentation."
+      },
+      {
+        "name": "configuration_reference",
+        "description": "Complete configuration schema with defaults."
+      },
+      {
+        "name": "test_suite",
+        "description": "Unit, integration, property, and benchmark tests."
+      },
+      {
+        "name": "deployment_artifacts",
+        "description": "Dockerfile, Helm chart, CI pipeline, and Makefile/taskfile."
+      },
+      {
+        "name": "tradeoff_analysis",
+        "description": "Explicit discussion of design tradeoffs made and alternatives considered."
+      }
+    ]
+  },
+  "constraints": {
+    "language_preference": "Rust or Go (justify choice based on the specific tradeoffs for this system)",
+    "license": "Apache-2.0",
+    "minimum_test_coverage": "80% line coverage for core engine, 95% for API layer",
+    "no_external_vector_db_dependency": "Must NOT wrap or embed an existing vector database (e.g., no embedding Qdrant, Milvus, or FAISS as the core engine). Purpose-built from the ground up.",
+    "backward_compatibility": "Wire protocol and data format must be backward compatible within a major version."
+  }
+}

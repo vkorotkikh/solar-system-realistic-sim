@@ -11,6 +11,8 @@
  * - aSpinParams: vec4(spinAxisX, spinAxisY, spinAxisZ, spinPhaseOffs)
  */
 
+import type { MeshStandardMaterial } from 'three';
+
 export const ASTEROID_VERTEX_SHADER_INJECTIONS = {
     header: `
 // Custom Attributes for GPU Kepler Propagation
@@ -123,7 +125,12 @@ mat3 rotationMatrix(vec3 axis, float angle) {
   `
 };
 
-export function patchAsteroidMaterial(material, uniforms) {
+export type AsteroidOrbitUniforms = { uTimeDays: { value: number }; uViewScaleAu: { value: number } };
+
+export function patchAsteroidMaterial(
+    material: MeshStandardMaterial,
+    uniforms: AsteroidOrbitUniforms
+) {
     material.onBeforeCompile = (shader) => {
         // Inject Uniforms
         shader.uniforms.uTimeDays = uniforms.uTimeDays;

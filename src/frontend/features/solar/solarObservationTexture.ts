@@ -37,7 +37,7 @@ interface AiaSourceLike {
   channels?: Record<string, AiaChannelEntryLike> | null;
 }
 
-interface SolarObservationPhysicsStateLike {
+export interface SolarObservationPhysicsStateLike {
   data_assimilation?: {
     applied?: unknown;
     observed_confidence?: unknown;
@@ -137,11 +137,11 @@ export function buildAiaProxyTextureUrl(
 export function deriveSunObservationControls(
   physicsState: SolarObservationPhysicsStateLike | null | undefined,
   fallbackActivity = 0.5,
-  activeChannel: string | null = null,
+  activeChannel = null as string | null,
   {
     hasObservationTexture = false,
-    selectedChannel = null,
-    selectedImageDate = null
+    selectedChannel = undefined as string | null | undefined,
+    selectedImageDate = undefined as string | null | undefined
   } = {}
 ) {
   const assimilation = physicsState?.data_assimilation;

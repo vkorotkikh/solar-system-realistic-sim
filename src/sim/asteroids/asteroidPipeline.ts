@@ -1,5 +1,5 @@
 // Updated asteroidPipeline.ts configured for GPU Shader injection.
-import { Color, Group, Vector3, Matrix4 } from 'three';
+import { Color, Group, Vector3, Matrix4, type InstancedMesh } from 'three';
 import {
     generateAsteroidElement,
     sampleTaxonomy,
@@ -7,6 +7,13 @@ import {
 } from './asteroidDistributions';
 import { createAsteroidInstancedBuckets } from './asteroidGeometry';
 
+export type AsteroidBucket = {
+    mesh: InstancedMesh;
+    capacity: number;
+    oParam1: Float32Array;
+    oParam2: Float32Array;
+    sParam: Float32Array;
+};
 // Configuration: Massive counts for GPU phase
 const POPULATION_COUNTS = {
     'main-belt': 1_200_000,
@@ -17,10 +24,14 @@ const POPULATION_COUNTS = {
 };
 
 export class AsteroidSimulationPipeline {
+    rootGroup: Group;
+    buckets: Record<string, AsteroidBucket[]>;
+    shaderUniforms: { uTimeDays: { value: number }; uViewScaleAu: { value: number } };
+
     constructor() {
         this.rootGroup = new Group();
         this.rootGroup.name = 'UltraRealisticAsteroidBeltGPU';
-        this.buckets = {};
+        this.buckets = {} as Record<string, AsteroidBucket[]>;
 
         // Shared uniforms across all asteroid materials
         this.shaderUniforms = {
@@ -33,7 +44,7 @@ export class AsteroidSimulationPipeline {
         this.shaderUniforms.uViewScaleAu.value = sceneScaleAu;
 
         const totalCount = Object.values(POPULATION_COUNTS).reduce((a, b) => a + b, 0);
-        this.buckets = createAsteroidInstancedBuckets(totalCount, 4, this.shaderUniforms);
+        this.buckets = createAsteroidInstancedBuckets(totalCount, 4, this.shaderUniforms) as Record<string, AsteroidBucket[]>;
 
         for (const key of Object.keys(this.buckets)) {
             for (const bucket of this.buckets[key]) {
@@ -63,11 +74,11 @@ export class AsteroidSimulationPipeline {
                     // 1. Pack Orbit Data
                     targetBucket.oParam1[localIdx * 4 + 0] = element.aAu;
                     targetBucket.oParam1[localIdx * 4 + 1] = element.e;
-                    targetBucket.oParam1[localIdx * 4 + 2] = element.iDeg * (Math.PI / 180.0);
+                    targetBucket.oParam1[localIdx * 4 + 2] = (element.iDeg ?? 0) * (Math.PI / 180.0);
                     targetBucket.oParam1[localIdx * 4 + 3] = element.ascendingNodeDeg * (Math.PI / 180.0);
 
                     targetBucket.oParam2[localIdx * 3 + 0] = element.argPeriapsisDeg * (Math.PI / 180.0);
-                    targetBucket.oParam2[localIdx * 3 + 1] = element.meanAnomalyDeg * (Math.PI / 180.0);
+                    targetBucket.oParam2[localIdx * 3 + 1] = (element.meanAnomalyDeg ?? 0) * (Math.PI / 180.0);
                     targetBucket.oParam2[localIdx * 3 + 2] = element.periodDays;
 
                     // 2. Pack Spin Data — reuse Vector3
@@ -122,7 +133,7 @@ export class AsteroidSimulationPipeline {
      * Extremely lightweight CPU update loop. 
      * Array iteration has been fully eliminated. Only updating uniforms.
      */
-    update(jd) {
+    update(jd: number) {
         const epochJd = 2451545.0; // J2000
         this.shaderUniforms.uTimeDays.value = jd - epochJd;
     }

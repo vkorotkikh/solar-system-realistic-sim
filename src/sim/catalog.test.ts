@@ -177,7 +177,7 @@ function expectedConvertMoonOrbitFrameToEcliptic(
   parentId: string
 ) {
   const sourceFrame = moon.frame.trim().toLowerCase();
-  const sourcePole = sourcePoleInEcliptic(moon, sourceFrame);
+  const sourcePole = sourcePoleInEcliptic({ ...moon, parentId }, sourceFrame);
   const basis = basisFromSourcePole(sourcePole);
   const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
   const sourcePeriapsis = periapsisVectorFromElements(moon.inclinationDeg, moon.ascendingNodeDeg, moon.argPeriapsisDeg);

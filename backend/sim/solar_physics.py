@@ -1107,7 +1107,7 @@ class SolarCoronaPhysicsModel:
             gong_timeout_s=3.5,
         )
 
-        # Extract internal WSA result for Parker spiral wind speeds
+        # Extract internal WSA result for Parker spiral wind speeds (NumPy grids; not JSON-serializable).
         wsa_result = pfss_field_lines.get("_wsa_result") if isinstance(pfss_field_lines, dict) else None
 
         parker_spiral = self._build_parker_spiral(
@@ -1120,6 +1120,10 @@ class SolarCoronaPhysicsModel:
             coronal_holes=coronal_holes_data,
             wsa_result=wsa_result,
         )
+
+        pfss_public = dict(pfss_field_lines) if isinstance(pfss_field_lines, dict) else pfss_field_lines
+        if isinstance(pfss_public, dict):
+            pfss_public.pop("_wsa_result", None)
 
         return {
             "schema": {"name": "solar_physics_state", "version": 1},
@@ -1155,5 +1159,5 @@ class SolarCoronaPhysicsModel:
             "heliosphere": {
                 "parker_spiral": parker_spiral,
             },
-            "pfss_field_lines": pfss_field_lines,
+            "pfss_field_lines": pfss_public,
         }

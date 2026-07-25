@@ -1,6 +1,5 @@
 import {
     AdditiveBlending,
-    BackSide,
     Color,
     FrontSide,
     Group,
@@ -10,22 +9,25 @@ import {
     Sprite,
     SpriteMaterial,
     CanvasTexture,
-    Vector3,
-    Quaternion
+    Vector3
 } from 'three';
 import { AU_M } from '../../../constants';
+import type { SolarPhysicsStatePayload } from './solarPhysicsClient';
 
-// Average CME speed ~480 km/s. We allow a broad physical envelope for quiet-to-extreme CMEs.
-// Physics note: AU_M is astronomical unit in meters.
-// AU/s = (km/s * 1000) / AU_M.
 const CME_SPEED_KMS_MIN = 20;
 const CME_SPEED_KMS_MAX = 3500;
 
-function clampUnit(value) {
+function clampUnit(value: unknown): number {
     return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
-function normalizeDirection(sample) {
+interface DirectionSample {
+    x: number;
+    y: number;
+    z: number;
+}
+
+function normalizeDirection(sample: unknown): DirectionSample | null {
     if (!Array.isArray(sample) || sample.length !== 3) return null;
     const x = Number(sample[0]);
     const y = Number(sample[1]);
@@ -36,7 +38,7 @@ function normalizeDirection(sample) {
     return { x: x / len, y: y / len, z: z / len };
 }
 
-function directionToLatLon(direction) {
+function directionToLatLon(direction: DirectionSample | null): { latitudeRad: number; longitudeRad: number } | null {
     if (!direction) return null;
     return {
         latitudeRad: Math.asin(Math.max(-1, Math.min(1, direction.y))),
@@ -95,10 +97,8 @@ void main() {
 }
 `;
 
-// Shared geometry for all CME shells (half sphere)
-let sharedCmeGeometries = {};
-function getCmeGeometry(angularWidthRad = Math.PI * 2) {
-    // Round to nearest 10° for geometry caching
+const sharedCmeGeometries: Record<number, SphereGeometry> = {};
+function getCmeGeometry(angularWidthRad = Math.PI * 2): SphereGeometry {
     const key = Math.round(angularWidthRad * 180 / Math.PI / 10) * 10;
     if (!sharedCmeGeometries[key]) {
         sharedCmeGeometries[key] = new SphereGeometry(1, 32, 16, 0, angularWidthRad, 0, Math.PI * 0.5);
@@ -106,14 +106,25 @@ function getCmeGeometry(angularWidthRad = Math.PI * 2) {
     return sharedCmeGeometries[key];
 }
 
-// Generate a soft radial glow texture for the flare sprite
-let sharedFlareTexture = null;
-function getFlareTexture() {
+let sharedFlareTexture: CanvasTexture | null = null;
+
+function createFallbackFlareCanvasTexture(): CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 4;
+    return new CanvasTexture(canvas);
+}
+
+function getFlareTexture(): CanvasTexture {
     if (!sharedFlareTexture) {
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            sharedFlareTexture = createFallbackFlareCanvasTexture();
+            return sharedFlareTexture;
+        }
         const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
         grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
         grad.addColorStop(0.15, 'rgba(255, 240, 200, 0.8)');
@@ -127,6 +138,29 @@ function getFlareTexture() {
     return sharedFlareTexture;
 }
 
+export interface CreateSolarFlareEventParams {
+    featureId?: string | null;
+    latitudeRad: number;
+    longitudeRad: number;
+    sunRadiusAu: number;
+    velocityKms?: number;
+    intensity?: number;
+    angularWidthDeg?: number;
+}
+
+export interface SolarFlareEventHandle {
+    group: Group;
+    featureId: string | null;
+    longitude: number;
+    latitude: number;
+    intensity: number;
+    velocityKms: number;
+    getSurfaceEnvelope(): number;
+    update(dtSec: number): void;
+    isExpired(): boolean;
+    dispose(): void;
+}
+
 /**
  * Creates a Solar Flare and CME event.
  */
@@ -138,20 +172,18 @@ export function createSolarFlareEvent({
     velocityKms = 489,
     intensity = 0.5,
     angularWidthDeg = 60
-}) {
+}: CreateSolarFlareEventParams): SolarFlareEventHandle {
     const group = new Group();
 
-    // 1. Position calculation (spherical to Cartesian)
     const r = sunRadiusAu;
     const y = r * Math.sin(latitudeRad);
     const xzR = r * Math.cos(latitudeRad);
     const x = xzR * Math.cos(longitudeRad);
-    const z = -xzR * Math.sin(longitudeRad); // -z is +lon in our orbit frame typically, but let's just match Three's standard
+    const z = -xzR * Math.sin(longitudeRad);
 
     const position = new Vector3(x, y, z);
     const normal = position.clone().normalize();
 
-    // 2. Flare Sprite (intense flash at surface)
     const flareMaterial = new SpriteMaterial({
         map: getFlareTexture(),
         color: new Color('#ffffff'),
@@ -162,12 +194,10 @@ export function createSolarFlareEvent({
         depthTest: false
     });
     const flareSprite = new Sprite(flareMaterial);
-    // Scale based on intensity and sun size
     flareSprite.scale.setScalar(sunRadiusAu * 0.8 * (0.5 + intensity));
-    flareSprite.position.copy(position).multiplyScalar(1.02); // Just above surface
+    flareSprite.position.copy(position).multiplyScalar(1.02);
     group.add(flareSprite);
 
-    // 3. CME Shell (Expanding half-sphere)
     const cmeMaterial = new ShaderMaterial({
         vertexShader: CME_VERTEX_SHADER,
         fragmentShader: CME_FRAGMENT_SHADER,
@@ -183,22 +213,18 @@ export function createSolarFlareEvent({
         depthWrite: false,
         side: FrontSide
     });
-    const angularWidthRad = angularWidthDeg * Math.PI / 180;
-    const cmeMesh = new Mesh(getCmeGeometry(angularWidthRad), cmeMaterial);
-    // Orient the half-sphere to point outward along the normal
-    const up = new Vector3(0, 1, 0); // standard sphere top
+    const angularWidthRadVal = angularWidthDeg * Math.PI / 180;
+    const cmeMesh = new Mesh(getCmeGeometry(angularWidthRadVal), cmeMaterial);
+    const up = new Vector3(0, 1, 0);
     cmeMesh.quaternion.setFromUnitVectors(up, normal);
     group.add(cmeMesh);
 
-    // Lifecycle state
     let elapsedSec = 0;
     let _expired = false;
 
-    // Duration of surface flare flash (short)
     const flashDurationSec = 15.0 + intensity * 20.0;
-    // CME max distance (e.g. 0.3 AU) cut-off
     const cmeMaxDistanceAu = 0.3;
-    const velocityAuPerSec = cmeMaterial.uniforms.uVelocityAuPerSec.value;
+    const velocityAuPerSec = cmeMaterial.uniforms.uVelocityAuPerSec.value as number;
     const maxLifeTimeSec = (cmeMaxDistanceAu - sunRadiusAu) / Math.max(0.0001, velocityAuPerSec);
 
     return {
@@ -208,35 +234,32 @@ export function createSolarFlareEvent({
         latitude: latitudeRad,
         intensity,
         velocityKms,
+
         getSurfaceEnvelope() {
-            return Math.max(0, Math.min(1, flareSprite.material.opacity / Math.max(0.001, intensity)));
+            const mat = flareSprite.material as SpriteMaterial;
+            return Math.max(0, Math.min(1, mat.opacity / Math.max(0.001, intensity)));
         },
 
-        update(dtSec) {
+        update(dtSec: number) {
             if (_expired) return;
 
             elapsedSec += dtSec;
 
-            // Update CME shader
             cmeMaterial.uniforms.uElapsedSec.value = elapsedSec;
 
-            // Update Flare Sprite — GOES-style Neupert-effect temporal profile:
-            // Fast exponential rise (~15% of duration = impulsive phase)
-            // followed by slow exponential decay (~85% = gradual phase)
+            const mat = flareSprite.material as SpriteMaterial;
             const impulsiveDuration = flashDurationSec * 0.15;
             const gradualDuration = flashDurationSec * 0.85;
             if (elapsedSec < flashDurationSec) {
                 if (elapsedSec < impulsiveDuration) {
-                    // Rapid exponential rise (impulsive phase)
                     const t = elapsedSec / impulsiveDuration;
-                    flareSprite.material.opacity = intensity * (1.0 - Math.exp(-4.0 * t));
+                    mat.opacity = intensity * (1.0 - Math.exp(-4.0 * t));
                 } else {
-                    // Slow exponential decay (gradual phase — Neupert effect)
                     const t = (elapsedSec - impulsiveDuration) / gradualDuration;
-                    flareSprite.material.opacity = intensity * Math.exp(-2.5 * t);
+                    mat.opacity = intensity * Math.exp(-2.5 * t);
                 }
             } else {
-                flareSprite.material.opacity = 0;
+                mat.opacity = 0;
             }
 
             if (elapsedSec > maxLifeTimeSec) {
@@ -256,11 +279,20 @@ export function createSolarFlareEvent({
     };
 }
 
+type CoronaFeatureRecord = Record<string, unknown>;
+
 /**
  * Manager class to handle multiple flare events and auto-spawn them
  */
 export class SolarFlareManager {
-    constructor(sunGroup) {
+    readonly sunGroup: Group;
+    events: SolarFlareEventHandle[];
+    maxEvents: number;
+    timeSinceLastSpawn: number;
+    featureCooldowns: Map<string, number>;
+    lastPhysicsDrivenSpawnSec: number;
+
+    constructor(sunGroup: Group) {
         this.sunGroup = sunGroup;
         this.events = [];
         this.maxEvents = 4;
@@ -269,7 +301,7 @@ export class SolarFlareManager {
         this.lastPhysicsDrivenSpawnSec = -Infinity;
     }
 
-    update(dtSec, activity, sunRadiusAu, physicsState = null, timeSec = 0) {
+    update(dtSec: number, activity: number, sunRadiusAu: number, physicsState: SolarPhysicsStatePayload | null = null, timeSec = 0) {
         this.timeSinceLastSpawn += dtSec;
         let usedPhysicsDrivers = false;
 
@@ -277,17 +309,15 @@ export class SolarFlareManager {
             usedPhysicsDrivers = this.syncFromPhysicsState(physicsState, sunRadiusAu, timeSec, activity) > 0;
         }
 
-        // Probabilistic fallback when no strong backend-driven eruptive feature is available.
-        const hasBackendCmes = Array.isArray(physicsState?.corona?.features)
-            && physicsState.corona.features.some((feature) => `${feature?.kind ?? ''}`.toLowerCase() === 'cme');
+        const coronaFeatures = physicsState?.corona?.features;
+        const hasBackendCmes = Array.isArray(coronaFeatures)
+            && coronaFeatures.some((feature: CoronaFeatureRecord) => `${feature?.kind ?? ''}`.toLowerCase() === 'cme');
         if (
             this.events.length < this.maxEvents
             && activity > 0.1
             && (!hasBackendCmes || !usedPhysicsDrivers)
             && (timeSec - this.lastPhysicsDrivenSpawnSec > 18 || !Number.isFinite(timeSec))
         ) {
-            // higher activity = lower threshold
-            // E.g. at activity=1.0, mean time between fallback spawns ~ 35s
             const spawnChance = (activity * activity) * 0.028 * dtSec;
             if (Math.random() < spawnChance && this.timeSinceLastSpawn > 10.0) {
                 this.spawnRandomFlare(activity, sunRadiusAu);
@@ -295,7 +325,6 @@ export class SolarFlareManager {
             }
         }
 
-        // Update existing
         for (let i = this.events.length - 1; i >= 0; i--) {
             const event = this.events[i];
             event.update(dtSec);
@@ -307,13 +336,13 @@ export class SolarFlareManager {
         }
     }
 
-    syncFromPhysicsState(physicsState, sunRadiusAu, timeSec, activity = 0.5) {
-        const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
+    syncFromPhysicsState(physicsState: SolarPhysicsStatePayload, sunRadiusAu: number, timeSec: number, activity = 0.5) {
+        const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona!.features as CoronaFeatureRecord[] : [];
         if (features.length === 0 || this.events.length >= this.maxEvents) return 0;
 
         const candidates = features
             .filter((feature) => `${feature?.kind ?? ''}`.toLowerCase() === 'cme')
-            .map((feature) => {
+            .map((feature: CoronaFeatureRecord) => {
                 const brightness = clampUnit(Number(feature?.brightness) || 0);
                 const emergence = clampUnit(Number(feature?.emergence) || brightness);
                 const extent = clampUnit((Number(feature?.peak_extent_solar_radii) - 1.0) / 3.8);
@@ -347,8 +376,8 @@ export class SolarFlareManager {
         return spawned;
     }
 
-    spawnFeatureFlare(feature, sunRadiusAu, activity = 0.5, featureScore = 0.6) {
-        const direction = normalizeDirection(feature?.base_dir) ?? normalizeDirection(feature?.arc?.[0]);
+    spawnFeatureFlare(feature: CoronaFeatureRecord, sunRadiusAu: number, activity = 0.5, featureScore = 0.6) {
+        const direction = normalizeDirection(feature?.base_dir) ?? normalizeDirection(Array.isArray(feature?.arc) ? feature.arc[0] : undefined);
         const latLon = directionToLatLon(direction);
         if (!latLon) {
             this.spawnRandomFlare(activity, sunRadiusAu);
@@ -385,17 +414,15 @@ export class SolarFlareManager {
         this.sunGroup.add(flare.group);
     }
 
-    spawnRandomFlare(activity, sunRadiusAu) {
-        // Spörer's law roughly: active belts between 5 and 35 degrees
+    spawnRandomFlare(activity: number, sunRadiusAu: number) {
         const sign = Math.random() > 0.5 ? 1 : -1;
-        const maxLat = 0.05 + activity * 0.55; // 0.05 to ~0.6 rad (34 deg)
+        const maxLat = 0.05 + activity * 0.55;
         const lat = sign * (Math.random() * (maxLat - 0.08) + 0.08);
         const lon = Math.random() * Math.PI * 2;
 
-        const intensity = 0.3 + Math.random() * 0.7 * activity; // 0.3 to 1.0
+        const intensity = 0.3 + Math.random() * 0.7 * activity;
         const velocityKms = CME_SPEED_KMS_MIN + Math.random() * Math.random() * (CME_SPEED_KMS_MAX - CME_SPEED_KMS_MIN);
 
-        // CME angular width: 20°-120° (NASA CME catalog range)
         const angularWidthDeg = 20 + Math.random() * 100;
 
         const flare = createSolarFlareEvent({
@@ -411,8 +438,7 @@ export class SolarFlareManager {
         this.sunGroup.add(flare.group);
     }
 
-    getActiveFlaresParams() {
-        // Returns array of up to 3 flare data for the surface shader: [lon, lat, intensity, phase/elapsed]
+    getActiveFlaresParams(): number[] {
         const params = [
             0, 0, 0, 0,
             0, 0, 0, 0,
