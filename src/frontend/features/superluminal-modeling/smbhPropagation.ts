@@ -22,6 +22,7 @@ import {
 
 const H29_ENERGY_LOG_MIN = 40;
 const H29_ENERGY_LOG_MAX = 58;
+const EV_PER_GV = 1e9;
 const H29_DELAY_BY_PROPAGATION = {
     lightspeed: 0.12,
     near_ballistic: 0.35,
@@ -232,9 +233,16 @@ export function shockCompressionRatio(adiabaticIndex = 5 / 3) {
  * @returns {number} diffusion coefficient in cm²/s
  */
 export function crDiffusionCoefficient(energyEV, chargeZ = 1, delta = ISM.crDiffIndex) {
-    const D0 = 5e28;
     const R0_GV = ISM.crDiffRefRigidityGV;
-    const rigidityGV = (energyEV * EV_ERG) / (chargeZ * E_CHARGE * C_CM_S * 1e9);
+    // For an ultrarelativistic particle, R = pc/(Ze) ~= E/(Ze).
+    // With E already expressed in eV, the numerical rigidity in volts is
+    // E_eV / |Z|; converting volts to GV therefore requires only 1e9.
+    const rigidityGV = energyEV / (Math.abs(chargeZ) * EV_PER_GV);
+
+    // ISM.crDiffCoeffGeV is the 1 GeV proton (1 GV) normalization. Convert
+    // that anchor to the configured R0 so the GeV/TeV/PeV constants remain
+    // on one D proportional to R^delta curve.
+    const D0 = ISM.crDiffCoeffGeV * Math.pow(R0_GV, delta);
     const ratio = Math.max(rigidityGV / R0_GV, 1e-10);
     return D0 * Math.pow(ratio, delta);
 }
@@ -265,10 +273,11 @@ export function spiralArmWaveguideCorrection(energyEV) {
 
 /**
  * CR gyroradius in a magnetic field.
- *   r_g = E / (Z e B c)
+ *   r_g = E / (|Z| e |B|)
  */
 export function gyroRadius(energyEV, chargeZ, bFieldG) {
-    return (energyEV * EV_ERG) / (chargeZ * E_CHARGE * bFieldG * C_CM_S);
+    // In Gaussian cgs, r_g = pc/(|Z|eB); for E ~= pc this is E/(|Z|eB).
+    return (energyEV * EV_ERG) / (Math.abs(chargeZ) * E_CHARGE * Math.abs(bFieldG));
 }
 
 /**
