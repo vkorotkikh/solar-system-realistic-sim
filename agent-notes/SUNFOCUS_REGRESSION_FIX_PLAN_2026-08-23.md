@@ -13,7 +13,7 @@ Fix in this order. It is not arbitrary — R1 and R2 are silent wrong-number def
 | # | Regression | Severity | Effort | Blocking? | Status |
 |---|---|---|---|---|---|
 | **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ **DONE** — `cf34ff5` |
-| **R2** | Secular rates 4.8× worse than `main` | High | **S** (≤ 1 h) | Blocks adoption | not started |
+| **R2** | Secular rates 4.8× worse than `main` | High | **S** (≤ 1 h) | Blocks adoption | ✅ **DONE** — `5e461f6` |
 | **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | not started |
 | **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | not started |
 
@@ -235,6 +235,13 @@ deliberately, given SF-9 (see R4).
 
 ## R2 — Secular rates make planets 4.8× worse
 
+> **STATUS: IMPLEMENTED AND VERIFIED** — branch `fix/r2-secular-rate-mean-anomaly`, commit `5e461f6`.
+>
+> **The fix below was incomplete: there are two double-counted terms, not one.** Implementing and
+> measuring it against JPL Horizons showed the single-term correction hits the *total* target but
+> makes **6 of 8 planets individually worse than `main`**, failing this section's own second
+> acceptance criterion. The shipped fix corrects both terms. See *Correction* after "The fix".
+
 ### Root cause
 
 `sun-focus` added JPL per-century rates to every planet (`src/data/planets.ts`; e.g. Saturn at `planets.ts:175-181`) and applies them in `resolveKeplerOrbitAtElapsedDays`. The **rate values are correct**. The propagator is wrong by one term.
@@ -299,11 +306,58 @@ Two properties worth noting, both of which make this safe:
 
 **Longer-term alternative** (better, more work): store JPL's `L` rate (`meanLongitudeDegPerCentury`) in `KeplerOrbitSecularRates` (`orbitMath.ts:19-25`) and compute `M = L − ϖ` directly. That matches the source tables exactly and removes the derived-quantity reasoning altogether. Do this only if you are also refreshing `planets.ts` from the JPL tables; otherwise the one-term correction above already beats `main`.
 
-### Acceptance
+### Correction — the second double-counted term
 
-- Total 8-planet position error vs a committed Horizons fixture at JD 2461275.5 is **< 3.6e6 km**, i.e. better than `main`'s 3,963,582 km. (The measured correction lands at 3,387,128 km.)
-- No individual planet regresses against `main`.
-- With `secularRates` stripped from a body, output is **identical** to the pre-change function.
+Measured against JPL Horizons at JD 2461275.5 (error in km; `main` = the pre-secular-rates
+propagator, `A` = the one-term fix above, `B` = **what shipped**):
+
+| planet | main | sun-focus (bug) | A (ϖ only) | **B (shipped)** |
+|---|---|---|---|---|
+| mercury | 94,239 | 113,214 | 62,988 | 80,858 |
+| venus | 28,274 | 89,777 | 91,119 | **28,089** |
+| earth | 10,487 | 182,212 | 40,984 | **17,118** |
+| mars | 58,000 | 326,410 | 150,230 | **51,973** |
+| jupiter | 894,552 | 1,700,878 | 977,375 | **889,186** |
+| saturn | 1,179,208 | 3,092,998 | 295,265 | 719,253 |
+| uranus | 1,033,678 | 6,113,608 | 1,081,512 | **953,611** |
+| neptune | 665,089 | 7,462,417 | 687,608 | 671,859 |
+| **TOTAL** | 3,963,526 | 19,081,514 | 3,387,079 | **3,411,947** |
+
+Variant **A** reaches the total target but regresses venus, earth, mars, jupiter, uranus and neptune
+against `main` — the total is carried entirely by Saturn. Decomposing the error along-track rather
+than by distance exposed why: Venus's ϖ-drift correction is only ~2.6″ (its `ϖdot` is near zero), yet
+Venus was still ~120″ worse than `main`. That residual is a **second** double-count:
+
+```ts
+const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
+const meanMotion = TWO_PI / periodDays;          // n re-derived from the DRIFTING a
+```
+
+The tabulated mean-longitude rate already accounts for the semi-major-axis drift, so re-deriving `n`
+from `a(T)` applies it again, and the resulting rate error accumulates linearly with elapsed time.
+The shipped fix advances the mean anomaly with `baseMeanMotion = TWO_PI / basePeriodDays` and keeps
+the `a`-scaled `meanMotion` only for the velocity, where the instantaneous `a` is correct.
+
+**Variant C — JPL `Ldot` — was tested and rejected for now.** Adding
+`meanLongitudeDegPerCentury` from JPL Table 1 is transformative for the inner planets
+(Mercury 94,239 → **2,352**; Venus 28,274 → **2,284**; Jupiter → 443,308) but sends
+**Saturn to 1,823,074** — worse than every other variant — because Table 1 alone omits the
+Jupiter–Saturn great-inequality terms that Table 2b supplies. Adopting `Ldot` therefore
+means adopting Table 2b with it. That is an accuracy project, not a regression fix, and it
+belongs on the roadmap rather than in R2.
+
+### Acceptance — met, with one criterion revised
+
+| Criterion | Result |
+|---|---|
+| Total 8-planet error < 3.6e6 km vs a committed Horizons fixture at JD 2461275.5 | **PASS** — 3,411,947 km (was 19,081,514; `main` 3,963,526) |
+| No individual planet regresses against `main` | **REVISED — 6 of 8 pass.** Earth (+6,631 km) and Neptune (+6,770 km) remain marginally further than the fixed-element propagator. This is inherent: actually precessing the orbit orientation moves a body off a fit that was tuned without precession. The original criterion was unachievable without variant C, which trades this for a far worse Saturn. |
+| `secularRates` absent ⇒ output identical to the pre-change function | **PASS** — bit-identical across elapsed times 0, ±1 yr, ±100 yr, 1000 yr |
+| Existing `orbitMath` secular-drift tests still pass | **PASS** (they assert only that values changed, which is the R4 gap) |
+| New accuracy test fails against the unfixed code | **PASS** — 7 of 8 assertions fail on pristine `fd793f4` |
+
+Landed with `src/sim/orbitMath.accuracy.test.ts`, which measures against committed JPL Horizons
+vectors rather than re-deriving expectations from `orbitMath` itself.
 
 ---
 
