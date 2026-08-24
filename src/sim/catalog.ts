@@ -83,7 +83,14 @@ const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 const EARTH_OBLIQUITY_DEG = 23.439281;
 const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
-  PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
+  PLANETS.map((planet) => [planet.id, planet.axialTiltDeg ?? 0])
+);
+const PARENT_SPIN_AXIS_LONGITUDE_DEG: Record<string, number> = Object.fromEntries(
+  PLANETS.map((planet) => {
+    const axisLon = (planet as { spinAxisLongitudeDeg?: unknown }).spinAxisLongitudeDeg;
+    const axisLonDeg = typeof axisLon === 'number' && Number.isFinite(axisLon) ? axisLon : 0;
+    return [planet.id, axisLonDeg];
+  })
 );
 
 function clamp(value: number, min: number, max: number): number {
@@ -132,25 +139,37 @@ function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
   };
 }
 
-function rotateVectorAroundX(vector: OrbitNormal, angleDeg: number): OrbitNormal {
+function rotateVectorAroundAxis(vector: OrbitNormal, axis: OrbitNormal, angleDeg: number): OrbitNormal {
+  const axisUnit = normalizeVector(axis);
   const angle = angleDeg * DEG_TO_RAD;
-  const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
+  const cosA = Math.cos(angle);
+  const oneMinusCosA = 1 - cosA;
+  const dot = vector.x * axisUnit.x + vector.y * axisUnit.y + vector.z * axisUnit.z;
+  const cross = crossProduct(axisUnit, vector);
+
   return {
-    x: vector.x,
-    y: vector.y * cosA - vector.z * sinA,
-    z: vector.y * sinA + vector.z * cosA
+    x: vector.x * cosA + cross.x * sinA + axisUnit.x * dot * oneMinusCosA,
+    y: vector.y * cosA + cross.y * sinA + axisUnit.y * dot * oneMinusCosA,
+    z: vector.z * cosA + cross.z * sinA + axisUnit.z * dot * oneMinusCosA
   };
 }
 
-function elementsFromOrbitNormal(normal: OrbitNormal): { iDeg: number; ascendingNodeDeg: number } {
-  const z = clamp(normal.z, -1, 1);
-  const iRad = Math.acos(z);
-  const ascendingNodeRad = Math.atan2(-normal.x, normal.y);
+function eclipticNormalFromEquatorialCoords(latDeg: number, lonDeg: number): OrbitNormal {
+  const latRad = latDeg * DEG_TO_RAD;
+  const lonRad = lonDeg * DEG_TO_RAD;
+  const cosLat = Math.cos(latRad);
   return {
-    iDeg: iRad * RAD_TO_DEG,
-    ascendingNodeDeg: normalizeDegrees(ascendingNodeRad * RAD_TO_DEG)
+    x: cosLat * Math.cos(lonRad),
+    y: cosLat * Math.sin(lonRad),
+    z: Math.sin(latRad)
   };
+}
+
+function parentPoleInEcliptic(parentId: string): OrbitNormal {
+  const parentTiltDeg = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
+  const parentPoleLonDeg = PARENT_SPIN_AXIS_LONGITUDE_DEG[parentId] ?? 0;
+  return normalizeVector(eclipticNormalFromEquatorialCoords(90 - parentTiltDeg, parentPoleLonDeg));
 }
 
 function raDecToEquatorialUnit(raDeg: number | null | undefined, decDeg: number | null | undefined): OrbitNormal {
@@ -181,15 +200,79 @@ function sourcePoleInEcliptic(moon: RawMoonRecord, parentId: string, sourceFrame
     return normalizeVector(equatorialToEcliptic(poleEq));
   }
 
-  const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
+  const parentPole = parentPoleInEcliptic(parentId);
+  if (sourceFrame !== 'laplace') {
+    return parentPole;
+  }
+
   const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? (moon.poleTiltDeg as number) : 0;
-  const frameTiltDeg = sourceFrame === 'laplace'
-    ? parentTilt + laplaceTilt
-    : parentTilt;
-  return normalizeVector(rotateVectorAroundX({ x: 0, y: 0, z: 1 }, frameTiltDeg));
+  if (!Number.isFinite(laplaceTilt) || Math.abs(laplaceTilt) < 1e-12) {
+    return parentPole;
+  }
+
+  const laplaceAxis = crossProduct(parentPole, { x: 0, y: 0, z: 1 });
+  if (vectorMagnitude(laplaceAxis) < 1e-12) {
+    return parentPole;
+  }
+  return rotateVectorAroundAxis(parentPole, laplaceAxis, laplaceTilt);
 }
 
-function convertElementsFromPlaneToEcliptic(moon: RawMoonRecord, sourceFrame: string, parentId: string): { iDeg: number; ascendingNodeDeg: number } {
+function transformVectorFromSourcePlane(
+  vector: OrbitNormal,
+  planeXAxis: OrbitNormal,
+  planeYAxis: OrbitNormal,
+  sourcePole: OrbitNormal
+): OrbitNormal {
+  return {
+    x: planeXAxis.x * vector.x + planeYAxis.x * vector.y + sourcePole.x * vector.z,
+    y: planeXAxis.y * vector.x + planeYAxis.y * vector.y + sourcePole.y * vector.z,
+    z: planeXAxis.z * vector.x + planeYAxis.z * vector.y + sourcePole.z * vector.z
+  };
+}
+
+function sourcePeriapsisDirection(iDeg: number | undefined, ascendingNodeDeg: number | undefined, argPeriapsisDeg: number | undefined): OrbitNormal {
+  const i = (iDeg ?? 0) * DEG_TO_RAD;
+  const ascendingNode = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
+  const argPeriapsis = (argPeriapsisDeg ?? 0) * DEG_TO_RAD;
+  const sinI = Math.sin(i);
+  const cosI = Math.cos(i);
+
+  return {
+    x: Math.cos(ascendingNode) * Math.cos(argPeriapsis) - Math.sin(ascendingNode) * Math.sin(argPeriapsis) * cosI,
+    y: Math.sin(ascendingNode) * Math.cos(argPeriapsis) + Math.cos(ascendingNode) * Math.sin(argPeriapsis) * cosI,
+    z: Math.sin(argPeriapsis) * sinI
+  };
+}
+
+function elementsFromPlane(normal: OrbitNormal, periapsis: OrbitNormal): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
+  const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
+  const iDeg = Math.acos(clamp(normal.z, -1, 1)) * RAD_TO_DEG;
+  const ascendingNodeDeg = normalizeDegrees(Math.atan2(-normal.x, normal.y) * RAD_TO_DEG);
+
+  let nodeAxis = crossProduct(eclipticNorth, normal);
+  if (vectorMagnitude(nodeAxis) < 1e-12) {
+    nodeAxis = { x: 1, y: 0, z: 0 };
+  } else {
+    nodeAxis = normalizeVector(nodeAxis);
+  }
+
+  const periapsisAlongNode = nodeAxis.x * periapsis.x + nodeAxis.y * periapsis.y + nodeAxis.z * periapsis.z;
+  const nodePerp = normalizeVector(crossProduct(normal, nodeAxis));
+  const periapsisAlongPerp = nodePerp.x * periapsis.x + nodePerp.y * periapsis.y + nodePerp.z * periapsis.z;
+  const argPeriapsisDeg = normalizeDegrees(Math.atan2(periapsisAlongPerp, periapsisAlongNode) * RAD_TO_DEG);
+
+  return {
+    iDeg,
+    ascendingNodeDeg,
+    argPeriapsisDeg
+  };
+}
+
+function convertElementsFromPlaneToEcliptic(
+  moon: RawMoonRecord,
+  sourceFrame: string,
+  parentId: string
+): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
   const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
   const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
   let planeXAxis = crossProduct(eclipticNorth, sourcePole);
@@ -201,20 +284,24 @@ function convertElementsFromPlaneToEcliptic(moon: RawMoonRecord, sourceFrame: st
   const planeYAxis = normalizeVector(crossProduct(sourcePole, planeXAxis));
 
   const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
-  const eclipticNormal = normalizeVector({
-    x: planeXAxis.x * sourceNormal.x + planeYAxis.x * sourceNormal.y + sourcePole.x * sourceNormal.z,
-    y: planeXAxis.y * sourceNormal.x + planeYAxis.y * sourceNormal.y + sourcePole.y * sourceNormal.z,
-    z: planeXAxis.z * sourceNormal.x + planeYAxis.z * sourceNormal.y + sourcePole.z * sourceNormal.z
-  });
-  return elementsFromOrbitNormal(eclipticNormal);
+  const sourcePeriapsis = sourcePeriapsisDirection(moon.inclinationDeg, moon.ascendingNodeDeg, moon.argPeriapsisDeg);
+
+  const eclipticNormal = normalizeVector(
+    transformVectorFromSourcePlane(sourceNormal, planeXAxis, planeYAxis, sourcePole)
+  );
+  const eclipticPeriapsis = normalizeVector(
+    transformVectorFromSourcePlane(sourcePeriapsis, planeXAxis, planeYAxis, sourcePole)
+  );
+  return elementsFromPlane(eclipticNormal, eclipticPeriapsis);
 }
 
-function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg: number; ascendingNodeDeg: number; sourceFrame: string } {
+function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number; sourceFrame: string } {
   const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
   if (sourceFrame === 'ecliptic' || sourceFrame.length === 0) {
     return {
       iDeg: moon.inclinationDeg,
       ascendingNodeDeg: normalizeDegrees(moon.ascendingNodeDeg ?? 0),
+      argPeriapsisDeg: normalizeDegrees(moon.argPeriapsisDeg ?? 0),
       sourceFrame: sourceFrame || 'ecliptic'
     };
   }
@@ -225,6 +312,7 @@ function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg:
   return {
     iDeg: converted.iDeg,
     ascendingNodeDeg: converted.ascendingNodeDeg,
+    argPeriapsisDeg: converted.argPeriapsisDeg,
     sourceFrame
   };
 }
@@ -420,7 +508,7 @@ export function createSolarSystemCatalog(): SolarCatalog {
         e: moon.e,
         iDeg: frameNormalized.iDeg,
         ascendingNodeDeg: frameNormalized.ascendingNodeDeg,
-        argPeriapsisDeg: moon.argPeriapsisDeg,
+        argPeriapsisDeg: frameNormalized.argPeriapsisDeg,
         meanAnomalyDeg: moon.meanAnomalyDeg,
         periodDays: moon.periodDays
       }
