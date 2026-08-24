@@ -1,10 +1,30 @@
 # Fix Implementation Plan — the three `sun-focus` regressions
 
-**Target branch:** `origin/sun-focus @ fd793f4` · **Baseline for comparison:** `main @ aa6e39a` · **Written:** 2026-08-23
+**Target branch:** `origin/sun-focus @ fd793f4` · **Baseline for comparison:** `main @ aa6e39a` (main has since moved to `9dc8e48`) · **Written:** 2026-08-23 · **Rechecked:** 2026-08-24
 
 > **Why this document exists.** [Report C](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md) recommends adopting `sun-focus` as the canonical branch, because it genuinely fixes four things and cuts type errors 1,300 → 344. It also ships three regressions that are each *worse than what they replace*, and none of which its own new tests can detect. This plan closes those three, plus the test gap that let them land.
 >
 > Every file:line below was read on the `sun-focus` worktree at `fd793f4`, not inferred from the audit summary.
+
+> ## ⚠️ Recheck of 2026-08-24 — read before using this document
+>
+> An independent four-agent recheck re-derived both shipped fixes from first principles and audited
+> this file against the committed code. Three things you must know:
+>
+> 1. **R2's original one-term fix was insufficient and has been superseded.** Measured across ten
+>    epochs from 1800–2150 it improved on the pre-secular propagator by only 4.7% and was *worse* at
+>    three of them; the single date it was validated against sat in the 1st percentile of its own
+>    error distribution. The shipped fix now advances the mean anomaly at JPL's tabulated `Ldot`
+>    (commit `6f385e1`), which improves **every** planet and cuts mean error 58.4%. See the R2
+>    Correction section.
+> 2. **`main` has already shipped most of R3 Layer 2.** `main @ 9dc8e48` carries a `BoundedSemaphore`
+>    concurrency guard, non-blocking acquire with `503 + Retry-After`, an async endpoint with
+>    `asyncio.to_thread` and a compute timeout, a per-client rate limit and `413` on oversized
+>    `max_features`. `origin/sun-focus` has **none** of it (`git show main:backend/server.py |
+>    grep -cE 'BoundedSemaphore|Retry-After|asyncio.to_thread'` → 15; the same on sun-focus → 0).
+>    **Adopting `sun-focus` wholesale would silently revert that hardening.** R3 is therefore mostly
+>    a forward-port, not new work, and the branch recommendation in Report C needs this caveat.
+> 3. **Both fixes live on unmerged topic branches**, not on `main`.
 
 ## Ordering and rationale
 
@@ -12,9 +32,9 @@ Fix in this order. It is not arbitrary — R1 and R2 are silent wrong-number def
 
 | # | Regression | Severity | Effort | Blocking? | Status |
 |---|---|---|---|---|---|
-| **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ **DONE** — `cf34ff5` |
-| **R2** | Secular rates 4.8× worse than `main` | High | **S** (≤ 1 h) | Blocks adoption | ✅ **DONE** — `5e461f6` |
-| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | not started |
+| **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ on branch `fix/r1-kuiper-velocity-units` — `cf34ff5` + `7baa015`, **not merged** |
+| **R2** | Secular rates 4.8× worse than `main` | High | **M** (revised up) | Blocks adoption | ✅ on branch `fix/r2-secular-rate-mean-anomaly` — `5e461f6` + `6f385e1`, **not merged** |
+| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | ⚠️ **largely already shipped on `main`** — see the warning below |
 | **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | not started |
 
 R1 and R2 are each a few lines and can ship the same day. R3 needs a decision about whether PFSS stays request-synchronous at all. **R4 is not optional**: without it the same class of regression returns on the next commit, and the branch's green suite will keep saying everything is fine.
@@ -87,7 +107,7 @@ Injected speed is therefore **365.25× too small**, which is numerically indisti
 
 ```
              Jupiter            Saturn             Neptune
-main      a=5.2081 e=0.0493  a=9.5392 e=0.0540  a=30.0703 e=0.0086
+main      a=5.2029 e=0.0484  a=9.5367 e=0.0539  a=30.0699 e=0.0086   <- re-measured 2026-08-24
 sun-focus a=2.4837 e=1.0000  a=4.5862 e=1.0000  a=15.0587 e=1.0000
 truth     a=5.20   e=0.048   a=9.58   e=0.056   a=30.07   e=0.009
 ```
@@ -114,7 +134,7 @@ def activate(
     sun_pos: List[float],
     sun_vel: List[float],
     ...
-    velocity_units: str = "AU/day",     # matches the current WS contract
+    velocity_units: str = NATIVE_VELOCITY_UNITS,   # SHIPPED: "AU/yr", the sim's own units
 ) -> None:
     try:
         vscale = _VELOCITY_SCALE_TO_AU_PER_YEAR[velocity_units]
@@ -145,7 +165,7 @@ self.kuiper.activate(
     jupiter_vel=jupiter["vel"] if jupiter else None,
     saturn_pos=saturn["pos"] if saturn else None,
     saturn_vel=saturn["vel"] if saturn else None,
-    velocity_units=main_state.get("velocity_units", "AU/day"),
+    velocity_units=declared_velocity_units,   # SHIPPED: no default at all - refuses if undeclared (7baa015)
 )
 ```
 
@@ -210,13 +230,13 @@ except KuiperActivationError as exc:
 
 It is an unbound-detector for gross unit errors (which are always ~365× or ~86400×), not an accuracy
 test. Tightening the threshold is constrained: `test_kuiper_binary.py` legitimately activates Neptune
-at `e = 0.24`, so anything below ~0.3 would fail a valid test.
+at `e = 0.24`, so anything at or below ~0.25 would fail a valid test.
 
 ### Acceptance — all met, measured on `cf34ff5`
 
 | Criterion | Result |
 |---|---|
-| Perturbers bound after `activate_kuiper` through the real `_handle_command` | **PASS** — Jupiter `a=5.2029 e=0.0484`, Saturn `a=9.5367 e=0.0539`, Neptune `a=30.0684 e=0.0086` (all within 0.5% of JPL) |
+| Perturbers bound after `activate_kuiper` through the real `_handle_command` | **PASS** — Jupiter `a=5.2029 e=0.0484`, Saturn `a=9.5367 e=0.0539`, Neptune `a=30.0684 e=0.0086` (measured after the session advanced to jd ~2451553.7; at J2000 the same path gives Neptune `a=30.0699`) |
 | `velocity_units="AU/yr"` reproduces pre-regression (`main`) behaviour | **PASS** — identical to 10 dp |
 | Unknown units raise rather than mis-scale | **PASS** — `KuiperActivationError` |
 | A rejected activation does **not** brick the session (K-25) | **PASS** — `code=kuiper_activation_failed`, `_runtime_error` stays `None`, `paused` stays `False`, jd kept advancing `2451553.73 → 2451564.47`. Contrast: `get_orbital_elements(sun)` *does* latch, proving the paths differ |
@@ -345,6 +365,50 @@ the `a`-scaled `meanMotion` only for the velocity, where the instantaneous `a` i
 Jupiter–Saturn great-inequality terms that Table 2b supplies. Adopting `Ldot` therefore
 means adopting Table 2b with it. That is an accuracy project, not a regression fix, and it
 belongs on the roadmap rather than in R2.
+
+### Superseded — the 2026-08-24 recheck found a THIRD term
+
+Variant **B** above shipped as `5e461f6`, and an independent recheck then showed it was still
+incomplete. It advances `M` at `2π/periodDays`, but the stored period literals disagree with JPL's
+tabulated mean-longitude rate `Ldot` by up to 3.1e-4 relative (Saturn). The residual rate that leaves
+is, for Mercury, **+0.2658 °/century — 1.66× larger than the 0.1605 °/century drift variant A
+removed** — and −0.3790 for Saturn.
+
+Because `M = L − ϖ`, the correct advance is exactly `(Ldot − ϖ̇)`. Commit **`6f385e1`** adds
+`meanLongitudeDegPerCentury` to `KeplerOrbitSecularRates`, populates it from JPL Table 1 for the
+eight planets, and uses it when present; the 413 moons, which carry ϖ̇ rates but no `Ldot`, keep the
+period-derived advance.
+
+Mean position error vs JPL Horizons across ten epochs 1800–2150 (km):
+
+| variant | mean total | vs pre-secular |
+|---|---|---|
+| pre-secular `main` | 16,164,821 | — |
+| `sun-focus` (bug) | 61,879,932 | −283% |
+| **A** (ϖ̇ only) | — | regresses 6 of 8 planets |
+| **B** `5e461f6` | 15,409,819 | +4.7%, worse at 3 of 10 epochs |
+| **C** `6f385e1` (shipped) | **6,720,217** | **+58.4%, better at 9 of 10** |
+
+Per-planet mean error, **every** planet improves and none regresses: mercury 230,467 → **1,980**;
+venus 87,325 → 6,223; earth 105,854 → 5,789; mars 183,311 → 28,374; jupiter 2,073,266 → 697,780;
+saturn 10,097,233 → 3,301,015; uranus 2,214,466 → 1,723,947; neptune 1,303,221 → 1,061,233.
+
+**Two claims made by `5e461f6` were false and are corrected in `6f385e1`:**
+
+- *"every moon, asteroid and KBO propagates bit-for-bit as before"* — untrue. `catalog.ts`
+  `resolveMoonSecularRates` gives **413 of 434** catalog bodies secular rates, and they do take the
+  ϖ̇ correction (a large improvement — the Moon's geocentric error drops ~492,000 → ~11,000 km — but
+  not "no change"). Only the asteroid and KBO populations are strictly untouched.
+- The accuracy test asserted **one** epoch with budgets read off that same run, and **failed at the
+  element epoch itself** (Saturn 3,848,012 km against a 1,000,000 km ceiling at J2000). It now spans
+  four epochs, and its rate-free invariant compares against committed pre-correction constants rather
+  than the same function with an empty rates block — which could not have detected a change affecting
+  both branches.
+
+**Lesson worth keeping:** both the original plan and the first fix were validated at a single epoch,
+and both were wrong in a way only a multi-epoch sweep exposed. Variant C was in fact *tested and
+rejected earlier* on the strength of one date, where Saturn looked worse. Any future change here must
+be measured across the 1800–2150 span.
 
 ### Acceptance — met, with one criterion revised
 
@@ -514,7 +578,7 @@ Items 1, 3 and 5 are what would have caught R1 and R2 on the commit that introdu
 2. **R2** — the one-term `orbitMath.ts:101` correction. Verify against the Horizons fixture; confirm the no-rates invariant.
 3. **R4 (items 1, 3, 4, 5)** — land the fixtures and the invariant tests *with* R1/R2 so both are locked in. Confirm the new tests **fail** against the unfixed code before merging (a test that has never been seen red is not evidence).
 4. **R3 Layers 1–2** — cache key + single-flight + semaphore + `jd` bound. Run the concurrency acceptance check.
-5. Re-run the full baseline: `tsc --noEmit` (expect 344, unchanged), `npm test`, `pytest`. **`pytest` should still show the one pre-existing failure** — `test_rebound_engine_exports_self_describing_barycentric_states`, which fails on the `ias15`/REBOUND 5 break that neither branch fixes. That is a separate item on the shared roadmap, not something this plan introduces or resolves.
+5. Re-run the full baseline: `tsc --noEmit` (expect **346**: the 344 baseline plus 2 from `src/sim/orbitMath.accuracy.test.ts`, both because vitest types are not installed in this toolchain), `npm test`, `pytest`. **`pytest` should still show the one pre-existing failure** — `test_rebound_engine_exports_self_describing_barycentric_states`, which fails on the `ias15`/REBOUND 5 break that neither branch fixes. That is a separate item on the shared roadmap, not something this plan introduces or resolves.
 6. Only then adopt `sun-focus` as canonical.
 7. **R3 Layer 3** and the remaining SF-4..SF-10 items follow on the normal roadmap.
 
