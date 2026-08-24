@@ -10,18 +10,32 @@
 
 Fix in this order. It is not arbitrary — R1 and R2 are silent wrong-number defects that corrupt output a user would act on, and both are small and self-contained. R3 is a larger change with a design decision in it.
 
-| # | Regression | Severity | Effort | Blocking? |
-|---|---|---|---|---|
-| **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption |
-| **R2** | Secular rates 4.8× worse than `main` | High | **S** (≤ 1 h) | Blocks adoption |
-| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use |
-| **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* |
+| # | Regression | Severity | Effort | Blocking? | Status |
+|---|---|---|---|---|---|
+| **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ **DONE** — `cf34ff5` |
+| **R2** | Secular rates 4.8× worse than `main` | High | **S** (≤ 1 h) | Blocks adoption | not started |
+| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | not started |
+| **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | not started |
 
 R1 and R2 are each a few lines and can ship the same day. R3 needs a decision about whether PFSS stays request-synchronous at all. **R4 is not optional**: without it the same class of regression returns on the next commit, and the branch's green suite will keep saying everything is fine.
 
 ---
 
 ## R1 — Kuiper perturbers destroyed by the velocity-unit change
+
+> **STATUS: IMPLEMENTED AND VERIFIED** — branch `fix/r1-kuiper-velocity-units`, commit `cf34ff5`
+> (based on `origin/sun-focus @ fd793f4`).
+>
+> **Three defects in this plan were found while implementing it and corrected in the code.**
+> The sections below are annotated where the shipped fix deviates from what was originally
+> written here. Read the annotations, not just the original prose.
+>
+> | Planned here | Why it was wrong | What shipped |
+> |---|---|---|
+> | `particle.calculate_orbit(primary=…)` | Does not exist in REBOUND 5.1.1 — would raise `AttributeError`, the same failure class as the `ias15` break next to it | `particle.orbit(primary=…)`, matching `rebound_nbody.py:314` |
+> | `self._massive_body_labels()` | Invented; no such method. Perturber indices also shift when Jupiter/Saturn are absent | Indices collected as `(self.sim.N - 1, name)` at each `add()` |
+> | `raise ValueError` from `activate` | `server.py:835-838` latches `_runtime_error` on *any* command exception, and K-25 means `resume` never clears it — the guard would have **permanently bricked the session** | Raises `KuiperActivationError`; `server.py` catches it and pushes a structured error **without** latching |
+> | default `velocity_units="AU/day"` | Would silently rescale `test_kuiper_binary.py`'s AU/yr inputs by 365× — the exact bug class being fixed | default `"AU/yr"` (the sim's native units), with `server.py` passing the producer's declared units explicitly |
 
 ### Root cause
 
@@ -145,24 +159,77 @@ This is the right shape because `sun-focus` *already added* `velocity_units` to 
 
 The reason this shipped is that a physically absurd simulation raised nothing. Add a cheap post-condition at the end of `activate`, after the massive bodies are added:
 
+> **Corrected — this is what actually shipped.** The original draft of this block used
+> `calculate_orbit` (absent in REBOUND 5.1.1), an invented `_massive_body_labels()` helper, and a
+> bare `raise` that would have bricked the session. All three are fixed below.
+
 ```python
-# Sanity-check the perturber field: a bound planet must be elliptical.
-for idx, name in self._massive_body_labels():        # e.g. [(1,'jupiter'), (2,'saturn'), (3,'neptune')]
-    orb = self.sim.particles[idx].calculate_orbit(primary=self.sim.particles[0])
-    if not (0.0 <= orb.e < 0.9):
-        raise ValueError(
-            f"kuiper.activate: {name} is unbound (e={orb.e:.4f}, a={orb.a:.4f} AU) — "
-            "injected velocities are almost certainly in the wrong units"
-        )
+# in activate(), as each massive body is added:
+perturbers: List[tuple[int, str]] = []
+...
+    self.sim.add(m=9.55e-4, x=..., vx=...)
+    perturbers.append((self.sim.N - 1, "jupiter"))   # index tracked at add time
+
+# after self._massive_count = self.sim.N, BEFORE the test-particle loop:
+self._verify_perturbers_bound(perturbers, velocity_units)
+
+
+def _verify_perturbers_bound(self, perturbers, velocity_units) -> None:
+    primary = self.sim.particles[0]
+    for index, name in perturbers:
+        orbit = self.sim.particles[index].orbit(primary=primary)   # REBOUND 5 API
+        if not (0.0 <= orbit.e < MAX_PLAUSIBLE_PERTURBER_ECCENTRICITY):   # 0.9
+            eccentricity, semi_major = orbit.e, orbit.a
+            self.deactivate()                    # leave no half-built sim behind
+            raise KuiperActivationError(
+                f"{name} is not on a bound orbit (e={eccentricity:.4f}, "
+                f"a={semi_major:.4f} AU) after injecting velocities declared as "
+                f"{velocity_units!r}; the velocity units are almost certainly wrong"
+            )
+```
+
+and in `server.py`, so a rejection cannot latch `_runtime_error` (K-25):
+
+```python
+try:
+    self.kuiper.activate(..., velocity_units=main_state.get("velocity_units", ...))
+except KuiperActivationError as exc:
+    self.kuiper.deactivate()
+    self._push_error(f"`activate_kuiper` rejected: {exc}",
+                     action=action, code="kuiper_activation_failed")
+    return
 ```
 
 `e ≥ 0.9` for a major planet cannot happen with correct inputs, so this has no false-positive risk and would have caught the regression on the first `activate_kuiper` command.
 
-### Acceptance
+**Measured sensitivity of the guard** (velocity scaled by 1/f, all other inputs correct):
 
-- `activate_kuiper` over a live WS, then read the perturber elements: **Jupiter `e < 0.10`, Saturn `e < 0.10`, Neptune `e < 0.05`**, and `a` within 2% of 5.20 / 9.58 / 30.07 AU.
-- Passing `velocity_units="AU/yr"` yields the same result as `main` did (regression-proof in both directions).
-- An unknown `velocity_units` raises `ValueError` rather than silently mis-scaling.
+| f | 365.25 | 100 | 10 | 4 | 2 | 1.5 | 1.2 |
+|---|---|---|---|---|---|---|---|
+| caught? | yes | yes | yes | yes | **no** | **no** | **no** |
+
+It is an unbound-detector for gross unit errors (which are always ~365× or ~86400×), not an accuracy
+test. Tightening the threshold is constrained: `test_kuiper_binary.py` legitimately activates Neptune
+at `e = 0.24`, so anything below ~0.3 would fail a valid test.
+
+### Acceptance — all met, measured on `cf34ff5`
+
+| Criterion | Result |
+|---|---|
+| Perturbers bound after `activate_kuiper` through the real `_handle_command` | **PASS** — Jupiter `a=5.2029 e=0.0484`, Saturn `a=9.5367 e=0.0539`, Neptune `a=30.0684 e=0.0086` (all within 0.5% of JPL) |
+| `velocity_units="AU/yr"` reproduces pre-regression (`main`) behaviour | **PASS** — identical to 10 dp |
+| Unknown units raise rather than mis-scale | **PASS** — `KuiperActivationError` |
+| A rejected activation does **not** brick the session (K-25) | **PASS** — `code=kuiper_activation_failed`, `_runtime_error` stays `None`, `paused` stays `False`, jd kept advancing `2451553.73 → 2451564.47`. Contrast: `get_orbital_elements(sun)` *does* latch, proving the paths differ |
+| Re-activation after a rejection | **PASS** |
+| Index labelling with Jupiter and/or Saturn absent | **PASS** — all 4 combinations map to the correct bodies |
+| No false positives across epochs | **PASS** — J2000, +5 yr, +20 yr, −10 yr all accepted |
+| Guard runs before the test-particle loop (cheap rejection) | **PASS** |
+| Test suite | **PASS** — pristine `fd793f4`: 80 passed / 1 failed → fix: **86 passed / 1 failed**, same single pre-existing `ri_ias15` failure |
+| New tests fail against unfixed code | **PASS** — the physical invariant, run against genuine pre-fix blobs, reports Jupiter `a=2.4837 e=1.0000`, Saturn `a=4.5862 e=1.0000`, Neptune `a=15.0587 e=1.0000` with **no error raised** |
+
+Six regression tests landed with the fix in `backend/tests/test_kuiper_velocity_units.py`. They assert
+physical invariants against independent JPL values rather than re-implementing the code under test —
+deliberately, given SF-9 (see R4).
 
 ---
 
