@@ -8,7 +8,7 @@ import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -81,6 +81,7 @@ class SolarRealtimeDataProvider:
         self._cache: dict[str, Any] | None = None
         self._cache_expiry_monotonic = 0.0
         self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
+        self._inflight_fetches: dict[Any, dict[str, Any]] = {}
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -114,7 +115,11 @@ class SolarRealtimeDataProvider:
             ):
                 return self._cache
 
-        snapshot = self._fetch_snapshot(jd)
+        key = ("snapshot", "latest" if jd is None else str(jd))
+        snapshot = self._singleflight_fetch(
+            key=key,
+            fetch_fn=lambda: self._fetch_snapshot(jd),
+        )
 
         with self._lock:
             self._cache = snapshot
@@ -185,7 +190,10 @@ class SolarRealtimeDataProvider:
                 if now_monotonic < expiry:
                     return payload, content_type
 
-        payload, content_type = self._fetch_binary(url)
+        payload, content_type = self._singleflight_fetch(
+            key=("binary", url),
+            fetch_fn=lambda: self._fetch_binary(url),
+        )
 
         with self._lock:
             self._binary_cache[url] = (now_monotonic + cache_ttl, payload, content_type)
@@ -205,6 +213,37 @@ class SolarRealtimeDataProvider:
                         self._binary_cache.pop(key, None)
 
         return payload, content_type
+
+    def _singleflight_fetch(self, key: Any, fetch_fn: Callable[[], Any]) -> Any:
+        with self._lock:
+            state = self._inflight_fetches.get(key)
+            if state is None:
+                event = threading.Event()
+                state = {"event": event, "value": None, "error": None}
+                self._inflight_fetches[key] = state
+                is_leader = True
+            else:
+                is_leader = False
+
+        if not is_leader:
+            state["event"].wait()
+            if state.get("error") is not None:
+                raise state["error"]
+            return state["value"]
+
+        try:
+            value = fetch_fn()
+            with self._lock:
+                state["value"] = value
+            return value
+        except Exception as exc:
+            with self._lock:
+                state["error"] = exc
+            raise
+        finally:
+            state["event"].set()
+            with self._lock:
+                self._inflight_fetches.pop(key, None)
 
     def _fetch_text(self, url: str) -> str:
         request = urllib.request.Request(
