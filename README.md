@@ -1,20 +1,14 @@
-# Solar System Mission Lab
+# Sun Model Lab (Sun-Focus branch)
 
-A real-time 3D solar system simulator and mission-design workbench running entirely in the browser, with an optional Python backend for high-fidelity N-body physics and trajectory planning.
+A browser-driven sun-focused solar visualization app with optional backend integration for high-fidelity simulation and data-backed realism layers.
 
 ## Highlights
 
-- **Sun + 8 planets + Pluto** with axial tilt, spin, and per-planet visual profiles
-- **424 moons** sourced from the NASA/JPL satellite mean-elements table
-- **Adjustable simulation clock** with pause, reverse, time-warp, and jump-to-date
-- **Catalog-driven background stars** with proper-motion propagation and synthetic Milky Way band
-- **Nearby star systems** (Alpha Centauri, Barnard's Star, Sirius, etc.) with navigable 3D manifests
-- **Asteroid belt** with GPU-propagated Keplerian instance orbits, Jupiter/Saturn perturbation uniforms, and deterministic phase-1 catalog assets
-- **Kuiper belt** procedural population with CPU orbit refresh; **Oort cloud** remains placeholder navigation context rather than a mission-grade subsystem
-- **Earth satellite layer** (ISS + sampled GEO) with TLE propagation and optional J2 perturbations
-- **Real-time Earth clouds** via NASA GIBS WMS tiled pipeline with cache
-- **Interplanetary route planner** supporting direct transfers and multi-gravity-assist trajectories
-- **Multi-agent mission planner** with trajectory, logistics, mining, and risk analysis
+- **Interactive 3D sun and inner-system viewer** with adjustable time controls, orbits, labels, and zoom-sensitive navigation
+- **Real-time solar features** including magnetic field toggles, live AIA observation channels, and cataloged body inspection
+- **Dynamic event simulation** with SMBH compound shockwave/event presets and observer-frame visualization controls
+- **Catalog-backed context** for stars, planets, moons, and nearby systems
+- **Optional backend bridge** for REBOUND/Tudat physics, benchmarking, and trajectory APIs where enabled
 
 ## Current TypeScript Status
 
