@@ -29,15 +29,16 @@ Protocol (WebSocket /ws/sim):
 import asyncio
 import json
 import math
+import os
 import queue
 import threading
 import time
-from collections import Counter
+from collections import Counter, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
 
@@ -107,6 +108,127 @@ NEARBY_SYSTEMS_SCHEMA = {
 }
 SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
 SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
+
+
+def _load_env_int(name: str, default: int, *, min_value: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, value)
+
+
+def _load_env_float(name: str, default: float, *, min_value: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, value)
+
+
+# ── /solar/physics request bounds (R3 Layer 2) ──────────────────────────────
+# Ported from main's solar hardening so the two branches stay congruent, plus a
+# jd range bound that main does not yet have. Every limit is env-overridable.
+SOLAR_PHYSICS_MAX_FEATURES = _load_env_int("SOLAR_PHYSICS_MAX_FEATURES", 256, min_value=64)
+SOLAR_PHYSICS_MIN_FEATURES = 8
+SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_env_int(
+    "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW", 36, min_value=2,
+)
+SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_env_float(
+    "SOLAR_PHYSICS_RATE_WINDOW_SECONDS", 60.0, min_value=1.0,
+)
+# 30 s, not main's 4 s: on sun-focus the PFSS field-line trace is the cost of this
+# endpoint and a cold ultra-fidelity compute legitimately takes ~5 s (measured).
+# The concurrency semaphore + rate limit are what bound the DoS; this timeout is a
+# backstop for a genuine hang (e.g. a stuck upstream fetch), so it sits well above
+# the worst legitimate compute.
+SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+    "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS", 30.0, min_value=0.5,
+)
+SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+    "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT", 2, min_value=1,
+)
+SOLAR_PHYSICS_API_KEYS = frozenset(
+    key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
+)
+# jd bound: the corona model is a Cycle-25 envelope; +/- 200 Julian years around
+# J2000 is generous and keeps a client from steering the PFSS cache/compute to an
+# arbitrary Carrington rotation. (New in R3; not on main.)
+J2000_JD = 2_451_545.0
+SOLAR_PHYSICS_JD_HALF_RANGE_DAYS = _load_env_float(
+    "SOLAR_PHYSICS_JD_HALF_RANGE_DAYS", 200.0 * 365.25, min_value=365.25,
+)
+SOLAR_PHYSICS_JD_MIN = J2000_JD - SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+SOLAR_PHYSICS_JD_MAX = J2000_JD + SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+
+_solar_physics_rate_locks: dict[str, "deque[float]"] = {}
+_solar_physics_rate_lock = threading.Lock()
+_solar_physics_concurrent_guard = threading.BoundedSemaphore(
+    SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT
+)
+
+
+def _extract_solar_api_key(request: Request) -> str | None:
+    header_key = request.headers.get("x-api-key")
+    if header_key and header_key.strip():
+        return header_key.strip()
+    auth = request.headers.get("authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token:
+            return token
+    return None
+
+
+def _client_identity(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "anonymous"
+
+
+def _require_optional_solar_api_key(request: Request) -> None:
+    if not SOLAR_PHYSICS_API_KEYS:
+        return
+    token = _extract_solar_api_key(request)
+    if token is None or token not in SOLAR_PHYSICS_API_KEYS:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid API key for solar endpoints.",
+            headers={"WWW-Authenticate": "X-API-Key"},
+        )
+
+
+def _enforce_solar_request_rate_limit(request: Request) -> None:
+    now = time.monotonic()
+    window = max(1.0, SOLAR_PHYSICS_RATE_WINDOW_SECONDS)
+    max_requests = max(1, SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW)
+    identity = _extract_solar_api_key(request) or _client_identity(request)
+    cutoff = now - window
+    with _solar_physics_rate_lock:
+        queue = _solar_physics_rate_locks.setdefault(identity, deque())
+        while queue and queue[0] < cutoff:
+            queue.popleft()
+        if len(queue) >= max_requests:
+            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
+            raise HTTPException(
+                status_code=429,
+                detail="Solar request rate limit exceeded; retry later.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        queue.append(now)
+
+
+def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
+    return sem.acquire(blocking=False)
 
 
 def _rebound_available() -> bool:
@@ -453,42 +575,21 @@ def solar_realtime_aia_tile(
     return response
 
 
-@app.get("/solar/physics")
-def solar_physics_state(
-    jd: float | None = None,
-    fidelity: str = "operational",
-    max_features: int = 220,
-    forcing: str = "synthetic",
-    live_data: bool = False,
-    force_data_refresh: bool = False,
-):
-    if jd is None:
-        epoch_jd = utc_now_to_julian_date()
-    else:
-        try:
-            epoch_jd = float(jd)
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
-        if not math.isfinite(epoch_jd):
-            raise HTTPException(status_code=400, detail="`jd` must be finite")
+def _build_solar_physics_state(
+    epoch_jd: float,
+    fidelity_key: str,
+    safe_max_features: int,
+    forcing_key: str,
+    live_data: bool,
+    force_data_refresh: bool,
+) -> dict[str, Any]:
+    """The actual (potentially expensive, PFSS-triggering) computation.
 
-    fidelity_key = fidelity.strip().lower()
-    if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
-        raise HTTPException(
-            status_code=400,
-            detail=f"`fidelity` must be one of {list(SOLAR_PHYSICS_MODEL.fidelity_levels)}",
-        )
-
-    forcing_key = forcing.strip().lower()
-    if forcing_key not in SOLAR_PHYSICS_MODEL.FORCING_MODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
-        )
-
-    safe_max_features = max(8, min(2_048, int(max_features)))
+    Kept synchronous and side-effect-free so the endpoint can run it in a worker
+    thread under a timeout and a concurrency bound.
+    """
     realtime_data: dict[str, Any] | None = None
-    if bool(live_data) and forcing_key != "synthetic":
+    if live_data and forcing_key != "synthetic":
         try:
             realtime_data = SOLAR_REALTIME_DATA.latest(
                 jd=epoch_jd,
@@ -508,6 +609,99 @@ def solar_physics_state(
     state["forcing"] = forcing_key
     state["live_data_enabled"] = bool(live_data)
     state["source"] = "backend"
+    return state
+
+
+@app.get("/solar/physics")
+async def solar_physics_state(
+    request: Request,
+    jd: float | None = None,
+    fidelity: str = "operational",
+    max_features: int = 220,
+    forcing: str = "synthetic",
+    live_data: bool = False,
+    force_data_refresh: bool = False,
+):
+    _require_optional_solar_api_key(request)
+    _enforce_solar_request_rate_limit(request)
+
+    if jd is None:
+        epoch_jd = utc_now_to_julian_date()
+    else:
+        try:
+            epoch_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
+        if not math.isfinite(epoch_jd):
+            raise HTTPException(status_code=400, detail="`jd` must be finite")
+        if not (SOLAR_PHYSICS_JD_MIN <= epoch_jd <= SOLAR_PHYSICS_JD_MAX):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "`jd` must be within "
+                    f"[{SOLAR_PHYSICS_JD_MIN:.1f}, {SOLAR_PHYSICS_JD_MAX:.1f}] "
+                    "(the corona model's validity window)"
+                ),
+            )
+
+    fidelity_key = fidelity.strip().lower()
+    if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`fidelity` must be one of {list(SOLAR_PHYSICS_MODEL.fidelity_levels)}",
+        )
+
+    forcing_key = forcing.strip().lower()
+    if forcing_key not in SOLAR_PHYSICS_MODEL.FORCING_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
+        )
+
+    requested_max_features = int(max_features)
+    safe_max_features = min(
+        SOLAR_PHYSICS_MAX_FEATURES,
+        max(SOLAR_PHYSICS_MIN_FEATURES, requested_max_features),
+    )
+    if requested_max_features != safe_max_features:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                "`max_features` must be between "
+                f"{SOLAR_PHYSICS_MIN_FEATURES} and {SOLAR_PHYSICS_MAX_FEATURES}"
+            ),
+        )
+
+    # Bound total in-flight PFSS work so it cannot exhaust the request threadpool
+    # and stall every other route (including /health). On saturation, shed load
+    # with 503 rather than queueing.
+    if not _acquire_nonblocking(_solar_physics_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail="Solar physics requests are temporarily saturated. Retry shortly.",
+            headers={"Retry-After": "2"},
+        )
+    try:
+        state = await asyncio.wait_for(
+            asyncio.to_thread(
+                _build_solar_physics_state,
+                epoch_jd,
+                fidelity_key,
+                safe_max_features,
+                forcing_key,
+                bool(live_data),
+                bool(force_data_refresh),
+            ),
+            timeout=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Solar physics generation timed out. Try again later.",
+        ) from exc
+    finally:
+        _solar_physics_concurrent_guard.release()
+
     return state
 
 

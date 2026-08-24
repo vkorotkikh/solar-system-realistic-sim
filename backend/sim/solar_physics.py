@@ -1104,7 +1104,7 @@ class SolarCoronaPhysicsModel:
             activity=activity,
             n_lines=pfss_lines,
             lmax=pfss_lmax,
-            gong_timeout_s=3.5,
+            gong_timeout_s=2.0,
         )
 
         # Extract internal WSA result for Parker spiral wind speeds (NumPy grids; not JSON-serializable).
