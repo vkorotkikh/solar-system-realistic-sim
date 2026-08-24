@@ -71,6 +71,11 @@ Overall maturity verdict: **38/100** (pre-production).
   - CORS allowlist + credentials policy in `backend/server.py`.
   - Constrained report path handling for `benchmark/accuracy/report`.
   - Single-flight dedupe + bounded follower waits + short failure backoff for realtime upstream data fetches.
+- `F-10` follow-up hardening now publishes successful snapshot/tile results before releasing single-flight ownership and starts tile TTL at fetch completion, closing the duplicate-fetch handoff window and preserving the full cache lifetime.
+- `F-11` now separates physical solar differential rotation from a pause/reverse-aware, rate-bounded procedural visual clock; activity and visual inputs have explicit bounded domains.
+- `F-12` now exposes one versioned state-vector contract from REBOUND and TudatPy: barycentric J2000 ecliptic positions in AU and velocities in AU/year. Tudat performs origin, orientation, and SI-unit normalization at serialization.
+- `F-13` now routes the emitted `metric_slipstream` H29 channel through the existing compatibility matcher, making the warp-impact responder reachable.
+- `F-14` now computes ultrarelativistic rigidity in GV from eV, anchors diffusion to the configured 1-GeV/1-GV coefficient, and uses the Gaussian-cgs gyroradius without an extra light-speed factor.
 - Verification mode for this delta: code-path evidence updated; no full command re-run pack was executed in this cycle.
 
 ## 5. Findings index (veracity index)
@@ -89,10 +94,10 @@ All issues below are verified from source or executed commands (`VERIFIED`). Eff
 | F-08 | High | LIVE | `src/main.ts:138`, `src/frontend/features/solar/sunVisuals.ts` | solar spin/axis mismatch in visual model | FIXED | M |
 | F-09 | High | LIVE | `main.ts:584-597`, `sunVisuals.ts` | feature-frame mismatch causes visual drift and wrong temporal behavior | FIXED | M |
 | F-10 | High | BACKEND+LIVE | `backend/sim/solar_realtime_data.py` | upstream tile fetch window too narrow / cache policy creates jitter storms | FIXED | M |
-| F-11 | High | LIVE | `src/frontend/features/solar/sunVisuals.ts` | speculative dynamics mixed with non-scaled simulation controls | VERIFIED | M |
-| F-12 | High | BACKEND | `backend/sim/rebound_nbody.py:138`, `backend/sim/tudatpy_hooks.py:287` | unit/frame mismatch between engines/contracts | VERIFIED | M |
-| F-13 | High | LIVE | `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts` | H29 channel selector never matches active key, effect locked out | VERIFIED | S |
-| F-14 | High | LIVE | `src/frontend/features/superluminal-modeling/smbhPropagation.ts:237` | key scaling constants produce out-of-domain CR/GM timescales | VERIFIED | M |
+| F-11 | High | LIVE | `src/frontend/features/solar/sunVisuals.ts` | speculative dynamics mixed with non-scaled simulation controls | FIXED | M |
+| F-12 | High | BACKEND | `backend/sim/rebound_nbody.py:138`, `backend/sim/tudatpy_hooks.py:287` | unit/frame mismatch between engines/contracts | FIXED | M |
+| F-13 | High | LIVE | `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts` | H29 channel selector never matches active key, effect locked out | FIXED | S |
+| F-14 | High | LIVE | `src/frontend/features/superluminal-modeling/smbhPropagation.ts:237` | key scaling constants produce out-of-domain CR/GM timescales | FIXED | M |
 | F-15 | High | BACKEND | `src/sim/phase1AsteroidCatalog.ts:185` | float precision causes catalog round-trip failure (99,916/100,000) | VERIFIED | M |
 | F-16 | Medium | LIVE | `src/sim/asteroidBelt.ts:65,127` | float precision in matrix path limits orbit fidelity | VERIFIED | M |
 | F-17 | Medium | SCRIPT | `scripts/fetch_jpl_sbdb.py:36`, `backend/data/bodies.py` | script targets deleted legacy file and crashes after write | VERIFIED | S |
@@ -141,14 +146,14 @@ All issues below are verified from source or executed commands (`VERIFIED`). Eff
 ### High
 - **F-05, F-06, F-07:** Moon-frame conversion in `src/sim/catalog.ts` (including `convertElementsFromPlaneToEcliptic`) misses angle re-references and fallback plane mapping. The bug is live because the moon path is processed in the worker and only conditionally rendered off by settings.
 - **F-08, F-09:** Fixed. Solar spin timing and feature frame handling now use simulation elapsed-seconds and local normal basis in `src/main.ts` + `src/frontend/features/solar/sunVisuals.ts`; this eliminates visible axis drift and time mismatch for sun visual features.
-- **F-11:** Solar features still mix speculative dynamics with non-scaled controls in `src/frontend/features/solar/sunVisuals.ts` and may need a bounded parameter contract.
-- **F-12:** backend engine contracts disagree on units; `state_update.vel` units differ across engines and are not normalized in contract.
-- **F-13, F-14:** superluminal stack uses dead branch/channel mismatches (`channel.key === 'warpMetric'`) and astrophysical constants not aligned to documented scales.
+- **F-11:** Fixed. Physical differential rotation is evaluated in simulation days relative to the rigid solar spin, while illustrative procedural motion uses a separate rate-bounded clock that respects pause and reverse. Inputs are clamped to explicit visual-model domains.
+- **F-12:** Fixed. REBOUND and TudatPy now serialize the same versioned barycentric J2000-ecliptic contract in AU and AU/year; Tudat converts its internal SI/mixed-origin vectors at the adapter boundary.
+- **F-13, F-14:** Fixed. H29 dispatch recognizes the emitted `metric_slipstream` channel, and CR diffusion/gyroradius calculations now use dimensionally consistent eV-to-GV and Gaussian-cgs scaling.
 - **F-15:** `src/data/asteroidCatalogLoader.ts:185` precision drop in catalog acceptance chain fails round-trip checks and is reflected in `astroCatalogLoader` validation.
 - **F-21, F-23:** Unwired dead trajectory/nearby/UI modules dereference missing ids and do not detach handlers, which means rewiring would crash fast.
-- **F-10:** fixed in this pass by adding single-flight dedupe and bounded follower semantics for realtime upstream data paths.
+- **F-10:** fixed and follow-up hardened: realtime upstream paths use single-flight dedupe, bounded follower semantics, atomic cache publication before owner release, and completion-based tile TTLs.
 - **F-24, F-25, F-27, F-28, F-29, F-30, F-31, F-39, F-40, F-41, F-42, F-43, F-45, F-50:** verified backend/live behavior with contract-level defects, either hard failures or silent correctness drift.
-- **F-51:** partially fixed in this pass (single-flight dedupe exists), but unit/frame contract mismatch is still open.
+- **F-51:** fixed across its duplicated concerns: realtime single-flight behavior is bounded and cross-engine state vectors now share an explicit unit/frame contract.
 
 ### Medium
 - **F-03 / F-04 / F-16 / F-17 / F-18 / F-20 / F-34 / F-35 / F-36 / F-37 / F-38 / F-40+F-47 / F-46 / F-48 / F-49 / F-52 / F-53:** these include drift, stale docs, precision tradeoffs, broken scripts, unreachable code, and reproducibility concerns, mostly fixable in bounded work.
