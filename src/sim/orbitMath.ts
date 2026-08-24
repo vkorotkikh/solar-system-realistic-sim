@@ -22,6 +22,8 @@ export interface KeplerOrbitSecularRates {
   iDegPerCentury?: number;
   ascendingNodeDegPerCentury?: number;
   argPeriapsisDegPerCentury?: number;
+  /** JPL's tabulated mean-longitude rate (Ldot). Preferred over 2*pi/periodDays. */
+  meanLongitudeDegPerCentury?: number;
 }
 
 export interface ResolvedKeplerOrbit {
@@ -117,15 +119,32 @@ export function resolveKeplerOrbitAtElapsedDays(
   //    where the instantaneous a is the right thing to use.
   //
   // With no secularRates both terms vanish and this reduces exactly to the previous
-  // behaviour, so every moon, asteroid and KBO propagates bit-for-bit as before.
+  // behaviour. Note that is NOT the same as "nothing else moves": catalog.ts gives
+  // 413 moons secular rates derived from moons.json precession periods, so they take
+  // the perihelion-drift correction too (a large improvement -- the Moon's geocentric
+  // error drops from ~492,000 km to ~11,000 km). Only the asteroid and KBO
+  // populations, which carry no rates at all, are strictly untouched.
   const perihelionDriftRad =
     degToRad(
       (secularRates?.argPeriapsisDegPerCentury ?? 0) +
         (secularRates?.ascendingNodeDegPerCentury ?? 0)
     ) * centuriesSinceEpoch;
 
+  // Prefer the tabulated mean-longitude rate when the element set carries one.
+  // M = L - varpi, so M advances at exactly (Ldot - varpidot). Deriving the rate
+  // from `periodDays` instead leaves a linear-in-time along-track drift, because
+  // the stored period literals disagree with Ldot by up to 3.1e-4 relative
+  // (Saturn) -- a residual that for Mercury, Jupiter and Saturn is comparable to
+  // or larger than the varpi drift removed above. Bodies without a tabulated rate
+  // (the moons) keep the period-derived advance, which is still correct for them.
+  const meanLongitudeRateDegPerCentury = secularRates?.meanLongitudeDegPerCentury;
+  const meanAnomalyAdvanceRad =
+    meanLongitudeRateDegPerCentury === undefined
+      ? baseMeanMotion * elapsedDays
+      : degToRad(meanLongitudeRateDegPerCentury) * centuriesSinceEpoch;
+
   const meanAnomalyRad = normalizeRadians(
-    degToRad(orbit.meanAnomalyDeg ?? 0) + baseMeanMotion * elapsedDays - perihelionDriftRad
+    degToRad(orbit.meanAnomalyDeg ?? 0) + meanAnomalyAdvanceRad - perihelionDriftRad
   );
 
   return {
