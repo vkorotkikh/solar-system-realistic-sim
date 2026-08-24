@@ -34,8 +34,8 @@ Fix in this order. It is not arbitrary — R1 and R2 are silent wrong-number def
 |---|---|---|---|---|---|
 | **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ on branch `fix/r1-kuiper-velocity-units` — `cf34ff5` + `7baa015`, **not merged** |
 | **R2** | Secular rates 4.8× worse than `main` | High | **M** (revised up) | Blocks adoption | ✅ on branch `fix/r2-secular-rate-mean-anomaly` — `5e461f6` + `6f385e1`, **not merged** |
-| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | ⚠️ **largely already shipped on `main`** — see the warning below |
-| **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | not started |
+| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | ✅ Layers 1+2 on branch `fix/r3-r4-pfss-dos-and-test-gap` — `4cf940b`, `57ad971`; Layer 3 scheduled |
+| **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | ✅ on branch `fix/r3-r4-pfss-dos-and-test-gap` — `96d8fe1`, `9c3fdc5` |
 
 R1 and R2 are each a few lines and can ship the same day. R3 needs a decision about whether PFSS stays request-synchronous at all. **R4 is not optional**: without it the same class of regression returns on the next commit, and the branch's green suite will keep saying everything is fine.
 
@@ -427,6 +427,17 @@ vectors rather than re-deriving expectations from `orbitMath` itself.
 
 ## R3 — PFSS solver is an unauthenticated CPU DoS
 
+> **STATUS: LAYERS 1+2 IMPLEMENTED** — branch `fix/r3-r4-pfss-dos-and-test-gap`
+> (`4cf940b` cache/single-flight, `57ad971` endpoint bound). Layer 3 is scheduled, not done.
+>
+> Two deviations from the sketch below, both found while implementing:
+>
+> | Sketched here | What shipped |
+> |---|---|
+> | A single-flight snippet that referenced `_inflight` / `_wait_timeout_s` never defined in `__init__`, and whose followers would `KeyError` on a leader failure | A correct version: `__init__` holds the in-flight map, followers re-raise the leader's exception via a shared holder, cache is an `OrderedDict` with true LRU eviction |
+> | Layer 2 "add a semaphore" as new work | **Ported main's existing solar-hardening apparatus** (env-configurable semaphore, `503 + Retry-After`, `asyncio.to_thread` + timeout, `413`, optional API key, rate limit) so the two branches stay congruent, and added a `jd` bound main lacks |
+> | Compute timeout ~2 s (implied by main's 4 s) | **30 s.** A cold ultra-fidelity PFSS compute legitimately takes ~5 s (measured); main's 4 s is fine only because main has no PFSS. The semaphore + rate limit are the DoS bound; the timeout is a hang backstop, so it sits well above the worst legitimate compute |
+
 ### Root cause
 
 Three independent problems compound. All are on `sun-focus` only; `main` has no `pfss` module at all.
@@ -549,6 +560,13 @@ Do Layer 1 + Layer 2 to unblock adoption. Schedule Layer 3.
 ---
 
 ## R4 — Close the test gap that let R1 and R2 land
+
+> **STATUS: IMPLEMENTED** — branch `fix/r3-r4-pfss-dos-and-test-gap` (`96d8fe1`, `9c3fdc5`),
+> building on the accuracy tests already landed with R1 (`test_kuiper_velocity_units.py`) and R2
+> (`orbitMath.accuracy.test.ts`). Items 1, 3, 4, 5 shipped with R1/R2; item 6 (`test_solar_physics_determinism.py`)
+> and item 2 (`catalog.accuracy.test.ts` — Moon control + an SF-6 tripwire) shipped here, plus
+> `src/sim/TESTING_NUMERICS.md` writing down the rule. `catalog.test.ts` is annotated as
+> structural-only rather than deleted. Each new test was confirmed red against the unfixed code.
 
 Both regressions passed a green suite. That is the more important finding, because it will keep happening.
 
