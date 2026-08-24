@@ -77,11 +77,13 @@ class SolarRealtimeDataProvider:
     def __init__(self, timeout_s: float = 3.8, cache_ttl_s: float = 300.0):
         self.timeout_s = max(0.8, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
+        self.singleflight_error_backoff_s = 4.5
         self._lock = threading.Lock()
         self._cache: dict[str, Any] | None = None
         self._cache_expiry_monotonic = 0.0
         self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
+        self._inflight_failures: dict[Any, tuple[float, BaseException]] = {}
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -119,6 +121,8 @@ class SolarRealtimeDataProvider:
         snapshot = self._singleflight_fetch(
             key=key,
             fetch_fn=lambda: self._fetch_snapshot(jd),
+            wait_timeout_s=self.timeout_s + 0.5,
+            allow_cached_failure=not force_refresh,
         )
 
         with self._lock:
@@ -193,6 +197,7 @@ class SolarRealtimeDataProvider:
         payload, content_type = self._singleflight_fetch(
             key=("binary", url),
             fetch_fn=lambda: self._fetch_binary(url),
+            wait_timeout_s=self.timeout_s + 0.5,
         )
 
         with self._lock:
@@ -214,8 +219,23 @@ class SolarRealtimeDataProvider:
 
         return payload, content_type
 
-    def _singleflight_fetch(self, key: Any, fetch_fn: Callable[[], Any]) -> Any:
+    def _singleflight_fetch(
+        self,
+        key: Any,
+        fetch_fn: Callable[[], Any],
+        *,
+        wait_timeout_s: float | None = None,
+        allow_cached_failure: bool = True,
+    ) -> Any:
         with self._lock:
+            if allow_cached_failure:
+                failure = self._inflight_failures.get(key)
+                if failure is not None:
+                    fail_until, stored_exception = failure
+                    if time.monotonic() < fail_until:
+                        raise stored_exception
+                    self._inflight_failures.pop(key, None)
+
             state = self._inflight_fetches.get(key)
             if state is None:
                 event = threading.Event()
@@ -226,7 +246,11 @@ class SolarRealtimeDataProvider:
                 is_leader = False
 
         if not is_leader:
-            state["event"].wait()
+            if not state["event"].wait(timeout=wait_timeout_s):
+                raise TimeoutError(
+                    "Upstream request is blocked by an ongoing fetch for this resource; "
+                    "try again shortly"
+                )
             if state.get("error") is not None:
                 raise state["error"]
             return state["value"]
@@ -235,10 +259,12 @@ class SolarRealtimeDataProvider:
             value = fetch_fn()
             with self._lock:
                 state["value"] = value
+                self._inflight_failures.pop(key, None)
             return value
         except Exception as exc:
             with self._lock:
                 state["error"] = exc
+                self._inflight_failures[key] = (time.monotonic() + self.singleflight_error_backoff_s, exc)
             raise
         finally:
             state["event"].set()
