@@ -92,6 +92,17 @@ const PARENT_SPIN_AXIS_LONGITUDE_DEG: Record<string, number> = Object.fromEntrie
     return [planet.id, axisLonDeg];
   })
 );
+const J2000_ECLIPTIC_OBLIQUITY_RAD = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
+const SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS: OrbitNormal = {
+  x: 0,
+  y: Math.sin(J2000_ECLIPTIC_OBLIQUITY_RAD),
+  z: Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD)
+};
+// Authoritative parent equator poles for non-ecliptic moon frames where source-frame pole data is omitted.
+const PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC: Record<string, OrbitNormal> = {
+  Uranus: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175))),
+  Pluto: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(132.993, -6.163)))
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -167,6 +178,11 @@ function eclipticNormalFromEquatorialCoords(latDeg: number, lonDeg: number): Orb
 }
 
 function parentPoleInEcliptic(parentId: string): OrbitNormal {
+  const override = PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC[parentId];
+  if (override) {
+    return override;
+  }
+
   const parentTiltDeg = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
   const parentPoleLonDeg = PARENT_SPIN_AXIS_LONGITUDE_DEG[parentId] ?? 0;
   return normalizeVector(eclipticNormalFromEquatorialCoords(90 - parentTiltDeg, parentPoleLonDeg));
@@ -184,7 +200,7 @@ function raDecToEquatorialUnit(raDeg: number | null | undefined, decDeg: number 
 }
 
 function equatorialToEcliptic(vectorEq: OrbitNormal): OrbitNormal {
-  const obliquity = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
+  const obliquity = J2000_ECLIPTIC_OBLIQUITY_RAD;
   const cosOb = Math.cos(obliquity);
   const sinOb = Math.sin(obliquity);
   return {
@@ -274,8 +290,7 @@ function convertElementsFromPlaneToEcliptic(
   parentId: string
 ): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
   const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
-  const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
-  let planeXAxis = crossProduct(eclipticNorth, sourcePole);
+  let planeXAxis = crossProduct(SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS, sourcePole);
   if (vectorMagnitude(planeXAxis) < 1e-9) {
     planeXAxis = { x: 1, y: 0, z: 0 };
   } else {
