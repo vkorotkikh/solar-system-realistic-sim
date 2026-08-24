@@ -16,6 +16,7 @@
   - Added report output hardening and path confinement for `/benchmark/accuracy/report` (`backend/server.py`).
   - Added upstream single-flight dedupe + bounded follower wait + short failure backoff for solar realtime snapshot + AIA binary fetches (`backend/sim/solar_realtime_data.py`).
   - Added request-size guards, concurrency limits, and timeout wrappers for `/trajectory/porkchop` and `/mission/plan` (`backend/server.py`).
+  - Aligned solar feature-space/frame semantics by updating `/solar/realtime` visualization time source and sun-shape coordinate basis so `sunVisuals.ts` features use simulation time and local normals (`src/main.ts`, `src/frontend/features/solar/sunVisuals.ts`).
 - Follow-up commit(s): `8f1f051`, `9673bb1`.
 
 ## 2. Executive summary (≤300 words)
@@ -85,8 +86,8 @@ All issues below are verified from source or executed commands (`VERIFIED`). Eff
 | F-05 | High | LIVE | `src/sim/catalog.ts:104-110` | non-ecliptic moon normals mirrored wrong for many moons | VERIFIED | M |
 | F-06 | High | LIVE | `src/sim/catalog.ts:423-430` | periapsis argument not remapped in plane conversion | VERIFIED | M |
 | F-07 | High | LIVE | `src/sim/catalog.ts:184-189` | equatorial moon fallback and rotation logic duplicates wrong poles | VERIFIED | M |
-| F-08 | High | LIVE | `src/main.ts:138`, `src/frontend/features/solar/sunVisuals.ts` | solar spin/axis mismatch in visual model | VERIFIED | M |
-| F-09 | High | LIVE | `main.ts:584-597`, `sunVisuals.ts` | feature-frame mismatch causes visual drift and wrong temporal behavior | VERIFIED | M |
+| F-08 | High | LIVE | `src/main.ts:138`, `src/frontend/features/solar/sunVisuals.ts` | solar spin/axis mismatch in visual model | FIXED | M |
+| F-09 | High | LIVE | `main.ts:584-597`, `sunVisuals.ts` | feature-frame mismatch causes visual drift and wrong temporal behavior | FIXED | M |
 | F-10 | High | BACKEND+LIVE | `backend/sim/solar_realtime_data.py` | upstream tile fetch window too narrow / cache policy creates jitter storms | FIXED | M |
 | F-11 | High | LIVE | `src/frontend/features/solar/sunVisuals.ts` | speculative dynamics mixed with non-scaled simulation controls | VERIFIED | M |
 | F-12 | High | BACKEND | `backend/sim/rebound_nbody.py:138`, `backend/sim/tudatpy_hooks.py:287` | unit/frame mismatch between engines/contracts | VERIFIED | M |
@@ -139,7 +140,8 @@ All issues below are verified from source or executed commands (`VERIFIED`). Eff
 
 ### High
 - **F-05, F-06, F-07:** Moon-frame conversion in `src/sim/catalog.ts` (including `convertElementsFromPlaneToEcliptic`) misses angle re-references and fallback plane mapping. The bug is live because the moon path is processed in the worker and only conditionally rendered off by settings.
-- **F-08, F-09, F-11:** Solar spin and differential rotation paths in `sunVisuals.ts`/`solarFlares` mismatch chart axes versus simulation axes and simulation-time semantics.
+- **F-08, F-09:** Fixed. Solar spin timing and feature frame handling now use simulation elapsed-seconds and local normal basis in `src/main.ts` + `src/frontend/features/solar/sunVisuals.ts`; this eliminates visible axis drift and time mismatch for sun visual features.
+- **F-11:** Solar features still mix speculative dynamics with non-scaled controls in `src/frontend/features/solar/sunVisuals.ts` and may need a bounded parameter contract.
 - **F-12:** backend engine contracts disagree on units; `state_update.vel` units differ across engines and are not normalized in contract.
 - **F-13, F-14:** superluminal stack uses dead branch/channel mismatches (`channel.key === 'warpMetric'`) and astrophysical constants not aligned to documented scales.
 - **F-15:** `src/data/asteroidCatalogLoader.ts:185` precision drop in catalog acceptance chain fails round-trip checks and is reflected in `astroCatalogLoader` validation.
