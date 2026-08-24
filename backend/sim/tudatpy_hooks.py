@@ -22,6 +22,11 @@ Fidelity label: "normal" — sits between local Keplerian ("low") and
 REBOUND IAS15 ("high").  The J2 and SRP models capture effects that
 pure point-mass N-body misses, particularly for inner-planet precession
 and spacecraft trajectory fidelity.
+
+Serialized state vectors are normalized at this adapter boundary to the
+same contract as REBOUND: barycentric J2000-ecliptic positions in AU and
+velocities in AU/year. Tudat's internal SI/mixed-central-body state remains
+unchanged.
 """
 
 import logging
@@ -38,8 +43,11 @@ logger = logging.getLogger(__name__)
 
 AU_M = 149_597_870_700.0       # 1 AU in metres
 DAY_S = 86_400.0                # 1 day in seconds
+DAYS_PER_YEAR = 365.25
+YEAR_S = DAYS_PER_YEAR * DAY_S
 J2000_JD = 2_451_545.0
 GM_SUN_SI = 1.32712440018e20   # m^3 s^-2
+J2000_OBLIQUITY_RAD = math.radians(23.439291111)
 
 # ── Lazy TudatPy imports ──────────────────────────────────────────────────────
 
@@ -108,6 +116,33 @@ def _jd_to_seconds(jd: float) -> float:
 
 def _seconds_to_jd(epoch_s: float) -> float:
     return epoch_s / DAY_S + J2000_JD
+
+
+def _state_vector_contract() -> Dict[str, Any]:
+    """Return a fresh copy of the public state-vector metadata."""
+    return {
+        "schema_version": 1,
+        "reference_frame": "barycentric_ecliptic_j2000",
+        "origin": "system_barycenter",
+        "orientation": "ecliptic_j2000",
+        "position_unit": "AU",
+        "velocity_unit": "AU/year",
+    }
+
+
+def _equatorial_to_ecliptic_j2000(vector: np.ndarray) -> np.ndarray:
+    """Rotate a J2000-equatorial vector into the J2000 ecliptic axes."""
+    x, y, z = vector
+    cos_obliquity = math.cos(J2000_OBLIQUITY_RAD)
+    sin_obliquity = math.sin(J2000_OBLIQUITY_RAD)
+    return np.array(
+        [
+            x,
+            cos_obliquity * y + sin_obliquity * z,
+            -sin_obliquity * y + cos_obliquity * z,
+        ],
+        dtype=np.float64,
+    )
 
 
 # ── Engine ────────────────────────────────────────────────────────────────────
@@ -269,26 +304,61 @@ class TudatPyEngine(SimulationEngine):
         self._current_state = self._interpolate_at(target_s)
 
     def get_state(self) -> Dict[str, Any]:
+        force_models = {
+            "j2": self._enable_j2,
+            "j2_degree": self._j2_degree,
+            "srp": self._enable_srp,
+            # The server's contract normalizer preserves force_models, so keep
+            # a copy here as well as at the top level for WS clients.
+            "state_vector_contract": _state_vector_contract(),
+        }
         if self._current_state is None:
             return {
                 "type": "state_update",
                 "engine": self.engine_name,
+                "fidelity": self.fidelity_level,
                 "jd": self._jd,
+                "state_vector_contract": _state_vector_contract(),
+                "force_models": force_models,
                 "bodies": {},
             }
 
         state = self._current_state
         bodies_out: Dict[str, Dict] = {}
 
-        for i, body_id in enumerate(self._body_ids):
+        # Tudat propagates the Sun relative to SSB and every other body
+        # relative to the Sun. Reconstruct a common barycentric state before
+        # changing units or orientation.
+        try:
+            sun_index = self._spice_names.index("Sun")
+        except ValueError as exc:
+            raise RuntimeError(
+                "TudatPy state normalization requires the Sun in the propagated body set"
+            ) from exc
+        sun_offset = sun_index * 6
+        sun_barycentric_si = state[sun_offset: sun_offset + 6]
+
+        for i, (body_id, spice_name) in enumerate(
+            zip(self._body_ids, self._spice_names)
+        ):
             si = i * 6
-            # TudatPy state is in SI (metres, m/s) — convert to AU, AU/day
-            pos_au = state[si: si + 3] / AU_M
-            vel_aud = state[si + 3: si + 6] * (DAY_S / AU_M)
+            relative_si = state[si: si + 6]
+            barycentric_si = (
+                relative_si
+                if spice_name == "Sun"
+                else relative_si + sun_barycentric_si
+            )
+
+            pos_au = _equatorial_to_ecliptic_j2000(
+                barycentric_si[:3]
+            ) / AU_M
+            vel_auy = _equatorial_to_ecliptic_j2000(
+                barycentric_si[3:]
+            ) * (YEAR_S / AU_M)
 
             bodies_out[body_id] = {
                 "pos": [round(float(v), 10) for v in pos_au],
-                "vel": [round(float(v), 10) for v in vel_aud],
+                "vel": [round(float(v), 10) for v in vel_auy],
             }
 
         return {
@@ -296,11 +366,8 @@ class TudatPyEngine(SimulationEngine):
             "engine": self.engine_name,
             "jd": self._jd,
             "fidelity": self.fidelity_level,
-            "force_models": {
-                "j2": self._enable_j2,
-                "j2_degree": self._j2_degree,
-                "srp": self._enable_srp,
-            },
+            "state_vector_contract": _state_vector_contract(),
+            "force_models": force_models,
             "bodies": bodies_out,
         }
 

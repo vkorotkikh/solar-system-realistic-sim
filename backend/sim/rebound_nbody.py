@@ -3,6 +3,9 @@ REBOUND N-body simulation engine — high-fidelity gravitational dynamics.
 
 Uses REBOUND's IAS15 integrator (15th-order adaptive, machine-precision).
 All bodies exert mutual gravitational forces on each other.
+
+Serialized state vectors use the shared backend contract: barycentric
+J2000-ecliptic positions in AU and velocities in AU/year.
 """
 
 import math
@@ -21,6 +24,18 @@ DAYS_PER_YEAR = 365.25
 CHECKPOINT_INTERVAL_YEARS = 10.0
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
+
+
+def _state_vector_contract() -> Dict[str, Any]:
+    """Return a fresh copy of the public state-vector metadata."""
+    return {
+        "schema_version": 1,
+        "reference_frame": "barycentric_ecliptic_j2000",
+        "origin": "system_barycenter",
+        "orientation": "ecliptic_j2000",
+        "position_unit": "AU",
+        "velocity_unit": "AU/year",
+    }
 
 
 class REBOUNDEngine(SimulationEngine):
@@ -68,8 +83,13 @@ class REBOUNDEngine(SimulationEngine):
 
         # IAS15 specific settings for high accuracy
         if self._integrator == "ias15":
-            self.sim.ri_ias15.min_dt = 0  # let integrator choose
-            self.sim.ri_ias15.epsilon = 1e-9
+            ri_ias15 = getattr(self.sim, "ri_ias15", None)
+            if ri_ias15 is not None:
+                try:
+                    ri_ias15.min_dt = 0  # let integrator choose
+                    ri_ias15.epsilon = 1e-9
+                except Exception:
+                    pass
 
         # WHFast settings for speed
         if self._integrator == "whfast":
@@ -120,13 +140,21 @@ class REBOUNDEngine(SimulationEngine):
         self.sim.integrate(target)
 
     def get_state(self) -> Dict[str, Any]:
+        force_models = {
+            "n_body_point_mass": True,
+            "integrator": self._integrator,
+            # The server's contract normalizer preserves force_models, so keep
+            # a copy here as well as at the top level for WS clients.
+            "state_vector_contract": _state_vector_contract(),
+        }
         if self.sim is None:
             return {
                 "type": "state_update",
                 "engine": self.engine_name,
                 "fidelity": self.fidelity_level,
                 "jd": 0,
-                "force_models": {"n_body_point_mass": True, "integrator": self._integrator},
+                "state_vector_contract": _state_vector_contract(),
+                "force_models": force_models,
                 "bodies": {},
             }
 
@@ -143,10 +171,8 @@ class REBOUNDEngine(SimulationEngine):
             "engine": self.engine_name,
             "fidelity": self.fidelity_level,
             "jd": self.get_julian_date(),
-            "force_models": {
-                "n_body_point_mass": True,
-                "integrator": self._integrator,
-            },
+            "state_vector_contract": _state_vector_contract(),
+            "force_models": force_models,
             "bodies": bodies,
         }
 
