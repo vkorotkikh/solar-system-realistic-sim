@@ -1,0 +1,1989 @@
+<title>Sun Model Lab Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#F3F5F8;--surface:#FFFFFF;--surface2:#E9EEF4;--ink:#121A24;--ink2:#3C4A59;--muted:#6B7A8A;--rule:#CBD5E0;--accent:#1F4E8C;--accent-soft:#DCE7F5;--blocker:#8E1B1B;--high:#B3261E;--medium:#B8740F;--low:#3F6E3A;--pass:#2E7D4F;--code-bg:#E9EEF4;--sel:#FFE8B3;--shadow:0 1px 0 rgba(18,26,36,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1419;--surface:#151D26;--surface2:#1C2733;--ink:#E6ECF2;--ink2:#B7C3CF;--muted:#8A98A8;--rule:#2C3A48;--accent:#8FBCF5;--accent-soft:#1B2E45;--blocker:#F08C8C;--high:#F5A08F;--medium:#E9B85C;--low:#9CCB8F;--pass:#7FD0A0;--code-bg:#1C2733;--sel:#3A2F12;--shadow:none}}
+:root[data-theme="dark"]{--bg:#0E1419;--surface:#151D26;--surface2:#1C2733;--ink:#E6ECF2;--ink2:#B7C3CF;--muted:#8A98A8;--rule:#2C3A48;--accent:#8FBCF5;--accent-soft:#1B2E45;--blocker:#F08C8C;--high:#F5A08F;--medium:#E9B85C;--low:#9CCB8F;--pass:#7FD0A0;--code-bg:#1C2733;--sel:#3A2F12;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.mast{border-bottom:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+.mast-in{max-width:1240px;margin:0 auto;padding:28px 28px 22px;display:grid;gap:6px}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:"Newsreader",Georgia,"Times New Roman",serif;font-weight:500;font-size:clamp(30px,4vw,44px);line-height:1.1;margin:2px 0 4px;text-wrap:balance;letter-spacing:-.01em}
+.sub{color:var(--ink2);max-width:78ch;margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:10px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--muted)}
+.facts b{color:var(--ink);font-weight:500}
+.verdict{max-width:1240px;margin:22px auto 0;padding:0 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.cell{background:var(--surface);border:1px solid var(--rule);padding:14px 16px;display:grid;gap:4px}
+.cell .k{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.cell .v{font-family:"Newsreader",Georgia,serif;font-size:22px;line-height:1.15;font-weight:500}
+.cell .v.pass{color:var(--pass)}.cell .v.warn{color:var(--medium)}.cell .v.fail{color:var(--high)}
+.cell .why{font-size:13px;color:var(--ink2)}
+.score{background:var(--accent-soft);border-color:transparent}
+.score .v{font-size:40px;font-family:"IBM Plex Mono",monospace;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent)}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 28px 80px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px}
+nav.rail{position:sticky;top:18px;align-self:start;display:grid;gap:2px;font-size:13px;border-left:1px solid var(--rule)}
+nav.rail a{color:var(--ink2);text-decoration:none;padding:4px 12px;border-left:2px solid transparent;margin-left:-1px}
+nav.rail a:hover,nav.rail a:focus-visible{color:var(--accent);border-left-color:var(--accent);outline:none}
+main{min-width:0}
+main h2{font-family:"Newsreader",Georgia,serif;font-weight:500;font-size:28px;line-height:1.15;margin:44px 0 12px;padding-top:18px;border-top:1px solid var(--rule);text-wrap:balance}
+main h2:first-child{margin-top:8px;border-top:0;padding-top:0}
+main h3{font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:17px;margin:28px 0 8px;line-height:1.3}
+main h3.finding{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 10px;margin-top:34px;padding-top:14px;border-top:1px dotted var(--rule)}
+.fid{font-family:"IBM Plex Mono",monospace;color:var(--accent);font-weight:500}
+.pill{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border:1px solid currentColor;border-radius:2px;line-height:1.5}
+.pill.blocker{color:var(--blocker)}.pill.high{color:var(--high)}.pill.medium{color:var(--medium)}.pill.low{color:var(--low)}
+p,li{max-width:78ch} p.meta{font-size:13.5px;color:var(--ink2)}
+main a{color:var(--accent)}
+code{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:.88em;background:var(--code-bg);padding:1px 4px;border-radius:2px}
+pre{background:var(--code-bg);padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.45;border:1px solid var(--rule)}
+pre code{background:none;padding:0;font-size:inherit}
+.tw{overflow-x:auto;margin:14px 0 22px;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--rule)}
+th{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--surface2);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+blockquote{margin:0;padding:0 0 0 14px;border-left:2px solid var(--rule);color:var(--ink2)}
+hr{display:none}
+strong{font-weight:600}
+::selection{background:var(--sel)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;gap:18px}nav.rail{position:static;border-left:0;display:flex;flex-wrap:wrap;gap:4px 0}nav.rail a{border-left:0;border-bottom:2px solid transparent;padding:4px 8px}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+<header class="mast"><div class="mast-in">
+<div class="eyebrow">Read-only evaluation · main @ aa6e39a · 2026-08-23</div>
+<h1>Sun Model Lab Audit</h1>
+<p class="sub">What <code>index.html → src/main.ts</code> of <em>solar-system-realistic-sim</em> actually runs, whether it is correct, which scientific claims survive measurement against JPL Horizons, pykep and REBOUND invariants, and what would make it reproducible, secure and honest.</p>
+<div class="facts"><span>commit <b>aa6e39a</b></span><span>reachable <b>30 / 62</b> ts files</span><span>tsc <b>1,300</b> errors</span><span>bundle <b>848.6 kB</b></span><span>pytest <b>48 pass</b> (after httpx2)</span><span>benchmark <b>0 / 3</b> vs committed · <b>3 / 3</b> vs Horizons</span><span>findings <b>20</b></span></div>
+</div></header>
+<section class="verdict" aria-label="Readiness verdict">
+<div class="cell score"><span class="k">Weighted score</span><span class="v">36<span style="font-size:18px;color:var(--muted)"> / 100</span></span><span class="why">Coverage-weighted; optional components not run are neither credited nor penalized.</span></div>
+<div class="cell"><span class="k">Visual demonstration</span><span class="v warn">Usable, with caveats</span><span class="why">Stable Sun/planet scene; the advertised asteroid belt is rendered inside the Sun.</span></div>
+<div class="cell"><span class="k">Education</span><span class="v fail">Not ready</span><span class="why">No on-screen line between catalog data, approximation and a speculative H29 effect scaled ×10¹².</span></div>
+<div class="cell"><span class="k">Scientific analysis</span><span class="v fail">Not ready</span><span class="why">Mean-element Kepler, mis-initialized N-body, broken default integrator, wrong moon frames, invalid benchmark oracle.</span></div>
+<div class="cell"><span class="k">Mission design</span><span class="v fail">Not ready</span><span class="why">Lambert correct on feasible inputs but uncertified; Δv = bare v∞ sums; no multi-rev; no UI path.</span></div>
+</section>
+<div class="wrap">
+<nav class="rail" aria-label="Sections"><a href="#1-executive-verdict">1. Executive verdict</a><a href="#2-architecture-and-runtime-data-flow-map">2. Architecture and runtime data-flow map</a><a href="#3-implemented-versus-declared-feature-matrix-readme-highlightsfeatures-vs-built-bundle-browser">3. Implemented-versus-declared feature matrix</a><a href="#4-validation-matrix-baseline-commands-all-run-2026-08-23-in-a-disposable-toolchain-exact-output-retained-under-scratchpad-logs">4. Validation matrix</a><a href="#5-severity-ranked-findings">5. Severity-ranked findings</a><a href="#6-scientific-claimevidence-and-unitsframetime-matrix">6. Scientific claim/evidence and units/frame/time matrix</a><a href="#7-numerical-benchmark-and-invariant-results">7. Numerical benchmark and invariant results</a><a href="#8-testing-and-coverage-gap-matrix">8. Testing and coverage-gap matrix</a><a href="#9-security-and-deployment-readiness-assessment">9. Security and deployment-readiness assessment</a><a href="#10-data-asset-license-and-reproducibility-assessment">10. Data, asset, license and reproducibility assessment</a><a href="#11-prioritized-remediation-roadmap">11. Prioritized remediation roadmap</a><a href="#12-weighted-scorecard">12. Weighted scorecard</a><a href="#13-audit-limitations-and-blocked-checks">13. Audit limitations and blocked checks</a></nav>
+<main>
+<p><strong>Date:</strong> 2026-08-23 · <strong>Auditor:</strong> Claude (Fable 5) acting as principal engineer / astrodynamics reviewer / WebGL perf engineer / appsec reviewer · <strong>Mode:</strong> read-only (repository worktree verified clean before and after; all builds, venvs, servers, screenshots and regenerated data live under a session scratchpad).</p>
+<p><strong>Evidence root (scratchpad):</strong> <code>/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/f7a2b081-7849-4e5d-864b-1d5761c89d57/scratchpad/</code> — referred to below as <code>$SP</code>. Baseline command logs are in <code>$SP/logs/</code>, per-area probes in <code>$SP/out/&lt;AREA&gt;/</code>, my own cross-checks in <code>$SP/out/ME/</code>.</p>
+<p><strong>Process note.</strong> The evaluation was run as 13 parallel investigations (ARCH, FE, EPH, ENG, TRAJ, BENCH, AST, SOL, SEC, DATA, TEST, QUAL, PERF/DOCS) followed by a planned adversarial-verification pass. The investigators completed ~560 tool calls of probing and wrote their raw artifacts to <code>$SP/out/</code>, but every agent was terminated by an account spend limit before returning; the planned adversarial-verification pass therefore <strong>did not run</strong>. Every material finding below was instead re-derived or re-executed by me from source and from the captured artifacts; each is marked with its verification status (<code>[re-executed]</code>, <code>[source-verified]</code>, or <code>[artifact-only]</code>). Confidence levels reflect that.</p>
+<hr />
+<h2 id="1-executive-verdict">1. Executive verdict</h2>
+<p><strong>What actually ships.</strong> <code>index.html</code> → <code>src/main.ts</code> builds a <strong>"Sun Model Lab"</strong> (its own eyebrow text: "Sun-Focus Branch" — even though this is <code>main</code>; commit <code>d1484e8</code> 2026-02-23 "Revise index.html for Sun Model Lab transition" landed on <code>main</code>). It renders: a procedurally-shaded Sun fed by the backend's procedural corona model (when the backend is up), the 8 planets + Pluto on fixed J2000 mean elements propagated in a worker, a 15,000-asteroid instanced mesh, a 5,000-body synthetic Kuiper belt, orbit lines, labels, a body explorer, and a "Cataclysmic Events" panel that fires a speculative SMBH shockwave / "H29 metric-frame-dragging slipstream" effect. <strong>30 of 62</strong> TypeScript files are reachable; the other 32 (satellites, planet textures, nearby star systems, Milky Way, LOD, trajectory UI, WebSocket engine client, planner) are <strong>dormant</strong>. 424 moons are bundled and propagated but hard-disabled (<code>const showMoons = false</code>, <code>src/main.ts:380</code>).</p>
+<p><strong>Headline findings (all high-confidence, re-executed):</strong></p>
+<ol>
+<li><strong>The asteroid belt is not where the user thinks it is.</strong> The GPU shader adds the orbital position <em>before</em> the per-instance matrix (random rotation × body-radius scale), so all 15,000 asteroids collapse into a ~0.01 AU sphere hidden inside the Sun's display radius (<code>beltRenderer.ts:176-184</code> vs <code>:396-413</code>). A/B render with the order swapped produces the belt (§7.5, screenshots <code>$SP/out/ME/browser/beltbig_*.png</code>).</li>
+<li><strong>The default backend N-body path does not work</strong> with the REBOUND version an unpinned <code>rebound&gt;=4.0.0</code> resolves to today (5.1.1): <code>'Simulation' object has no attribute 'ri_ias15'</code> → WebSocket closes 1011. <code>/health</code> nonetheless reports <code>rebound: available, fidelity: high</code>. The only test touching that path mocks the missing attribute (<code>test_seek_optimizations.py:37</code>). <code>whfast</code>/<code>mercurius</code> work.</li>
+<li><strong>The committed "strict GMAT/Orekit/Tudat" benchmark references are not reproducible and the model is right.</strong> An independent universal-variable Lambert on JPL Horizons state vectors reproduces the model's Δv sums to ≤15 m/s for all three windows (7.640 / 39.989 / 51.634 km/s vs model 7.637 / 39.983 / 51.620), while the committed references (8.490 / 7.108 / 16.873) cannot be produced by any 0-rev Lambert solution between the stated dates. Git history shows the references began as round placeholders (8.6 / 7.2 / 17.0, tolerances 5–10 km/s, source "…-blend") and were replaced one day later by 5-decimal "tool captures" sharing a single identical timestamp. <code>passRate 0.0</code> is an oracle failure, not a solver failure.</li>
+<li><strong>The "high-fidelity" N-body engine is less accurate than the browser's Kepler fallback</strong> because it injects JPL <em>mean</em> elements into an integrator as if they were osculating: Saturn is 60,200,000 km (≈2.5°) off Horizons on 2026-08-23 vs 1,180,000 km for the Kepler path; Earth 232,000 km vs 10,500 km. Isolation runs show Sun+Saturn alone reproduces the Kepler error; adding Jupiter produces the 60 M km (§7.2).</li>
+<li><strong>Moon positions in non-ecliptic source frames are wrong at their own epoch</strong>: the Laplace/equatorial→ecliptic conversion rotates only the orbit normal and never re-references ω/M (<code>catalog.ts:193-210</code>), so Io is 828,000 km (1.97 orbital radii) from its Horizons position at J2000 with a 34 km/s velocity error; Callisto 1.86 radii, Triton 1.76, Enceladus 1.9. (Hidden from users today; propagated anyway.)</li>
+<li><strong>Lambert solutions are served without a time-of-flight certificate.</strong> For infeasible TOFs the solver returns its best-sampled z with residuals of days (1-day Earth→Mars request → a 4.96-day orbit) as HTTP 200; endpoint miss distances up to 2.8×10⁸ km. Well-posed cases agree with pykep (Izzo) to ≤1.3×10⁻⁵ km/s.</li>
+</ol>
+<p><strong>Readiness conclusions</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Use</th>
+<th>Verdict</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Visual demonstration</strong></td>
+<td><strong>Usable with caveats</strong> (Sun/planet/orbit scene is stable: 0 console errors online, 60 fps median on a CPU rasterizer offline)</td>
+<td>The advertised belt is invisible (F-01); with the backend online the corona payload makes frames 20× slower on weak hardware; no WebGL-unavailable message; mobile layout hides the canvas below a 1,514 px panel.</td>
+</tr>
+<tr>
+<td><strong>Education</strong></td>
+<td><strong>Not ready</strong></td>
+<td>No on-screen distinction between catalog data, approximation, and speculative hypothesis; the "Cataclysmic Events" panel presents an Alcubierre-like "H29" effect with a 10¹² visual multiplier next to real flare energies with no disclaimer; README describes features that don't exist in the product; moon positions wrong if ever enabled.</td>
+</tr>
+<tr>
+<td><strong>Scientific analysis</strong></td>
+<td><strong>Not ready</strong></td>
+<td>Mean-element Kepler with no secular rates (Saturn 1–14 M km), mis-initialized N-body, broken default integrator, wrong moon frames, procedural (non-MHD, non-deterministic) corona, dead SWPC feed, benchmark oracle unreproducible.</td>
+</tr>
+<tr>
+<td><strong>Operational trajectory / mission design</strong></td>
+<td><strong>Not ready</strong></td>
+<td>Lambert uncertified for infeasible inputs; no multi-rev; "Δv" is the bare sum of v∞ magnitudes (no parking-orbit/C3 model); flyby module unexercised by any oracle; backend reachable by no UI; security posture dev-only.</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Weighted score: 36 / 100</strong> (coverage-weighted; see §12).</p>
+<hr />
+<h2 id="2-architecture-and-runtime-data-flow-map">2. Architecture and runtime data-flow map</h2>
+<pre><code>index.html (&quot;Sun Model Lab&quot;)                       backend/server.py (FastAPI, :8042, CORS * + credentials)
+  └─ &lt;script type=module src=/src/main.ts&gt;           ├─ GET  /health /info /bodies
+        │                                            ├─ GET  /solar/capabilities /solar/realtime /solar/realtime/aia-tile  ◄─┐
+        ├─ style.css                                 ├─ GET  /solar/physics  (quasi-procedural corona, ~500 KB)            ◄─┼─ only backend
+        ├─ sim/catalog.ts ◄─ data/planets.ts, data/moons.json (424 moons, 221 KB)                                            │  calls made by
+        ├─ sim/solarSystemModel.ts ◄─ sim/orbitMath.ts (Newton Kepler, e clamped ≤0.9999999)                                │  the active app
+        ├─ workers/modelWorker.ts (new Worker, main.ts:622) — same SolarSystemModel, lock-step tick/state, ~5 Hz             │  (solarPhysicsClient.ts:83,
+        ├─ sim/asteroidBelt.ts + sim/phase1AsteroidCatalog.ts ◄─ fetch /data/asteroid-phase1/*.bin (+meta, SHA-256 check)   │   solarObservationTexture.ts:79)
+        ├─ features/asteroids/beltRenderer.ts  (InstancedMesh ×15,000, GPU Kepler in GLSL; ×5,000 KBO CPU matrices)         │
+        ├─ sim/kuiperBelt.ts (synthetic classical/plutino/twotino/scattered/detached populations)                           │
+        ├─ sunController.ts ◄─ features/solar/{sunVisuals,solarFlares,solarMagnetics,solarFeatureBlending,                   │
+        │        gravitationalWaves,solarObservationTexture,solarPhysicsClient} ───────────────────────────────────────────────┘
+        ├─ features/superluminal-modeling/{agnShockwaveEngine,smbhPropagation,smbhPhysicsConstants,warpSlipstreamVisuals}
+        │        └─ main.ts:675-687 / modelWorker.ts:184-203 → SolarSystemModel.applyMetricKinematics(… ×1e12)
+        ├─ frontend/app/{sceneSetup,stateStore,timeController,bodyManager,textureManager}.ts
+        └─ textures.ts (procedural canvas textures; NO image assets imported — 39 MB src/assets/textures unused)
+
+DORMANT (32 files, 0 bytes in bundle): frontend/app/{animationLoop,cameraController,inputHandler,labelSystem,localSystemRenderer,
+  nearbySystemsRenderer,temp_nearbySystemsRenderer,plannerController,routeRenderer,simulationClient,uiBindings}, camera/transitions,
+  features/planetary/* (satellites, clouds/GIBS, terrain, moon textures), features/solar/{solarProminences,solarWind},
+  features/trajectory/{index,localPlanner}, rendering/{lodManager,milkyWay,orbitRenderer}, sim/asteroids/*, data/asteroidTaxonomyResolver
+
+BACKEND-ONLY (no UI path): /ws/sim (SimulationRunner thread → REBOUNDEngine [ias15 ✗ / whfast ✓ / mercurius ✓] or TudatPyEngine [absent]),
+  /trajectory/{plan,lambert,porkchop} (lambert.py universal-variable bisection, mga.py, planner.py; EphemerisService auto = spice→kepler→horizons),
+  /mission/plan (deterministic heuristic &quot;agents&quot;), /benchmark/accuracy[/report], /nearby-systems (CSV catalog)
+External data: JPL Horizons (provider=horizons, live per request), NOAA SWPC (404 — retired URLs), SILSO, Helioviewer (AIA tile proxy)
+</code></pre>
+<p><strong>Render loop (main.ts:1052-1083, every frame):</strong> advance local time → <code>updateModelState</code> (consume latest worker <code>state</code> or CPU fallback) → body spin → <code>syncAsteroidBeltInputs</code> (uniforms: JD, Jupiter/Saturn positions) → <code>propagateKBOPositions</code> (5,000 CPU Kepler) → <code>kuiperBeltRenderer.updatePositions</code> (5,000 <code>compose</code>+<code>setMatrixAt</code>, <code>instanceMatrix.needsUpdate</code>) → <code>sunCtrl.update</code>/<code>maybeRefreshPhysics</code> → follow/controls/clip planes → <strong><code>resizeRenderer()</code></strong> (unconditional <code>setPixelRatio</code> → <code>setSize</code> → <code>canvas.width/height</code> assignment) → <code>renderer.render</code> → HUD.</p>
+<p><strong>Worker protocol (modelWorker.ts:142-223, main.ts:606-730):</strong> <code>init{catalog}</code> → <code>ready</code>; per frame <code>tick{julianDate, stepMs, metricState, sequence}</code> → <code>state{sequence, Float64 records of 7 per body}</code>. Stale messages are rejected by monotonic <code>sequence</code> on both sides; at most one tick is in flight (measured <code>workerMaxPending = 1</code>, ≈5 Hz), so worker state is up to ~200 ms (≈24 simulated days at 120 d/s) behind the frame; the CPU path fills in between.</p>
+<hr />
+<h2 id="3-implemented-versus-declared-feature-matrix-readme-highlightsfeatures-vs-built-bundle-browser">3. Implemented-versus-declared feature matrix (README "Highlights"/"Features" vs. built bundle + browser)</h2>
+<p>Classification legend: <strong>A</strong> active &amp; user-accessible · <strong>AB</strong> active but background/internal · <strong>BO</strong> backend-only, not connected to UI · <strong>DP</strong> dormant prototype (source exists, not in bundle) · <strong>DO</strong> dead/orphaned · <strong>DOC</strong> documentation-only/absent. Bundle evidence = grep of <code>$SP/out/dist/assets/index-tNhaOiPb.js</code> (<code>$SP/out/ARCH/bundle_grep.txt</code>), DOM evidence = <code>index.html</code>, browser evidence = <code>$SP/out/ME/browser/results.json</code>.</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>README claim</th>
+<th>Class</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sun + 8 planets + Pluto with axial tilt, spin, per-planet visual profiles</td>
+<td><strong>A</strong> (tilt/spin) / <strong>DP</strong> (visual profiles)</td>
+<td>bodies rendered; <code>visualProfiles.ts</code> unreachable; planets use procedural <code>textures.ts</code> canvases</td>
+</tr>
+<tr>
+<td>424 moons from JPL satellite table</td>
+<td><strong>AB</strong> (loaded, propagated, hidden)</td>
+<td><code>moons.json</code> in bundle; <code>main.ts:380 showMoons=false</code>; no UI toggle (<code>toggle-moons</code> absent from index.html)</td>
+</tr>
+<tr>
+<td>Adjustable clock: pause, reverse, warp, jump-to-date</td>
+<td><strong>A</strong> (pause/reverse/warp/"Now") / <strong>DOC</strong> (arbitrary date input absent)</td>
+<td>index.html has no date input; <code>parseDateInputToJulian</code> unused in reachable graph</td>
+</tr>
+<tr>
+<td>Catalog background stars with proper motion + Milky Way band</td>
+<td><strong>DP</strong></td>
+<td><code>stars_catalog.json</code>, <code>milkyWay.ts</code> not in bundle (bundle grep <code>stars_catalog</code>=0); active app uses a small random star sprite field (<code>backgroundStars</code>)</td>
+</tr>
+<tr>
+<td>Nearby star systems (Alpha Centauri, Barnard's, Sirius)</td>
+<td><strong>DP</strong>/<strong>BO</strong></td>
+<td>bundle grep <code>nearby</code>=0, <code>Alpha Centauri</code>=0; backend <code>/nearby-systems</code> works; manifests unused</td>
+</tr>
+<tr>
+<td>Asteroid belt, GPU-propagated Keplerian instances, Jupiter/Saturn perturbation uniforms, deterministic phase-1 catalog</td>
+<td><strong>A but broken</strong></td>
+<td>15,000 instances drawn every frame (<code>instancesPerFrame=20000</code>) but positioned inside the Sun (F-01); "perturbation" is a visual formula (§7.5)</td>
+</tr>
+<tr>
+<td>Kuiper belt procedural population with CPU refresh; Oort placeholder</td>
+<td><strong>A</strong> (KBO) / <strong>DOC</strong> (Oort: bundle grep <code>Oort</code>=0)</td>
+<td>5,000 KBOs drawn; no Oort object</td>
+</tr>
+<tr>
+<td>Earth satellite layer (ISS + GEO, TLE, J2)</td>
+<td><strong>DP</strong></td>
+<td><code>satelliteSystem.ts</code> (311 TS errors) not in bundle; grep <code>TLE</code>=0 <code>celestrak</code>=0</td>
+</tr>
+<tr>
+<td>Real-time Earth clouds (NASA GIBS)</td>
+<td><strong>DP</strong></td>
+<td><code>cloudDataPipeline.ts</code> unreachable; grep <code>GIBS</code>=0</td>
+</tr>
+<tr>
+<td>Interplanetary route planner, direct + MGA</td>
+<td><strong>BO</strong></td>
+<td><code>/trajectory/*</code> work (§7.3); no planner DOM (<code>plannerController.ts</code> expects 20+ ids absent from index.html, <code>$SP/out/ARCH/dom_id_crosscheck2.txt</code>)</td>
+</tr>
+<tr>
+<td>Multi-agent mission planner</td>
+<td><strong>BO</strong></td>
+<td><code>/mission/plan</code> deterministic heuristics; no UI</td>
+</tr>
+<tr>
+<td>"Switch simulation engines in the UI dropdown… click Connect" (REBOUND/TudatPy)</td>
+<td><strong>DOC</strong></td>
+<td>no <code>sim-backend</code>/<code>sim-connect</code> elements; bundle grep <code>WebSocket</code>=0, <code>ws/sim</code>=0</td>
+</tr>
+<tr>
+<td>Display options: moons, asteroid belt, Kuiper, Oort toggles; Milky Way modes; realism locators; gravity vectors</td>
+<td><strong>DOC</strong> (toggles absent)</td>
+<td>index.html has only orbits/magnetic/labels/realistic-scale</td>
+</tr>
+<tr>
+<td>Explorer: search by name, focus/follow with smooth transitions</td>
+<td><strong>A</strong> (list+focus/follow) / <strong>DOC</strong> (search box absent) / <strong>DP</strong> (<code>camera/transitions.ts</code>)</td>
+<td></td>
+</tr>
+<tr>
+<td>Planet visuals: 4K Earth, normal map, clouds, terrain LOD, Moon LOD, Mars USGS/MOLA, ring system, oblateness</td>
+<td><strong>DP</strong></td>
+<td>zero image assets in build output; <code>lodManager.ts</code>, <code>terrainSynthesis.ts</code> unreachable; oblateness: <code>equatorialRadius</code> strings present (9) — partially active</td>
+</tr>
+<tr>
+<td>Solar model: GLSL granulation/limb darkening/sunspots/corona; flares; magnetics; observation-texture blending; SWPC/SILSO/SDO assimilation</td>
+<td><strong>A</strong> (visuals, AIA blending) / <strong>AB</strong> (assimilation: SILSO+SDO ok, <strong>SWPC 404</strong>)</td>
+<td>§7.6</td>
+</tr>
+<tr>
+<td>Trajectory planner UI ("Direct", "Plan Route", objectives, frontend patched-conic fallback)</td>
+<td><strong>DP</strong> (<code>features/trajectory/*</code>)</td>
+<td></td>
+</tr>
+<tr>
+<td>Mission planner API</td>
+<td><strong>BO</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>Project-structure listing</td>
+<td><strong>partly stale</strong></td>
+<td>lists <code>animationLoop.ts</code>… as the loop (dormant; real loop is in <code>main.ts</code>); lists <code>src/assets/textures</code> as planet maps (unused)</td>
+</tr>
+<tr>
+<td>"src is fully TypeScript-native… strict type checking active on every source file"</td>
+<td><strong>misleading</strong></td>
+<td><code>tsc --noEmit</code> → 1,300 errors; Vite never type-checks</td>
+</tr>
+<tr>
+<td>Backend quick-start (<code>pip install -r requirements.txt</code>, then tests)</td>
+<td><strong>fails</strong></td>
+<td>pytest collection error without <code>httpx2</code></td>
+</tr>
+<tr>
+<td>Cataclysmic Events panel (Sgr A*, Cen A, M87, H29 slipstream, stochastic flaring)</td>
+<td><strong>A</strong> — <em>not in README at all</em></td>
+<td>the most prominent UI section is undocumented</td>
+</tr>
+</tbody>
+</table></div>
+<p>Net: of 22 advertised items, <strong>6 are active as described, 3 active-but-hidden/broken, 4 backend-only, 7 dormant, 5 absent</strong>.</p>
+<hr />
+<h2 id="4-validation-matrix-baseline-commands-all-run-2026-08-23-in-a-disposable-toolchain-exact-output-retained-under-scratchpad-logs">4. Validation matrix — baseline commands (all run 2026-08-23 in a disposable toolchain; exact output retained under scratchpad <code>logs/</code>)</h2>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Command (cwd = repo root unless noted)</th>
+<th>Environment</th>
+<th>Result</th>
+<th>Limitation / note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V1</td>
+<td><code>git status --short --branch</code></td>
+<td>—</td>
+<td><code>## main...origin/main</code>, clean worktree</td>
+<td><code>origin/sun-focus</code> (fd793f4) not audited</td>
+</tr>
+<tr>
+<td>V2</td>
+<td><code>git rev-parse HEAD</code></td>
+<td>—</td>
+<td><code>aa6e39a03e7d95d6f7733e8a4710b990bada9859</code></td>
+<td>same commit as the prior scan</td>
+</tr>
+<tr>
+<td>V3</td>
+<td><code>node --version</code> / <code>npm --version</code></td>
+<td>Node tarball in scratchpad (no Node on host PATH)</td>
+<td>v22.23.2 / 10.9.8</td>
+<td>host has no Node; tarball <code>node-v22.23.2-linux-x64</code></td>
+</tr>
+<tr>
+<td>V4</td>
+<td><code>python --version</code></td>
+<td>host miniconda base</td>
+<td>3.14.6 (host); venv built from conda env python 3.12.13</td>
+<td>3.12 chosen for binary-wheel availability (REBOUND)</td>
+</tr>
+<tr>
+<td>V5</td>
+<td><code>npm ci</code></td>
+<td>Node 22.23.2</td>
+<td>PASS (exit 0)</td>
+<td>writes only to ignored <code>node_modules/</code></td>
+</tr>
+<tr>
+<td>V6</td>
+<td><code>npm ls --all</code></td>
+<td>"</td>
+<td>PASS; three 0.182.0, @types/three 0.182.0, typescript 5.9.3, vite 7.3.1; unmet optional deps only</td>
+<td><code>package-lock.json</code> honoured</td>
+</tr>
+<tr>
+<td>V7</td>
+<td><code>npm run typecheck</code> (<code>tsc --noEmit</code>)</td>
+<td>"</td>
+<td><strong>FAIL (exit 2): 1,300 errors</strong>; 438 inside the reachable graph</td>
+<td>per-file/per-code breakdown in <code>logs/typecheck.log</code></td>
+</tr>
+<tr>
+<td>V8</td>
+<td><code>npx vite build --outDir $SP/out/dist --emptyOutDir</code></td>
+<td>"</td>
+<td>PASS in 1.17 s; 37 modules; <code>index-tNhaOiPb.js</code> 848.57 kB (gzip 209.85 kB), <code>modelWorker-6zDrfdjL.js</code> 18.44 kB, css 6.53 kB; <strong>zero image assets emitted</strong></td>
+<td>build succeeds despite 1,300 TS errors (Vite strips types, no type-check)</td>
+</tr>
+<tr>
+<td>V9</td>
+<td><code>npm test</code></td>
+<td>"</td>
+<td><strong>NOT AVAILABLE</strong> — <code>Missing script: "test"</code></td>
+<td>no frontend test runner exists</td>
+</tr>
+<tr>
+<td>V10</td>
+<td><code>npm audit</code></td>
+<td>"</td>
+<td>FAIL (exit 1): 6 vulns (1 low, 5 high) — esbuild, nanoid, picomatch, postcss, rollup, vite; all dev-toolchain</td>
+<td>none ship in the runtime bundle (three.js only)</td>
+</tr>
+<tr>
+<td>V11</td>
+<td><code>python -m venv</code> + <code>pip install -r backend/requirements.txt</code></td>
+<td>py3.12.13</td>
+<td>PASS; resolved: rebound <strong>5.1.1</strong>, fastapi 0.141.1, starlette 1.6.0, numpy 2.5.2, uvicorn 0.52.4, websockets 17.0.1, pytest 9.1.1, pillow 12.3.0, pydantic 2.13.4 (full list <code>logs/pip_freeze.txt</code>)</td>
+<td>requirements are <code>&gt;=</code> only — nothing pinned; <code>tudatpy</code> commented out</td>
+</tr>
+<tr>
+<td>V12</td>
+<td><code>pip download tudatpy</code></td>
+<td>"</td>
+<td><strong>BLOCKED</strong> — "No matching distribution found" on PyPI</td>
+<td>tudatpy is conda-only; not exercised</td>
+</tr>
+<tr>
+<td>V13</td>
+<td><code>python -m compileall -q backend scripts</code></td>
+<td>"</td>
+<td>PASS (exit 0)</td>
+<td>syntax only</td>
+</tr>
+<tr>
+<td>V14</td>
+<td><code>cd backend &amp;&amp; python -m pytest -q</code> (clean requirements)</td>
+<td>"</td>
+<td><strong>FAIL at collection: 3 errors</strong> — <code>starlette.testclient requires httpx2</code></td>
+<td>undeclared test dependency</td>
+</tr>
+<tr>
+<td>V15</td>
+<td><code>pip install httpx2</code> then pytest</td>
+<td>"</td>
+<td>PASS: 48 passed, 1 DeprecationWarning (<code>accuracy.py:263 utcnow</code>)</td>
+<td>matches prior scan's 48</td>
+</tr>
+<tr>
+<td>V16</td>
+<td><code>uvicorn server:app --host 127.0.0.1 --port 8043</code></td>
+<td>venv</td>
+<td>PASS (startup)</td>
+<td>port 8042 was occupied by an unrelated concurrent audit process; 8043 used</td>
+</tr>
+<tr>
+<td>V17</td>
+<td><code>GET /health /info /bodies /solar/capabilities /trajectory/capabilities /mission/capabilities /benchmark/accuracy</code></td>
+<td>8043</td>
+<td>all HTTP 200 (&lt; 30 ms)</td>
+<td><code>/benchmark/accuracy</code> returns absolute host path in <code>referenceFile</code></td>
+</tr>
+<tr>
+<td>V18</td>
+<td><code>GET /benchmark/accuracy</code></td>
+<td>8043</td>
+<td>scenarioCount 3, solvedCount 3, <strong>passCount 0, passRate 0.0, meanAbsErrorKmS 22.824</strong></td>
+<td>see §7 — the <em>reference</em> is not reproducible</td>
+</tr>
+<tr>
+<td>V19</td>
+<td><code>ws://…/ws/sim?engine=rebound&amp;integrator=ias15</code> (default)</td>
+<td>8043 and private 8059</td>
+<td><strong>FAIL</strong>: <code>{"type":"error","code":"engine_init_failed","message":"'Simulation' object has no attribute 'ri_ias15'"}</code> then close 1011</td>
+<td>REBOUND 5.x API removed <code>ri_ias15</code>; default engine path non-functional</td>
+</tr>
+<tr>
+<td>V20</td>
+<td><code>ws://…/ws/sim?engine=rebound&amp;integrator=whfast</code> / <code>mercurius</code></td>
+<td>"</td>
+<td>PASS: <code>connected</code> then <code>state_update</code> frames; Earth |v| = 6.387 AU/yr (=30.3 km/s)</td>
+<td>velocities are AU/yr, undocumented</td>
+</tr>
+<tr>
+<td>V21</td>
+<td>esbuild metafile reachability from <code>src/main.ts</code> + <code>src/workers/modelWorker.ts</code></td>
+<td>Node</td>
+<td>30 / 62 tracked <code>.ts</code> reachable; plus <code>style.css</code>, <code>data/moons.json</code></td>
+<td><code>logs/reachability.txt</code></td>
+</tr>
+<tr>
+<td>V22</td>
+<td>Horizons API (<code>ssd.jpl.nasa.gov/api/horizons.api</code>)</td>
+<td>network</td>
+<td>reachable; used as oracle</td>
+<td>TDB-based vectors</td>
+</tr>
+<tr>
+<td>V23</td>
+<td>Headless Chromium (Playwright 1.x, chromium-headless-shell 151.0.7922.34)</td>
+<td>scratchpad + extracted libnss3/libnspr4/libasound2 <code>.deb</code>s</td>
+<td>WebGL 2 via ANGLE/SwiftShader (CPU)</td>
+<td><strong>no GPU</strong>: frame-time numbers are lower bounds/relative only</td>
+</tr>
+<tr>
+<td>V24</td>
+<td>Independent Lambert (Curtis universal-variable, bisection) on Horizons vectors for the 3 benchmark windows</td>
+<td>venv</td>
+<td>E–V 39.989, E–M 7.640, E–J 51.634 km/s (prograde, 0-rev)</td>
+<td>model: 39.983 / 7.637 / 51.620 — agrees to ≤15 m/s</td>
+</tr>
+<tr>
+<td>V25</td>
+<td><code>git log -p backend/benchmark/reference_scenarios.json</code></td>
+<td>—</td>
+<td>original references were round placeholders (8.6 / 7.2 / 17.0, tol 5–10 km/s, source "…-blend") replaced next day by 5-decimal "tool captures" with one identical timestamp</td>
+<td>provenance assessment §10</td>
+</tr>
+</tbody>
+</table></div>
+<p>Tools NOT available / not run: tudatpy (conda-only), SPICE kernels (spiceypy not a dependency), GMAT/Orekit (not installed; no input decks in repo), a real GPU (WSL2 without passthrough), gitleaks/trufflehog/semgrep (not installed; substitutes noted in §9).</p>
+<p><strong>Environment recorded:</strong> Ubuntu 24.04.4 (WSL2, kernel 6.18.33.2), AMD Ryzen 9 9950X3D (32 threads), 45 GiB RAM; <code>/dev/dxg</code> present but no GPU reached by Chromium — WebGL 2.0 via ANGLE/Vulkan <strong>SwiftShader</strong> (CPU). Browser: HeadlessChrome 151.0.7922.34 (Playwright). Node 22.23.2 / npm 10.9.8 (scratchpad tarball). Python 3.12.13 venv (host 3.14.6 unused). Repo: 288 tracked files, 363 commits, pack 46.6 MiB; largest tracked: 25 textures (39 MB, unused), asteroid <code>.bin</code> 3.6 MB, <code>debug_screenshot*.png</code> 545 KB, <code>moons.json</code> 221 KB, <code>stars_catalog.json</code> 172 KB, one PDF in <code>my-notes/</code> (136 KB).</p>
+<p><strong>Additional probes run (beyond the mandated list), with locations:</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Probe</th>
+<th>Where</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WS invariants in-process (whfast/mercurius): energy/angular-momentum drift 1/10/100 yr; seek idempotence; ±10 yr closure; −50 yr seek</td>
+<td><code>$SP/out/ME/invariants.json</code></td>
+<td>dE/E ≤ 4×10⁻¹², dL/L ≤ 1×10⁻¹⁴; seek/closure 0.0 km (checkpoint replay is deterministic)</td>
+</tr>
+<tr>
+<td>Frontend model vs Horizons, 6 epochs × 9 planets + 13 moons</td>
+<td><code>$SP/out/ME/eph/compare.json</code></td>
+<td>§7.1</td>
+</tr>
+<tr>
+<td>N-body vs Horizons 2026-08-23 + isolation runs</td>
+<td><code>$SP/out/ME/invariants.json</code>, inline</td>
+<td>§7.2</td>
+</tr>
+<tr>
+<td>Lambert edge cases (57 cases) + pykep cross-check (39 cases) + REST probes (24)</td>
+<td><code>$SP/out/TRAJ/*.log</code></td>
+<td>§7.3</td>
+</tr>
+<tr>
+<td>Asteroid binary decode, checksum, re-encode, bias, round-trip</td>
+<td><code>$SP/out/AST/*</code>, <code>$SP/out/TEST/roundtrip_*.log</code></td>
+<td>§7.5</td>
+</tr>
+<tr>
+<td>Browser: 13 scenarios, heap/GL growth 90 s, DPR 1/2/3, mobile, reduced-motion, WebGL-disabled, axe, keyboard, belt A/B</td>
+<td><code>$SP/out/ME/browser/results.json</code>, <code>*.png</code></td>
+<td>§7.7, §8</td>
+</tr>
+<tr>
+<td><code>/solar/physics</code> parameter fuzz, determinism, historical dates, SWPC/SILSO/Helioviewer reachability, AIA proxy</td>
+<td><code>$SP/out/SOL/*</code></td>
+<td>§7.6</td>
+</tr>
+<tr>
+<td>Security probes: CORS, WS Origin, porkchop 1000×1000, error bodies, info disclosure, bandit, pip-audit, pip-licenses, license-checker, secrets grep</td>
+<td><code>$SP/out/SEC/*</code></td>
+<td>§9</td>
+</tr>
+<tr>
+<td>Coverage (<code>pytest --cov</code>), pyflakes, ruff, mypy, import resolution over 62 TS files, script smoke (<code>--help</code>, shadow-copy runs)</td>
+<td><code>$SP/out/TEST/*</code>, <code>$SP/out/QUAL/*</code></td>
+<td>§8, §5</td>
+</tr>
+<tr>
+<td>Data inventory: sha256, image dimensions, moon-texture hash check, stars-catalog vs d3-celestial, moons.json regeneration diff, SBDB live signature</td>
+<td><code>$SP/out/DATA/*</code></td>
+<td>§10</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="5-severity-ranked-findings">5. Severity-ranked findings</h2>
+<p>Format: <strong>ID — title</strong> · Severity · Confidence · Category · Code status · Verification. Then evidence / repro / expected-vs-actual / impact / root cause / remediation / acceptance / effort.</p>
+<h3 id="f-01-main-belt-asteroids-are-rendered-inside-the-sun-instance-transform-applied-after-orbital-offset" class="finding"><span class="fid">F-01</span> — Main-belt asteroids are rendered inside the Sun (instance transform applied after orbital offset)<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> (blocker for the "asteroid belt" feature) · confidence <strong>high</strong> · correctness/rendering · <strong>active</strong> · <code>[re-executed, A/B in browser]</code>
+- Evidence: <code>src/frontend/features/asteroids/beltRenderer.ts:176-184</code> (<code>worldPositionWithOrbit.xyz += vOrbitOffset;</code> <strong>then</strong> <code>worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;</code>, same in <code>projectVertex</code> :191-199) and <code>:396-413</code> (<code>_mat4.compose(_pos=(0,0,0), randomQuat, scale=displayRadiusAu·stretch)</code>); <code>displayRadiusAu</code> :280-285 returns 0.003–0.0076 AU.
+- Math: M·(v + o) = R·S·v + <strong>R·S·o</strong> — the 2–3.5 AU orbital offset o is rotated by a random quaternion and scaled by 0.003–0.0076 → |R·S·o| ≈ 0.006–0.02 AU, a sphere (not a disk) at the origin, inside the Sun's display sphere.
+- Repro: <code>source $SP/env.sh; cd $SP/tools/pw; node ab.mjs</code> (renders two scratch copies of the bundle at "Range: 4.13 AU": original vs. order-swapped; with display radius inflated to 0.08 AU so single instances are visible). Original → <code>$SP/out/ME/browser/beltbig_big_orig.png</code> (blob inside Mercury's orbit); swapped → <code>beltbig_big_fixed.png</code> (belt beyond Mars). Agent's numeric check with real instance matrices: <code>|offset_shader| = 0.012 AU</code> vs <code>|offset_correct| = 2.55 AU</code> (<code>$SP/out/AST/extract_stdout.txt</code>).
+- Expected: 15,000 instances distributed 2.05–3.5 AU. Actual: status bar says "Bodies: 20,010" but no belt exists anywhere in the scene.
+- User impact: the headline small-body feature is invisible; "Realistic scale" makes it 10⁻⁷ AU. Scientific impact: none of the belt physics (GPU Kepler, perturbation uniforms) is observable.
+- Root cause: shader chunk order. Remediation (S): apply <code>instanceMatrix</code> to <code>transformed</code> first, then add <code>vOrbitOffset</code> (or put the orbital translation into the instance matrix). Acceptance: screenshot at 6 AU shows an annulus; a unit test that multiplies the composed matrix chain for one instance and asserts |world − orbitPos| &lt; radius.</p>
+<h3 id="f-02-default-n-body-engine-fails-under-the-resolved-rebound-version-health-endpoint-says-otherwise-tests-mock-the-failure-away" class="finding"><span class="fid">F-02</span> — Default N-body engine fails under the resolved REBOUND version; health endpoint says otherwise; tests mock the failure away<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> · <strong>high</strong> · runtime/dependency · <strong>backend-only</strong> · <code>[re-executed]</code>
+- Evidence: <code>backend/sim/rebound_nbody.py:71-72</code> (<code>self.sim.ri_ias15.min_dt</code>, <code>.epsilon</code>); <code>backend/requirements.txt:1</code> (<code>rebound&gt;=4.0.0</code> → 5.1.1 installed, <code>$SP/logs/pip_freeze.txt</code>); <code>dir(rebound.Simulation())</code> has no <code>ri_*</code> attributes in 5.1.1; <code>backend/tests/test_seek_optimizations.py:35-60</code> (<code>_FakeIAS15</code>); <code>server.py:1071</code> default integrator <code>ias15</code>; <code>/health</code> → <code>{"rebound":{"available":true,"fidelity":"high"}}</code>.
+- Repro: <code>$VENV/bin/python $SP/out/ME/ws_probe2.py</code> → <code>{"type":"error","code":"engine_init_failed","message":"'Simulation' object has no attribute 'ri_ias15'"}</code> then close 1011; <code>integrator=whfast|mercurius</code> → <code>connected</code> + <code>state_update</code> frames. Also <code>$SP/out/ENG/ws_connect_probe.json</code>.
+- Expected: default <code>/ws/sim</code> connection streams state. Actual: every default connection fails; no server-side log line (exception printed via block-buffered <code>print</code>).
+- Impact: any consumer of the documented default path gets nothing; README's "IAS15 adaptive integrator" claim false in practice.
+- Root cause: unpinned dependency + REBOUND 5 API rename; <code>/health</code> probes import-ability, not initialization; unit tests replace the real object.
+- Remediation (S): pin <code>rebound==4.4.x</code> <em>or</em> use the 5.x integrator configuration API; make <code>/health</code> initialize a throwaway engine; add a real (unmocked) initialization test for every advertised integrator. Acceptance: <code>/ws/sim</code> with no params yields a <code>state_update</code>; CI runs against pinned versions.</p>
+<h3 id="f-03-benchmark-reference-values-are-unreproducible-and-contradict-physics-the-model-is-correct-strict-tier-is-unsupported" class="finding"><span class="fid">F-03</span> — Benchmark reference values are unreproducible and contradict physics; the model is correct; "strict" tier is unsupported<span class="pill blocker">blocker</span></h3>
+<p class="meta"><strong>blocker</strong> (for any scientific-validation claim) · <strong>high</strong> · scientific validity / provenance · <strong>backend-only</strong> · <code>[re-executed]</code>
+- Evidence: <code>backend/benchmark/reference_scenarios.json</code> (consensus 8.48952 / 7.10834 / 16.87313 km/s; <code>calibrationTier: strict</code>; identical <code>capturedUtc</code> 2026-02-15T10:27:25Z for all 9 tool runs); <code>backend/benchmark/artifacts/*.csv</code> = one summary row each (no states, kernels, solver settings, logs); <code>git show 5c9965e:backend/benchmark/reference_scenarios.json</code> (original: 8.6 / 7.2 / 17.0, tolerances 6 / 5 / 10 km/s, <code>source: reference-gmat-orekit-tudat-blend</code>), <code>3062037</code> (adds CSVs), <code>a201065</code> (tightens tolerances to 0.45 / 0.40 / 0.70 and relabels "strict"); <code>CALIBRATION_PROTOCOL.md</code> describes a capture protocol with no inputs in the repo (<code>$SP/out/BENCH/grep_generator.txt</code>: no <code>.script</code>, Orekit, or Tudat inputs anywhere).
+- Repro: <code>$VENV/bin/python $SP/out/ME/indep_lambert.py</code> (Horizons vectors, Curtis universal-variable Lambert) → Earth–Venus (JD 2460400.5→2460520.5, θ=331.7°, long way): 39.989 km/s; Earth–Mars: 7.640; Earth–Jupiter (θ=32.5°, 900 d): 51.634. Model (<code>GET /benchmark/accuracy</code>): 39.983 / 7.637 / 51.620. <code>$SP/out/TRAJ/benchmark_truth.log</code> and <code>$SP/out/BENCH/independent_lambert_output.txt</code> (scipy fsolve variant) agree. pykep (Izzo) agrees with the model to ≤1.3×10⁻⁵ km/s (<code>$SP/out/TRAJ/pykep_check.log</code>). Checksums of the CSVs match the JSON (<code>$SP/out/BENCH/sha_compare.txt</code>) — integrity only.
+- Expected: references reproducible by an independent tool within stated tolerance. Actual: no 0-rev Lambert between those dates yields 7.1 km/s for Earth–Venus (the geometry is a 331° transfer; minimum sum ≈ 40 km/s). The tool version strings themselves (GMAT R2025a, Orekit 13.1, tudatpy 1.0.0) correspond to real releases (<code>$SP/out/BENCH/versions/</code>), which does not make the values real.
+- Impact: the only validation artifact in the repo misreports the solver as failing (passRate 0, mean error 22.8 km/s) and, worse, would "pass" a <em>wrong</em> solver tuned to the placeholders; <code>test_benchmark_accuracy.py</code> asserts structure/integrity only (2 tests; never asserts <code>pass</code>).
+- Root cause: placeholder values dressed as cross-tool captures; scenario dates chosen without regard to transfer geometry.
+- Remediation (M): delete the fabricated-looking references; regenerate with an actual independent run (e.g., Horizons states + pykep/poliastro, or GMAT with committed <code>.script</code> files, logs and raw outputs); pick real windows (Earth–Mars Oct 2024 ≈ 200–260 d, Earth–Venus 2024-06 ≈ 110–150 d, Earth–Jupiter 2023-11 ≈ 1,000 d); store state vectors, not just a scalar; gate CI on <code>passRate == 1</code>. Acceptance: <code>passCount == scenarioCount</code> against references with committed inputs and logs.</p>
+<h3 id="f-04-n-body-engine-initialized-from-jpl-mean-elements-as-if-osculating-high-fidelity-path-is-50-less-accurate-than-the-kepler-fallback-after-26-years" class="finding"><span class="fid">F-04</span> — N-body engine initialized from JPL mean elements as if osculating → "high-fidelity" path is 50× less accurate than the Kepler fallback after 26 years<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> · <strong>high</strong> · scientific validity · <strong>backend-only</strong> · <code>[re-executed]</code>
+- Evidence: <code>backend/sim/rebound_nbody.py:81-101</code> (<code>sim.add(a=…, e=…, primary=sun)</code> from <code>backend/data/bodies.py</code> = JPL 1800–2050 <em>mean</em> elements, identical to <code>src/data/planets.ts</code>); <code>move_to_com()</code> :104.
+- Repro: <code>$VENV/bin/python $SP/out/ME/invariants.py</code> + inline isolation script (transcript). Heliocentric error vs Horizons at 2026-08-23: Saturn <strong>60,203,705 km</strong> (N-body, whfast ≡ ias15) vs 1,179,208 km (frontend Kepler); Earth 231,785 vs 10,487 km; Mercury 188,549 vs 94,239 km. Sun+Saturn-only N-body: 1,662,558 km; Sun+Jupiter+Saturn: 60,323,179 km.
+- Expected: N-body ≤ Kepler error (perturbations should <em>reduce</em> error). Actual: mean <code>a</code> (9.5367 AU) fed as osculating; under Jupiter's perturbation Saturn's osculating <code>a</code> differs by ~0.5%, so the integrated mean motion is wrong by ~0.7% → 2.5° after 0.9 orbit.
+- Impact: any "switch to N-body for higher fidelity" narrative is inverted; long seeks drift by AU-scale amounts.
+- Remediation (M): initialize from osculating state vectors (Horizons/SPICE at epoch, cached in-repo with provenance) or from DE-consistent osculating elements; add an acceptance test vs Horizons at ±10 yr with a stated km tolerance. Effort M; depends on a provenance-tracked state-vector file.</p>
+<h3 id="f-05-moon-orbit-frame-conversion-drops-the-in-plane-re-referencing-of-m-laplaceequatorial-moons-are-placed-up-to-2-orbital-radii-from-truth-at-their-own-epoch" class="finding"><span class="fid">F-05</span> — Moon orbit frame conversion drops the in-plane re-referencing of ω/M; Laplace/equatorial moons are placed up to 2 orbital radii from truth at their own epoch<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> (for the "424 moons" claim) · <strong>high</strong> · scientific validity · <strong>active-background</strong> (propagated in worker, hidden by <code>showMoons=false</code>) · <code>[re-executed]</code>
+- Evidence: <code>src/sim/catalog.ts:193-210</code> (<code>convertElementsFromPlaneToEcliptic</code> returns only <code>{iDeg, ascendingNodeDeg}</code>), <code>:399-425</code> (ω, M copied unchanged); <code>moons.json</code> frames: 'Laplace' (most), 'equatorial' (Uranus, Pluto), 'ecliptic' (Moon only); node definition in JPL's table ("measured from the node of the reference plane on the ICRF equator") not honored; precession fields (<code>apsisPrecessionYears</code>, <code>nodePrecessionYears</code>) never used.
+- Repro: <code>HZ=$SP/out/EPH/horizons/horizons_vectors.json OUT=… node $SP/out/ME/eph/entry.mjs</code> → parent-relative errors at J2000 (elements epoch 2000-01-01.5): Moon 4,432 km (1.1% — ecliptic frame, fine), Io 827,729 km (1.97 r), Europa 270,725 (0.41 r), Ganymede 1,599,129 (1.49 r), Callisto 3,506,727 (1.86 r), Titan 1,444,077 (1.15 r), Enceladus 451,639 (1.91 r), Triton 623,529 (1.76 r), Charon 7,484 (0.38 r), Miranda 192,565 (1.48 r); velocity errors 2–34 km/s (≈2× orbital speed ⇒ wrong side / wrong direction). At 2026-08-23 the Moon drifts to 55,478 km (13.7%) for lack of node/apsidal precession.
+- Impact today: none visible (moons hidden), but the worker spends 424/434 of its per-tick work on them. Reactivation risk: high — enabling <code>showMoons</code> shows moons on the wrong side of their planets.
+- Remediation (M): rotate the full perifocal frame (compute Δω as the angle between the source-frame node and the ecliptic node along the orbit), honor JPL's ICRF-equator node convention, apply secular precession rates; acceptance: every major moon within 5% of Horizons at epoch and within 10% ±5 yr.</p>
+<h3 id="f-06-lambert-solutions-are-returned-without-a-tof-residual-certificate-infeasible-requests-yield-http-200-garbage-multi-rev-unsupported-v-semantics-are-bare-v-sums" class="finding"><span class="fid">F-06</span> — Lambert solutions are returned without a TOF-residual certificate; infeasible requests yield HTTP 200 garbage; multi-rev unsupported; Δv semantics are bare v∞ sums<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> · <strong>high</strong> · mission-design validity · <strong>backend-only</strong> · <code>[re-executed]</code>
+- Evidence: <code>backend/trajectory/lambert.py:124-151</code> (if no sign change on the z∈[−40,40] grid, <code>best_z</code> is used with no residual check), <code>:205-244</code> (<code>compute_lambert_leg</code> reports the <em>requested</em> <code>tofDays</code>, never compares <code>computedTofDays</code>), <code>:223-224</code> (<code>deltaV… = |v1 − v_planet|</code>, i.e., v∞, not a maneuver), <code>:227</code> (<code>pathLengthAu</code> is the chord).
+- Repro: <code>$VENV/bin/python $SP/out/TRAJ/lambert_tests.py</code> → e.g. <code>theta90 tof0.5</code>: computedTof 8.8627 d, residual 8.36 d, endpoint miss 2.54×10⁸ km, returned; <code>earth-mars-like theta140 tof1</code>: residual 3.96 d, miss 2.84×10⁸ km. REST: <code>POST /trajectory/lambert</code> Earth→Mars with TOF 1 d and 0.01 d → HTTP 200 with Δv 129–136 km/s (<code>$SP/out/TRAJ/rest_lambert.log</code>). pykep finds N=5 multi-rev solutions for TOF 3,650 d; the backend returns only the 0-rev branch.
+- Expected: reject or flag solutions whose |computedTof − tof| &gt; tol; expose both branches; report v∞ as v∞. Actual: silent.
+- Remediation (S): return <code>null</code>/422 when residual &gt; <code>tol_days</code>; include <code>tofResidualDays</code>, <code>vInfDeparture/Arrival</code>, <code>c3</code>; add multi-rev (Izzo/pykep) if needed. Acceptance: all 57 edge cases in <code>lambert_tests.py</code> either converge (residual ≤1e-4 d, closure ≤1e3 km) or are rejected.</p>
+<h3 id="f-07-planet-propagation-uses-fixed-j2000-mean-elements-without-secular-rates-or-table-2b-terms-with-utc-treated-as-tdb-outer-planet-errors-are-114-million-km" class="finding"><span class="fid">F-07</span> — Planet propagation uses fixed J2000 mean elements without secular rates or Table-2b terms, with UTC treated as TDB; outer-planet errors are 1–14 million km<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> (acceptable for display, not for science) · <strong>high</strong> · scientific validity · <strong>active</strong> · <code>[re-executed]</code>
+- Evidence: <code>src/data/planets.ts:14-200</code> (values = JPL <code>approx_pos</code> Table 1 J2000 column; rates omitted; Earth = EM-barycenter elements; <code>ascendingNodeDeg: 0</code>, <code>iDeg: −0.00001531</code>); <code>src/sim/orbitMath.ts:26-47</code> (Newton, 20 iterations, tol 1e-9, no failure signal; e clamped to ≤0.9999999 — e=1.2 silently treated as 0.9999999, e=−0.5 as 0, NaN propagates); <code>src/constants.ts:28-31</code> (<code>Date.now()</code> → JD with no UTC→TT/TDB offset, −69 s).
+- Repro: <code>$SP/out/ME/eph/compare.json</code>. Position error (km) vs Horizons heliocentric ecliptic-J2000 (TDB):</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Body</th>
+<th>1600</th>
+<th>1900</th>
+<th>J2000</th>
+<th>2026-08-23</th>
+<th>2050</th>
+<th>2100</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mercury</td>
+<td>890,190</td>
+<td>220,873</td>
+<td>1,030</td>
+<td>94,239</td>
+<td>182,611</td>
+<td>206,717</td>
+</tr>
+<tr>
+<td>Venus</td>
+<td>419,853</td>
+<td>108,779</td>
+<td>8,112</td>
+<td>28,274</td>
+<td>48,188</td>
+<td>118,676</td>
+</tr>
+<tr>
+<td>Earth</td>
+<td>513,869</td>
+<td>131,279</td>
+<td>6,792</td>
+<td>10,487</td>
+<td>63,535</td>
+<td>127,659</td>
+</tr>
+<tr>
+<td>Mars</td>
+<td>n/a</td>
+<td>260,974</td>
+<td>8,193</td>
+<td>58,000</td>
+<td>88,466</td>
+<td>203,951</td>
+</tr>
+<tr>
+<td>Jupiter</td>
+<td>n/a</td>
+<td>1,958,827</td>
+<td>1,149,805</td>
+<td>894,552</td>
+<td>2,245,169</td>
+<td>2,346,510</td>
+</tr>
+<tr>
+<td>Saturn</td>
+<td>n/a</td>
+<td>12,009,867</td>
+<td>3,848,012</td>
+<td>1,179,208</td>
+<td>7,366,553</td>
+<td>13,756,294</td>
+</tr>
+<tr>
+<td>Uranus</td>
+<td>n/a</td>
+<td>3,176,281</td>
+<td>1,077,458</td>
+<td>1,033,678</td>
+<td>651,487</td>
+<td>2,257,338</td>
+</tr>
+<tr>
+<td>Neptune</td>
+<td>n/a</td>
+<td>933,833</td>
+<td>1,099,284</td>
+<td>665,089</td>
+<td>754,550</td>
+<td>2,162,111</td>
+</tr>
+<tr>
+<td>Pluto</td>
+<td>n/a</td>
+<td>1,273,469</td>
+<td>1,359,996</td>
+<td>1,369,297</td>
+<td>1,129,062</td>
+<td>1,903,355</td>
+</tr>
+</tbody>
+</table></div>
+<p>Velocity errors 0.003–0.72 km/s (Mercury 1600: 0.72). Earth's 6,792 km at J2000 is the EMB–Earth offset (~4,700 km) plus the 69 s time-scale offset (~2,000 km). Jupiter/Saturn errors at J2000 (1.1 / 3.8 M km ≈ 0.03°/0.15°) are the great-inequality terms that mean elements cannot carry (JPL quotes 400″/600″ for this table).
+- Impact: visually indistinguishable; unusable as an ephemeris. Reverse time and ±1,000-yr jumps work (pure analytic); hyperbolic/unbound orbits impossible.
+- Remediation (S–M): apply per-century rates + Table 2b terms (valid 3000 BC–3000 AD), add ΔT, surface solver non-convergence; acceptance: ≤50,000 km for inner planets 1800–2050.</p>
+<h3 id="f-08-readme-documents-a-different-product-a-stale-homenomaddocuments-link-set-60-referenced-paths-do-not-exist" class="finding"><span class="fid">F-08</span> — README documents a different product; a stale <code>/home/nomad/Documents/...</code> link set; 60+ referenced paths do not exist<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> · <strong>high</strong> · documentation integrity · docs · <code>[source-verified]</code>
+- Evidence: §3 matrix; <code>README.md:24-25,217-218</code> absolute filesystem links (4); <code>$SP/out/ARCH/doc_paths_missing.txt</code> (62 paths referenced by tracked docs that don't exist — <code>.js</code> post-migration names, <code>backend/sim/agn_physics.py</code>, <code>src/frontend/rendering/bodyFactory.js</code>, …); README "Starting the backend… choose REBOUND or TudatPy… click Connect" with no such UI; README omits the shipped "Cataclysmic Events" panel entirely; <code>index.html</code> says "Sun-Focus Branch" on <code>main</code> (branch <code>origin/sun-focus</code> is 69 commits ahead, last 2026-07-25, not audited).
+- Remediation (S): rewrite README around what <code>index.html</code> ships; move the mission-lab description to a "dormant features / roadmap" section; strip absolute links.</p>
+<h3 id="f-09-1300-typescript-errors-438-in-the-shipped-graph-with-a-build-that-never-type-checks-no-frontend-tests-lint-or-ci" class="finding"><span class="fid">F-09</span> — 1,300 TypeScript errors (438 in the shipped graph) with a build that never type-checks; no frontend tests, lint, or CI<span class="pill high">high</span></h3>
+<p class="meta"><strong>high</strong> · <strong>high</strong> · engineering quality · active+dormant · <code>[re-executed]</code>
+- Evidence: <code>$SP/logs/typecheck.log</code>; <code>package.json</code> (no <code>test</code>, no lint; <code>build</code> = <code>vite build</code>); <code>git ls-files | grep -iE 'eslint|prettier|github|ci|husky'</code> → none; <code>src/data/asteroidCatalogLoader.test.ts</code> (5 lines, no runner). Reachable hot spots: <code>sunController.ts</code> 109 (e.g. <code>:454-458</code> implicit-any module-level state), <code>smbhPropagation.ts</code> 81, <code>main.ts</code> 72, <code>solarPhysicsClient.ts</code> 60, <code>agnShockwaveEngine.ts</code> 55, <code>sunVisuals.ts</code> 51. Codes: TS7006 439, TS2339 438 (property does not exist — these are the runtime-hazard class), TS7031 188, TS18047 90 (possibly null).
+- Impact: the README's "strict type checking is now active" is the opposite of the truth; regressions are caught by nobody.
+- Remediation (M): add <code>typecheck</code> + a vitest smoke suite to <code>build</code>; fix the 438 reachable errors first; add CI.</p>
+<h3 id="f-10-clean-install-reproducibility-gaps-undeclared-test-dependency-unpinned-pythonnode-dependency-ranges-conda-only-optional-engine" class="finding"><span class="fid">F-10</span> — Clean-install reproducibility gaps: undeclared test dependency, unpinned Python/Node dependency ranges, conda-only optional engine<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · reproducibility · backend · <code>[re-executed]</code>
+- Evidence: <code>$SP/logs/pytest_clean_requirements.log</code> (3 collection errors: <code>starlette.testclient requires httpx2</code>); <code>requirements.txt</code> all <code>&gt;=</code>; <code>rebound</code> 5.1.1 breaks F-02; <code>tudatpy</code> not on PyPI (<code>pip download</code> fails) and commented out; <code>package.json</code> carets (lockfile present, OK).
+- Remediation (S): add <code>httpx2</code> (or <code>httpx</code>) to a <code>requirements-dev.txt</code>; pin with a lock (<code>pip-compile</code>/<code>uv lock</code>); document the conda path for tudatpy or drop the engine.</p>
+<h3 id="f-11-security-posture-is-dev-only-origin-reflecting-cors-with-credentials-no-auth-no-ws-origin-check-unbounded-compute-path-disclosure-client-named-file-writes-bind-all-reload" class="finding"><span class="fid">F-11</span> — Security posture is dev-only: origin-reflecting CORS with credentials, no auth, no WS origin check, unbounded compute, path disclosure, client-named file writes, bind-all + reload<span class="pill high">high</span></h3>
+<p class="meta"><strong>high if network-exposed / medium as a localhost dev tool</strong> · <strong>high</strong> · security/operations · backend · <code>[re-executed]</code>
+- Evidence &amp; probes (<code>$SP/out/SEC/*</code>, transcript): <code>server.py:85-88</code> (<code>allow_origins=['*'], allow_credentials=True</code> → Starlette reflects <code>Access-Control-Allow-Origin: https://evil.example</code> + <code>Allow-Credentials: true</code> on GET and preflight); no auth anywhere (<code>02_auth_grep.txt</code>); <code>/ws/sim</code> accepts <code>Origin: https://evil.example</code>, <code>null</code>, none; <code>POST /trajectory/porkchop</code> 1000×1000 grid → HTTP 200 after 132 s with RSS 79→311 MB (<code>04_*</code>), no grid cap (<code>lambert.py:271-272</code> floors steps at 0.5/5 d only); <code>provider=horizons</code> → one live JPL request per leg (≈1 s; <code>ephemeris_service.py:196-230</code>) — a porkchop with <code>horizons</code> is a third-party amplification vector; <code>/benchmark/accuracy</code> and <code>/nearby-systems</code> return absolute host paths (<code>referenceFile</code>, <code>catalog_path</code>); <code>POST /benchmark/accuracy/report</code> writes <code>my-notes/&lt;client output_path&gt;</code> (traversal rejected, subdirectories created, existing files overwritten; <code>$SP/out/BENCH/post_report_tests.txt</code>); <code>/docs</code>, <code>/openapi.json</code>, <code>/redoc</code> open; wrong-typed bodies → 500 with server-side tracebacks (<code>ValueError: Out of range float values are not JSON compliant: inf</code>, <code>09_server_log_500_traceback.txt</code>); <code>provider=spice</code> → 500; <code>server.py:1195</code> <code>host="0.0.0.0", reload=True</code>; <code>scripts/dev-full.mjs</code> defaults host <code>0.0.0.0</code>.
+- Dependencies: npm audit 6 vulns (5 high) all in the dev toolchain (esbuild/vite/rollup/postcss/nanoid/picomatch; none shipped); <code>pip-audit -r requirements.txt</code>: no known vulns (only <code>pip</code> itself flagged in the venv); bandit: B104 bind-all, B310 urlopen (3), B311 random (3), B110 try/except/pass; secrets: none in tree or history (363 commits scanned); frontend XSS surface minimal (<code>innerHTML = ''</code> only; 59 <code>textContent</code>).
+- Remediation (S): explicit origin allowlist without credentials; Origin check on WS; cap grid points (e.g. ≤10,000) and run Lambert scans in a worker pool with cancellation; disable <code>horizons</code> provider by default or add a per-IP budget; strip absolute paths from responses; fixed report filenames; <code>host=127.0.0.1</code>, <code>reload</code> only behind a dev flag; catch <code>ValueError</code> on non-finite outputs → 422.</p>
+<h3 id="f-12-per-frame-renderer-resize-and-full-kbo-matrix-re-upload-500-kb-corona-payload-polled-every-1-s" class="finding"><span class="fid">F-12</span> — Per-frame renderer resize and full KBO matrix re-upload; 500 KB corona payload polled every ~1 s<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · performance · <strong>active</strong> · <code>[re-executed in browser]</code>
+- Evidence: <code>src/main.ts:875-885</code> (<code>resizeRenderer</code>: unconditional <code>setPixelRatio</code> → three r182 <code>setSize</code> → <code>canvas.width/height</code> assignment every frame; the size guard compares drawing-buffer width with CSS width, so at DPR≠1 it is always true and <code>setSize</code>+<code>updateProjectionMatrix</code> run a second time), called at <code>:1073</code> every frame; measured <code>canvasWidthSetsPerFrame</code> = 1.00 at DPR1, 2.31 at DPR2/3 (<code>$SP/out/ME/browser/results.json</code>). <code>src/main.ts:1062-1063</code> + <code>beltRenderer.ts:527-547</code>: 5,000 <code>compose</code>/<code>setMatrixAt</code> + <code>instanceMatrix.needsUpdate</code> per frame (320 KB upload) while the main belt is GPU-propagated (<code>:440-444</code>). <code>solarPhysicsClient.ts:83-92</code> + responses: <code>/solar/physics?fidelity=high&amp;max_features=180</code> ≈ 500 KB per call, one call per ~4.6 simulated days (≈1.15 s at 4 d/s) → ≈430 KB/s sustained; with backend online the CPU-rasterized frame time went from 16.7 ms (offline) to 383 ms p50.
+- Whether Chromium reallocates the drawing buffer on a same-value <code>canvas.width</code> assignment is implementation-dependent (not measured); the redundant work is real regardless.
+- Remediation (S): guard resize on CSS size/DPR change; update KBO matrices only when JD changes beyond a threshold or move KBOs to the GPU path; throttle corona refresh (e.g. every 30 s) and trim payload (<code>max_features</code>, binary).</p>
+<h3 id="f-13-speculative-h29-metric-frame-dragging-slipstream-displaces-every-bodys-world-position-by-a-1012-visual-multiplier-during-events-no-on-screen-labeling-of-observation-vs-model-vs-hypothesis" class="finding"><span class="fid">F-13</span> — Speculative "H29 metric-frame-dragging slipstream" displaces every body's world position by a 10¹² visual multiplier during events; no on-screen labeling of observation vs. model vs. hypothesis<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · scientific labeling / state isolation · <strong>active</strong> · <code>[source-verified + browser]</code>
+- Evidence: <code>src/main.ts:675-687</code> (<code>applyMetricKinematics(..., 1e12)</code>), <code>src/workers/modelWorker.ts:184-203</code>, <code>src/sim/solarSystemModel.ts:161-193</code> (adds β·c·dt·exaggeration along the wave direction to <code>worldPosition</code> — Keplerian state untouched; recomputed each frame so it reverts after the event); <code>worldPosition</code> feeds the info box (<code>main.ts:543</code> "Distance from Sun"), <code>syncAsteroidBeltInputs</code> perturber uniforms, follow-camera; <code>index.html:60-93</code> mixes catalog facts (Sgr A<em> 4.15×10⁶ M☉, JWST 2025 flare rates) with "H29: The Metric-Frame-Dragging Slipstream" and an "MW-M31 Merger 10⁶² erg" preset; the only qualifiers are "(educational)" on M87 and "Hypothetical" on one preset; <code>smbhPhysicsConstants.ts</code> values spot-checked plausible (Sgr A</em> mass 4.15e6, G_CGS 6.674e-8, AU_CM 1.496e13).
+- Classification: the compound-shockwave propagation is an analytic approximation (Sedov-like radius law with an observer-frame superluminal-projection option); H29 is a <strong>speculative hypothesis</strong> with no published basis found in the bundled research notes beyond the author's own <code>h29-*.md</code>.
+- Remediation (S): label the panel "Speculative / visualization — not physics"; never write the exaggerated displacement into <code>state.worldPosition</code> (apply it in the scene graph only); add a tooltip with the 10¹² multiplier.</p>
+<h3 id="f-14-corona-model-is-procedural-and-wall-clock-non-deterministic-swpc-feed-is-dead-historical-dates-return-a-periodic-synthetic-envelope" class="finding"><span class="fid">F-14</span> — Corona model is procedural and wall-clock non-deterministic; SWPC feed is dead; historical dates return a periodic synthetic envelope<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · scientific labeling / data freshness · <strong>active + backend</strong> · <code>[artifact-verified + re-run]</code>
+- Evidence: <code>backend/sim/solar_physics.py:190-212</code> (docstring: "not a full resistive-MHD solver… physically-inspired"; model name <code>quasi_mhd_corona_v4</code>), <code>:215,253</code> seeded <code>Random</code>, <code>:911</code> wall-clock transient activation; <code>solar_realtime_data.py</code> URLs <code>products/solar-wind/plasma-1-day.json</code>, <code>mag-1-day.json</code> → <strong>HTTP 404</strong> (<code>$SP/out/SOL/swpc_url_check.txt</code>; live product is <code>json/rtsw/rtsw_wind_1m.json</code>); <code>realtime_shared.json</code> <code>swpc.ok=false</code>, SILSO/SDO ok; determinism: two calls 0.5 s apart differ in feature ids and 8 scalar fields (<code>determinism.log</code>); historical: 1600 → activity 0.319 from an 11.0-yr envelope anchored at 2020-01-01 (no Maunder minimum), flagged only in the JSON (<code>data_assimilation.mode = synthetic</code>), never in the UI; parameter fuzz: <code>jd=1e300</code>, <code>jd=-1</code>, <code>max_features=999999</code> → 200 (no bounds), <code>nan/inf</code> → 400; payload 460–500 KB; Hathaway normalization assumes the peak at b√1.5 (66 mo) while the true peak is at 58.4 mo → a 15-month clamp-to-1.0 plateau (3.4% error) (<code>hathaway_check.log</code>).
+- What would justify "MHD": a field-evolution PDE (induction equation, ∇·B=0) — absent (<code>grep_mhd_pde.txt</code>). Label as "procedural synthesis with data-driven activity index".</p>
+<h3 id="f-15-asteroid-dataset-float32-absolute-jd-quantization-on-gpu-and-in-the-binary-acbf-self-test-fails-its-own-tolerance-population-bias-of-the-rendered-15000" class="finding"><span class="fid">F-15</span> — Asteroid dataset: float32 absolute-JD quantization on GPU and in the binary; ACBF self-test fails its own tolerance; population bias of the rendered 15,000<span class="pill medium">low–medium</span></h3>
+<p class="meta"><strong>low–medium</strong> · <strong>high</strong> · numerical precision / data semantics · <strong>active</strong> (moot until F-01 is fixed) · <code>[re-executed]</code>
+- Evidence: <code>beltRenderer.ts:62,124-127,339,446-447</code> (<code>epochJd</code> as float32 attribute, <code>uJulianDate</code> absolute JD float uniform → <code>deltaDays</code> has 0.25-day ULP at JD 2.46e6 ⇒ ≈390,000 km along-track quantization, stepping at low warp); <code>asteroidCatalogBinaryFormat.md</code>/loader tolerance <code>epoch 1e-4 d</code> vs float32 storage → <code>runPackedCatalogRoundTripTest100k</code> → <code>ok:false</code>, 99,913/100,000 epoch mismatches (max 0.125 d), 4,157 period mismatches (<code>$SP/out/TEST/roundtrip_run.log</code>). Binary integrity fine: header/ACBF v1/stride 36/100,000 records, SHA-256 <code>a0b8328c…</code> and FNV-1a <code>0xf1f80244</code> match meta, re-encode byte-identical (<code>$SP/out/AST/decode_stdout.txt</code>). Bias: corpus sorted by diameter desc; first 15,000 = all bodies ≥7.7 km; outer belt 70.4% (vs 53.0% in 100 k), inner 6.5% (vs 13.7%), C-type 79.6% (vs 66.4%), zero Hildas/Trojans/NEOs (a ≤ 3.5 AU cut) — a dark, outer-heavy sample; Kirkwood gaps not assessed visually (belt invisible). CPU solvers (<code>orbitMath</code>, <code>asteroidBelt.solveKeplerFast</code>, GLSL transcribed) agree to 1e-14 rad for e ≤ 0.9 (<code>$SP/out/QUAL/kepler_compare.txt</code>). Perturbation term (<code>beltRenderer.ts:153-163</code>): an ad-hoc <code>perturb·age²·scale</code> displacement — <strong>visual</strong>, not integrated dynamics. Live SBDB now reports epoch 2461200.5 vs committed 2461000.5 → regeneration is deterministic but not byte-reproducible against the mutable upstream.
+- Remediation (S): pass <code>JD − J2000</code> (or epoch-relative days) as the uniform and store epoch offsets; fix the documented tolerance or widen the field; document the selection bias in-app.</p>
+<h3 id="f-16-licensing-and-provenance-no-repository-license-one-texture-of-unresolved-license-star-catalog-mis-attributed-39-mb-unused-unmanifested-texture-tree-researchdebug-artifacts-in-the-root" class="finding"><span class="fid">F-16</span> — Licensing and provenance: no repository license; one texture of unresolved license; star catalog mis-attributed; 39 MB unused, unmanifested texture tree; research/debug artifacts in the root<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · data provenance / licensing · repo · <code>[re-executed]</code>
+- Evidence: <code>git ls-files | grep -i licen</code> → none; <code>public/textures/moons/moon_texture_attribution.json</code> Deimos: "Unspecified by provider; verify for redistribution" (Solarviews) — other 8 USGS public domain, hashes match (<code>$SP/out/DATA/moon_attribution_hash_check.txt</code>); <code>src/data/stars_catalog.json</code> = 5,042 exact 4-tuple matches with d3-celestial <code>stars.6.json</code> (BSD-3-Clause, © Olaf Frohn; README says "d3-celestial (reduced)" but <code>scripts/fetch_gaia_catalog.py</code> claims Gaia DR3 TAP — mismatch; no BSD notice in repo); <code>src/assets/textures/*</code> (25 files, dimensions match names) referenced by nothing in the bundle and by no manifest beyond a README table ("Solar System Scope", "three.js", "USGS/MOLA", "2MASS") — license terms not recorded; <code>rebound</code> is GPL-3.0 (backend dependency; obligations if distributed); root clutter: <code>debug_screenshot*.png</code> (545 KB), <code>sun_diff.diff</code> (0 bytes), <code>recent_changes.diff</code>, 17 <code>superluminal_*</code>/<code>sun_*</code>/<code>h29-*</code> research files, <code>.tex/.bib</code>, 62 <code>my-notes/*</code> incl. a PDF; asteroid dataset provenance is the good example (meta.json with source, query signature, checksums).</p>
+<h3 id="f-17-failure-modes-and-accessibility-webgl-unavailable-crashes-silently-backend-offline-only-logs-mobile-layout-hides-the-canvas-one-critical-a11y-violation-no-reduced-motion-handling" class="finding"><span class="fid">F-17</span> — Failure modes and accessibility: WebGL-unavailable crashes silently; backend-offline only logs; mobile layout hides the canvas; one critical a11y violation; no reduced-motion handling<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · resilience/UX/a11y · <strong>active</strong> · <code>[re-executed in browser]</code>
+- Evidence: <code>--disable-webgl</code> → <code>pageerror: Error creating WebGL context</code>, panel renders, "Bodies: --", no message (<code>sceneSetup.ts:147-166</code> no try/catch); backend offline → 4× <code>net::ERR_FAILED</code> console errors, rendering continues at 60 fps, no UI status; 390×844 viewport → <code>#control-panel</code> height 1,514 px, <code>#viewport-shell</code> starts at y=1,514 (canvas off-screen), no horizontal overflow; axe-core: <code>select-name</code> <strong>critical</strong> on <code>#body-list</code>; keyboard: tab order sane, slider arrows work; contrast ≥7.7:1 everywhere measured (<code>$SP/out/docs/contrast_results.tsv</code>); <code>prefers-reduced-motion</code> absent from CSS/JS; canvas has no <code>aria-label</code>/role; the "Now" click was processed ~1 s late under 400–800 ms frames (input latency, not a logic bug — handler at <code>timeController.ts:43-44</code> is correct).</p>
+<h3 id="f-18-dead-duplicated-and-archival-code-broken-post-migration-scripts-stray-test-scripts-with-undeclared-dependencies" class="finding"><span class="fid">F-18</span> — Dead, duplicated and archival code; broken post-migration scripts; stray test scripts with undeclared dependencies<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · maintainability · dormant/dead · <code>[re-executed]</code>
+- Evidence: 32 dormant TS files (862 of the 1,300 errors; <code>satelliteSystem.ts</code> alone 311); <code>temp_nearbySystemsRenderer.ts</code> (1,127 lines) is a self-described "TEMP ARCHIVE… rollback (2026-02-17)" copy of <code>nearbySystemsRenderer.ts</code> (<code>$SP/out/QUAL/nearby_diff.txt</code>); 6 Kepler solvers (<code>orbitMath.ts</code>, <code>kuiperBelt.ts</code>, <code>asteroidBelt.ts</code>, <code>satelliteSystem.ts</code>, <code>satellitePropagationWorker.ts</code>, GLSL ×2) + <code>backend/mission/orbital.py</code>; AU defined as 1.496e11 m in 4 files vs 149,597,870,700 m elsewhere; 124/243 reachable exports unused by other reachable files (37 fully dead; <code>$SP/out/ARCH/dead_exports.tsv</code>); <code>scripts/ingest-moon-textures.mjs</code> imports <code>moonTextureCatalog.js</code> (does not exist) → <code>ERR_MODULE_NOT_FOUND</code>; <code>testRealisticScale.mjs</code> (port 5173), <code>testWarp.js</code> (5174), <code>get_errors.mjs</code> (5175) import <code>puppeteer</code> (undeclared) and target DOM/ports of older UIs; <code>scripts/update-moons-data.mjs</code> regenerates 460 records vs 424 with positional <code>id</code>s that reshuffle (<code>$SP/out/TEST/update_moons_offline.log</code>); monoliths: <code>main.ts</code> 1,083, <code>sunVisuals.ts</code> 1,282, <code>server.py</code> 1,195 (routes+WS+runner+helpers), <code>solar_physics.py</code> 995; ruff: 31 blind <code>except</code> (BLE001), mypy 64 errors/12 files; pyflakes 11 unused imports/empty f-strings.</p>
+<h3 id="f-19-cross-engine-contract-is-undocumented-and-inconsistent-barycentric-auyr-on-the-wire-vs-heliocentric-auday-elsewhere-14-of-41-backend-bodies-are-massless-auto-provider-order-contradicts-its-docstring" class="finding"><span class="fid">F-19</span> — Cross-engine contract is undocumented and inconsistent (barycentric AU/yr on the wire vs heliocentric AU/day elsewhere); 14 of 41 backend bodies are massless; <code>auto</code> provider order contradicts its docstring<span class="pill medium">medium</span></h3>
+<p class="meta"><strong>medium</strong> · <strong>high</strong> · contracts · backend-only · <code>[re-executed]</code>
+- Evidence: <code>rebound_nbody.py:66</code> units <code>("yr","AU","Msun")</code>, <code>:104</code> <code>move_to_com()</code>, <code>:138</code> raw <code>p.vx</code> → WS <code>vel</code> is <strong>AU/yr, barycentric</strong> (Earth |v| 6.387 AU/yr = 30.29 km/s; Sun at (−0.0071, −0.0028, 0.0002) AU); frontend/Kepler paths are heliocentric AU/day; <code>contracts.py</code> carries no unit/frame/version fields; dormant <code>simulationClient.ts</code> reads <code>pos</code> only; <code>ephemeris_service.py:67-70</code> docstring says auto = spice→horizons→kepler but <code>:138-142</code> implements spice→<strong>kepler</strong>→horizons (so <code>auto</code> never reaches Horizons); <code>bodies.py</code> mass <code>0</code>/None for hebe…ms4 (test particles); REBOUND <code>yr</code> = 365.25 d Julian year consistent with <code>DAYS_PER_YEAR</code>.
+- Remediation (S): add <code>schema_version</code>, <code>units</code>, <code>frame</code>, <code>origin</code> to every state message; document; emit heliocentric optionally.</p>
+<h3 id="f-20-worker-and-cpu-paths-both-propagate-all-434-catalog-bodies-424-hidden-moons-every-tick" class="finding"><span class="fid">F-20</span> — Worker and CPU paths both propagate all 434 catalog bodies (424 hidden moons) every tick<span class="pill low">low</span></h3>
+<p class="meta"><strong>low</strong> · <strong>high</strong> · performance · active-background · <code>[source-verified]</code>
+- <code>modelWorker.ts</code> has no moon filter; <code>SolarSystemModel.update</code> iterates <code>updateOrder</code> (434 bodies) while 10 are displayed. Remediation (S): pass <code>showMoons</code> to the worker and skip hidden subtrees.</p>
+<p>(Consolidated duplicates: "tests pass but default engine broken" → F-02; "benchmark fails" → F-03; "README/Docs drift" → F-08; "typecheck/CI" → F-09; "puppeteer scripts/ports" → F-18; "stale links" → F-08; "REBOUND AU/yr" → F-19.)</p>
+<hr />
+<h2 id="6-scientific-claimevidence-and-unitsframetime-matrix">6. Scientific claim/evidence and units/frame/time matrix</h2>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Subsystem</th>
+<th>Active?</th>
+<th>Purpose</th>
+<th>Equations / method</th>
+<th>Units</th>
+<th>Origin</th>
+<th>Frame</th>
+<th>Epoch / time scale</th>
+<th>Precision</th>
+<th>IC source</th>
+<th>Perturbations in / out</th>
+<th>Error budget (measured)</th>
+<th>Oracle used</th>
+<th>Validated envelope</th>
+<th>Classification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Planets, frontend CPU (<code>orbitMath.ts</code>, <code>solarSystemModel.ts</code>)</td>
+<td>yes (fallback)</td>
+<td>scene positions</td>
+<td>Kepler eq. Newton ≤20 it, tol 1e-9; n = 2π/P (P from table)</td>
+<td>AU, AU/day, days</td>
+<td>heliocentric (Earth = EMB elements)</td>
+<td>ecliptic &amp; equinox J2000 (x,y,z → scene unchanged, right-handed)</td>
+<td>JD from <code>Date.now()</code> (UTC) treated as TDB (−69 s)</td>
+<td>float64</td>
+<td>JPL approx_pos Table 1 J2000 values, rates dropped</td>
+<td>none / all (no secular rates, no Table 2b, no planetary perturbations)</td>
+<td>1–8×10³ km inner, 1–4×10⁶ km outer at J2000; up to 1.4×10⁷ km (Saturn) at 1900/2100; 9×10⁵ km Mercury at 1600</td>
+<td>JPL Horizons vectors (500@10, ecliptic, AU-D, TDB)</td>
+<td>display-grade 1800–2100; not an ephemeris</td>
+<td><strong>approximation</strong></td>
+</tr>
+<tr>
+<td>Planets, worker (<code>modelWorker.ts</code>)</td>
+<td>yes (primary)</td>
+<td>same, off-thread</td>
+<td>same module</td>
+<td>same</td>
+<td>same</td>
+<td>same</td>
+<td>same</td>
+<td>float64</td>
+<td>same</td>
+<td>same</td>
+<td>identical to CPU (same code; no numeric divergence possible)</td>
+<td>—</td>
+<td>same</td>
+<td>approximation</td>
+</tr>
+<tr>
+<td>Planets, backend Kepler (<code>mission/orbital.py</code>, <code>ephemeris_service.py</code> provider <code>kepler</code>)</td>
+<td>backend-only</td>
+<td>Lambert/MGA endpoints</td>
+<td>two-body elements → state</td>
+<td>AU, AU/day</td>
+<td>heliocentric</td>
+<td>ecliptic J2000</td>
+<td>JD (caller-supplied; no scale stated)</td>
+<td>float64</td>
+<td><code>bodies.py</code> (same table)</td>
+<td>none</td>
+<td>Earth–Mars Δv from kepler vs horizons provider differs by 6 m/s (REST probe)</td>
+<td>Horizons (<code>provider=horizons</code>)</td>
+<td>as above</td>
+<td>approximation</td>
+</tr>
+<tr>
+<td>Planets, REBOUND N-body (<code>rebound_nbody.py</code>)</td>
+<td>backend-only; <strong>ias15 broken</strong></td>
+<td>"high-fidelity" WS stream</td>
+<td>N-body point mass (WHFast dt 0.001 yr / IAS15 adaptive / Mercurius)</td>
+<td>AU, <strong>AU/yr</strong>, yr</td>
+<td><strong>barycentric</strong> (COM)</td>
+<td>ecliptic J2000</td>
+<td>J2000 start; <code>years_since_J2000 = (JD−2451545)/365.25</code></td>
+<td>float64</td>
+<td><strong>mean elements as osculating</strong></td>
+<td>mutual planetary gravity in (41 bodies, 14 massless); relativity, oblateness, moons out</td>
+<td>dE/E 2×10⁻¹² @100 yr; <strong>Saturn 6.0×10⁷ km @2026</strong></td>
+<td>Horizons</td>
+<td>none (worse than Kepler)</td>
+<td>approximation (integrator itself validated by conservation only)</td>
+</tr>
+<tr>
+<td>TudatPy engine (<code>tudatpy_hooks.py</code>)</td>
+<td>absent (not installable via pip)</td>
+<td>alt engine</td>
+<td>configured accelerations incl. J2 flag</td>
+<td>SI</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><strong>not run</strong> (blocked)</td>
+<td>—</td>
+<td>—</td>
+<td>not evaluated</td>
+</tr>
+<tr>
+<td>Moons (frontend, hidden)</td>
+<td>background</td>
+<td>moon positions</td>
+<td>Kepler, parent-relative; (i,Ω) frame rotation only</td>
+<td>km→AU, days</td>
+<td>parent-centric</td>
+<td>ecliptic (converted)</td>
+<td>2000-01-01.5 TDB epochs</td>
+<td>float64</td>
+<td><code>moons.json</code> (JPL sat elements)</td>
+<td>none (precession fields unused)</td>
+<td>1.1% Moon @J2000 → 13.7% @2026; Laplace-frame moons 0.4–2.0 orbital radii wrong at epoch</td>
+<td>Horizons (500@parent)</td>
+<td>none</td>
+<td>approximation with a frame bug</td>
+</tr>
+<tr>
+<td>Lambert (<code>lambert.py</code>)</td>
+<td>backend-only</td>
+<td>transfer Δv</td>
+<td>universal-variable TOF(z), coarse grid z∈[−40,40] step 0.25 + bisection, tol 1e-4 d; 0-rev only</td>
+<td>AU, AU/day → km/s</td>
+<td>heliocentric</td>
+<td>ecliptic J2000</td>
+<td>caller JD</td>
+<td>float64</td>
+<td>ephemeris provider</td>
+<td>two-body only</td>
+<td>≤1.3×10⁻⁵ km/s vs pykep for feasible cases; unbounded for infeasible</td>
+<td>pykep (Izzo), Curtis UV on Horizons states</td>
+<td>feasible 0-rev, θ∉{0°,180°}</td>
+<td><strong>validated computation (feasible domain only)</strong></td>
+</tr>
+<tr>
+<td>Porkchop (<code>scan_porkchop_window</code>)</td>
+<td>backend-only</td>
+<td>window scan</td>
+<td>grid of Lambert legs; Pareto by TOF</td>
+<td>same</td>
+<td>same</td>
+<td>same</td>
+<td>same</td>
+<td>float64</td>
+<td>same</td>
+<td>same</td>
+<td>inherits Lambert; no grid bound</td>
+<td>—</td>
+<td>—</td>
+<td>computation (uncertified inputs)</td>
+</tr>
+<tr>
+<td>MGA (<code>mga.py</code>, <code>planner.py</code>)</td>
+<td>backend-only</td>
+<td>multi-flyby routes</td>
+<td>patched-conic legs; flyby turn/periapsis constraints (code read; <strong>not oracle-tested</strong>)</td>
+<td>km/s</td>
+<td>heliocentric</td>
+<td>ecliptic</td>
+<td>JD</td>
+<td>float64</td>
+<td>same</td>
+<td>two-body legs</td>
+<td><strong>not measured</strong> (agents' MGA probes did not complete)</td>
+<td>none</td>
+<td>none</td>
+<td>not validated</td>
+</tr>
+<tr>
+<td>Mission planner (<code>mission/agents.py</code>)</td>
+<td>backend-only</td>
+<td>payload objective</td>
+<td>deterministic heuristics ("agents"), no LLM/network</td>
+<td>mixed</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>not measured</td>
+<td>none</td>
+<td>none</td>
+<td>heuristic</td>
+</tr>
+<tr>
+<td>Benchmark (<code>benchmark/accuracy.py</code>)</td>
+<td>backend-only</td>
+<td>validation gate</td>
+<td></td>
+<td>model − consensus</td>
+<td>≤ tol; mean of three "tools"</td>
+<td>km/s</td>
+<td>—</td>
+<td>—</td>
+<td>fixed JDs</td>
+<td>—</td>
+<td>reference JSON</td>
+<td>—</td>
+<td>model matches independent truth ≤15 m/s; <strong>references off by 0.85–35 km/s</strong></td>
+<td>Horizons+UV Lambert, pykep</td>
+</tr>
+<tr>
+<td>Asteroid belt (GPU)</td>
+<td>active, mis-rendered</td>
+<td>15,000 instanced bodies</td>
+<td>GLSL Kepler (Newton ≤? it) + visual perturb·age²</td>
+<td>AU, days</td>
+<td>heliocentric</td>
+<td>ecliptic</td>
+<td>absolute JD float32 (0.25 d ULP)</td>
+<td>float32</td>
+<td>JPL SBDB phase-1 (100 k, 42 epochs)</td>
+<td>visual formula only</td>
+<td>position quantization ≈3.9×10⁵ km; GLSL vs float64 Kepler 1e-14 rad</td>
+<td>SBDB elements</td>
+<td>—</td>
+<td>catalog observation (elements) + synthetic visualization (placement bug)</td>
+</tr>
+<tr>
+<td>Kuiper belt (CPU)</td>
+<td>active</td>
+<td>5,000 synthetic</td>
+<td>Kepler (<code>solveKeplerFast</code>) per frame</td>
+<td>AU</td>
+<td>heliocentric</td>
+<td>ecliptic</td>
+<td>JD float64</td>
+<td>float64</td>
+<td>synthetic distributions (classical 42–48 AU, plutinos 39.4, twotinos 47.8, scattered e≤0.7, detached e≤0.85)</td>
+<td>none</td>
+<td>n/a (synthetic)</td>
+<td>—</td>
+<td>—</td>
+<td>synthetic visualization</td>
+</tr>
+<tr>
+<td>Corona (<code>solar_physics.py</code>)</td>
+<td>active (backend online)</td>
+<td>Sun visuals</td>
+<td>Hathaway-2015-style envelope (b=54, c=0.71), Snodgrass-like rotation, RTV-like T∝B^{2/7}, seeded RNG loops/plumes/CMEs, wall-clock transients</td>
+<td>km/s, MK, m⁻³, G, R☉</td>
+<td>Sun</td>
+<td>heliographic</td>
+<td>JD + wall clock</td>
+<td>float64</td>
+<td>synthetic + SILSO/AIA activity proxy</td>
+<td>n/a</td>
+<td>non-deterministic (0.5 s apart differs); historical dates synthetic</td>
+<td>Hathaway 2015 (arXiv:1502.07020) form check</td>
+<td>none</td>
+<td>synthetic visualization (data-driven index)</td>
+</tr>
+<tr>
+<td>Real-time data (<code>solar_realtime_data.py</code>)</td>
+<td>active (backend)</td>
+<td>assimilation</td>
+<td>SWPC plasma/mag (404), SILSO daily SSN (ok), Helioviewer AIA (ok), TTL 120 s</td>
+<td>km/s, cm⁻³, nT, SSN</td>
+<td>—</td>
+<td>—</td>
+<td>"now" only (cache key not date-aware)</td>
+<td>—</td>
+<td>external</td>
+<td>—</td>
+<td>SWPC dead; labels in JSON only</td>
+<td>live probes</td>
+<td>—</td>
+<td>catalog observation (SILSO/AIA) / fallback</td>
+</tr>
+<tr>
+<td>AGN shockwave (<code>agnShockwaveEngine</code>, <code>smbhPropagation</code>)</td>
+<td>active (user-triggered)</td>
+<td>visual event</td>
+<td>Sedov-like radius law, observer-frame projection</td>
+<td>erg, cm, s</td>
+<td>scene</td>
+<td>scene</td>
+<td>wall clock</td>
+<td>float64</td>
+<td>preset energies</td>
+<td>—</td>
+<td>n/a</td>
+<td>none</td>
+<td>—</td>
+<td>approximation / educational visualization</td>
+</tr>
+<tr>
+<td>H29 "metric slipstream"</td>
+<td>active (user-triggered)</td>
+<td>hypothesis</td>
+<td><code>metricFrameDragPeak</code>, <code>evaluateLocalMetricShift</code>, displacement ×10¹²</td>
+<td>cm, s</td>
+<td>Sun</td>
+<td>wave axis</td>
+<td>wall clock</td>
+<td>float64</td>
+<td>author's notes</td>
+<td>—</td>
+<td>n/a</td>
+<td>none</td>
+<td>—</td>
+<td><strong>speculative hypothesis</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Units/origin/frame/time table for engine boundaries</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Boundary</th>
+<th>Position</th>
+<th>Velocity</th>
+<th>Origin</th>
+<th>Frame</th>
+<th>Time</th>
+<th>Versioned?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>planets.ts</code>/<code>bodies.py</code> → Kepler</td>
+<td>AU (elements)</td>
+<td>—</td>
+<td>heliocentric</td>
+<td>ecl J2000</td>
+<td>JD</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Kepler → scene (<code>bodyManager</code>/<code>main.ts</code>)</td>
+<td>AU = 1 scene unit (display or realistic radii)</td>
+<td>AU/day</td>
+<td>heliocentric</td>
+<td>ecl J2000 (no axis swap)</td>
+<td>JD (UTC)</td>
+<td>no</td>
+</tr>
+<tr>
+<td>worker → main (<code>state</code> Float64Array ×7)</td>
+<td>AU</td>
+<td>AU/day</td>
+<td>heliocentric</td>
+<td>ecl J2000</td>
+<td>JD</td>
+<td>sequence only</td>
+</tr>
+<tr>
+<td><code>bodies.py</code> → REBOUND</td>
+<td>AU via <code>sim.add</code></td>
+<td>derived</td>
+<td>heliocentric → COM</td>
+<td>ecl J2000</td>
+<td>yr since J2000</td>
+<td>no</td>
+</tr>
+<tr>
+<td>REBOUND → WS <code>state_update.bodies[id].{pos,vel}</code></td>
+<td>AU</td>
+<td><strong>AU/yr</strong></td>
+<td><strong>barycentric</strong></td>
+<td>ecl J2000</td>
+<td><code>jd</code> field</td>
+<td>no (<code>engine</code>,<code>fidelity</code> only)</td>
+</tr>
+<tr>
+<td>EphemerisService → Lambert</td>
+<td>AU</td>
+<td>AU/day</td>
+<td>heliocentric</td>
+<td>ecl J2000</td>
+<td>JD</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Lambert → REST</td>
+<td>AU, km/s</td>
+<td>AU/day (<code>*VelocityApprox</code>) + km/s Δv</td>
+<td>heliocentric</td>
+<td>ecl J2000</td>
+<td>JD</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Horizons (oracle)</td>
+<td>AU</td>
+<td>AU/day</td>
+<td>500@10 / 500@0</td>
+<td>ecliptic J2000</td>
+<td>TDB</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="7-numerical-benchmark-and-invariant-results">7. Numerical benchmark and invariant results</h2>
+<h3 id="71-frontend-model-vs-jpl-horizons">7.1 Frontend model vs JPL Horizons</h3>
+<p>See F-07 table (planets) and F-05 list (moons). Velocity errors (km/s): Mercury 0.000 (J2000) → 0.17 (2050/2100) → 0.72 (1600); Saturn 0.02–0.09; all others &lt;0.05. Edge cases (<code>$SP/out/ME/eph/compare.json</code> → <code>edge</code>): e ∈ {1.0, 1.2} silently clamped to 0.9999999 (same position as e=0.99999999), e = −0.5 → 0, NaN inputs → NaN positions (no guard); elapsed ±10⁶ and 10⁹ days fine (analytic); <code>Infinity</code> → NaN.</p>
+<h3 id="72-rebound-invariants-spoutmeinvariantsjson">7.2 REBOUND invariants (<code>$SP/out/ME/invariants.json</code>)</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Integrator</th>
+<th>dt</th>
+<th>dE/E @1 yr</th>
+<th>@10 yr</th>
+<th>@100 yr</th>
+<th>dL/L @100 yr</th>
+<th>seek A→B→A</th>
+<th>+10/−10 yr closure</th>
+<th>−50 yr seek wall</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>whfast</td>
+<td>0.001 yr</td>
+<td>2.1e-12</td>
+<td>4.1e-12</td>
+<td>2.1e-12</td>
+<td>7.4e-15</td>
+<td>0.0 km</td>
+<td>0.0 km</td>
+<td>0.34 s</td>
+</tr>
+<tr>
+<td>mercurius</td>
+<td>0.001 yr</td>
+<td>1.8e-10</td>
+<td>7.8e-11</td>
+<td>4.4e-12</td>
+<td>8.9e-15</td>
+<td>0.0 km</td>
+<td>0.0 km</td>
+<td>0.71 s</td>
+</tr>
+<tr>
+<td>ias15</td>
+<td>—</td>
+<td><strong>init fails</strong> (F-02)</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Zero-km idempotence/closure is a consequence of the checkpoint-and-replay seek design (<code>rebound_nbody.py:158-272</code>), not of reversibility. Accuracy vs Horizons at 2026-08-23 (heliocentric): Mercury 188,549 km; Earth 231,785 km; Saturn 60,203,705 km (F-04). Engine-switch continuity (ias15↔whfast) could not be tested (ias15 broken); whfast↔mercurius agree to 750 km for Mercury at 2026.</p>
+<h3 id="73-lambert-porkchop-mga">7.3 Lambert / porkchop / MGA</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Benchmark windows, backend vs independent UV-Lambert on Horizons states</td>
+<td>7.637/7.640 · 39.983/39.989 · 51.620/51.634 km/s (Δ ≤ 15 m/s, of which ~6 m/s is kepler-vs-horizons ephemeris)</td>
+</tr>
+<tr>
+<td>vs pykep (Izzo), 28 feasible cases incl. θ = 1°, 10°, 90°, 179°, 181°, 270°, 350°, 359°, 359.9°, 3-D inc 30°, hyperbolic 100°/120 d</td>
+<td>|Δv1|, |Δv2| ≤ 1.3×10⁻⁵ km/s</td>
+</tr>
+<tr>
+<td>TOF residual, feasible cases</td>
+<td>≤ 1×10⁻⁴ d; endpoint closure (two-body propagation of v1 for the requested TOF) ≤ 250 km</td>
+</tr>
+<tr>
+<td>θ = 180° exactly</td>
+<td>returns <code>None</code> (A=0) — correct refusal</td>
+</tr>
+<tr>
+<td>θ 90°, TOF 0.5 / 1 / 5 d (infeasible single-rev)</td>
+<td>returned: computed TOF 8.86 d, residual 3.9–8.4 d, miss 1.2–2.5×10⁸ km, pykep-Δ 272–5,891 km/s — <strong>silent garbage</strong></td>
+</tr>
+<tr>
+<td>θ 100°, TOF 30 d ("beyond z=−40")</td>
+<td>residual 0.48 d, miss 1.3×10⁷ km, returned</td>
+</tr>
+<tr>
+<td>TOF 3,650 / 36,500 / 10⁶ d</td>
+<td>0-rev solution returned; pykep finds Nmax = 5 multi-rev alternatives — unsupported</td>
+</tr>
+<tr>
+<td>NaN/inf/negative/zero TOF, NaN/inf/zero r, r1 = r2, r2 = −r1</td>
+<td><code>None</code> (safe)</td>
+</tr>
+<tr>
+<td>mu = 0 / negative</td>
+<td><code>ZeroDivisionError</code> / <code>ValueError</code> (internal API only)</td>
+</tr>
+<tr>
+<td>REST: arrival &lt; departure; same body; unknown body; string JD; extra field</td>
+<td>400 / 400 / 404 / 422 / 422 (good)</td>
+</tr>
+<tr>
+<td>REST: TOF 1 d, 0.01 d, 10⁹ d; negative JD</td>
+<td>HTTP 200 with Δv 129–136 km/s etc. (bad)</td>
+</tr>
+<tr>
+<td>REST: <code>provider=spice</code>; JD NaN/Infinity</td>
+<td><strong>HTTP 500</strong> (unhandled)</td>
+</tr>
+<tr>
+<td><code>provider=horizons</code></td>
+<td>live JPL call, 980 ms per leg</td>
+</tr>
+<tr>
+<td>Porkchop 10×10 / 100×100 / 1000×1000</td>
+<td>0.02 s / 1.34 s / <strong>132 s</strong>, RSS +232 MB, <code>/health</code> stayed ≤0.58 s (compute in threadpool)</td>
+</tr>
+<tr>
+<td>MGA flyby v∞ conservation, turn-angle/periapsis constraints, search bias, resonant assists, launch/capture model</td>
+<td><strong>not run</strong> (investigator terminated before execution) — code read only: <code>mga.py</code> enforces a turn-angle bound from a periapsis radius; <code>min_distance</code> = chord sum; no DSMs; Δv = Σ v∞ magnitudes</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="74-benchmark-scorecard">7.4 Benchmark scorecard</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Dates (JD)</th>
+<th>Model</th>
+<th>Committed "consensus"</th>
+<th>Independent truth (Horizons + UV Lambert)</th>
+<th>Tol</th>
+<th>Pass vs committed</th>
+<th>Pass vs truth (same tol)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>earth_mars_2024_window</td>
+<td>2460600.5 → 2460860.5 (260 d, θ=166.8°)</td>
+<td>7.637</td>
+<td>8.490</td>
+<td><strong>7.640</strong></td>
+<td>0.45</td>
+<td>✗</td>
+<td>✓ (3 m/s)</td>
+</tr>
+<tr>
+<td>earth_venus_2024_window</td>
+<td>2460400.5 → 2460520.5 (120 d, θ=331.7°)</td>
+<td>39.983</td>
+<td>7.108</td>
+<td><strong>39.989</strong></td>
+<td>0.40</td>
+<td>✗</td>
+<td>✓ (6 m/s)</td>
+</tr>
+<tr>
+<td>earth_jupiter_2024_window</td>
+<td>2460300.5 → 2461200.5 (900 d, θ=32.5°)</td>
+<td>51.620</td>
+<td>16.873</td>
+<td><strong>51.634</strong></td>
+<td>0.70</td>
+<td>✗</td>
+<td>✓ (14 m/s)</td>
+</tr>
+</tbody>
+</table></div>
+<p>All three committed scenarios are physically poor windows (long-way / near-collinear geometries); the reference values look like what a plausible <em>good</em> window would cost, not what these dates cost.</p>
+<h3 id="75-asteroids-and-kuiper-belt">7.5 Asteroids and Kuiper belt</h3>
+<ul>
+<li>Binary: ACBF v1, 100,000 records × 36 B + 12 B header = 3,600,012 B; SHA-256/FNV-1a match; re-encode byte-identical; 42 distinct epochs (99,956 at 2461000.5); taxonomy C/S/M 66,362/14,009/19,629; period/Kepler(a) ratio 0.9956–1.0046 (period field is quantized to 10 d).</li>
+<li>Loader self-test (<code>validatePackedCatalogRoundTrip100k</code>): <code>ok:false</code>, epoch max err 0.125 d (tol 1e-4), angle max 0.0027°, a 1.2e-7 AU, e 7.6e-6 → the documented tolerances are not met by the documented format.</li>
+<li>CPU vs GPU Kepler: max |ΔE| 8.9×10⁻¹⁵ rad (e ≤ 0.9) between <code>orbitMath</code>, <code>solveKeplerFast</code> and the transcribed GLSL (float64 emulation); float32 inherent: ULP(JD 2.46e6) = 0.25 d; ULP(3 AU) = 2.4×10⁻⁷ AU (36 km) — acceptable for positions, not for absolute JD.</li>
+<li>Instance transform order: <strong>wrong</strong> (F-01). KBO path: <code>compose(pos, quat, scale)</code> with translation inside the matrix — correct.</li>
+<li>Bias: see F-15. Checksum-failure / truncated / absent-meta / slow-network browser tests: <strong>not run</strong> (investigator terminated); code path read: <code>phase1AsteroidCatalog.ts</code> rejects on checksum mismatch and <code>main.ts</code> falls back to procedural generation (<code>popProceduralCount</code> path) — unverified in browser.</li>
+</ul>
+<h3 id="76-solar-and-exotic">7.6 Solar and exotic</h3>
+<p>See F-13/F-14. AIA tile proxy: forwards <code>channel</code> (allowlisted ids) and <code>image_id</code> to Helioviewer <code>getTile</code>, caches 120 s, returns PNG with <code>x-solar-aia-*</code> headers; arbitrary <code>image_id</code> accepted (historical JD image served: <code>tile_jd2009.png</code>); no max-bytes guard on upstream read observed in code (<code>solar_realtime_data.py:214</code>) — amplification limited by the 3.8 s timeout.</p>
+<h3 id="77-browser-measurements-headless-chromium-swiftshader-cpu-rasterizer-1280800-unless-noted-absolute-times-are-lower-bounds-for-real-gpus-compare-relatively">7.7 Browser measurements (headless Chromium, SwiftShader CPU rasterizer, 1280×800 unless noted; <strong>absolute times are lower bounds for real GPUs — compare relatively</strong>)</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>frames</th>
+<th>p50 ms</th>
+<th>p95 ms</th>
+<th>p99 ms</th>
+<th>draws/frame</th>
+<th>instances/frame</th>
+<th>canvas.width sets/frame</th>
+<th>worker tick/state</th>
+<th>heap MB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>default, backend online</td>
+<td>22</td>
+<td>383</td>
+<td>767</td>
+<td>817</td>
+<td>41</td>
+<td>20,000</td>
+<td>1.29</td>
+<td>50/50</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>realistic scale</td>
+<td>21</td>
+<td>400</td>
+<td>417</td>
+<td>450</td>
+<td>98</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>75/75</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>reverse −120 d/s</td>
+<td>26</td>
+<td>367</td>
+<td>433</td>
+<td>433</td>
+<td>177</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>110/110</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>max warp +120 d/s</td>
+<td>18</td>
+<td>400</td>
+<td>817</td>
+<td>817</td>
+<td>180</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>132/132</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>labels off</td>
+<td>14</td>
+<td>400</td>
+<td>433</td>
+<td>433</td>
+<td>179</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>—</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>magnetic field on</td>
+<td>13</td>
+<td>400</td>
+<td>800</td>
+<td>800</td>
+<td>190</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>—</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>AGN H29 triggered</td>
+<td>19</td>
+<td>400</td>
+<td>800</td>
+<td>800</td>
+<td>192</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>—</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td><strong>default, backend offline</strong></td>
+<td>40</td>
+<td><strong>16.7</strong></td>
+<td>800</td>
+<td>833</td>
+<td>32</td>
+<td>20,000</td>
+<td>1.28</td>
+<td>52/52</td>
+<td>77.6</td>
+</tr>
+<tr>
+<td>DPR 2 (buffer 1808×1600)</td>
+<td>31</td>
+<td>16.7</td>
+<td>933</td>
+<td>967</td>
+<td>119</td>
+<td>20,000</td>
+<td><strong>2.31</strong></td>
+<td>46/46</td>
+<td>29.8</td>
+</tr>
+<tr>
+<td>DPR 3 (clamped to 2×)</td>
+<td>31</td>
+<td>16.7</td>
+<td>950</td>
+<td>950</td>
+<td>169</td>
+<td>20,000</td>
+<td>2.31</td>
+<td>47/47</td>
+<td>26.3</td>
+</tr>
+<tr>
+<td>390×844 mobile</td>
+<td>45</td>
+<td>16.7</td>
+<td>383</td>
+<td>417</td>
+<td>172</td>
+<td>20,000</td>
+<td>1.00</td>
+<td>62/62</td>
+<td>87.5</td>
+</tr>
+<tr>
+<td>reduced-motion</td>
+<td>33</td>
+<td>16.7</td>
+<td>800</td>
+<td>817</td>
+<td>167</td>
+<td>20,000</td>
+<td>1.29</td>
+<td>50/50</td>
+<td>82.4</td>
+</tr>
+</tbody>
+</table></div>
+<p>Startup (production preview, cold): <code>load</code> 864 ms; first rAF 102 ms; first draw 567 ms; worker ready 748 ms; first worker state 895 ms; asteroid <code>.bin</code> 3,600,312 B in 276 ms (local). Transfers: JS 848.6 kB (gzip 209.9 kB), worker 18.4 kB, CSS 6.5 kB, Google Fonts (external, 2 woff2 ≈ 24 kB — runtime dependency on fonts.googleapis.com), <code>/solar/physics</code> ≈ 500 kB per call, AIA tile ≈ 222 kB. Memory: heap flat at 77.6 MB across 90 s of 60 toggles + 3 AGN triggers; live GL buffers 266 → 286 (+20, from event geometry), textures flat; no context loss; 0 page errors online. Long tasks: 0 reported (PerformanceObserver longtask unavailable under SwiftShader frames — treat as not measured).</p>
+<hr />
+<h2 id="8-testing-and-coverage-gap-matrix">8. Testing and coverage-gap matrix</h2>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Subsystem</th>
+<th>Unit</th>
+<th>Integration</th>
+<th>E2E/browser</th>
+<th>Oracle-based validation</th>
+<th>CI gate</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend (all)</td>
+<td>none (1 orphan <code>.test.ts</code>, no runner)</td>
+<td>none</td>
+<td>none (3 stale puppeteer scripts, undeclared dep)</td>
+<td>none</td>
+<td>none</td>
+<td>everything</td>
+</tr>
+<tr>
+<td>Kepler/orbit math</td>
+<td>none</td>
+<td>—</td>
+<td>—</td>
+<td>none in repo (this audit: Horizons)</td>
+<td>—</td>
+<td>add Horizons regression fixtures</td>
+</tr>
+<tr>
+<td>Worker protocol</td>
+<td>none</td>
+<td>none</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>stale-message/cancellation tests</td>
+</tr>
+<tr>
+<td>Asteroid loader/binary</td>
+<td><code>asteroidCatalogLoader.test.ts</code> (unrunnable)</td>
+<td>—</td>
+<td>—</td>
+<td>self-test fails (F-15)</td>
+<td>—</td>
+<td>wire a runner; fix tolerance</td>
+</tr>
+<tr>
+<td>Backend engines</td>
+<td><code>test_sim_registry</code> (3), <code>test_sim_contracts</code> (3), <code>test_seek_optimizations</code> (mocks <code>ri_ias15</code>)</td>
+<td>none with real REBOUND init</td>
+<td>—</td>
+<td>none</td>
+<td>none</td>
+<td>real-engine init per integrator; Horizons accuracy</td>
+</tr>
+<tr>
+<td>WS <code>/ws/sim</code></td>
+<td>none (coverage 2/79 lines)</td>
+<td>none</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>protocol tests</td>
+</tr>
+<tr>
+<td>Lambert/porkchop/MGA</td>
+<td><code>test_trajectory_regression</code> (self-referential pins)</td>
+<td><code>test_server_validation</code> (input validation)</td>
+<td>—</td>
+<td>none (this audit: pykep)</td>
+<td>—</td>
+<td>pykep/poliastro oracle; residual gating</td>
+</tr>
+<tr>
+<td>Benchmark</td>
+<td><code>test_benchmark_accuracy</code> (2; structure/integrity only)</td>
+<td>—</td>
+<td>—</td>
+<td>invalid oracle</td>
+<td>none (passRate 0 does not fail anything)</td>
+<td>real references + gate</td>
+</tr>
+<tr>
+<td>Solar physics</td>
+<td><code>test_solar_physics_model</code> (5), <code>test_solar_physics_api</code> (7)</td>
+<td>—</td>
+<td>—</td>
+<td>none</td>
+<td>—</td>
+<td>determinism/reproducibility contract</td>
+</tr>
+<tr>
+<td>Real-time data</td>
+<td>none (16% cov)</td>
+<td>none</td>
+<td>—</td>
+<td>SWPC URL dead undetected</td>
+<td>—</td>
+<td>URL health test</td>
+</tr>
+<tr>
+<td>Mission</td>
+<td><code>test_mission_agents</code> (6), <code>test_mission_schemas</code> (5)</td>
+<td>—</td>
+<td>—</td>
+<td>none</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Nearby systems</td>
+<td>2 + 2</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Backend total</td>
+<td><strong>48 pass</strong>, 59% line coverage (<code>server.py</code> 44%, <code>tudatpy_hooks</code> 31%, <code>galactic_tide</code>/<code>radiation_pressure</code> 0%, <code>kuiper</code> 15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>no CI at all</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Determinism/replay: no seed parameter for the belt RNG (<code>beltRenderer.ts</code> uses a seeded <code>rand()</code> per instance — reproducible across reloads), corona is wall-clock dependent, no replay log, no screenshot-diff test.</p>
+<hr />
+<h2 id="9-security-and-deployment-readiness-assessment">9. Security and deployment-readiness assessment</h2>
+<p>Threat model (asset → threat → exposure → evidence → severity): see F-11. Summary table:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Status</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CORS</td>
+<td>✗ reflects any origin <strong>with credentials</strong></td>
+<td><code>server.py:85-88</code>, <code>$SP/out/SEC/01_cors_probe.txt</code></td>
+</tr>
+<tr>
+<td>AuthN/AuthZ</td>
+<td>✗ none</td>
+<td><code>02_auth_grep.txt</code></td>
+</tr>
+<tr>
+<td>WS Origin validation</td>
+<td>✗ none</td>
+<td><code>03_ws_origin_*.txt</code></td>
+</tr>
+<tr>
+<td>Rate limits / quotas / request-size bounds</td>
+<td>✗ none; porkchop grid unbounded (1000×1000 = 10⁶ Lambert legs, 132 s, +232 MB)</td>
+<td><code>04_*</code></td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>✗ none (threadpool job runs to completion after client disconnect — inferred from code; not measured)</td>
+<td><code>server.py:640-669</code></td>
+</tr>
+<tr>
+<td>Per-connection allocation</td>
+<td>one <code>SimulationRunner</code> thread + REBOUND sim per WS; freed on disconnect (<code>runner.stop()</code> in <code>finally</code>, <code>server.py:1186</code>) — <strong>load test not run</strong>; only 3 concurrent connections observed (backend threads 38–40 throughout)</td>
+<td><code>server.py:1160-1186</code>, <code>04_health_rss_during_1000grid.txt</code></td>
+</tr>
+<tr>
+<td>External-fetch amplification</td>
+<td><code>provider=horizons</code> per-leg live calls; AIA proxy per <code>image_id</code> (120 s cache)</td>
+<td><code>ephemeris_service.py:196-230</code>, <code>server.py:418-455</code></td>
+</tr>
+<tr>
+<td>Cache poisoning / unbounded reads</td>
+<td>upstream <code>response.read()</code> without size cap (<code>solar_realtime_data.py:163-215</code>), 3.8 s timeout</td>
+<td>code</td>
+</tr>
+<tr>
+<td>Server-side writes</td>
+<td><code>POST /benchmark/accuracy/report</code> → <code>my-notes/&lt;client path&gt;</code> (contained; creates dirs; overwrites)</td>
+<td><code>$SP/out/BENCH/post_report_tests.txt</code></td>
+</tr>
+<tr>
+<td>Filesystem path disclosure</td>
+<td>✗ <code>/benchmark/accuracy.referenceFile</code>, <code>/nearby-systems.catalog_path</code></td>
+<td><code>05_info_disclosure_8043.txt</code></td>
+</tr>
+<tr>
+<td>Error leakage</td>
+<td>generic 500 body; tracebacks to stdout only; <code>/docs</code> &amp; <code>/openapi.json</code> open</td>
+<td><code>09_*</code></td>
+</tr>
+<tr>
+<td>Host/port/TLS/proxy/reload</td>
+<td><code>0.0.0.0:8042 reload=True</code> in <code>__main__</code> and docstring; no TLS/proxy guidance</td>
+<td><code>server.py:10,1195</code></td>
+</tr>
+<tr>
+<td>Supply chain</td>
+<td>npm: 6 dev-toolchain vulns (fixable by <code>npm audit fix</code>); pip: clean; <code>rebound</code> GPL-3.0; no lock for Python</td>
+<td><code>11_*</code></td>
+</tr>
+<tr>
+<td>Secrets</td>
+<td>none found (tree + 363-commit history)</td>
+<td><code>11_secrets_scan.txt</code>, <code>11_git_history_secrets.txt</code></td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td>no eval/innerHTML-with-data; third-party runtime: Google Fonts</td>
+<td><code>12_frontend_xss_grep.txt</code>, browser responses</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Deployment readiness:</strong> acceptable only as a localhost developer tool. Not deployable to a shared network without F-11 remediation.</p>
+<hr />
+<h2 id="10-data-asset-license-and-reproducibility-assessment">10. Data, asset, license and reproducibility assessment</h2>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Size</th>
+<th>SHA-256 (prefix)</th>
+<th>Source / provider</th>
+<th>Retrieval ts</th>
+<th>Snapshot/version</th>
+<th>Transformation</th>
+<th>License / redistribution</th>
+<th>Regeneration</th>
+<th>Semantic validation</th>
+<th>Used by active bundle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public/data/asteroid-phase1/asteroid_phase1_main_100000.bin</code> (+<code>.meta.json</code>, <code>sample_top_10.json</code>)</td>
+<td>3.60 MB</td>
+<td><code>a0b8328c…</code></td>
+<td>NASA/JPL SBDB Query API v1.0</td>
+<td>in meta (query signature present)</td>
+<td>SBDB epoch 2461000.5 (live now 2461200.5)</td>
+<td><code>scripts/build_asteroid_phase1_dataset.py</code> → ACBF v1 (quantized)</td>
+<td>JPL data: public; attribution customary</td>
+<td><code>npm run phase1:asteroid-dataset</code> (writes into <code>public/</code> — not run; deterministic algorithm, <strong>not byte-reproducible</strong> vs mutable upstream)</td>
+<td>decode/checksum/re-encode ✓; self-test tolerance ✗</td>
+<td><strong>yes</strong> (fetched at runtime)</td>
+</tr>
+<tr>
+<td><code>src/data/moons.json</code></td>
+<td>221 KB</td>
+<td>—</td>
+<td>JPL SSD satellite mean elements (<code>sat_elem</code>)</td>
+<td>none recorded</td>
+<td>none</td>
+<td><code>scripts/update-moons-data.mjs</code> scrape</td>
+<td>JPL public</td>
+<td>regeneration yields 460 records vs 424, ids reshuffle</td>
+<td>frame conversion ✗ (F-05)</td>
+<td>yes (bundled; hidden)</td>
+</tr>
+<tr>
+<td><code>src/data/stars_catalog.json</code></td>
+<td>172 KB</td>
+<td>—</td>
+<td>d3-celestial <code>stars.6.json</code> (5,042/5,044 exact matches) — <strong>not</strong> Gaia as the script claims</td>
+<td>none</td>
+<td>none</td>
+<td>reduced tuples [ra, dec, mag, bv]</td>
+<td>BSD-3-Clause (© 2015 Olaf Frohn) — notice <strong>missing</strong></td>
+<td><code>scripts/fetch_gaia_catalog.py</code> would produce a <em>different</em> (Gaia TAP) product</td>
+<td>schema ✓ (mag −1.44…6.0)</td>
+<td>no (dormant <code>milkyWay.ts</code>)</td>
+</tr>
+<tr>
+<td><code>solar-systems/nearby_star_systems_ranked_full.csv</code> (+<code>.md</code>)</td>
+<td>—</td>
+<td>—</td>
+<td>VizieR J/A+A/650/A201 (Gaia catalogue of nearby stars)</td>
+<td>none</td>
+<td>—</td>
+<td><code>fetch_gaia_catalog.py</code></td>
+<td>CDS/VizieR terms: attribution</td>
+<td>—</td>
+<td>354 rows, epochs 2015–2018</td>
+<td>no (backend <code>/nearby-systems</code> only)</td>
+</tr>
+<tr>
+<td><code>public/solar-systems/manifests/{alpha-centauri,barnards-star,sirius}.json</code></td>
+<td>small</td>
+<td>—</td>
+<td>hand-authored (values not checked against literature — not run)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><strong>not validated</strong></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>public/textures/moons/*</code> (9 JPG) + <code>moon_texture_attribution.json</code></td>
+<td>0.9 MB</td>
+<td>match attribution JSON</td>
+<td>USGS Astrogeology (8, public domain), Solarviews Deimos (1, <strong>"Unspecified by provider"</strong>)</td>
+<td>per-entry</td>
+<td>per-entry</td>
+<td><code>ingest-moon-textures.mjs</code> (<strong>broken import</strong>)</td>
+<td>8 PD / 1 unresolved</td>
+<td>script broken</td>
+<td>hashes ✓</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>src/assets/textures/*</code> (25 files)</td>
+<td>39 MB</td>
+<td><code>$SP/out/DATA/sizes_hashes.txt</code></td>
+<td>README table only: Solar System Scope, three.js, USGS/MOLA, LROC/LOLA, NASA/JPL 2MASS PIA04250</td>
+<td>none</td>
+<td>none</td>
+<td>none recorded</td>
+<td>Solar System Scope textures are published under CC BY 4.0 per the provider's site (inference, not verified here; attribution required and not present); NASA/USGS public domain; <strong>no manifest</strong></td>
+<td>none</td>
+<td>dimensions match names ✓</td>
+<td><strong>no</strong> (0 bytes in build)</td>
+</tr>
+<tr>
+<td><code>backend/benchmark/artifacts/*.csv</code> + <code>reference_scenarios.json</code></td>
+<td>9 × ~220 B</td>
+<td>match JSON</td>
+<td>claimed GMAT R2025a / Orekit 13.1 / Tudat 1.0</td>
+<td>"2026-02-15T10:27:25Z" ×9</td>
+<td>none</td>
+<td>none (no inputs)</td>
+<td>—</td>
+<td>none possible</td>
+<td><strong>✗</strong> (F-03)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>debug_screenshot.png</code>, <code>debug_screenshot_full.png</code></td>
+<td>545 KB</td>
+<td>—</td>
+<td>local debug</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>stray</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>my-notes/*.pdf</code> + 61 notes, 17 root research files, <code>.tex/.bib</code></td>
+<td>~0.6 MB</td>
+<td>—</td>
+<td>author's research</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>unclear</td>
+<td>—</td>
+<td>generated/research material in source tree</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Repository LICENSE</td>
+<td><strong>absent</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>no license ⇒ all rights reserved by default</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Reproducibility verdict: the asteroid pipeline is the only artifact with real provenance (query signature + checksums) and it is deterministic but tied to a mutable upstream; moons/stars/textures lack timestamps, versions, or licenses; benchmark artifacts are unreproducible by construction.</p>
+<hr />
+<h2 id="11-prioritized-remediation-roadmap">11. Prioritized remediation roadmap</h2>
+<p><strong>P0 — correctness and honesty (days)</strong>
+1. Fix belt shader transform order (F-01). <em>Accept:</em> belt annulus visible at 6 AU; unit test on composed transform.
+2. Fix/pin REBOUND and make <code>/health</code> initialize engines (F-02). <em>Accept:</em> default <code>/ws/sim</code> streams; unmocked init test per integrator.
+3. Retract the benchmark references; regenerate with committed inputs/logs/state vectors on sensible windows; gate on <code>passRate == 1</code> (F-03). <em>Accept:</em> independent re-run reproduces each reference within its tolerance.
+4. Lambert residual gating + honest Δv semantics + 422 on infeasible (F-06). <em>Accept:</em> 57-case suite passes/rejects deterministically.
+5. README rewrite to match <code>index.html</code>; remove absolute links; label the Cataclysmic Events panel as speculative (F-08, F-13). <em>Accept:</em> every README feature maps to a DOM element or is marked dormant.
+6. <code>httpx2</code> in dev requirements; Python lockfile (F-10).</p>
+<p><strong>P1 — scientific validity (weeks)</strong>
+7. Initialize N-body from osculating state vectors with provenance (F-04). <em>Accept:</em> Saturn ≤ 2×10⁶ km vs Horizons at ±10 yr.
+8. Moon frame conversion + precession (F-05). <em>Accept:</em> all 13 probed moons within 5% of orbital radius at epoch.
+9. Planet secular rates + Table 2b + ΔT (F-07). <em>Accept:</em> inner planets ≤5×10⁴ km 1800–2050.
+10. Cross-engine contract: units/frame/origin/version in every message (F-19).
+11. Corona/real-time: fix SWPC URLs, date-aware cache keys, UI labels for synthetic/fallback, bound <code>jd</code>/<code>max_features</code>, throttle polling (F-12, F-14).
+12. GPU time as epoch-relative float; fix ACBF tolerance doc; surface selection bias (F-15).</p>
+<p><strong>P2 — engineering hygiene (ongoing)</strong>
+13. Security baseline for any non-localhost use (F-11). <em>Accept:</em> no origin reflection with credentials; grid cap; no absolute paths; WS origin check.
+14. Type-check in build; vitest smoke + Playwright startup test; CI with pytest/cov and pykep oracle (F-09, §8).
+15. Delete/quarantine dormant and archival code (<code>temp_*</code>, puppeteer scripts), consolidate Kepler solvers and constants, split monoliths (F-18).
+16. LICENSE file; texture/star-catalog attribution manifest; resolve Deimos; drop 39 MB unused textures or move to LFS (F-16).
+17. Resilience/a11y: WebGL-unavailable message, backend-offline indicator, mobile layout, <code>#body-list</code> label, reduced-motion (F-17).</p>
+<hr />
+<h2 id="12-weighted-scorecard">12. Weighted scorecard</h2>
+<p>Scores award credit only for what was tested and verified; unavailable optional components (tudatpy, real GPU) are neither credited nor penalized. Coverage = fraction of the dimension actually exercised by this audit.</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Weight</th>
+<th>Score</th>
+<th>Coverage/confidence</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Functional/runtime correctness</td>
+<td>15</td>
+<td><strong>7</strong></td>
+<td>high (browser-exercised, 13 scenarios)</td>
+<td>Sun/planet scene runs without errors, worker protocol sound, offline-tolerant; but the belt is invisible, default backend engine broken, WebGL fallback absent, input latency under load</td>
+</tr>
+<tr>
+<td>Scientific/numerical validity</td>
+<td>25</td>
+<td><strong>8</strong></td>
+<td>high (Horizons, pykep, REBOUND invariants)</td>
+<td>Lambert correct on feasible domain; integrator conserves energy; everything else is approximation with unquantified (now quantified) error, wrong moon frames, mis-initialized N-body, invalid benchmark oracle, procedural "MHD", speculative effects unlabeled</td>
+</tr>
+<tr>
+<td>Testing/reproducibility</td>
+<td>15</td>
+<td><strong>4</strong></td>
+<td>high</td>
+<td>48 backend tests (critical path mocked), 59% coverage, no frontend tests, no CI, clean install can't test, unpinned deps, ACBF self-test fails</td>
+</tr>
+<tr>
+<td>Architecture/maintainability</td>
+<td>10</td>
+<td><strong>3</strong></td>
+<td>high</td>
+<td>52% of TS files dormant, 1,300 TS errors, archival duplicates, monoliths, 6 Kepler copies, research material in root</td>
+</tr>
+<tr>
+<td>Performance/scalability</td>
+<td>10</td>
+<td><strong>5</strong></td>
+<td>medium (CPU rasterizer only)</td>
+<td>flat memory, GPU-propagated belt design, 60 fps offline on SwiftShader; per-frame resize, 5k matrix uploads, 430 KB/s polling, unbounded server grids</td>
+</tr>
+<tr>
+<td>Security/operations</td>
+<td>10</td>
+<td><strong>3</strong></td>
+<td>high</td>
+<td>dev-only posture (F-11); no secrets leaked; deps mostly clean</td>
+</tr>
+<tr>
+<td>Data provenance/licensing</td>
+<td>10</td>
+<td><strong>4</strong></td>
+<td>high</td>
+<td>asteroid pipeline exemplary; no LICENSE, unresolved/missing attributions, fabricated-looking benchmark artifacts, unmanifested textures</td>
+</tr>
+<tr>
+<td>Documentation/accessibility</td>
+<td>5</td>
+<td><strong>2</strong></td>
+<td>high</td>
+<td>README describes another product; contrast/keyboard good; 1 critical a11y, mobile layout, no reduced-motion</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>100</strong></td>
+<td><strong>36</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="13-audit-limitations-and-blocked-checks">13. Audit limitations and blocked checks</h2>
+<ul>
+<li><strong>Adversarial verification pass did not run</strong> (agent budget exhausted); findings were re-derived by a single reviewer from source and captured artifacts — independent confirmation by a second engineer is the recommended next step (repro commands are provided for every material finding).</li>
+<li><strong>TudatPy</strong> not installable via pip (conda-only): force-model wiring in <code>tudatpy_hooks.py</code> evaluated by reading only (configuration objects are built; whether they are attached to a propagator when tudatpy is present could not be executed). Reported as <em>not run</em>, not failed.</li>
+<li><strong>GPU</strong>: WSL2 without GPU passthrough; all frame timings are SwiftShader (CPU) lower bounds. Canvas drawing-buffer reallocation on same-size <code>canvas.width</code> assignment was not measured (only the assignment frequency).</li>
+<li><strong>MGA flyby invariants</strong> (v∞ conservation, turn-angle/periapsis, search-order bias, resonant assists) and <strong><code>/mission/plan</code> fuzzing</strong>: not executed (investigator terminated); code-read notes only.</li>
+<li><strong>Asteroid failure-mode browser tests</strong> (checksum mismatch, truncated <code>.bin</code>, missing meta, slow network, stale <code>force-cache</code>): not executed; code path read.</li>
+<li><strong>Engine-switch continuity</strong> involving ias15: blocked by F-02.</li>
+<li><strong>Horizons coverage</strong>: no ephemeris before 1600 (Mars/Jupiter/Uranus), 1750 (Saturn), 1800 (Neptune/Pluto) — those cells are n/a.</li>
+<li><strong>Concurrency</strong>: the planned 8–20 simultaneous WS connection test was not executed (investigator terminated); at most 3 concurrent connections were observed (threads 38–40, RSS ≈85 MB).</li>
+<li><strong>Tools unavailable</strong>: gitleaks/trufflehog/semgrep (grep-based secret scan used instead), GMAT/Orekit/Tudat (no inputs in repo to run anyway), <code>rollup-plugin-visualizer</code> (bundle composition estimated by grep).</li>
+<li><strong>Port 8042</strong> was held by an unrelated process during the audit; my backend ran on 8043 with browser-side rerouting — frontend behavior is identical because only the port differs.</li>
+<li><code>origin/sun-focus</code> (69 commits ahead, last 2026-07-25) was out of scope; some README/index.html inconsistencies may be resolved there.</li>
+</ul>
+</main></div>
