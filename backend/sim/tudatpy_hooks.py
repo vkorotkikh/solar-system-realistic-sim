@@ -38,6 +38,11 @@ logger = logging.getLogger(__name__)
 
 AU_M = 149_597_870_700.0       # 1 AU in metres
 DAY_S = 86_400.0                # 1 day in seconds
+
+STATE_POSITION_FRAME = "barycentric"
+STATE_VELOCITY_FRAME = "barycentric"
+STATE_POSITION_UNITS = "AU"
+STATE_VELOCITY_UNITS = "AU/day"
 J2000_JD = 2_451_545.0
 GM_SUN_SI = 1.32712440018e20   # m^3 s^-2
 
@@ -296,6 +301,13 @@ class TudatPyEngine(SimulationEngine):
             "engine": self.engine_name,
             "jd": self._jd,
             "fidelity": self.fidelity_level,
+            # Declared explicitly: consumers (e.g. the Kuiper engine) scale by these
+            # rather than assuming. Propagation runs in the SSB/J2000 global frame and
+            # the loop above converts SI -> AU and m/s -> AU/day.
+            "position_frame": STATE_POSITION_FRAME,
+            "velocity_frame": STATE_VELOCITY_FRAME,
+            "position_units": STATE_POSITION_UNITS,
+            "velocity_units": STATE_VELOCITY_UNITS,
             "force_models": {
                 "j2": self._enable_j2,
                 "j2_degree": self._j2_degree,

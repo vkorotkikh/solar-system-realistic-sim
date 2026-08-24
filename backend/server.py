@@ -56,11 +56,7 @@ from data.nearby_systems import (
 from mission import MissionPlannerAgent
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
-from sim.kuiper import (
-    NATIVE_VELOCITY_UNITS as KUIPER_NATIVE_VELOCITY_UNITS,
-    KuiperActivationError,
-    KuiperBeltEngine,
-)
+from sim.kuiper import KuiperActivationError, KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
 from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
 from sim.solar_realtime_data import SolarRealtimeDataProvider
@@ -968,6 +964,16 @@ class SimulationRunner:
             jupiter = bodies.get("jupiter")
             saturn = bodies.get("saturn")
 
+            declared_velocity_units = main_state.get("velocity_units")
+            if not declared_velocity_units:
+                self._push_error(
+                    f"`activate_kuiper` requires the {self.engine.engine_name} engine to declare "
+                    "`velocity_units` in its state payload; refusing to guess",
+                    action=action,
+                    code="kuiper_activation_failed",
+                )
+                return
+
             try:
                 self.kuiper.activate(
                     sun_pos=sun["pos"], sun_vel=sun["vel"],
@@ -977,9 +983,10 @@ class SimulationRunner:
                     jupiter_vel=jupiter["vel"] if jupiter else None,
                     saturn_pos=saturn["pos"] if saturn else None,
                     saturn_vel=saturn["vel"] if saturn else None,
-                    velocity_units=main_state.get(
-                        "velocity_units", KUIPER_NATIVE_VELOCITY_UNITS
-                    ),
+                    # No default: guessing here is what produced the original
+                    # regression. An engine that does not declare its units is a
+                    # contract violation, so refuse rather than pick one.
+                    velocity_units=declared_velocity_units,
                 )
             except KuiperActivationError as exc:
                 # Surface this without latching `_runtime_error`: the main

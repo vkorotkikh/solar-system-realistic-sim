@@ -27,11 +27,16 @@ DAYS_PER_YEAR = 365.25
 # This engine's REBOUND simulation runs in ("yr", "AU", "Msun"), so every
 # velocity handed to `activate` is converted into AU/yr before it is injected.
 NATIVE_VELOCITY_UNITS = "AU/yr"
+# Keys are lower-cased for lookup; the display tuple keeps the canonical spellings
+# for error messages.
 VELOCITY_SCALE_TO_AU_PER_YEAR: Dict[str, float] = {
-    "AU/yr": 1.0,
-    "AU/year": 1.0,
-    "AU/day": DAYS_PER_YEAR,
+    "au/yr": 1.0,
+    "au/year": 1.0,
+    "au/d": DAYS_PER_YEAR,
+    "au/day": DAYS_PER_YEAR,
+    "au/days": DAYS_PER_YEAR,
 }
+VELOCITY_SCALE_TO_AU_PER_YEAR_DISPLAY = ("AU/day", "AU/yr")
 
 # A bound major planet cannot reach this eccentricity. Anything at or above it
 # means the injected velocities were wrong (almost always a unit mismatch), and
@@ -245,13 +250,17 @@ class KuiperBeltEngine:
         if rebound is None:
             return
 
-        try:
-            velocity_scale = VELOCITY_SCALE_TO_AU_PER_YEAR[velocity_units]
-        except KeyError:
+        # Normalise before lookup, and treat a non-string as unsupported rather than
+        # letting TypeError escape: an unhandled exception here would be latched as a
+        # runtime error by the command loop and would brick the session, which is
+        # exactly what raising KuiperActivationError exists to avoid.
+        lookup = velocity_units.strip().lower() if isinstance(velocity_units, str) else None
+        velocity_scale = VELOCITY_SCALE_TO_AU_PER_YEAR.get(lookup) if lookup else None
+        if velocity_scale is None:
             raise KuiperActivationError(
                 f"unsupported velocity_units {velocity_units!r}; "
-                f"expected one of {sorted(VELOCITY_SCALE_TO_AU_PER_YEAR)}"
-            ) from None
+                f"expected one of {sorted(VELOCITY_SCALE_TO_AU_PER_YEAR_DISPLAY)}"
+            )
 
         sun_vel = _scale_velocity(sun_vel, velocity_scale)
         neptune_vel = _scale_velocity(neptune_vel, velocity_scale)

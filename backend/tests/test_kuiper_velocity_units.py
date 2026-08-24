@@ -109,3 +109,33 @@ def test_native_units_remain_the_backward_compatible_default():
         center_au=[43.0, 0.0, 0.0], spread_au=5.0,
     )
     assert kuiper.active is True
+
+
+class TestUnitDeclarationContract:
+    """The regression happened because a producer declared its units and the
+    consumer ignored them. These pin the whole contract, not just the arithmetic."""
+
+    def test_rebound_engine_declares_velocity_units(self, engine_state):
+        assert engine_state.get("velocity_units") == "AU/day"
+
+    def test_tudatpy_engine_declares_the_same_contract_fields(self):
+        # tudatpy is conda-only and usually absent, so assert on the module's
+        # declared constants rather than a live engine.
+        from sim import tudatpy_hooks
+
+        assert tudatpy_hooks.STATE_VELOCITY_UNITS == "AU/day"
+        assert tudatpy_hooks.STATE_POSITION_UNITS == "AU"
+        assert tudatpy_hooks.STATE_VELOCITY_FRAME == "barycentric"
+
+    def test_non_string_units_raise_activation_error_not_typeerror(self, engine_state):
+        # An unhashable value must not escape as TypeError: the command loop would
+        # latch it as a runtime error and the session would be stuck.
+        with pytest.raises(KuiperActivationError, match="unsupported velocity_units"):
+            _activate(engine_state, velocity_units=["AU/day"])
+
+    @pytest.mark.parametrize("spelling", ["au/day", "AU/DAY", " AU/day ", "AU/d", "au/days"])
+    def test_unit_spellings_are_normalised(self, engine_state, spelling):
+        kuiper = _activate(engine_state, velocity_units=spelling)
+        primary = kuiper.sim.particles[0]
+        orbit = kuiper.sim.particles[PERTURBER_INDEX["jupiter"]].orbit(primary=primary)
+        assert orbit.e < 0.10
