@@ -98,7 +98,35 @@ export function resolveKeplerOrbitAtElapsedDays(
   const basePeriodDays = Math.max(1e-9, orbit.periodDays);
   const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
   const meanMotion = TWO_PI / periodDays;
-  const meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotion * elapsedDays);
+  const baseMeanMotion = TWO_PI / basePeriodDays;
+
+  // Advancing the mean anomaly under secular rates needs two corrections, because
+  // mean longitude L = varpi + M is the quantity the element tables actually pin
+  // down, and both of the terms below would otherwise be counted twice in
+  // along-track position.
+  //
+  // 1. varpi = ascendingNode + argPeriapsis drifts under the rates applied above,
+  //    so the same drift must come out of the mean-anomaly advance. (JPL's
+  //    approximate-positions scheme sidesteps this by tabulating L and deriving
+  //    M = L - varpi.)
+  // 2. The advance uses `baseMeanMotion`, not the `meanMotion` recomputed from the
+  //    drifting semi-major axis. The tabulated mean-longitude rate already accounts
+  //    for the a-drift, so re-deriving n from a(T) applies it a second time and
+  //    accumulates linearly with elapsed time -- worth ~120 arcsec for Venus over
+  //    only a quarter century. `meanMotion` is still used for the velocity below,
+  //    where the instantaneous a is the right thing to use.
+  //
+  // With no secularRates both terms vanish and this reduces exactly to the previous
+  // behaviour, so every moon, asteroid and KBO propagates bit-for-bit as before.
+  const perihelionDriftRad =
+    degToRad(
+      (secularRates?.argPeriapsisDegPerCentury ?? 0) +
+        (secularRates?.ascendingNodeDegPerCentury ?? 0)
+    ) * centuriesSinceEpoch;
+
+  const meanAnomalyRad = normalizeRadians(
+    degToRad(orbit.meanAnomalyDeg ?? 0) + baseMeanMotion * elapsedDays - perihelionDriftRad
+  );
 
   return {
     aAu: a,
