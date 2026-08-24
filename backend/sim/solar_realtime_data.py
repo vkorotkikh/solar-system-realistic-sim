@@ -118,17 +118,21 @@ class SolarRealtimeDataProvider:
                 return self._cache
 
         key = ("snapshot", "latest" if jd is None else str(jd))
-        snapshot = self._singleflight_fetch(
+        def fetch_and_cache_snapshot() -> dict[str, Any]:
+            snapshot = self._fetch_snapshot(jd)
+            with self._lock:
+                # Publish before the single-flight leader releases its entry so a
+                # request arriving at completion cannot start a duplicate refresh.
+                self._cache = snapshot
+                self._cache_expiry_monotonic = time.monotonic() + self.cache_ttl_s
+            return snapshot
+
+        return self._singleflight_fetch(
             key=key,
-            fetch_fn=lambda: self._fetch_snapshot(jd),
+            fetch_fn=fetch_and_cache_snapshot,
             wait_timeout_s=self.timeout_s + 0.5,
             allow_cached_failure=not force_refresh,
         )
-
-        with self._lock:
-            self._cache = snapshot
-            self._cache_expiry_monotonic = time.monotonic() + self.cache_ttl_s
-            return snapshot
 
     def latest_aia_tile(
         self,
@@ -194,30 +198,38 @@ class SolarRealtimeDataProvider:
                 if now_monotonic < expiry:
                     return payload, content_type
 
-        payload, content_type = self._singleflight_fetch(
+        def fetch_and_cache_binary() -> tuple[bytes, str | None]:
+            payload, content_type = self._fetch_binary(url)
+            completed_monotonic = time.monotonic()
+            with self._lock:
+                # Publish before releasing the single-flight entry and measure the
+                # full TTL from completion, not from the beginning of a slow fetch.
+                self._binary_cache[url] = (
+                    completed_monotonic + cache_ttl,
+                    payload,
+                    content_type,
+                )
+                # Keep binary cache bounded.
+                if len(self._binary_cache) > 48:
+                    stale_keys = [
+                        key
+                        for key, value in self._binary_cache.items()
+                        if value[0] <= completed_monotonic
+                    ]
+                    for stale_key in stale_keys:
+                        self._binary_cache.pop(stale_key, None)
+                    if len(self._binary_cache) > 48:
+                        # Remove oldest expiries first.
+                        ordered = sorted(self._binary_cache.items(), key=lambda item: item[1][0])
+                        for key, _ in ordered[: len(self._binary_cache) - 48]:
+                            self._binary_cache.pop(key, None)
+            return payload, content_type
+
+        return self._singleflight_fetch(
             key=("binary", url),
-            fetch_fn=lambda: self._fetch_binary(url),
+            fetch_fn=fetch_and_cache_binary,
             wait_timeout_s=self.timeout_s + 0.5,
         )
-
-        with self._lock:
-            self._binary_cache[url] = (now_monotonic + cache_ttl, payload, content_type)
-            # Keep binary cache bounded.
-            if len(self._binary_cache) > 48:
-                stale_keys = [
-                    key
-                    for key, value in self._binary_cache.items()
-                    if value[0] <= now_monotonic
-                ]
-                for stale_key in stale_keys:
-                    self._binary_cache.pop(stale_key, None)
-                if len(self._binary_cache) > 48:
-                    # Remove oldest expiries first.
-                    ordered = sorted(self._binary_cache.items(), key=lambda item: item[1][0])
-                    for key, _ in ordered[: len(self._binary_cache) - 48]:
-                        self._binary_cache.pop(key, None)
-
-        return payload, content_type
 
     def _singleflight_fetch(
         self,
