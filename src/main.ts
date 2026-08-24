@@ -1063,7 +1063,8 @@ function animate(timestamp) {
   propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
   kuiperBeltRenderer.updatePositions(kuiperPositions);
 
-  sunCtrl.update(simState.julianDate, timestamp * 0.001);
+  const simTimeSec = (simState.julianDate - J2000_JD) * DAY_SECONDS;
+  sunCtrl.update(simState.julianDate, simTimeSec);
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();

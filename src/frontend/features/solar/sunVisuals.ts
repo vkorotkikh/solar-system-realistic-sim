@@ -18,10 +18,109 @@ import {
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 
 const TWO_PI = Math.PI * 2;
+const SECONDS_PER_DAY = 86_400;
+const SOLAR_REFERENCE_ROTATION_PERIOD_DAYS = 609.12 / 24;
+const SOLAR_REFERENCE_ROTATION_DEG_PER_DAY = 360 / SOLAR_REFERENCE_ROTATION_PERIOD_DAYS;
+const MAX_SOLAR_VISUAL_MODEL_DAYS = 36_525;
+const MAX_VISUAL_WALL_STEP_SECONDS = 0.25;
+const MAX_VISUAL_RATE = 15;
+const MAX_VISUAL_CLOCK_SECONDS = 1_000_000;
+const SOLAR_VISUAL_CLOCK_KEY = 'solarVisualClock';
+
+function finiteNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function clampFinite(value, min, max, fallback = min) {
+  return Math.max(min, Math.min(max, finiteNumber(value, fallback)));
+}
+
+function normalizedSolarActivity(value) {
+  return clampUnit(finiteNumber(value, 0));
+}
+
+function boundedSimulationDays(timeSec) {
+  return clampFinite(
+    finiteNumber(timeSec, 0) / SECONDS_PER_DAY,
+    -MAX_SOLAR_VISUAL_MODEL_DAYS,
+    MAX_SOLAR_VISUAL_MODEL_DAYS,
+    0
+  );
+}
+
+function positiveModulo(value, modulus) {
+  return ((value % modulus) + modulus) % modulus;
+}
+
+function wallClockSeconds() {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now() / 1000;
+  }
+  return Date.now() / 1000;
+}
+
+function solarDifferentialRotationDegPerDay(latitudeRad) {
+  const sinLatitude = Math.sin(latitudeRad);
+  const sinSquared = sinLatitude * sinLatitude;
+  return 14.44 - 2.87 * sinSquared - 0.36 * sinSquared * sinSquared;
+}
+
+/**
+ * Advance an illustrative animation clock from simulation time without allowing a
+ * large time-warp jump to turn procedural effects into strobing or float noise.
+ * Pause and reverse still propagate because the bounded delta keeps its sign.
+ */
+function advanceSolarVisualClock(owner, simulationTimeSec) {
+  if (!owner) return 0;
+  const userData = owner.userData ?? (owner.userData = {});
+  const numericTimeSec = Number(simulationTimeSec);
+  const currentWallTimeSec = wallClockSeconds();
+  let clock = userData[SOLAR_VISUAL_CLOCK_KEY];
+
+  if (!clock) {
+    clock = {
+      lastSimulationTimeSec: Number.isFinite(numericTimeSec) ? numericTimeSec : null,
+      lastWallTimeSec: currentWallTimeSec,
+      visualTimeSec: 0
+    };
+    userData[SOLAR_VISUAL_CLOCK_KEY] = clock;
+    return 0;
+  }
+
+  const wallDeltaSec = clampFinite(
+    currentWallTimeSec - finiteNumber(clock.lastWallTimeSec, currentWallTimeSec),
+    0,
+    MAX_VISUAL_WALL_STEP_SECONDS,
+    0
+  );
+  clock.lastWallTimeSec = currentWallTimeSec;
+
+  if (!Number.isFinite(numericTimeSec)) return finiteNumber(clock.visualTimeSec, 0);
+  if (!Number.isFinite(clock.lastSimulationTimeSec)) {
+    clock.lastSimulationTimeSec = numericTimeSec;
+    return finiteNumber(clock.visualTimeSec, 0);
+  }
+
+  const simulationDeltaSec = numericTimeSec - clock.lastSimulationTimeSec;
+  clock.lastSimulationTimeSec = numericTimeSec;
+  if (Number.isFinite(simulationDeltaSec)) {
+    const boundedDeltaSec = Math.sign(simulationDeltaSec) * Math.min(
+      Math.abs(simulationDeltaSec),
+      wallDeltaSec * MAX_VISUAL_RATE
+    );
+    clock.visualTimeSec = finiteNumber(clock.visualTimeSec, 0) + boundedDeltaSec;
+    if (Math.abs(clock.visualTimeSec) > MAX_VISUAL_CLOCK_SECONDS) {
+      clock.visualTimeSec %= MAX_VISUAL_CLOCK_SECONDS;
+    }
+  }
+  return clock.visualTimeSec;
+}
 
 export const SUN_SURFACE_VERTEX_SHADER = `
 varying vec2 vUv;
 varying vec3 vWorldNormal;
+varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -30,13 +129,15 @@ void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  vLatitude = asin(clamp(vWorldNormal.y, -1.0, 1.0));
+  vLocalNormal = normalize(normal);
+  vLatitude = asin(clamp(vLocalNormal.y, -1.0, 1.0));
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
 
 export const SUN_SURFACE_FRAGMENT_SHADER = `
 uniform float time;
+uniform float simulationDays;
 uniform float activity;
 uniform sampler2D baseMap;
 uniform sampler2D observationMap;
@@ -49,6 +150,7 @@ uniform vec4 flarePoints[3];
 
 varying vec2 vUv;
 varying vec3 vWorldNormal;
+varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -105,14 +207,16 @@ vec3 neckellLimbDarkRGB(float mu) {
   return vec3(ldR, ldG, ldB);
 }
 
-// ─── Phase A3: Snodgrass Differential Rotation ───────────────────────────────
-// Snodgrass (1983): omega(lat) = 14.44 - 2.87*sin^2(lat) - 0.36*sin^4(lat)  [deg/day]
-float snodgrassRotationOffset(float latRad, float timeDays) {
+// ─── Phase A3: Differential Rotation Residual ────────────────────────────────
+// The parent spinGroup already rotates at 360 / 25.38 days. This visual
+// approximation contributes only the latitude-dependent residual in that frame.
+float differentialRotationOffset(float latRad, float timeDays) {
   float sinLat = sin(latRad);
   float sin2 = sinLat * sinLat;
   float sin4 = sin2 * sin2;
   float degPerDay = 14.44 - 2.87 * sin2 - 0.36 * sin4;
-  return radians(degPerDay * timeDays);  // total longitude offset in radians
+  const float referenceDegPerDay = 14.184397;
+  return radians((degPerDay - referenceDegPerDay) * timeDays);
 }
 
 // ─── Phase A2: Voronoi Granulation ───────────────────────────────────────────
@@ -162,7 +266,11 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   float spotSize = seed.z;            // angular radius in radians
 
   // Spot centre direction from spherical coords
-  vec3 spotDir = vec3(cos(spotLat) * cos(spotLon), sin(spotLat), cos(spotLat) * sin(spotLon));
+  vec3 spotDir = normalize(vec3(
+    cos(spotLat) * cos(spotLon),
+    sin(spotLat),
+    cos(spotLat) * sin(spotLon)
+  ));
   float angDist = acos(clamp(dot(nDir, spotDir), -1.0, 1.0));
 
   if (angDist > spotSize * 2.5) return 1.0; // outside spot entirely
@@ -226,18 +334,16 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
+  vec3 featureNormal = normalize(vLocalNormal);
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
   float mu = max(0.0, dot(normalDir, viewDir));
   
   // ─── Phase A1: Neckel-Labs Limb Darkening (per-channel RGB) ────────────────
   vec3 limbDark = neckellLimbDarkRGB(mu);
   
-  // ─── Phase A3: Differential Rotation UV ────────────────────────────────────
-  // time uniform = timeSec * 0.4 (see updateSunMaterialUniforms).
-  // Solar synodic rotation: ~27 days. In the simulation 1 display-second ≈ some sim-days.
-  // We use a small perceptual scale so the differential pattern is visible without racing.
-  // 0.00012 keeps equator completing one rotation in ~8300 display-time-units (~23h at 0.4x)
-  float lonOffset = snodgrassRotationOffset(vLatitude, time * 0.00012);
+  // Physical epoch drives only the residual shear. Procedural detail below uses
+  // the separate, rate-bounded visual clock in `time`.
+  float lonOffset = differentialRotationOffset(vLatitude, simulationDays);
   vec2 uvRotated = vUv + vec2(lonOffset / (2.0 * 3.14159265), 0.0);
   
   // ─── Phase A2: Voronoi Granulation ─────────────────────────────────────────
@@ -262,14 +368,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -307,8 +413,12 @@ void main() {
   for (int i = 0; i < 3; i++) {
     vec4 fParams = flarePoints[i]; // x=lon, y=lat, z=intensity
     if (fParams.z > 0.001) {
-      vec3 fDir = vec3(cos(fParams.y) * cos(fParams.x), sin(fParams.y), cos(fParams.y) * sin(fParams.x));
-      float fDist = acos(clamp(dot(normalDir, fDir), -1.0, 1.0));
+      vec3 fDir = normalize(vec3(
+        cos(fParams.y) * cos(fParams.x),
+        sin(fParams.y),
+        cos(fParams.y) * sin(fParams.x)
+      ));
+      float fDist = acos(clamp(dot(featureNormal, fDir), -1.0, 1.0));
       float fRadius = 0.05 + fParams.z * 0.06;
       if (fDist < fRadius * 3.0) {
         float falloff = pow(1.0 - clamp(fDist / (fRadius * 3.0), 0.0, 1.0), 2.5);
@@ -458,6 +568,7 @@ export function createSunSurfaceMaterial(sunMap) {
     fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
     uniforms: {
       time: { value: 0 },
+      simulationDays: { value: 0 },
       activity: { value: 0.55 },
       baseMap: { value: sunMap },
       observationMap: { value: sunMap },
@@ -485,17 +596,19 @@ export function createSunSurfaceMaterial(sunMap) {
 }
 
 /**
- * Procedurally update sunspot positions based on current activity level.
- * Sunspots follow Spörer's law: appear at ~±35° lat at cycle start, migrate to ~±5° at end.
- * Called once per second from the animation loop.
+ * Update illustrative active-region groups in the Sun's rotating local frame.
+ * Activity controls bounded density/contrast; it is not treated as a solar-cycle
+ * phase or a forecast. Longitude receives only differential motion relative to
+ * the rigid 25.38-day parent rotation.
  */
 export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
   if (!sunSurfaceMaterial?.uniforms?.sunspotSeeds) return;
 
-  const TWO_PI = Math.PI * 2;
+  const safeActivity = normalizedSolarActivity(activity);
+  const simulationDays = boundedSimulationDays(timeSec);
   // Number of visible sunspot GROUPS scales with activity (each group = 2-5 individual spots)
   // At solar max: 8 groups × up to 5 spots = up to 40 visible spots
-  const count = Math.min(8, Math.round(activity * 7) + 1);
+  const count = Math.min(8, Math.round(safeActivity * 8));
 
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
   for (let i = 0; i < 8; i++) {
@@ -506,19 +619,24 @@ export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
     }
 
     // Stable seed from index (so spots don't jump every frame)
-    const s = (i * 0.618033 + activity * 0.3) % 1;
-    const s2 = ((i + 3) * 0.382 + activity * 0.5) % 1;
+    const s = (i * 0.618033 + 0.137) % 1;
+    const s2 = ((i + 3) * 0.382 + 0.271) % 1;
 
-    // Longitude: drift with differential rotation (~13 deg/day at equator)
-    const baseLon = (s * TWO_PI + timeSec * 0.000261) % TWO_PI;
-
-    // Spörer's law: active latitude band (~5°–35°) scales with activity
-    const maxLat = 0.05 + activity * 0.55;
+    // Stable active-latitude sample in the illustrative 5-35 degree band.
     const latSign = (i % 2 === 0) ? 1.0 : -1.0;
-    const baseLat = latSign * (maxLat * 0.3 + s2 * maxLat * 0.7);
+    const baseLat = latSign * ((5 + s2 * 30) * Math.PI / 180);
 
-    const angularRadius = 0.025 + s * 0.08 * activity;
-    const intensity = 0.6 + s2 * 0.4;
+    // The containing spinGroup supplies the reference rotation. Add only the
+    // latitude-dependent residual to avoid double-rotating active regions.
+    const residualDegPerDay = solarDifferentialRotationDegPerDay(baseLat)
+      - SOLAR_REFERENCE_ROTATION_DEG_PER_DAY;
+    const baseLon = positiveModulo(
+      s * TWO_PI + residualDegPerDay * Math.PI / 180 * simulationDays,
+      TWO_PI
+    );
+
+    const angularRadius = 0.025 + s * 0.08 * safeActivity;
+    const intensity = (0.6 + s2 * 0.4) * (0.55 + safeActivity * 0.45);
 
     // Vector4.set(x, y, z, w) — correct API for Three.js Vector4
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
@@ -528,10 +646,17 @@ export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
 export function updateSunFlaresUniforms(sunSurfaceMaterial, flareParamsArray) {
   if (!sunSurfaceMaterial?.uniforms?.flarePoints) return;
   const fp = sunSurfaceMaterial.uniforms.flarePoints.value;
+  const flareValues = Array.isArray(flareParamsArray) ? flareParamsArray : [];
   for (let i = 0; i < 3; i++) {
     const base = i * 4;
-    // lon, lat, intensity, unused
-    fp[i].set(flareParamsArray[base], flareParamsArray[base + 1], flareParamsArray[base + 2], flareParamsArray[base + 3]);
+    // lon, lat, intensity, phase. Intensity above one remains available for
+    // explicitly amplified events, but malformed/unbounded values cannot escape.
+    fp[i].set(
+      finiteNumber(flareValues[base], 0),
+      clampFinite(flareValues[base + 1], -Math.PI / 2, Math.PI / 2, 0),
+      clampFinite(flareValues[base + 2], 0, 2.5, 0),
+      finiteNumber(flareValues[base + 3], 0)
+    );
   }
 }
 
@@ -685,15 +810,15 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
 /**
  * Phase B: Update the chromosphere spicule layer each frame.
  * @param {Points} chromospherePoints - The object returned by createChromosphereLayer
- * @param {number} timeSec - Current wall-clock seconds
+ * @param {number} timeSec - Simulation seconds from J2000
  * @param {number} activity - [0,1] solar activity level
  * @param {boolean} is304Mode - True when the 304Å channel is selected
  */
 export function updateChromosphereLayer(chromospherePoints, timeSec, activity, is304Mode = false) {
   if (!chromospherePoints?.material?.uniforms) return;
   const u = chromospherePoints.material.uniforms;
-  u.time.value = timeSec;
-  u.chromoActivity.value = activity;
+  u.time.value = advanceSolarVisualClock(chromospherePoints, timeSec);
+  u.chromoActivity.value = normalizedSolarActivity(activity);
   // In 304Å mode: deep magenta-red, highly opaque (transition region plasma at ~50,000 K)
   // In other modes: warm orange, subtle (visible but not distracting)
   if (is304Mode) {
@@ -979,6 +1104,7 @@ export function updateSunCoronalLoopsFromBlendView(
   timeSec = 0
 ) {
   if (!sunCoronalLoopGroup) return;
+  const visualTimeSec = advanceSolarVisualClock(sunCoronalLoopGroup, timeSec);
   const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
   const sourceEntries = Array.isArray(blendView?.entries) ? blendView.entries : [];
   const loopEntries = sourceEntries.slice(0, maxLoops);
@@ -1001,8 +1127,8 @@ export function updateSunCoronalLoopsFromBlendView(
     const array = positionAttr.array;
     const featureSeed = stableHash01(`${entry?.id ?? `loop-${i}`}`);
     const speedRaw = Number(entry?.toFeature?.speedFactor);
-    const speedFactor = Number.isFinite(speedRaw) ? speedRaw : 0.2;
-    const brightness = solarFeatureEntryBrightness(entry, blendAlpha);
+    const speedFactor = clampFinite(speedRaw, 0, 1, 0.2);
+    const brightness = clampUnit(solarFeatureEntryBrightness(entry, blendAlpha));
     const flowRate = 0.42 + speedFactor * 1.6 + featureSeed * 0.55;
     const wobbleRate = 0.29 + speedFactor * 0.9 + featureSeed * 0.35;
     for (let p = 0; p < pointCount; p += 1) {
@@ -1040,8 +1166,8 @@ export function updateSunCoronalLoopsFromBlendView(
       }
 
       const envelope = Math.sin(Math.PI * phase);
-      const flow = Math.sin(timeSec * flowRate + phase * 11.8 + featureSeed * TWO_PI);
-      const wobble = Math.cos(timeSec * wobbleRate - phase * 8.4 + featureSeed * TWO_PI * 0.7);
+      const flow = Math.sin(visualTimeSec * flowRate + phase * 11.8 + featureSeed * TWO_PI);
+      const wobble = Math.cos(visualTimeSec * wobbleRate - phase * 8.4 + featureSeed * TWO_PI * 0.7);
       const radialScale = 1 + flow * (0.004 + brightness * 0.012) * envelope;
       const tangentOffset = wobble * (0.0009 + brightness * 0.003) * envelope;
 
@@ -1062,7 +1188,7 @@ export function updateSunCoronalLoopsFromBlendView(
       loop.material.color.set(color);
       const baseOpacity = kind === 'cme' ? 0.05 : 0.065;
       const gain = kind === 'cme' ? 0.2 : 0.31;
-      const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.9 + speedFactor * 0.8) + featureSeed * TWO_PI * 1.3);
+      const flicker = 0.84 + 0.16 * Math.sin(visualTimeSec * (0.9 + speedFactor * 0.8) + featureSeed * TWO_PI * 1.3);
       loop.material.opacity = Math.max(0.028, Math.min(0.46, (baseOpacity + brightness * gain) * flicker));
     }
     loop.visible = brightness > 0.003;
@@ -1083,6 +1209,7 @@ export function updateSunParkerSpiralFromPhysicsState(
   camera = null
 ) {
   if (!sunParkerSpiralGroup) return;
+  const visualTimeSec = advanceSolarVisualClock(sunParkerSpiralGroup, timeSec);
   const sourceLines = Array.isArray(physicsState?.heliosphere?.parker_spiral?.lines)
     ? physicsState.heliosphere.parker_spiral.lines
     : [];
@@ -1143,7 +1270,7 @@ export function updateSunParkerSpiralFromPhysicsState(
       const windFactor = clampUnit((windKms - 300) / 560);
       const slowWindFactor = 1 - windFactor;
       const polarity = Number(entry?.polarity);
-      const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
+      const flicker = 0.84 + 0.16 * Math.sin(visualTimeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
       if (polarity < 0) {
         line.material.color.setRGB(0.73 + slowWindFactor * 0.09, 0.53 + slowWindFactor * 0.07, 0.40 + slowWindFactor * 0.06);
       } else {
@@ -1169,6 +1296,9 @@ export function updateSunEruptionLayerFromBlendView({
 }) {
   const bursts = sunEruptionLayer?.userData?.sunBursts;
   if (!bursts) return;
+  const visualTimeSec = advanceSolarVisualClock(sunEruptionLayer, timeSec);
+  const safeActivity = normalizedSolarActivity(activity);
+  const safeSunRadiusAu = Math.max(1e-9, finiteNumber(sunRadiusAu, bursts.baseRadius));
   const geometry = sunEruptionLayer.geometry;
   if (!geometry || typeof geometry.getAttribute !== 'function') return;
   const positionAttr = geometry.getAttribute('position');
@@ -1177,34 +1307,37 @@ export function updateSunEruptionLayerFromBlendView({
   const blendedFeatures = Array.isArray(blendView?.entries) ? blendView.entries : [];
   if (blendedFeatures.length > 0) {
     const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
-    bursts.baseRadius = sunRadiusAu;
+    bursts.baseRadius = safeSunRadiusAu;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
       const featureEntry = blendedFeatures[i % blendedFeatures.length];
       const sampledSpeed = Number(featureEntry?.toFeature?.speedFactor);
-      const speedFactor = Number.isFinite(sampledSpeed) ? sampledSpeed : 0.2;
-      const phase = (timeSec * speedFactor * 0.08 + i * 0.013 + bursts.phases[i] * 0.17) % 1;
+      const speedFactor = clampFinite(sampledSpeed, 0, 1, 0.2);
+      const phase = positiveModulo(
+        visualTimeSec * speedFactor * 0.08 + i * 0.013 + bursts.phases[i] * 0.17,
+        1
+      );
       const sampled = sampleSolarFeatureEntryPoint(featureEntry, phase, blendAlpha);
       if (!sampled) {
-        bursts.positions[base] = bursts.directions[base] * sunRadiusAu * 1.03;
-        bursts.positions[base + 1] = bursts.directions[base + 1] * sunRadiusAu * 1.03;
-        bursts.positions[base + 2] = bursts.directions[base + 2] * sunRadiusAu * 1.03;
+        bursts.positions[base] = bursts.directions[base] * safeSunRadiusAu * 1.03;
+        bursts.positions[base + 1] = bursts.directions[base + 1] * safeSunRadiusAu * 1.03;
+        bursts.positions[base + 2] = bursts.directions[base + 2] * safeSunRadiusAu * 1.03;
         continue;
       }
 
-      const brightness = solarFeatureEntryBrightness(featureEntry, blendAlpha);
+      const brightness = clampUnit(solarFeatureEntryBrightness(featureEntry, blendAlpha));
       const radialBoost = 1 + brightness * 0.065;
-      bursts.positions[base] = sampled[0] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 1] = sampled[1] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 2] = sampled[2] * sunRadiusAu * radialBoost;
+      bursts.positions[base] = sampled[0] * safeSunRadiusAu * radialBoost;
+      bursts.positions[base + 1] = sampled[1] * safeSunRadiusAu * radialBoost;
+      bursts.positions[base + 2] = sampled[2] * safeSunRadiusAu * radialBoost;
     }
   } else {
-    const plumeFactor = 0.45 + activity * 0.95;
+    const plumeFactor = 0.45 + safeActivity * 0.95;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
-      const wave = Math.sin(timeSec * bursts.speeds[i] + bursts.phases[i]);
+      const wave = Math.sin(visualTimeSec * bursts.speeds[i] + bursts.phases[i]);
       const plume = Math.max(0, wave) * bursts.amplitudes[i] * plumeFactor;
-      const swirl = Math.sin(timeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
+      const swirl = Math.sin(visualTimeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
       const radius = bursts.baseRadius * (1.03 + plume);
       const tangentOffset = bursts.baseRadius * swirl;
 
@@ -1216,8 +1349,8 @@ export function updateSunEruptionLayerFromBlendView({
 
   positionAttr.needsUpdate = true;
   if (sunEruptionLayer.material?.isPointsMaterial) {
-    sunEruptionLayer.material.opacity = Math.max(0.1, 0.14 + activity * 0.27);
-    sunEruptionLayer.material.size = Math.max(0.0000024, bursts.baseRadius * (0.28 + activity * 0.2));
+    sunEruptionLayer.material.opacity = Math.max(0.1, 0.14 + safeActivity * 0.27);
+    sunEruptionLayer.material.size = Math.max(0.0000024, bursts.baseRadius * (0.28 + safeActivity * 0.2));
   }
 }
 
@@ -1240,11 +1373,21 @@ export function updateSunMaterialUniforms({
   coronaHue = null,
   sunDisplayRadius = 1.0
 }) {
-  const obsBlend = clampUnit(Number(observationBlend) || 0);
-  const obsEmission = clampUnit(Number(observationEmission) || 0.25);
+  const safeActivity = normalizedSolarActivity(activity);
+  const simulationDays = boundedSimulationDays(timeSec);
+  const visualTimeSec = advanceSolarVisualClock(
+    sunSurfaceMaterial ?? sunCoronaMaterial,
+    timeSec
+  );
+  const obsBlend = clampFinite(observationBlend, 0, 1, 0);
+  const obsEmission = clampFinite(observationEmission, 0, 1, 0.25);
+  const safeSunDisplayRadius = Math.max(1e-9, finiteNumber(sunDisplayRadius, 1));
   if (sunSurfaceMaterial?.uniforms) {
-    sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
-    sunSurfaceMaterial.uniforms.activity.value = activity;
+    sunSurfaceMaterial.uniforms.time.value = visualTimeSec;
+    if (sunSurfaceMaterial.uniforms.simulationDays) {
+      sunSurfaceMaterial.uniforms.simulationDays.value = simulationDays;
+    }
+    sunSurfaceMaterial.uniforms.activity.value = safeActivity;
     if (sunSurfaceMaterial.uniforms.observationBlend) {
       sunSurfaceMaterial.uniforms.observationBlend.value = obsBlend;
     }
@@ -1254,13 +1397,13 @@ export function updateSunMaterialUniforms({
   }
 
   if (sunCoronaMaterial?.uniforms) {
-    sunCoronaMaterial.uniforms.time.value = timeSec * 0.54;
-    sunCoronaMaterial.uniforms.activity.value = activity;
+    sunCoronaMaterial.uniforms.time.value = visualTimeSec;
+    sunCoronaMaterial.uniforms.activity.value = safeActivity;
     if (sunCoronaMaterial.uniforms.coronalHoleActivity) {
-      sunCoronaMaterial.uniforms.coronalHoleActivity.value = activity;
+      sunCoronaMaterial.uniforms.coronalHoleActivity.value = safeActivity;
     }
     if (sunCoronaMaterial.uniforms.sunRadius) {
-      sunCoronaMaterial.uniforms.sunRadius.value = sunDisplayRadius;
+      sunCoronaMaterial.uniforms.sunRadius.value = safeSunDisplayRadius;
     }
     if (sunCoronaMaterial.uniforms.observationBlend) {
       sunCoronaMaterial.uniforms.observationBlend.value = obsBlend;
@@ -1272,10 +1415,14 @@ export function updateSunMaterialUniforms({
     if (coronaColor?.isColor) {
       if (coronaHue && Array.isArray(coronaHue) && coronaHue.length === 3) {
         // Apply the channel-specific corona color directly
-        coronaColor.setRGB(coronaHue[0], coronaHue[1], coronaHue[2]);
+        coronaColor.setRGB(
+          clampFinite(coronaHue[0], 0, 1, 1),
+          clampFinite(coronaHue[1], 0, 1, 0.66),
+          clampFinite(coronaHue[2], 0, 1, 0.34)
+        );
       } else {
         // Default activity-driven orange tint
-        coronaColor.setRGB(1.0, 0.66 + activity * 0.14, 0.34 + activity * 0.1);
+        coronaColor.setRGB(1.0, 0.66 + safeActivity * 0.14, 0.34 + safeActivity * 0.1);
       }
     }
   }
