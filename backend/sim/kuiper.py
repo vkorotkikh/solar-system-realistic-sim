@@ -22,6 +22,35 @@ except ImportError:
     rebound = None  # type: ignore
 
 
+DAYS_PER_YEAR = 365.25
+
+# This engine's REBOUND simulation runs in ("yr", "AU", "Msun"), so every
+# velocity handed to `activate` is converted into AU/yr before it is injected.
+NATIVE_VELOCITY_UNITS = "AU/yr"
+VELOCITY_SCALE_TO_AU_PER_YEAR: Dict[str, float] = {
+    "AU/yr": 1.0,
+    "AU/year": 1.0,
+    "AU/day": DAYS_PER_YEAR,
+}
+
+# A bound major planet cannot reach this eccentricity. Anything at or above it
+# means the injected velocities were wrong (almost always a unit mismatch), and
+# the resulting "perturber" field would be physically meaningless.
+MAX_PLAUSIBLE_PERTURBER_ECCENTRICITY = 0.9
+
+
+class KuiperActivationError(ValueError):
+    """Raised when `activate` is given inputs that cannot describe a bound system."""
+
+
+def _scale_velocity(
+    vec: Optional[List[float]], scale: float
+) -> Optional[List[float]]:
+    if vec is None:
+        return None
+    return [float(component) * scale for component in vec]
+
+
 class KuiperBeltEngine:
     """On-demand N-body simulation of Kuiper belt test particles."""
 
@@ -162,6 +191,31 @@ class KuiperBeltEngine:
 
     # ── Lifecycle ─────────────────────────────────────────────────────
 
+    def _verify_perturbers_bound(
+        self, perturbers: List[tuple[int, str]], velocity_units: str
+    ) -> None:
+        """Reject an activation whose massive bodies are not on bound orbits.
+
+        A unit mismatch on the injected velocities produces `e ≈ 1` radial
+        infall, which is silent otherwise: the simulation runs, streams, and
+        reports nothing wrong while the entire perturber field is fiction.
+        """
+        if self.sim is None:
+            return
+
+        primary = self.sim.particles[0]
+        for index, name in perturbers:
+            orbit = self.sim.particles[index].orbit(primary=primary)
+            if not (0.0 <= orbit.e < MAX_PLAUSIBLE_PERTURBER_ECCENTRICITY):
+                eccentricity, semi_major = orbit.e, orbit.a
+                self.deactivate()
+                raise KuiperActivationError(
+                    f"{name} is not on a bound orbit "
+                    f"(e={eccentricity:.4f}, a={semi_major:.4f} AU) after injecting "
+                    f"velocities declared as {velocity_units!r}; the velocity units "
+                    f"are almost certainly wrong"
+                )
+
     def activate(
         self,
         sun_pos: List[float],
@@ -174,6 +228,7 @@ class KuiperBeltEngine:
         jupiter_vel: Optional[List[float]] = None,
         saturn_pos: Optional[List[float]] = None,
         saturn_vel: Optional[List[float]] = None,
+        velocity_units: str = NATIVE_VELOCITY_UNITS,
     ) -> None:
         """
         Start a local Kuiper belt simulation centred on *center_au*.
@@ -181,9 +236,27 @@ class KuiperBeltEngine:
         Massive bodies are placed at their current positions (from the
         main simulation) so the gravitational field is correct.
         Test particles are generated in a disc around *center_au*.
+
+        `velocity_units` declares the units of every `*_vel` argument. This
+        simulation is year-based, so callers working in AU/day (the units the
+        REBOUND engine's `state_update` payload declares) must say so — pass
+        the producer's own `velocity_units` field rather than assuming.
         """
         if rebound is None:
             return
+
+        try:
+            velocity_scale = VELOCITY_SCALE_TO_AU_PER_YEAR[velocity_units]
+        except KeyError:
+            raise KuiperActivationError(
+                f"unsupported velocity_units {velocity_units!r}; "
+                f"expected one of {sorted(VELOCITY_SCALE_TO_AU_PER_YEAR)}"
+            ) from None
+
+        sun_vel = _scale_velocity(sun_vel, velocity_scale)
+        neptune_vel = _scale_velocity(neptune_vel, velocity_scale)
+        jupiter_vel = _scale_velocity(jupiter_vel, velocity_scale)
+        saturn_vel = _scale_velocity(saturn_vel, velocity_scale)
 
         self.sim = rebound.Simulation()
         self.sim.units = ("yr", "AU", "Msun")
@@ -198,6 +271,8 @@ class KuiperBeltEngine:
             vx=sun_vel[0], vy=sun_vel[1], vz=sun_vel[2],
         )
 
+        perturbers: List[tuple[int, str]] = []
+
         # Jupiter (optional, for its perturbations)
         if jupiter_pos and jupiter_vel:
             self.sim.add(
@@ -205,6 +280,7 @@ class KuiperBeltEngine:
                 x=jupiter_pos[0], y=jupiter_pos[1], z=jupiter_pos[2],
                 vx=jupiter_vel[0], vy=jupiter_vel[1], vz=jupiter_vel[2],
             )
+            perturbers.append((self.sim.N - 1, "jupiter"))
 
         # Saturn (optional)
         if saturn_pos and saturn_vel:
@@ -213,6 +289,7 @@ class KuiperBeltEngine:
                 x=saturn_pos[0], y=saturn_pos[1], z=saturn_pos[2],
                 vx=saturn_vel[0], vy=saturn_vel[1], vz=saturn_vel[2],
             )
+            perturbers.append((self.sim.N - 1, "saturn"))
 
         # Neptune (always included — dominant perturber for KBOs)
         self.sim.add(
@@ -220,8 +297,11 @@ class KuiperBeltEngine:
             x=neptune_pos[0], y=neptune_pos[1], z=neptune_pos[2],
             vx=neptune_vel[0], vy=neptune_vel[1], vz=neptune_vel[2],
         )
+        perturbers.append((self.sim.N - 1, "neptune"))
 
         self._massive_count = self.sim.N
+
+        self._verify_perturbers_bound(perturbers, velocity_units)
 
         # ── Test particles ────────────────────────────────────────────
         center_r = math.sqrt(center_au[0] ** 2 + center_au[1] ** 2)

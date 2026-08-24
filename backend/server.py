@@ -56,7 +56,11 @@ from data.nearby_systems import (
 from mission import MissionPlannerAgent
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
-from sim.kuiper import KuiperBeltEngine
+from sim.kuiper import (
+    NATIVE_VELOCITY_UNITS as KUIPER_NATIVE_VELOCITY_UNITS,
+    KuiperActivationError,
+    KuiperBeltEngine,
+)
 from sim.rebound_nbody import REBOUNDEngine
 from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
 from sim.solar_realtime_data import SolarRealtimeDataProvider
@@ -964,15 +968,29 @@ class SimulationRunner:
             jupiter = bodies.get("jupiter")
             saturn = bodies.get("saturn")
 
-            self.kuiper.activate(
-                sun_pos=sun["pos"], sun_vel=sun["vel"],
-                neptune_pos=neptune["pos"], neptune_vel=neptune["vel"],
-                center_au=center, spread_au=spread,
-                jupiter_pos=jupiter["pos"] if jupiter else None,
-                jupiter_vel=jupiter["vel"] if jupiter else None,
-                saturn_pos=saturn["pos"] if saturn else None,
-                saturn_vel=saturn["vel"] if saturn else None,
-            )
+            try:
+                self.kuiper.activate(
+                    sun_pos=sun["pos"], sun_vel=sun["vel"],
+                    neptune_pos=neptune["pos"], neptune_vel=neptune["vel"],
+                    center_au=center, spread_au=spread,
+                    jupiter_pos=jupiter["pos"] if jupiter else None,
+                    jupiter_vel=jupiter["vel"] if jupiter else None,
+                    saturn_pos=saturn["pos"] if saturn else None,
+                    saturn_vel=saturn["vel"] if saturn else None,
+                    velocity_units=main_state.get(
+                        "velocity_units", KUIPER_NATIVE_VELOCITY_UNITS
+                    ),
+                )
+            except KuiperActivationError as exc:
+                # Surface this without latching `_runtime_error`: the main
+                # simulation is unaffected, so the session must keep stepping.
+                self.kuiper.deactivate()
+                self._push_error(
+                    f"`activate_kuiper` rejected: {exc}",
+                    action=action,
+                    code="kuiper_activation_failed",
+                )
+                return
 
         elif action == "deactivate_kuiper":
             self.kuiper.deactivate()
