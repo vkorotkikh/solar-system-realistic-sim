@@ -129,3 +129,36 @@ def test_concurrency_permit_is_held_until_the_work_actually_finishes() -> None:
     asyncio.run(waves())
     assert live["peak"] <= limit, f"over-admission: {live['peak']} concurrent vs limit {limit}"
     pool.shutdown(wait=True)
+
+
+def test_rate_limiter_identity_map_is_bounded() -> None:
+    """A spoofed X-Forwarded-For must not grow the rate-limit map without bound.
+
+    A stale-only sweep is not enough: during a burst every identity is inside the
+    window, so the map has to be hard-capped as well.
+    """
+    class _Req:
+        def __init__(self, ip: str) -> None:
+            self.headers = {"x-forwarded-for": ip}
+            self.client = None
+
+    server._solar_physics_rate_locks.clear()
+    cap = server.SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP
+    for i in range(cap * 2 + 500):
+        try:
+            server._enforce_solar_request_rate_limit(_Req(f"10.{i // 65536}.{(i // 256) % 256}.{i % 256}"))
+        except Exception:
+            pass
+    assert len(server._solar_physics_rate_locks) <= cap + 1
+
+    # ...and it must still actually rate-limit a repeat caller.
+    server._solar_physics_rate_locks.clear()
+    repeat = _Req("203.0.113.9")
+    rejected = 0
+    for _ in range(server.SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW * 3):
+        try:
+            server._enforce_solar_request_rate_limit(repeat)
+        except Exception:
+            rejected += 1
+    assert rejected > 0
+    server._solar_physics_rate_locks.clear()

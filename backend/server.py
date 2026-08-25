@@ -155,6 +155,9 @@ SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
 SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_env_int(
     "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT", 2, min_value=1,
 )
+SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP = _load_env_int(
+    "SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP", 4_096, min_value=64,
+)
 SOLAR_PHYSICS_API_KEYS = frozenset(
     key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
 )
@@ -232,6 +235,26 @@ def _enforce_solar_request_rate_limit(request: Request) -> None:
                 headers={"Retry-After": str(retry_after)},
             )
         queue.append(now)
+
+        # Bound this map. A caller spoofing X-Forwarded-For can otherwise mint an
+        # unlimited number of tracked identities: a stale-only sweep does not help,
+        # because in a burst every identity is inside the window. So sweep the
+        # quiet ones first, then hard-evict the least-recently-seen down to the cap.
+        # Evicting an active identity only forgives its history early, which is a
+        # far cheaper failure than unbounded growth.
+        if len(_solar_physics_rate_locks) > SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP:
+            for stale in [
+                key for key, seen in _solar_physics_rate_locks.items()
+                if not seen or seen[-1] < cutoff
+            ]:
+                _solar_physics_rate_locks.pop(stale, None)
+            if len(_solar_physics_rate_locks) > SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP:
+                for key, _seen in sorted(
+                    _solar_physics_rate_locks.items(),
+                    key=lambda kv: kv[1][-1] if kv[1] else 0.0,
+                )[: len(_solar_physics_rate_locks) - SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP]:
+                    if key != identity:
+                        _solar_physics_rate_locks.pop(key, None)
 
 
 def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
