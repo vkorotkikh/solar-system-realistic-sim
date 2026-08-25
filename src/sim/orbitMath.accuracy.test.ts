@@ -128,7 +128,7 @@ function errorKm(id: string, epoch: HorizonsEpoch): number {
 describe('secular-rate propagation accuracy vs JPL Horizons', () => {
   for (const epoch of EPOCHS) {
     describe(`epoch ${epoch.label}`, () => {
-      it.each(Object.keys(epoch.positionsAu))('places %s within its error budget', (id) => {
+      it.each(Object.keys(epoch.positionsAu))('places %s within its error budget', (id: string) => {
         expect(errorKm(id, epoch)).toBeLessThan(MAX_ERROR_KM[id]);
       });
 
