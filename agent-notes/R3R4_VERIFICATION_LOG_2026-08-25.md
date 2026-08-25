@@ -1317,3 +1317,241 @@ map because of it) but stopped short of not trusting it.
 Fix: only honour XFF when `request.client.host` is in a configured trusted-proxy set
 (env `SOLAR_PHYSICS_TRUSTED_PROXIES`), else key on the peer address.
 
+
+### `AGENT-B` — REFUTED (self-correction) + DEFECT — my first timings were contaminated; the real defect is 2.7-30x GIL collapse, which puts ultra at 29 s against a 30 s timeout
+_2026-08-25T21:12:00Z_
+
+**Correction to my earlier entry "cold compute is 4-14x slower than the comment claims".** Those numbers
+(preview 7.3 s, operational 22.2 s, high 19.1 s, ultra 54.7 s) were taken while other compute processes
+were still draining abandoned work. Re-measured on an idle box, **same jds, same code**:
+```
+preview     jd=2460911.5   1.26 s   (was 7.33 s)
+operational jd=2462733.5   3.95 s   (was 22.24 s)
+high        jd=2464555.5   3.13 s   (was 19.09 s)
+ultra       jd=2466377.5  10.49 s   (was 54.71 s)
+ultra       jd=2467288.5  10.26 s   (was 48.82 s)
+```
+Sweep of `ultra` across the whole permitted jd window (10 points: MIN, -150y, -100y, -50y, J2000,
+today, +50y, +100y, +150y, MAX): min 4.98 s, median 8.19 s, max 10.97 s, **0/10 over 30 s**. So cost is
+only mildly epoch-dependent and the comment's "~1.6 s preview" is right; its "~5 s ultra" is ~2x
+optimistic, not 10x. I withdraw the "ultra can NEVER succeed" claim — **at concurrency 1 it succeeds.**
+
+**The real, reproducible defect is what the semaphore's own limit does to that.** Same process, N
+threads running `_build_solar_physics_state` on distinct Carrington rotations:
+```
+operational threads=1:  4.4 s
+operational threads=2: 11.7 s, 11.7 s          <- 2.7x, already superlinear
+operational threads=3: 15.6 / 16.8 / 17.4 s    <- 4.0x
+operational threads=4: 130.2 / 132.6 / 132.1 / 132.1 s   <- 30x COLLAPSE
+ultra       threads=1:  7.3 s
+ultra       threads=2: 28.3 s, 29.0 s          <- 4.0x
+```
+(32-core box, 93 GB free — this is not CPU starvation. It is the GIL plus, at 4 threads, what looks
+like BLAS/OpenMP oversubscription inside numpy.)
+
+Consequences for the shipped config (`SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT=2`,
+`SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS=30`):
+- **ultra at the endpoint's own permitted concurrency costs 28.3-29.0 s against a 30 s timeout — under
+  4% margin.** Any jitter, any `/health` traffic, any GC pause tips a legitimate request into 503, and
+  the permit is then held for the rest of the compute (correct per the fix, but it means the endpoint
+  goes fully 503 for that whole period). Reproduced over HTTP: the 40-concurrent acceptance run gave
+  `{503: 40}` with both admitted requests hitting exactly the 30 s wall.
+- Raising the limit to 3 to improve throughput would make ultra ~45 s and thus **always** 503; raising
+  it to 4 is catastrophic. The limit of 2 is not a tunable, it is the only value that works, and that
+  is not stated anywhere.
+- "Worst-case wait for a legitimate caller" at limit=2: the endpoint **never queues** (non-blocking
+  acquire, immediate 503 on saturation), so the wait is either ~0 (shed) or the compute itself:
+  measured 29 s for ultra, 11.7 s for operational. The worst case for a caller who is *admitted and
+  still fails* is the full 30 s.
+
+Recommendation: scale the timeout by fidelity AND by the concurrency limit (e.g.
+`timeout = base[fidelity] * limit * 1.5`), or move the compute out of the process (next entry).
+
+
+### `AGENT-B` — REFUTED — the p95 acceptance bar IS reachable in-process: swapping the ThreadPoolExecutor for a ProcessPoolExecutor takes /health p95 from 73.6 ms to 1.8 ms (but breaks the cache — see caveat)
+_2026-08-25T21:19:53Z_
+
+**Supersedes the numbers in my earlier acceptance entry** — that run's "idle" baseline (13.0 ms) was
+taken on a server that still had abandoned computes draining. Matched, clean re-run below: two servers
+from the SAME worktree (a6f1dba), same env (`SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS=300` so admitted
+requests can finish and both arms are comparable), same driver, back to back.
+
+`/health` sampled every 20 ms for 22 s; load = N concurrent `fidelity=ultra`, jd spaced 40 d (distinct
+Carrington rotations).
+
+| arm | idle p95 | 2 concurrent ultra | **40 concurrent ultra** | solar codes @40 |
+|---|---|---|---|---|
+| **ThreadPoolExecutor (as shipped)** | 1.6 ms | p50 1.9 / **p95 44.5** / p99 155.0 / max 315 ms | p50 2.0 / **p95 73.6** / p99 212.5 / max 273.6 ms | `{503: 38, 200: 2}` |
+| **ProcessPoolExecutor (forkserver, max_workers=2)** | 1.6 ms | p50 1.3 / **p95 1.7** / p99 2.0 / max 40.8 ms | p50 1.3 / **p95 1.8** / p99 2.1 / max 51.0 ms | `{503: 38, 200: 2}` |
+
+On-loop control `/dbg/ping` (`async def`, does nothing): thread arm p95 47.7 ms @40, process arm 1.6 ms.
+
+**So the acceptance criterion (40 concurrent, /health p95 < 50 ms) PASSES with a process pool and FAILS
+with a thread pool, at a ~30-line change.** I do not agree that it "cannot be met without moving PFSS
+off the request path". Prototype (`$OUT/launch_proc.py`) is just:
+```python
+CTX = multiprocessing.get_context("forkserver")
+ex = ProcessPoolExecutor(max_workers=SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT, mp_context=CTX)
+list(ex.map(_warm, range(N)))       # pre-warm at startup
+server._solar_physics_executor = ex
+```
+Pool warm-up cost, measured: **0.24 s at startup**, one time. Result pickling is a non-issue: the
+payload is plain dicts/lists of `float`/`np.float64`(a `float` subclass)/`int`/`str`/`bool`/`None` —
+`pickle.dumps` **0.27 MB / 25.7 ms** (preview) and **0.76 MB / 72.0 ms** (ultra), `loads` 12.7/39.0 ms,
+against a 1.3-10 s compute. `_build_solar_physics_state` is a module-level function so it pickles by
+reference. Cold end-to-end latency is unchanged: ultra 6.27/4.61 s (threads) vs 6.37/6.75 s (processes).
+
+### CAVEAT that makes it NOT a drop-in — measured, and this is the part that would bite
+The PFSS cache and the model's memoization live **inside the worker process**. Repeating the identical
+request:
+```
+THREAD  ultra cold 6.27s -> warm 0.083s      preview cold 1.28s -> warm 0.026s
+PROC    ultra cold 6.37s -> warm 6.236s      preview cold 1.18s -> warm 1.185s   <-- NO CACHE HIT
+```
+**75x regression on the warm path.** The frontend polls this endpoint every 900 ms and lives entirely on
+warm hits (measured p50 = 0.297 s in my frontend-replay); making every poll a full recompute would
+saturate the 2 permits permanently and break the UI. Layer 1's single-flight coalescing is also lost
+across processes.
+
+A process pool is therefore viable only with cache affinity or a shared cache. Cheapest correct
+variants, in order:
+1. `max_workers=1` process + `SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT=1` — cache preserved in the one
+   worker, `/health` fully isolated, at the cost of serialising computes.
+2. Route to worker `hash(cache_key) % n_workers` so a rotation always lands on the same process.
+3. Keep the thread pool but move the cache in front of the executor (serve warm hits on the event loop,
+   only miss -> process pool). This gets both properties and is what I would recommend.
+
+
+### `AGENT-B` — DEFINITIVE — R3 acceptance criterion, shipped defaults, clean box: /health p95 = 155-186 ms vs the 50 ms bar; solar codes 38-39x 503, 1-2x 200
+_2026-08-25T21:23:29Z_
+
+**This entry supersedes every /health number in my two earlier acceptance entries** (both were taken on
+servers with residual load; the true idle baseline is 1.5 ms, not 13 ms).
+
+Fresh process from a6f1dba, **completely default env** (limit=2, timeout=30 s, rate limit 36/60 s
+bypassed only by per-request X-Forwarded-For, which is what a real attacker does anyway). 40 concurrent
+`GET /solar/physics?fidelity=ultra&max_features=220`, jd spaced 40 d = distinct Carrington rotations.
+`/health` sampled every 20 ms for 22 s from a separate connection.
+
+| load | /health p50 | p90 | **p95** | p99 | max | vs 50 ms bar |
+|---|---|---|---|---|---|---|
+| idle | 1.1 ms | 1.4 ms | **1.5 ms** | 1.8 ms | 4.2 ms | pass |
+| exactly ONE cold ultra | 1.3 ms | 1.8 ms | **5.2 ms** | 42.6 ms | 63.9 ms | pass on p95, p99 marginal |
+| 2 concurrent ultra | 1.9 ms | 3.7 ms | **44.5 ms** | 155.0 ms | 315.2 ms | marginal pass, p99 3x over |
+| **40 concurrent, run 1** | 2.0 ms | 100.9 ms | **155.2 ms** | 254.5 ms | 340.5 ms | **FAIL 3.1x** |
+| **40 concurrent, run 2** | 2.0 ms | 124.6 ms | **186.3 ms** | 273.5 ms | 396.1 ms | **FAIL 3.7x** |
+
+Response-code histogram for the 40 solar requests: run 1 `{503: 38, 200: 2}`, run 2 `{503: 39, 200: 1}`.
+Only 1-2 of 40 ultra requests ever complete inside the 30 s timeout, for the reason in the GIL entry
+(2 concurrent ultra = 28-29 s each).
+
+Why 40 is worse than 2 even though only 2 are ever admitted: the 38 shed requests still cost an accept,
+a rate-limiter lock acquisition and a JSON 503 each, and — because permits free up as computes finish —
+the compute load is *sustained* for the whole window (starts=3 and 5 across the two runs) instead of
+ending after ~12 s. So the criterion is not just about the admitted work.
+
+**Verdict on the implementer's claim "the p95 criterion is not met" (commit 379870c): CORRECT, and by a
+wider margin than recorded. Their conclusion that it "cannot be met without moving PFSS off the request
+path" is WRONG** — a `ProcessPoolExecutor` in the same process tree takes the identical 40-concurrent
+test to **p95 = 1.8 ms** (see the previous entry), subject to the cache-locality caveat there.
+
+
+### `AGENT-B` — CONFIRMED — jd bound is correct at every boundary and rejects before any work
+_2026-08-25T21:24:07Z_
+
+`J2000_JD = 2451545.0`, `SOLAR_PHYSICS_JD_HALF_RANGE_DAYS = 200*365.25 = 73050.0`
+=> window `[2378495.0, 2524595.0]`, i.e. exactly J2000 +/- 200 Julian years. Inclusive bounds, checked
+with `math.nextafter` so the comparison is exercised at 1 ULP:
+
+```
+exact MIN (2378495.0)          -> admitted (compute ran)
+exact MAX (2524595.0)          -> admitted
+MIN+1e-6 / MAX-1e-6            -> admitted
+MIN-1e-6 / MAX+1e-6            -> 400  "`jd` must be within [2378495.0, 2524595.0] ..."
+nextafter(MIN, -inf)           -> 400   <-- 1 ULP outside is rejected
+nextafter(MAX, +inf)           -> 400   <-- 1 ULP outside is rejected
+MIN-1 / MAX+1 / 0 / -1e9 / 1e300 -> 400
+nan / NaN / inf / Infinity / -inf -> 400  "`jd` must be finite"   (checked BEFORE the range test)
+abc / "" / "1,2" / 0x10        -> 422  pydantic float_parsing
+2.4515e6 (scientific)          -> 200, epoch_jd=2451500.0        (accepted, correctly)
+jd omitted                     -> 200, uses utc_now_to_julian_date()
+```
+**Rejection is before any expensive work**: every 400 came back in 0.040-0.085 s and, critically, the
+compute counter (`starts`) did not advance and no permit was taken (`sem_value` stayed at 2 through all
+of them). The check sits above the `_acquire_nonblocking` call in source order, and the rate limiter
+sits above that, so a flood of bad jds costs a dict lookup and nothing else — measured **1840 req/s**.
+
+`max_features` bounds behave too: `-5` and `0` -> 413 in 0.6-0.7 ms, `220.7` -> 422 (int_parsing),
+`1000` -> 413.
+
+Only nit: the range is inclusive of MIN/MAX, so `[MIN, MAX]` in the error message is accurate. No defect.
+
+
+### `AGENT-B` — SUMMARY — AGENT-B final: R3 Layer 2 (57ad971) + over-admission fix (5d0e4b7)
+_2026-08-25T21:24:41Z_
+
+All six assigned checks ran. Nothing BLOCKED.
+
+**Holds up (verified, not taken on trust)**
+1. **The headline over-admission fix works.** Peak concurrent computes measured with an instrumented
+   counter: pre-fix (57ad971) 2 -> 4 -> 6 -> 8 -> **10** over five staggered waves against a limit of 2
+   (unbounded, worse than the 6-vs-2 reported); post-fix (a6f1dba) **2 on every wave**. Doubly bounded,
+   since `max_workers=2` on the dedicated executor caps it independently of the permit.
+2. **Semaphore released exactly once on every normal path** — success, 400, 413, 422, 500-from-compute,
+   30 s timeout, client disconnect. Capacity returns to exactly 2 after every mixed storm. No double
+   release, no `ValueError`, anywhere in any log.
+3. **jd bound is exactly J2000 +/- 200 Julian years, inclusive, ULP-correct**, NaN/inf/non-numeric all
+   handled, and rejection is genuinely before any work (no permit taken, no compute started, 1840 req/s).
+4. **Response payload is byte-identical to 7baa015** for identical params (full recursive diff, 0
+   differences excluding `wall_epoch_jd`).
+5. **The identity-map bound (a6f1dba) works**: 2300 distinct spoofed identities -> map stays at exactly
+   the cap, throughput flat at ~1850 req/s.
+6. **R3 is a large net win for the app's own frontend**: replaying `sunController.ts`'s exact poll loop
+   for 70 s gives 0 usable responses on 7baa015 vs 42 on a6f1dba.
+
+**Defects found (highest first)**
+- **D1 (High) — permanent permit leak.** `loop.run_in_executor(...)` is called with the permit already
+  held and **no try/except**; if `submit` raises (executor/interpreter shutdown, `can't start new
+  thread` under a pids/thread limit) `add_done_callback` is never attached and the permit is lost
+  forever. Measured: `sem=1/2` with `starts == finishes`. Two such events latch the endpoint at 503
+  until restart. Fix is 3 lines.
+- **D2 (High) — the 30 s timeout has under 4% margin at the endpoint's own concurrency limit.** Cold
+  compute is 1.3 s preview / 4.4 s operational / 7.3 s ultra single-threaded, but the work is GIL-bound
+  and collapses superlinearly: operational 4.4 -> 11.7 s at 2 threads -> 17.4 s at 3 -> **132 s at 4**;
+  ultra 7.3 -> **28.3-29.0 s at 2 threads**, against a 30 s timeout. In the 40-concurrent test only 1-2
+  of 40 ultra requests completed; the rest were 503. The limit of 2 is the only value that works and
+  that is documented nowhere. Timeout should scale with fidelity and with the limit.
+- **D3 (High) — the rate limit is 100% bypassable.** `X-Forwarded-For` is trusted unconditionally with
+  no trusted-proxy gate: 60 requests from one identity -> 36x400 + 24x429, but 2000 requests with a
+  spoofed header per request -> 2000x400 and **zero 429**. The concurrency semaphore is the only real
+  bound this endpoint has.
+- **D4 (Medium) — the acceptance criterion fails 3-4x** (`/health` p95 155.2 / 186.3 ms vs 50 ms, two
+  runs, shipped defaults) **but is reachable in-process**: a `ProcessPoolExecutor` prototype takes the
+  same test to **p95 1.8 ms** with a 0.24 s one-off startup cost and 26-72 ms pickling on a 1-10 s
+  compute. The implementer's "cannot be met without moving PFSS off the request path" is wrong. Caveat,
+  measured: a naive process pool loses the PFSS cache (warm ultra 0.083 s -> 6.24 s, 75x), so it needs
+  cache affinity or a cache in front of the executor.
+- **D5 (Medium) — unmapped exceptions become raw 500s.** The endpoint catches only
+  `asyncio.TimeoutError`; the single-flight follower's `TimeoutError("PFSS computation timed out waiting
+  for in-flight result")` (seen in the log as "Future exception was never retrieved") and any other
+  worker exception fall through to a bare 500. Which one a follower gets depends on which of two
+  independently-tunable 30 s clocks fires first.
+- **D6 (Medium) — the rate limit (36/60 s) is below this app's own poll rate** (`pollIntervalMs: 900` =
+  66.7/min, `src/sunController.ts:152-159`). Measured 3x 429 in a 70 s frontend replay, each costing a
+  6 s client stall.
+- **D7 (Low) — behaviour changes bundled into R3 Layer 2 without tests or mention:**
+  `gong_timeout_s` 3.5 -> 2.0 s in `backend/sim/solar_physics.py` (silently reduces the window for
+  fetching a real GONG magnetogram -> more `source: "synthetic"` on a slow network); `max_features` > 256
+  now 413 where base clamped, while `solarPhysicsClient.ts:60` still client-clamps to `[8, 2048]`.
+- **D8 (Info)** — `_solar_physics_executor` and the semaphore are per-process module globals, so
+  `uvicorn --workers N` multiplies the effective concurrency limit by N.
+
+**Self-correction recorded above:** my first timing pass (preview 7.3 s / operational 22.2 s / ultra
+54.7 s) and my first /health idle baseline (13 ms) were both contaminated by residual load from earlier
+runs. Re-measured clean on an idle box and superseded. The corrected numbers still support D2 and D4,
+via the GIL-scaling measurement rather than the raw single-thread cost.
+
+Artifacts: `$OUT` = `.../scratchpad/out/R34B/` — `launch.py` (instrumented server + fault injection),
+`waves.py`, `sempaths.py`, `p95.py`, `gil.py`, `ratelimit.py`, `shapediff.py`, `fesim.py`,
+`launch_proc.py` (ProcessPool prototype), plus every raw `.txt`.
+
