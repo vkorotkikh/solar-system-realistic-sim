@@ -34,7 +34,7 @@ Fix in this order. It is not arbitrary — R1 and R2 are silent wrong-number def
 |---|---|---|---|---|---|
 | **R1** | Kuiper perturbers in radial free-fall | High | **S** (≤ 1 h) | Blocks adoption | ✅ on branch `fix/r1-kuiper-velocity-units` — `cf34ff5` + `7baa015`, **not merged** |
 | **R2** | Secular rates 4.8× worse than `main` | High | **M** (revised up) | Blocks adoption | ✅ on branch `fix/r2-secular-rate-mean-anomaly` — `5e461f6` + `6f385e1`, **not merged** |
-| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | ✅ Layers 1+2 on branch `fix/r3-r4-pfss-dos-and-test-gap` — `4cf940b`, `57ad971`; Layer 3 scheduled |
+| **R3** | PFSS unauthenticated CPU DoS | Critical | **M–L** (1–3 d) | Blocks *exposure*, not local use | ⚠️ Layers 1+2 on `fix/r3-r4-pfss-dos-and-test-gap` — `4cf940b`, `57ad971`, `5d0e4b7`. **Acceptance NOT met**: needs Layer 3 |
 | **R4** | Test gap that let R1/R2 land | — | **M** (1 d) | Blocks *re-landing* | ✅ on branch `fix/r3-r4-pfss-dos-and-test-gap` — `96d8fe1`, `9c3fdc5` |
 
 R1 and R2 are each a few lines and can ship the same day. R3 needs a decision about whether PFSS stays request-synchronous at all. **R4 is not optional**: without it the same class of regression returns on the next commit, and the branch's green suite will keep saying everything is fine.
@@ -550,12 +550,41 @@ Precompute PFSS per Carrington rotation on a background task at startup and on r
 
 Do Layer 1 + Layer 2 to unblock adoption. Schedule Layer 3.
 
-### Acceptance
+### Acceptance — measured 2026-08-24/25. **The headline criterion is NOT met.**
 
-- 40 concurrent `GET /solar/physics` with **distinct** `jd` values spanning many rotations at the highest fidelity: `/health` p95 stays **< 50 ms** throughout, and no request exceeds the semaphore-derived bound.
-- Two identical requests return **byte-identical** payloads; two requests differing only in `fidelity` return **different** payloads (proves the key fix).
-- `jd` outside the accepted range returns **400**, not a compute.
-- Cache hit rate under a realistic multi-fidelity load is > 0 (i.e. the finer key did not destroy reuse).
+| Criterion | Result |
+|---|---|
+| 40 concurrent distinct-`jd` highest-fidelity requests; `/health` p95 **< 50 ms** | ❌ **FAIL — p95 244.5 ms.** All 40 were correctly shed (36×503 + 4×429), so there is *no compute storm*; the latency comes from the admitted computes themselves. |
+| Two identical requests return byte-identical payloads | ✅ **PASS** — and it genuinely regressed before: pre-R3 the same operational request returned payloads of 559,411 vs 603,696 bytes; post-R3 they are byte-identical. |
+| Requests differing only in `fidelity` return different payloads | ✅ PASS |
+| `jd` outside range returns 400 without computing | ✅ PASS |
+| Cache reuse survives the finer key | ✅ PASS — identical repeat serves from cache with 0 new computes |
+| Concurrency bound actually holds under timeouts | ✅ PASS **after `5d0e4b7`** — see below |
+
+**Why the p95 criterion cannot be met by Layers 1–2, and what would meet it.** The PFSS compute is
+GIL-bound Python, so it starves the event loop regardless of how few run at once:
+
+| server state | `/health` p50 | p95 |
+|---|---|---|
+| idle | 7.7 ms | 10.2 ms |
+| **one** ultra-fidelity compute running | 50.9 ms | **80.9 ms** |
+| 40-request storm (limit 2) | 158.2 ms | 244.5 ms |
+
+A single compute already breaks the 50 ms bar, so no semaphore setting fixes it — lowering the limit
+to 1 would not help. Meeting the criterion requires taking the compute out of the API process:
+**Layer 3** (precompute per rotation, serve only from cache) or a `ProcessPoolExecutor`. Layers 1–2
+deliver what they can — no unbounded compute, no stampede, clean load shedding — and that is the
+honest claim to make for them.
+
+**A defect found in Layer 2 by self-review, fixed in `5d0e4b7`.** The permit was released in a
+`finally` that fires when `wait_for` gives up, but a Python thread cannot be cancelled, so the
+abandoned compute kept running while the next request was admitted. Staggered timeouts accumulated
+**6 concurrent computes against a limit of 2**. Reachable via
+`live_data=true&force_data_refresh=true` on a cold cache (~13 sequential upstream fetches ≈ 50 s,
+the still-unfixed K-12 stampede, past the 30 s timeout — and `force_data_refresh` bypasses the cache
+so it repeats). Fixed with a dedicated `ThreadPoolExecutor` sized to the limit, `asyncio.shield`, and
+release from the future's completion callback; re-measured peak 2 against limit 2. `main` shares the
+original pattern, with smaller exposure because it has no PFSS.
 
 ---
 
@@ -596,7 +625,7 @@ Items 1, 3 and 5 are what would have caught R1 and R2 on the commit that introdu
 2. **R2** — the one-term `orbitMath.ts:101` correction. Verify against the Horizons fixture; confirm the no-rates invariant.
 3. **R4 (items 1, 3, 4, 5)** — land the fixtures and the invariant tests *with* R1/R2 so both are locked in. Confirm the new tests **fail** against the unfixed code before merging (a test that has never been seen red is not evidence).
 4. **R3 Layers 1–2** — cache key + single-flight + semaphore + `jd` bound. Run the concurrency acceptance check.
-5. Re-run the full baseline: `tsc --noEmit` (expect **346**: the 344 baseline plus 2 from `src/sim/orbitMath.accuracy.test.ts`, both because vitest types are not installed in this toolchain), `npm test`, `pytest`. **`pytest` should still show the one pre-existing failure** — `test_rebound_engine_exports_self_describing_barycentric_states`, which fails on the `ias15`/REBOUND 5 break that neither branch fixes. That is a separate item on the shared roadmap, not something this plan introduces or resolves.
+5. Re-run the full baseline: `tsc --noEmit` (expect **346**: the 344 baseline plus 2 from `src/sim/orbitMath.accuracy.test.ts`, both because vitest types are not installed in this toolchain), `npm test`, `pytest`. **`pytest` should still show the one pre-existing failure** (measured: 80 passed at `fd793f4`, **94** at `7baa015` once R1 landed, **100** with R3+R4) — `test_rebound_engine_exports_self_describing_barycentric_states`, which fails on the `ias15`/REBOUND 5 break that neither branch fixes. That is a separate item on the shared roadmap, not something this plan introduces or resolves.
 6. Only then adopt `sun-focus` as canonical.
 7. **R3 Layer 3** and the remaining SF-4..SF-10 items follow on the normal roadmap.
 
