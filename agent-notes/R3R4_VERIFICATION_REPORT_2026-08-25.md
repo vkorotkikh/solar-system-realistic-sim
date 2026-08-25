@@ -2,7 +2,7 @@
 
 **Under test:** `fix/r3-r4-pfss-dos-and-test-gap` @ `a6f1dba` (6 commits on `origin/sun-focus` = `7baa015`)
 **Method:** four independent agents instructed to *refute* (all 4 completed, 0 errors, 256 tool calls), logging incrementally to
-[`R3R4_VERIFICATION_LOG_2026-08-25.md`](R3R4_VERIFICATION_LOG_2026-08-25.md) (42 timestamped entries)
+[`R3R4_VERIFICATION_LOG_2026-08-25.md`](R3R4_VERIFICATION_LOG_2026-08-25.md) (48 timestamped entries)
 **Date:** 2026-08-25
 
 ---
@@ -19,6 +19,48 @@
 Two of the three headline problems are in code I wrote *while fixing* earlier problems on this same
 branch. That is the finding worth internalising: each round of self-review caught something real, and
 each round also shipped something new. Independent verification was not redundant.
+
+---
+
+## Status — where R1–R4 actually stand
+
+**Not done.** All four items are *implemented*, and R1 is merged. R2 and R3/R4 remain unmerged topic
+branches, and R3/R4 should not land until the items in *Recommendation* are addressed.
+
+| Item | Implemented | Verified | Landed | Outstanding |
+|---|---|---|---|---|
+| **R1** Kuiper velocity units | ✅ `cf34ff5`, `7baa015` | ✅ physics could not be falsified; K-25 non-brick confirmed | ✅ **merged** — `origin/sun-focus` = `7baa015` | — |
+| **R2** secular-rate mean anomaly | ✅ `5e461f6`, `6f385e1` | ✅ every planet improves, none regresses (58.4% mean error cut over 1800–2150) | ❌ branch is **2 behind** `sun-focus` | rebase, then land |
+| **R3** PFSS DoS (Layers 1–2) | ✅ `4cf940b`, `57ad971` (+ `5d0e4b7`, `a6f1dba`) | ⚠️ **fails its own purpose** — see Critical + SF-4 | ❌ | cache key, executor, timeout comment |
+| **R3** Layer 3 | ❌ not started | — | ❌ | now optional — a process pool reaches the bar |
+| **R4** test gap | ✅ `96d8fe1`, `9c3fdc5` | ❌ **tests do not bite** (mutation-verified) | ❌ | rewrite per *Recommendation* 4–5 |
+
+### What was accomplished
+
+Across R1–R4, on three topic branches plus documentation on `main`:
+
+- **R1 — Kuiper perturbers (merged).** Fixed velocities injected 365.25× too small, which put Jupiter,
+  Saturn and Neptune into radial free-fall (`e = 1.0000`) silently. `activate` is now unit-aware, the
+  server passes the producer's declared units and refuses to guess, and a bound-orbit post-condition
+  makes a future unit drift fail loudly instead of silently. A follow-up recheck closed three further
+  gaps (TudatPy never declared its units; a `TypeError` escaped the guard and bricked the session;
+  no unit-string normalisation). Kuiper unit tests 0 → 14.
+- **R2 — secular rates.** Found and fixed *three* compounding errors, not the one the plan named:
+  double-counted perihelion drift, a mean motion re-derived from the drifting semi-major axis, and
+  finally the mean anomaly advancing at `2π/periodDays` instead of JPL's tabulated `Ldot`. Mean
+  position error against JPL Horizons across ten epochs 1800–2150: **16,164,821 km → 6,720,217 km**,
+  with every planet improved and none regressed (Mercury 230,467 → 1,980 km).
+- **R3 — PFSS (Layers 1–2).** Cache single-flight, an async endpoint with a concurrency bound and load
+  shedding, a `jd` validity window, and two self-found defects fixed (permit over-admission,
+  unbounded rate-limiter identity map). The single-flight mechanics and the bounds themselves are
+  verified correct; what fails is the *objective* — see below.
+- **R4 — test gap.** External-oracle accuracy tests with committed JPL Horizons fixtures for planets
+  and moons, a rate-limiter regression test that is mutation-verified to bite, and
+  `TESTING_NUMERICS.md` recording the rule. Backend suite **80 → 102** passing.
+- **Process.** Every claim in this effort was put through independent adversarial verification, twice.
+  That process caught: three errors in the written plan, two errors in my own R2 fix, two defects in
+  my own R3 fixes, and the four defects below. It also corrected *this report* twice — including
+  refuting my own conclusion that Layer 3 was mandatory.
 
 ---
 
@@ -180,8 +222,10 @@ This is the most serious finding, because R4's entire purpose was to make regres
 
 Stated plainly, because the pattern matters more than the individual errors:
 
-1. **"~5 s cold ultra compute (measured)"** — wrong by 4.6–8.6×; the real figure is 23–43 s. This is
-   now a code comment on the branch justifying a timeout value, so it is actively misleading.
+1. **"~5 s cold ultra compute (measured)"** — ~2× optimistic; the clean figure is **10.5 s**. This is
+   a code comment on the branch justifying a timeout value, so it should be corrected. (An earlier
+   revision of this report said "4.6–8.6× wrong, 23–43 s"; those measurements were contaminated by
+   concurrent agent load and were withdrawn — see the Critical section.)
 2. **"Layers 1–2 deliver what they can"** — too generous. They do not close the DoS, which was the point.
 3. **The R4 tests "would have caught R1 and R2"** — refuted for 3 of the 4 defects they name.
 4. **"The moon test is immune to the R2 merge"** — true, and I reported it as reassurance when it is
@@ -243,7 +287,7 @@ inherited from a deferred plan step.
 ## Provenance
 
 Raw incremental findings, with commands and full numbers, are in
-[`R3R4_VERIFICATION_LOG_2026-08-25.md`](R3R4_VERIFICATION_LOG_2026-08-25.md) — 42 entries from
+[`R3R4_VERIFICATION_LOG_2026-08-25.md`](R3R4_VERIFICATION_LOG_2026-08-25.md) — 48 entries from
 `AGENT-A` (PFSS cache/single-flight), `AGENT-B` (endpoint bounds/over-admission), `AGENT-C` (R4 tests),
 `AGENT-D` (integration claims/rate limiter/hygiene). Agents logged as they worked, so the record is
 complete even where an agent did not return a final structured result.
