@@ -1,7 +1,7 @@
 # R3/R4 Verification — Analysis and Synthesis
 
 **Under test:** `fix/r3-r4-pfss-dos-and-test-gap` @ `a6f1dba` (6 commits on `origin/sun-focus` = `7baa015`)
-**Method:** four independent agents instructed to *refute*, logging incrementally to
+**Method:** four independent agents instructed to *refute* (all 4 completed, 0 errors, 256 tool calls), logging incrementally to
 [`R3R4_VERIFICATION_LOG_2026-08-25.md`](R3R4_VERIFICATION_LOG_2026-08-25.md) (42 timestamped entries)
 **Date:** 2026-08-25
 
@@ -79,15 +79,43 @@ include closing the DoS.
 
 ---
 
-## High — SF-4 is not actually fixed
+## High — SF-4 is not fixed; the Layer 1 commit message is false
 
-The new cache key is `(carrington_rotation, n_lines, lmax, activity_bucket)`. It **omits `jd`**.
-A Carrington rotation is 27.27 days, so every `jd` inside one rotation shares an entry.
+The new cache key is `(carrington_rotation, n_lines, lmax, activity_bucket)` — it **omits `jd`** — but
+`_compute` seeds the magnetogram from the raw `jd`:
 
-The agent quantified the inconsistency: **the error introduced by ignoring `jd` within a rotation is
-4.5× larger than the activity error the fix went to the trouble of bucketing at 5%.** Bucketing
-activity while ignoring a bigger term is incoherent — the key is finer in the cheap dimension and
-coarse in the expensive one.
+```python
+# pfss_magnetogram.py:238
+rng = np.random.RandomState(int(jd * 100) % 99991)
+```
+
+So the key and the payload depend on **different inputs**. A Carrington rotation is 27.27 days, and
+`int(jd*100)` changes every 14 minutes, so ~2,727 distinct magnetograms share one cache entry.
+
+**Reproduced directly on the shipped fix** (`fix/r3-r4-pfss-dos-and-test-gap`):
+
+```
+JD0=2461000.5 (CR 2304)   JD1=2461007.5 (CR 2304)
+key(JD0) == key(JD1) == (2304, 40, 9, 10)      <- same key
+different magnetogram seed: True                <- different physics
+
+IDENTICAL request jd=2461000.5:
+  served alone                      -> open_line_count = 20   (carrington=2304)
+  served after a jd=2461007.5 request -> open_line_count = 17   (carrington=2304)
+  got the OTHER jd's cached object: True
+```
+
+An identical request returns a **different answer depending on call order**, and both responses are
+labelled `carrington_rotation=2304`, so a client cannot detect the substitution. That is precisely
+SF-4 — the bug commit `4cf940b` claims to fix. Its message asserts "an entry is reused only for a
+genuinely identical request"; **that is false as written.** What the commit actually fixed was the
+*fidelity* dimension; it left the `jd` dimension, which carries the larger error: the within-rotation
+error is **relRMS(Br) ≈ 1.06 — 4.5× the 0.23 activity error the fix went to the trouble of bucketing
+at 5%.** The key is fine-grained in the cheap dimension and coarse in the expensive one.
+
+A second-order consequence: `sample_state` builds the Parker spiral from the cached WSA result while
+every other field is computed for the requested `jd`, so one response can mix PFSS/WSA for `jd=Y` with
+everything else for `jd=X`.
 
 ---
 
@@ -135,6 +163,7 @@ This is the most serious finding, because R4's entire purpose was to make regres
 | 5 | Follower **fallback bypasses single-flight and never caches** its result — 9/9 computes when forced; 2.38× at `max_entries=1` but **1.00× at the shipped default of 12**, so latent | Layer 1 |
 | 6 | Leader killed by `BaseException` leaves the holder empty; every follower then recomputes | low |
 | 7 | Rate-limiter eviction sorts the whole map under the lock (515× lock-hold amplification in-process) — **agent later downgraded this**: not visible end-to-end | low |
+| 7b | `DEFAULT_INFLIGHT_WAIT_S` (30 s) **equals** `SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS` (30 s), so the follower `TimeoutError` path is unreachable over HTTP — the endpoint always times out first | design smell |
 | 8 | 5 % activity bucketing is defensible alone (worst same-bucket pair: relRMS(Br) 0.23, WSA −12.2 km/s) but indefensible beside the `jd` hole | — |
 
 ---
@@ -165,8 +194,14 @@ and generalised. That is the same error that made R2 wrong twice.
    secondary to that choice.
 2. **Fix the timeout comment and value** to match measured reality, and decide what `ultra` means if a
    cold compute is 43 s.
-3. **Add `jd` to the cache key** (or justify the rotation-granularity in writing, with the measured
-   within-rotation error next to the activity error).
+3. **Make the cache key and the payload depend on the same inputs** — put a quantised `jd`
+   (e.g. `int(jd*100)`, matching the seed granularity) in the key, or quantise the `jd` passed to
+   `_compute`, or seed the magnetogram from `cr` instead of `jd`. Any of the three closes SF-4; the
+   current split does not. Correct the `4cf940b` commit message's claim while doing so.
+   Also make `DEFAULT_INFLIGHT_WAIT_S` strictly less than the endpoint timeout.
+   *Note for (1):* with GIL-bound work, `max_workers=2` buys no throughput and doubles latency, which
+   is what pushes both concurrent requests past the timeout — `max_workers=1` is strictly better until
+   the work leaves the process.
 4. **Rewrite the R4 tests so they fail on the mutant.** Specifically: drive the real endpoint rather
    than grepping source; assert SF-4 via the order-dependent payload difference that is reproducible
    pre-R3; test the moon/planet accuracy at several epochs, not one; either assert Titan or remove it.
