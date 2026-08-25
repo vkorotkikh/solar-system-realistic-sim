@@ -10,6 +10,8 @@ byte-identity comparison; everything else must be reproducible for a fixed jd.
 """
 from __future__ import annotations
 
+import time
+
 from fastapi.testclient import TestClient
 
 import server
@@ -69,3 +71,61 @@ def test_saturation_sheds_load_with_503() -> None:
     finally:
         for _ in range(acquired):
             guard.release()
+
+
+def test_concurrency_permit_is_held_until_the_work_actually_finishes() -> None:
+    """A timed-out request must not free its permit while its thread still runs.
+
+    Python threads cannot be cancelled, so releasing the permit when the request
+    returns (rather than when the work ends) lets staggered timeouts accumulate
+    far more concurrent computes than the limit -- measured at 3x over three
+    waves before this was fixed. The endpoint therefore releases from the
+    future's completion callback and shields the future from wait_for.
+    """
+    import asyncio
+    import inspect
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    source = inspect.getsource(server.solar_physics_state)
+    # The permit must be released by the future's callback, never in a finally
+    # that runs as soon as wait_for gives up.
+    assert "add_done_callback" in source
+    assert "asyncio.shield" in source
+    assert "finally:" not in source.split("add_done_callback")[-1]
+
+    # And the behaviour itself: staggered timeouts must not over-admit.
+    live = {"n": 0, "peak": 0}
+    lock = threading.Lock()
+
+    def work(duration: float) -> None:
+        with lock:
+            live["n"] += 1
+            live["peak"] = max(live["peak"], live["n"])
+        time.sleep(duration)
+        with lock:
+            live["n"] -= 1
+
+    limit = 2
+    guard = threading.BoundedSemaphore(limit)
+    pool = ThreadPoolExecutor(max_workers=limit)
+
+    async def request() -> str:
+        if not server._acquire_nonblocking(guard):
+            return "shed"
+        loop = asyncio.get_running_loop()
+        future = loop.run_in_executor(pool, work, 1.0)
+        future.add_done_callback(lambda _: guard.release())
+        try:
+            await asyncio.wait_for(asyncio.shield(future), timeout=0.2)
+            return "ok"
+        except asyncio.TimeoutError:
+            return "timeout"
+
+    async def waves() -> None:
+        for _ in range(3):
+            await asyncio.gather(*(request() for _ in range(limit)))
+
+    asyncio.run(waves())
+    assert live["peak"] <= limit, f"over-admission: {live['peak']} concurrent vs limit {limit}"
+    pool.shutdown(wait=True)

@@ -34,6 +34,7 @@ import queue
 import threading
 import time
 from collections import Counter, deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -171,6 +172,12 @@ _solar_physics_rate_locks: dict[str, "deque[float]"] = {}
 _solar_physics_rate_lock = threading.Lock()
 _solar_physics_concurrent_guard = threading.BoundedSemaphore(
     SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT
+)
+# Dedicated pool so PFSS work can never occupy more than its own budget of
+# threads, independent of the default anyio threadpool used by every other route.
+_solar_physics_executor = ThreadPoolExecutor(
+    max_workers=SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT,
+    thread_name_prefix="solar-physics",
 )
 
 
@@ -681,17 +688,28 @@ async def solar_physics_state(
             detail="Solar physics requests are temporarily saturated. Retry shortly.",
             headers={"Retry-After": "2"},
         )
+    # The permit is released when the WORK finishes, not when this coroutine
+    # returns. A Python thread cannot be cancelled, so releasing on timeout would
+    # let the abandoned compute keep burning CPU while the next request is
+    # admitted -- staggered timeouts would then accumulate far more concurrent
+    # computes than the limit (measured: 3x the limit over three waves). Shielding
+    # the future and releasing from its completion callback keeps the bound honest.
+    loop = asyncio.get_running_loop()
+    future = loop.run_in_executor(
+        _solar_physics_executor,
+        _build_solar_physics_state,
+        epoch_jd,
+        fidelity_key,
+        safe_max_features,
+        forcing_key,
+        bool(live_data),
+        bool(force_data_refresh),
+    )
+    future.add_done_callback(lambda _: _solar_physics_concurrent_guard.release())
+
     try:
-        state = await asyncio.wait_for(
-            asyncio.to_thread(
-                _build_solar_physics_state,
-                epoch_jd,
-                fidelity_key,
-                safe_max_features,
-                forcing_key,
-                bool(live_data),
-                bool(force_data_refresh),
-            ),
+        return await asyncio.wait_for(
+            asyncio.shield(future),
             timeout=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError as exc:
@@ -699,10 +717,6 @@ async def solar_physics_state(
             status_code=503,
             detail="Solar physics generation timed out. Try again later.",
         ) from exc
-    finally:
-        _solar_physics_concurrent_guard.release()
-
-    return state
 
 
 @app.get("/nearby-systems")
