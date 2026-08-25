@@ -41,41 +41,49 @@ These were checked and are exactly as claimed:
 
 ---
 
-## Critical — R3 does not close the DoS
+## Critical — R3 does not close the DoS (but the cause is GIL collapse, not slow computes)
 
-**Two unauthenticated requests deny `/solar/physics` for 70.6 s**, and requests whose result is
-*already cached* are refused along with everything else.
+> **Read this section as corrected.** Both agents' first latency measurements were taken while other
+> agents' abandoned computes were still draining, and both later withdrew them. The clean numbers are
+> below. My original "~5 s cold ultra" comment is **~2× optimistic, not 4.6–8.6× wrong**, and the
+> claim "`ultra` can never succeed" is **withdrawn** — at concurrency 1 it always succeeds.
 
-Measured cold latency on an **idle 32-core box** — against my code comment claiming "~5 s (measured)":
+**Clean single-request cold latency, idle box** (`AGENT-B` re-measurement):
 
-| preset | direct `_compute` | full `GET` |
-|---|---|---|
-| preview | 5.67 s | 8.21 s |
-| operational *(endpoint default)* | 16.37 s | 15.62 s |
-| high | 36.21 s | 20.35 s |
-| ultra | 43.04 s | 23.18 s |
+| preset | cold `_compute` |
+|---|---|
+| preview | 1.26 s |
+| operational *(default)* | 3.95 s |
+| high | 3.13 s |
+| ultra | 10.49 s |
 
-**My "~5 s" figure was wrong by 4.6–8.6×.** Two agents measured this independently and agree.
+A sweep of `ultra` across the whole permitted `jd` window (10 points, MIN → MAX) gives min 4.98 s,
+median 8.19 s, max 10.97 s — **0 of 10 over the 30 s timeout**.
 
-The mechanism is a genuine architectural bind:
+**The real defect is what concurrency does to that.** The computes are GIL-bound pure Python
+(`trace_field_lines`, `compute_wsa_velocity_map`), so they do not merely fail to parallelise — they
+collapse superlinearly:
 
-- The computes are **GIL-bound pure Python** (`trace_field_lines`, `compute_wsa_velocity_map`), so the
-  executor's two threads buy **no parallelism, only 2× latency**. Two concurrent cold `ultra`
-  requests both exceed the 30 s timeout and 503.
-- My over-admission fix (correctly) holds each permit until the work truly ends. So the two abandoned
-  computes keep both permits for their full duration, and everything else — *including a free cache
-  hit* — is shed instantly with 503.
+| concurrent `operational` computes | per-request latency |
+|---|---|
+| 1 | 4.4 s |
+| 2 | 11.7 s each — **2.7×** |
+| 3 | 15.6–17.4 s — **4.0×** |
+| 4 | 130–133 s each — **30× collapse** |
 
-So the two failure modes are two sides of one coin: release the permit on timeout and you get
-**unbounded CPU** (the bug I fixed); hold it and you get **lockout** (the bug that replaced it).
-Neither is acceptable, and no semaphore setting resolves it.
+So the semaphore's own limit of 2 is what pushes requests toward the timeout, and beyond it the box
+falls off a cliff.
 
-**`ultra` can never succeed at all**: cold ultra is 43–55 s against a 30 s timeout.
+**The lockout is real and remains the headline.** Under shipped defaults, 40 concurrent distinct-`jd`
+`ultra` requests yield `{503: 38, 200: 2}`, and while the admitted computes hold their permits
+everything else is shed — *including requests whose result is already cached and cost nothing*.
+That is still denial of service; only its flavour changed from "everyone slow" to "everyone 503".
+(The specific "70.6 s" lockout figure was measured under the contaminated conditions above, so treat
+the duration as timing-dependent; the mechanism is not.)
 
-**Conclusion: Layer 3 is not optional.** Getting PFSS off the request path (precompute per Carrington
-rotation, serve only from cache) or into a separate *process* is the only thing that fixes this. My
-earlier framing — "Layers 1–2 deliver what they can" — was too generous: what they deliver does not
-include closing the DoS.
+The two failure modes remain two sides of one coin: release the permit on timeout → **unbounded CPU**
+(the bug I fixed); hold it → **lockout** (the bug that replaced it). No semaphore *setting* resolves
+that — but, contrary to what I concluded, a change of *executor* does.
 
 ---
 
@@ -188,12 +196,28 @@ and generalised. That is the same error that made R2 wrong twice.
 
 **Do not land `a6f1dba`.** In priority order:
 
-1. **Decide the PFSS architecture before more patching.** Layers 1–2 cannot close the DoS. Either do
-   Layer 3 (precompute per rotation, request path serves cache only, with an explicit
-   `pfss_stale` flag) or move the compute to a `ProcessPoolExecutor`. Everything else here is
-   secondary to that choice.
-2. **Fix the timeout comment and value** to match measured reality, and decide what `ultra` means if a
-   cold compute is 43 s.
+1. **Move the compute to a process — Layer 3 is NOT required for the latency bar.** I concluded the
+   50 ms p95 target was "unreachable in-process"; that was **refuted by measurement**. Swapping the
+   `ThreadPoolExecutor` for a `ProcessPoolExecutor` (forkserver, ~30 lines) at 40 concurrent `ultra`:
+
+   | arm | idle p95 | 40 concurrent |
+   |---|---|---|
+   | ThreadPool *(as shipped)* | 1.6 ms | **73.6 ms** — fails |
+   | ProcessPool | 1.6 ms | **1.8 ms** — passes |
+
+   Warm-up is 0.24 s once; result pickling is a non-issue (0.27–0.76 MB, 26–72 ms against a 1–10 s
+   compute).
+
+   **But it is not a drop-in.** The PFSS cache and memoization live *inside the worker*, so a naive
+   swap loses every warm hit: ultra warm goes 0.083 s → 6.24 s, a **75× regression**, and the frontend
+   polls this endpoint every 900 ms living almost entirely on warm hits. Layer 1's single-flight
+   coalescing is lost across processes too. Viable variants, cheapest first:
+   **(a)** one process worker with the concurrency limit set to 1 — cache preserved, `/health` fully
+   isolated, computes serialised; **(b)** route by `hash(cache_key) % n_workers` so a rotation always
+   lands on the same process. Layer 3 (precompute per rotation) remains the better long-run answer,
+   but it is no longer the *only* one.
+2. **Fix the timeout comment** to match measured reality (~10 s cold ultra, not ~5 s). The 30 s value
+   itself is defensible at concurrency 1; what needs attention is the GIL collapse above.
 3. **Make the cache key and the payload depend on the same inputs** — put a quantised `jd`
    (e.g. `int(jd*100)`, matching the seed granularity) in the key, or quantise the `jd` passed to
    `_compute`, or seed the magnetogram from `cr` instead of `jd`. Any of the three closes SF-4; the
