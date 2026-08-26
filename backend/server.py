@@ -724,6 +724,7 @@ class MissionPlanRequest(StrictRequestModel):
 class AccuracyReportRequest(StrictRequestModel):
     ephemeris_provider: StrictStr = "auto"
     output_path: StrictStr | None = None
+    allow_overwrite: StrictBool = False
 
     @field_validator("ephemeris_provider")
     @classmethod
@@ -1203,7 +1204,10 @@ def benchmark_accuracy_report(payload: AccuracyReportRequest):
             ALL_BODIES,
             output_path=output_path,
             ephemeris_provider=payload.ephemeris_provider,
+            allow_overwrite=payload.allow_overwrite,
         )
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
