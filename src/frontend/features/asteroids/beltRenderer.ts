@@ -173,8 +173,11 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
   `,
 
   worldPosition: /* glsl */`
+    // The instance matrix carries the asteroid's own shape (random rotation x
+    // body-radius scale, ~1e-3). It must transform only the vertex; adding the
+    // orbital offset first would scale the orbit down by that same factor and
+    // collapse the whole belt inside the Sun.
     vec4 worldPositionWithOrbit = vec4( transformed, 1.0 );
-    worldPositionWithOrbit.xyz += vOrbitOffset;
 
     #ifdef USE_BATCHING
       worldPositionWithOrbit = batchingMatrix * worldPositionWithOrbit;
@@ -184,12 +187,15 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
       worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
     #endif
 
+    worldPositionWithOrbit.xyz += vOrbitOffset;
+
     vec4 worldPosition = modelMatrix * worldPositionWithOrbit;
   `,
 
   projectVertex: /* glsl */`
+    // Same ordering rule as worldPosition above: instance transform first, then
+    // the orbital offset, so gl_Position places the asteroid on its real orbit.
     vec4 mvPositionWithOrbit = vec4( transformed, 1.0 );
-    mvPositionWithOrbit.xyz += vOrbitOffset;
 
     #ifdef USE_BATCHING
       mvPositionWithOrbit = batchingMatrix * mvPositionWithOrbit;
@@ -198,6 +204,8 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     #ifdef USE_INSTANCING
       mvPositionWithOrbit = instanceMatrix * mvPositionWithOrbit;
     #endif
+
+    mvPositionWithOrbit.xyz += vOrbitOffset;
 
     vec4 mvPosition = modelViewMatrix * mvPositionWithOrbit;
     gl_Position = projectionMatrix * mvPosition;
