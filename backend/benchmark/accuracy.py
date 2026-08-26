@@ -13,6 +13,10 @@ from trajectory import solve_direct_lambert
 
 REQUIRED_TOOLS: Tuple[str, str, str] = ("gmat", "orekit", "tudat")
 DEFAULT_PROBLEM_TYPE = "fixed_state_lambert"
+_OVERWRITE_REFUSED = (
+    "refusing to overwrite existing report `{path}`; "
+    "pass `allow_overwrite: true` to replace it"
+)
 
 
 def _sha256(path: Path) -> str:
@@ -386,7 +390,17 @@ def generate_accuracy_report(
     output_path: str | Path,
     ephemeris_provider: str = "auto",
     scenarios_path: str | Path | None = None,
+    allow_overwrite: bool = False,
 ) -> Dict[str, Any]:
+    path = Path(output_path)
+
+    # Reports land in a directory of hand-written notes, and the endpoint that
+    # reaches this function is unauthenticated, so an existing file is never
+    # replaced unless the caller explicitly opts in. Checked before the
+    # benchmark runs so a refused call costs no work.
+    if not allow_overwrite and (path.exists() or path.is_symlink()):
+        raise FileExistsError(_OVERWRITE_REFUSED.format(path=path))
+
     summary = benchmark_against_references(
         bodies,
         ephemeris_provider=ephemeris_provider,
@@ -394,9 +408,17 @@ def generate_accuracy_report(
     )
     markdown = render_accuracy_report_markdown(summary)
 
-    path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(markdown, encoding="utf-8")
+    if allow_overwrite:
+        path.write_text(markdown, encoding="utf-8")
+    else:
+        # Exclusive create closes the window between the check above and this
+        # write: O_EXCL refuses any pre-existing path, dangling symlinks included.
+        try:
+            with path.open("x", encoding="utf-8") as handle:
+                handle.write(markdown)
+        except FileExistsError as exc:
+            raise FileExistsError(_OVERWRITE_REFUSED.format(path=path)) from exc
 
     return {
         "summary": summary,
