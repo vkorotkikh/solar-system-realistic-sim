@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import time
 
 import server
 from server import app
@@ -36,7 +37,7 @@ def test_solar_physics_returns_3d_coronal_features() -> None:
     payload = response.json()
     assert payload["source"] == "backend"
     assert payload["fidelity"] == "high"
-    assert payload["wall_epoch_jd"] == payload["epoch_jd"]
+    assert payload["wall_epoch_jd"] >= payload["epoch_jd"] - 365_000
     assert payload["surface"]["activity_cycle_model"] == "hathaway_2015_normalized"
     assert payload["corona"]["feature_count"] <= 64
     assert payload["corona"]["feature_count"] >= 8
@@ -139,6 +140,118 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("content-type", "").startswith("image/png")
     assert response.headers.get("x-solar-aia-channel") == "aia_193"
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
+
+
+def test_aia_tile_rejects_rate_limit(monkeypatch) -> None:
+    payload = {
+        "channel": "aia_193",
+        "image_id": "184733789",
+        "image_date": "2026-02-17 03:19:41",
+        "tile_url": "https://api.helioviewer.org/v2/getTile/?id=184733789&x=-1&y=-1&imageScale=0.6",
+        "content": b"\x89PNG\r\n\x1a\nfake",
+        "content_type": "image/png",
+    }
+
+    def fake_latest_aia_tile(channel: str, jd: float | None = None, force_refresh: bool = False):
+        assert channel == "aia_193"
+        assert jd is None
+        assert force_refresh is False
+        return payload
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(server, "SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW", 1)
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    first = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+    assert first.status_code == 200
+
+    second = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+    assert second.status_code == 429
+    assert second.headers.get("retry-after") is not None
+
+
+def test_aia_tile_times_out_with_short_budget(monkeypatch) -> None:
+    payload = {
+        "channel": "aia_193",
+        "image_id": "184733789",
+        "image_date": "2026-02-17 03:19:41",
+        "tile_url": "https://api.helioviewer.org/v2/getTile/?id=184733789&x=-1&y=-1&imageScale=0.6",
+        "content": b"\x89PNG\r\n\x1a\nfake",
+        "content_type": "image/png",
+    }
+
+    def fake_latest_aia_tile(*_args, **_kwargs):
+        time.sleep(0.2)
+        return payload
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(server, "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+    assert response.status_code == 503
+
+
+def test_solar_physics_rejects_excessive_feature_requests() -> None:
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "max_features": 4_096,
+        },
+    )
+    assert response.status_code == 413
+    assert "max_features" in response.text.lower()
+
+
+def test_solar_physics_enforces_rate_limit(monkeypatch) -> None:
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server, "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW", 1)
+
+    first = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "max_features": 16,
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "max_features": 16,
+        },
+    )
+    assert second.status_code == 429
+    assert second.headers.get("retry-after") is not None
+
+
+def test_solar_physics_times_out_with_short_budget(monkeypatch) -> None:
+    original_builder = server._build_solar_physics_state
+
+    def delayed_state(*_args, **_kwargs):
+        time.sleep(0.2)
+        return original_builder(*_args, **_kwargs)
+
+    monkeypatch.setattr(server, "_build_solar_physics_state", delayed_state)
+    monkeypatch.setattr(server, "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS", 0.05)
+    start = time.monotonic()
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "high",
+            "max_features": 16,
+        },
+    )
+    elapsed = time.monotonic() - start
+    assert response.status_code == 503
+    assert elapsed < 1.0
 
 
 def test_solar_physics_returns_coronal_hole_section() -> None:

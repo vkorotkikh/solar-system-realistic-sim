@@ -104,7 +104,7 @@ const KIRKWOOD_GAPS = [
     { center: 3.27, halfWidth: 0.03 }  // 2:1
 ];
 
-function isInsideKirkwoodGap(a: number) {
+function isInsideKirkwoodGap(a: number): boolean {
     for (const gap of KIRKWOOD_GAPS) {
         if (Math.abs(a - gap.center) < gap.halfWidth) return true;
     }
@@ -116,12 +116,7 @@ function isInsideKirkwoodGap(a: number) {
  * @param {string} population - 'main-belt', 'trojan-l4', 'trojan-l5', 'hilda', 'nea'
  */
 export function generateAsteroidElement(population = 'main-belt') {
-    let a = 2.5;
-    let e = 0.12;
-    let i = 8.0;
-    let ascendingNodeDeg = 0;
-    let argPeriapsisDeg = 0;
-    let meanAnomalyDeg = 0;
+    let a!: number, e!: number, i!: number, ascendingNodeDeg: number, argPeriapsisDeg: number, meanAnomalyDeg!: number;
 
     ascendingNodeDeg = _rng() * 360;
     argPeriapsisDeg = _rng() * 360;

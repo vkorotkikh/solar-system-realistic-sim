@@ -177,7 +177,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         channel.fired = true;
 
         // Let the sunController know if the warp wave hit
-        if (channel.key === 'warpMetric' && solarResponder.triggerWarpWaveImpact) {
+        if (isMetricSlipstreamChannel(channel) && solarResponder?.triggerWarpWaveImpact) {
             solarResponder.triggerWarpWaveImpact(currentEnergyErg, SGR_A.massG);
         }
 

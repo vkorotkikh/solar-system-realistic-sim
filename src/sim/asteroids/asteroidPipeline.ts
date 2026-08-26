@@ -5,7 +5,8 @@ import {
     sampleTaxonomy,
     samplePowerLawSize
 } from './asteroidDistributions';
-import { createAsteroidInstancedBuckets } from './asteroidGeometry';
+import { createAsteroidInstancedBuckets, type AsteroidBucketMap } from './asteroidGeometry';
+import type { AsteroidShaderUniforms } from './asteroidShaders';
 
 export type AsteroidBucket = {
     mesh: InstancedMesh;
@@ -25,18 +26,17 @@ const POPULATION_COUNTS = {
 
 export class AsteroidSimulationPipeline {
     rootGroup: Group;
-    buckets: Record<string, AsteroidBucket[]>;
-    shaderUniforms: { uTimeDays: { value: number }; uViewScaleAu: { value: number } };
+    buckets: AsteroidBucketMap;
+    shaderUniforms: AsteroidShaderUniforms;
 
     constructor() {
         this.rootGroup = new Group();
         this.rootGroup.name = 'UltraRealisticAsteroidBeltGPU';
         this.buckets = {} as Record<string, AsteroidBucket[]>;
 
-        // Shared uniforms across all asteroid materials
         this.shaderUniforms = {
             uTimeDays: { value: 0 },
-            uViewScaleAu: { value: 1.0 } // Should be the same scale used to convert AU to screen units
+            uViewScaleAu: { value: 1.0 }
         };
     }
 

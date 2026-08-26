@@ -8,7 +8,7 @@ import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -77,10 +77,13 @@ class SolarRealtimeDataProvider:
     def __init__(self, timeout_s: float = 3.8, cache_ttl_s: float = 300.0):
         self.timeout_s = max(0.8, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
+        self.singleflight_error_backoff_s = 4.5
         self._lock = threading.Lock()
         self._cache: dict[str, Any] | None = None
         self._cache_expiry_monotonic = 0.0
         self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
+        self._inflight_fetches: dict[Any, dict[str, Any]] = {}
+        self._inflight_failures: dict[Any, tuple[float, BaseException]] = {}
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -114,12 +117,22 @@ class SolarRealtimeDataProvider:
             ):
                 return self._cache
 
-        snapshot = self._fetch_snapshot(jd)
-
-        with self._lock:
-            self._cache = snapshot
-            self._cache_expiry_monotonic = time.monotonic() + self.cache_ttl_s
+        key = ("snapshot", "latest" if jd is None else str(jd))
+        def fetch_and_cache_snapshot() -> dict[str, Any]:
+            snapshot = self._fetch_snapshot(jd)
+            with self._lock:
+                # Publish before the single-flight leader releases its entry so a
+                # request arriving at completion cannot start a duplicate refresh.
+                self._cache = snapshot
+                self._cache_expiry_monotonic = time.monotonic() + self.cache_ttl_s
             return snapshot
+
+        return self._singleflight_fetch(
+            key=key,
+            fetch_fn=fetch_and_cache_snapshot,
+            wait_timeout_s=self.timeout_s + 0.5,
+            allow_cached_failure=not force_refresh,
+        )
 
     def latest_aia_tile(
         self,
@@ -185,26 +198,90 @@ class SolarRealtimeDataProvider:
                 if now_monotonic < expiry:
                     return payload, content_type
 
-        payload, content_type = self._fetch_binary(url)
-
-        with self._lock:
-            self._binary_cache[url] = (now_monotonic + cache_ttl, payload, content_type)
-            # Keep binary cache bounded.
-            if len(self._binary_cache) > 48:
-                stale_keys = [
-                    key
-                    for key, value in self._binary_cache.items()
-                    if value[0] <= now_monotonic
-                ]
-                for stale_key in stale_keys:
-                    self._binary_cache.pop(stale_key, None)
+        def fetch_and_cache_binary() -> tuple[bytes, str | None]:
+            payload, content_type = self._fetch_binary(url)
+            completed_monotonic = time.monotonic()
+            with self._lock:
+                # Publish before releasing the single-flight entry and measure the
+                # full TTL from completion, not from the beginning of a slow fetch.
+                self._binary_cache[url] = (
+                    completed_monotonic + cache_ttl,
+                    payload,
+                    content_type,
+                )
+                # Keep binary cache bounded.
                 if len(self._binary_cache) > 48:
-                    # Remove oldest expiries first.
-                    ordered = sorted(self._binary_cache.items(), key=lambda item: item[1][0])
-                    for key, _ in ordered[: len(self._binary_cache) - 48]:
-                        self._binary_cache.pop(key, None)
+                    stale_keys = [
+                        key
+                        for key, value in self._binary_cache.items()
+                        if value[0] <= completed_monotonic
+                    ]
+                    for stale_key in stale_keys:
+                        self._binary_cache.pop(stale_key, None)
+                    if len(self._binary_cache) > 48:
+                        # Remove oldest expiries first.
+                        ordered = sorted(self._binary_cache.items(), key=lambda item: item[1][0])
+                        for key, _ in ordered[: len(self._binary_cache) - 48]:
+                            self._binary_cache.pop(key, None)
+            return payload, content_type
 
-        return payload, content_type
+        return self._singleflight_fetch(
+            key=("binary", url),
+            fetch_fn=fetch_and_cache_binary,
+            wait_timeout_s=self.timeout_s + 0.5,
+        )
+
+    def _singleflight_fetch(
+        self,
+        key: Any,
+        fetch_fn: Callable[[], Any],
+        *,
+        wait_timeout_s: float | None = None,
+        allow_cached_failure: bool = True,
+    ) -> Any:
+        with self._lock:
+            if allow_cached_failure:
+                failure = self._inflight_failures.get(key)
+                if failure is not None:
+                    fail_until, stored_exception = failure
+                    if time.monotonic() < fail_until:
+                        raise stored_exception
+                    self._inflight_failures.pop(key, None)
+
+            state = self._inflight_fetches.get(key)
+            if state is None:
+                event = threading.Event()
+                state = {"event": event, "value": None, "error": None}
+                self._inflight_fetches[key] = state
+                is_leader = True
+            else:
+                is_leader = False
+
+        if not is_leader:
+            if not state["event"].wait(timeout=wait_timeout_s):
+                raise TimeoutError(
+                    "Upstream request is blocked by an ongoing fetch for this resource; "
+                    "try again shortly"
+                )
+            if state.get("error") is not None:
+                raise state["error"]
+            return state["value"]
+
+        try:
+            value = fetch_fn()
+            with self._lock:
+                state["value"] = value
+                self._inflight_failures.pop(key, None)
+            return value
+        except Exception as exc:
+            with self._lock:
+                state["error"] = exc
+                self._inflight_failures[key] = (time.monotonic() + self.singleflight_error_backoff_s, exc)
+            raise
+        finally:
+            state["event"].set()
+            with self._lock:
+                self._inflight_fetches.pop(key, None)
 
     def _fetch_text(self, url: str) -> str:
         request = urllib.request.Request(

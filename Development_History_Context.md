@@ -55,6 +55,107 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-03-07 ~08:00 UTC — Comprehensive codebase audit, critical bug fixes, and @ts-nocheck removal
+Status: IN-PROGRESS
+
+What changed:
+- Conducted a full codebase audit across all `src/`, `scripts/`, and `src/workers/` files identifying 23 issues across critical, high, medium, and low severity.
+- **Fixed: Checksum algorithm mismatch** in `src/sim/phase1AsteroidCatalog.ts`. The loader now detects the checksum algorithm from metadata (SHA-256 keys vs FNV-1a keys by hash length), computes the matching hash via WebCrypto `subtle.digest('SHA-256')` or FNV-1a, and compares correctly. Binary and metadata fetches are now parallelized with `Promise.all`.
+- **Fixed: Code injection vulnerability** in `scripts/fetch_jpl_sbdb.py`. Body names from JPL API are now escaped before interpolation into generated Python/JS source code using `json.dumps()` (Python) and explicit single-quote escaping (JS).
+- **Fixed: `NameError` crash** in `scripts/fetch_gaia_catalog.py`. The `enriched_rows` variable was undefined when `nearby_stars` was empty; refactored to use `final_rows` assigned in both branches. Also narrowed overly broad `except (URLError, OSError, Exception)` to `except (URLError, OSError)`.
+- **Removed `// @ts-nocheck` from all 41 source files** in `src/`. Strict TypeScript checking is now active on every file.
+- **Added type annotations** to ~15 files so far:
+  - `src/sim/asteroids/` (all 4 files): defined `AsteroidBucket`, `AsteroidBucketMap`, `AsteroidShaderUniforms` interfaces; typed all function params and class properties.
+  - `src/frontend/rendering/orbitRenderer.ts`: defined `OrbitLineParams` interface.
+  - `src/frontend/features/planetary/visualProfiles.ts`, `moonTextureCatalog.ts`: typed all exports.
+  - `src/frontend/features/solar/gravitationalWaves.ts`, `solarProminences.ts`, `solarMagnetics.ts`, `solarFlares.ts`: typed all params, added null guards for canvas contexts.
+  - `src/frontend/features/solar/solarFeatureBlending.ts`: defined `ArcPoint`, `SolarFeature`, `BlendView` and related interfaces.
+  - `src/frontend/features/planetary/terrainSynthesis.ts`, `moonTexturePipeline.ts`: typed all params and class properties.
+  - `src/frontend/features/trajectory/index.ts`: defined `RouteLeg`, `Route`, `RouteOptions` and related interfaces.
+- **Verified high-severity issues #5-8** (taxonomy evidence, moon visibility, worker desync, Hilda eccentricity) were already resolved in the current codebase state.
+
+Why it changed:
+- User requested a comprehensive evaluation/inspection of the codebase for bugs, issues, and bad coding practices, followed by systematic fixes.
+
+Evidence/validation:
+- `npx tsc --noEmit` error count reduced from 1527 to ~1254 after type annotation work.
+- Checksum comparison now correctly matches the SHA-256 hash from the metadata (`a0b8328c...`) using WebCrypto.
+- Python script string escaping verified against names containing quotes/special characters.
+- `fetch_gaia_catalog.py` no longer crashes when `nearby_stars` is empty.
+
+Files touched:
+- `src/sim/phase1AsteroidCatalog.ts` (checksum fix + parallel fetch)
+- `scripts/fetch_jpl_sbdb.py` (injection fix)
+- `scripts/fetch_gaia_catalog.py` (NameError fix + exception narrowing)
+- All 41 `src/**/*.ts` files (removed `@ts-nocheck`)
+- ~15 files (added type annotations, interfaces, null guards)
+- `README.md`, `Development_Improvements.md`, `Development_History_Context.md`
+
+Follow-ups / open questions:
+- OPEN: ~1254 TypeScript errors remain across ~30 files (primarily implicit `any` on function params and missing null checks). Largest remaining files: `satelliteSystem.ts` (311), `sunController.ts` (109), `cloudDataPipeline.ts` (91), `smbhPropagation.ts` (81), `main.ts` (72).
+- OPEN: Several medium-severity issues identified but not yet fixed: 1.925M synchronous asteroid generation, `new Color()`/`new Vector3()` allocations in hot loops, `resizeRenderer()` called every frame, no resource cleanup on teardown, duplicated utilities (`mulberry32`, `clamp`, `lerp`, `solveKeplerFast`).
+- OPEN: `src/frontend/app/temp_nearbySystemsRenderer.ts` (~1129 lines, mostly dead code) should be deleted.
+
+### 2026-03-07 05:56:36 UTC — Compact asteroid catalog contract added and documented
+Status: DONE
+
+What changed:
+- Added `src/data/asteroidCatalogLoader.ts` with a compact `ACBF` v1 binary reader/writer for asteroid orbital elements and stable numeric IDs.
+- Added `src/data/asteroidCatalogBinaryFormat.md` documenting header bytes, field order, quantization ranges, and version rules.
+- Added `src/data/asteroidCatalogLoader.test.ts` exposing a 100k-body roundtrip validation entrypoint.
+- Updated `README.md`, `Development_Improvements.md`, and `Development_History_Context.md` so the repo context reflects the new compact catalog layer and the current realism state of asteroid/Kuiper/Oort systems more accurately.
+
+Why it changed:
+- The active thread delivered the Data Compression Engineer scope for the asteroid simulation plan: compact typed-array/binary packing plus versioned validation, while explicitly avoiding fetch-logic and taxonomy-rule changes.
+- Existing docs did not mention the new compact catalog contract and still risked overstating how complete the distant small-body runtime is.
+
+Evidence/validation:
+- Verified the new contract lives in `src/data/asteroidCatalogLoader.ts` with fixed-width `ACBF` v1 records and strict header validation.
+- Verified the format documentation and validation entrypoint were added alongside it.
+- Verified the live runtime ingestion path remains separate in `src/sim/phase1AsteroidCatalog.ts`, so the new binary contract is available but not yet the canonical runtime path.
+
+Files touched:
+- `src/data/asteroidCatalogLoader.ts`
+- `src/data/asteroidCatalogBinaryFormat.md`
+- `src/data/asteroidCatalogLoader.test.ts`
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Follow-ups / open questions:
+- Consolidate legacy `ASPH` loading and new `ACBF` tooling into one canonical ingestion path once fetch/taxonomy ownership is available.
+- Add checksum/version stamping at the dataset-generation layer before mission-target promotion depends on the binary contract.
+
+### 2026-03-07 05:47:00 UTC — Documentation refreshed after TS migration and runtime analysis
+Status: DONE
+
+What changed:
+- Updated `README.md` so it no longer describes the frontend/runtime tree as a JS/TS hybrid.
+- Corrected the documented `src` module graph from deleted `.js` entrypoints to the current `.ts` files, including the `superluminal-modeling` feature namespace.
+- Recorded the current runtime state from this thread's analysis:
+  - `src` is fully TypeScript-native and no longer contains shim `.js` files.
+  - The active render loop still lives directly in `src/main.ts`.
+  - `src/frontend/app/animationLoop.ts` exists as a reusable scheduler but is not yet the sole runtime entry path.
+  - The only existing frontend workerized compute path is satellite propagation.
+
+Why it changed:
+- Recent work in this thread focused on evaluating what remains after the filename migration: stricter typing, performance hardening, and thread/domain partitioning for the simulation.
+- Without a docs refresh, the repo context continued to imply that core JS migration work was still pending, which is no longer true.
+
+Evidence/validation:
+- Verified `src` contains no `.js` files during the analysis pass.
+- Verified `src/main.ts` owns the active `requestAnimationFrame` loop while `src/frontend/app/animationLoop.ts` remains available but not yet the normalized entry.
+- Verified worker usage is currently limited to `src/frontend/features/planetary/satelliteSystem.ts` and `src/frontend/features/planetary/satellitePropagationWorker.ts`.
+
+Files touched:
+- `README.md`
+- `Development_Improvements.md`
+- `Development_History_Context.md`
+
+Follow-ups / open questions:
+- The next runtime pass should be architectural, not cosmetic: worker contracts for orbital propagation, sun feature state, SMBH/AGN timeline computation, and asteroid generation.
+- **UPDATE 2026-03-07:** `// @ts-nocheck` has been removed from all 41 files. Type annotation work is in progress (see top entry).
+
 ### 2026-03-22 — Procedural Quadtree LOD and Shaders for Planetary Surfaces
 Status: DONE
 
@@ -377,7 +478,7 @@ Files touched:
 - `src/main.ts`
 
 Follow-ups / open questions:
-- All three TypeScript files plus `sunController.ts` currently include `// @ts-nocheck`; should be replaced with typed interfaces (`source`, timeline/channel/event, and responder callback contracts) in a follow-up pass.
+- **UPDATE 2026-03-07:** `// @ts-nocheck` removed from all four files. Type annotations still needed for `sunController.ts`, `agnShockwaveEngine.ts`, `smbhPropagation.ts`, and `smbhPhysicsConstants.ts` — these should gain typed interfaces for source, timeline/channel/event, and responder callback contracts.
 
 ### 2026-02-26 09:00:00 UTC — Phase 4 asteroids migration cleanup complete
 Status: DONE

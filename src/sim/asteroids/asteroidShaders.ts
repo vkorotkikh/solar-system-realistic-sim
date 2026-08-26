@@ -1,4 +1,10 @@
 // WebGL Shaders for calculating Keplerian orbits purely on the GPU.
+import { MeshStandardMaterial } from 'three';
+
+export interface AsteroidShaderUniforms {
+    uTimeDays: { value: number };
+    uViewScaleAu: { value: number };
+}
 
 /**
  * We inject custom logic into the standard Three.js MeshStandardMaterial vertex shader.
@@ -125,12 +131,7 @@ mat3 rotationMatrix(vec3 axis, float angle) {
   `
 };
 
-export type AsteroidOrbitUniforms = { uTimeDays: { value: number }; uViewScaleAu: { value: number } };
-
-export function patchAsteroidMaterial(
-    material: MeshStandardMaterial,
-    uniforms: AsteroidOrbitUniforms
-) {
+export function patchAsteroidMaterial(material: MeshStandardMaterial, uniforms: AsteroidShaderUniforms): void {
     material.onBeforeCompile = (shader) => {
         // Inject Uniforms
         shader.uniforms.uTimeDays = uniforms.uTimeDays;

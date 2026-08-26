@@ -35,21 +35,27 @@ export interface SolarFeatureBlendView {
   complete: boolean;
 }
 
-interface SolarPhysicsFeatureLike {
+export interface SolarPhysicsFeatureLike {
   id?: unknown;
   kind?: unknown;
   brightness?: unknown;
   expansion_speed_kms?: unknown;
   peak_extent_solar_radii?: unknown;
   arc?: unknown[] | null;
+  base_dir?: unknown;
+  paired_dir?: unknown;
+  emergence?: unknown;
+  active_region_id?: unknown;
+  region_id?: unknown;
 }
 
-interface SolarPhysicsStateLike {
+export interface SolarPhysicsStateLike {
   corona?: {
     features?: SolarPhysicsFeatureLike[] | null;
   } | null;
   activity_index?: unknown;
   epoch_jd?: unknown;
+  heliosphere?: { parker_spiral?: { lines?: unknown } | null } | null;
 }
 
 export function clampUnit(value: number): number {

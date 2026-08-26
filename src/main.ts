@@ -48,7 +48,7 @@ import {
   type ModelWorkerOutboundMessage,
   type ModelWorkerStateMessage,
   type ModelWorkerTickMessage
-} from './workers/modelWorker';
+} from './workers/modelWorkerContract';
 import {
   createRuntimeUiConfig,
   createSceneSetup,
@@ -59,6 +59,7 @@ import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt } from './sim/asteroidBelt';
 import { generateKuiperBelt, propagateKBOPositions, propagateBinaryKBOPositions } from './sim/kuiperBelt';
+import type { CatalogBody } from './sim/catalog';
 import {
   loadPhase1AsteroidCatalog,
   PHASE1_CATALOG_URL,
@@ -227,7 +228,7 @@ const bodySpinGroups = new Map();
 const orbitLines: Line[] = [];
 const labels: { bodyId: string; sprite: Sprite }[] = [];
 
-function createLabelCanvas(text) {
+function createLabelCanvas(text: string) {
   const canvas = document.createElement('canvas');
   const size = 256;
   canvas.width = size;
@@ -243,7 +244,7 @@ function createLabelCanvas(text) {
   return canvas;
 }
 
-function createLabelSprite(text) {
+function createLabelSprite(text: string) {
   const canvas = createLabelCanvas(text);
   const tex = new CanvasTexture(canvas);
   const mat = new SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
@@ -252,7 +253,7 @@ function createLabelSprite(text) {
   return sprite;
 }
 
-function createBodyNode(body) {
+function createBodyNode(body: CatalogBody) {
   const node = new Group();
   node.name = body.name;
 
@@ -268,8 +269,8 @@ function createBodyNode(body) {
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
-  let material;
-  let geometry;
+  let material: MeshBasicMaterial | MeshStandardMaterial;
+  let geometry: SphereGeometry;
   let mesh;
 
   if (['earth', 'moon', 'mars'].includes(body.id)) {
@@ -1097,7 +1098,8 @@ function animate(timestamp: number) {
     kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
   }
 
-  sunCtrl.update(simState.julianDate, timestamp * 0.001);
+  const simTimeSec = (simState.julianDate - J2000_JD) * DAY_SECONDS;
+  sunCtrl.update(simState.julianDate, simTimeSec);
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();

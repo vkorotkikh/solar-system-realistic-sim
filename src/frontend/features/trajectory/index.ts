@@ -9,18 +9,76 @@ const DEFAULT_BACKEND_HOST = 'localhost';
 const DEFAULT_BACKEND_PORT = 8042;
 const REQUEST_TIMEOUT_MS = 2_500;
 
+interface RouteLeg {
+  startPosition: unknown;
+  endPosition: unknown;
+  departureVelocityApprox: unknown;
+  arrivalVelocityApprox: unknown;
+  [key: string]: unknown;
+}
+
+interface Route {
+  legs?: RouteLeg[];
+  [key: string]: unknown;
+}
+
+interface RouteOptions {
+  fromId: string;
+  toId: string;
+  departureJd: number;
+  objective?: string;
+  maxAssists?: number;
+  assistPool?: string[];
+  ephemerisProvider?: string;
+  prograde?: boolean;
+}
+
+interface LambertOptions {
+  fromId: string;
+  toId: string;
+  departureJd: number;
+  arrivalJd: number;
+  ephemerisProvider?: string;
+  prograde?: boolean;
+}
+
+interface PorkchopOptions {
+  fromId: string;
+  toId: string;
+  departureStartJd: number;
+  departureEndJd: number;
+  departureStepDays: number;
+  tofMinDays: number;
+  tofMaxDays: number;
+  tofStepDays: number;
+  ephemerisProvider?: string;
+  prograde?: boolean;
+}
+
+interface MissionOptions {
+  fromId: string;
+  targetId: string;
+  returnId: string;
+  departureJd: number;
+  objective?: string;
+  maxAssists?: number;
+  ephemerisProvider?: string;
+  payloadMassKg?: number;
+  prograde?: boolean;
+}
+
 function backendBaseUrl() {
   const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
   const host = window.location.hostname || DEFAULT_BACKEND_HOST;
   return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
 }
 
-function asFiniteNumber(value, fallback = 0) {
+function asFiniteNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function vec3FromArray(value) {
+function vec3FromArray(value: unknown): Vector3 {
   if (!Array.isArray(value) || value.length !== 3) {
     return new Vector3();
   }
@@ -31,11 +89,11 @@ function vec3FromArray(value) {
   );
 }
 
-function hydrateRoute(route) {
+function hydrateRoute(route: Route | null) {
   if (!route) return null;
   return {
     ...route,
-    legs: (route.legs ?? []).map((leg) => ({
+    legs: (route.legs ?? []).map((leg: RouteLeg) => ({
       ...leg,
       startPosition: vec3FromArray(leg.startPosition),
       endPosition: vec3FromArray(leg.endPosition),
@@ -45,7 +103,7 @@ function hydrateRoute(route) {
   };
 }
 
-function hydrateLeg(leg) {
+function hydrateLeg(leg: RouteLeg | null) {
   if (!leg) return null;
   return {
     ...leg,
@@ -56,7 +114,7 @@ function hydrateLeg(leg) {
   };
 }
 
-async function requestBackendRoute(options) {
+async function requestBackendRoute(options: RouteOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -86,14 +144,14 @@ async function requestBackendRoute(options) {
       ...payload,
       source: 'backend',
       best: hydrateRoute(payload.best),
-      alternatives: (payload.alternatives ?? []).map(hydrateRoute)
+      alternatives: (payload.alternatives ?? []).map((r: Route) => hydrateRoute(r))
     };
   } finally {
     window.clearTimeout(timeoutId);
   }
 }
 
-async function requestBackendLambert(options) {
+async function requestBackendLambert(options: LambertOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -127,7 +185,7 @@ async function requestBackendLambert(options) {
   }
 }
 
-async function requestBackendPorkchop(options) {
+async function requestBackendPorkchop(options: PorkchopOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 3);
 
@@ -163,7 +221,7 @@ async function requestBackendPorkchop(options) {
   }
 }
 
-async function requestMissionPlan(options) {
+async function requestMissionPlan(options: MissionOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 4);
 
@@ -205,7 +263,11 @@ async function requestMissionPlan(options) {
   }
 }
 
-export async function planInterplanetaryRoute(model, bodyById, options) {
+export async function planInterplanetaryRoute(
+  model: unknown,
+  bodyById: Map<string, unknown>,
+  options: RouteOptions
+) {
   try {
     return await requestBackendRoute(options);
   } catch {
@@ -217,15 +279,15 @@ export async function planInterplanetaryRoute(model, bodyById, options) {
   }
 }
 
-export async function solveLambertTransfer(options) {
+export async function solveLambertTransfer(options: LambertOptions) {
   return requestBackendLambert(options);
 }
 
-export async function scanPorkchopWindow(options) {
+export async function scanPorkchopWindow(options: PorkchopOptions) {
   return requestBackendPorkchop(options);
 }
 
-export async function planMissionProfile(options) {
+export async function planMissionProfile(options: MissionOptions) {
   return requestMissionPlan(options);
 }
 

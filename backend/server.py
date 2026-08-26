@@ -26,18 +26,21 @@ Protocol (WebSocket /ws/sim):
         {"type": "error", "message": "..."}
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import math
 import queue
+import os
 import threading
 import time
-from collections import Counter
+from collections import Counter, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
 
@@ -82,13 +85,58 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
+def _load_env_csv(name: str, default: list[str]) -> list[str]:
+    raw = os.getenv(name)
+    if raw is None:
+        return list(default)
+    values = [item.strip() for item in raw.split(",") if item.strip()]
+    if "*" in values:
+        return list(default)
+    return values if values else list(default)
+
+
+SOLAR_CORS_ALLOWED_ORIGINS = _load_env_csv(
+    "SOLAR_CORS_ALLOWED_ORIGINS",
+    [
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _load_env_int(name: str, default: int, *, min_value: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, value)
+
+
+def _load_env_float(name: str, default: float, *, min_value: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, value)
 
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
@@ -107,6 +155,352 @@ NEARBY_SYSTEMS_SCHEMA = {
 }
 SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
 SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
+
+
+SOLAR_PHYSICS_MAX_FEATURES = _load_env_int("SOLAR_PHYSICS_MAX_FEATURES", 256, min_value=64)
+SOLAR_PHYSICS_MIN_FEATURES = 8
+SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_env_int(
+    "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW",
+    36,
+    min_value=2,
+)
+SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_env_float(
+    "SOLAR_PHYSICS_RATE_WINDOW_SECONDS",
+    60.0,
+    min_value=1.0,
+)
+SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+    "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
+    12.0,
+    min_value=0.5,
+)
+SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+    "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+)
+SOLAR_PHYSICS_API_KEYS = frozenset(
+    key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
+)
+
+SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_env_int(
+    "SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW",
+    60,
+    min_value=2,
+)
+SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_env_float(
+    "SOLAR_AIA_TILE_RATE_WINDOW_SECONDS",
+    60.0,
+    min_value=1.0,
+)
+SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+    "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+)
+SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_env_float(
+    "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS",
+    4.0,
+    min_value=0.5,
+)
+TRAJECTORY_PORKCHOP_MAX_GRID_POINTS = _load_env_int(
+    "TRAJECTORY_PORKCHOP_MAX_GRID_POINTS",
+    20_000,
+    min_value=100,
+)
+TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS = _load_env_float(
+    "TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS",
+    3_650.0,
+    min_value=1.0,
+)
+TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS = _load_env_float(
+    "TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS",
+    3_650.0,
+    min_value=1.0,
+)
+TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS = _load_env_float(
+    "TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS",
+    0.5,
+    min_value=0.25,
+)
+TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS = _load_env_float(
+    "TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS",
+    5.0,
+    min_value=1.0,
+)
+TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+    "TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS",
+    8.0,
+    min_value=0.5,
+)
+TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+    "TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+)
+MISSION_PLAN_MAX_RISK_SAMPLES = _load_env_int(
+    "MISSION_PLAN_MAX_RISK_SAMPLES",
+    5_000,
+    min_value=50,
+)
+MISSION_PLAN_MAX_VEHICLE_STAGES = _load_env_int(
+    "MISSION_PLAN_MAX_VEHICLE_STAGES",
+    12,
+    min_value=1,
+)
+MISSION_PLAN_MAX_ASSIST_POOL_SIZE = _load_env_int(
+    "MISSION_PLAN_MAX_ASSIST_POOL_SIZE",
+    12,
+    min_value=1,
+)
+MISSION_PLAN_MAX_PAYLOAD_MASS_KG = _load_env_float(
+    "MISSION_PLAN_MAX_PAYLOAD_MASS_KG",
+    5_000_000.0,
+    min_value=1.0,
+)
+MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+    "MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS",
+    12.0,
+    min_value=0.5,
+)
+MISSION_PLAN_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+    "MISSION_PLAN_CONCURRENT_REQUEST_LIMIT",
+    1,
+    min_value=1,
+)
+
+_solar_physics_rate_locks: dict[str, deque[float]] = {}
+_solar_physics_rate_lock = threading.Lock()
+_solar_physics_concurrent_guard = threading.BoundedSemaphore(SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT)
+_solar_aia_tile_rate_locks: dict[str, deque[float]] = {}
+_solar_aia_tile_rate_lock = threading.Lock()
+_solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
+_trajectory_porkchop_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT)
+_mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURRENT_REQUEST_LIMIT)
+
+
+def _extract_solar_api_key(request: Request) -> str | None:
+    header_key = request.headers.get("x-api-key")
+    if header_key:
+        token = header_key.strip()
+        if token:
+            return token
+    auth = request.headers.get("authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token:
+            return token
+    return None
+
+
+def _client_identity(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "anonymous"
+
+
+def _require_optional_solar_api_key(request: Request) -> str | None:
+    if not SOLAR_PHYSICS_API_KEYS:
+        return None
+    token = _extract_solar_api_key(request)
+    if token is None or token not in SOLAR_PHYSICS_API_KEYS:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid API key for solar endpoints.",
+            headers={"WWW-Authenticate": "X-API-Key"},
+        )
+    return token
+
+
+def _enforce_solar_request_rate_limit(request: Request) -> None:
+    now = time.monotonic()
+    window = max(1.0, SOLAR_PHYSICS_RATE_WINDOW_SECONDS)
+    max_requests = max(1, SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW)
+
+    identity = _extract_solar_api_key(request) or _client_identity(request)
+    cutoff = now - window
+
+    with _solar_physics_rate_lock:
+        queue = _solar_physics_rate_locks.setdefault(identity, deque())
+        while queue and queue[0] < cutoff:
+            queue.popleft()
+        if len(queue) >= max_requests:
+            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
+            raise HTTPException(
+                status_code=429,
+                detail="Solar request rate limit exceeded; retry later.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        queue.append(now)
+
+
+def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
+    now = time.monotonic()
+    window = max(1.0, SOLAR_AIA_TILE_RATE_WINDOW_SECONDS)
+    max_requests = max(1, SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW)
+
+    identity = _extract_solar_api_key(request) or _client_identity(request)
+    cutoff = now - window
+
+    with _solar_aia_tile_rate_lock:
+        queue = _solar_aia_tile_rate_locks.setdefault(identity, deque())
+        while queue and queue[0] < cutoff:
+            queue.popleft()
+        if len(queue) >= max_requests:
+            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
+            raise HTTPException(
+                status_code=429,
+                detail="Solar AIA tile request rate limit exceeded; retry later.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        queue.append(now)
+
+
+def _build_solar_physics_state(
+    epoch_jd: float,
+    fidelity_key: str,
+    safe_max_features: int,
+    forcing_key: str,
+    live_data: bool,
+    force_data_refresh: bool,
+) -> dict[str, Any]:
+    realtime_data = None
+    if live_data and forcing_key != "synthetic":
+        try:
+            realtime_data = SOLAR_REALTIME_DATA.latest(
+                jd=epoch_jd,
+                force_refresh=bool(force_data_refresh),
+            )
+        except Exception:
+            # Keep synthetic fallback resilient on transient upstream data failures.
+            realtime_data = None
+
+    state = SOLAR_PHYSICS_MODEL.sample_state(
+        epoch_jd,
+        fidelity=fidelity_key,
+        max_features=safe_max_features,
+        forcing=forcing_key,
+        realtime_data=realtime_data,
+    )
+    state["forcing"] = forcing_key
+    state["live_data_enabled"] = bool(live_data)
+    state["source"] = "backend"
+    return state
+
+
+def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
+    return sem.acquire(blocking=False)
+
+
+def _build_aia_tile_payload(
+    channel: str,
+    jd: float | None = None,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    return SOLAR_REALTIME_DATA.latest_aia_tile(
+        channel=channel,
+        jd=jd,
+        force_refresh=bool(force_refresh),
+    )
+
+
+def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
+    departure_start = float(payload.departure_start_jd)
+    departure_end = float(payload.departure_end_jd)
+    tof_min = float(payload.tof_min_days)
+    tof_max = float(payload.tof_max_days)
+    departure_step = max(
+        float(payload.departure_step_days),
+        TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS,
+    )
+    tof_step = max(float(payload.tof_step_days), TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS)
+
+    if departure_end <= departure_start:
+        raise HTTPException(
+            status_code=400,
+            detail="`departure_end_jd` must be greater than `departure_start_jd`",
+        )
+
+    if tof_max <= tof_min:
+        raise HTTPException(
+            status_code=400,
+            detail="`tof_max_days` must be greater than `tof_min_days`",
+        )
+
+    departure_window = departure_end - departure_start
+    tof_window = tof_max - tof_min
+    if departure_window > TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`departure_end_jd - departure_start_jd` must be <= "
+                f"{TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS} days"
+            ),
+        )
+
+    if tof_window > TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`tof_max_days - tof_min_days` must be <= "
+                f"{TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS} days"
+            ),
+        )
+
+    departure_samples = int(departure_window / departure_step) + 1
+    tof_samples = int(tof_window / tof_step) + 1
+    estimated_points = departure_samples * tof_samples
+    if estimated_points > TRAJECTORY_PORKCHOP_MAX_GRID_POINTS:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Trajectory porkchop request is too large; estimated grid points "
+                f"{estimated_points} > {TRAJECTORY_PORKCHOP_MAX_GRID_POINTS}"
+            ),
+        )
+
+
+def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
+    vehicle = payload.vehicle
+    if vehicle is not None and len(vehicle.stages) > MISSION_PLAN_MAX_VEHICLE_STAGES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`vehicle.stages` is limited to {MISSION_PLAN_MAX_VEHICLE_STAGES} "
+                "entries to prevent request amplification"
+            ),
+        )
+
+    assist_pool = payload.assist_pool or []
+    if len(assist_pool) > MISSION_PLAN_MAX_ASSIST_POOL_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`assist_pool` is limited to {MISSION_PLAN_MAX_ASSIST_POOL_SIZE} "
+                "entries to prevent request amplification"
+            ),
+        )
+
+    if float(payload.payload_mass_kg) > MISSION_PLAN_MAX_PAYLOAD_MASS_KG:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`payload_mass_kg` is limited to {MISSION_PLAN_MAX_PAYLOAD_MASS_KG:.1f} "
+                "to constrain mission-cost runtime"
+            ),
+        )
+
+    if int(payload.risk_samples) > MISSION_PLAN_MAX_RISK_SAMPLES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"`risk_samples` is limited to {MISSION_PLAN_MAX_RISK_SAMPLES} "
+                "for bounded Monte Carlo cost"
+            ),
+        )
 
 
 def _rebound_available() -> bool:
@@ -417,11 +811,15 @@ def solar_realtime_data(force_refresh: bool = False):
 
 
 @app.get("/solar/realtime/aia-tile")
-def solar_realtime_aia_tile(
+async def solar_realtime_aia_tile(
+    request: Request,
     channel: str = "aia_193",
     jd: float | None = None,
     force_refresh: bool = False,
 ):
+    _require_optional_solar_api_key(request)
+    _enforce_solar_aia_tile_rate_limit(request)
+
     channel_key = channel.strip().lower()
     if channel_key not in SOLAR_REALTIME_DATA.AIA_SOURCE_IDS:
         raise HTTPException(
@@ -429,16 +827,34 @@ def solar_realtime_aia_tile(
             detail=f"`channel` must be one of {list(SOLAR_REALTIME_DATA.AIA_SOURCE_IDS.keys())}",
         )
 
-    try:
-        tile = SOLAR_REALTIME_DATA.latest_aia_tile(
-            channel=channel_key,
-            jd=jd,
-            force_refresh=bool(force_refresh),
+    if not _acquire_nonblocking(_solar_aia_tile_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail="Solar AIA tile requests are temporarily saturated. Retry shortly.",
+            headers={"Retry-After": "2"},
         )
+
+    try:
+        tile = await asyncio.wait_for(
+            asyncio.to_thread(
+                _build_aia_tile_payload,
+                channel=channel_key,
+                jd=jd,
+                force_refresh=bool(force_refresh),
+            ),
+            timeout=SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="AIA tile generation timed out. Try again later.",
+        ) from exc
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
+    finally:
+        _solar_aia_tile_concurrent_guard.release()
 
     response = Response(
         content=tile["content"],
@@ -454,7 +870,8 @@ def solar_realtime_aia_tile(
 
 
 @app.get("/solar/physics")
-def solar_physics_state(
+async def solar_physics_state(
+    request: Request,
     jd: float | None = None,
     fidelity: str = "operational",
     max_features: int = 220,
@@ -462,6 +879,9 @@ def solar_physics_state(
     live_data: bool = False,
     force_data_refresh: bool = False,
 ):
+    _require_optional_solar_api_key(request)
+    _enforce_solar_request_rate_limit(request)
+
     if jd is None:
         epoch_jd = utc_now_to_julian_date()
     else:
@@ -486,28 +906,48 @@ def solar_physics_state(
             detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
         )
 
-    safe_max_features = max(8, min(2_048, int(max_features)))
-    realtime_data: dict[str, Any] | None = None
-    if bool(live_data) and forcing_key != "synthetic":
-        try:
-            realtime_data = SOLAR_REALTIME_DATA.latest(
-                jd=epoch_jd,
-                force_refresh=bool(force_data_refresh),
-            )
-        except Exception:
-            # Keep synthetic fallback resilient on transient upstream data failures.
-            realtime_data = None
-
-    state = SOLAR_PHYSICS_MODEL.sample_state(
-        epoch_jd,
-        fidelity=fidelity_key,
-        max_features=safe_max_features,
-        forcing=forcing_key,
-        realtime_data=realtime_data,
+    requested_max_features = int(max_features)
+    safe_max_features = min(
+        SOLAR_PHYSICS_MAX_FEATURES,
+        max(SOLAR_PHYSICS_MIN_FEATURES, requested_max_features),
     )
-    state["forcing"] = forcing_key
-    state["live_data_enabled"] = bool(live_data)
-    state["source"] = "backend"
+    if requested_max_features != safe_max_features:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                "`max_features` must be between "
+                f"{SOLAR_PHYSICS_MIN_FEATURES} and {SOLAR_PHYSICS_MAX_FEATURES}"
+            ),
+        )
+
+    if not _acquire_nonblocking(_solar_physics_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail="Solar physics requests are temporarily saturated. Retry shortly.",
+            headers={"Retry-After": "2"},
+        )
+
+    try:
+        state = await asyncio.wait_for(
+            asyncio.to_thread(
+                _build_solar_physics_state,
+                epoch_jd,
+                fidelity_key,
+                safe_max_features,
+                forcing_key,
+                bool(live_data),
+                bool(force_data_refresh),
+            ),
+            timeout=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Solar physics generation timed out. Try again later.",
+        ) from exc
+    finally:
+        _solar_physics_concurrent_guard.release()
+
     return state
 
 
@@ -639,32 +1079,48 @@ def trajectory_lambert(payload: TrajectoryLambertRequest):
 
 
 @app.post("/trajectory/porkchop")
-def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
+async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
+    _enforce_porkchop_request_size(payload)
     if payload.from_id == payload.to_id:
         raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
-    if payload.departure_end_jd <= payload.departure_start_jd:
-        raise HTTPException(status_code=400, detail="`departure_end_jd` must be greater than `departure_start_jd`")
-    if payload.tof_max_days <= payload.tof_min_days:
-        raise HTTPException(status_code=400, detail="`tof_max_days` must be greater than `tof_min_days`")
 
     _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
 
+    if not _acquire_nonblocking(_trajectory_porkchop_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail="Trajectory porkchop scan requests are temporarily saturated. Retry shortly.",
+            headers={"Retry-After": "2"},
+        )
+
     try:
-        return run_porkchop_scan(
-            ALL_BODIES,
-            from_id=payload.from_id,
-            to_id=payload.to_id,
-            departure_start_jd=float(payload.departure_start_jd),
-            departure_end_jd=float(payload.departure_end_jd),
-            departure_step_days=float(payload.departure_step_days),
-            tof_min_days=float(payload.tof_min_days),
-            tof_max_days=float(payload.tof_max_days),
-            tof_step_days=float(payload.tof_step_days),
-            ephemeris_provider=payload.ephemeris_provider,
-            prograde=payload.prograde,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                run_porkchop_scan,
+                ALL_BODIES,
+                from_id=payload.from_id,
+                to_id=payload.to_id,
+                departure_start_jd=float(payload.departure_start_jd),
+                departure_end_jd=float(payload.departure_end_jd),
+                departure_step_days=float(payload.departure_step_days),
+                tof_min_days=float(payload.tof_min_days),
+                tof_max_days=float(payload.tof_max_days),
+                tof_step_days=float(payload.tof_step_days),
+                ephemeris_provider=payload.ephemeris_provider,
+                prograde=payload.prograde,
+            ),
+            timeout=TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS,
         )
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Trajectory porkchop scan timed out. Try again later.",
+        ) from exc
+    finally:
+        _trajectory_porkchop_concurrent_guard.release()
+    return result
 
 
 @app.get("/mission/capabilities")
@@ -688,13 +1144,34 @@ def mission_capabilities():
 
 
 @app.post("/mission/plan")
-def mission_plan(payload: MissionPlanRequest):
-    planner = MissionPlannerAgent(ALL_BODIES)
+async def mission_plan(payload: MissionPlanRequest):
+    _enforce_mission_plan_request_size(payload)
+
+    if not _acquire_nonblocking(_mission_plan_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail="Mission planning requests are temporarily saturated. Retry shortly.",
+            headers={"Retry-After": "2"},
+        )
+
     mission_payload = payload.model_dump(exclude_none=True)
+
     try:
-        result = planner.plan(mission_payload)
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: MissionPlannerAgent(ALL_BODIES).plan(mission_payload),
+            ),
+            timeout=MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Mission planning timed out. Try again later.",
+        ) from exc
+    finally:
+        _mission_plan_concurrent_guard.release()
 
     if result.get("recommendation") is None:
         raise HTTPException(status_code=422, detail=result.get("status", "No feasible mission recommendation"))
