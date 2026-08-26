@@ -342,7 +342,7 @@ void main() {
   vec3 limbDark = neckellLimbDarkRGB(mu);
   
   // Physical epoch drives only the residual shear. Procedural detail below uses
-  // the separate, rate-bounded visual clock in `time`.
+  // the separate, rate-bounded visual clock in 'time'.
   float lonOffset = differentialRotationOffset(vLatitude, simulationDays);
   vec2 uvRotated = vUv + vec2(lonOffset / (2.0 * 3.14159265), 0.0);
   
