@@ -347,7 +347,20 @@ def generate_accuracy_report(
     output_path: str | Path,
     ephemeris_provider: str = "auto",
     scenarios_path: str | Path | None = None,
+    allow_overwrite: bool = False,
 ) -> Dict[str, Any]:
+    path = Path(output_path)
+
+    # Refuse to clobber an existing report unless the caller explicitly opts in.
+    # This endpoint is unauthenticated, and its target directory holds
+    # hand-written notes; silently replacing a file there destroys user data.
+    # Checked before the benchmark runs so a rejected call costs nothing.
+    if path.exists() and not allow_overwrite:
+        raise FileExistsError(
+            f"refusing to overwrite existing report {path}; "
+            "pass allow_overwrite=true to replace it"
+        )
+
     summary = benchmark_against_references(
         bodies,
         ephemeris_provider=ephemeris_provider,
@@ -355,7 +368,6 @@ def generate_accuracy_report(
     )
     markdown = render_accuracy_report_markdown(summary)
 
-    path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(markdown, encoding="utf-8")
 
