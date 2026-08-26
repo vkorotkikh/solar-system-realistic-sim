@@ -99,9 +99,21 @@ const SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS: OrbitNormal = {
   z: Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD)
 };
 // Authoritative parent equator poles for non-ecliptic moon frames where source-frame pole data is omitted.
+// Keys are catalog body ids (lower-case), matching the parentId passed to
+// parentPoleInEcliptic; see planetNameToId.
+//
+// These must point along the parent's ROTATIONAL ANGULAR MOMENTUM, which is the
+// axis the satellite elements are referenced to — not necessarily the IAU north
+// pole. For planets the IAU fixes north by the invariable-plane rule, so for a
+// retrograde rotator like Uranus (obliquity 97.77 deg) the IAU north pole points
+// opposite the angular momentum and must be negated. Dwarf planets such as Pluto
+// use the right-hand rule, so their IAU pole already is the angular momentum.
+// Verified against Horizons r x v: Ariel 0.003 deg, Charon 0.084 deg.
 const PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC: Record<string, OrbitNormal> = {
-  Uranus: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175))),
-  Pluto: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(132.993, -6.163)))
+  uranus: negateVector(
+    normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175)))
+  ),
+  pluto: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(132.993, -6.163)))
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -118,10 +130,11 @@ function orbitNormalFromElements(iDeg: number | undefined, ascendingNodeDeg: num
   const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
   const sinI = Math.sin(i);
 
-  // Angular-momentum direction for Rz(Omega) * Rx(i) perifocal transform.
+  // Angular-momentum direction for the Rz(Omega) * Rx(i) * Rz(argp) transform
+  // used by propagateKeplerOrbit: h = (sin i sin Omega, -sin i cos Omega, cos i).
   return {
-    x: -Math.sin(omega) * sinI,
-    y: Math.cos(omega) * sinI,
+    x: Math.sin(omega) * sinI,
+    y: -Math.cos(omega) * sinI,
     z: Math.cos(i)
   };
 }
@@ -140,6 +153,10 @@ function normalizeVector(vector: OrbitNormal): OrbitNormal {
     y: vector.y / mag,
     z: vector.z / mag
   };
+}
+
+function negateVector(vector: OrbitNormal): OrbitNormal {
+  return { x: -vector.x, y: -vector.y, z: -vector.z };
 }
 
 function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
@@ -263,7 +280,8 @@ function sourcePeriapsisDirection(iDeg: number | undefined, ascendingNodeDeg: nu
 function elementsFromPlane(normal: OrbitNormal, periapsis: OrbitNormal): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
   const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
   const iDeg = Math.acos(clamp(normal.z, -1, 1)) * RAD_TO_DEG;
-  const ascendingNodeDeg = normalizeDegrees(Math.atan2(-normal.x, normal.y) * RAD_TO_DEG);
+  // Inverse of orbitNormalFromElements: h.x = sin i sin Omega, h.y = -sin i cos Omega.
+  const ascendingNodeDeg = normalizeDegrees(Math.atan2(normal.x, -normal.y) * RAD_TO_DEG);
 
   let nodeAxis = crossProduct(eclipticNorth, normal);
   if (vectorMagnitude(nodeAxis) < 1e-12) {
