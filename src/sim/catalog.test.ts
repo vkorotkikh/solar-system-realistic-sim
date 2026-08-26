@@ -101,8 +101,8 @@ function orbitNormalFromElements(iDeg: number, ascendingNodeDeg: number) {
   const omega = ascendingNodeDeg * DEG_TO_RAD;
   const sinI = Math.sin(i);
   return {
-    x: -Math.sin(omega) * sinI,
-    y: Math.cos(omega) * sinI,
+    x: Math.sin(omega) * sinI,
+    y: -Math.cos(omega) * sinI,
     z: Math.cos(i)
   };
 }
@@ -110,7 +110,7 @@ function orbitNormalFromElements(iDeg: number, ascendingNodeDeg: number) {
 function elementsFromOrbitNormal(normal: { x: number; y: number; z: number }) {
   const z = Math.min(1, Math.max(-1, normal.z));
   const iRad = Math.acos(z);
-  const ascendingNodeRad = Math.atan2(-normal.x, normal.y);
+  const ascendingNodeRad = Math.atan2(normal.x, -normal.y);
   return {
     iDeg: iRad * RAD_TO_DEG,
     ascendingNodeDeg: normalizeDegrees(ascendingNodeRad * RAD_TO_DEG)
@@ -129,8 +129,12 @@ function transformSourceVectorToEcliptic(
 }
 
 function basisFromSourcePole(sourcePole: { x: number; y: number; z: number }) {
-  const eclipticNorth = { x: 0, y: 0, z: 1 };
-  let planeXAxis = crossProduct(eclipticNorth, sourcePole);
+  const equatorialNorthInEcliptic = {
+    x: 0,
+    y: Math.sin(EARTH_OBLIQUITY_DEG * DEG_TO_RAD),
+    z: Math.cos(EARTH_OBLIQUITY_DEG * DEG_TO_RAD)
+  };
+  let planeXAxis = crossProduct(equatorialNorthInEcliptic, sourcePole);
   if (vectorMagnitude(planeXAxis) < 1e-9) {
     planeXAxis = { x: 1, y: 0, z: 0 };
   } else {

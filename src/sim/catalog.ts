@@ -91,6 +91,32 @@ const EARTH_OBLIQUITY_DEG = 23.439281;
 const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
   PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
+// JPL publishes satellite elements referred to a body-fixed plane (parent equator or
+// local Laplace plane) with the node measured from that plane's ascending node on the
+// Earth mean equator of J2000 -- not on the ecliptic. The source frame's x-axis must
+// therefore be built from the equatorial pole, expressed here in ecliptic coordinates.
+const SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS: OrbitNormal = {
+  x: 0,
+  y: Math.sin(EARTH_OBLIQUITY_DEG * DEG_TO_RAD),
+  z: Math.cos(EARTH_OBLIQUITY_DEG * DEG_TO_RAD)
+};
+// Authoritative parent poles for parent-equator moon records that carry no per-moon
+// pole (moons.json leaves poleRaDeg/poleDecDeg null for the Uranian and Plutonian
+// 'equatorial' entries). PARENT_AXIAL_TILT_DEG alone cannot express these: it drops the
+// pole's ecliptic longitude entirely.
+//
+// The vector must be the parent's ROTATIONAL ANGULAR MOMENTUM, which is what the
+// satellite elements are referenced to -- not necessarily the IAU north pole. The IAU
+// fixes planetary north by the invariable-plane rule, so for a retrograde rotator like
+// Uranus (obliquity 97.77 deg) the IAU pole is anti-parallel to the moons' orbital
+// angular momentum and must be negated. Dwarf planets such as Pluto use the right-hand
+// rule, so their IAU pole already is the angular momentum direction.
+// Keys are catalog body ids (lower case), matching the parentId argument -- see
+// planetNameToId in createSolarSystemCatalog.
+const PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC: Record<string, OrbitNormal> = {
+  uranus: negateVector(normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175)))),
+  pluto: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(132.993, -6.163)))
+};
 
 function normalizeDegrees(value: number): number {
   const mod = value % 360;
@@ -102,10 +128,14 @@ function orbitNormalFromElements(iDeg: number | undefined, ascendingNodeDeg: num
   const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
   const sinI = Math.sin(i);
 
-  // Angular-momentum direction for Rz(Omega) * Rx(i) perifocal transform.
+  // Angular-momentum direction for the Rz(Omega) * Rx(i) * Rz(argPeriapsis) transform
+  // that propagateKeplerOrbit actually applies:
+  //   h = (sin i sin Omega, -sin i cos Omega, cos i).
+  // The previous (-sin Omega sin i, cos Omega sin i, cos i) is Rz(180 deg) of that, so
+  // the source plane was tilted the wrong way about the frame node line.
   return {
-    x: -Math.sin(omega) * sinI,
-    y: Math.cos(omega) * sinI,
+    x: Math.sin(omega) * sinI,
+    y: -Math.cos(omega) * sinI,
     z: Math.cos(i)
   };
 }
@@ -124,6 +154,10 @@ function normalizeVector(vector: OrbitNormal): OrbitNormal {
     y: vector.y / mag,
     z: vector.z / mag
   };
+}
+
+function negateVector(vector: OrbitNormal): OrbitNormal {
+  return { x: -vector.x, y: -vector.y, z: -vector.z };
 }
 
 function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
@@ -152,7 +186,8 @@ function rotateVectorAroundX(vector: OrbitNormal, angleDeg: number): OrbitNormal
 function elementsFromOrbitNormal(normal: OrbitNormal): { iDeg: number; ascendingNodeDeg: number } {
   const z = clamp(normal.z, -1, 1);
   const iRad = Math.acos(z);
-  const ascendingNodeRad = Math.atan2(-normal.x, normal.y);
+  // Inverse of orbitNormalFromElements: h.x = sin i sin Omega, h.y = -sin i cos Omega.
+  const ascendingNodeRad = Math.atan2(normal.x, -normal.y);
   return {
     iDeg: iRad * RAD_TO_DEG,
     ascendingNodeDeg: normalizeDegrees(ascendingNodeRad * RAD_TO_DEG)
@@ -191,8 +226,9 @@ function periapsisVectorFromElements(
 }
 
 function basisFromSourcePole(sourcePole: OrbitNormal): FrameBasis {
-  const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
-  let planeXAxis = crossProduct(eclipticNorth, sourcePole);
+  // Zero point of the source frame's longitudes: the ascending node of the source plane
+  // on the Earth mean equator of J2000, which is where JPL measures the published node.
+  let planeXAxis = crossProduct(SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS, sourcePole);
   if (vectorMagnitude(planeXAxis) < 1e-9) {
     planeXAxis = { x: 1, y: 0, z: 0 };
   } else {
@@ -260,6 +296,16 @@ function sourcePoleInEcliptic(
   if (Number.isFinite(moon.poleRaDeg) && Number.isFinite(moon.poleDecDeg)) {
     const poleEq = raDecToEquatorialUnit(moon.poleRaDeg, moon.poleDecDeg);
     return normalizeVector(equatorialToEcliptic(poleEq));
+  }
+
+  // No per-moon pole. Prefer an authoritative parent pole when we have one; the axial
+  // tilt fallback below knows only the tilt magnitude, not the pole's longitude.
+  // Every Laplace record in moons.json carries an explicit pole, so only parent-equator
+  // records reach here today; the Laplace branch is left exactly as it was so that the
+  // per-moon Laplace tilt is never silently dropped.
+  const parentPoleOverride = PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC[parentId];
+  if (parentPoleOverride && sourceFrame !== 'laplace') {
+    return parentPoleOverride;
   }
 
   const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
