@@ -1,5 +1,4 @@
 // WebGL Shaders for calculating Keplerian orbits purely on the GPU.
-import { MeshStandardMaterial } from 'three';
 
 export interface AsteroidShaderUniforms {
     uTimeDays: { value: number };
