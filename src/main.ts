@@ -1098,8 +1098,12 @@ function animate(timestamp: number) {
     kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
   }
 
-  const simTimeSec = (simState.julianDate - J2000_JD) * DAY_SECONDS;
-  sunCtrl.update(simState.julianDate, simTimeSec);
+  // Solar visuals run on the WALL clock, not the simulation epoch. Feeding the
+  // epoch (~8.4e8 s) into sunController's `uniform float time` freezes every
+  // procedural effect: float32 ULP at that magnitude is 64 s, so a 1 s advance
+  // does not change the uniform. main's 56930fb paired this with a rate-bounded
+  // visual clock in sunVisuals.ts, which this tree does not carry.
+  sunCtrl.update(simState.julianDate, timestamp * 0.001);
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();
