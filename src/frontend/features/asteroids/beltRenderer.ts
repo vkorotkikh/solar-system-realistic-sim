@@ -174,7 +174,6 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
   worldPosition: /* glsl */`
     vec4 worldPositionWithOrbit = vec4( transformed, 1.0 );
-    worldPositionWithOrbit.xyz += vOrbitOffset;
 
     #ifdef USE_BATCHING
       worldPositionWithOrbit = batchingMatrix * worldPositionWithOrbit;
@@ -184,12 +183,17 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
       worldPositionWithOrbit = instanceMatrix * worldPositionWithOrbit;
     #endif
 
+    // The instance matrix carries only rotation + display scale (translation is
+    // zero); the Kepler offset is a world-space translation and must therefore be
+    // added AFTER it, or the orbit radius gets multiplied by the asteroid's
+    // display scale (~1e-3) and the whole belt collapses into the Sun.
+    worldPositionWithOrbit.xyz += vOrbitOffset;
+
     vec4 worldPosition = modelMatrix * worldPositionWithOrbit;
   `,
 
   projectVertex: /* glsl */`
     vec4 mvPositionWithOrbit = vec4( transformed, 1.0 );
-    mvPositionWithOrbit.xyz += vOrbitOffset;
 
     #ifdef USE_BATCHING
       mvPositionWithOrbit = batchingMatrix * mvPositionWithOrbit;
@@ -198,6 +202,10 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     #ifdef USE_INSTANCING
       mvPositionWithOrbit = instanceMatrix * mvPositionWithOrbit;
     #endif
+
+    // Same ordering requirement as worldPosition above: translate after the
+    // rotate/scale instance matrix, never before it.
+    mvPositionWithOrbit.xyz += vOrbitOffset;
 
     vec4 mvPosition = modelViewMatrix * mvPositionWithOrbit;
     gl_Position = projectionMatrix * mvPosition;
