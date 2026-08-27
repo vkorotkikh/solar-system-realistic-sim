@@ -14,7 +14,7 @@ Protocol (WebSocket /ws/sim):
         {"type": "set_time_scale", "days_per_sec": 10}
         {"type": "pause"}
         {"type": "resume"}
-        {"type": "set_julian_date", "jd": 2460000.5}
+        {"type": "set_julian_date", "jd": 2460000.5, "jd_time_scale": "TDB"}
         {"type": "activate_kuiper", "center": [42, 0, 0], "spread": 5}
         {"type": "deactivate_kuiper"}
         {"type": "get_orbital_elements", "body_id": "earth"}
@@ -503,11 +503,20 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
         )
 
 
-def _rebound_available() -> bool:
+def _rebound_readiness() -> Dict[str, Any]:
     try:
-        return REBOUNDEngine().available
-    except Exception:
-        return False
+        return REBOUNDEngine().readiness_status()
+    except Exception as exc:
+        return {
+            "available": False,
+            "fidelity": None,
+            "configured_fidelity": "high",
+            "error": str(exc),
+        }
+
+
+def _rebound_available() -> bool:
+    return bool(_rebound_readiness().get("available", False))
 
 
 def _tudatpy_available() -> bool:
@@ -747,12 +756,12 @@ class AccuracyReportRequest(StrictRequestModel):
 
 @app.get("/health")
 def health():
-    rebound_ready = _rebound_available()
+    rebound_status = _rebound_readiness()
     tudatpy_ready = _tudatpy_available()
     return {
         "status": "ok",
         "engines": {
-            "rebound": {"available": rebound_ready, "fidelity": "high"},
+            "rebound": rebound_status,
             "tudatpy": {"available": tudatpy_ready, "fidelity": "normal"},
         },
     }
@@ -1422,6 +1431,15 @@ class SimulationRunner:
             if jd is None:
                 self._push_error("`set_julian_date` requires numeric `jd`", action=action)
                 return
+            engine_state = self.engine.get_state()
+            jd_time_scale = engine_state.get("jd_time_scale")
+            if jd_time_scale and cmd.get("jd_time_scale") != jd_time_scale:
+                self._push_error(
+                    "`set_julian_date` requires `jd_time_scale` matching the "
+                    f"engine contract (`{jd_time_scale}`)",
+                    action=action,
+                )
+                return
             if abs(self.engine.get_julian_date() - jd) > 1e-12:
                 self.engine.set_julian_date(jd)
             if self.kuiper.active:
@@ -1602,7 +1620,8 @@ async def simulation_websocket(websocket: WebSocket):
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    rebound_ready = _rebound_available()
+    rebound_status = _rebound_readiness()
+    rebound_ready = bool(rebound_status.get("available", False))
     tudatpy_ready = _tudatpy_available()
 
     engine: Optional[SimulationEngine] = None
@@ -1629,12 +1648,13 @@ async def simulation_websocket(websocket: WebSocket):
             engine = TudatPyEngine(enable_j2=enable_j2)
 
     if engine is None:
+        rebound_reason = rebound_status.get("error") or "unavailable"
         await websocket.send_text(json.dumps({
             "type": "error",
             "code": "engine_unavailable",
             "message": (
-                "No simulation engines are available. Install backend dependencies, "
-                "for REBOUND run: python -m pip install -r requirements.txt"
+                "No simulation engines are available. "
+                f"REBOUND readiness failed: {rebound_reason}"
             ),
         }))
         await websocket.close(code=1013)
@@ -1650,6 +1670,8 @@ async def simulation_websocket(websocket: WebSocket):
         }))
         await websocket.close(code=1011)
         return
+
+    initial_state = engine.get_state()
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
@@ -1677,6 +1699,7 @@ async def simulation_websocket(websocket: WebSocket):
         "fidelity": engine.fidelity_level,
         "bodies": engine.list_body_ids(),
         "jd": engine.get_julian_date(),
+        "jd_time_scale": initial_state.get("jd_time_scale"),
         "fps": target_fps,
         "stream_hz": stream_hz,
         "warnings": warnings,

@@ -290,7 +290,20 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 
 ## Data Model
 
-- Planetary orbital elements use J2000 mean element values.
+- Browser planetary positions use JPL's fitted approximate-element model and
+  secular rates. These are visualization-grade approximations, not osculating
+  initial conditions for an interacting N-body integration.
+- The REBOUND backend starts at JD 2451545.0 TDB from committed geometric JPL
+  Horizons Cartesian vectors in the ecliptic J2000/ICRF orientation. It uses
+  exact DE440 GM ratios: Earth (`399`) and a hidden Moon (`301`) are separate
+  active particles; Mars through Pluto use planetary-system barycenters (`4`–`9`)
+  because their moons are not integrated.
+- REBOUND output is recentered to the integrated particle barycenter. The input
+  JPL SSB frame, output frame, target IDs, fixture version, and approximate
+  massless small-body coverage are disclosed in `force_models.initial_conditions`.
+- REBOUND Julian dates are TDB, declared as `jd_time_scale: "TDB"`; WebSocket
+  `set_julian_date` commands must include the matching scale instead of silently
+  treating browser/Unix UTC dates as ephemeris time.
 - Moon orbital elements sourced from JPL SSD (`https://ssd.jpl.nasa.gov/sats/elem/`).
 - Non-ecliptic moon element frames normalized into an ecliptic approximation at catalog-build time.
 - Planet entries include axial-tilt, spin-period, and ecliptic pole-longitude metadata for visual spin/orientation.
@@ -320,6 +333,15 @@ Fetch expanded asteroid catalog (JPL SBDB):
 python scripts/fetch_jpl_sbdb.py
 ```
 
+Verify the committed REBOUND initial states and off-epoch accuracy fixtures
+against live JPL Horizons and the pinned DE440 GM kernel:
+
+```bash
+python scripts/fetch_jpl_nbody_ephemeris.py --check
+```
+
+Use `--write` only when intentionally reviewing an upstream ephemeris update.
+
 Build Phase 1 asteroid dataset:
 
 ```bash
@@ -329,7 +351,7 @@ npm run phase1:asteroid-dataset
 ## Physics Notes and Limitations
 
 - Frontend orbital propagation uses Keplerian two-body elements (parent-body centered), not a full N-body integrator.
-- Optional backend REBOUND/TudatPy modes provide higher-fidelity integrations for major bodies.
+- Optional backend REBOUND/TudatPy modes provide higher-fidelity integrations for major bodies. REBOUND's `high` designation is scoped to the default, accuracy-gated IAS15 integrator; WHFast and Mercurius are reported as `normal`. REBOUND remains a reduced Newtonian model, not a replacement for DE441: relativity, most asteroids, outer-system satellites, and extended-body terms are outside its present force model.
 - Earth satellite layer uses TLE-derived Kepler propagation with optional J2 secular perturbations (RAAN, argument of periapsis, mean anomaly rates).
 - Real-time Earth cloud mode uses daily products from NASA GIBS; this is near-real-time visualization, not NWP assimilation.
 - Gravity vectors are computed from currently modeled massive bodies; objects without mass data are excluded.

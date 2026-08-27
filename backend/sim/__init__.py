@@ -30,7 +30,7 @@ def engine_classes() -> Dict[str, type[SimulationEngine] | None]:
 def engine_availability() -> Dict[str, Dict[str, Any]]:
     """Return availability metadata for known engines."""
     status: Dict[str, Dict[str, Any]] = {
-        "rebound": {"available": False, "fidelity": "high"},
+        "rebound": {"available": False, "fidelity": None, "configured_fidelity": "high"},
         "tudatpy": {
             "available": False,
             "fidelity": "normal",
@@ -39,7 +39,7 @@ def engine_availability() -> Dict[str, Dict[str, Any]]:
     }
 
     try:
-        status["rebound"]["available"] = bool(REBOUNDEngine().available)
+        status["rebound"] = REBOUNDEngine().readiness_status()
     except Exception as exc:  # pragma: no cover - runtime dependency failure
         status["rebound"]["error"] = str(exc)
 

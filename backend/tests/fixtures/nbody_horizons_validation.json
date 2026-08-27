@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "fixture_id": "jpl-horizons-de441-reduced-model-validation-v1",
+  "description": "Independent off-epoch Horizons states for offline heliocentric position and velocity regression gates.",
+  "provenance": {
+    "provider": "NASA/JPL Horizons API",
+    "api_version": "1.2",
+    "state_ephemeris": "DE441",
+    "retrieved_utc": "2026-08-26T04:31:41Z",
+    "api_url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "documentation_url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+    "query_without_tlist_or_command": {
+      "format": "json",
+      "OBJ_DATA": "NO",
+      "MAKE_EPHEM": "YES",
+      "EPHEM_TYPE": "VECTORS",
+      "CENTER": "500@0",
+      "TLIST_TYPE": "JD",
+      "TIME_TYPE": "TDB",
+      "REF_PLANE": "ECLIPTIC",
+      "REF_SYSTEM": "ICRF",
+      "OUT_UNITS": "AU-D",
+      "VEC_TABLE": "2",
+      "VEC_CORR": "NONE",
+      "CSV_FORMAT": "YES",
+      "VEC_LABELS": "YES"
+    },
+    "result_fingerprint_contract": "SHA-256 of canonical target/center/frame/unit headers, JDTDB, and six-vector; excludes the request-generation timestamp"
+  },
+  "target_contract": {
+    "sun": {"horizons_target_id": "10", "target_name": "Sun"},
+    "mercury": {"horizons_target_id": "1", "target_name": "Mercury barycenter"},
+    "venus": {"horizons_target_id": "2", "target_name": "Venus barycenter"},
+    "earth": {"horizons_target_id": "399", "target_name": "Earth"},
+    "mars": {"horizons_target_id": "4", "target_name": "Mars system barycenter"},
+    "jupiter": {"horizons_target_id": "5", "target_name": "Jupiter system barycenter"},
+    "saturn": {"horizons_target_id": "6", "target_name": "Saturn system barycenter"},
+    "uranus": {"horizons_target_id": "7", "target_name": "Uranus system barycenter"},
+    "neptune": {"horizons_target_id": "8", "target_name": "Neptune system barycenter"},
+    "pluto": {"horizons_target_id": "9", "target_name": "Pluto system barycenter"}
+  },
+  "planet_center_proxy_checks": [
+    {
+      "body_id": "saturn",
+      "horizons_target_id": "699",
+      "target_name": "Saturn",
+      "state_ephemeris": "sat441l",
+      "center": "500@10",
+      "jd_tdb": 2461275.5,
+      "position_au": [9.309522713984045, 1.553075769532514, -0.3976235906885653],
+      "velocity_au_per_day": [-0.001228255697072401, 0.005489426795360445, -4.695675276175759e-05],
+      "result_fingerprint_sha256": "3463f692cfe6f7c5b2bb3b1fa27c17f968f4929806f67f93650922ef74760b91"
+    }
+  ],
+  "internal_particle_checks": [
+    {
+      "body_id": "moon",
+      "horizons_target_id": "301",
+      "target_name": "Moon",
+      "relative_to_body_id": "earth",
+      "jd_tdb": 2461275.5,
+      "position_au": [0.8702636450248711, -0.5206337257100265, -8.406552633692211e-05],
+      "velocity_au_per_day": [0.00900195725796339, 0.01478056526919825, 2.594563064740485e-05],
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "ade09384c845dae5b97229471715edc6932850a1a644da2a94aef69b94e79a8f"
+    }
+  ],
+  "epochs": [
+    {
+      "label": "1990-01-01",
+      "jd_tdb": 2447892.5,
+      "bodies": {
+        "sun": {
+          "position_au": [-0.0006729622118685047, 0.0002219868803255449, -2.734261287139972e-05],
+          "velocity_au_per_day": [5.586769972531641e-06, -1.788628381098723e-08, -9.614611756916485e-08],
+          "result_fingerprint_sha256": "3527ff7a86f773b87ae2846b111b739e5b1b7e4a6a716f028ea7ae411bbd4435"
+        },
+        "mercury": {
+          "position_au": [0.1630404829718712, 0.2639076210448669, 0.006478501571888623],
+          "velocity_au_per_day": [-0.02950290042583776, 0.01597157858466748, 0.004013591054966998],
+          "result_fingerprint_sha256": "c6517b49c193975a9ddb695539a56e122fa843af6f12c6a827e741cc15ed6e79"
+        },
+        "venus": {
+          "position_au": [0.00358543474855855, 0.7198241936132102, 0.009539266718149308],
+          "velocity_au_per_day": [-0.02028936267943253, 1.27724699295224e-05, 0.001171741265192567],
+          "result_fingerprint_sha256": "40c2d2d8b59ffa1a21727cf96f8af0cd40438650c07b238604a35c972526dd56"
+        },
+        "earth": {
+          "position_au": [-0.1789608849162837, 0.9672603812379592, -5.826788895513497e-06],
+          "velocity_au_per_day": [-0.01719781560755579, -0.003189196837523552, -8.82646265905391e-07],
+          "result_fingerprint_sha256": "65445b23d1e4f49bd417268016713b13ed29cc7e334bee650db1dcbc8c4a21c6"
+        },
+        "mars": {
+          "position_au": [-0.9770140515824809, -1.201036565440374, -0.001168993472945476],
+          "velocity_au_per_day": [0.01139494006026938, -0.007628605398680719, -0.0004400350561486376],
+          "result_fingerprint_sha256": "c0cf37183a8b388fda277b590c282d754efb4b54fb68c4c0851471bf618c4f33"
+        },
+        "jupiter": {
+          "position_au": [-0.5677750772075203, 5.119671770360463, -0.008512959036593338],
+          "velocity_au_per_day": [-0.007598752475943996, -0.000480582496244332, 0.0001721972931884672],
+          "result_fingerprint_sha256": "1da1f7c6917a1a7840280c1209bae81354331c93e3e7f021f2fa438651d7e0e7"
+        },
+        "saturn": {
+          "position_au": [2.806989833894612, -9.625657129713938, 0.05620515613782027],
+          "velocity_au_per_day": [0.005054479112371907, 0.001546493974588479, -0.0002279237019787222],
+          "result_fingerprint_sha256": "3a6ec3bcf70add45464d2f3d663995d5341b3789663c1712527d7ed72e871749"
+        },
+        "uranus": {
+          "position_au": [1.913482108321365, -19.28481738168714, -0.09641642626108829],
+          "velocity_au_per_day": [0.003884360180099848, 0.000205606738533526, -4.958285660084829e-05],
+          "result_fingerprint_sha256": "ba63665cb3bee49fb364080d122ecd5f6cf9e4eab6581aefca2c0e4825fdb957"
+        },
+        "neptune": {
+          "position_au": [6.392147486950146, -29.52250059379904, 0.460620178093436],
+          "velocity_au_per_day": [0.003047800379461165, 0.0006816479697027415, -8.426192522222498e-05],
+          "result_fingerprint_sha256": "d09820ab0f2f014f84c6d681619131e122754ba5423fe24cd937340cbd40923d"
+        },
+        "pluto": {
+          "position_au": [-19.97348810389814, -20.42444109527952, 7.962978796926554],
+          "velocity_au_per_day": [0.002417176354292533, -0.002540359214680408, -0.0004273305551099077],
+          "result_fingerprint_sha256": "03ddd841cb8c036ef025cd480bf0a9e9647a66c5cbdc57a00f3cad22f6806b23"
+        }
+      }
+    },
+    {
+      "label": "2026-08-23",
+      "jd_tdb": 2461275.5,
+      "bodies": {
+        "sun": {
+          "position_au": [-0.001484486795674312, -0.005232716643219943, 9.968934090098851e-05],
+          "velocity_au_per_day": [6.2067393059761e-06, 2.235120815352255e-06, -1.295528605712012e-07],
+          "result_fingerprint_sha256": "1b4b742a23c220831c77de031585b762bf80dd7420cd0cc3e2af3632dcff64fe"
+        },
+        "mercury": {
+          "position_au": [-0.2098094233027458, 0.2465657731813453, 0.03978447931790409],
+          "velocity_au_per_day": [-0.02736176877390421, -0.01682037938077732, 0.001135155580450966],
+          "result_fingerprint_sha256": "1cf49ff5f2dc509f039fb789af47e3ba6528c7472dc0517ed2eb2dd2d35c0a09"
+        },
+        "venus": {
+          "position_au": [0.2678392922722418, -0.681062673978688, -0.02472516937840527],
+          "velocity_au_per_day": [0.01865888180758113, 0.007421452902396496, -0.0009744373237813115],
+          "result_fingerprint_sha256": "78020b46166c92d6fb4c9b960cfe32df5c698a6e5e174f06ba66304e5ab324b1"
+        },
+        "earth": {
+          "position_au": [0.8702115079306868, -0.517939343190342, 0.0001278672524943315],
+          "velocity_au_per_day": [0.008443154321441234, 0.01476686575918498, -1.39930234047179e-06],
+          "result_fingerprint_sha256": "5f4d9646132344f517610bdca7cb18c8e5534673143a79f05c6376eca7c7c7d8"
+        },
+        "mars": {
+          "position_au": [0.6304665481557297, 1.36411242675715, 0.01330052288624757],
+          "velocity_au_per_day": [-0.01216856408200639, 0.007056699875780714, 0.0004462382081748608],
+          "result_fingerprint_sha256": "e42fcf4c674242be1ff58e343af6342c60fa25a8971b34bb2901d60a29906a0b"
+        },
+        "jupiter": {
+          "position_au": [-3.261489390958109, 4.165734142074548, 0.05571161342097635],
+          "velocity_au_per_day": [-0.006032094648149328, -0.004296352131436034, 0.0001528267222686834],
+          "result_fingerprint_sha256": "ee5d20b89a3b912e671c152830d84f8277efa037774a7c20f7275ac6b46de858"
+        },
+        "saturn": {
+          "position_au": [9.308036726543053, 1.547842049602479, -0.3975232131073466],
+          "velocity_au_per_day": [-0.00122157372794184, 0.005491136397391062, -4.686214532212881e-05],
+          "result_fingerprint_sha256": "e21e03b9a46eb43c825b673f81dcf7636f87764166543f4304b2703793d4001e"
+        },
+        "uranus": {
+          "position_au": [9.066594340283807, 17.19954916693798, -0.05358223352415694],
+          "velocity_au_per_day": [-0.003508281789205555, 0.001650754540154017, 5.15779122382912e-05],
+          "result_fingerprint_sha256": "ea535e58ccff78447b2658b7ba6295eec70d8848d7e9b305609c2f568598158c"
+        },
+        "neptune": {
+          "position_au": [29.84251129237501, 1.251979779943986, -0.7135335187126347],
+          "velocity_au_per_day": [-0.0001522231338913197, 0.003154990109595796, -6.146379056356993e-05],
+          "result_fingerprint_sha256": "5edba7a9230b398923e0e4ac1638fdbfc4439e9b443f7b850e6248e99b6b22d3"
+        },
+        "pluto": {
+          "position_au": [19.85812655763207, -29.41641321812625, -2.596415918690762],
+          "velocity_au_per_day": [0.002691121523540242, 0.001054847007744378, -0.0008913047912241771],
+          "result_fingerprint_sha256": "2df160afc90e845461b60cf6649bd5061540625187c7887a75a545c920683314"
+        }
+      }
+    },
+    {
+      "label": "2050-01-01",
+      "jd_tdb": 2469807.5,
+      "bodies": {
+        "sun": {
+          "position_au": [0.0008009809302123276, -0.00336602094245718, 1.406859203716618e-05],
+          "velocity_au_per_day": [5.36839358494865e-06, 2.282668905795057e-06, -9.074536061555613e-08],
+          "result_fingerprint_sha256": "5839af26922fe04bd5e2ada6a8f6cc3ad0eb57aec503b8cbe7a4e8c21494ccca"
+        },
+        "mercury": {
+          "position_au": [-0.1787130615542727, 0.2644457487310622, 0.03836237183458201],
+          "velocity_au_per_day": [-0.0290400525646311, -0.01457651971748438, 0.00147023090416699],
+          "result_fingerprint_sha256": "045d32915480b5ef8305168b3e366a9272e5ae2cd7f980a347916416c2d6b9aa"
+        },
+        "venus": {
+          "position_au": [0.1425832044853415, -0.7167502366742586, -0.01801159915389444],
+          "velocity_au_per_day": [0.01970739360344482, 0.003875282672230645, -0.001083033468335773],
+          "result_fingerprint_sha256": "b78ea65ca89b1e159e995585807512d1a40e52b2befcb867892a2ea04beaefa0"
+        },
+        "earth": {
+          "position_au": [-0.1708111871650939, 0.9648927987025849, -9.589845650358703e-05],
+          "velocity_au_per_day": [-0.01721265688745934, -0.003071877051157427, 9.075142494314951e-07],
+          "result_fingerprint_sha256": "a114b7f8c57a34efcfb547062b9959e5406e70eb06ce61d65698f3af5d4bcfe6"
+        },
+        "mars": {
+          "position_au": [-1.542430706849157, -0.5069555414154401, 0.02721600164210634],
+          "velocity_au_per_day": [0.004867166108459881, -0.01210276910523442, -0.0003728286870235043],
+          "result_fingerprint_sha256": "3e8059e26a715a722d437484a75557d490e42c703d337d234451c7331a5c7c49"
+        },
+        "jupiter": {
+          "position_au": [-2.390245364001778, 4.660708030186735, 0.03397971081081501],
+          "velocity_au_per_day": [-0.006812307389895842, -0.003094466336119948, 0.0001653233699477758],
+          "result_fingerprint_sha256": "6e0b929ee7e474588af72d675c8b5a29e86f95cc8a4d9234299b9c682826d245"
+        },
+        "saturn": {
+          "position_au": [4.76702640240148, -8.777085953720057, -0.0378626968361013],
+          "velocity_au_per_day": [0.00459987885454526, 0.002651755071016537, -0.0002291952929550894],
+          "result_fingerprint_sha256": "3efa2e53d265daef4d8c62751725e1a09bf0b5a6419e0b02b36634c45ae5e968"
+        },
+        "uranus": {
+          "position_au": [-17.82243543418384, 4.068116995621714, 0.2458644097133726],
+          "velocity_au_per_day": [-0.0009048283760532462, -0.004019254663252628, -3.201591111159122e-06],
+          "result_fingerprint_sha256": "68fe7ca1f1496a06c20af8cee3b7269d8c03684ad33f0bb750cd4d69e34b50b7"
+        },
+        "neptune": {
+          "position_au": [17.39899979161325, 24.19441796529552, -0.8992277443901925],
+          "velocity_au_per_day": [-0.00256712451619101, 0.001852626412684052, 2.101001506427406e-05],
+          "result_fingerprint_sha256": "95d42ec2346eeb08132e5ed0c241ebfb5634e17b80c6bcd2b5c29c1eb3352503"
+        },
+        "pluto": {
+          "position_au": [37.45574568090542, -15.13622868313735, -9.214697144924264],
+          "velocity_au_per_day": [0.001401099071863533, 0.00210655838472635, -0.0006306835564223093],
+          "result_fingerprint_sha256": "dd95aea797b61b3774795c421944dc8cb1972bb3f638dc9684f9e41edab523ae"
+        }
+      }
+    }
+  ]
+}

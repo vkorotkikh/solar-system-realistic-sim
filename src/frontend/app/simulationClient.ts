@@ -12,6 +12,7 @@ interface ServerBodyState {
 export interface ServerStateUpdateMessage {
   type: 'state_update';
   jd: number;
+  jd_time_scale?: 'TDB' | string;
   bodies: Record<string, ServerBodyState>;
   kuiper?: number[][];
 }
@@ -19,6 +20,7 @@ export interface ServerStateUpdateMessage {
 interface ConnectedMessage {
   type: 'connected';
   protocol_version?: number;
+  jd_time_scale?: 'TDB' | string;
   warnings?: string[];
 }
 

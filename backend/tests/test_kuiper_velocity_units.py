@@ -36,7 +36,8 @@ PERTURBER_INDEX = {"jupiter": 1, "saturn": 2, "neptune": 3}
 
 @pytest.fixture(scope="module")
 def engine_state():
-    # whfast, not the default ias15: ias15 cannot initialize under REBOUND 5.
+    # WHFast keeps this unit-contract fixture fast; IAS15 is covered by the
+    # real default-path and Horizons accuracy tests.
     engine = REBOUNDEngine(integrator="whfast")
     engine.initialize(ALL_BODIES)
     return engine.get_state()

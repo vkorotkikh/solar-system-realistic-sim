@@ -54,6 +54,7 @@ def normalize_state_update(
     velocity_frame = _text_field(state.get("velocity_frame")) if isinstance(state, dict) else ""
     position_units = _text_field(state.get("position_units")) if isinstance(state, dict) else ""
     velocity_units = _text_field(state.get("velocity_units")) if isinstance(state, dict) else ""
+    jd_time_scale = _text_field(state.get("jd_time_scale")) if isinstance(state, dict) else ""
 
     payload = {
         "type": "state_update",
@@ -71,6 +72,8 @@ def normalize_state_update(
         payload["position_units"] = position_units
     if velocity_units:
         payload["velocity_units"] = velocity_units
+    if jd_time_scale:
+        payload["jd_time_scale"] = jd_time_scale
 
     return payload
 
