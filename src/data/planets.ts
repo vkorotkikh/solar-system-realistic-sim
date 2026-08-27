@@ -12,6 +12,18 @@ export const SUN = {
 };
 
 // J2000 mean elements from NASA/JPL planetary theory values.
+//
+// The eight planets carry the full JPL Standish "Approximate Positions of the Major Planets"
+// Table 1 set (valid 1800 AD - 2050 AD), referenced to epoch J2000 (epochJd = J2000_JD):
+//   aAu / e / iDeg / ascendingNodeDeg  are Standish a0, e0, I0, Omega0
+//   argPeriapsisDeg                    is varpi0 - Omega0
+//   meanAnomalyDeg                     is L0 - varpi0
+// and likewise for the per-century rates, where
+//   argPeriapsisDegPerCentury          is varpidot - Omegadot
+//   meanLongitudeDegPerCentury         is Ldot, the tabulated mean-longitude rate.
+// Ldot is what makes the mean anomaly propagate correctly: M(T) = M0 + (Ldot - varpidot) * T.
+// Without it the propagator has to fall back on 2*pi/periodDays, which is dL/dt rather than dM/dt
+// and therefore double-counts the apsidal precession that is already applied to argPeriapsis.
 export const PLANETS = [
   {
     id: 'mercury',
@@ -36,7 +48,8 @@ export const PLANETS = [
         ePerCentury: 0.00001906,
         iDegPerCentury: -0.00594749,
         ascendingNodeDegPerCentury: -0.12534081,
-        argPeriapsisDegPerCentury: 0.2858177
+        argPeriapsisDegPerCentury: 0.2858177,
+        meanLongitudeDegPerCentury: 149472.67411175
       }
     }
   },
@@ -63,7 +76,8 @@ export const PLANETS = [
         ePerCentury: -0.00004107,
         iDegPerCentury: -0.0007889,
         ascendingNodeDegPerCentury: -0.27769418,
-        argPeriapsisDegPerCentury: 0.28037747
+        argPeriapsisDegPerCentury: 0.28037747,
+        meanLongitudeDegPerCentury: 58517.81538729
       }
     }
   },
@@ -94,7 +108,8 @@ export const PLANETS = [
         ePerCentury: -0.00004392,
         iDegPerCentury: -0.01294668,
         ascendingNodeDegPerCentury: 0,
-        argPeriapsisDegPerCentury: 0.32327364
+        argPeriapsisDegPerCentury: 0.32327364,
+        meanLongitudeDegPerCentury: 35999.37244981
       }
     }
   },
@@ -121,7 +136,8 @@ export const PLANETS = [
         ePerCentury: 0.00007882,
         iDegPerCentury: -0.00813131,
         ascendingNodeDegPerCentury: -0.29257343,
-        argPeriapsisDegPerCentury: 0.73698431
+        argPeriapsisDegPerCentury: 0.73698431,
+        meanLongitudeDegPerCentury: 19140.30268499
       }
     }
   },
@@ -148,7 +164,8 @@ export const PLANETS = [
         ePerCentury: -0.00013253,
         iDegPerCentury: -0.00183714,
         ascendingNodeDegPerCentury: 0.20469106,
-        argPeriapsisDegPerCentury: 0.00783562
+        argPeriapsisDegPerCentury: 0.00783562,
+        meanLongitudeDegPerCentury: 3034.74612775
       }
     }
   },
@@ -177,7 +194,8 @@ export const PLANETS = [
         ePerCentury: -0.00050991,
         iDegPerCentury: 0.00193609,
         ascendingNodeDegPerCentury: -0.28867794,
-        argPeriapsisDegPerCentury: -0.13029422
+        argPeriapsisDegPerCentury: -0.13029422,
+        meanLongitudeDegPerCentury: 1222.49362201
       }
     }
   },
@@ -206,7 +224,8 @@ export const PLANETS = [
         ePerCentury: -0.00004397,
         iDegPerCentury: -0.00242939,
         ascendingNodeDegPerCentury: 0.04240589,
-        argPeriapsisDegPerCentury: 0.36564692
+        argPeriapsisDegPerCentury: 0.36564692,
+        meanLongitudeDegPerCentury: 428.48202785
       }
     }
   },
@@ -233,7 +252,8 @@ export const PLANETS = [
         ePerCentury: 0.00005105,
         iDegPerCentury: 0.00035372,
         ascendingNodeDegPerCentury: -0.00508664,
-        argPeriapsisDegPerCentury: -0.317328
+        argPeriapsisDegPerCentury: -0.317328,
+        meanLongitudeDegPerCentury: 218.45945325
       }
     }
   },

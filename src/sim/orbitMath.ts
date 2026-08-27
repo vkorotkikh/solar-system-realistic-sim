@@ -22,6 +22,24 @@ export interface KeplerOrbitSecularRates {
   iDegPerCentury?: number;
   ascendingNodeDegPerCentury?: number;
   argPeriapsisDegPerCentury?: number;
+  /**
+   * Rate of change of the MEAN LONGITUDE L = M + varpi, where varpi = Omega + argPeriapsis,
+   * in degrees per Julian century (JPL Standish, "Approximate Positions of the Major Planets",
+   * Table 1). This is the authoritative tabulated companion to the other five rates.
+   *
+   * When this is present the mean anomaly is propagated the way the Standish recipe defines it,
+   *   M(T) = L(T) - varpi(T) = M0 + (Ldot - varpidot) * T,
+   * so M advances at exactly (Ldot - varpidot). Two consequences matter:
+   *
+   *  - The apsidal precession is applied ONCE. Advancing M at 2*pi/periodDays (a SIDEREAL period,
+   *    i.e. the dL/dt rate) while separately precessing Omega and argPeriapsis double-counts
+   *    dvarpi/dt and produces a pure along-track error growing linearly in T.
+   *  - The mean-anomaly advance no longer depends on periodDays at all, so the (a/a0)^1.5 period
+   *    rescaling can no longer re-apply an a-drift that the tabulated Ldot already contains.
+   *
+   * Bodies that do NOT supply this field keep the legacy 2*pi/periodDays behaviour unchanged.
+   */
+  meanLongitudeDegPerCentury?: number;
 }
 
 export interface ResolvedKeplerOrbit {
@@ -32,6 +50,12 @@ export interface ResolvedKeplerOrbit {
   argPeriapsisRad: number;
   meanAnomalyRad: number;
   periodDays: number;
+  /**
+   * dM/dt in radians per day for the propagation actually performed. This is the mean motion the
+   * Kepler solution and the velocity formula must use; it equals 2*pi/periodDays only on the legacy
+   * path, and equals (Ldot - varpidot) when secular mean-longitude data is supplied.
+   */
+  meanMotionRadPerDay: number;
   centuriesSinceEpoch: number;
 }
 
@@ -96,9 +120,31 @@ export function resolveKeplerOrbitAtElapsedDays(
   );
 
   const basePeriodDays = Math.max(1e-9, orbit.periodDays);
+  // periodDays keeps its established meaning (sidereal period, drifted with a) because orbit-line
+  // drawing, the UI readout and the satellite code all consume it. It no longer drives the mean
+  // anomaly for bodies that carry a tabulated mean-longitude rate.
   const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
-  const meanMotion = TWO_PI / periodDays;
-  const meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotion * elapsedDays);
+
+  const meanLongitudeRate = secularRates?.meanLongitudeDegPerCentury;
+  let meanMotionRadPerDay: number;
+  let meanAnomalyRad: number;
+
+  if (meanLongitudeRate === undefined) {
+    // Legacy path, bit-for-bit unchanged for every body without a mean-longitude rate
+    // (moons, Kuiper-belt objects, asteroids, Pluto).
+    meanMotionRadPerDay = TWO_PI / periodDays;
+    meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotionRadPerDay * elapsedDays);
+  } else {
+    // Standish: M = L - varpi, with varpi = Omega + argPeriapsis, so dM/dt = Ldot - varpidot.
+    const varpiDegPerCentury =
+      (secularRates?.ascendingNodeDegPerCentury ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0);
+    const meanAnomalyDegPerCentury = meanLongitudeRate - varpiDegPerCentury;
+    meanMotionRadPerDay = degToRad(meanAnomalyDegPerCentury) / JULIAN_CENTURY_DAYS;
+    // Reduce in degrees before converting, so a multi-century advance keeps full precision.
+    const meanAnomalyDeg =
+      ((orbit.meanAnomalyDeg ?? 0) + meanAnomalyDegPerCentury * centuriesSinceEpoch) % 360;
+    meanAnomalyRad = normalizeRadians(degToRad(meanAnomalyDeg));
+  }
 
   return {
     aAu: a,
@@ -108,6 +154,7 @@ export function resolveKeplerOrbitAtElapsedDays(
     argPeriapsisRad,
     meanAnomalyRad,
     periodDays,
+    meanMotionRadPerDay,
     centuriesSinceEpoch
   };
 }
@@ -125,7 +172,7 @@ export function propagateKeplerOrbit(
   const ascendingNode = resolved.ascendingNodeRad;
   const argPeriapsis = resolved.argPeriapsisRad;
   const meanAnomaly = resolved.meanAnomalyRad;
-  const meanMotion = TWO_PI / resolved.periodDays;
+  const meanMotion = resolved.meanMotionRadPerDay;
   const eccentricAnomaly = solveKepler(meanAnomaly, e);
 
   const cosE = Math.cos(eccentricAnomaly);
