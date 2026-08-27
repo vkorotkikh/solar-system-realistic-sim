@@ -349,7 +349,87 @@ export function convertMoonOrbitFrameToEcliptic(
   };
 }
 
-function precessionRateDegreesPerCentury(periodYears: number | null, directionSign: number): number | undefined {
+const JULIAN_CENTURY_DAYS = 36_525;
+
+/**
+ * Largest precession rate, as a fraction of the satellite's own mean motion, accepted from the
+ * source table.
+ *
+ * The JPL satellite table describes "the elements of a precessing ellipse which has been fit in a
+ * least squares sense to the numerically integrated orbit". That model means nothing unless the
+ * ellipse precesses SLOWLY compared with the satellite's own orbital motion; a record claiming the
+ * apsides turn once per orbit is not describing a precessing ellipse, it is corrupt. The precession
+ * columns are published in years rounded to three decimals, so an entry of a few thousandths of a
+ * year is quantisation noise, not a measurement.
+ *
+ * Four records in src/data/moons.json are corrupt in exactly that way: Tethys, Calypso and Telesto
+ * carry apsisPrecessionYears = 0.005 (1.8 d, against a 1.888 d orbit) and Methone carries 0.003
+ * (1.1 d, against a 1.010 d orbit). All four come from SAT441, whose periods are sidereal, so they
+ * take the apsidal correction; left in place they would drive dM/dt = 2*pi/periodDays - varpidot
+ * NEGATIVE, reversing those moons and inverting their velocity vectors. Horizons confirms the
+ * records are wrong rather than merely extreme: over 60 revolutions the measured <dL/dt> for all
+ * four matches 2*pi/periodDays to <= 1.1e-4 relative, so their true apsidal contribution to the
+ * mean longitude is nothing like the tabulated one.
+ *
+ * The threshold sits in an empty band. Over all 806 precession entries the four corrupt ones score
+ * 0.92-1.03 and the largest legitimate one (Setebos, both columns) scores 0.126, so 0.25 clears the
+ * real data by 2.0x and the corrupt data by 3.7x. Rejecting a column leaves that element
+ * unprecessed, which is what the propagator did for every moon before secular rates existed.
+ */
+const MAX_PRECESSION_RATE_FRACTION_OF_MEAN_MOTION = 0.25;
+
+/**
+ * Source ephemerides whose `periodDays` column is the SIDEREAL period, i.e. the period of the mean
+ * LONGITUDE, so that 2*pi/periodDays is dL/dt and the apsidal invariant in orbitMath.ts applies.
+ *
+ * This has to be measured, not assumed. The table at ssd.jpl.nasa.gov/sats/elem/ documents the
+ * column as "P  sidereal period", but it aggregates independent mean-element fits by different
+ * authors and they do not all honour that: several groups tabulate the ANOMALISTIC period, the
+ * period of the mean anomaly, for which 2*pi/periodDays is already dM/dt and subtracting varpidot
+ * would inject the same double-count with the sign reversed.
+ *
+ * Each verdict below was measured against JPL Horizons: osculating elements parent-relative in the
+ * ecliptic frame over 60-400 revolutions, least-squares slope of the unwrapped mean longitude
+ * L = MA + W + OM, compared against 360/periodDays and against 360/periodDays + varpidot. Only
+ * records whose two candidate residuals differ by more than 3x were counted. The split is clean:
+ * 39 high-confidence verdicts, and not one ephemeris contains both answers.
+ *
+ *   ephemeris     verdict       high-confidence evidence (discrimination ratio)
+ *   DE405/LE405   SIDEREAL      Moon 687x
+ *   SAT441        SIDEREAL      Mimas 191x, Enceladus 406x, Tethys 1.6e5x, Dione 1867x,
+ *                               Rhea 78x, Titan 1044x, Hyperion 37x, Iapetus 10x,
+ *                               Calypso 1.8e4x, Telesto 9.2e4x, Methone 6951x
+ *   URA182        SIDEREAL      Miranda 26x, Ariel 246x, Umbriel 364x, Titania 758x,
+ *                               Oberon 154x, Puck 255x
+ *   URA184        SIDEREAL      Ophelia 22x, Desdemona 10x, Juliet 94x, Portia 13x,
+ *                               Rosalind 3.9x, Belinda 4.3x, Mab 6.7x
+ *   PLU060        SIDEREAL      Kerberos 190x, Hydra 89x
+ *   ---- excluded: measured ANOMALISTIC, 2*pi/periodDays is already dM/dt ----
+ *   JUP365        ANOMALISTIC   Ganymede 1187x, Callisto 4253x, Amalthea 353x, Thebe (0.00)
+ *   SAT415        ANOMALISTIC   Atlas, Prometheus, Pandora, Janus 47x, Epimetheus, Anthe, Pallene
+ *   NEP097        ANOMALISTIC   Naiad, Thalassa, Larissa, Hippocamp
+ *   JUP347        ANOMALISTIC   Kalyke, Erinome, Eukelade, +11 more, all leaning the same way
+ *   SAT455/6/7    ANOMALISTIC   7 probes, all leaning the same way
+ *   ---- excluded: undecidable, tabulated period too coarse or fit too noisy ----
+ *   MAR099, URA117, NEP104, NEP105
+ *
+ * An unlisted ephemeris gets no correction, which is the previous behaviour exactly: a new or
+ * renamed source degrades to the status quo instead of silently acquiring an unverified model.
+ * Extending this set REQUIRES re-running that measurement for the new source.
+ */
+const SIDEREAL_PERIOD_EPHEMERIDES: ReadonlySet<string> = new Set([
+  'DE405/LE405',
+  'SAT441',
+  'URA182',
+  'URA184',
+  'PLU060'
+]);
+
+function precessionRateDegreesPerCentury(
+  periodYears: number | null,
+  directionSign: number,
+  orbitalPeriodDays: number | undefined
+): number | undefined {
   if (!Number.isFinite(periodYears)) {
     return undefined;
   }
@@ -359,23 +439,43 @@ function precessionRateDegreesPerCentury(periodYears: number | null, directionSi
     return 0;
   }
 
-  return directionSign * (36_000 / years);
+  const rateDegPerCentury = directionSign * (36_000 / years);
+
+  // With no usable orbital period there is no way to judge plausibility; keep the published rate.
+  if (Number.isFinite(orbitalPeriodDays) && (orbitalPeriodDays as number) > 0) {
+    const meanMotionDegPerDay = 360 / (orbitalPeriodDays as number);
+    const rateDegPerDay = Math.abs(rateDegPerCentury) / JULIAN_CENTURY_DAYS;
+    if (rateDegPerDay > MAX_PRECESSION_RATE_FRACTION_OF_MEAN_MOTION * meanMotionDegPerDay) {
+      return undefined;
+    }
+  }
+
+  return rateDegPerCentury;
 }
 
 export function resolveMoonSecularRates(
-  moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'>
+  moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'> &
+    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris'>>
 ): KeplerOrbit['secularRates'] | undefined {
-  const argRate = precessionRateDegreesPerCentury(moon.apsisPrecessionYears, 1);
-  const nodeRate = precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1);
+  const argRate = precessionRateDegreesPerCentury(moon.apsisPrecessionYears, 1, moon.periodDays);
+  const nodeRate = precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1, moon.periodDays);
 
   if (argRate === undefined && nodeRate === undefined) {
     return undefined;
   }
 
-  return {
+  const rates: NonNullable<KeplerOrbit['secularRates']> = {
     argPeriapsisDegPerCentury: argRate,
     ascendingNodeDegPerCentury: nodeRate
   };
+
+  // Only opt in where the source table was MEASURED to publish a mean-longitude period. Everything
+  // else keeps 2*pi/periodDays as dM/dt, unchanged.
+  if (moon.ephemeris !== undefined && SIDEREAL_PERIOD_EPHEMERIDES.has(moon.ephemeris)) {
+    rates.periodIsMeanLongitudePeriod = true;
+  }
+
+  return rates;
 }
 
 export function resolveMoonRotationPeriodHours(
