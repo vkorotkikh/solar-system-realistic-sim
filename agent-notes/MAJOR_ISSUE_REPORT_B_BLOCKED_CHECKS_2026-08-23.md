@@ -4,6 +4,96 @@
 
 > Companion parts: **[Report 0 — Baseline](MAJOR_ISSUE_REPORT_0_BASELINE_2026-08-23.md)** · **[Report A — Adversarial Verification](MAJOR_ISSUE_REPORT_A_ADVERSARIAL_2026-08-23.md)** · **[Report C — sun-focus & New-Issue Hunt](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md)**
 
+## 2026-08-27 current-branch reconciliation
+
+> **Authoritative current-status overlay for `fix/nbody-osculating-initial-state @ e740b21`.** The original `main @ aa6e39a` report is preserved verbatim below as historical evidence. This section supersedes only its present-tense status conclusions. It inventories **50 canonical findings/observations**; the eight bullets in original §9 are recap aliases and are deliberately excluded from the counts.
+
+### Status accounting
+
+| Status | Count | Meaning here |
+|---|---:|---|
+| **ACTIVE** | **27** | The reported defect remains on `e740b21`. |
+| **PARTIAL** | **5** | Material mitigation landed, but the original contract is not completely closed or verified. |
+| **RESOLVED** | **8** | Current code and a proportionate regression gate close the reported mechanism. |
+| **BLOCKED** | **4** | The report did not preserve enough replay input, or this environment still lacks the required external runtime/hardware. |
+| **NOT-A-BUG** | **6** | A clean/refuted result or an intentional behavior, retained so it is not re-filed as a defect. |
+| **Canonical total** | **50** | Excludes the eight duplicate recap bullets in original §9. |
+
+Report-local IDs are stable handles for this reconciliation. Original §9 maps to existing IDs as follows: negative TOF → `B-PORK-02`; cancellation → `B-PORK-03`; AnyIO exhaustion → `B-SOL-04`; byte cap → `B-SOL-05`; 200-row catalog → `B-AST-03`; non-finite mission input → `B-MIS-02`; H29 preset → `B-UI-03`; narrow layout → `B-UI-09`.
+
+### Current branch changes and validation
+
+- **N-body (`2226277`)** replaces approximate mean-element initialization with committed JPL Horizons Cartesian states and real REBOUND 5.1.1 multi-epoch accuracy gates. This removes the old IAS15 prerequisite blocker; cross-integrator live continuity remains a separate partial check (`B-BLK-03`).
+- **SF-1 (`68aff6b`, gate `f1c79b9`)** stops double-counting apsidal precession and adds a committed multi-epoch Horizons planet-position gate. This is important current-branch scientific context, but it was not a distinct Report B finding and therefore adds no row to the count.
+- **Worker boundary (`b6c4ce3`)** moves propagated state transport to a versioned `Float64Array` contract, rejects stale/malformed snapshots, and preserves source-index mapping. It likewise closes a later branch regression rather than a canonical Report B row.
+- **Compute lifetime and TOF (`3f5d097`)** keeps endpoint permits attached to worker completion, adds cooperative porkchop cancellation, uses dedicated bounded executors, and rejects non-positive TOF. It resolves `B-PORK-02/03`; `B-PORK-01` remains partial because a successful accepted scan still accumulates all bounded points/failures before response slicing.
+- **Solar epoch cache (`e740b21`)** replaces the single snapshot slot with a bounded epoch-keyed LRU and distinct `latest` identity, resolving `B-SOL-02` with isolation, refresh, eviction, and non-finite-JD tests.
+
+Fresh verification at `e740b21`:
+
+- Backend: `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend /tmp/solar-nbody-fix-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests` → **143 passed, 5 warnings in 42.15 s**. Environment: Python **3.14.6**, pytest **9.1.1**, FastAPI **0.141.1**, REBOUND **5.1.1**.
+- Frontend: full Vitest → **100/100 tests passed across 6 files**, including the worker contract and Horizons planet-position gates.
+- Production build: Vite → **passed, 39 modules transformed**; only the existing bundle-size warning remains.
+
+### Canonical finding reconciliation
+
+| ID | Status | Current-branch evidence and disposition |
+|---|---|---|
+| `B-MGA-01` | **ACTIVE** | `mga.py` still applies `MAX_COMPLETED=48` to completed beam partials globally, so early body routes exhaust later routes' budget. Allocate/count per body route and gate route coverage. |
+| `B-MGA-02` | **ACTIVE** | Routes remain ordered by length then lexicographically; tests still do not prove that `max_assists=1/2/3` explore different route sets. Rank/diversify seeds and add that invariant. |
+| `B-MGA-03` | **ACTIVE** | Flyby code still averages incoming/outgoing `v∞`, accepts magnitude mismatch, and charges only first departure plus final arrival. Enforce unpowered conservation or explicitly charge powered-flyby Δv. |
+| `B-MGA-04` | **ACTIVE** | Maximum turn is still computed from averaged rather than incoming `v∞`. Use the incoming hyperbola for the unpowered feasibility bound and gate the flip cases. |
+| `B-MGA-05` | **ACTIVE** | `turnDeficitPenalty` remains hardcoded `0.0`. Populate it from required-minus-available turn or remove the field/score contract. |
+| `B-PORK-01` | **PARTIAL** | Server-side windows, grid points, concurrency, timeout, and worker lifetime are bounded, but `scan_porkchop_window` still appends every accepted bounded point/failure and slices only the returned payload. Retain top-k/summary data during iteration. |
+| `B-PORK-02` | **RESOLVED** | `3f5d097` makes both TOF bounds `Field(..., gt=0.0)` and adds API regressions for negative and zero TOF. |
+| `B-PORK-03` | **RESOLVED** | `3f5d097` supplies a cancellation event checked inside the grid loop and releases the permit only when the worker future finishes; tests cover pre-cancellation and post-timeout permit ownership. |
+| `B-WS-01` | **NOT-A-BUG** | The original rerun refuted normal abrupt-disconnect zombies; current code does not supply contrary evidence. Keep a multi-connection reclamation smoke gate. |
+| `B-WS-02` | **ACTIVE** | WebSocket `stop()` still joins only three seconds and long REBOUND seek integration has no runner stop token. Add bounded integration segments with a disconnect/stop check. |
+| `B-WS-03` | **ACTIVE** | Querying orbital elements for the Sun still asks REBOUND for the Sun about itself; the resulting command exception latches `_runtime_error`, and resume does not clear it. Return `not_available` without latching. |
+| `B-WS-04` | **ACTIVE** | Kuiper `_frame_counter` still advances only in `step()`, so pausing on a multiple of five makes `should_send()` true every output frame. Gate sends on new Kuiper state/version. |
+| `B-WS-05` | **ACTIVE** | Runner integration still advances fixed `time_scale / target_fps` rather than measured elapsed time while telemetry reports requested scale. Report delivered rate or integrate bounded elapsed time. |
+| `B-WS-06` | **ACTIVE** | REBOUND checkpoints remain an unpruned dictionary. Add a count/memory budget with deterministic eviction and a millennial-seek test. |
+| `B-WS-07` | **NOT-A-BUG** | Checkpoint-assisted seek remains reproducible; current real-IAS15 tests compare a checkpoint seek with the direct 2026 solution. Preserve the gate. |
+| `B-MIS-01` | **BLOCKED** | The reported single “unexpected 200” has no preserved request body, seed, or expected contract, so it cannot be replayed. Recover/persist the fuzz corpus before assigning a defect. |
+| `B-MIS-02` | **ACTIVE** | Raw JSON `NaN`/`±Infinity` still reaches the framework validation-error serialization failure and returns 500. Add a sanitizing validation handler and assert structured 422s. |
+| `B-MIS-03` | **ACTIVE** | Return propellant is still deducted from `returnedPayloadKg` and again from mission score. Replace this with one auditable mass/economic ledger. |
+| `B-MIS-04` | **ACTIVE** | Return-burn rocket-equation mass is still based on the original payload and omits mined cargo. Pass separate outbound/return payload masses and gate mass closure. |
+| `B-MIS-05` | **ACTIVE** | Monte Carlo risk still has no deterministic feasibility/unmet-Δv input. An infeasible logistics solution must imply failure before stochastic sampling. |
+| `B-MIS-06` | **BLOCKED** | The literal current EPO `0/30` result is not a stable offline check because sample episodes use the live `auto` ephemeris chain, while no-recommendation can now correctly mean all candidates failed verification. Add fixed ephemerides and declared-feasible episodes. |
+| `B-MIS-07` | **ACTIVE** | EPO still reads top-level `result.verification` while successful planner output nests verification under `recommendation`. Normalize and gate one schema end to end. |
+| `B-SOL-01` | **RESOLVED** | Snapshot and binary reads now use same-key single-flight with completion-before-release and failure backoff; the original cold-cache linear stampede mechanism is closed. |
+| `B-SOL-02` | **RESOLVED** | `e740b21` keys snapshots by exact finite JD versus `latest`, bounds them with LRU eviction, and tests epoch isolation, refresh, and eviction. |
+| `B-SOL-03` | **PARTIAL** | Same-key force-refresh traffic is deduplicated and CORS/heavy endpoints are hardened, but `/solar/realtime?force_refresh=true` remains unauthenticated and lacks its own rate limit. Apply the protected solar policy there. |
+| `B-SOL-04` | **PARTIAL** | `3f5d097` moves heavy scientific work to dedicated bounded executors, but synchronous `/solar/realtime` followers can still occupy AnyIO tokens while waiting on a threading event. Convert that route/single-flight wait to async or isolate it too. |
+| `B-SOL-05` | **ACTIVE** | JSON, binary, and text upstream helpers still use unrestricted `response.read()`. Add `Content-Length` and streaming byte ceilings per source. |
+| `B-SOL-06` | **ACTIVE** | SILSO still downloads the roughly 2.9 MB daily history on the 120-second snapshot TTL to retain one row. Use conditional/daily caching or a smaller authoritative product. |
+| `B-SOL-07` | **ACTIVE** | Both configured one-day SWPC product URLs still return 404. Replace them with current documented products and gate their response schema. |
+| `B-SOL-08` | **ACTIVE** | Missing provider weights are still silently renormalized into a full-scale activity proxy. Publish coverage/confidence and reject “high fidelity” below a documented threshold. |
+| `B-SOL-09` | **NOT-A-BUG** | The AIA SSRF remains refuted: channel is allowlisted and no caller-controlled URL/image ID reaches the upstream URL. Preserve an unknown-parameter/allowlist test. |
+| `B-SOL-10` | **PARTIAL** | Frontend `image_id`/`v` query terms still alter the browser cache key but are ignored by backend selection, so they do not certify an exact snapshot. Remove them in favor of ETags or validate an opaque snapshot ID. |
+| `B-AST-01` | **ACTIVE** | Corrupt/truncated/rejected catalogs still leave the pre-created procedural belt and expose only console warnings; visible body status does not disclose provenance/failure. Add a user-visible source state and browser fixtures. |
+| `B-AST-02` | **ACTIVE** | Missing metadata still passes checksum acceptance and silently falls back to FNV-1a. Require production metadata plus SHA-256. |
+| `B-AST-03` | **ACTIVE** | Authoritative row checks remain conditional on metadata, so a self-consistent tiny binary can pass when metadata is absent. Require an independent expected row contract. |
+| `B-AST-04` | **ACTIVE** | Load latency still participates in data-validity acceptance. Separate integrity from performance telemetry so valid slow bytes remain usable. |
+| `B-AST-05` | **RESOLVED** | Metadata now fetches with `cache:'no-cache'` (`6bf33cb`), closing the stale `force-cache` checksum mismatch mechanism. |
+| `B-AST-06` | **ACTIVE** | A materially different procedural/mixed population can still be presented without visible catalog/procedural provenance. Label source and real-row fraction. |
+| `B-UI-01` | **RESOLVED** | Orbit translation is now applied after instance rotation/scale in both asteroid vertex paths (`0c99424`, reinforced by `330fc3a`), so the belt no longer collapses into the Sun. |
+| `B-UI-02` | **RESOLVED** | `metric_slipstream` now dispatches `triggerWarpWaveImpact`, whose controller callback enables the warp mesh (`63320e8`). |
+| `B-UI-03` | **ACTIVE** | The H29-named preset still changes energy only; propagation scenario remains controlled by the separate hypothesis dropdown. Make the preset select H29 atomically or rename it. |
+| `B-UI-04` | **NOT-A-BUG** | Solar procedural animation advancing on wall time while orbital mechanics is paused is now explicit (`4de82eb`). Offer a separate “freeze visuals” control if desired. |
+| `B-UI-05` | **NOT-A-BUG** | Small Earth/Pluto screen sizes are the expected result of physical-radius rendering in realistic mode. Improve selection with screen-space markers rather than falsifying size. |
+| `B-UI-06` | **ACTIVE** | The live `main.ts` label sprite remains fixed at `(0.12, 0.03)` and scale-mode changes do not adapt it. Integrate the adaptive label system or gate pixel size. |
+| `B-UI-07` | **RESOLVED** | Scale changes now force magnetic geometry to rebuild from the current Sun radius. Add a solar-radii extent assertion to preserve this behavior. |
+| `B-UI-08` | **NOT-A-BUG** | Focus and Follow are separate shipped controls; Focus intentionally clears follow, while Follow tracks each frame. Clarify labels if users confuse the modes. |
+| `B-UI-09` | **ACTIVE** | At widths below 1150 px the layout still stacks an uncapped full control panel before the canvas. Use a capped drawer/overlay and mobile viewport tests. |
+| `B-BLK-01` | **BLOCKED** | TudatPy force-model execution remains unavailable in this non-conda environment; interface-only tests do not verify real force wiring. Add a conda CI oracle lane. |
+| `B-BLK-02` | **BLOCKED** | Real-GPU timings/drawing-buffer behavior remain unverified on this environment. Record renderer/driver/resolution and allocation/frame-time data on named physical GPUs. |
+| `B-BLK-03` | **PARTIAL** | `2226277` removes the IAS15/REBOUND blocker and adds real multi-epoch accuracy/seek gates, but no live WebSocket or common-state IAS15↔WHFast/Mercurius switch-continuity test exists yet. Run and commit that contract. |
+
+### Current priority after reconciliation
+
+The fixes above materially lower the priority of porkchop denial-of-service, cross-epoch solar poisoning, the collapsed asteroid belt, H29 mesh dispatch, and the former IAS15 initialization failure. The highest-priority Report B work still present is: physically impossible MGA assists (`B-MGA-03/04`), uninterruptible WebSocket seeks (`B-WS-02`), mission mass/risk inconsistency (`B-MIS-03/04/05`), and unbounded upstream reads (`B-SOL-05`).
+
 ## What this part is
 
 The comprehensive evaluation listed seven checks it planned but could not run (its §13): MGA flyby invariants, `/mission/plan` fuzzing, asteroid failure-mode browser tests, an 8–20-connection WebSocket load test, engine-switch continuity, TudatPy force-model wiring, and real-GPU timings. Six of those were executable here. This part runs them.
