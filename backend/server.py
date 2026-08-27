@@ -36,7 +36,9 @@ import os
 import threading
 import time
 from collections import Counter, deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Any, Optional
 
@@ -268,6 +270,11 @@ MISSION_PLAN_CONCURRENT_REQUEST_LIMIT = _load_env_int(
     1,
     min_value=1,
 )
+HEAVY_COMPUTE_THREAD_LIMIT = _load_env_int(
+    "HEAVY_COMPUTE_THREAD_LIMIT",
+    2,
+    min_value=1,
+)
 
 _solar_physics_rate_locks: dict[str, deque[float]] = {}
 _solar_physics_rate_lock = threading.Lock()
@@ -277,6 +284,19 @@ _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
 _trajectory_porkchop_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT)
 _mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURRENT_REQUEST_LIMIT)
+# Heavy endpoint work never enters Starlette/AnyIO's shared request pool. This
+# preserves health/control-plane capacity even while a scientific calculation
+# is at its budget. One shared pool also bounds aggregate CPU work across solar,
+# trajectory, and mission endpoints instead of enforcing independent limits
+# that can add up to host-wide oversubscription.
+_heavy_compute_executor = ThreadPoolExecutor(
+    max_workers=HEAVY_COMPUTE_THREAD_LIMIT,
+    thread_name_prefix="solar-sim-compute",
+)
+_aia_tile_executor = ThreadPoolExecutor(
+    max_workers=SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT,
+    thread_name_prefix="solar-aia-io",
+)
 
 
 def _extract_solar_api_key(request: Request) -> str | None:
@@ -395,6 +415,62 @@ def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
     return sem.acquire(blocking=False)
 
 
+def _release_guard_when_work_finishes(
+    future: "Future[Any]",
+    guard: threading.BoundedSemaphore,
+) -> None:
+    """Release capacity at worker completion and consume detached exceptions."""
+    try:
+        if not future.cancelled():
+            future.exception()
+    except BaseException:
+        # The request coroutine has already received (or intentionally detached
+        # from) this outcome. Capacity release must never be skipped.
+        pass
+    finally:
+        guard.release()
+
+
+async def _run_owned_thread(
+    function,
+    *args,
+    guard: threading.BoundedSemaphore,
+    executor: ThreadPoolExecutor,
+    timeout_seconds: float,
+    owner_cancel_event: threading.Event | None = None,
+    **kwargs,
+):
+    """Run work without releasing its permit merely because its caller timed out.
+
+    ``asyncio.to_thread`` cannot stop a Python thread. The old endpoint pattern
+    released its semaphore in ``finally`` when ``wait_for`` timed out, allowing
+    each new wave to start more orphaned work. Here a dedicated executor owns
+    the thread, the future is shielded from request cancellation, and only the
+    completion callback releases capacity. Cooperative jobs also receive an
+    event that is set as soon as their request times out or disconnects.
+    """
+    call = partial(function, *args, **kwargs)
+    try:
+        worker_future = executor.submit(call)
+    except BaseException:
+        guard.release()
+        raise
+
+    worker_future.add_done_callback(
+        partial(_release_guard_when_work_finishes, guard=guard)
+    )
+    future = asyncio.wrap_future(worker_future)
+    try:
+        return await asyncio.wait_for(
+            asyncio.shield(future),
+            timeout=timeout_seconds,
+        )
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        if owner_cancel_event is not None:
+            owner_cancel_event.set()
+        raise
+
+
 def _build_aia_tile_payload(
     channel: str,
     jd: float | None = None,
@@ -405,6 +481,10 @@ def _build_aia_tile_payload(
         jd=jd,
         force_refresh=bool(force_refresh),
     )
+
+
+def _run_mission_plan(mission_payload: dict[str, Any]) -> dict[str, Any]:
+    return MissionPlannerAgent(ALL_BODIES).plan(mission_payload)
 
 
 def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
@@ -640,8 +720,8 @@ class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
     departure_start_jd: FiniteFloat
     departure_end_jd: FiniteFloat
     departure_step_days: FiniteFloat = Field(default=10.0, gt=0.0)
-    tof_min_days: FiniteFloat = 60.0
-    tof_max_days: FiniteFloat = 700.0
+    tof_min_days: FiniteFloat = Field(default=60.0, gt=0.0)
+    tof_max_days: FiniteFloat = Field(default=700.0, gt=0.0)
     tof_step_days: FiniteFloat = Field(default=20.0, gt=0.0)
 
 
@@ -845,14 +925,14 @@ async def solar_realtime_aia_tile(
         )
 
     try:
-        tile = await asyncio.wait_for(
-            asyncio.to_thread(
-                _build_aia_tile_payload,
-                channel=channel_key,
-                jd=jd,
-                force_refresh=bool(force_refresh),
-            ),
-            timeout=SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS,
+        tile = await _run_owned_thread(
+            _build_aia_tile_payload,
+            guard=_solar_aia_tile_concurrent_guard,
+            executor=_aia_tile_executor,
+            timeout_seconds=SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS,
+            channel=channel_key,
+            jd=jd,
+            force_refresh=bool(force_refresh),
         )
     except asyncio.TimeoutError as exc:
         raise HTTPException(
@@ -863,9 +943,6 @@ async def solar_realtime_aia_tile(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
-    finally:
-        _solar_aia_tile_concurrent_guard.release()
-
     response = Response(
         content=tile["content"],
         media_type=str(tile.get("content_type") or "image/png"),
@@ -938,26 +1015,23 @@ async def solar_physics_state(
         )
 
     try:
-        state = await asyncio.wait_for(
-            asyncio.to_thread(
-                _build_solar_physics_state,
-                epoch_jd,
-                fidelity_key,
-                safe_max_features,
-                forcing_key,
-                bool(live_data),
-                bool(force_data_refresh),
-            ),
-            timeout=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
+        state = await _run_owned_thread(
+            _build_solar_physics_state,
+            epoch_jd,
+            fidelity_key,
+            safe_max_features,
+            forcing_key,
+            bool(live_data),
+            bool(force_data_refresh),
+            guard=_solar_physics_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError as exc:
         raise HTTPException(
             status_code=503,
             detail="Solar physics generation timed out. Try again later.",
         ) from exc
-    finally:
-        _solar_physics_concurrent_guard.release()
-
     return state
 
 
@@ -1103,23 +1177,26 @@ async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
             headers={"Retry-After": "2"},
         )
 
+    cancel_event = threading.Event()
     try:
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                run_porkchop_scan,
-                ALL_BODIES,
-                from_id=payload.from_id,
-                to_id=payload.to_id,
-                departure_start_jd=float(payload.departure_start_jd),
-                departure_end_jd=float(payload.departure_end_jd),
-                departure_step_days=float(payload.departure_step_days),
-                tof_min_days=float(payload.tof_min_days),
-                tof_max_days=float(payload.tof_max_days),
-                tof_step_days=float(payload.tof_step_days),
-                ephemeris_provider=payload.ephemeris_provider,
-                prograde=payload.prograde,
-            ),
-            timeout=TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS,
+        result = await _run_owned_thread(
+            run_porkchop_scan,
+            ALL_BODIES,
+            guard=_trajectory_porkchop_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS,
+            owner_cancel_event=cancel_event,
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_start_jd=float(payload.departure_start_jd),
+            departure_end_jd=float(payload.departure_end_jd),
+            departure_step_days=float(payload.departure_step_days),
+            tof_min_days=float(payload.tof_min_days),
+            tof_max_days=float(payload.tof_max_days),
+            tof_step_days=float(payload.tof_step_days),
+            ephemeris_provider=payload.ephemeris_provider,
+            prograde=payload.prograde,
+            cancel_event=cancel_event,
         )
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1128,8 +1205,6 @@ async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
             status_code=503,
             detail="Trajectory porkchop scan timed out. Try again later.",
         ) from exc
-    finally:
-        _trajectory_porkchop_concurrent_guard.release()
     return result
 
 
@@ -1167,11 +1242,12 @@ async def mission_plan(payload: MissionPlanRequest):
     mission_payload = payload.model_dump(exclude_none=True)
 
     try:
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                lambda: MissionPlannerAgent(ALL_BODIES).plan(mission_payload),
-            ),
-            timeout=MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS,
+        result = await _run_owned_thread(
+            _run_mission_plan,
+            mission_payload,
+            guard=_mission_plan_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1180,9 +1256,6 @@ async def mission_plan(payload: MissionPlanRequest):
             status_code=503,
             detail="Mission planning timed out. Try again later.",
         ) from exc
-    finally:
-        _mission_plan_concurrent_guard.release()
-
     if result.get("recommendation") is None:
         raise HTTPException(status_code=422, detail=result.get("status", "No feasible mission recommendation"))
     return result

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from threading import Event
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from mission.ephemeris_service import EphemerisService
@@ -14,6 +15,10 @@ from mission.orbital import (
     vector_length,
     vector_sub,
 )
+
+
+class PorkchopScanCancelled(RuntimeError):
+    """Raised when a request owner cancels an in-progress grid scan."""
 
 
 def _stumpff_c2(z: float) -> float:
@@ -368,6 +373,7 @@ def scan_porkchop_window(
     tof_max_days: float,
     tof_step_days: float,
     prograde: bool = True,
+    cancel_event: Event | None = None,
 ) -> Dict[str, Any]:
     dep_step = max(0.5, float(departure_step_days))
     tof_step = max(5.0, float(tof_step_days))
@@ -379,6 +385,8 @@ def scan_porkchop_window(
     while dep <= departure_end_jd + 1e-12:
         tof = float(tof_min_days)
         while tof <= tof_max_days + 1e-12:
+            if cancel_event is not None and cancel_event.is_set():
+                raise PorkchopScanCancelled("porkchop scan cancelled by request owner")
             leg = compute_lambert_leg(
                 ephemeris,
                 from_id,

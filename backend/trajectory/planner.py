@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from threading import Event
 from typing import Any, Dict, List, Optional, Sequence
 
 from mission.ephemeris_service import EphemerisService
@@ -177,6 +178,7 @@ def run_porkchop_scan(
     tof_step_days: float,
     ephemeris_provider: str = "auto",
     prograde: bool = True,
+    cancel_event: Event | None = None,
 ) -> Dict[str, Any]:
     ephemeris = EphemerisService(bodies, provider=ephemeris_provider)
     result = scan_porkchop_window(
@@ -190,6 +192,7 @@ def run_porkchop_scan(
         tof_max_days=tof_max_days,
         tof_step_days=tof_step_days,
         prograde=prograde,
+        cancel_event=cancel_event,
     )
     result["solver"] = "lambert_porkchop"
     result["ephemerisProviderRequested"] = ephemeris.provider
