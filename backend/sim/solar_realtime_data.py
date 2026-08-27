@@ -7,6 +7,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -74,13 +75,20 @@ class SolarRealtimeDataProvider:
         "aia_304": 0.14,
     }
 
-    def __init__(self, timeout_s: float = 3.8, cache_ttl_s: float = 300.0):
+    def __init__(
+        self,
+        timeout_s: float = 3.8,
+        cache_ttl_s: float = 300.0,
+        snapshot_cache_max_entries: int = 16,
+    ):
         self.timeout_s = max(0.8, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
+        self.snapshot_cache_max_entries = max(1, int(snapshot_cache_max_entries))
         self.singleflight_error_backoff_s = 4.5
         self._lock = threading.Lock()
-        self._cache: dict[str, Any] | None = None
-        self._cache_expiry_monotonic = 0.0
+        self._snapshot_cache: OrderedDict[
+            tuple[str, str, float | None], tuple[float, dict[str, Any]]
+        ] = OrderedDict()
         self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
         self._inflight_failures: dict[Any, tuple[float, BaseException]] = {}
@@ -104,27 +112,55 @@ class SolarRealtimeDataProvider:
                 },
             },
             "cache_ttl_s": self.cache_ttl_s,
+            "snapshot_cache_max_entries": self.snapshot_cache_max_entries,
             "timeout_s": self.timeout_s,
         }
 
     def latest(self, jd: float | None = None, force_refresh: bool = False) -> dict[str, Any]:
+        requested_jd: float | None
+        if jd is None:
+            requested_jd = None
+            key = ("snapshot", "latest", None)
+        else:
+            try:
+                requested_jd = float(jd)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("jd must be a finite Julian date") from exc
+            if not math.isfinite(requested_jd):
+                raise ValueError("jd must be a finite Julian date")
+            key = ("snapshot", "jd", requested_jd)
+
         now_monotonic = time.monotonic()
         with self._lock:
-            if (
-                not force_refresh
-                and self._cache is not None
-                and now_monotonic < self._cache_expiry_monotonic
-            ):
-                return self._cache
+            cached = self._snapshot_cache.get(key)
+            if not force_refresh and cached is not None:
+                expiry, snapshot = cached
+                if now_monotonic < expiry:
+                    self._snapshot_cache.move_to_end(key)
+                    return snapshot
+                self._snapshot_cache.pop(key, None)
 
-        key = ("snapshot", "latest" if jd is None else str(jd))
         def fetch_and_cache_snapshot() -> dict[str, Any]:
-            snapshot = self._fetch_snapshot(jd)
+            snapshot = self._fetch_snapshot(requested_jd)
+            completed_monotonic = time.monotonic()
             with self._lock:
                 # Publish before the single-flight leader releases its entry so a
                 # request arriving at completion cannot start a duplicate refresh.
-                self._cache = snapshot
-                self._cache_expiry_monotonic = time.monotonic() + self.cache_ttl_s
+                self._snapshot_cache[key] = (
+                    completed_monotonic + self.cache_ttl_s,
+                    snapshot,
+                )
+                self._snapshot_cache.move_to_end(key)
+
+                expired_keys = [
+                    cache_key
+                    for cache_key, (expiry, _) in self._snapshot_cache.items()
+                    if expiry <= completed_monotonic
+                ]
+                for expired_key in expired_keys:
+                    self._snapshot_cache.pop(expired_key, None)
+                while len(self._snapshot_cache) > self.snapshot_cache_max_entries:
+                    self._snapshot_cache.popitem(last=False)
             return snapshot
 
         return self._singleflight_fetch(
