@@ -42,7 +42,11 @@ import { createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import {
   buildCatalogIndexContract,
+  buildModelWorkerCatalog,
   type CatalogIndexContract,
+  isValidModelWorkerStateArray,
+  MODEL_WORKER_RECORD_SIZE,
+  MODEL_WORKER_STATE_SCHEMA_VERSION,
   type ModelWorkerCatalog,
   type ModelWorkerInitMessage,
   type ModelWorkerOutboundMessage,
@@ -104,35 +108,39 @@ const dom = {
 // ── Data & State ─────────────────────────────────────────────────────────────
 
 const catalog = createSolarSystemCatalog();
-const model = new SolarSystemModel(catalog);
-const modelWorkerCatalog: ModelWorkerCatalog = {
-  bodies: catalog.bodies.map((body) => ({
-    id: body.id,
-    parentId: body.parentId ?? null,
-    orbit: body.orbit ?? null
-  }))
-};
-const catalogIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
-const catalogParentIndexByIndex = catalogIndexContract.parentIndexByIndex;
-const catalogBodyCount = catalogIndexContract.idByIndex.length;
+// Moon rendering is not currently exposed by the shipped UI. Keep those 424
+// catalog records available for provenance/search, but do not pretend to keep
+// hidden dynamical states current or spend a worker tick propagating them.
+const showMoons = false;
+const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
+  includeMoons: showMoons
+});
+const propagatedBodies = modelWorkerCatalog.bodies.map((body) => catalog.bodies[body.sourceIndex]);
+const model = new SolarSystemModel({ bodies: propagatedBodies });
+const modelWorkerIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
+const modelWorkerParentIndexByIndex = modelWorkerIndexContract.parentIndexByIndex;
+const modelWorkerSourceIndexByIndex = modelWorkerIndexContract.sourceIndexByIndex;
+const modelWorkerBodyCount = modelWorkerIndexContract.idByIndex.length;
 const bodyById = new Map(catalog.bodies.map((b) => [b.id, b]));
 const simState = createSimulationState({
   currentJulianDate,
   defaultTimeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC
 });
-const modelWorkerWorldX = new Float32Array(catalogBodyCount);
-const modelWorkerWorldY = new Float32Array(catalogBodyCount);
-const modelWorkerWorldZ = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVx = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVy = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVz = new Float32Array(catalogBodyCount);
-const modelWorkerPositionsDirty = new Uint8Array(catalogBodyCount);
+const modelWorkerWorldX = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldY = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldZ = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVx = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
+const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
 let modelWorker: Worker | null = null;
 let modelWorkerEnabled = false;
 let modelWorkerReady = false;
+let modelWorkerTickInFlight = false;
 let modelWorkerSequence = 0;
+let lastModelWorkerAcceptedSequence = -1;
+let lastModelWorkerAppliedSequence = -1;
 let latestModelWorkerState: ModelWorkerStateMessage | null = null;
-const MODEL_WORKER_RECORD_SIZE = 7;
 const ASTEROID_BELT_TARGET_COUNT = 50_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
@@ -393,7 +401,6 @@ const surveyMilkySphere = { position: new Vector3() };
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
-const showMoons = false;
 for (const body of catalog.bodies) {
   if (body.type === 'moon' && !showMoons) continue;
   createBodyNode(body);
@@ -639,6 +646,7 @@ function disableModelWorkerIntegration() {
   modelWorker = null;
   modelWorkerEnabled = false;
   modelWorkerReady = false;
+  modelWorkerTickInFlight = false;
   latestModelWorkerState = null;
 }
 
@@ -662,6 +670,14 @@ function initializeModelWorker() {
     if (!message || typeof message !== 'object') return;
 
     if (message.type === 'ready') {
+      if (
+        message.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
+        || message.bodyCount !== modelWorkerBodyCount
+      ) {
+        console.warn('[modelWorker] incompatible ready contract');
+        disableModelWorkerIntegration();
+        return;
+      }
       modelWorkerReady = true;
       return;
     }
@@ -669,18 +685,25 @@ function initializeModelWorker() {
     if (message.type === 'state') {
       const stateMessage = message;
       const sequence = Number(stateMessage.sequence);
-      if (!Number.isFinite(sequence) || sequence < 0) return;
+      modelWorkerTickInFlight = false;
+      if (
+        stateMessage.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
+        || !Number.isInteger(sequence)
+        || sequence <= lastModelWorkerAcceptedSequence
+        || !Number.isFinite(stateMessage.tickJd)
+        || !isValidModelWorkerStateArray(stateMessage.bodies, modelWorkerBodyCount)
+      ) {
+        console.warn('[modelWorker] rejected malformed or stale state payload');
+        return;
+      }
 
-      const bodies = stateMessage.bodies instanceof Float32Array
-        ? stateMessage.bodies
-        : new Float32Array(stateMessage.bodies ?? 0);
-
-      if (bodies.length !== catalogBodyCount * MODEL_WORKER_RECORD_SIZE) return;
+      lastModelWorkerAcceptedSequence = sequence;
 
       latestModelWorkerState = {
         type: 'state',
+        schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
         sequence,
-        bodies,
+        bodies: stateMessage.bodies,
         tickJd: Number(stateMessage.tickJd),
         profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
       };
@@ -721,12 +744,16 @@ function updateModelLocally(deltaSeconds) {
 }
 
 function dispatchModelWorkerTick(deltaSeconds) {
-  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady) return;
+  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
 
   const warpState = sunCtrl.getWarpState();
   const metricState = warpState && warpState.direction
     ? {
-      direction: [warpState.direction.x, warpState.direction.y, warpState.direction.z],
+      direction: [
+        warpState.direction.x,
+        warpState.direction.y,
+        warpState.direction.z
+      ] as [number, number, number],
       sourceDistanceCm: warpState.sourceDistanceCm,
       energyErg: warpState.energyErg,
       timeSec: warpState.timeSec,
@@ -746,7 +773,9 @@ function dispatchModelWorkerTick(deltaSeconds) {
 
   try {
     modelWorker.postMessage(tickMessage);
+    modelWorkerTickInFlight = true;
   } catch (error) {
+    modelWorkerTickInFlight = false;
     console.warn('[modelWorker] tick failed:', error);
     disableModelWorkerIntegration();
   }
@@ -756,51 +785,81 @@ function applyLatestWorkerSnapshot() {
   if (!latestModelWorkerState || !modelWorkerReady) return false;
 
   const message = latestModelWorkerState;
+  if (message.sequence <= lastModelWorkerAppliedSequence) return false;
+
+  // Never let a delayed worker response freeze or rewind the scene. At most
+  // three animation frames of simulation-time skew are accepted; otherwise the
+  // main-thread fallback computes the current state and the worker catches up.
+  const maxSnapshotAgeDays = Math.max(1e-6, Math.abs(simState.timeScaleDaysPerSec) * 0.05);
+  if (Math.abs(simState.julianDate - message.tickJd) > maxSnapshotAgeDays) {
+    lastModelWorkerAppliedSequence = message.sequence;
+    return false;
+  }
+
   const bodies = message.bodies;
-  const expectedCount = catalogBodyCount;
+  const expectedCount = modelWorkerBodyCount;
   if (bodies.length !== expectedCount * MODEL_WORKER_RECORD_SIZE) return false;
 
   modelWorkerPositionsDirty.fill(0);
 
   for (let i = 0; i < expectedCount; i += 1) {
     const record = i * MODEL_WORKER_RECORD_SIZE;
-    const rawIndex = bodies[record];
-    const bodyIndex = Math.trunc(rawIndex);
-
-    if (!Number.isInteger(bodyIndex) || bodyIndex < 0 || bodyIndex >= expectedCount) {
-      continue;
-    }
-
-    modelWorkerWorldX[bodyIndex] = bodies[record + 1];
-    modelWorkerWorldY[bodyIndex] = bodies[record + 2];
-    modelWorkerWorldZ[bodyIndex] = bodies[record + 3];
-    modelWorkerWorldVx[bodyIndex] = bodies[record + 4];
-    modelWorkerWorldVy[bodyIndex] = bodies[record + 5];
-    modelWorkerWorldVz[bodyIndex] = bodies[record + 6];
-    modelWorkerPositionsDirty[bodyIndex] = 1;
+    modelWorkerWorldX[i] = bodies[record];
+    modelWorkerWorldY[i] = bodies[record + 1];
+    modelWorkerWorldZ[i] = bodies[record + 2];
+    modelWorkerWorldVx[i] = bodies[record + 3];
+    modelWorkerWorldVy[i] = bodies[record + 4];
+    modelWorkerWorldVz[i] = bodies[record + 5];
+    modelWorkerPositionsDirty[i] = 1;
   }
 
-  for (let bodyIndex = 0; bodyIndex < expectedCount; bodyIndex += 1) {
-    if (!modelWorkerPositionsDirty[bodyIndex]) continue;
+  for (let workerIndex = 0; workerIndex < expectedCount; workerIndex += 1) {
+    if (!modelWorkerPositionsDirty[workerIndex]) continue;
 
-    const body = catalog.bodies[bodyIndex];
+    const sourceIndex = modelWorkerSourceIndexByIndex[workerIndex];
+    const body = catalog.bodies[sourceIndex];
     if (!body) continue;
+
+    const wx = modelWorkerWorldX[workerIndex];
+    const wy = modelWorkerWorldY[workerIndex];
+    const wz = modelWorkerWorldZ[workerIndex];
+    const vx = modelWorkerWorldVx[workerIndex];
+    const vy = modelWorkerWorldVy[workerIndex];
+    const vz = modelWorkerWorldVz[workerIndex];
+
+    // Update the model independently of rendering reachability. A missing
+    // scene node must never turn a valid propagated state into a frozen one.
+    const state = model.getState(body.id);
+    if (state) {
+      state.worldPosition.set(wx, wy, wz);
+      state.worldVelocity.set(vx, vy, vz);
+
+      const parentIndex = modelWorkerParentIndexByIndex[workerIndex];
+      if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
+        state.relativePosition.set(
+          wx - modelWorkerWorldX[parentIndex],
+          wy - modelWorkerWorldY[parentIndex],
+          wz - modelWorkerWorldZ[parentIndex]
+        );
+        state.relativeVelocity.set(
+          vx - modelWorkerWorldVx[parentIndex],
+          vy - modelWorkerWorldVy[parentIndex],
+          vz - modelWorkerWorldVz[parentIndex]
+        );
+      } else {
+        state.relativePosition.set(wx, wy, wz);
+        state.relativeVelocity.set(vx, vy, vz);
+      }
+    }
 
     const node = bodyNodes.get(body.id);
     if (!node) continue;
-
-    const wx = modelWorkerWorldX[bodyIndex];
-    const wy = modelWorkerWorldY[bodyIndex];
-    const wz = modelWorkerWorldZ[bodyIndex];
-    const vx = modelWorkerWorldVx[bodyIndex];
-    const vy = modelWorkerWorldVy[bodyIndex];
-    const vz = modelWorkerWorldVz[bodyIndex];
 
     if (body.parentId) {
       if (body.parentId === 'sun') {
         node.position.set(wx, wy, wz);
       } else {
-        const parentIndex = catalogParentIndexByIndex[bodyIndex];
+        const parentIndex = modelWorkerParentIndexByIndex[workerIndex];
         if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
           node.position.set(
             wx - modelWorkerWorldX[parentIndex],
@@ -819,30 +878,9 @@ function applyLatestWorkerSnapshot() {
       node.visible = showMoons;
     }
 
-    const state = model.getState(body.id);
-    if (!state) continue;
-
-    state.worldPosition.set(wx, wy, wz);
-    state.worldVelocity.set(vx, vy, vz);
-
-    const parentIndex = catalogParentIndexByIndex[bodyIndex];
-    if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
-      state.relativePosition.set(
-        wx - modelWorkerWorldX[parentIndex],
-        wy - modelWorkerWorldY[parentIndex],
-        wz - modelWorkerWorldZ[parentIndex]
-      );
-      state.relativeVelocity.set(
-        vx - modelWorkerWorldVx[parentIndex],
-        vy - modelWorkerWorldVy[parentIndex],
-        vz - modelWorkerWorldVz[parentIndex]
-      );
-    } else {
-      state.relativePosition.set(wx, wy, wz);
-      state.relativeVelocity.set(vx, vy, vz);
-    }
   }
 
+  lastModelWorkerAppliedSequence = message.sequence;
   return true;
 }
 
