@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "update:moons": "node ./scripts/update-moons-data.mjs",
     "ingest:moon-textures": "node ./scripts/ingest-moon-textures.mjs",
-    "verify:moon-frames": "node ./scripts/verify-moon-frames.mjs"
+    "verify:moon-frames": "node ./scripts/verify-moon-frames.mjs",
+    "verify:planet-positions": "node ./scripts/verify-planet-positions.mjs"
   },
   "devDependencies": {
     "@types/three": "^0.182.0",
