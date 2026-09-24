@@ -672,6 +672,7 @@ function refillBodyList() {
   dom.bodyList.disabled = matchCount === 0;
   dom.focusBody.disabled = matchCount === 0;
   dom.followBody.disabled = matchCount === 0;
+  if (matchCount > 0) updateBodyInfoPanel(dom.bodyList.value);
 
   const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
   dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
