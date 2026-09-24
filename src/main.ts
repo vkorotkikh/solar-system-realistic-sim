@@ -1087,13 +1087,11 @@ function applyPanelState({ moveFocus = false } = {}) {
   );
 
   if (moveFocus) {
-    window.requestAnimationFrame(() => {
-      if (open) {
-        dom.panelClose.focus({ preventScroll: true });
-      } else {
-        dom.panelToggle.focus({ preventScroll: true });
-      }
-    });
+    if (open) {
+      dom.panelClose.focus({ preventScroll: true });
+    } else {
+      dom.panelToggle.focus({ preventScroll: true });
+    }
   }
   queueRendererResize();
 }
