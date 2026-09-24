@@ -11,6 +11,8 @@ J2000-ecliptic positions in AU and velocities in AU/day.
 """
 
 import math
+import threading
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -43,6 +45,16 @@ STATE_JD_TIME_SCALE = "TDB"
 CHECKPOINT_INTERVAL_YEARS = 10.0
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
+MAX_CHECKPOINTS = 8
+# This is the interval covered by the committed multi-epoch Horizons oracle.
+# Refuse to imply high-fidelity behavior outside the range that is actually
+# tested rather than accepting an arbitrarily expensive or unvalidated seek.
+SUPPORTED_JD_MIN_TDB = 2_447_892.5  # 1990-01-01 TDB
+SUPPORTED_JD_MAX_TDB = 2_469_807.5  # 2050-01-01 TDB
+
+
+class SeekCancelledError(RuntimeError):
+    """Raised when a cooperative REBOUND seek is cancelled by its owner."""
 
 
 def _state_vector_contract() -> Dict[str, Any]:
@@ -66,6 +78,7 @@ class REBOUNDEngine(SimulationEngine):
         integrator: str = "ias15",
         *,
         initial_conditions_path: str | Path = DEFAULT_INITIAL_CONDITIONS_PATH,
+        checkpoint_limit: int = MAX_CHECKPOINTS,
     ):
         self.sim: Any | None = None
         self.body_ids: List[str] = []
@@ -73,9 +86,11 @@ class REBOUNDEngine(SimulationEngine):
         self._stored_bodies: List[Dict] = []
         self._integrator = integrator
         self._initial_energy: float = 0.0
-        self._checkpoints: Dict[int, Any] = {}
+        self._checkpoints: OrderedDict[int, Any] = OrderedDict()
+        self._checkpoint_limit = max(1, int(checkpoint_limit))
         self._checkpoint_interval_years: float = CHECKPOINT_INTERVAL_YEARS
         self._direct_backward_seek_max_years: float = DIRECT_BACKWARD_SEEK_MAX_YEARS
+        self._seek_cancel_event = threading.Event()
         self._initial_conditions_path = Path(initial_conditions_path)
         self._initial_conditions: NBodyInitialConditions | None = None
         self._cartesian_body_ids: List[str] = []
@@ -90,6 +105,32 @@ class REBOUNDEngine(SimulationEngine):
     def fidelity_level(self) -> str:
         # Only IAS15 is covered by the committed multi-epoch Horizons gates.
         return "high" if self._integrator == "ias15" else "normal"
+
+    @property
+    def supported_jd_range(self) -> tuple[float, float]:
+        return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
+
+    def cancel_pending_operation(self) -> None:
+        self._seek_cancel_event.set()
+
+    def _raise_if_seek_cancelled(self) -> None:
+        if self._seek_cancel_event.is_set():
+            raise SeekCancelledError("REBOUND epoch seek was cancelled")
+
+    @staticmethod
+    def _validate_supported_jd(jd: float) -> float:
+        try:
+            requested_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Julian date must be finite") from exc
+        if not math.isfinite(requested_jd):
+            raise ValueError("Julian date must be finite")
+        if not SUPPORTED_JD_MIN_TDB <= requested_jd <= SUPPORTED_JD_MAX_TDB:
+            raise ValueError(
+                "Julian date is outside the validated REBOUND interval "
+                f"[{SUPPORTED_JD_MIN_TDB}, {SUPPORTED_JD_MAX_TDB}] JDTDB"
+            )
+        return requested_jd
 
     @property
     def available(self) -> bool:
@@ -176,6 +217,11 @@ class REBOUNDEngine(SimulationEngine):
                     "scientific_payload_sha256": (
                         EXPECTED_SCIENTIFIC_PAYLOAD_SHA256
                     ),
+                    "validated_jd_tdb_range": [
+                        SUPPORTED_JD_MIN_TDB,
+                        SUPPORTED_JD_MAX_TDB,
+                    ],
+                    "checkpoint_limit": self._checkpoint_limit,
                 }
             )
         return {
@@ -212,12 +258,7 @@ class REBOUNDEngine(SimulationEngine):
                 "  python -m pip install -r requirements.txt"
             )
 
-        try:
-            requested_start_jd = float(start_jd)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("start_jd must be a finite Julian date") from exc
-        if not math.isfinite(requested_start_jd):
-            raise ValueError("start_jd must be a finite Julian date")
+        requested_start_jd = self._validate_supported_jd(start_jd)
         if not bodies:
             raise ValueError("at least one body is required")
 
@@ -355,7 +396,7 @@ class REBOUNDEngine(SimulationEngine):
         self._element_fallback_body_ids = element_fallback_body_ids
         self._internal_gravity_body_ids = internal_gravity_body_ids
         self._initial_energy = initial_energy
-        self._checkpoints = {}
+        self._checkpoints = OrderedDict()
         if initial_checkpoint is not None:
             self._checkpoints[0] = initial_checkpoint
         self._store_checkpoint()
@@ -426,6 +467,9 @@ class REBOUNDEngine(SimulationEngine):
         if abs(float(self.sim.t) - checkpoint_time) > 1e-8:
             return
         self._checkpoints[checkpoint_idx] = checkpoint
+        self._checkpoints.move_to_end(checkpoint_idx)
+        while len(self._checkpoints) > self._checkpoint_limit:
+            self._checkpoints.popitem(last=False)
 
     def _restore_checkpoint_at_or_before(self, target_years: float) -> bool:
         if not self._checkpoints:
@@ -442,15 +486,18 @@ class REBOUNDEngine(SimulationEngine):
         restored = self._copy_simulation(snapshot)
         if restored is None:
             return False
+        self._checkpoints.move_to_end(candidate_idx)
         self.sim = restored
         return True
 
     def _integrate_forward_with_checkpoints(self, target_years: float) -> None:
         if self.sim is None:
             return
+        self._raise_if_seek_cancelled()
         if target_years <= float(self.sim.t) + SEEK_EPSILON_YEARS:
             if abs(target_years - float(self.sim.t)) > SEEK_EPSILON_YEARS:
                 self.sim.integrate(target_years)
+                self._raise_if_seek_cancelled()
             return
 
         current_years = float(self.sim.t)
@@ -459,11 +506,15 @@ class REBOUNDEngine(SimulationEngine):
             checkpoint_years = self._checkpoint_time_for_index(next_checkpoint_idx)
             if checkpoint_years >= target_years - SEEK_EPSILON_YEARS:
                 break
+            self._raise_if_seek_cancelled()
             self.sim.integrate(checkpoint_years)
+            self._raise_if_seek_cancelled()
             self._store_checkpoint()
             next_checkpoint_idx += 1
 
+        self._raise_if_seek_cancelled()
         self.sim.integrate(target_years)
+        self._raise_if_seek_cancelled()
         self._store_checkpoint()
 
     def set_julian_date(self, jd: float) -> None:
@@ -474,6 +525,8 @@ class REBOUNDEngine(SimulationEngine):
         Backward jumps restore nearest checkpoint at-or-before target, then
         integrate forward to the requested epoch.
         """
+        requested_jd = self._validate_supported_jd(jd)
+        self._seek_cancel_event.clear()
         if not self._stored_bodies:
             return
         if self.sim is None:
@@ -481,7 +534,7 @@ class REBOUNDEngine(SimulationEngine):
         if self.sim is None:
             return
 
-        target_years = (jd - J2000_JD) / DAYS_PER_YEAR
+        target_years = (requested_jd - J2000_JD) / DAYS_PER_YEAR
         current_years = float(self.sim.t)
         if abs(target_years - current_years) <= SEEK_EPSILON_YEARS:
             return

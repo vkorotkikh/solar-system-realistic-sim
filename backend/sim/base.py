@@ -114,6 +114,15 @@ class SimulationEngine(ABC):
         """Jump to a Julian date in the engine's declared scale (may reinitialize)."""
         ...
 
+    @property
+    def supported_jd_range(self) -> tuple[float, float] | None:
+        """Inclusive supported epoch range, or ``None`` when not declared."""
+        return None
+
+    def cancel_pending_operation(self) -> None:
+        """Request cooperative cancellation of an in-progress long operation."""
+        return None
+
     @abstractmethod
     def get_energy(self) -> float:
         """Return total energy of the system (for conservation monitoring)."""

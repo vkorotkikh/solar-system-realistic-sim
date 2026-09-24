@@ -147,6 +147,10 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_CONNECTION_LIMIT = _load_env_int("WS_SIM_CONNECTION_LIMIT", 4, min_value=1)
+WS_SIM_ALLOWED_ORIGINS = frozenset(
+    _load_env_csv("WS_SIM_ALLOWED_ORIGINS", SOLAR_CORS_ALLOWED_ORIGINS)
+)
 EPHEMERIS_PROVIDERS = ("auto", "spice", "horizons", "kepler")
 KNOWN_BODY_IDS = {body["id"] for body in ALL_BODIES}
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -284,6 +288,9 @@ _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
 _trajectory_porkchop_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT)
 _mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURRENT_REQUEST_LIMIT)
+_ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
+_ws_sim_connection_lock = threading.Lock()
+_ws_sim_active_connections = 0
 # Heavy endpoint work never enters Starlette/AnyIO's shared request pool. This
 # preserves health/control-plane capacity even while a scientific calculation
 # is at its budget. One shared pool also bounds aggregate CPU work across solar,
@@ -413,6 +420,31 @@ def _build_solar_physics_state(
 
 def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
     return sem.acquire(blocking=False)
+
+
+def _try_acquire_ws_sim_slot() -> bool:
+    global _ws_sim_active_connections
+    if not _acquire_nonblocking(_ws_sim_connection_guard):
+        return False
+    with _ws_sim_connection_lock:
+        _ws_sim_active_connections += 1
+    return True
+
+
+def _release_ws_sim_slot() -> None:
+    global _ws_sim_active_connections
+    with _ws_sim_connection_lock:
+        if _ws_sim_active_connections <= 0:
+            raise RuntimeError("WebSocket simulation admission counter underflow")
+        _ws_sim_active_connections -= 1
+    _ws_sim_connection_guard.release()
+
+
+def _websocket_origin_allowed(websocket: WebSocket) -> bool:
+    origin = websocket.headers.get("origin")
+    # Non-browser scientific clients commonly omit Origin. Browser clients must
+    # match the same explicit loopback allowlist as the HTTP application.
+    return origin is None or origin in WS_SIM_ALLOWED_ORIGINS
 
 
 def _release_guard_when_work_finishes(
@@ -1319,9 +1351,16 @@ class SimulationRunner:
     def start(self):
         self._thread.start()
 
-    def stop(self):
+    def stop(self) -> bool:
         self.running = False
+        cancel_pending = getattr(self.engine, "cancel_pending_operation", None)
+        if callable(cancel_pending):
+            cancel_pending()
         self._thread.join(timeout=3)
+        return not self._thread.is_alive()
+
+    def wait_until_stopped(self) -> None:
+        self._thread.join()
 
     def send_command(self, cmd: dict) -> bool:
         try:
@@ -1388,6 +1427,8 @@ class SimulationRunner:
             # ── Process commands ──────────────────────────────────────
             processed_commands = 0
             while processed_commands < MAX_COMMANDS_PER_FRAME:
+                if not self.running:
+                    break
                 try:
                     cmd = self.command_queue.get_nowait()
                 except queue.Empty:
@@ -1396,9 +1437,14 @@ class SimulationRunner:
                 try:
                     self._handle_command(cmd)
                 except Exception as exc:
+                    if not self.running:
+                        break
                     self._runtime_error = f"Command handling failed: {exc}"
                     self.paused = True
                     self._push_error(self._runtime_error, code="runtime_error")
+
+            if not self.running:
+                break
 
             if (not self.command_queue.empty()) and (self._frame_index % 60 == 0):
                 self._push_error(
@@ -1513,6 +1559,17 @@ class SimulationRunner:
                     action=action,
                 )
                 return
+            supported_range = getattr(self.engine, "supported_jd_range", None)
+            if supported_range is not None:
+                min_jd, max_jd = supported_range
+                if not min_jd <= jd <= max_jd:
+                    self._push_error(
+                        "`set_julian_date` is outside the engine's validated "
+                        f"interval [{min_jd}, {max_jd}] {jd_time_scale or ''}".strip(),
+                        action=action,
+                        code="epoch_out_of_range",
+                    )
+                    return
             if abs(self.engine.get_julian_date() - jd) > 1e-12:
                 self.engine.set_julian_date(jd)
             if self.kuiper.active:
@@ -1662,10 +1719,7 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
 
-@app.websocket("/ws/sim")
-async def simulation_websocket(websocket: WebSocket):
-    await websocket.accept()
-
+async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     # Select engine and integrator from query params
     engine_requested = websocket.query_params.get("engine", DEFAULT_ENGINE).lower()
     integrator_requested = websocket.query_params.get("integrator", DEFAULT_INTEGRATOR).lower()
@@ -1805,7 +1859,27 @@ async def simulation_websocket(websocket: WebSocket):
     except Exception as exc:
         print(f"[ws/sim] error: {exc}")
     finally:
-        runner.stop()
+        if not runner.stop():
+            # Keep the owning connection/admission permit alive until the
+            # actual worker exits; a three-second join timeout is not proof of
+            # cleanup.
+            await asyncio.to_thread(runner.wait_until_stopped)
+
+
+@app.websocket("/ws/sim")
+async def simulation_websocket(websocket: WebSocket):
+    if not _websocket_origin_allowed(websocket):
+        await websocket.close(code=1008, reason="WebSocket origin is not allowed")
+        return
+    if not _try_acquire_ws_sim_slot():
+        await websocket.close(code=1013, reason="Simulation capacity is exhausted")
+        return
+
+    try:
+        await websocket.accept()
+        await _serve_simulation_websocket(websocket)
+    finally:
+        _release_ws_sim_slot()
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
