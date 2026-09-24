@@ -1094,6 +1094,7 @@ function applyPanelState({ moveFocus = false } = {}) {
       dom.panelToggle.focus({ preventScroll: true });
     }
   }
+  resizeRenderer();
   queueRendererResize();
 }
 
