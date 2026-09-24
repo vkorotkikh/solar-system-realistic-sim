@@ -161,8 +161,7 @@ svg {
   visibility: visible;
   transition:
     transform var(--motion-panel) var(--ease-standard),
-    opacity var(--motion-fast) ease,
-    visibility 0s linear 0s;
+    opacity var(--motion-fast) ease;
 }
 
 #app.panel-is-closed #control-panel {
@@ -171,8 +170,7 @@ svg {
   visibility: hidden;
   transition:
     transform var(--motion-panel) var(--ease-standard),
-    opacity var(--motion-fast) ease,
-    visibility 0s linear var(--motion-panel);
+    opacity var(--motion-fast) ease;
 }
 
 .panel-header {
@@ -968,7 +966,6 @@ select option {
   transform: translateX(0);
   transition:
     opacity var(--motion-fast) ease,
-    visibility 0s linear 0s,
     transform var(--motion-panel) var(--ease-standard),
     background-color var(--motion-fast) ease,
     border-color var(--motion-fast) ease;
@@ -981,7 +978,6 @@ select option {
   transform: translateX(-10px);
   transition:
     opacity var(--motion-fast) ease,
-    visibility 0s linear var(--motion-fast),
     transform var(--motion-panel) var(--ease-standard);
 }
 
@@ -1139,8 +1135,7 @@ select option {
     transform: translateX(-102%);
     transition:
       transform var(--motion-panel) var(--ease-standard),
-      opacity var(--motion-fast) ease,
-      visibility 0s linear var(--motion-panel);
+      opacity var(--motion-fast) ease;
   }
 
   #app.panel-is-open #control-panel {
@@ -1149,8 +1144,7 @@ select option {
     transform: translateX(0);
     transition:
       transform var(--motion-panel) var(--ease-standard),
-      opacity var(--motion-fast) ease,
-      visibility 0s linear 0s;
+      opacity var(--motion-fast) ease;
   }
 
   #viewport-shell {
@@ -1169,8 +1163,7 @@ select option {
     visibility: hidden;
     pointer-events: none;
     transition:
-      opacity var(--motion-panel) ease,
-      visibility 0s linear var(--motion-panel);
+      opacity var(--motion-panel) ease;
   }
 
   #app.panel-is-open .panel-backdrop {
@@ -1178,8 +1171,7 @@ select option {
     visibility: visible;
     pointer-events: auto;
     transition:
-      opacity var(--motion-panel) ease,
-      visibility 0s linear 0s;
+      opacity var(--motion-panel) ease;
   }
 
   .panel-close svg {
