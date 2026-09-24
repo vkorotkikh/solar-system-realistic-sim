@@ -21,6 +21,12 @@ from .lambert import compute_lambert_leg
 PRUNE_PER_DEPTH = 18
 MAX_COMPLETED = 48
 MIN_FLYBY_ALTITUDE_KM = 300.0
+# An ideal unpowered patched-conic flyby rotates v-infinity without changing
+# its magnitude in the encounter body's frame.  These tolerances absorb only
+# floating-point/root-solver noise; they are not a hidden propulsion budget.
+UNPOWERED_FLYBY_VINF_ABS_TOLERANCE_KMS = 1.0e-3
+UNPOWERED_FLYBY_VINF_REL_TOLERANCE = 1.0e-4
+UNPOWERED_FLYBY_TURN_TOLERANCE_RAD = 1.0e-9
 
 
 def _generate_assist_routes(
@@ -90,43 +96,82 @@ def _evaluate_flyby(
     incoming_leg: Dict[str, Any],
     outgoing_leg: Dict[str, Any],
 ) -> Dict[str, Any]:
-    mass_kg = body.get("mass_kg")
-    radius_km = body.get("radius_km")
-    if not mass_kg or not radius_km:
-        return {
-            "assistGainKmS": 0.0,
-            "requiredTurnDeg": 0.0,
-            "maxTurnDeg": 0.0,
-            "feasible": False,
-            "reason": "missing_body_mass_or_radius",
-        }
-
     v_inf_in = vector_sub(incoming_leg["arrivalVelocityApprox"], incoming_leg["toPlanetVelocity"])
     v_inf_out = vector_sub(outgoing_leg["departureVelocityApprox"], outgoing_leg["fromPlanetVelocity"])
 
     required_turn = safe_angle_between(v_inf_in, v_inf_out)
-    v_inf_mag_au_day = 0.5 * (vector_length(v_inf_in) + vector_length(v_inf_out))
-    v_inf_mag_kms = au_per_day_to_km_per_sec(v_inf_mag_au_day)
+    v_inf_in_mag_au_day = vector_length(v_inf_in)
+    v_inf_out_mag_au_day = vector_length(v_inf_out)
+    v_inf_in_kms = au_per_day_to_km_per_sec(v_inf_in_mag_au_day)
+    v_inf_out_kms = au_per_day_to_km_per_sec(v_inf_out_mag_au_day)
+    v_inf_mismatch_kms = abs(v_inf_out_kms - v_inf_in_kms)
+    v_inf_tolerance_kms = max(
+        UNPOWERED_FLYBY_VINF_ABS_TOLERANCE_KMS,
+        UNPOWERED_FLYBY_VINF_REL_TOLERANCE * max(v_inf_in_kms, v_inf_out_kms),
+    )
+    magnitude_conserved = v_inf_mismatch_kms <= v_inf_tolerance_kms
 
-    mu_body = mu_au3_day2_from_mass_kg(float(mass_kg))
-    rp_au = (float(radius_km) + MIN_FLYBY_ALTITUDE_KM) / AU_KM
+    try:
+        mass_kg = float(body.get("mass_kg"))
+        radius_km = float(body.get("radius_km"))
+    except (TypeError, ValueError):
+        mass_kg = 0.0
+        radius_km = 0.0
+    body_parameters_valid = (
+        math.isfinite(mass_kg)
+        and mass_kg > 0.0
+        and math.isfinite(radius_km)
+        and radius_km > 0.0
+    )
+
+    mu_body = mu_au3_day2_from_mass_kg(mass_kg) if body_parameters_valid else 0.0
+    rp_au = (radius_km + MIN_FLYBY_ALTITUDE_KM) / AU_KM if body_parameters_valid else 0.0
 
     max_turn = 0.0
-    if mu_body > 0.0 and v_inf_mag_au_day > 1e-12:
-        denominator = 1.0 + (rp_au * (v_inf_mag_au_day ** 2)) / mu_body
+    if mu_body > 0.0 and v_inf_in_mag_au_day > 1e-12:
+        # For an unpowered encounter the incoming and outgoing asymptotic
+        # speeds are the same.  The incoming hyperbola therefore defines the
+        # physical turning bound; averaging an inconsistent outbound speed can
+        # manufacture feasibility.
+        denominator = 1.0 + (rp_au * (v_inf_in_mag_au_day ** 2)) / mu_body
         if denominator > 1.0:
             max_turn = 2.0 * math.asin(min(1.0, 1.0 / denominator))
 
-    feasible = required_turn <= max_turn + 1e-9
-    applied_turn = min(required_turn, max_turn)
-    assist_gain = 2.0 * v_inf_mag_kms * math.sin(applied_turn / 2.0)
+    turn_deficit = max(0.0, required_turn - max_turn)
+    turn_feasible = required_turn <= max_turn + UNPOWERED_FLYBY_TURN_TOLERANCE_RAD
+    nondegenerate = v_inf_in_mag_au_day > 1e-12
+    feasible = body_parameters_valid and nondegenerate and magnitude_conserved and turn_feasible
+
+    if not body_parameters_valid:
+        reason = "missing_body_mass_or_radius"
+    elif not nondegenerate:
+        reason = "degenerate_vinf"
+    elif not magnitude_conserved:
+        reason = "vinf_magnitude_mismatch"
+    elif not turn_feasible:
+        reason = "turn_limit"
+    else:
+        reason = "ok"
+
+    assist_gain = (
+        2.0 * v_inf_in_kms * math.sin(required_turn / 2.0)
+        if feasible
+        else 0.0
+    )
 
     return {
         "assistGainKmS": assist_gain,
         "requiredTurnDeg": math.degrees(required_turn),
         "maxTurnDeg": math.degrees(max_turn),
+        "turnDeficitDeg": math.degrees(turn_deficit),
+        "vInfInKmS": v_inf_in_kms,
+        "vInfOutKmS": v_inf_out_kms,
+        "vInfMismatchKmS": v_inf_mismatch_kms,
+        "vInfToleranceKmS": v_inf_tolerance_kms,
+        "vInfRelativeTolerance": UNPOWERED_FLYBY_VINF_REL_TOLERANCE,
+        "vInfMagnitudeConserved": magnitude_conserved,
         "feasible": feasible,
-        "reason": "ok" if feasible else "turn_limit",
+        "reason": reason,
     }
 
 
@@ -269,7 +314,7 @@ def optimize_mga_route(
                 "totalPathLengthAu": float(partial["totalPathLengthAu"]),
                 "totalTimeDays": total_time_days,
                 "turnDeficitPenalty": 0.0,
-                "hardConstraintMode": "flyby_turn_limit",
+                "hardConstraintMode": "unpowered_flyby_vinf_continuity_and_turn_limit",
             }
             route["score"] = _score_route(route, objective)
             completed_routes.append(route)
