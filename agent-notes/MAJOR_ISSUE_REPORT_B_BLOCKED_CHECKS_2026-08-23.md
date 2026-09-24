@@ -38,6 +38,18 @@ Fresh verification of code through `a864ea4`:
 - Frontend: full Vitest → **108/108 tests passed across 7 files**, including asteroid integrity/source-state, worker-contract, and Horizons gates.
 - Production build: Vite → **passed, 40 modules transformed**; only the existing approximately 892.90 kB main-chunk warning remains. Strict TypeScript remains a separate failing gate with **280 errors**.
 
+### Cross-report moon reconciliation (2026-09-24)
+
+Report B has no canonical moon-frame row, so this update does not change its 50-row accounting.
+For readers following F-05/M-08/R10 across the companion reports: all non-ecliptic fallback moons
+now propagate their inclination/node/periapsis rates in the native Laplace/equatorial frame before
+the Cartesian state is transformed to ecliptic J2000. Titan, Iapetus, Phoebe, and Cordelia also
+have provenance-backed JPL Horizons fitted ephemerides over JDTDB 2000–2050. A 20-moon ×
+seven-epoch committed oracle gates position, plane, and drift, with velocity gates for those four
+fitted bodies. This is not a claim of complete moon-catalog ephemeris accuracy: other moons use the
+corrected but explicitly approximate mean-element fallback, while the fitted four report an
+unavailable state rather than falling back outside their certified interval.
+
 ### Canonical finding reconciliation
 
 | ID | Status | Current-branch evidence and disposition |

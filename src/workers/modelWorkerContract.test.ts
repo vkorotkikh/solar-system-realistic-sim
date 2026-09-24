@@ -3,6 +3,7 @@ import { createSolarSystemCatalog } from '../sim/catalog';
 import {
   buildCatalogIndexContract,
   buildModelWorkerCatalog,
+  isValidModelWorkerAvailabilityArray,
   isValidModelWorkerStateArray,
   MODEL_WORKER_ELEMENT_TYPE,
   MODEL_WORKER_POSITION_UNIT,
@@ -54,7 +55,7 @@ describe('model worker state-vector boundary', () => {
   });
 
   it('publishes one explicit schema, frame, units, stride, and dtype', () => {
-    expect(MODEL_WORKER_STATE_SCHEMA_VERSION).toBe(1);
+    expect(MODEL_WORKER_STATE_SCHEMA_VERSION).toBe(2);
     expect(MODEL_WORKER_RECORD_SIZE).toBe(6);
     expect(MODEL_WORKER_ELEMENT_TYPE).toBe('float64');
     expect(MODEL_WORKER_POSITION_UNIT).toBe('AU');
@@ -62,13 +63,21 @@ describe('model worker state-vector boundary', () => {
     expect(MODEL_WORKER_REFERENCE_FRAME).toBe('heliocentric_ecliptic_j2000');
   });
 
+  it('accepts only one binary availability flag per body', () => {
+    expect(isValidModelWorkerAvailabilityArray(new Uint8Array([1, 0]), 2)).toBe(true);
+    expect(isValidModelWorkerAvailabilityArray(new Uint8Array([1, 2]), 2)).toBe(false);
+    expect(isValidModelWorkerAvailabilityArray(new Uint8Array([1]), 2)).toBe(false);
+  });
+
   it('keeps the shipped hidden-moon payload below 512 bytes per tick', () => {
     const sourceCatalog = createSolarSystemCatalog();
     const workerCatalog = buildModelWorkerCatalog(sourceCatalog.bodies);
-    const payloadBytes = workerCatalog.bodies.length * MODEL_WORKER_RECORD_SIZE * Float64Array.BYTES_PER_ELEMENT;
+    const payloadBytes = workerCatalog.bodies.length * (
+      MODEL_WORKER_RECORD_SIZE * Float64Array.BYTES_PER_ELEMENT + Uint8Array.BYTES_PER_ELEMENT
+    );
 
     expect(sourceCatalog.bodies.length).toBe(434);
     expect(workerCatalog.bodies.length).toBe(10);
-    expect(payloadBytes).toBe(480);
+    expect(payloadBytes).toBe(490);
   });
 });

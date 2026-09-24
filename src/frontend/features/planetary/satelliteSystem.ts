@@ -17,7 +17,12 @@ import {
   SphereGeometry,
   Vector3
 } from 'three';
-import { AU_KM, J2000_JD, julianDateFromUnixMs } from '../../../constants';
+import {
+  AU_KM,
+  J2000_JD,
+  julianDateFromUnixMs,
+  utcJulianDateToTdb
+} from '../../../constants';
 import {
   PRIMARY_MODELS,
   meanMotionFromSemimajorAxis,
@@ -135,7 +140,7 @@ function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): n
   const dayFraction = dayOfYearFloat - dayWhole;
   const startMs = Date.UTC(year, 0, 1, 0, 0, 0, 0);
   const unixMs = startMs + (dayWhole - 1 + dayFraction) * DAY_SECONDS * 1_000;
-  return julianDateFromUnixMs(unixMs);
+  return utcJulianDateToTdb(julianDateFromUnixMs(unixMs));
 }
 
 function sanitizeId(name: string): string {

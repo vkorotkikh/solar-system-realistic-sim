@@ -1,4 +1,15 @@
 import { Vector3 } from 'three';
+import {
+  canPropagateMoonEphemeris,
+  moonEphemerisCoverageAt,
+  propagateMoonEphemeris,
+  type MoonChebyshevEphemeris
+} from './moonEphemeris';
+import {
+  isSourceFrameKeplerOrbit,
+  propagateSourceFrameOrbit,
+  type SourceFrameBasis
+} from './sourceFrameOrbit';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
@@ -14,14 +25,62 @@ export interface KeplerOrbit {
   argPeriapsisDeg?: number;
   meanAnomalyDeg?: number;
   secularRates?: KeplerOrbitSecularRates;
+  /**
+   * Optional high-accuracy parent-relative state model. Inside its declared
+   * coverage this is authoritative. Outside coverage, optional models fall back
+   * to the mean elements without extrapolating; required models report unavailable.
+   */
+  ephemeris?: MoonChebyshevEphemeris;
+  /**
+   * Fail closed when the fitted state is missing, invalid, or outside coverage.
+   * Use this for bodies whose fallback mean elements are known not to be a
+   * scientifically usable positional ephemeris.
+   */
+  ephemerisRequired?: boolean;
+  /** Native Laplace/equatorial axes for moon mean-element fallback propagation. */
+  sourceFrameBasis?: SourceFrameBasis;
 }
 
+/**
+ * THE APSIDAL INVARIANT, obeyed by both propagation branches in
+ * `resolveKeplerOrbitAtElapsedDays`:
+ *
+ *   If you precess varpi, you MUST subtract varpidot from the mean-anomaly advance,
+ *   or you double-count it.
+ *
+ * varpi = Omega + argPeriapsis is the longitude of periapsis and L = M + varpi the mean
+ * longitude, so dM/dt = dL/dt - dvarpi/dt identically. Precessing Omega and argPeriapsis while
+ * advancing M at the full dL/dt makes the propagated L run fast by exactly dvarpi/dt: a pure
+ * along-track error, identically zero at the element epoch and growing linearly in T. No check
+ * performed only at the epoch can see it.
+ *
+ * Whether the invariant BITES depends on what the body's tabulated period means, which the two
+ * flags below settle:
+ *   - `meanLongitudeDegPerCentury` present: dL/dt is tabulated outright (JPL Standish planets).
+ *   - `periodIsMeanLongitudePeriod` true: dL/dt = 2*pi/periodDays, because periodDays is the
+ *     SIDEREAL period -- the period of the mean LONGITUDE.
+ *   - neither: periodDays is taken to be the period of the MEAN ANOMALY, so 2*pi/periodDays is
+ *     already dM/dt and no correction is due. This is the case for a body with no precession at
+ *     all (asteroids, Kuiper-belt objects), where the distinction is vacuous.
+ */
 export interface KeplerOrbitSecularRates {
   aAuPerCentury?: number;
   ePerCentury?: number;
   iDegPerCentury?: number;
   ascendingNodeDegPerCentury?: number;
   argPeriapsisDegPerCentury?: number;
+  /**
+   * Set when `periodDays` is the SIDEREAL period, i.e. 2*pi/periodDays is dL/dt rather than
+   * dM/dt, so the apsidal invariant above requires varpidot to be subtracted from the
+   * mean-anomaly advance.
+   *
+   * This is a property of the SOURCE TABLE, not of orbital mechanics, and it cannot be assumed:
+   * see SIDEREAL_PERIOD_EPHEMERIDES in catalog.ts for which JPL satellite ephemerides were
+   * measured to tabulate which, and for the Horizons evidence behind each verdict.
+   *
+   * Omitted (the default) leaves the legacy arithmetic bit-for-bit unchanged.
+   */
+  periodIsMeanLongitudePeriod?: boolean;
   /**
    * Rate of change of the MEAN LONGITUDE L = M + varpi, where varpi = Omega + argPeriapsis,
    * in degrees per Julian century (JPL Standish, "Approximate Positions of the Major Planets",
@@ -52,11 +111,49 @@ export interface ResolvedKeplerOrbit {
   periodDays: number;
   /**
    * dM/dt in radians per day for the propagation actually performed. This is the mean motion the
-   * Kepler solution and the velocity formula must use; it equals 2*pi/periodDays only on the legacy
-   * path, and equals (Ldot - varpidot) when secular mean-longitude data is supplied.
+   * Kepler solution and the velocity formula must use. It equals (Ldot - varpidot) when a secular
+   * mean-longitude rate is supplied, (2*pi/periodDays - varpidot) when periodDays is flagged as a
+   * mean-longitude (sidereal) period, and 2*pi/periodDays otherwise.
    */
   meanMotionRadPerDay: number;
   centuriesSinceEpoch: number;
+}
+
+export type OrbitPropagationQuality =
+  | 'jpl-fitted-ephemeris'
+  | 'state-unavailable-required-ephemeris-missing'
+  | 'state-unavailable-outside-ephemeris-coverage'
+  | 'state-unavailable-invalid-ephemeris'
+  | 'approximate-mean-elements-outside-coverage'
+  | 'approximate-mean-elements-invalid-ephemeris'
+  | 'approximate-mean-elements'
+  | 'keplerian-elements';
+
+/**
+ * Exposes the active scientific model so fitted coverage never degrades to an
+ * unlabelled extrapolation. Optional fits can retain a labelled approximate
+ * fallback; required fits expose an unavailable state instead.
+ */
+export function orbitPropagationQualityAt(
+  orbit: KeplerOrbit,
+  julianDate: number
+): OrbitPropagationQuality {
+  if (orbit.ephemeris) {
+    if (moonEphemerisCoverageAt(orbit.ephemeris, julianDate) !== 'covered') {
+      return orbit.ephemerisRequired
+        ? 'state-unavailable-outside-ephemeris-coverage'
+        : 'approximate-mean-elements-outside-coverage';
+    }
+    if (canPropagateMoonEphemeris(orbit.ephemeris, julianDate)) {
+      return 'jpl-fitted-ephemeris';
+    }
+    return orbit.ephemerisRequired
+      ? 'state-unavailable-invalid-ephemeris'
+      : 'approximate-mean-elements-invalid-ephemeris';
+  }
+  if (orbit.ephemerisRequired) return 'state-unavailable-required-ephemeris-missing';
+  if (isSourceFrameKeplerOrbit(orbit)) return 'approximate-mean-elements';
+  return 'keplerian-elements';
 }
 
 export function degToRad(deg: number): number {
@@ -126,18 +223,29 @@ export function resolveKeplerOrbitAtElapsedDays(
   const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
 
   const meanLongitudeRate = secularRates?.meanLongitudeDegPerCentury;
+  // d(varpi)/dt, the rate Omega and argPeriapsis were just precessed at above. Both branches owe
+  // it back to the mean anomaly (see THE APSIDAL INVARIANT on KeplerOrbitSecularRates). It is
+  // exactly 0 -- not merely small -- for a body carrying no secular rates at all.
+  const varpiDegPerCentury =
+    (secularRates?.ascendingNodeDegPerCentury ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0);
   let meanMotionRadPerDay: number;
   let meanAnomalyRad: number;
 
   if (meanLongitudeRate === undefined) {
-    // Legacy path, bit-for-bit unchanged for every body without a mean-longitude rate
-    // (moons, Kuiper-belt objects, asteroids, Pluto).
-    meanMotionRadPerDay = TWO_PI / periodDays;
+    // No tabulated Ldot. dL/dt then comes from periodDays, but only if periodDays is the period of
+    // the mean LONGITUDE; if it is the period of the mean ANOMALY, 2*pi/periodDays is already
+    // dM/dt and subtracting varpidot would introduce the very error the invariant forbids, with
+    // the sign reversed. `periodIsMeanLongitudePeriod` records which one the source table means.
+    //
+    // varpiRadPerDay is the literal 0 whenever the flag is unset, and x - 0 === x in IEEE-754, so
+    // every body that does not opt in keeps the previous arithmetic bit for bit.
+    const varpiRadPerDay = secularRates?.periodIsMeanLongitudePeriod
+      ? degToRad(varpiDegPerCentury) / JULIAN_CENTURY_DAYS
+      : 0;
+    meanMotionRadPerDay = TWO_PI / periodDays - varpiRadPerDay;
     meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotionRadPerDay * elapsedDays);
   } else {
-    // Standish: M = L - varpi, with varpi = Omega + argPeriapsis, so dM/dt = Ldot - varpidot.
-    const varpiDegPerCentury =
-      (secularRates?.ascendingNodeDegPerCentury ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0);
+    // Standish: M = L - varpi, so dM/dt = Ldot - varpidot.
     const meanAnomalyDegPerCentury = meanLongitudeRate - varpiDegPerCentury;
     meanMotionRadPerDay = degToRad(meanAnomalyDegPerCentury) / JULIAN_CENTURY_DAYS;
     // Reduce in degrees before converting, so a multi-century advance keeps full precision.
@@ -164,7 +272,32 @@ export function propagateKeplerOrbit(
   elapsedDays: number,
   outPosition: Vector3,
   outVelocity: Vector3 | null = null
-): void {
+): boolean {
+  if (
+    orbit.ephemeris &&
+    propagateMoonEphemeris(
+      orbit.ephemeris,
+      orbit.epochJd + elapsedDays,
+      outPosition,
+      outVelocity
+    )
+  ) {
+    return true;
+  }
+
+  // A required fitted state must never degrade silently to the mean-element
+  // approximation that it was introduced to replace. The ephemeris evaluator
+  // is atomic, so false also guarantees that neither output was modified.
+  if (orbit.ephemerisRequired) return false;
+
+  // JPL satellite mean-element node/apsis rates are rotations in the table's
+  // Laplace/equatorial source frame. Apply them there and rotate the resulting
+  // state, rather than adding them to already-converted ecliptic angles.
+  if (isSourceFrameKeplerOrbit(orbit)) {
+    propagateSourceFrameOrbit(orbit, elapsedDays, outPosition, outVelocity);
+    return true;
+  }
+
   const resolved = resolveKeplerOrbitAtElapsedDays(orbit, elapsedDays);
   const a = resolved.aAu;
   const e = resolved.e;
@@ -224,6 +357,8 @@ export function propagateKeplerOrbit(
 
     outVelocity.set(vx, vy, vz);
   }
+
+  return true;
 }
 
 export function orbitalPeriodDaysFromSemimajorAxisAu(

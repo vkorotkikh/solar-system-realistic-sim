@@ -14,7 +14,7 @@ interface OrbitLineParams {
       [key: string]: unknown;
     };
   };
-  propagateKeplerOrbit: (orbit: Record<string, unknown>, elapsedDays: number, out: Vector3) => void;
+  propagateKeplerOrbit: (orbit: Record<string, unknown>, elapsedDays: number, out: Vector3) => boolean;
   orbitLines: Line[];
 }
 
@@ -41,7 +41,7 @@ export function createOrbitLine({
 
   for (let i = 0; i <= segments; i += 1) {
     const elapsedDays = (i / segments) * body.orbit.periodDays;
-    propagateKeplerOrbit(body.orbit, elapsedDays, point);
+    if (!propagateKeplerOrbit(body.orbit, elapsedDays, point)) return null;
     points.push(point.clone());
   }
 

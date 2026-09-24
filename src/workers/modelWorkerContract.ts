@@ -31,10 +31,10 @@ export interface CatalogIndexContract {
  *
  * World positions are heliocentric, in the mean ecliptic/equinox of J2000,
  * expressed in AU. Velocities use the same axes and origin in AU/day. The
- * simulation clock is an application Julian Date; no UTC/TT/TDB conversion is
- * performed at this browser-only boundary.
+ * simulation clock is JDTDB; no time-scale conversion is performed at this
+ * browser-worker boundary.
  */
-export const MODEL_WORKER_STATE_SCHEMA_VERSION = 1 as const;
+export const MODEL_WORKER_STATE_SCHEMA_VERSION = 2 as const;
 export const MODEL_WORKER_RECORD_SIZE = 6 as const;
 export const MODEL_WORKER_POSITION_UNIT = 'AU' as const;
 export const MODEL_WORKER_VELOCITY_UNIT = 'AU/day' as const;
@@ -83,6 +83,8 @@ export interface ModelWorkerStateMessage {
   schemaVersion: typeof MODEL_WORKER_STATE_SCHEMA_VERSION;
   sequence: number;
   bodies: Float64Array;
+  /** One byte per body: 1 when the state vector is scientifically available. */
+  availability: Uint8Array;
   tickJd: number;
   profilerMs?: number;
 }
@@ -145,4 +147,12 @@ export function isValidModelWorkerStateArray(
   expectedBodyCount: number
 ): value is Float64Array {
   return value instanceof Float64Array && value.length === expectedBodyCount * MODEL_WORKER_RECORD_SIZE;
+}
+
+export function isValidModelWorkerAvailabilityArray(
+  value: unknown,
+  expectedBodyCount: number
+): value is Uint8Array {
+  if (!(value instanceof Uint8Array) || value.length !== expectedBodyCount) return false;
+  return value.every((flag) => flag === 0 || flag === 1);
 }

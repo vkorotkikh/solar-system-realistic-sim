@@ -13,6 +13,8 @@
     "typecheck": "tsc --project tsconfig.json --strict --noEmit",
     "preview": "vite preview",
     "update:moons": "node ./scripts/update-moons-data.mjs",
+    "generate:moon-ephemeris": "python3 ./scripts/generate_moon_ephemeris.py --write",
+    "verify:moon-ephemeris": "python3 ./scripts/generate_moon_ephemeris.py --check",
     "ingest:moon-textures": "node ./scripts/ingest-moon-textures.mjs",
     "verify:moon-frames": "node ./scripts/verify-moon-frames.mjs",
     "verify:planet-positions": "node ./scripts/verify-planet-positions.mjs"

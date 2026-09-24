@@ -12,6 +12,8 @@ export interface SolarSystemCatalog {
 }
 
 export interface BodyState {
+  /** False when a required scientific state is unavailable at the current epoch. */
+  available: boolean;
   relativePosition: Vector3;
   relativeVelocity: Vector3;
   worldPosition: Vector3;
@@ -27,6 +29,7 @@ export interface SampledBodyState {
 
 function makeZeroState(): BodyState {
   return {
+    available: false,
     relativePosition: new Vector3(),
     relativeVelocity: new Vector3(),
     worldPosition: new Vector3(),
@@ -114,21 +117,26 @@ export class SolarSystemModel {
       if (!body.orbit) {
         state.relativePosition.set(0, 0, 0);
         state.relativeVelocity.set(0, 0, 0);
+        state.available = true;
       } else {
         const elapsedDays = julianDate - body.orbit.epochJd;
-        propagateKeplerOrbit(body.orbit, elapsedDays, state.relativePosition, state.relativeVelocity);
+        state.available = propagateKeplerOrbit(
+          body.orbit,
+          elapsedDays,
+          state.relativePosition,
+          state.relativeVelocity
+        );
       }
 
       if (body.parentId) {
         const parentState = this.stateById.get(body.parentId);
-        if (parentState) {
+        if (state.available && parentState?.available) {
           state.worldPosition.copy(parentState.worldPosition).add(state.relativePosition);
           state.worldVelocity.copy(parentState.worldVelocity).add(state.relativeVelocity);
         } else {
-          state.worldPosition.copy(state.relativePosition);
-          state.worldVelocity.copy(state.relativeVelocity);
+          state.available = false;
         }
-      } else {
+      } else if (state.available) {
         state.worldPosition.copy(state.relativePosition);
         state.worldVelocity.copy(state.relativeVelocity);
       }
@@ -137,13 +145,13 @@ export class SolarSystemModel {
 
   getWorldPosition(id: string, target: Vector3 = new Vector3()): Vector3 | null {
     const state = this.stateById.get(id);
-    if (!state) return null;
+    if (!state?.available) return null;
     return target.copy(state.worldPosition);
   }
 
   getWorldVelocity(id: string, target: Vector3 = new Vector3()): Vector3 | null {
     const state = this.stateById.get(id);
-    if (!state) return null;
+    if (!state?.available) return null;
     return target.copy(state.worldVelocity);
   }
 
@@ -169,7 +177,7 @@ export class SolarSystemModel {
 
     for (const bodyId of this.updateOrder) {
       const state = this.stateById.get(bodyId);
-      if (!state) continue;
+      if (!state?.available) continue;
 
       // Project position onto propagation axis (distance in AU from Sun)
       const projectedDistAu = state.worldPosition.dot(direction);
@@ -222,16 +230,22 @@ export class SolarSystemModel {
       sampled.relativeVelocity.set(0, 0, 0);
     } else {
       const elapsedDays = julianDate - body.orbit.epochJd;
-      propagateKeplerOrbit(body.orbit, elapsedDays, sampled.relativePosition, sampled.relativeVelocity);
+      if (!propagateKeplerOrbit(
+        body.orbit,
+        elapsedDays,
+        sampled.relativePosition,
+        sampled.relativeVelocity
+      )) {
+        return null;
+      }
       sampled.position.copy(sampled.relativePosition);
       sampled.velocity.copy(sampled.relativeVelocity);
 
       if (body.parentId) {
         const parent = this.sampleBodyStateAt(body.parentId, julianDate, memo);
-        if (parent) {
-          sampled.position.add(parent.position);
-          sampled.velocity.add(parent.velocity);
-        }
+        if (!parent) return null;
+        sampled.position.add(parent.position);
+        sampled.velocity.add(parent.velocity);
       }
     }
 

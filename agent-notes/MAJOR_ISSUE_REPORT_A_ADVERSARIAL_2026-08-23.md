@@ -36,6 +36,32 @@ admission, `a40005a` repairs PFSS cache identity/single-flight, `3f3b787` enforc
 continuity, and `84ddcd1` makes asteroid catalog integrity fail closed with visible provenance.
 `ea54bea` further hardens the already-resolved F-06 Lambert certificate.
 
+### F-05 moon follow-up (2026-09-24)
+
+The current implementation separates two failures that the original F-05 discussion had grouped
+together:
+
+- **Frame/rate composition is resolved for every non-ecliptic fallback record.** Native
+  Laplace/equatorial elements now precess in their source frame and the complete Cartesian state is
+  transformed to ecliptic J2000 afterward. A source-frame node rate is no longer applied to an
+  already-converted ecliptic node.
+- **The four named phase/plane failures are resolved within explicit coverage.** Titan, Iapetus,
+  and Phoebe use provenance-bearing `SAT441L` Horizons fits; Cordelia uses
+  `URA184_MERGED`. Coverage is JDTDB 2451545.0–2469807.5 (2000–2050), and the artifact records
+  target, center, frame, time scale, units, source hashes, and independent half-step validation.
+- **The loose exceptions have been removed.** A committed 20-moon, seven-epoch fixture now gates
+  140 position/plane comparisons, secular drift, and velocity for each of the four fitted moons.
+  This replaces the former approximately-two-radii phase allowances and Cordelia's 180° plane
+  allowance with finite ephemeris-derived limits.
+- **The scope remains deliberately partial.** The fitted four fail closed outside coverage: no
+  position is published and the renderer hides the unavailable body rather than using its known-bad
+  mean phase. Other moons use the corrected native-frame mean-element propagator with explicitly
+  approximate quality. The repository does not claim those descriptive elements are ephemerides.
+
+F-05 therefore remains **PARTIAL** at whole-catalog scope, but the original converter mechanism and
+the specifically reported Titan/Iapetus/Phoebe/Cordelia failures are no longer active within their
+declared 2000–2050 domain. The original measurements below are retained as historical evidence.
+
 ### Current finding table
 
 | ID | Status through `a864ea4` | Current evidence and scoped disposition |
@@ -44,7 +70,7 @@ continuity, and `84ddcd1` makes asteroid catalog integrity fail closed with visi
 | **F-02** | **RESOLVED** | REBOUND readiness loads and validates the scientific input and probes the configured integrator (`backend/sim/rebound_nbody.py:98-144`); IAS15-specific fields are guarded (`:247-255`). Invalid inputs withhold availability/high fidelity (`backend/tests/test_server_validation.py:46-68`, `test_nbody_initial_conditions.py:261-269`). |
 | **F-03** | **PARTIAL** | Invalid comparisons are quarantined as `comparable_to_solver:false` and reported `incomparable_reference` (`backend/benchmark/accuracy.py:205-212`), but the rows remain sourced/labeled `strict-gmat-orekit-tudat` and tests accept `referenceIntegrityOk:true` with zero comparable coverage (`reference_scenarios.json:5-158`, `test_benchmark_accuracy.py:14-35`). Remove the strict/integrity claim or commit reproducible decks, endpoint states, frame/time scale, branch/revolution choice, kernels, and metric. |
 | **F-04** | **RESOLVED** | `2226277` replaces mean-element initialization with fail-closed, committed DE441 Cartesian states and DE440 GM ratios (`backend/data/initial_conditions.py`, `backend/sim/rebound_nbody.py:232-356`). Multi-epoch Horizons tests gate the active IAS15 model; the exact 2026 closure requires Earth <2,000 km, Saturn-system <100 km, and Saturn-center <500 km (`test_nbody_horizons_accuracy.py:61-117,155-182`). |
-| **F-05** | **PARTIAL** | The converter now transforms both orbit normal and periapsis (`src/sim/catalog.ts:319-349`), closing the original Io/Callisto/Enceladus/Triton frame failures. The regression gate still permits known phase/catalog defects up to two orbital radii for Titan, Iapetus, Phoebe and a 180° plane tolerance for Cordelia (`moonFrameCheck.ts:23-72`). Correct those source epochs/phases/precession terms and tighten the overrides. |
+| **F-05** | **PARTIAL** | Native-frame rates are now propagated before transforming the complete state to ecliptic J2000. Provenance-backed Horizons fits close Titan/Iapetus/Phoebe/Cordelia over JDTDB 2000–2050, and a 20-moon × 7-epoch position/plane/drift gate plus velocity checks for the fitted four replaces their loose exceptions. The fitted four fail closed outside coverage; whole-catalog status remains partial because unfitted moons retain approximate mean elements. |
 | **F-06** | **RESOLVED** | Lambert output is withheld unless the requested TOF is bracketed/certified, and successful solutions expose `computedTofDays`, `rootResidualDays`, and bracket status. `ea54bea` adds Illinois-weighted bracket convergence, refuses to return an uncertified best point when the iteration budget is exhausted, and adds strict residual/failure regressions. Infeasible one-day Earth→Mars returns no solution/422 rather than an uncertified HTTP 200. |
 | **F-07** | **RESOLVED** | `68aff6b` propagates mean anomaly as `M(T)=L(T)-varpi(T)` from JPL's tabulated mean-longitude rate (`src/data/planets.ts:14-26`, `src/sim/orbitMath.ts:128-157`), removing the SF-1 double-counting regression. `f1c79b9` adds a committed six-epoch Horizons gate (`planetPositionCheck.ts`, `planetPositions.horizons.test.ts`). Treat the 2100 row as an explicitly out-of-domain stress sample because the selected Standish table is documented through 2050. |
 | **F-08** | **ACTIVE** | `README.md:51-69` still instructs users to select REBOUND/TudatPy and click Connect, but `index.html` has no engine/connect controls and `src/main.ts` does not import the only WebSocket client (`simulationClient.ts`). Wire the dormant client/UI end-to-end or remove the shipped-product claim. The historical “~60 missing paths” subclaim remains refuted. |

@@ -32,7 +32,11 @@ import {
   currentJulianDate,
   formatJulianAsDate
 } from './constants';
-import { createSolarSystemCatalog } from './sim/catalog';
+import {
+  createSolarSystemCatalog,
+  type MoonEphemerisMap
+} from './sim/catalog';
+import { parseMoonEphemerisArtifact } from './sim/moonEphemeris';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
 import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/features/superluminal-modeling/smbhPropagation';
@@ -44,6 +48,7 @@ import {
   buildCatalogIndexContract,
   buildModelWorkerCatalog,
   type CatalogIndexContract,
+  isValidModelWorkerAvailabilityArray,
   isValidModelWorkerStateArray,
   MODEL_WORKER_RECORD_SIZE,
   MODEL_WORKER_STATE_SCHEMA_VERSION,
@@ -136,11 +141,16 @@ renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatu
 
 // ── Data & State ─────────────────────────────────────────────────────────────
 
-const catalog = createSolarSystemCatalog();
 // Moon rendering is not currently exposed by the shipped UI. Keep those 424
 // catalog records available for provenance/search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
-const showMoons = false;
+const showMoons: boolean = false;
+const moonEphemerides: MoonEphemerisMap | undefined = showMoons
+  ? parseMoonEphemerisArtifact(
+      (await import('./data/moonEphemerisChebyshev.json')).default
+    ).bodies
+  : undefined;
+const catalog = createSolarSystemCatalog({ moonEphemerides });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
 });
@@ -263,6 +273,7 @@ const bodyNodes = new Map();
 const bodyMeshes = new Map();
 const bodySpinGroups = new Map();
 const orbitLines: Line[] = [];
+const orbitLineByBodyId = new Map<string, Line>();
 const labels: { bodyId: string; sprite: Sprite }[] = [];
 
 function createLabelCanvas(text: string) {
@@ -379,7 +390,7 @@ function createOrbitLine(body) {
   for (let i = 0; i < segments; i++) {
     const fraction = i / segments;
     const elapsed = fraction * body.orbit.periodDays;
-    propagateKeplerOrbit(body.orbit, elapsed, tmpVec);
+    if (!propagateKeplerOrbit(body.orbit, elapsed, tmpVec)) return null;
     positions[i * 3] = tmpVec.x;
     positions[i * 3 + 1] = tmpVec.y;
     positions[i * 3 + 2] = tmpVec.z;
@@ -391,6 +402,8 @@ function createOrbitLine(body) {
   const line = new Line(geo, new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 }));
   line.userData.bodyId = body.id;
   line.userData.bodyType = body.type;
+  line.userData.stateAvailable = true;
+  orbitLineByBodyId.set(body.id, line);
 
   if (body.parentId && body.parentId !== 'sun') {
     const parentNode = bodyNodes.get(body.parentId);
@@ -565,7 +578,7 @@ const tempVec = new Vector3();
 function focusBody(bodyId: string, hardSnap = false) {
   const body = bodyById.get(bodyId);
   const node = bodyNodes.get(bodyId);
-  if (!body || !node) return;
+  if (!body || !node || node.visible === false || model.getState(bodyId)?.available === false) return;
 
   node.getWorldPosition(tempVec);
   const offset = camera.position.clone().sub(controls.target);
@@ -609,7 +622,11 @@ function updateCameraMode(mode: CameraMode, bodyId = simState.focusedBodyId || '
 function updateFollowTarget() {
   if (!simState.followBodyId) return;
   const node = bodyNodes.get(simState.followBodyId);
-  if (!node) return;
+  if (!node || node.visible === false || model.getState(simState.followBodyId)?.available === false) {
+    simState.followBodyId = null;
+    updateCameraMode('free');
+    return;
+  }
   node.getWorldPosition(tempVec);
   const offset = camera.position.clone().sub(controls.target);
   controls.target.copy(tempVec);
@@ -620,7 +637,7 @@ function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
   if (!body) return;
   const state = model.getState(bodyId);
-  const dist = state?.worldPosition.length() ?? 0;
+  const dist = !state || state.available === false ? null : state.worldPosition.length();
   const typeLabel = body.type.charAt(0).toUpperCase() + body.type.slice(1);
 
   dom.bodyInfo.dataset.bodyId = body.id;
@@ -630,7 +647,7 @@ function updateBodyInfoPanel(bodyId: string) {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
   })} km`;
-  dom.bodyInfoDistance.textContent = `${dist.toFixed(4)} AU`;
+  dom.bodyInfoDistance.textContent = dist === null ? 'State unavailable' : `${dist.toFixed(4)} AU`;
   dom.bodyInfoPeriod.textContent = body.orbit
     ? `${body.orbit.periodDays.toLocaleString(undefined, { maximumFractionDigits: 1 })} days`
     : '—';
@@ -774,6 +791,10 @@ function initializeModelWorker() {
         || sequence <= lastModelWorkerAcceptedSequence
         || !Number.isFinite(stateMessage.tickJd)
         || !isValidModelWorkerStateArray(stateMessage.bodies, modelWorkerBodyCount)
+        || !isValidModelWorkerAvailabilityArray(
+          stateMessage.availability,
+          modelWorkerBodyCount
+        )
       ) {
         console.warn('[modelWorker] rejected malformed or stale state payload');
         return;
@@ -786,6 +807,7 @@ function initializeModelWorker() {
         schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
         sequence,
         bodies: stateMessage.bodies,
+        availability: stateMessage.availability,
         tickJd: Number(stateMessage.tickJd),
         profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
       };
@@ -879,12 +901,15 @@ function applyLatestWorkerSnapshot() {
   }
 
   const bodies = message.bodies;
+  const availability = message.availability;
   const expectedCount = modelWorkerBodyCount;
   if (bodies.length !== expectedCount * MODEL_WORKER_RECORD_SIZE) return false;
+  if (!isValidModelWorkerAvailabilityArray(availability, expectedCount)) return false;
 
   modelWorkerPositionsDirty.fill(0);
 
   for (let i = 0; i < expectedCount; i += 1) {
+    if (availability[i] !== 1) continue;
     const record = i * MODEL_WORKER_RECORD_SIZE;
     modelWorkerWorldX[i] = bodies[record];
     modelWorkerWorldY[i] = bodies[record + 1];
@@ -896,11 +921,24 @@ function applyLatestWorkerSnapshot() {
   }
 
   for (let workerIndex = 0; workerIndex < expectedCount; workerIndex += 1) {
-    if (!modelWorkerPositionsDirty[workerIndex]) continue;
-
     const sourceIndex = modelWorkerSourceIndexByIndex[workerIndex];
     const body = catalog.bodies[sourceIndex];
     if (!body) continue;
+
+    const stateAvailable = modelWorkerPositionsDirty[workerIndex] === 1;
+    const state = model.getState(body.id);
+    if (state) state.available = stateAvailable;
+
+    const node = bodyNodes.get(body.id);
+    const orbitLine = orbitLineByBodyId.get(body.id);
+    if (orbitLine) {
+      orbitLine.userData.stateAvailable = stateAvailable;
+      orbitLine.visible = stateAvailable && dom.toggleOrbits.checked;
+    }
+    if (!stateAvailable) {
+      if (node) node.visible = false;
+      continue;
+    }
 
     const wx = modelWorkerWorldX[workerIndex];
     const wy = modelWorkerWorldY[workerIndex];
@@ -911,7 +949,6 @@ function applyLatestWorkerSnapshot() {
 
     // Update the model independently of rendering reachability. A missing
     // scene node must never turn a valid propagated state into a frozen one.
-    const state = model.getState(body.id);
     if (state) {
       state.worldPosition.set(wx, wy, wz);
       state.worldVelocity.set(vx, vy, vz);
@@ -934,7 +971,6 @@ function applyLatestWorkerSnapshot() {
       }
     }
 
-    const node = bodyNodes.get(body.id);
     if (!node) continue;
 
     if (body.parentId) {
@@ -956,9 +992,7 @@ function applyLatestWorkerSnapshot() {
       node.position.set(wx, wy, wz);
     }
 
-    if (body.type === 'moon') {
-      node.visible = showMoons;
-    }
+    node.visible = body.type === 'moon' ? showMoons : true;
 
   }
 
@@ -997,6 +1031,13 @@ function applyModelSceneAndStateFallback() {
     bodyNodes,
     showMoons
   });
+  for (const body of catalog.bodies) {
+    const orbitLine = orbitLineByBodyId.get(body.id);
+    if (!orbitLine) continue;
+    const stateAvailable = model.getState(body.id)?.available !== false;
+    orbitLine.userData.stateAvailable = stateAvailable;
+    orbitLine.visible = stateAvailable && dom.toggleOrbits.checked;
+  }
 }
 
 function updateSceneBodies() {
@@ -1181,7 +1222,9 @@ dom.togglePlay.addEventListener('click', () => {
 
 dom.toggleOrbits.addEventListener('change', () => {
   const vis = dom.toggleOrbits.checked;
-  for (const line of orbitLines) line.visible = vis;
+  for (const line of orbitLines) {
+    line.visible = vis && line.userData.stateAvailable !== false;
+  }
 });
 
 dom.toggleLabels.addEventListener('change', () => {
@@ -1333,7 +1376,10 @@ updateCameraClipPlanes();
 updateBodyInfoPanel('sun');
 updatePlayButton();
 
-for (const line of orbitLines) line.visible = Boolean((dom.toggleOrbits as HTMLInputElement | null)?.checked);
+for (const line of orbitLines) {
+  line.visible = Boolean((dom.toggleOrbits as HTMLInputElement | null)?.checked)
+    && line.userData.stateAvailable !== false;
+}
 for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);

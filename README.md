@@ -99,12 +99,15 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── data/
 │   │   ├── planets.ts                         # Planet orbital elements + metadata
 │   │   ├── moons.json                         # 424-moon catalog (JPL SSD)
+│   │   ├── moonEphemerisChebyshev.json         # Validated Horizons fits for corrected moons
 │   │   ├── stars_catalog.json                 # Background star catalog
 │   │   ├── asteroidCatalogLoader.ts           # Phase 1 asteroid data loader
 │   │   ├── asteroidCatalogBinaryFormat.md     # Binary catalog format specification
 │   │   └── asteroidTaxonomyResolver.ts        # Asteroid taxonomy + color mapping
 │   ├── sim/
 │   │   ├── orbitMath.ts                       # Kepler solver, coordinate transforms
+│   │   ├── moonEphemeris.ts                    # Fitted moon-state interpolation/validation
+│   │   ├── sourceFrameOrbit.ts                 # Native Laplace/equatorial propagation
 │   │   ├── solarSystemModel.ts                # Canonical solar system model
 │   │   ├── catalog.ts                         # Body catalog utilities
 │   │   ├── asteroidBelt.ts                    # Asteroid belt element generation
@@ -180,6 +183,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   └── solar-systems/manifests/               # Nearby system JSON manifests
 ├── scripts/
 │   ├── update-moons-data.mjs                  # Refresh moon catalog from JPL
+│   ├── generate_moon_ephemeris.py              # Rebuild/validate fitted Horizons artifact
 │   ├── ingest-moon-textures.mjs               # Download moon texture assets
 │   ├── run-ui-dev.mjs                         # Dev server with CLI resolution args
 │   ├── dev-full.mjs                           # Full-stack dev launcher
@@ -304,8 +308,13 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
 - REBOUND Julian dates are TDB, declared as `jd_time_scale: "TDB"`; WebSocket
   `set_julian_date` commands must include the matching scale instead of silently
   treating browser/Unix UTC dates as ephemeris time.
-- Moon orbital elements sourced from JPL SSD (`https://ssd.jpl.nasa.gov/sats/elem/`).
-- Non-ecliptic moon element frames normalized into an ecliptic approximation at catalog-build time.
+- The 424-moon inventory and approximate fallback elements come from the JPL SSD satellite
+  mean-element tables. Those descriptive elements are not treated as osculating ephemerides.
+- Non-ecliptic fallback moons precess entirely in their native Laplace/parent-equatorial frame;
+  the resulting parent-relative Cartesian state is then rotated to ecliptic J2000.
+- Titan, Iapetus, Phoebe, and Cordelia use a committed parent-relative fit to JPL Horizons
+  osculating states over JDTDB 2451545.0–2469807.5 (2000–2050). The artifact records target,
+  center, frame, time scale, source hashes, held-out accuracy, and exact-endpoint validation.
 - Planet entries include axial-tilt, spin-period, and ecliptic pole-longitude metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data, with optional Gaia DR3 enrichment.
 
@@ -313,6 +322,14 @@ Refresh moon data:
 
 ```bash
 npm run update:moons
+```
+
+Regenerate or independently re-check the fitted moon ephemeris (uses the JPL Horizons API and an
+external temporary response cache):
+
+```bash
+npm run generate:moon-ephemeris
+npm run verify:moon-ephemeris
 ```
 
 Ingest moon textures:
@@ -355,7 +372,9 @@ npm run phase1:asteroid-dataset
 - Earth satellite layer uses TLE-derived Kepler propagation with optional J2 secular perturbations (RAAN, argument of periapsis, mean anomaly rates).
 - Real-time Earth cloud mode uses daily products from NASA GIBS; this is near-real-time visualization, not NWP assimilation.
 - Gravity vectors are computed from currently modeled massive bodies; objects without mass data are excluded.
-- Moon frame normalization for equatorial/Laplace inputs is an approximation for a unified ecliptic frame.
+- Fitted moon ephemerides are authoritative only inside their declared 2000–2050 JDTDB coverage;
+  the runtime refuses to replace those four states with known-bad mean-element positions outside
+  that interval. Other moons retain a labelled, visualization-grade mean-element fallback.
 - Asteroid close-up refinement uses massless test particles under Sun/Jupiter/Saturn perturbations.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; frontend fallback remains patched-conic.
 - Transfer arcs in the UI are drawn as smooth visual curves, not numerically integrated finite-burn trajectories.

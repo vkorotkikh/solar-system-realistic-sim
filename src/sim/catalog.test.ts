@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import rawMoonEphemerides from '../data/moonEphemerisChebyshev.json';
 import {
   createSolarSystemCatalog,
   resolveMoonSecularRates,
   resolveMoonRotationPeriodHours
 } from './catalog';
+import { parseMoonEphemerisArtifact } from './moonEphemeris';
+
+const moonEphemerides = parseMoonEphemerisArtifact(rawMoonEphemerides).bodies;
 
 describe('moon catalog realism', () => {
 
@@ -33,8 +37,37 @@ describe('moon catalog realism', () => {
     expect(moon?.orbit?.secularRates?.ascendingNodeDegPerCentury).toBeLessThan(0);
 
     expect(phobos?.orbitFrameSource).toBe('laplace');
-    expect(phobos?.orbit?.argPeriapsisDeg).not.toBeCloseTo(216.3, 6);
+    // Native source angles are retained so their rates are applied about the
+    // Laplace pole before the Cartesian state is rotated to ecliptic J2000.
+    expect(phobos?.orbit?.argPeriapsisDeg).toBeCloseTo(216.3, 6);
+    expect(phobos?.orbit?.sourceFrameBasis).toBeDefined();
     expect(phobos?.orbit?.secularRates?.argPeriapsisDegPerCentury).toBeGreaterThan(0);
     expect(phobos?.orbit?.secularRates?.ascendingNodeDegPerCentury).toBeLessThan(0);
+  });
+
+  it('attaches provenance-backed fitted ephemerides to the corrected moon set', () => {
+    const catalog = createSolarSystemCatalog({ moonEphemerides });
+    for (const [name, targetId, source] of [
+      ['Titan', '606', 'sat441l'],
+      ['Iapetus', '608', 'sat441l'],
+      ['Phoebe', '609', 'sat441l'],
+      ['Cordelia', '706', 'ura184_merged']
+    ] as const) {
+      const moon = catalog.bodies.find((body) => body.name === name);
+      expect(moon?.orbit?.ephemeris?.provenance.targetId).toBe(targetId);
+      expect(moon?.orbit?.ephemerisRequired).toBe(true);
+      expect(moon?.orbit?.ephemeris?.provenance.sourceEphemeris).toBe(source);
+      expect(moon?.orbitEphemerisSource).toBe(source);
+      expect(moon?.orbit?.ephemeris?.coverageStartJd).toBeLessThanOrEqual(2_451_545);
+      expect(moon?.orbit?.ephemeris?.coverageEndJd).toBeGreaterThan(2_461_000);
+    }
+  });
+
+  it('does not attach the optional fitted artifact unless a caller injects it', () => {
+    const catalog = createSolarSystemCatalog();
+    const titan = catalog.bodies.find((body) => body.name === 'Titan');
+    expect(titan?.orbit?.ephemeris).toBeUndefined();
+    expect(titan?.orbit?.ephemerisRequired).toBe(true);
+    expect(catalog.bodies.find((body) => body.name === 'Rhea')?.orbit?.ephemerisRequired).toBe(false);
   });
 });

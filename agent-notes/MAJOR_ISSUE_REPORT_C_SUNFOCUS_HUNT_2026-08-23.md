@@ -32,6 +32,30 @@ The report normalizes to **56 distinct findings**. At the implementation pin: **
 - `84ddcd1` makes Phase-1 asteroid loading fail closed unless valid metadata supplies a matching 64-hex SHA-256, separates latency telemetry from integrity, and exposes persistent typed verified/fallback status in an ARIA live region. It does not repair the separate period/taxonomy or independent expected-row-contract findings.
 - `a864ea4` removes the mirrored moon-frame unit test and retains the independent 21-body Horizons oracle as the scientific gate, closing the test-quality finding without claiming the remaining catalog phase tolerances are fixed.
 
+### Moon accuracy follow-up (2026-09-24)
+
+The post-pin implementation strengthens R10 without broadening its claim to the entire catalog:
+
+- Every non-ecliptic fallback orbit now keeps its native Laplace/equatorial elements and basis,
+  applies inclination/node/periapsis rates there, and transforms the complete Cartesian state to
+  ecliptic J2000 only after propagation. This closes the rate-frame composition error that drove
+  Cordelia's old 117.7° plane discrepancy.
+- Titan, Iapetus, and Phoebe use fitted parent-relative Horizons states sourced from `SAT441L`;
+  Cordelia uses `URA184_MERGED`. The committed artifact is reproducible and records provenance,
+  frame, center, units, JDTDB time scale, hashes, and held-out validation over
+  **JDTDB 2451545.0–2469807.5 (2000–2050)**.
+- The prior single-epoch/loose-exemption gate is replaced by 20 moons at seven epochs: 140
+  position/plane comparisons plus drift checks, with velocity gates for every fitted moon. The
+  Titan/Iapetus/Phoebe two-radii allowances and Cordelia 180° plane allowance no longer exist.
+- Unfitted moons deliberately use the corrected source-frame mean-element fallback and are reported
+  as approximate. The fitted four publish no state outside 2000–2050, preventing time warp from
+  silently restoring their known-bad table phases. JPL's descriptive mean elements are not treated
+  as universal osculating initial states.
+
+R10 remains **RESOLVED** for the reported frame conversion. The named four-body phase/plane defect
+is resolved inside the stated domain; complete catalog ephemeris accuracy remains **PARTIAL**.
+Historical measurements in the original body below remain valid descriptions of the old branch.
+
 ### Re-executed validation at `a864ea4`
 
 - Backend: **176 passed**, 5 deprecation warnings (`pytest -q backend/tests`). This includes bounded/cancellable WebSocket resources, PFSS cache identity/single-flight, unpowered-flyby invariants, certified Lambert convergence, N-body Horizons accuracy, and the earlier compute/solar-cache gates.
@@ -52,7 +76,7 @@ The report normalizes to **56 distinct findings**. At the implementation pin: **
 | **R07** | **RESOLVED** | Asteroid metadata now uses `no-cache`, matching binary revalidation and removing the stale-checksum split. |
 | **R08** | **RESOLVED** | SF-1 secular propagation now uses `Mdot = Ldot - varpidot` and is guarded by the 48-row Horizons test (`68aff6b`, `f1c79b9`). |
 | **R09** | **RESOLVED** | SF-2 Kuiper activation requires declared velocity units, converts supported units, and refuses to guess. |
-| **R10** | **RESOLVED** | Moon plane normals and periapsis directions are transformed together and gated against a 21-body committed Horizons fixture. |
+| **R10** | **RESOLVED** | Non-ecliptic rates propagate in their native source frame before the complete state is transformed to ecliptic J2000. Titan/Iapetus/Phoebe/Cordelia additionally use provenance-backed Horizons fits over JDTDB 2000–2050, gated by seven-epoch position/plane/drift checks and velocity checks. Unfitted states remain explicitly approximate; the fitted four fail closed outside coverage. |
 | **R11** | **PARTIAL** | CORS and endpoint bounds improved; `90f4134` adds a pre-engine WebSocket origin allowlist and connection cap. The server still defaults to `0.0.0.0` with reload, has no authentication, permits authorized-by-flag report overwrites without an identity check, and exposes absolute paths in some responses. |
 | **R12** | **ACTIVE** | The approximately 39 MB `src/assets` texture corpus remains unreferenced by reachable runtime code. |
 | **R13** | **RESOLVED** | Benchmark report paths are contained below the approved notes directory and overwrite behavior has dedicated tests. |
@@ -61,7 +85,7 @@ The report normalizes to **56 distinct findings**. At the implementation pin: **
 | **R16** | **PARTIAL** | Ephemeris provider reporting improved, but `auto` still makes an otherwise local planning request network-dependent through `spice -> horizons -> kepler`. |
 | **R17** | **ACTIVE** | Claimed binary-KBO primaries and companions remain massless; tests do not establish negative two-body energy or long-term binding. |
 | **R18** | **PARTIAL** | Kuiper WS protocol metadata exists, but mismatches only warn and the latent server-object/client-`number[][]` schema conflict remains in dead code. |
-| **R19** | **RESOLVED** | `a864ea4` removes the mirrored/tautological moon conversion assertion; the independent committed 21-body Horizons oracle remains the correctness gate. This test-quality closure does not relax the separate known catalog phase tolerances tracked under R10/F-05. |
+| **R19** | **RESOLVED** | `a864ea4` removed the mirrored/tautological conversion assertion. The independent oracle now covers 20 moons across seven epochs (140 states), with position, plane, drift, and fitted-body velocity gates; no production correctness claim depends on a mirrored converter. |
 | **R20** | **NOT-A-BUG** | A 20 km/s modeled CME lower bound is not inherently invalid; official SOHO/LASCO sky-plane catalogs include speeds of roughly 20 km/s. |
 | **R21** | **DUPLICATE** | The 50k belt-count/fp32 claim depended on the belt transform-order defect in R44; the count increase is not an independent correctness issue. |
 | **R22** | **ACTIVE** | Realistic-scale toggling still skips quadtree meshes (`applyScaleMode` retains the explicit TODO). |

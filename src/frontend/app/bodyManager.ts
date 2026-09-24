@@ -8,6 +8,7 @@ export interface SceneBodyLike {
 }
 
 export interface SceneBodyStateLike {
+  available?: boolean;
   relativePosition: { x: number; y: number; z: number };
   worldPosition: { x: number; y: number; z: number };
 }
@@ -83,7 +84,11 @@ export function updateSceneBodiesFromModel({
     const state = model.getState(body.id);
     const node = bodyNodes.get(body.id);
 
-    if (!state || !node) continue;
+    if (!node) continue;
+    if (!state || state.available === false) {
+      node.visible = false;
+      continue;
+    }
 
     if (body.parentId) {
       if (body.parentId === 'sun') {
@@ -122,7 +127,11 @@ export function applyServerStateToScene({
   simState: { julianDate: number };
   catalog: SceneCatalogLike;
   bodyNodes: Map<string, Object3D>;
-  propagateKeplerOrbit: (orbit: NonNullable<SceneBodyLike['orbit']>, elapsedDays: number, outPosition: Object3D['position']) => void;
+  propagateKeplerOrbit: (
+    orbit: NonNullable<SceneBodyLike['orbit']>,
+    elapsedDays: number,
+    outPosition: Object3D['position']
+  ) => boolean;
   showMoons: boolean;
 }) {
   if (!state || !state.bodies) return;
@@ -149,7 +158,10 @@ export function applyServerStateToScene({
       }
     } else if (body.parentId && body.orbit) {
       const elapsedDays = state.jd - body.orbit.epochJd;
-      propagateKeplerOrbit(body.orbit, elapsedDays, node.position);
+      if (!propagateKeplerOrbit(body.orbit, elapsedDays, node.position)) {
+        node.visible = false;
+        continue;
+      }
     }
 
     if (body.type === 'moon') {

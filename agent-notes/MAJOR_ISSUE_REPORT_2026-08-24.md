@@ -63,8 +63,8 @@ For this report's own explicit 18 major and 16 medium rows, the current split is
 | Report-local status | Count | IDs |
 |---|---:|---|
 | **ACTIVE** | **14** | `M-06`, `M-07`, `M-14`, `M-15`, `M-17`; `m-06`, `m-08`, `m-09`, `m-11`–`m-16` |
-| **PARTIAL** | **7** | `M-02`, `M-03`, `M-04`, `M-08`, `M-13`, `M-18`; `m-01` |
-| **RESOLVED** | **13** | `M-01`, `M-05`, `M-09`–`M-12`, `M-16`; `m-02`–`m-05`, `m-07`, `m-10` |
+| **PARTIAL** | **6** | `M-02`, `M-03`, `M-04`, `M-13`, `M-18`; `m-01` |
+| **RESOLVED** | **14** | `M-01`, `M-05`, `M-08`–`M-12`, `M-16`; `m-02`–`m-05`, `m-07`, `m-10` |
 | **Total** | **34** | Low-severity prose-only observations are not promoted into this count. |
 
 ### The high-fidelity N-body defect is closed
@@ -90,6 +90,37 @@ covers 1990–2050; it does not certify arbitrary epochs, relativistic/J2/minor-
 exact Solar System Barycenter origin after `move_to_com()`. Serialized states should therefore be
 described as **model-barycentric**, not as exact SSB ephemerides.
 
+### Moon frame and phase follow-up (2026-09-24)
+
+This follow-up closes the **frame-conversion mechanism** in `M-08`, and removes the four named
+phase/plane exemptions in `M-18`, without claiming that every moon catalog row is now an
+ephemeris-quality state:
+
+- All non-ecliptic fallback records now retain their native Laplace/equatorial elements and basis.
+  Inclination, node, and periapsis rates are applied in that native frame at the requested epoch;
+  only the resulting Cartesian position and velocity are transformed to ecliptic J2000. This
+  removes the invalid operation that converted once and then added a native node rate to an
+  ecliptic node—the cause of Cordelia's old 117.7° plane error.
+- Titan, Iapetus, Phoebe, and Cordelia use committed, provenance-bearing, parent-relative JPL
+  Horizons fits over **JDTDB 2451545.0–2469807.5 (2000–2050)**. Titan/Iapetus/Phoebe record
+  `SAT441L`; Cordelia records `URA184_MERGED`. The deterministic generator, source target/center,
+  reference frame, time scale, units, source-row hashes, and held-out validation statistics ship
+  with the artifact.
+- The independent gate is now **20 moons × 7 epochs = 140 state comparisons**, with per-epoch
+  position and orbit-plane limits, drift limits, and explicit velocity limits for all four fitted
+  moons. The former approximately-two-orbit-radius position allowances and Cordelia's 180° plane
+  allowance are gone.
+- The four fitted bodies fail closed outside the fitted interval: their state is marked unavailable
+  and hidden instead of silently resurrecting the known-bad phase from the mean-element table.
+  Moons without a fitted ephemeris retain the corrected native-frame mean-element model, explicitly
+  labelled approximate. JPL's descriptive tables are not relabelled as osculating states.
+
+Therefore `M-08` is **RESOLVED** as a frame/rate-composition defect. `M-18` remains **PARTIAL** at
+catalog scope: its four reported bodies are resolved inside the stated coverage and unavailable
+outside it, while other moons still use explicitly approximate mean elements and retain their own
+data-limited accuracy budgets. The measurements in the original report below remain historical
+evidence of the pre-fix implementation.
+
 ### Implemented remediation in this pass
 
 The N-body correction above was the prerequisite requested first. Two implementation passes then
@@ -102,7 +133,7 @@ rows below record both passes; adjacent issues remain open where explicitly stat
 | Browser secular mean-anomaly regression (`SF-1` / `F-07`) | `68aff6b`, `f1c79b9` | **RESOLVED.** Propagation now follows JPL's `M = L - varpi` relation and advances `Mdot = Ldot - varpidot`, avoiding double-counted apsidal motion. A committed 48-row Horizons position fixture covers 8 planets at 6 epochs. |
 | Compute permits released while timed-out work continued (`M-10` / `B-PORK-03`) | `3f5d097` | **RESOLVED for the reported worker-lifetime defect.** Heavy jobs use owned bounded executors; the permit remains held until the actual future exits. Porkchop scans receive cooperative cancellation, with timeout/disconnect tests. |
 | Float32 worker transport overwrote the Float64 model (`M-11`) | `b6c4ce3` | **RESOLVED.** A shared schema enforces Float64, AU, AU/day, heliocentric-ecliptic-J2000, record stride 6, and runtime payload validation. The main-thread re-coercion trap is removed. |
-| 424 hidden moons consumed 97.7% of each worker payload and then froze (`M-12` / `F-20`) | `b6c4ce3` | **RESOLVED for the shipped scene.** Only 10 active rendered bodies are propagated and serialized; payload falls from 12,152 to **480 bytes/tick**. One-in-flight, sequence, and freshness guards protect application. |
+| 424 hidden moons consumed 97.7% of each worker payload and then froze (`M-12` / `F-20`) | `b6c4ce3` | **RESOLVED for the shipped scene.** Only 10 active rendered bodies are propagated and serialized; the current state contract is **490 bytes/tick** (480-byte float64 state plus a 10-byte availability mask). One-in-flight, sequence, and freshness guards protect application. |
 | Realtime solar TTL cache served one requested epoch for another (`M-16` / `F-10` / `B-SOL-02`) | `e740b21` | **RESOLVED.** Snapshot identity now includes exact finite JD versus `latest`; a bounded 16-entry TTL/LRU cache and matching single-flight key prevent cross-epoch poisoning and unbounded growth. Seven dedicated tests cover isolation, reuse, refresh, eviction, and non-finite input. |
 | Zero/negative porkchop TOF admitted all-failure memory work (`m-10` / `N-04` / `B-PORK-02`) | `3f5d097` | **RESOLVED.** Both TOF bounds are schema-constrained with `gt=0`; endpoint regressions cover zero and negative values. |
 | Unbounded, non-cancellable REBOUND seeks/checkpoints (`R23` / `B-WS-02/06`) | `90f4134` | **RESOLVED.** Seeks are restricted to the validated 1990–2050 JDTDB range, long forward integration is segmented for cooperative cancellation, checkpoints use an eight-entry LRU, and endpoint admission remains held until the worker exits. |
@@ -115,9 +146,10 @@ rows below record both passes; adjacent issues remain open where explicitly stat
 Other previously landed fixes that remain credited include the asteroid transform order (`M-01`),
 Lambert time-of-flight certification, IAS15 compatibility, benchmark-report overwrite opt-in
 (`M-09`), deterministic fixed-epoch solar payloads, the shipped resize-loop impact (`M-05`), and
-the independent 21-case Horizons moon-frame gate. The benchmark oracle and complete moon catalog
-remain **PARTIAL**, not resolved: honesty/quarantine is not reproducible truth coverage, and several
-moon rows still carry bad phase conventions.
+the independent 140-state Horizons moon gate described above. The benchmark oracle and complete
+moon catalog remain **PARTIAL**, not resolved: honesty/quarantine is not reproducible truth
+coverage, and unfitted moon states remain approximate (the fitted four are unavailable outside
+their certified interval).
 
 ### What remains and how to fix it
 

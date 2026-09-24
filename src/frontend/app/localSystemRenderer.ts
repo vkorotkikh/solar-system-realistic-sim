@@ -168,7 +168,7 @@ interface OrbitTools {
     orbit: LocalOrbitDefinition,
     elapsedDays: number,
     position: Vector3
-  ) => void;
+  ) => boolean;
 }
 
 interface CreateLocalSystemRendererArgs {
@@ -344,7 +344,7 @@ export function createLocalSystemRenderer({
 
     for (let i = 0; i <= segments; i += 1) {
       const elapsedDays = (i / segments) * body.orbit.periodDays;
-      propagateKeplerOrbit(body.orbit, elapsedDays, point);
+      if (!propagateKeplerOrbit(body.orbit, elapsedDays, point)) return null;
       points.push(point.clone());
     }
 
@@ -547,9 +547,14 @@ export function createLocalSystemRenderer({
     for (const entry of state.localBodyEntries) {
       if (entry.body.orbit) {
         const elapsedDays = julianDate - entry.body.orbit.epochJd;
-        propagateKeplerOrbit(entry.body.orbit, elapsedDays, entry.node.position);
+        entry.node.visible = propagateKeplerOrbit(
+          entry.body.orbit,
+          elapsedDays,
+          entry.node.position
+        );
       } else {
         entry.node.position.set(0, 0, 0);
+        entry.node.visible = true;
       }
 
       const rotationPeriodHours = entry.mesh?.userData?.rotationPeriodHours;
