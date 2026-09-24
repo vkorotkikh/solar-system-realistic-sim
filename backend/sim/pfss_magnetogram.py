@@ -19,6 +19,7 @@ import struct
 import threading
 import time
 import urllib.request
+from collections import OrderedDict
 from typing import Any
 
 import numpy as np
@@ -1091,12 +1092,85 @@ def wsa_velocity_at_source_surface(
 # ─── PFSS Cache ────────────────────────────────────────────────────────────────
 
 class PFSSCache:
-    """Thread-safe cache for PFSS solutions keyed by Carrington rotation."""
+    """Thread-safe, bounded cache for fully identified PFSS solutions.
+
+    Carrington rotation alone is not a sufficient cache identity.  A synthetic
+    fallback also depends on the requested epoch and activity, while the public
+    payload depends on the requested trace count and harmonic degree.  The GONG
+    timeout can change whether a request uses observed or synthetic input, so it
+    is part of the identity as well.
+
+    Identical cache misses share one computation.  Computation remains outside
+    the cache lock so unrelated keys can progress independently.
+    """
 
     def __init__(self, max_entries: int = 3):
         self._lock = threading.Lock()
-        self._cache: dict[int, dict[str, Any]] = {}
-        self._max_entries = max_entries
+        self._cache: OrderedDict[
+            tuple[int, float, float, int, int, float], dict[str, Any]
+        ] = OrderedDict()
+        self._inflight: dict[
+            tuple[int, float, float, int, int, float], dict[str, Any]
+        ] = {}
+        self._max_entries = max(1, int(max_entries))
+
+    @staticmethod
+    def _normalize_key(
+        jd: float,
+        activity: float,
+        n_lines: int,
+        lmax: int,
+        gong_timeout_s: float,
+    ) -> tuple[int, float, float, int, int, float]:
+        try:
+            normalized_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("jd must be finite") from exc
+        if not math.isfinite(normalized_jd):
+            raise ValueError("jd must be finite")
+
+        try:
+            normalized_activity = float(activity)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("activity must be finite") from exc
+        if not math.isfinite(normalized_activity):
+            raise ValueError("activity must be finite")
+        normalized_activity = _clamp(normalized_activity, 0.0, 1.0)
+
+        try:
+            requested_lines = int(n_lines)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("n_lines must be an integer") from exc
+        # trace_field_lines applies these same effective bounds.  Canonicalizing
+        # here prevents equivalent requests from occupying distinct cache slots.
+        normalized_lines = max(8, min(500, requested_lines))
+
+        try:
+            requested_lmax = int(lmax)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("lmax must be a positive integer") from exc
+        if isinstance(lmax, float) and not lmax.is_integer():
+            raise ValueError("lmax must be a positive integer")
+        if requested_lmax < 1:
+            raise ValueError("lmax must be a positive integer")
+        normalized_lmax = min(requested_lmax, 15)
+
+        try:
+            normalized_timeout = float(gong_timeout_s)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("gong_timeout_s must be finite and positive") from exc
+        if not math.isfinite(normalized_timeout) or normalized_timeout <= 0.0:
+            raise ValueError("gong_timeout_s must be finite and positive")
+
+        cr = carrington_rotation_number(normalized_jd)
+        return (
+            cr,
+            normalized_jd,
+            normalized_activity,
+            normalized_lines,
+            normalized_lmax,
+            normalized_timeout,
+        )
 
     def get_or_compute(
         self,
@@ -1107,21 +1181,57 @@ class PFSSCache:
         gong_timeout_s: float = 6.0,
     ) -> dict[str, Any]:
         """Get cached PFSS result or compute fresh."""
-        cr = carrington_rotation_number(jd)
+        key = self._normalize_key(jd, activity, n_lines, lmax, gong_timeout_s)
+        cr, normalized_jd, normalized_activity, normalized_lines, normalized_lmax, normalized_timeout = key
 
         with self._lock:
-            if cr in self._cache:
-                return self._cache[cr]
+            cached = self._cache.get(key)
+            if cached is not None:
+                self._cache.move_to_end(key)
+                return cached
 
-        # Compute outside the lock to avoid blocking
-        result = self._compute(cr, activity, jd, n_lines, lmax, gong_timeout_s)
+            state = self._inflight.get(key)
+            if state is None:
+                state = {
+                    "event": threading.Event(),
+                    "value": None,
+                    "error": None,
+                }
+                self._inflight[key] = state
+                is_leader = True
+            else:
+                is_leader = False
+
+        if not is_leader:
+            state["event"].wait()
+            if state["error"] is not None:
+                raise state["error"]
+            return state["value"]
+
+        try:
+            result = self._compute(
+                cr,
+                normalized_activity,
+                normalized_jd,
+                normalized_lines,
+                normalized_lmax,
+                normalized_timeout,
+            )
+        except BaseException as exc:
+            with self._lock:
+                state["error"] = exc
+                self._inflight.pop(key, None)
+                state["event"].set()
+            raise
 
         with self._lock:
-            # Evict oldest if at capacity
-            while len(self._cache) >= self._max_entries:
-                oldest = min(self._cache.keys())
-                del self._cache[oldest]
-            self._cache[cr] = result
+            self._cache[key] = result
+            self._cache.move_to_end(key)
+            while len(self._cache) > self._max_entries:
+                self._cache.popitem(last=False)
+            state["value"] = result
+            self._inflight.pop(key, None)
+            state["event"].set()
 
         return result
 
@@ -1190,4 +1300,3 @@ class PFSSCache:
             },
             "_wsa_result": wsa_result,  # internal, not serialized to JSON
         }
-
