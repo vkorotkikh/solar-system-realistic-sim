@@ -71,6 +71,13 @@ import {
   PHASE1_LOAD_LATENCY_BUDGET_MS
 } from './sim/phase1AsteroidCatalog';
 import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
+import {
+  failedAsteroidCatalogStatus,
+  loadingAsteroidCatalogStatus,
+  rejectedAsteroidCatalogStatus,
+  renderAsteroidCatalogSourceStatus,
+  verifiedAsteroidCatalogStatus,
+} from './frontend/features/asteroids/catalogSourceStatus';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -94,6 +101,7 @@ const dom = {
   statusFocus: document.getElementById('status-focus'),
   statusBodies: document.getElementById('status-bodies'),
   statusZoom: document.getElementById('status-zoom'),
+  statusCatalog: document.getElementById('status-catalog'),
   zoomSensitivity: document.getElementById('zoom-sensitivity'),
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   viewportShell: document.getElementById('viewport-shell'),
@@ -104,6 +112,8 @@ const dom = {
   agnStochastic: document.getElementById('agn-stochastic'),
   triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
 };
+
+renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatus());
 
 // ── Data & State ─────────────────────────────────────────────────────────────
 
@@ -473,14 +483,17 @@ function initPhaseOneAsteroids() {
   }).then((catalog) => {
     const gate = catalog.acceptance;
     if (!catalog.accepted) {
-      const reasons: string[] = [];
-      if (!gate.version.passed && gate.version.reason) reasons.push(gate.version.reason);
-      if (!gate.rows.passed && gate.rows.reason) reasons.push(gate.rows.reason);
-      if (!gate.taxonomy.passed && gate.taxonomy.reason) reasons.push(gate.taxonomy.reason);
-      if (!gate.checksum.passed && gate.checksum.reason) reasons.push(gate.checksum.reason);
-      if (!gate.latency.passed && gate.latency.reason) reasons.push(gate.latency.reason);
+      const reasons = gate.rejections.map(({ code, message }) => `[${code}] ${message}`);
+      renderAsteroidCatalogSourceStatus(
+        dom.statusCatalog,
+        rejectedAsteroidCatalogStatus(gate.rejections)
+      );
       console.warn('[phase-1] Acceptance gates failed:', reasons.join(' | '));
       return;
+    }
+
+    if (!gate.latency.passed && gate.latency.reason) {
+      console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
     }
 
     if (!catalog.asteroids.length) return;
@@ -494,6 +507,10 @@ function initPhaseOneAsteroids() {
     );
     if (phaseOnePopulation.count <= 0) return;
     refreshAsteroidBeltRenderer(phaseOnePopulation);
+    renderAsteroidCatalogSourceStatus(
+      dom.statusCatalog,
+      verifiedAsteroidCatalogStatus(catalog.sourceCount)
+    );
     refillBodyList();
     console.info(
       `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
@@ -508,6 +525,7 @@ function initPhaseOneAsteroids() {
       `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
     );
   }).catch((error) => {
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
     console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
   });
 }

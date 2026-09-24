@@ -24,15 +24,41 @@ export interface Phase1CatalogMeta {
   stored_count?: number;
   storedCount?: number;
   checksum?: string;
+  checksum_algorithm?: string;
+  checksum_sha256?: string;
+  checksum_algorithm_sha256?: string;
   sha256?: string;
   fileChecksum?: string;
   metaChecksum?: string;
   [key: string]: unknown;
 }
 
+export type Phase1CatalogRejectionCode =
+  | 'metadata-missing'
+  | 'metadata-fetch-failed'
+  | 'metadata-invalid'
+  | 'sha256-missing'
+  | 'sha256-invalid'
+  | 'sha256-unavailable'
+  | 'sha256-mismatch'
+  | 'unsupported-catalog-version'
+  | 'row-count-invalid'
+  | 'taxonomy-incomplete';
+
+export interface Phase1CatalogRejection {
+  code: Phase1CatalogRejectionCode;
+  message: string;
+}
+
 export interface Phase1CatalogAcceptanceItem {
   passed: boolean;
+  code?: Phase1CatalogRejectionCode;
   reason?: string;
+}
+
+export interface Phase1CatalogMetadataAcceptance extends Phase1CatalogAcceptanceItem {
+  status: 'loaded' | 'missing' | 'fetch-failed' | 'invalid';
+  httpStatus?: number;
 }
 
 export interface Phase1CatalogRowAcceptance {
@@ -43,6 +69,7 @@ export interface Phase1CatalogRowAcceptance {
   metadataSourceRows?: number;
   metadataStoredCount?: number;
   passed: boolean;
+  code?: Phase1CatalogRejectionCode;
   reason?: string;
 }
 
@@ -52,6 +79,7 @@ export interface Phase1CatalogTaxonomyAcceptance {
   expected: Phase1TaxonomyCode[];
   completeness: number;
   passed: boolean;
+  code?: Phase1CatalogRejectionCode;
   reason?: string;
 }
 
@@ -60,6 +88,7 @@ export interface Phase1CatalogChecksumAcceptance {
   actual: string;
   enforced: boolean;
   passed: boolean;
+  code?: Phase1CatalogRejectionCode;
   reason?: string;
 }
 
@@ -74,15 +103,18 @@ export interface Phase1CatalogVersionAcceptance {
   expected: string;
   actual: string;
   passed: boolean;
+  code?: Phase1CatalogRejectionCode;
   reason?: string;
 }
 
 export interface Phase1CatalogAcceptance {
+  metadata: Phase1CatalogMetadataAcceptance;
   version: Phase1CatalogVersionAcceptance;
   rows: Phase1CatalogRowAcceptance;
   taxonomy: Phase1CatalogTaxonomyAcceptance;
   checksum: Phase1CatalogChecksumAcceptance;
   latency: Phase1CatalogLatencyAcceptance;
+  rejections: Phase1CatalogRejection[];
   passed: boolean;
 }
 
@@ -100,6 +132,7 @@ export interface Phase1Bundle {
   checksumExpected?: string;
   rowCount: Phase1CatalogRowAcceptance;
   taxonomyCheck: Phase1CatalogTaxonomyAcceptance;
+  rejectionReasons: Phase1CatalogRejection[];
 }
 
 export interface Phase1CatalogLoadResult extends Phase1Bundle { }
@@ -141,6 +174,10 @@ function normalizeChecksum(value: unknown): string | undefined {
   const normalized = value.trim().toLowerCase();
   if (!normalized.length) return undefined;
   return normalized.startsWith('0x') ? normalized.slice(2) : normalized;
+}
+
+function isSha256Hex(value: string): boolean {
+  return /^[0-9a-f]{64}$/u.test(value);
 }
 
 function mulberry32(seed: number): () => number {
@@ -314,18 +351,6 @@ function makeColor(taxonomy: AsteroidTaxonomy, seed: number): number {
   return colorForTaxonomy(taxonomy, rng);
 }
 
-function checksumFNV1a32(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let hash = 0x811c9dc5;
-
-  for (let i = 0; i < bytes.length; i += 1) {
-    hash ^= bytes[i];
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-
-  return hash.toString(16).padStart(8, '0');
-}
-
 async function checksumSHA256(buffer: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = new Uint8Array(hashBuffer);
@@ -334,16 +359,6 @@ async function checksumSHA256(buffer: ArrayBuffer): Promise<string> {
     hex += hashArray[i].toString(16).padStart(2, '0');
   }
   return hex;
-}
-
-async function computeChecksum(
-  buffer: ArrayBuffer,
-  algorithm: ExpectedChecksum['algorithm']
-): Promise<string> {
-  if (algorithm === 'sha256') {
-    return checksumSHA256(buffer);
-  }
-  return checksumFNV1a32(buffer);
 }
 
 function parseTaxonomyCounts(asteroids: readonly AsteroidDef[]): Phase1TaxonomyCounts {
@@ -369,38 +384,48 @@ function extractMetaNumber(meta: Phase1CatalogMeta | undefined, keys: string[]):
 
 interface ExpectedChecksum {
   value: string;
-  algorithm: 'sha256' | 'fnv1a32' | 'unknown';
+  algorithm: 'sha256';
 }
 
-function extractExpectedChecksum(meta: Phase1CatalogMeta | undefined): ExpectedChecksum | undefined {
-  if (!meta) return undefined;
+interface ExpectedChecksumResolution {
+  expected?: ExpectedChecksum;
+  code?: 'sha256-missing' | 'sha256-invalid';
+  reason?: string;
+}
+
+function extractExpectedChecksum(meta: Phase1CatalogMeta | undefined): ExpectedChecksumResolution {
+  if (!meta) return {};
   const rec = meta as Record<string, unknown>;
+
+  const declaredAlgorithm = rec.checksum_algorithm_sha256;
+  if (
+    declaredAlgorithm != null
+    && (typeof declaredAlgorithm !== 'string'
+      || declaredAlgorithm.trim().toLowerCase().replace('-', '') !== 'sha256')
+  ) {
+    return {
+      code: 'sha256-invalid',
+      reason: 'Metadata checksum_algorithm_sha256 must identify SHA-256.'
+    };
+  }
 
   const sha256Keys = ['checksum_sha256', 'checksumSha256', 'sha256', 'sha256_hex', 'sha256Hex'];
   for (const key of sha256Keys) {
+    if (!(key in rec)) continue;
     const value = normalizeChecksum(rec[key]);
-    if (value && value.length === 64) {
-      return { value, algorithm: 'sha256' };
+    if (value && isSha256Hex(value)) {
+      return { expected: { value, algorithm: 'sha256' } };
     }
+    return {
+      code: 'sha256-invalid',
+      reason: `Metadata field ${key} must contain exactly 64 hexadecimal SHA-256 characters.`
+    };
   }
 
-  const fnvKeys = ['checksum', 'fileChecksum'];
-  for (const key of fnvKeys) {
-    const value = normalizeChecksum(rec[key]);
-    if (value && value.length === 8) {
-      return { value, algorithm: 'fnv1a32' };
-    }
-  }
-
-  const fallbackKeys = ['checksum', 'fileChecksum', 'metaChecksum', 'file_hash', 'catalogChecksum'];
-  for (const key of fallbackKeys) {
-    const value = normalizeChecksum(rec[key]);
-    if (value) {
-      return { value, algorithm: value.length === 64 ? 'sha256' : 'unknown' };
-    }
-  }
-
-  return undefined;
+  return {
+    code: 'sha256-missing',
+    reason: 'Metadata must declare a SHA-256 checksum; FNV and unspecified hashes are not integrity substitutes.'
+  };
 }
 
 function buildRowAcceptance(
@@ -430,6 +455,7 @@ function buildRowAcceptance(
     metadataSourceRows: metaSourceRows,
     metadataStoredCount: metaStoredCount,
     passed,
+    code: passed ? undefined : 'row-count-invalid',
     reason: passed ? undefined : reasons.join('; ')
   };
 }
@@ -452,22 +478,58 @@ function buildTaxonomyAcceptance(asteroids: readonly AsteroidDef[]): Phase1Catal
     expected: [...EXPECTED_TAXONOMIES],
     completeness,
     passed,
+    code: passed ? undefined : 'taxonomy-incomplete',
     reason: passed ? undefined : reasons.join('; ')
   };
 }
 
 function buildChecksumAcceptance(
-  expected: ExpectedChecksum | undefined,
+  metadataAcceptance: Phase1CatalogMetadataAcceptance,
+  resolution: ExpectedChecksumResolution,
   actual: string,
-  enforced: boolean
+  checksumFailureReason?: string
 ): Phase1CatalogChecksumAcceptance {
+  if (!metadataAcceptance.passed) {
+    return {
+      expected: undefined,
+      actual,
+      enforced: true,
+      passed: false,
+      reason: 'A trusted SHA-256 checksum cannot be established without valid metadata.'
+    };
+  }
+
+  if (resolution.code) {
+    return {
+      expected: undefined,
+      actual,
+      enforced: true,
+      passed: false,
+      code: resolution.code,
+      reason: resolution.reason
+    };
+  }
+
+  const expected = resolution.expected;
   if (!expected) {
     return {
       expected: undefined,
       actual,
-      enforced: false,
-      passed: true,
-      reason: 'No checksum declared by metadata.'
+      enforced: true,
+      passed: false,
+      code: 'sha256-missing',
+      reason: 'Metadata must declare a valid SHA-256 checksum.'
+    };
+  }
+
+  if (checksumFailureReason) {
+    return {
+      expected: expected.value,
+      actual,
+      enforced: true,
+      passed: false,
+      code: 'sha256-unavailable',
+      reason: checksumFailureReason
     };
   }
 
@@ -475,11 +537,12 @@ function buildChecksumAcceptance(
   return {
     expected: expected.value,
     actual,
-    enforced,
+    enforced: true,
     passed: matched,
+    code: matched ? undefined : 'sha256-mismatch',
     reason: matched
       ? undefined
-      : `checksum mismatch (${expected.algorithm}) expected=${expected.value}, actual=${actual}`
+      : `SHA-256 mismatch: expected=${expected.value}, actual=${actual}`
   };
 }
 
@@ -502,8 +565,10 @@ function buildAcceptance(
     metadata: Phase1CatalogMeta | undefined;
     loadMs: number;
     latencyBudgetMs: number;
-    checksumExpected?: ExpectedChecksum;
+    metadataAcceptance: Phase1CatalogMetadataAcceptance;
+    checksumResolution: ExpectedChecksumResolution;
     checksumActual: string;
+    checksumFailureReason?: string;
   }
 ): Phase1Bundle['acceptance'] {
   const catalogSignature = `${parsed.catalogMagic}-v${parsed.catalogVersion}`;
@@ -512,6 +577,7 @@ function buildAcceptance(
     expected: EXPECTED_PHASE1_VERSION.join(', '),
     actual: catalogSignature,
     passed: expected,
+    code: expected ? undefined : 'unsupported-catalog-version' as const,
     reason: expected
       ? undefined
       : `Unsupported catalog signature ${catalogSignature} (expected ${EXPECTED_PHASE1_VERSION.join(', ')}).`
@@ -524,36 +590,106 @@ function buildAcceptance(
   );
   const taxonomy = buildTaxonomyAcceptance(parsed.asteroids);
   const checksum = buildChecksumAcceptance(
-    options.checksumExpected,
+    options.metadataAcceptance,
+    options.checksumResolution,
     options.checksumActual,
-    options.checksumExpected != null
+    options.checksumFailureReason
   );
   const latency = buildLatencyAcceptance(options.loadMs, options.latencyBudgetMs);
+  const rejectionItems: Phase1CatalogAcceptanceItem[] = [
+    options.metadataAcceptance,
+    version,
+    rows,
+    taxonomy,
+    checksum
+  ];
+  const rejections = rejectionItems.flatMap((item) => (
+    !item.passed && item.code && item.reason
+      ? [{ code: item.code, message: item.reason }]
+      : []
+  ));
   return {
+    metadata: options.metadataAcceptance,
     version,
     rows,
     taxonomy,
     checksum,
     latency,
-    passed: version.passed && rows.passed && taxonomy.passed && checksum.passed && latency.passed
+    rejections,
+    passed: options.metadataAcceptance.passed && version.passed && rows.passed && taxonomy.passed && checksum.passed
   };
+}
+
+interface Phase1CatalogMetadataLoadResult {
+  metadata?: Phase1CatalogMeta;
+  acceptance: Phase1CatalogMetadataAcceptance;
 }
 
 async function loadPhase1CatalogMetadata(
   url?: string
-): Promise<Phase1CatalogMeta | undefined> {
-  if (!url) return undefined;
+): Promise<Phase1CatalogMetadataLoadResult> {
+  if (!url) {
+    return {
+      acceptance: {
+        status: 'missing',
+        passed: false,
+        code: 'metadata-missing',
+        reason: 'Phase-1 catalog metadata URL is missing.'
+      }
+    };
+  }
+
+  let response: Response;
   try {
-    const response = await fetch(url, { cache: 'no-cache' });
-    if (!response.ok) return undefined;
-    const payload = await response.json();
-    if (typeof payload === 'object' && payload !== null) {
-      return payload as Phase1CatalogMeta;
+    response = await fetch(url, { cache: 'no-cache' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      acceptance: {
+        status: 'fetch-failed',
+        passed: false,
+        code: 'metadata-fetch-failed',
+        reason: `Failed to fetch Phase-1 catalog metadata: ${message}`
+      }
+    };
+  }
+
+  if (!response.ok) {
+    const missing = response.status === 404 || response.status === 410;
+    return {
+      acceptance: {
+        status: missing ? 'missing' : 'fetch-failed',
+        httpStatus: response.status,
+        passed: false,
+        code: missing ? 'metadata-missing' : 'metadata-fetch-failed',
+        reason: `Failed to fetch Phase-1 catalog metadata (${response.status}): ${response.statusText}`
+      }
+    };
+  }
+
+  try {
+    const payload: unknown = await response.json();
+    if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+      return {
+        metadata: payload as Phase1CatalogMeta,
+        acceptance: {
+          status: 'loaded',
+          passed: true
+        }
+      };
     }
   } catch {
-    return undefined;
+    // Returned below as a typed metadata-integrity rejection.
   }
-  return undefined;
+
+  return {
+    acceptance: {
+      status: 'invalid',
+      passed: false,
+      code: 'metadata-invalid',
+      reason: 'Phase-1 catalog metadata is not a valid JSON object.'
+    }
+  };
 }
 
 function parseOrbitCatalog(
@@ -631,7 +767,7 @@ export async function loadPhase1AsteroidCatalog(
   const latencyBudgetMs = options.loadLatencyBudgetMs ?? PHASE1_LOAD_LATENCY_BUDGET_MS;
   const loadStarted = nowMs();
 
-  const [binaryResponse, metadata] = await Promise.all([
+  const [binaryResponse, metadataLoad] = await Promise.all([
     fetch(url),
     loadPhase1CatalogMetadata(metaUrl),
   ]);
@@ -642,19 +778,26 @@ export async function loadPhase1AsteroidCatalog(
 
   const buffer = await binaryResponse.arrayBuffer();
   const parsed = parseOrbitCatalog(buffer, maxRecords);
-  const checksumExpected = extractExpectedChecksum(metadata);
-  const checksumActual = await computeChecksum(
-    buffer,
-    checksumExpected?.algorithm ?? 'fnv1a32'
-  );
+  const metadata = metadataLoad.metadata;
+  const checksumResolution = extractExpectedChecksum(metadata);
+  let checksumActual = '';
+  let checksumFailureReason: string | undefined;
+  try {
+    checksumActual = await checksumSHA256(buffer);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    checksumFailureReason = `Unable to compute SHA-256 for the Phase-1 catalog: ${message}`;
+  }
   const loadMs = nowMs() - loadStarted;
   const acceptance = buildAcceptance(parsed, {
     requestedMax: maxRecords,
     metadata,
     loadMs,
     latencyBudgetMs,
-    checksumExpected,
-    checksumActual
+    metadataAcceptance: metadataLoad.acceptance,
+    checksumResolution,
+    checksumActual,
+    checksumFailureReason
   });
 
   const rowCount = acceptance.rows;
@@ -667,9 +810,10 @@ export async function loadPhase1AsteroidCatalog(
     catalogVersion: parsed.catalogVersion,
     acceptance,
     checksumActual,
-    checksumExpected: checksumExpected?.value,
+    checksumExpected: checksumResolution.expected?.value,
     rowCount,
     taxonomyCheck,
+    rejectionReasons: acceptance.rejections,
     accepted: acceptance.passed,
     loadMs,
     loadLatencyBudgetMs: latencyBudgetMs,
