@@ -58,3 +58,36 @@ def test_lambert_solver_matches_fixed_endpoint_reference_cases(case: dict) -> No
     )
     total_delta_v = delta_v_depart + delta_v_arrive
     assert total_delta_v == pytest.approx(case["expected_total_dv_km_s"], rel=0.0, abs=2e-6)
+
+
+def test_lambert_solver_rejects_an_exhausted_uncertified_root() -> None:
+    case = REFERENCE_CASES[0]
+
+    solution = solve_lambert_universal(
+        case["r1"],
+        case["r2"],
+        case["tof_days"],
+        prograde=True,
+        max_iter=0,
+        tol_days=1e-12,
+    )
+
+    assert solution is None
+
+
+def test_lambert_solver_meets_a_strict_time_of_flight_certificate() -> None:
+    case = REFERENCE_CASES[1]
+    tolerance_days = 1e-10
+
+    solution = solve_lambert_universal(
+        case["r1"],
+        case["r2"],
+        case["tof_days"],
+        prograde=True,
+        max_iter=100,
+        tol_days=tolerance_days,
+    )
+
+    assert solution is not None
+    assert solution["rootBracketed"] is True
+    assert solution["rootResidualDays"] <= tolerance_days

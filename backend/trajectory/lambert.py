@@ -90,9 +90,13 @@ def _solve_bracketed_z(
     *,
     max_iter: int,
     tol_days: float,
+    left_state: Optional[Tuple[float, float, float, float]] = None,
+    right_state: Optional[Tuple[float, float, float, float]] = None,
 ) -> Optional[Tuple[float, Tuple[float, float, float, float]]]:
-    left_state = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
-    right_state = _tof_from_z(z_right, r1_mag, r2_mag, A, mu)
+    if left_state is None:
+        left_state = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
+    if right_state is None:
+        right_state = _tof_from_z(z_right, r1_mag, r2_mag, A, mu)
     if left_state is None or right_state is None:
         return None
 
@@ -108,28 +112,29 @@ def _solve_bracketed_z(
     best_z = z_left if abs(f_left) <= abs(f_right) else z_right
     best_state = left_state if best_z == z_left else right_state
     best_abs = min(abs(f_left), abs(f_right))
+    weighted_left = f_left
+    weighted_right = f_right
+    last_updated = None
 
     for _ in range(max_iter):
-        if abs(f_right - f_left) > 1e-14:
-            z_trial = z_right - f_right * (z_right - z_left) / (f_right - f_left)
+        midpoint = 0.5 * (z_left + z_right)
+        if abs(weighted_right - weighted_left) > 1e-14:
+            z_trial = z_right - weighted_right * (z_right - z_left) / (weighted_right - weighted_left)
         else:
-            z_trial = 0.5 * (z_left + z_right)
+            z_trial = midpoint
 
         lower = min(z_left, z_right)
         upper = max(z_left, z_right)
         if not math.isfinite(z_trial) or z_trial <= lower or z_trial >= upper:
-            z_trial = 0.5 * (z_left + z_right)
-
-        midpoint = 0.5 * (z_left + z_right)
-        if abs(z_trial - midpoint) > 0.8 * abs(z_right - z_left):
             z_trial = midpoint
 
         trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
         if trial_state is None:
-            z_trial = midpoint
-            trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
+            if z_trial != midpoint:
+                z_trial = midpoint
+                trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
             if trial_state is None:
-                return best_z, best_state
+                break
 
         f_trial = trial_state[0] - tof_target
         if abs(f_trial) < best_abs:
@@ -143,15 +148,21 @@ def _solve_bracketed_z(
             z_right = z_trial
             right_state = trial_state
             f_right = f_trial
+            weighted_right = f_right
+            weighted_left = weighted_left * 0.5 if last_updated == "right" else f_left
+            last_updated = "right"
         else:
             z_left = z_trial
             left_state = trial_state
             f_left = f_trial
+            weighted_left = f_left
+            weighted_right = weighted_right * 0.5 if last_updated == "left" else f_right
+            last_updated = "left"
 
         if abs(z_right - z_left) <= 1e-8:
             break
 
-    return best_z, best_state
+    return (best_z, best_state) if best_abs <= tol_days else None
 
 
 def solve_lambert_universal(
@@ -185,12 +196,12 @@ def solve_lambert_universal(
     z_max = 40.0
     step = 0.25
 
-    sampled: List[Tuple[float, float]] = []
+    sampled: List[Tuple[float, float, Tuple[float, float, float, float]]] = []
     z = z_min
     while z <= z_max + 1e-12:
         tof_state = _tof_from_z(z, r1_mag, r2_mag, A, mu)
         if tof_state is not None:
-            sampled.append((z, tof_state[0] - tof_target))
+            sampled.append((z, tof_state[0] - tof_target, tof_state))
         z += step
 
     if not sampled:
@@ -198,34 +209,41 @@ def solve_lambert_universal(
 
     root_low: Optional[float] = None
     root_high: Optional[float] = None
+    root_low_state: Optional[Tuple[float, float, float, float]] = None
+    root_high_state: Optional[Tuple[float, float, float, float]] = None
     best_z = sampled[0][0]
     best_abs = abs(sampled[0][1])
+    best_state = sampled[0][2]
 
     for idx in range(len(sampled) - 1):
-        z0, f0 = sampled[idx]
-        z1, f1 = sampled[idx + 1]
+        z0, f0, state0 = sampled[idx]
+        z1, f1, state1 = sampled[idx + 1]
         if abs(f0) < best_abs:
             best_z = z0
             best_abs = abs(f0)
+            best_state = state0
         if abs(f1) < best_abs:
             best_z = z1
             best_abs = abs(f1)
+            best_state = state1
         if f0 == 0.0:
             root_low = z0
             root_high = z0
+            root_low_state = state0
+            root_high_state = state0
             break
         if f0 * f1 < 0.0:
             root_low = z0
             root_high = z1
+            root_low_state = state0
+            root_high_state = state1
             break
 
     root_bracketed = root_low is not None and root_high is not None
 
     if not root_bracketed:
         z_star = best_z
-        tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-        if tof_state is None:
-            return None
+        tof_state = best_state
         if abs(tof_state[0] - tof_target) > tol_days:
             return None
     else:
@@ -239,6 +257,8 @@ def solve_lambert_universal(
             mu,
             max_iter=max_iter,
             tol_days=tol_days,
+            left_state=root_low_state,
+            right_state=root_high_state,
         )
         if root_solution is None:
             return None
