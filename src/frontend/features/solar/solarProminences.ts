@@ -30,6 +30,32 @@ import {
 
 const AU_M = 1.496e11;
 
+interface ProminenceOptions {
+    footLon1: number;
+    footLat1: number;
+    footLon2: number;
+    footLat2: number;
+    maxHeight?: number;
+    sunDisplayRadius: number;
+    particleCount?: number;
+    lifetime?: number;
+    isQuiescent?: boolean;
+    eruptionChance?: number;
+}
+
+interface ProminenceInstance {
+    group: Group;
+    footLon1: number;
+    footLat1: number;
+    footLon2: number;
+    footLat2: number;
+    maxHeight: number;
+    isQuiescent: boolean;
+    update: (dtSec: number) => void;
+    isExpired: () => boolean;
+    dispose: () => void;
+}
+
 // ─── Prominence Vertex Shader ─────────────────────────────────────────────────
 const PROMINENCE_VERTEX_SHADER = `
 uniform float time;
@@ -111,32 +137,6 @@ void main() {
  * @param {number} opts.particleCount - number of particles along the arch
  * @returns {Object} Prominence object with group, update, isExpired, dispose methods
  */
-interface CreateProminenceOpts {
-    footLon1: number;
-    footLat1: number;
-    footLon2: number;
-    footLat2: number;
-    maxHeight?: number;
-    sunDisplayRadius: number;
-    particleCount?: number;
-    lifetime?: number;
-    isQuiescent?: boolean;
-    eruptionChance?: number;
-}
-
-interface Prominence {
-    group: Group;
-    footLon1: number;
-    footLat1: number;
-    footLon2: number;
-    footLat2: number;
-    maxHeight: number;
-    isQuiescent: boolean;
-    update(dtSec: number): void;
-    isExpired(): boolean;
-    dispose(): void;
-}
-
 export function createProminence({
     footLon1,
     footLat1,
@@ -145,14 +145,14 @@ export function createProminence({
     maxHeight = 0.05,
     sunDisplayRadius,
     particleCount = 200,
-    lifetime = 600,
+    lifetime = 600, // seconds before fading
     isQuiescent = true,
     eruptionChance = 0.05
-}: CreateProminenceOpts): Prominence {
+}: ProminenceOptions): ProminenceInstance {
     const group = new Group();
 
     // Convert spherical to Cartesian at sun surface
-    function sphereToCart(lon: number, lat: number, r: number) {
+    function sphereToCart(lon: number, lat: number, r: number): Vector3 {
         return new Vector3(
             r * Math.cos(lat) * Math.cos(lon),
             r * Math.sin(lat),
@@ -289,7 +289,7 @@ export function createProminence({
  */
 export class ProminenceManager {
     sunGroup: Group;
-    prominences: Prominence[];
+    prominences: ProminenceInstance[];
     maxProminences: number;
     timeSinceLastSpawn: number;
 
@@ -300,7 +300,7 @@ export class ProminenceManager {
         this.timeSinceLastSpawn = 0;
     }
 
-    update(dtSec: number, activity: number, sunDisplayRadius: number) {
+    update(dtSec: number, activity: number, sunDisplayRadius: number): void {
         this.timeSinceLastSpawn += dtSec;
 
         // Spawn new prominences based on activity
@@ -324,7 +324,7 @@ export class ProminenceManager {
         }
     }
 
-    spawnProminence(activity: number, sunDisplayRadius: number) {
+    spawnProminence(activity: number, sunDisplayRadius: number): void {
         const TWO_PI = Math.PI * 2;
 
         // Two footpoints near each other (prominence spans ~15-60° of arc)
@@ -362,7 +362,7 @@ export class ProminenceManager {
         this.sunGroup.add(prominence.group);
     }
 
-    dispose() {
+    dispose(): void {
         for (const prom of this.prominences) {
             prom.dispose();
             this.sunGroup.remove(prom.group);

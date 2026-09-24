@@ -43,9 +43,9 @@ def compute_beta(area_m2, mass_kg, Cr=1.0):
     Returns:
         beta: dimensionless F_SRP/F_grav
     """
-    # β = (L☉ × Cr × A) / (16π² × G × M☉ × m × c)
+    # β = (L☉ × Cr × A) / (4π × G × M☉ × m × c)
     numerator = L_SUN * Cr * area_m2
-    denominator = 16 * math.pi**2 * G_CONST * M_SUN * mass_kg * C_LIGHT
+    denominator = 4 * math.pi * G_CONST * M_SUN * mass_kg * C_LIGHT
     return numerator / denominator
 
 
@@ -53,15 +53,16 @@ def compute_dust_blowout_size(density_kg_m3=2500, Cr=1.0):
     """
     Compute the blowout grain size (β = 0.5).
     
-    For silicate grains (ρ=2500 kg/m³): blowout diameter ≈ 0.46 μm
-    For ice grains (ρ=1000 kg/m³): blowout diameter ≈ 1.15 μm
+    Returns the spherical grain diameter whose radiation-pressure ratio is
+    β = 0.5. For silicate grains (ρ=2500 kg/m³): diameter ≈ 0.92 μm.
+    For ice grains (ρ=1000 kg/m³): diameter ≈ 2.30 μm.
     
     Returns:
         diameter_m: grain diameter at β = 0.5
     """
-    # For a sphere: A/m = 3/(2ρD), so β = 3 L Cr / (32 π² G M☉ ρ D c)
-    # At β=0.5: D = 3 L Cr / (16 π² G M☉ ρ c)
-    return 3 * L_SUN * Cr / (16 * math.pi**2 * G_CONST * M_SUN * density_kg_m3 * C_LIGHT)
+    # For a sphere: A/m = 3/(2ρD), so β = 3 L Cr / (8 π G M☉ ρ D c)
+    # At β=0.5: D = 3 L Cr / (4 π G M☉ ρ c)
+    return 3 * L_SUN * Cr / (4 * math.pi * G_CONST * M_SUN * density_kg_m3 * C_LIGHT)
 
 
 def srp_acceleration(x_au, y_au, z_au, beta):
@@ -157,26 +158,21 @@ def yarkovsky_da_dt(diameter_m, density_kg_m3, albedo, semi_major_au, obliquity_
     Returns:
         da_dt: semi-major axis drift rate [AU/Myr]
     """
-    # Simplified Yarkovsky formula (Bottke et al. 2006, eq. 1)
-    # da/dt ∝ ±(1-A) × Φ☉ / (ρ × D × n × c × a)
-    # Diurnal contribution (depends on cos(obliquity))
-    
-    solar_flux_1au = L_SUN / (4 * math.pi * AU_M**2)
-    flux = solar_flux_1au / semi_major_au**2
-    n = math.sqrt(G_CONST * M_SUN / (semi_major_au * AU_M)**3)  # mean motion [rad/s]
-    
-    # Scale factor (empirical calibration from Bottke et al.)
-    scale = 4.0 / 9.0
-    
-    da_m_per_s = scale * (1 - albedo) * flux * math.cos(obliquity_rad) / (
-        density_kg_m3 * diameter_m * n * C_LIGHT * semi_major_au * AU_M
-    )
-    
-    # Convert m/s to AU/Myr
-    seconds_per_myr = 3.156e13
-    da_au_per_myr = da_m_per_s * seconds_per_myr / AU_M
-    
-    return da_au_per_myr
+    # The full Yarkovsky drift depends on thermal inertia, spin rate,
+    # surface conductivity, and seasonal/diurnal lag. We do not model those
+    # state variables here, so use a calibrated secular drift envelope that
+    # preserves the observed scaling: smaller bodies drift faster, darker and
+    # lower-density bodies drift faster, and the sign flips with obliquity.
+    diameter_km = max(1e-6, diameter_m / 1_000.0)
+    density_scale = 2500.0 / max(1.0, density_kg_m3)
+    albedo_scale = max(0.05, 1.0 - max(0.0, min(1.0, albedo)))
+    distance_scale = math.sqrt(max(0.2, semi_major_au))
+    obliquity_scale = math.cos(obliquity_rad)
+
+    # Empirical calibration: ~2.5e-4 AU/Myr for a 1 km body at 1 AU.
+    drift_au_per_myr = 2.5e-4 * albedo_scale * density_scale * obliquity_scale
+    drift_au_per_myr /= diameter_km * distance_scale
+    return drift_au_per_myr
 
 
 def rebound_radiation_pressure_callback(reb_sim):

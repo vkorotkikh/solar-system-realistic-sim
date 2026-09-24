@@ -2,125 +2,31 @@ import {
   AdditiveBlending,
   BackSide,
   BufferGeometry,
+  Camera,
   CanvasTexture,
   Color,
   Float32BufferAttribute,
+  Group,
   Line,
   LineBasicMaterial,
   Mesh,
+  Object3D,
   Points,
   PointsMaterial,
   ShaderMaterial,
   Sprite,
   SpriteMaterial,
+  Texture,
   Vector4
 } from 'three';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
+import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
 const TWO_PI = Math.PI * 2;
-const SECONDS_PER_DAY = 86_400;
-const SOLAR_REFERENCE_ROTATION_PERIOD_DAYS = 609.12 / 24;
-const SOLAR_REFERENCE_ROTATION_DEG_PER_DAY = 360 / SOLAR_REFERENCE_ROTATION_PERIOD_DAYS;
-const MAX_SOLAR_VISUAL_MODEL_DAYS = 36_525;
-const MAX_VISUAL_WALL_STEP_SECONDS = 0.25;
-const MAX_VISUAL_RATE = 15;
-const MAX_VISUAL_CLOCK_SECONDS = 1_000_000;
-const SOLAR_VISUAL_CLOCK_KEY = 'solarVisualClock';
-
-function finiteNumber(value, fallback = 0) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function clampFinite(value, min, max, fallback = min) {
-  return Math.max(min, Math.min(max, finiteNumber(value, fallback)));
-}
-
-function normalizedSolarActivity(value) {
-  return clampUnit(finiteNumber(value, 0));
-}
-
-function boundedSimulationDays(timeSec) {
-  return clampFinite(
-    finiteNumber(timeSec, 0) / SECONDS_PER_DAY,
-    -MAX_SOLAR_VISUAL_MODEL_DAYS,
-    MAX_SOLAR_VISUAL_MODEL_DAYS,
-    0
-  );
-}
-
-function positiveModulo(value, modulus) {
-  return ((value % modulus) + modulus) % modulus;
-}
-
-function wallClockSeconds() {
-  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
-    return performance.now() / 1000;
-  }
-  return Date.now() / 1000;
-}
-
-function solarDifferentialRotationDegPerDay(latitudeRad) {
-  const sinLatitude = Math.sin(latitudeRad);
-  const sinSquared = sinLatitude * sinLatitude;
-  return 14.44 - 2.87 * sinSquared - 0.36 * sinSquared * sinSquared;
-}
-
-/**
- * Advance an illustrative animation clock from simulation time without allowing a
- * large time-warp jump to turn procedural effects into strobing or float noise.
- * Pause and reverse still propagate because the bounded delta keeps its sign.
- */
-function advanceSolarVisualClock(owner, simulationTimeSec) {
-  if (!owner) return 0;
-  const userData = owner.userData ?? (owner.userData = {});
-  const numericTimeSec = Number(simulationTimeSec);
-  const currentWallTimeSec = wallClockSeconds();
-  let clock = userData[SOLAR_VISUAL_CLOCK_KEY];
-
-  if (!clock) {
-    clock = {
-      lastSimulationTimeSec: Number.isFinite(numericTimeSec) ? numericTimeSec : null,
-      lastWallTimeSec: currentWallTimeSec,
-      visualTimeSec: 0
-    };
-    userData[SOLAR_VISUAL_CLOCK_KEY] = clock;
-    return 0;
-  }
-
-  const wallDeltaSec = clampFinite(
-    currentWallTimeSec - finiteNumber(clock.lastWallTimeSec, currentWallTimeSec),
-    0,
-    MAX_VISUAL_WALL_STEP_SECONDS,
-    0
-  );
-  clock.lastWallTimeSec = currentWallTimeSec;
-
-  if (!Number.isFinite(numericTimeSec)) return finiteNumber(clock.visualTimeSec, 0);
-  if (!Number.isFinite(clock.lastSimulationTimeSec)) {
-    clock.lastSimulationTimeSec = numericTimeSec;
-    return finiteNumber(clock.visualTimeSec, 0);
-  }
-
-  const simulationDeltaSec = numericTimeSec - clock.lastSimulationTimeSec;
-  clock.lastSimulationTimeSec = numericTimeSec;
-  if (Number.isFinite(simulationDeltaSec)) {
-    const boundedDeltaSec = Math.sign(simulationDeltaSec) * Math.min(
-      Math.abs(simulationDeltaSec),
-      wallDeltaSec * MAX_VISUAL_RATE
-    );
-    clock.visualTimeSec = finiteNumber(clock.visualTimeSec, 0) + boundedDeltaSec;
-    if (Math.abs(clock.visualTimeSec) > MAX_VISUAL_CLOCK_SECONDS) {
-      clock.visualTimeSec %= MAX_VISUAL_CLOCK_SECONDS;
-    }
-  }
-  return clock.visualTimeSec;
-}
 
 export const SUN_SURFACE_VERTEX_SHADER = `
 varying vec2 vUv;
 varying vec3 vWorldNormal;
-varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -129,15 +35,13 @@ void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  vLocalNormal = normalize(normal);
-  vLatitude = asin(clamp(vLocalNormal.y, -1.0, 1.0));
+  vLatitude = asin(clamp(vWorldNormal.y, -1.0, 1.0));
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
 
 export const SUN_SURFACE_FRAGMENT_SHADER = `
 uniform float time;
-uniform float simulationDays;
 uniform float activity;
 uniform sampler2D baseMap;
 uniform sampler2D observationMap;
@@ -150,7 +54,6 @@ uniform vec4 flarePoints[3];
 
 varying vec2 vUv;
 varying vec3 vWorldNormal;
-varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -207,16 +110,14 @@ vec3 neckellLimbDarkRGB(float mu) {
   return vec3(ldR, ldG, ldB);
 }
 
-// ─── Phase A3: Differential Rotation Residual ────────────────────────────────
-// The parent spinGroup already rotates at 360 / 25.38 days. This visual
-// approximation contributes only the latitude-dependent residual in that frame.
-float differentialRotationOffset(float latRad, float timeDays) {
+// ─── Phase A3: Snodgrass Differential Rotation ───────────────────────────────
+// Snodgrass (1983): omega(lat) = 14.44 - 2.87*sin^2(lat) - 0.36*sin^4(lat)  [deg/day]
+float snodgrassRotationOffset(float latRad, float timeDays) {
   float sinLat = sin(latRad);
   float sin2 = sinLat * sinLat;
   float sin4 = sin2 * sin2;
   float degPerDay = 14.44 - 2.87 * sin2 - 0.36 * sin4;
-  const float referenceDegPerDay = 14.184397;
-  return radians((degPerDay - referenceDegPerDay) * timeDays);
+  return radians(degPerDay * timeDays);  // total longitude offset in radians
 }
 
 // ─── Phase A2: Voronoi Granulation ───────────────────────────────────────────
@@ -266,11 +167,7 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   float spotSize = seed.z;            // angular radius in radians
 
   // Spot centre direction from spherical coords
-  vec3 spotDir = normalize(vec3(
-    cos(spotLat) * cos(spotLon),
-    sin(spotLat),
-    cos(spotLat) * sin(spotLon)
-  ));
+  vec3 spotDir = vec3(cos(spotLat) * cos(spotLon), sin(spotLat), cos(spotLat) * sin(spotLon));
   float angDist = acos(clamp(dot(nDir, spotDir), -1.0, 1.0));
 
   if (angDist > spotSize * 2.5) return 1.0; // outside spot entirely
@@ -334,16 +231,18 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
-  vec3 featureNormal = normalize(vLocalNormal);
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
   float mu = max(0.0, dot(normalDir, viewDir));
   
   // ─── Phase A1: Neckel-Labs Limb Darkening (per-channel RGB) ────────────────
   vec3 limbDark = neckellLimbDarkRGB(mu);
   
-  // Physical epoch drives only the residual shear. Procedural detail below uses
-  // the separate, rate-bounded visual clock in 'time'.
-  float lonOffset = differentialRotationOffset(vLatitude, simulationDays);
+  // ─── Phase A3: Differential Rotation UV ────────────────────────────────────
+  // time uniform = timeSec * 0.4 (see updateSunMaterialUniforms).
+  // Solar synodic rotation: ~27 days. In the simulation 1 display-second ≈ some sim-days.
+  // We use a small perceptual scale so the differential pattern is visible without racing.
+  // 0.00012 keeps equator completing one rotation in ~8300 display-time-units (~23h at 0.4x)
+  float lonOffset = snodgrassRotationOffset(vLatitude, time * 0.00012);
   vec2 uvRotated = vUv + vec2(lonOffset / (2.0 * 3.14159265), 0.0);
   
   // ─── Phase A2: Voronoi Granulation ─────────────────────────────────────────
@@ -368,14 +267,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(featureNormal, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -413,12 +312,8 @@ void main() {
   for (int i = 0; i < 3; i++) {
     vec4 fParams = flarePoints[i]; // x=lon, y=lat, z=intensity
     if (fParams.z > 0.001) {
-      vec3 fDir = normalize(vec3(
-        cos(fParams.y) * cos(fParams.x),
-        sin(fParams.y),
-        cos(fParams.y) * sin(fParams.x)
-      ));
-      float fDist = acos(clamp(dot(featureNormal, fDir), -1.0, 1.0));
+      vec3 fDir = vec3(cos(fParams.y) * cos(fParams.x), sin(fParams.y), cos(fParams.y) * sin(fParams.x));
+      float fDist = acos(clamp(dot(normalDir, fDir), -1.0, 1.0));
       float fRadius = 0.05 + fParams.z * 0.06;
       if (fDist < fRadius * 3.0) {
         float falloff = pow(1.0 - clamp(fDist / (fRadius * 3.0), 0.0, 1.0), 2.5);
@@ -458,6 +353,17 @@ uniform float observationBlend;
 uniform float observationEmission;
 uniform float sunRadius;  // display radius of the sun in scene units
 
+// ─── DEM Channel Response ────────────────────────────────────────────────────
+// channelMode: 0.0 = default (no channel), 1.0 = 094, 2.0 = 171, 3.0 = 193,
+//              4.0 = 211, 5.0 = 304
+// Each AIA channel has a temperature response function peaked at a specific T.
+uniform float channelMode;
+
+// ─── Data-Driven Coronal Holes ───────────────────────────────────────────────
+// Each vec4: (centerLon_rad, centerLat_rad, extentLon_rad, extentLat_rad)
+uniform vec4 coronalHoles[8];
+uniform float coronalHoleCount;
+
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 
@@ -493,6 +399,47 @@ float fbm(vec3 p) {
   return sum / max(1e-6, norm);
 }
 
+// ─── DEM Temperature-Channel Response Function ───────────────────────────────
+// Computes the response of a specific AIA passband to plasma at temperature T(MK).
+// Based on instrument response functions from Lemen et al. 2012, Solar Physics 275.
+// Returns a [0..1] factor: 1.0 = peak sensitivity, 0.0 = invisible to this channel.
+//
+// Channel peak temperatures (log T):
+//   094Å: Fe XVIII  → 6.3 MK (log T = 6.8)  — flare plasma only
+//   171Å: Fe IX     → 0.63 MK (log T = 5.8) — quiet corona loops
+//   193Å: Fe XII    → 1.6 MK (log T = 6.2)  — hot corona, active regions
+//   211Å: Fe XIV    → 2.0 MK (log T = 6.3)  — active region loops
+//   304Å: He II     → 0.05 MK (log T = 4.7) — chromosphere / transition region
+float demChannelResponse(float temperatureMK, float channelId) {
+  if (channelId < 0.5) return 1.0;  // No channel active → show everything
+
+  float logT = log(max(temperatureMK, 0.01)) / log(10.0) + 6.0; // log10(T in K)
+
+  // Channel peak log T and width (sigma of Gaussian response)
+  float peakLogT;
+  float sigma;
+
+  if (channelId < 1.5) {
+    // 094Å — Fe XVIII, 6.3 MK → log T = 6.8
+    peakLogT = 6.8; sigma = 0.22;
+  } else if (channelId < 2.5) {
+    // 171Å — Fe IX, 0.63 MK → log T = 5.8
+    peakLogT = 5.8; sigma = 0.28;
+  } else if (channelId < 3.5) {
+    // 193Å — Fe XII, 1.6 MK → log T = 6.2
+    peakLogT = 6.2; sigma = 0.32;
+  } else if (channelId < 4.5) {
+    // 211Å — Fe XIV, 2.0 MK → log T = 6.3
+    peakLogT = 6.3; sigma = 0.25;
+  } else {
+    // 304Å — He II, 0.05 MK → log T = 4.7
+    peakLogT = 4.7; sigma = 0.35;
+  }
+
+  float delta = (logT - peakLogT) / sigma;
+  return exp(-0.5 * delta * delta);
+}
+
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
@@ -514,6 +461,16 @@ void main() {
   coronaRadial = coronaRadial / 1.586; // normalize to ~1.0 at r=1
   alpha *= coronaRadial;
 
+  // ─── DEM Channel Modulation ────────────────────────────────────────────────
+  // Corona temperature varies radially: ~1 MK inner → ~2 MK mid → ~1.5 MK outer.
+  // This is a simplified radial temperature profile.
+  float coronaTempMK = mix(1.0, 2.2, smoothstep(1.0, 2.0, fragR))
+                     * mix(1.0, 0.7, smoothstep(2.0, 4.0, fragR));
+  // Burst regions are hotter (flare-heated plasma)
+  coronaTempMK += burst * activity * 3.5;
+  float demResponse = demChannelResponse(coronaTempMK, channelMode);
+  alpha *= mix(1.0, demResponse, step(0.5, channelMode));
+
   // ─── Helmet Streamer Structure ─────────────────────────────────────────────
   // During solar minimum: bright equatorial streamer belt
   // During solar maximum: streamers at all latitudes
@@ -526,15 +483,34 @@ void main() {
   alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
 
   // ─── Magnetically-Driven Coronal Holes ─────────────────────────────────────
-  // Polar holes (always present) + equatorial holes (appear at solar max)
-  float polarHole = abs(normalDir.y);
-  float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
-  float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
-  // Noise-modulated equatorial holes at high activity
-  float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
-  float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
-  float holeStrength = max(polarFade, equatorialHole);
-  alpha *= mix(0.08, 1.0, 1.0 - holeStrength * (1.0 - coronalHoleActivity * 0.7));
+  // Data-driven when coronalHoleCount > 0, otherwise fallback to polar darkening
+  float inHole = 0.0;
+  if (coronalHoleCount > 0.5) {
+    float fragLon = atan(normalDir.z, normalDir.x);
+    float fragLat = asin(clamp(normalDir.y, -1.0, 1.0));
+    for (int i = 0; i < 8; i++) {
+      if (float(i) >= coronalHoleCount) break;
+      vec4 hole = coronalHoles[i];
+      float dLon = abs(fragLon - hole.x);
+      dLon = min(dLon, 6.28318 - dLon);  // wrap-around
+      float dLat = abs(fragLat - hole.y);
+      if (dLon < hole.z && dLat < hole.w) {
+        // Smooth edge falloff (1.0 at center → 0.0 at edge)
+        float edgeFade = smoothstep(1.0, 0.65, max(dLon / max(hole.z, 0.01), dLat / max(hole.w, 0.01)));
+        inHole = max(inHole, edgeFade);
+      }
+    }
+  } else {
+    // Fallback: generic polar + equatorial hole pattern from coronalHoleActivity
+    float polarHole = abs(normalDir.y);
+    float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
+    float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
+    float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
+    float equatorialHole = smoothstep(0.6, 0.8, holeNoise) * coronalHoleActivity;
+    inHole = max(polarFade, equatorialHole);
+  }
+  // Emission measure drops ~5× in coronal holes (alpha → 0.2)
+  alpha *= mix(1.0, 0.2, inHole);
 
   // ─── Temperature-Dependent Corona Color ────────────────────────────────────
   // Inner corona (~1 MK): Fe XIV green line at 530.3 nm contribution
@@ -546,13 +522,31 @@ void main() {
   vec3 color = mix(baseCorona, hotWhite, 0.16 + burst * 0.36 + activity * 0.12);
   color = mix(color, hotWhite, observationBlend * (0.08 + observationEmission * 0.28));
 
+  // ─── DEM Channel Color Override ────────────────────────────────────────────
+  // When a specific channel is active, tint the corona to match SDO/AIA false-color.
+  if (channelMode > 0.5) {
+    vec3 channelColor;
+    if (channelMode < 1.5) {
+      channelColor = vec3(0.1, 0.9, 0.1);  // 094Å: green (Fe XVIII)
+    } else if (channelMode < 2.5) {
+      channelColor = vec3(0.7, 0.7, 1.0);  // 171Å: blue-white (Fe IX)
+    } else if (channelMode < 3.5) {
+      channelColor = vec3(0.8, 0.5, 0.2);  // 193Å: brown-gold (Fe XII)
+    } else if (channelMode < 4.5) {
+      channelColor = vec3(0.6, 0.2, 0.8);  // 211Å: purple (Fe XIV)
+    } else {
+      channelColor = vec3(0.9, 0.15, 0.12); // 304Å: red (He II)
+    }
+    color = mix(color, channelColor * (0.6 + 0.4 * demResponse), 0.65);
+  }
+
   gl_FragColor = vec4(color, alpha);
 }
 `;
 
 // (no shared buffer needed — each material owns its Vector4 seed array)
 
-export function createSunSurfaceMaterial(sunMap) {
+export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): ShaderMaterial | null {
   if (!sunMap) {
     return null;
   }
@@ -568,7 +562,6 @@ export function createSunSurfaceMaterial(sunMap) {
     fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
     uniforms: {
       time: { value: 0 },
-      simulationDays: { value: 0 },
       activity: { value: 0.55 },
       baseMap: { value: sunMap },
       observationMap: { value: sunMap },
@@ -595,68 +588,115 @@ export function createSunSurfaceMaterial(sunMap) {
   return material;
 }
 
+function clampSunspotSeedValue(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeFeatureDirection(sample: unknown): [number, number, number] | null {
+  if (!Array.isArray(sample) || sample.length !== 3) return null;
+  const x = Number(sample[0]);
+  const y = Number(sample[1]);
+  const z = Number(sample[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+  const len = Math.hypot(x, y, z);
+  if (len < 1e-6) return null;
+  return [x / len, y / len, z / len];
+}
+
+function collectPhysicsDrivenSunspotGroups(physicsState: SolarPhysicsStateLike | null | undefined, activity: number) {
+  const features = Array.isArray(physicsState?.corona?.features) ? physicsState.corona.features : [];
+  if (features.length === 0) return [];
+
+  const grouped = new Map();
+  for (const feature of features) {
+    const kind = `${feature?.kind ?? 'loop'}`.toLowerCase();
+    if (kind !== 'loop' && kind !== 'cme') continue;
+
+    const baseDir = normalizeFeatureDirection(feature?.base_dir) ?? normalizeFeatureDirection(feature?.arc?.[0]);
+    const pairedDir = normalizeFeatureDirection(feature?.paired_dir)
+      ?? normalizeFeatureDirection(feature?.arc?.[feature?.arc?.length - 1]);
+    if (!baseDir || !pairedDir) continue;
+
+    const centerX = baseDir[0] + pairedDir[0];
+    const centerY = baseDir[1] + pairedDir[1];
+    const centerZ = baseDir[2] + pairedDir[2];
+    const centerLen = Math.hypot(centerX, centerY, centerZ);
+    if (centerLen < 1e-6) continue;
+
+    const brightness = clampUnit(Number(feature?.brightness) || 0.2);
+    const emergence = clampUnit(Number(feature?.emergence) || brightness);
+    const dot = clampSunspotSeedValue(
+      baseDir[0] * pairedDir[0] + baseDir[1] * pairedDir[1] + baseDir[2] * pairedDir[2],
+      -1,
+      1
+    );
+    const separation = Math.acos(dot);
+    const centerDir = [centerX / centerLen, centerY / centerLen, centerZ / centerLen];
+    const lon = Math.atan2(centerDir[2], centerDir[0]);
+    const lat = Math.asin(clampSunspotSeedValue(centerDir[1], -1, 1));
+    const intensity = clampUnit(0.22 + brightness * 0.5 + emergence * 0.28 + activity * 0.08);
+    const angularRadius = clampSunspotSeedValue(0.018 + separation * 0.38 + intensity * 0.022, 0.018, 0.105);
+    const score = brightness * 0.62 + emergence * 0.28 + (kind === 'cme' ? 0.10 : 0.04);
+    const regionId = `${feature?.active_region_id ?? feature?.region_id ?? feature?.id ?? `sunspot-${grouped.size}`}`;
+    const existing = grouped.get(regionId);
+    if (!existing || score > existing.score) {
+      grouped.set(regionId, { lon, lat, angularRadius, intensity, score });
+    }
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+}
+
 /**
- * Update illustrative active-region groups in the Sun's rotating local frame.
- * Activity controls bounded density/contrast; it is not treated as a solar-cycle
- * phase or a forecast. Longitude receives only differential motion relative to
- * the rigid 25.38-day parent rotation.
+ * Procedurally update sunspot positions based on current activity level.
+ * Sunspots follow Spörer's law: appear at ~±35° lat at cycle start, migrate to ~±5° at end.
+ * Called once per second from the animation loop.
  */
-export function updateSunspotUniforms(sunSurfaceMaterial, activity, timeSec) {
+export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null | undefined, activity: number, timeSec: number, physicsState: SolarPhysicsStateLike | null = null): void {
   if (!sunSurfaceMaterial?.uniforms?.sunspotSeeds) return;
 
-  const safeActivity = normalizedSolarActivity(activity);
-  const simulationDays = boundedSimulationDays(timeSec);
-  // Number of visible sunspot GROUPS scales with activity (each group = 2-5 individual spots)
-  // At solar max: 8 groups × up to 5 spots = up to 40 visible spots
-  const count = Math.min(8, Math.round(safeActivity * 8));
-
+  const TWO_PI = Math.PI * 2;
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
-  for (let i = 0; i < 8; i++) {
-    if (i >= count) {
-      // Zero out intensity so the early-exit guard in the shader skips this slot
+  const physicsDrivenGroups = collectPhysicsDrivenSunspotGroups(physicsState, activity);
+  let seedIndex = 0;
+
+  for (const group of physicsDrivenGroups) {
+    seeds[seedIndex].set(group.lon, group.lat, group.angularRadius, group.intensity);
+    seedIndex += 1;
+    if (seedIndex >= seeds.length) return;
+  }
+
+  // Fill any remaining slots with deterministic synthetic spots so the Sun still reads correctly
+  // when the backend has not produced enough active-region structure yet.
+  const targetCount = Math.min(8, Math.round(activity * 7) + 1);
+  for (let i = seedIndex; i < 8; i++) {
+    if (i >= targetCount) {
       seeds[i].set(0, 0, 0, 0);
       continue;
     }
 
-    // Stable seed from index (so spots don't jump every frame)
-    const s = (i * 0.618033 + 0.137) % 1;
-    const s2 = ((i + 3) * 0.382 + 0.271) % 1;
-
-    // Stable active-latitude sample in the illustrative 5-35 degree band.
-    const latSign = (i % 2 === 0) ? 1.0 : -1.0;
-    const baseLat = latSign * ((5 + s2 * 30) * Math.PI / 180);
-
-    // The containing spinGroup supplies the reference rotation. Add only the
-    // latitude-dependent residual to avoid double-rotating active regions.
-    const residualDegPerDay = solarDifferentialRotationDegPerDay(baseLat)
-      - SOLAR_REFERENCE_ROTATION_DEG_PER_DAY;
-    const baseLon = positiveModulo(
-      s * TWO_PI + residualDegPerDay * Math.PI / 180 * simulationDays,
-      TWO_PI
-    );
-
-    const angularRadius = 0.025 + s * 0.08 * safeActivity;
-    const intensity = (0.6 + s2 * 0.4) * (0.55 + safeActivity * 0.45);
-
-    // Vector4.set(x, y, z, w) — correct API for Three.js Vector4
+    const syntheticIndex = i - seedIndex;
+    const s = (syntheticIndex * 0.618033 + activity * 0.3) % 1;
+    const s2 = ((syntheticIndex + 3) * 0.382 + activity * 0.5) % 1;
+    const baseLon = (s * TWO_PI + timeSec * 0.000261) % TWO_PI;
+    const maxLat = 0.05 + activity * 0.55;
+    const latSign = (syntheticIndex % 2 === 0) ? 1.0 : -1.0;
+    const baseLat = latSign * (maxLat * 0.3 + s2 * maxLat * 0.7);
+    const angularRadius = 0.025 + s * 0.08 * activity;
+    const intensity = 0.55 + s2 * 0.35;
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
   }
 }
 
-export function updateSunFlaresUniforms(sunSurfaceMaterial, flareParamsArray) {
+export function updateSunFlaresUniforms(sunSurfaceMaterial: ShaderMaterial | null | undefined, flareParamsArray: Vector4[]): void {
   if (!sunSurfaceMaterial?.uniforms?.flarePoints) return;
   const fp = sunSurfaceMaterial.uniforms.flarePoints.value;
-  const flareValues = Array.isArray(flareParamsArray) ? flareParamsArray : [];
   for (let i = 0; i < 3; i++) {
     const base = i * 4;
-    // lon, lat, intensity, phase. Intensity above one remains available for
-    // explicitly amplified events, but malformed/unbounded values cannot escape.
-    fp[i].set(
-      finiteNumber(flareValues[base], 0),
-      clampFinite(flareValues[base + 1], -Math.PI / 2, Math.PI / 2, 0),
-      clampFinite(flareValues[base + 2], 0, 2.5, 0),
-      finiteNumber(flareValues[base + 3], 0)
-    );
+    // lon, lat, intensity, unused
+    fp[i].set(flareParamsArray[base], flareParamsArray[base + 1], flareParamsArray[base + 2], flareParamsArray[base + 3]);
   }
 }
 
@@ -740,7 +780,7 @@ void main() {
  * @param {number} sunDisplayRadius - The Sun's rendered radius in scene units
  * @param {number} count - Number of spicule points (~8000 is realistic)
  */
-export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
+export function createChromosphereLayer(sunDisplayRadius: number, count = 8000): Points {
   const positions = new Float32Array(count * 3);
   const lifetimes = new Float32Array(count);
   const speeds = new Float32Array(count);
@@ -796,12 +836,14 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
     },
     transparent: true,
     blending: AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true  // distance-scaled spicule sizes
+    depthWrite: false
   });
 
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-chromosphere';
+  points.userData.baseRadiusAu = sunDisplayRadius;
+  points.userData.radiusScale = 1;
+  points.userData.activityScale = 1.004;
   points.renderOrder = 4;
   points.frustumCulled = false;
   return points;
@@ -810,42 +852,60 @@ export function createChromosphereLayer(sunDisplayRadius, count = 8000) {
 /**
  * Phase B: Update the chromosphere spicule layer each frame.
  * @param {Points} chromospherePoints - The object returned by createChromosphereLayer
- * @param {number} timeSec - Simulation seconds from J2000
+ * @param {number} timeSec - Current wall-clock seconds
  * @param {number} activity - [0,1] solar activity level
- * @param {boolean} is304Mode - True when the 304Å channel is selected
  */
-export function updateChromosphereLayer(chromospherePoints, timeSec, activity, is304Mode = false) {
-  if (!chromospherePoints?.material?.uniforms) return;
-  const u = chromospherePoints.material.uniforms;
-  u.time.value = advanceSolarVisualClock(chromospherePoints, timeSec);
-  u.chromoActivity.value = normalizedSolarActivity(activity);
-  // In 304Å mode: deep magenta-red, highly opaque (transition region plasma at ~50,000 K)
-  // In other modes: warm orange, subtle (visible but not distracting)
-  if (is304Mode) {
-    u.chromoColor.value.set('#ff3888');
-    u.chromoOpacity.value = 1.0;
+export function updateChromosphereLayer(chromospherePoints: Points | null | undefined, timeSec: number, activity: number, {
+  activeChannel = undefined as string | null | undefined,
+  observationBlend = 0,
+  observationEmission = 0,
+  observedConfidence = 0,
+  observedFreshness = 0
+} = {}) {
+  if (!chromospherePoints) return;
+  const chromoMaterial = chromospherePoints.material as ShaderMaterial | undefined;
+  if (!chromoMaterial?.uniforms) return;
+  const u = chromoMaterial.uniforms;
+  u.time.value = timeSec;
+  u.chromoActivity.value = activity;
+  const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+  const observationWeight = clampUnit(observationBlend * 0.55 + observationEmission * 0.30 + observedConfidence * 0.15);
+  const confidenceWeight = clampUnit(observedConfidence * 0.6 + observedFreshness * 0.4);
+
+  if (channelKey === 'aia_304') {
+    u.chromoColor.value.set('#ff3d78');
+    u.chromoOpacity.value = 0.48 + activity * 0.18 + confidenceWeight * 0.24 + observationWeight * 0.14;
+  } else if (channelKey === 'aia_171') {
+    u.chromoColor.value.set('#ff9d4d');
+    u.chromoOpacity.value = 0.16 + activity * 0.08 + observationWeight * 0.06;
   } else {
     u.chromoColor.value.set('#ff8842');
-    u.chromoOpacity.value = 0.22;
+    u.chromoOpacity.value = 0.14 + activity * 0.10 + observationWeight * 0.08;
   }
+
+  const radiusScale = Number(chromospherePoints.userData?.radiusScale) || 1;
+  const activityScale = 1.004 + activity * 0.010 + observationEmission * 0.012 + (channelKey === 'aia_304' ? 0.010 : 0);
+  chromospherePoints.userData.activityScale = activityScale;
+  chromospherePoints.scale.setScalar(radiusScale * activityScale);
 }
 
-export function createSunGlow(sunDisplayRadius) {
+export function createSunGlow(sunDisplayRadius: number): Sprite {
 
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-
-  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  const gradient = ctx?.createRadialGradient(128, 128, 0, 128, 128, 128);
+  if (ctx && gradient) {
   gradient.addColorStop(0, 'rgba(255, 246, 176, 0.4)');
   gradient.addColorStop(0.12, 'rgba(255, 214, 102, 0.22)');
   gradient.addColorStop(0.34, 'rgba(255, 170, 66, 0.09)');
   gradient.addColorStop(0.68, 'rgba(255, 124, 42, 0.03)');
   gradient.addColorStop(1, 'rgba(255, 82, 20, 0.0)');
 
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
+  }
 
   const texture = new CanvasTexture(canvas);
   const material = new SpriteMaterial({
@@ -864,7 +924,7 @@ export function createSunGlow(sunDisplayRadius) {
   return glow;
 }
 
-export function createSunCoronaShell(geometry) {
+export function createSunCoronaShell(geometry: BufferGeometry): Mesh {
   const material = new ShaderMaterial({
     vertexShader: SUN_CORONA_VERTEX_SHADER,
     fragmentShader: SUN_CORONA_FRAGMENT_SHADER,
@@ -875,7 +935,17 @@ export function createSunCoronaShell(geometry) {
       coronaColor: { value: new Color('#ffb877') },
       observationBlend: { value: 0 },
       observationEmission: { value: 0.25 },
-      sunRadius: { value: 1.0 }  // updated by updateSunMaterialUniforms
+      sunRadius: { value: 1.0 },  // updated by updateSunMaterialUniforms
+      channelMode: { value: 0.0 },  // DEM channel: 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
+      coronalHoles: {
+        value: [
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
+          new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)
+        ]
+      },
+      coronalHoleCount: { value: 0.0 }
     },
     transparent: true,
     blending: AdditiveBlending,
@@ -889,7 +959,181 @@ export function createSunCoronaShell(geometry) {
   return mesh;
 }
 
-export function createSunEruptionLayer(sunDisplayRadius) {
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSITION REGION SHELL
+// ─────────────────────────────────────────────────────────────────────────────
+// The transition region (TR) is a thin (~100 km, or ~1.4×10⁻⁴ R☉) layer
+// between the chromosphere (~20,000 K) and corona (~1 MK). Temperature jumps
+// 50× over just a few hundred km. The TR produces characteristic EUV emission
+// visible in SDO/AIA 304Å (He II at ~50,000 K).
+
+const TR_VERTEX_SHADER = `
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+varying float vNdotV;
+
+void main() {
+  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = worldPosition.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec3 viewDir = normalize(cameraPosition - worldPosition.xyz);
+  vNdotV = dot(vWorldNormal, viewDir);
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
+`;
+
+const TR_FRAGMENT_SHADER = `
+uniform float time;
+uniform float activity;
+uniform float channelMode;  // 0=off, 1=094, 2=171, 3=193, 4=211, 5=304
+uniform float trOpacity;    // base opacity multiplier
+
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
+varying float vNdotV;
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float noise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash13(i), hash13(i + vec3(1,0,0)), u.x),
+        mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), u.x), u.y),
+    mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), u.x),
+        mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), u.x), u.y),
+    u.z
+  );
+}
+
+void main() {
+  // TR is a limb-brightened emission layer
+  float mu = abs(vNdotV);
+  float limbBright = pow(1.0 - mu, 2.8);  // strong limb brightening
+
+  // Emission network pattern — TR has a reticulated, web-like structure
+  // matching supergranulation cell boundaries (~30 Mm cells)
+  vec3 nDir = normalize(vWorldNormal);
+  float n1 = noise3(nDir * 18.0 + vec3(time * 0.04, -time * 0.03, time * 0.02));
+  float n2 = noise3(nDir * 42.0 + vec3(-time * 0.06, time * 0.05, -time * 0.03));
+  float network = smoothstep(0.35, 0.55, n1) * (0.6 + 0.4 * n2);
+
+  // Activity-dependent brightening (more network emission at solar max)
+  float emission = (0.12 + network * 0.38 + activity * 0.22) * limbBright;
+  emission += 0.04;  // floor emission even at disk center
+
+  // ─── Channel-dependent appearance ──────────────────────────────────────────
+  // 304Å: TR is the PRIMARY emission source → very bright, magenta-red
+  // 171Å: TR is secondarily visible → moderate
+  // 193/211Å: TR barely visible
+  // 094Å: TR invisible (too cool for Fe XVIII)
+  vec3 baseColor;
+  float channelBoost = 1.0;
+
+  if (channelMode > 4.5) {
+    // 304Å — He II at 50,000K: TR is the dominant feature
+    baseColor = vec3(0.85, 0.10, 0.25);  // magenta-red (He II 304)
+    channelBoost = 3.2;  // TR becomes very prominent
+  } else if (channelMode > 1.5 && channelMode < 2.5) {
+    // 171Å — Fe IX at 0.63 MK: TR weakly visible
+    baseColor = vec3(0.5, 0.5, 0.9);
+    channelBoost = 0.6;
+  } else if (channelMode > 0.5 && channelMode < 1.5) {
+    // 094Å — Fe XVIII at 6.3 MK: TR is invisible
+    discard;
+  } else if (channelMode > 2.5 && channelMode < 4.5) {
+    // 193Å or 211Å: very faint TR
+    baseColor = vec3(0.55, 0.30, 0.45);
+    channelBoost = 0.25;
+  } else {
+    // Default (no channel): warm UV glow
+    baseColor = vec3(0.50, 0.08, 0.18);
+    channelBoost = 1.0;
+  }
+
+  float alpha = emission * trOpacity * channelBoost;
+  alpha = clamp(alpha, 0.0, 0.85);
+
+  if (alpha < 0.005) discard;
+  gl_FragColor = vec4(baseColor, alpha);
+}
+`;
+
+/**
+ * Creates the transition region (TR) shell — a thin emissive layer at ~1.004 R☉.
+ * The TR is the interface between the chromosphere (20,000K) and corona (1 MK).
+ * Brightest in AIA 304Å, visible at the limb in white-light as a thin strip.
+ *
+ * @param geometry - A SphereGeometry to use (shared with other shells or dedicated)
+ * @param sunDisplayRadius - The Sun's display radius in scene units
+ */
+export function createTransitionRegionShell(geometry: BufferGeometry, sunDisplayRadius: number): Mesh {
+  const material = new ShaderMaterial({
+    vertexShader: TR_VERTEX_SHADER,
+    fragmentShader: TR_FRAGMENT_SHADER,
+    uniforms: {
+      time: { value: 0 },
+      activity: { value: 0.5 },
+      channelMode: { value: 0.0 },
+      trOpacity: { value: 0.18 }
+    },
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: BackSide
+  });
+
+  const mesh = new Mesh(geometry, material);
+  mesh.userData.bodyId = 'sun-transition-region';
+  // TR sits at ~1.004 R☉ (2,800 km above photosphere)
+  // Use 1.006× scale to account for shell geometry thickness
+  mesh.userData.surfaceScale = 1.006;
+  mesh.scale.setScalar(sunDisplayRadius * 1.006);
+  mesh.renderOrder = 3;  // between chromosphere (4) and corona (default)
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+/**
+ * Update the transition region shell per frame.
+ * @param trMesh - The mesh returned by createTransitionRegionShell
+ * @param timeSec - Current wall-clock seconds
+ * @param activity - Solar activity [0..1]
+ * @param options.activeChannel - AIA channel key (e.g. 'aia_304')
+ */
+export function updateTransitionRegionShell(
+  trMesh: Mesh | null | undefined,
+  timeSec: number,
+  activity: number,
+  { activeChannel = undefined as string | null | undefined } = {}
+) {
+  if (!trMesh || !(trMesh as any).material?.uniforms) return;
+  const u = (trMesh as any).material.uniforms;
+  u.time.value = timeSec * 0.4;
+  u.activity.value = activity;
+
+  // Map channel key to channelMode float
+  const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+  let mode = 0.0;
+  if (channelKey === 'aia_094') mode = 1.0;
+  else if (channelKey === 'aia_171') mode = 2.0;
+  else if (channelKey === 'aia_193') mode = 3.0;
+  else if (channelKey === 'aia_211') mode = 4.0;
+  else if (channelKey === 'aia_304') mode = 5.0;
+  u.channelMode.value = mode;
+
+  // Base opacity: faint normally, very bright in 304Å
+  u.trOpacity.value = channelKey === 'aia_304'
+    ? 0.55 + activity * 0.25
+    : 0.12 + activity * 0.08;
+}
+
+export function createSunEruptionLayer(sunDisplayRadius: number): Points {
   const burstCount = 360;
   const positions = new Float32Array(burstCount * 3);
   const directions = new Float32Array(burstCount * 3);
@@ -968,13 +1212,13 @@ export function createSunEruptionLayer(sunDisplayRadius) {
   return points;
 }
 
-export function setSunGlowScale(sunGlowSprite, baseRadiusAu, pulse = 1) {
+export function setSunGlowScale(sunGlowSprite: Sprite | null | undefined, baseRadiusAu: number, pulse = 1): void {
   if (!sunGlowSprite) return;
   const baseScaleMultiplier = sunGlowSprite.userData.baseScaleMultiplier ?? 9.1;
   sunGlowSprite.scale.setScalar(baseRadiusAu * baseScaleMultiplier * pulse);
 }
 
-export function setSunEruptionBaseRadius(sunEruptionLayer, baseRadiusAu) {
+export function setSunEruptionBaseRadius(sunEruptionLayer: Points | null | undefined, baseRadiusAu: number): void {
   if (!sunEruptionLayer) return;
   const bursts = sunEruptionLayer.userData?.sunBursts;
   if (!bursts) return;
@@ -992,15 +1236,16 @@ export function setSunEruptionBaseRadius(sunEruptionLayer, baseRadiusAu) {
     bursts.positions[base + 2] = bursts.directions[base + 2] * radius * 1.03;
   }
   positionAttr.needsUpdate = true;
-  if (sunEruptionLayer.material?.isPointsMaterial) {
-    sunEruptionLayer.material.size = Math.max(0.0000035, radius * 0.65);
+  const eruptionMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
+  if (eruptionMaterial?.isPointsMaterial) {
+    eruptionMaterial.size = Math.max(0.0000035, radius * 0.65);
   }
 }
 
-export function clearSunCoronalLoops(sunCoronalLoopGroup) {
+export function clearSunCoronalLoops(sunCoronalLoopGroup: Group | null | undefined): void {
   if (!sunCoronalLoopGroup) return;
   const loops = Array.isArray(sunCoronalLoopGroup.children)
-    ? [...sunCoronalLoopGroup.children]
+    ? ([...sunCoronalLoopGroup.children] as Array<Mesh | Line>)
     : [];
 
   for (const loop of loops) {
@@ -1022,10 +1267,10 @@ export function clearSunCoronalLoops(sunCoronalLoopGroup) {
   sunCoronalLoopGroup.clear();
 }
 
-export function clearSunParkerSpiralLines(sunParkerSpiralGroup) {
+export function clearSunParkerSpiralLines(sunParkerSpiralGroup: Group | null | undefined): void {
   if (!sunParkerSpiralGroup) return;
   const lines = Array.isArray(sunParkerSpiralGroup.children)
-    ? [...sunParkerSpiralGroup.children]
+    ? ([...sunParkerSpiralGroup.children] as Array<Mesh | Line>)
     : [];
 
   for (const line of lines) {
@@ -1047,9 +1292,9 @@ export function clearSunParkerSpiralLines(sunParkerSpiralGroup) {
   sunParkerSpiralGroup.clear();
 }
 
-function ensureSunCoronalLoop(sunCoronalLoopGroup, index) {
+function ensureSunCoronalLoop(sunCoronalLoopGroup: Group, index: number): Line | null {
   if (!sunCoronalLoopGroup) return null;
-  if (sunCoronalLoopGroup.children[index]) return sunCoronalLoopGroup.children[index];
+  if (sunCoronalLoopGroup.children[index]) return sunCoronalLoopGroup.children[index] as Line;
 
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(6), 3));
@@ -1067,7 +1312,7 @@ function ensureSunCoronalLoop(sunCoronalLoopGroup, index) {
   return loop;
 }
 
-function stableHash01(input) {
+function stableHash01(input: string): number {
   let hash = 2166136261 >>> 0;
   for (let i = 0; i < input.length; i += 1) {
     hash ^= input.charCodeAt(i);
@@ -1076,9 +1321,9 @@ function stableHash01(input) {
   return ((hash >>> 0) % 10_000) / 10_000;
 }
 
-function ensureSunParkerSpiralLine(sunParkerSpiralGroup, index) {
+function ensureSunParkerSpiralLine(sunParkerSpiralGroup: Group, index: number): Line | null {
   if (!sunParkerSpiralGroup) return null;
-  if (sunParkerSpiralGroup.children[index]) return sunParkerSpiralGroup.children[index];
+  if (sunParkerSpiralGroup.children[index]) return sunParkerSpiralGroup.children[index] as Line;
 
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(6), 3));
@@ -1097,14 +1342,14 @@ function ensureSunParkerSpiralLine(sunParkerSpiralGroup, index) {
 }
 
 export function updateSunCoronalLoopsFromBlendView(
-  sunCoronalLoopGroup,
-  blendView,
-  sunRadiusAu,
+  sunCoronalLoopGroup: Group | null | undefined,
+  blendView: SolarFeatureBlendView | null | undefined,
+  sunRadiusAu: number,
   maxLoops = 144,
-  timeSec = 0
+  timeSec = 0,
+  activeChannel: string | null = null
 ) {
   if (!sunCoronalLoopGroup) return;
-  const visualTimeSec = advanceSolarVisualClock(sunCoronalLoopGroup, timeSec);
   const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
   const sourceEntries = Array.isArray(blendView?.entries) ? blendView.entries : [];
   const loopEntries = sourceEntries.slice(0, maxLoops);
@@ -1127,8 +1372,8 @@ export function updateSunCoronalLoopsFromBlendView(
     const array = positionAttr.array;
     const featureSeed = stableHash01(`${entry?.id ?? `loop-${i}`}`);
     const speedRaw = Number(entry?.toFeature?.speedFactor);
-    const speedFactor = clampFinite(speedRaw, 0, 1, 0.2);
-    const brightness = clampUnit(solarFeatureEntryBrightness(entry, blendAlpha));
+    const speedFactor = Number.isFinite(speedRaw) ? speedRaw : 0.2;
+    const brightness = solarFeatureEntryBrightness(entry, blendAlpha);
     const flowRate = 0.42 + speedFactor * 1.6 + featureSeed * 0.55;
     const wobbleRate = 0.29 + speedFactor * 0.9 + featureSeed * 0.35;
     for (let p = 0; p < pointCount; p += 1) {
@@ -1166,8 +1411,8 @@ export function updateSunCoronalLoopsFromBlendView(
       }
 
       const envelope = Math.sin(Math.PI * phase);
-      const flow = Math.sin(visualTimeSec * flowRate + phase * 11.8 + featureSeed * TWO_PI);
-      const wobble = Math.cos(visualTimeSec * wobbleRate - phase * 8.4 + featureSeed * TWO_PI * 0.7);
+      const flow = Math.sin(timeSec * flowRate + phase * 11.8 + featureSeed * TWO_PI);
+      const wobble = Math.cos(timeSec * wobbleRate - phase * 8.4 + featureSeed * TWO_PI * 0.7);
       const radialScale = 1 + flow * (0.004 + brightness * 0.012) * envelope;
       const tangentOffset = wobble * (0.0009 + brightness * 0.003) * envelope;
 
@@ -1179,17 +1424,45 @@ export function updateSunCoronalLoopsFromBlendView(
     geometry.setDrawRange(0, pointCount);
 
     const kind = `${entry?.kind ?? 'loop'}`.toLowerCase();
-    const color = kind === 'cme'
+    // Default (white-light) colors per feature type
+    let color = kind === 'cme'
       ? '#ffb67f'
       : kind === 'plume'
         ? '#ffd7a7'
         : '#fff1d2';
-    if (loop.material?.isLineBasicMaterial) {
-      loop.material.color.set(color);
+
+    // DEM channel-aware coloring for coronal loops
+    const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+    let demOpacityMod = 1.0;  // channel-based opacity multiplier
+    if (channelKey === 'aia_094') {
+      // 094Å (Fe XVIII, 6.3 MK): only flare-heated loops visible
+      color = kind === 'cme' ? '#44ff44' : '#22cc22';
+      demOpacityMod = kind === 'cme' ? 1.8 : 0.15;  // dim quiet loops, boost CMEs
+    } else if (channelKey === 'aia_171') {
+      // 171Å (Fe IX, 0.63 MK): quiet coronal loops are brightest
+      color = kind === 'cme' ? '#8888ff' : '#aabbff';
+      demOpacityMod = kind === 'cme' ? 0.4 : 1.6;  // boost quiet loops
+    } else if (channelKey === 'aia_193') {
+      // 193Å (Fe XII, 1.6 MK): hot active region loops
+      color = kind === 'cme' ? '#cc8844' : '#ddaa55';
+      demOpacityMod = 1.3;
+    } else if (channelKey === 'aia_211') {
+      // 211Å (Fe XIV, 2.0 MK): active region loops
+      color = kind === 'cme' ? '#9944cc' : '#bb66dd';
+      demOpacityMod = 1.2;
+    } else if (channelKey === 'aia_304') {
+      // 304Å (He II, 0.05 MK): coronal loops are too hot — dim them
+      color = '#992222';
+      demOpacityMod = 0.2;
+    }
+
+    const loopMaterial = loop.material as LineBasicMaterial | undefined;
+    if (loopMaterial?.isLineBasicMaterial) {
+      loopMaterial.color.set(color);
       const baseOpacity = kind === 'cme' ? 0.05 : 0.065;
       const gain = kind === 'cme' ? 0.2 : 0.31;
-      const flicker = 0.84 + 0.16 * Math.sin(visualTimeSec * (0.9 + speedFactor * 0.8) + featureSeed * TWO_PI * 1.3);
-      loop.material.opacity = Math.max(0.028, Math.min(0.46, (baseOpacity + brightness * gain) * flicker));
+      const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.9 + speedFactor * 0.8) + featureSeed * TWO_PI * 1.3);
+      loopMaterial.opacity = Math.max(0.015, Math.min(0.55, (baseOpacity + brightness * gain) * flicker * demOpacityMod));
     }
     loop.visible = brightness > 0.003;
   }
@@ -1200,16 +1473,15 @@ export function updateSunCoronalLoopsFromBlendView(
 }
 
 export function updateSunParkerSpiralFromPhysicsState(
-  sunParkerSpiralGroup,
-  physicsState,
-  sunRadiusAu,
+  sunParkerSpiralGroup: Group | null | undefined,
+  physicsState: SolarPhysicsStateLike | null | undefined,
+  sunRadiusAu: number,
   maxLines = 6,
   maxPoints = 96,
   timeSec = 0,
-  camera = null
+  camera: Camera | null = null
 ) {
   if (!sunParkerSpiralGroup) return;
-  const visualTimeSec = advanceSolarVisualClock(sunParkerSpiralGroup, timeSec);
   const sourceLines = Array.isArray(physicsState?.heliosphere?.parker_spiral?.lines)
     ? physicsState.heliosphere.parker_spiral.lines
     : [];
@@ -1221,7 +1493,7 @@ export function updateSunParkerSpiralFromPhysicsState(
       Number(camera.position.z) || 0
     )
     : null;
-  const cameraFade = Number.isFinite(cameraDistanceAu)
+  const cameraFade = cameraDistanceAu !== null && Number.isFinite(cameraDistanceAu)
     ? clampUnit((cameraDistanceAu - 0.5) / 1.5)
     : 1;
 
@@ -1263,21 +1535,22 @@ export function updateSunParkerSpiralFromPhysicsState(
     positionAttr.needsUpdate = true;
     geometry.setDrawRange(0, pointCount);
 
-    if (line.material?.isLineBasicMaterial) {
+    const lineMaterial = line.material as LineBasicMaterial | undefined;
+    if (lineMaterial?.isLineBasicMaterial) {
       const seed = stableHash01(`${entry?.id ?? `spiral-${i}`}`);
       const windKmsRaw = Number(entry?.wind_speed_kms);
       const windKms = Number.isFinite(windKmsRaw) ? windKmsRaw : 420;
       const windFactor = clampUnit((windKms - 300) / 560);
       const slowWindFactor = 1 - windFactor;
       const polarity = Number(entry?.polarity);
-      const flicker = 0.84 + 0.16 * Math.sin(visualTimeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
+      const flicker = 0.84 + 0.16 * Math.sin(timeSec * (0.38 + seed * 0.22) + seed * TWO_PI);
       if (polarity < 0) {
-        line.material.color.setRGB(0.73 + slowWindFactor * 0.09, 0.53 + slowWindFactor * 0.07, 0.40 + slowWindFactor * 0.06);
+        lineMaterial.color.setRGB(0.73 + slowWindFactor * 0.09, 0.53 + slowWindFactor * 0.07, 0.40 + slowWindFactor * 0.06);
       } else {
-        line.material.color.setRGB(0.40 + slowWindFactor * 0.08, 0.53 + slowWindFactor * 0.07, 0.73 + slowWindFactor * 0.09);
+        lineMaterial.color.setRGB(0.40 + slowWindFactor * 0.08, 0.53 + slowWindFactor * 0.07, 0.73 + slowWindFactor * 0.09);
       }
       const sectorOpacity = 0.06 + slowWindFactor * 0.06;
-      line.material.opacity = Math.max(0.0, Math.min(0.34, sectorOpacity * flicker * cameraFade));
+      lineMaterial.opacity = Math.max(0.0, Math.min(0.34, sectorOpacity * flicker * cameraFade));
     }
     line.visible = cameraFade > 0.01;
   }
@@ -1293,12 +1566,15 @@ export function updateSunEruptionLayerFromBlendView({
   sunRadiusAu,
   timeSec,
   activity
+}: {
+  sunEruptionLayer: Points | null | undefined;
+  blendView: SolarFeatureBlendView | null | undefined;
+  sunRadiusAu: number;
+  timeSec: number;
+  activity: number;
 }) {
   const bursts = sunEruptionLayer?.userData?.sunBursts;
   if (!bursts) return;
-  const visualTimeSec = advanceSolarVisualClock(sunEruptionLayer, timeSec);
-  const safeActivity = normalizedSolarActivity(activity);
-  const safeSunRadiusAu = Math.max(1e-9, finiteNumber(sunRadiusAu, bursts.baseRadius));
   const geometry = sunEruptionLayer.geometry;
   if (!geometry || typeof geometry.getAttribute !== 'function') return;
   const positionAttr = geometry.getAttribute('position');
@@ -1307,37 +1583,34 @@ export function updateSunEruptionLayerFromBlendView({
   const blendedFeatures = Array.isArray(blendView?.entries) ? blendView.entries : [];
   if (blendedFeatures.length > 0) {
     const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
-    bursts.baseRadius = safeSunRadiusAu;
+    bursts.baseRadius = sunRadiusAu;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
       const featureEntry = blendedFeatures[i % blendedFeatures.length];
       const sampledSpeed = Number(featureEntry?.toFeature?.speedFactor);
-      const speedFactor = clampFinite(sampledSpeed, 0, 1, 0.2);
-      const phase = positiveModulo(
-        visualTimeSec * speedFactor * 0.08 + i * 0.013 + bursts.phases[i] * 0.17,
-        1
-      );
+      const speedFactor = Number.isFinite(sampledSpeed) ? sampledSpeed : 0.2;
+      const phase = (timeSec * speedFactor * 0.08 + i * 0.013 + bursts.phases[i] * 0.17) % 1;
       const sampled = sampleSolarFeatureEntryPoint(featureEntry, phase, blendAlpha);
       if (!sampled) {
-        bursts.positions[base] = bursts.directions[base] * safeSunRadiusAu * 1.03;
-        bursts.positions[base + 1] = bursts.directions[base + 1] * safeSunRadiusAu * 1.03;
-        bursts.positions[base + 2] = bursts.directions[base + 2] * safeSunRadiusAu * 1.03;
+        bursts.positions[base] = bursts.directions[base] * sunRadiusAu * 1.03;
+        bursts.positions[base + 1] = bursts.directions[base + 1] * sunRadiusAu * 1.03;
+        bursts.positions[base + 2] = bursts.directions[base + 2] * sunRadiusAu * 1.03;
         continue;
       }
 
-      const brightness = clampUnit(solarFeatureEntryBrightness(featureEntry, blendAlpha));
+      const brightness = solarFeatureEntryBrightness(featureEntry, blendAlpha);
       const radialBoost = 1 + brightness * 0.065;
-      bursts.positions[base] = sampled[0] * safeSunRadiusAu * radialBoost;
-      bursts.positions[base + 1] = sampled[1] * safeSunRadiusAu * radialBoost;
-      bursts.positions[base + 2] = sampled[2] * safeSunRadiusAu * radialBoost;
+      bursts.positions[base] = sampled[0] * sunRadiusAu * radialBoost;
+      bursts.positions[base + 1] = sampled[1] * sunRadiusAu * radialBoost;
+      bursts.positions[base + 2] = sampled[2] * sunRadiusAu * radialBoost;
     }
   } else {
-    const plumeFactor = 0.45 + safeActivity * 0.95;
+    const plumeFactor = 0.45 + activity * 0.95;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
-      const wave = Math.sin(visualTimeSec * bursts.speeds[i] + bursts.phases[i]);
+      const wave = Math.sin(timeSec * bursts.speeds[i] + bursts.phases[i]);
       const plume = Math.max(0, wave) * bursts.amplitudes[i] * plumeFactor;
-      const swirl = Math.sin(visualTimeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
+      const swirl = Math.sin(timeSec * bursts.speeds[i] * 0.53 + bursts.phases[i] * 1.7) * bursts.amplitudes[i] * 0.36;
       const radius = bursts.baseRadius * (1.03 + plume);
       const tangentOffset = bursts.baseRadius * swirl;
 
@@ -1348,15 +1621,19 @@ export function updateSunEruptionLayerFromBlendView({
   }
 
   positionAttr.needsUpdate = true;
-  if (sunEruptionLayer.material?.isPointsMaterial) {
-    sunEruptionLayer.material.opacity = Math.max(0.1, 0.14 + safeActivity * 0.27);
-    sunEruptionLayer.material.size = Math.max(0.0000024, bursts.baseRadius * (0.28 + safeActivity * 0.2));
+  const burstMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
+  if (burstMaterial?.isPointsMaterial) {
+    burstMaterial.opacity = Math.max(0.1, 0.14 + activity * 0.27);
+    burstMaterial.size = Math.max(0.0000024, bursts.baseRadius * (0.28 + activity * 0.2));
   }
 }
 
 export function setSunObservationTexture({
   sunSurfaceMaterial,
   observationTexture
+}: {
+  sunSurfaceMaterial: ShaderMaterial | null | undefined;
+  observationTexture: Texture | null | undefined;
 }) {
   if (!sunSurfaceMaterial?.uniforms?.observationMap) return;
   const baseMap = sunSurfaceMaterial.uniforms.baseMap?.value ?? null;
@@ -1364,30 +1641,22 @@ export function setSunObservationTexture({
 }
 
 export function updateSunMaterialUniforms({
-  sunSurfaceMaterial,
-  sunCoronaMaterial,
-  timeSec,
-  activity,
+  sunSurfaceMaterial = undefined as ShaderMaterial | null | undefined,
+  sunCoronaMaterial = undefined as ShaderMaterial | null | undefined,
+  timeSec = 0,
+  activity = 0,
   observationBlend = 0,
   observationEmission = 0.25,
-  coronaHue = null,
-  sunDisplayRadius = 1.0
+  coronaHue = undefined as number[] | null | undefined,
+  sunDisplayRadius = 1.0,
+  activeChannel = undefined as string | null | undefined,
+  coronalHoleData = undefined as { holes?: Array<{ center_lon_rad?: unknown; center_lat_rad?: unknown; extent_lon_rad?: unknown; extent_lat_rad?: unknown }> | null } | null | undefined
 }) {
-  const safeActivity = normalizedSolarActivity(activity);
-  const simulationDays = boundedSimulationDays(timeSec);
-  const visualTimeSec = advanceSolarVisualClock(
-    sunSurfaceMaterial ?? sunCoronaMaterial,
-    timeSec
-  );
-  const obsBlend = clampFinite(observationBlend, 0, 1, 0);
-  const obsEmission = clampFinite(observationEmission, 0, 1, 0.25);
-  const safeSunDisplayRadius = Math.max(1e-9, finiteNumber(sunDisplayRadius, 1));
+  const obsBlend = clampUnit(Number(observationBlend) || 0);
+  const obsEmission = clampUnit(Number(observationEmission) || 0.25);
   if (sunSurfaceMaterial?.uniforms) {
-    sunSurfaceMaterial.uniforms.time.value = visualTimeSec;
-    if (sunSurfaceMaterial.uniforms.simulationDays) {
-      sunSurfaceMaterial.uniforms.simulationDays.value = simulationDays;
-    }
-    sunSurfaceMaterial.uniforms.activity.value = safeActivity;
+    sunSurfaceMaterial.uniforms.time.value = timeSec * 0.4;
+    sunSurfaceMaterial.uniforms.activity.value = activity;
     if (sunSurfaceMaterial.uniforms.observationBlend) {
       sunSurfaceMaterial.uniforms.observationBlend.value = obsBlend;
     }
@@ -1397,13 +1666,13 @@ export function updateSunMaterialUniforms({
   }
 
   if (sunCoronaMaterial?.uniforms) {
-    sunCoronaMaterial.uniforms.time.value = visualTimeSec;
-    sunCoronaMaterial.uniforms.activity.value = safeActivity;
+    sunCoronaMaterial.uniforms.time.value = timeSec * 0.54;
+    sunCoronaMaterial.uniforms.activity.value = activity;
     if (sunCoronaMaterial.uniforms.coronalHoleActivity) {
-      sunCoronaMaterial.uniforms.coronalHoleActivity.value = safeActivity;
+      sunCoronaMaterial.uniforms.coronalHoleActivity.value = activity;
     }
     if (sunCoronaMaterial.uniforms.sunRadius) {
-      sunCoronaMaterial.uniforms.sunRadius.value = safeSunDisplayRadius;
+      sunCoronaMaterial.uniforms.sunRadius.value = sunDisplayRadius;
     }
     if (sunCoronaMaterial.uniforms.observationBlend) {
       sunCoronaMaterial.uniforms.observationBlend.value = obsBlend;
@@ -1415,14 +1684,49 @@ export function updateSunMaterialUniforms({
     if (coronaColor?.isColor) {
       if (coronaHue && Array.isArray(coronaHue) && coronaHue.length === 3) {
         // Apply the channel-specific corona color directly
-        coronaColor.setRGB(
-          clampFinite(coronaHue[0], 0, 1, 1),
-          clampFinite(coronaHue[1], 0, 1, 0.66),
-          clampFinite(coronaHue[2], 0, 1, 0.34)
-        );
+        coronaColor.setRGB(coronaHue[0], coronaHue[1], coronaHue[2]);
       } else {
         // Default activity-driven orange tint
-        coronaColor.setRGB(1.0, 0.66 + safeActivity * 0.14, 0.34 + safeActivity * 0.1);
+        coronaColor.setRGB(1.0, 0.66 + activity * 0.14, 0.34 + activity * 0.1);
+      }
+    }
+
+    // DEM channel mode: map AIA channel key to numeric mode
+    if (sunCoronaMaterial.uniforms.channelMode) {
+      const channelKey = `${activeChannel ?? ''}`.toLowerCase();
+      let mode = 0.0;
+      if (channelKey === 'aia_094') mode = 1.0;
+      else if (channelKey === 'aia_171') mode = 2.0;
+      else if (channelKey === 'aia_193') mode = 3.0;
+      else if (channelKey === 'aia_211') mode = 4.0;
+      else if (channelKey === 'aia_304') mode = 5.0;
+      sunCoronaMaterial.uniforms.channelMode.value = mode;
+    }
+
+    // ─── Coronal Hole Uniform Update ────────────────────────────────────────
+    if (sunCoronaMaterial.uniforms.coronalHoles && sunCoronaMaterial.uniforms.coronalHoleCount) {
+      const holesArray = sunCoronaMaterial.uniforms.coronalHoles.value;
+      const holesList = coronalHoleData?.holes;
+      if (Array.isArray(holesList) && holesList.length > 0) {
+        const count = Math.min(8, holesList.length);
+        for (let i = 0; i < count; i++) {
+          const h = holesList[i];
+          const cLon = Number(h?.center_lon_rad) || 0;
+          const cLat = Number(h?.center_lat_rad) || 0;
+          const eLon = Number(h?.extent_lon_rad) || 0.1;
+          const eLat = Number(h?.extent_lat_rad) || 0.1;
+          holesArray[i].set(cLon, cLat, eLon, eLat);
+        }
+        for (let i = count; i < 8; i++) {
+          holesArray[i].set(0, 0, 0, 0);
+        }
+        sunCoronaMaterial.uniforms.coronalHoleCount.value = count;
+      } else {
+        // No data — reset to fallback (coronalHoleActivity-driven)
+        sunCoronaMaterial.uniforms.coronalHoleCount.value = 0.0;
+        for (let i = 0; i < 8; i++) {
+          holesArray[i].set(0, 0, 0, 0);
+        }
       }
     }
   }

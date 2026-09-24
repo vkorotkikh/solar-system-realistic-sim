@@ -3,9 +3,70 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 import server
+from mission import MissionPlannerAgent
 from server import app
 
 client = TestClient(app)
+
+
+def test_set_julian_date_requires_the_engine_time_scale() -> None:
+    class _TdbEngine:
+        def __init__(self) -> None:
+            self.jd = 2_451_545.0
+
+        def get_state(self):
+            return {"jd": self.jd, "jd_time_scale": "TDB", "bodies": {}}
+
+        def get_julian_date(self):
+            return self.jd
+
+        def set_julian_date(self, jd):
+            self.jd = jd
+
+    engine = _TdbEngine()
+    runner = server.SimulationRunner(engine)  # The worker thread is not started.
+
+    runner._handle_command({"type": "set_julian_date", "jd": 2_461_275.5})
+    response = runner.get_response()
+    assert response is not None
+    assert response["code"] == "bad_request"
+    assert "jd_time_scale" in response["message"]
+    assert engine.jd == 2_451_545.0
+
+    runner._handle_command(
+        {
+            "type": "set_julian_date",
+            "jd": 2_461_275.5,
+            "jd_time_scale": "TDB",
+        }
+    )
+    assert runner.get_response() is None
+    assert engine.jd == 2_461_275.5
+
+
+def test_health_does_not_advertise_high_fidelity_when_ephemeris_data_is_invalid(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "_rebound_readiness",
+        lambda: {
+            "available": False,
+            "fidelity": None,
+            "configured_fidelity": "high",
+            "dependency": {"name": "rebound", "available": True},
+            "initial_conditions": {"available": False},
+            "error": "invalid N-body initial conditions",
+        },
+    )
+
+    response = client.get("/health")
+    assert response.status_code == 200
+    rebound_status = response.json()["engines"]["rebound"]
+    assert rebound_status["available"] is False
+    assert rebound_status["fidelity"] is None
+    assert rebound_status["initial_conditions"]["available"] is False
+    assert "invalid N-body initial conditions" in rebound_status["error"]
 
 
 def test_trajectory_plan_rejects_invalid_provider() -> None:
@@ -39,7 +100,16 @@ def test_mission_plan_rejects_non_numeric_payload_mass() -> None:
     assert "payload_mass_kg" in response.text
 
 
-def test_mission_plan_returns_422_when_no_verified_candidate_exists() -> None:
+def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch) -> None:
+    monkeypatch.setattr(
+        MissionPlannerAgent,
+        "plan",
+        lambda *_args, **_kwargs: {
+            "status": "no_verified_candidate",
+            "recommendation": None,
+            "alternatives": [],
+        },
+    )
     response = client.post(
         "/mission/plan",
         json={

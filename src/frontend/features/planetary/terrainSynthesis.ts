@@ -1,19 +1,19 @@
 import { CanvasTexture, RepeatWrapping } from 'three';
 
-function fract(value) {
+function fract(value: number): number {
   return value - Math.floor(value);
 }
 
-function hash2D(x, y, seed) {
+function hash2D(x: number, y: number, seed: number): number {
   const dot = x * (127.1 + seed * 0.37) + y * (311.7 + seed * 0.19);
   return fract(Math.sin(dot) * 43_758.5453123);
 }
 
-function smoothStep(t) {
+function smoothStep(t: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function valueNoise2D(x, y, seed) {
+function valueNoise2D(x: number, y: number, seed: number): number {
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);
   const x1 = x0 + 1;
@@ -32,7 +32,7 @@ function valueNoise2D(x, y, seed) {
   return nx0 + (nx1 - nx0) * ty;
 }
 
-function fbm2D(x, y, seed, octaves = 6) {
+function fbm2D(x: number, y: number, seed: number, octaves = 6): number {
   let sum = 0;
   let amplitude = 0.55;
   let frequency = 1;
@@ -60,6 +60,7 @@ export function createPlanetHeightTexture({
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to acquire 2D canvas context');
   const image = ctx.createImageData(size, size);
   const data = image.data;
 

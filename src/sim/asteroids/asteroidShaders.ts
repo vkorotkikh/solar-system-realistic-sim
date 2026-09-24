@@ -1,5 +1,4 @@
 // WebGL Shaders for calculating Keplerian orbits purely on the GPU.
-import { MeshStandardMaterial } from 'three';
 
 export interface AsteroidShaderUniforms {
     uTimeDays: { value: number };
@@ -16,6 +15,8 @@ export interface AsteroidShaderUniforms {
  * - aOrbitParams2: vec3(argPeriapsisRad, meanAnomalyRad, periodDays)
  * - aSpinParams: vec4(spinAxisX, spinAxisY, spinAxisZ, spinPhaseOffs)
  */
+
+import type { MeshStandardMaterial } from 'three';
 
 export const ASTEROID_VERTEX_SHADER_INJECTIONS = {
     header: `

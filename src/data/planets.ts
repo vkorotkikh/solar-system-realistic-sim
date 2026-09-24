@@ -12,6 +12,18 @@ export const SUN = {
 };
 
 // J2000 mean elements from NASA/JPL planetary theory values.
+//
+// The eight planets carry the full JPL Standish "Approximate Positions of the Major Planets"
+// Table 1 set (valid 1800 AD - 2050 AD), referenced to epoch J2000 (epochJd = J2000_JD):
+//   aAu / e / iDeg / ascendingNodeDeg  are Standish a0, e0, I0, Omega0
+//   argPeriapsisDeg                    is varpi0 - Omega0
+//   meanAnomalyDeg                     is L0 - varpi0
+// and likewise for the per-century rates, where
+//   argPeriapsisDegPerCentury          is varpidot - Omegadot
+//   meanLongitudeDegPerCentury         is Ldot, the tabulated mean-longitude rate.
+// Ldot is what makes the mean anomaly propagate correctly: M(T) = M0 + (Ldot - varpidot) * T.
+// Without it the propagator has to fall back on 2*pi/periodDays, which is dL/dt rather than dM/dt
+// and therefore double-counts the apsidal precession that is already applied to argPeriapsis.
 export const PLANETS = [
   {
     id: 'mercury',
@@ -30,7 +42,15 @@ export const PLANETS = [
       ascendingNodeDeg: 48.33076593,
       argPeriapsisDeg: 29.12703035,
       meanAnomalyDeg: 174.79252722,
-      periodDays: 87.9691
+      periodDays: 87.9691,
+      secularRates: {
+        aAuPerCentury: 0.00000037,
+        ePerCentury: 0.00001906,
+        iDegPerCentury: -0.00594749,
+        ascendingNodeDegPerCentury: -0.12534081,
+        argPeriapsisDegPerCentury: 0.2858177,
+        meanLongitudeDegPerCentury: 149472.67411175
+      }
     }
   },
   {
@@ -50,7 +70,15 @@ export const PLANETS = [
       ascendingNodeDeg: 76.67984255,
       argPeriapsisDeg: 54.92262463,
       meanAnomalyDeg: 50.37663232,
-      periodDays: 224.701
+      periodDays: 224.701,
+      secularRates: {
+        aAuPerCentury: 0.0000039,
+        ePerCentury: -0.00004107,
+        iDegPerCentury: -0.0007889,
+        ascendingNodeDegPerCentury: -0.27769418,
+        argPeriapsisDegPerCentury: 0.28037747,
+        meanLongitudeDegPerCentury: 58517.81538729
+      }
     }
   },
   {
@@ -74,7 +102,15 @@ export const PLANETS = [
       ascendingNodeDeg: 0,
       argPeriapsisDeg: 102.93768193,
       meanAnomalyDeg: 357.52688973,
-      periodDays: 365.256
+      periodDays: 365.256,
+      secularRates: {
+        aAuPerCentury: 0.00000562,
+        ePerCentury: -0.00004392,
+        iDegPerCentury: -0.01294668,
+        ascendingNodeDegPerCentury: 0,
+        argPeriapsisDegPerCentury: 0.32327364,
+        meanLongitudeDegPerCentury: 35999.37244981
+      }
     }
   },
   {
@@ -94,7 +130,15 @@ export const PLANETS = [
       ascendingNodeDeg: 49.55953891,
       argPeriapsisDeg: 286.4968315,
       meanAnomalyDeg: 19.39019754,
-      periodDays: 686.98
+      periodDays: 686.98,
+      secularRates: {
+        aAuPerCentury: 0.00001847,
+        ePerCentury: 0.00007882,
+        iDegPerCentury: -0.00813131,
+        ascendingNodeDegPerCentury: -0.29257343,
+        argPeriapsisDegPerCentury: 0.73698431,
+        meanLongitudeDegPerCentury: 19140.30268499
+      }
     }
   },
   {
@@ -114,7 +158,15 @@ export const PLANETS = [
       ascendingNodeDeg: 100.47390909,
       argPeriapsisDeg: 274.25457074,
       meanAnomalyDeg: 19.66796068,
-      periodDays: 4_332.589
+      periodDays: 4_332.589,
+      secularRates: {
+        aAuPerCentury: -0.00011607,
+        ePerCentury: -0.00013253,
+        iDegPerCentury: -0.00183714,
+        ascendingNodeDegPerCentury: 0.20469106,
+        argPeriapsisDegPerCentury: 0.00783562,
+        meanLongitudeDegPerCentury: 3034.74612775
+      }
     }
   },
   {
@@ -136,7 +188,15 @@ export const PLANETS = [
       ascendingNodeDeg: 113.66242448,
       argPeriapsisDeg: 338.93645383,
       meanAnomalyDeg: 317.35536592,
-      periodDays: 10_759.22
+      periodDays: 10_759.22,
+      secularRates: {
+        aAuPerCentury: -0.0012506,
+        ePerCentury: -0.00050991,
+        iDegPerCentury: 0.00193609,
+        ascendingNodeDegPerCentury: -0.28867794,
+        argPeriapsisDegPerCentury: -0.13029422,
+        meanLongitudeDegPerCentury: 1222.49362201
+      }
     }
   },
   {
@@ -158,7 +218,15 @@ export const PLANETS = [
       ascendingNodeDeg: 74.01692503,
       argPeriapsisDeg: 96.93735127,
       meanAnomalyDeg: 142.28382821,
-      periodDays: 30_685.4
+      periodDays: 30_685.4,
+      secularRates: {
+        aAuPerCentury: -0.00196176,
+        ePerCentury: -0.00004397,
+        iDegPerCentury: -0.00242939,
+        ascendingNodeDegPerCentury: 0.04240589,
+        argPeriapsisDegPerCentury: 0.36564692,
+        meanLongitudeDegPerCentury: 428.48202785
+      }
     }
   },
   {
@@ -178,7 +246,15 @@ export const PLANETS = [
       ascendingNodeDeg: 131.78422574,
       argPeriapsisDeg: 273.18053653,
       meanAnomalyDeg: 259.91520804,
-      periodDays: 60_189
+      periodDays: 60_189,
+      secularRates: {
+        aAuPerCentury: 0.00026291,
+        ePerCentury: 0.00005105,
+        iDegPerCentury: 0.00035372,
+        ascendingNodeDegPerCentury: -0.00508664,
+        argPeriapsisDegPerCentury: -0.317328,
+        meanLongitudeDegPerCentury: 218.45945325
+      }
     }
   },
   {

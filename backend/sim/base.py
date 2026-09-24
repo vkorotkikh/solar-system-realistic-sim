@@ -23,6 +23,11 @@ class StateUpdate(TypedDict, total=False):
     engine: str
     fidelity: EngineFidelity
     jd: float
+    position_frame: str
+    velocity_frame: str
+    position_units: str
+    velocity_units: str
+    jd_time_scale: str
     force_models: Dict[str, Any]
     bodies: Dict[str, BodyState]
     paused: bool
@@ -65,7 +70,7 @@ class SimulationEngine(ABC):
 
     @abstractmethod
     def initialize(self, bodies: List[Dict], start_jd: float = 2_451_545.0) -> None:
-        """Set up the simulation with body data at a given Julian date."""
+        """Set up the simulation at a Julian date in its declared time scale."""
         ...
 
     @abstractmethod
@@ -88,6 +93,11 @@ class SimulationEngine(ABC):
               "engine": str,
               "fidelity": str,
               "jd": float,
+              "position_frame": str,
+              "velocity_frame": str,
+              "position_units": str,
+              "velocity_units": str,
+              "jd_time_scale": str,
               "force_models": {...},
               "bodies": {id: {"pos": [x,y,z], "vel": [vx,vy,vz]}, ...},
             }
@@ -101,8 +111,17 @@ class SimulationEngine(ABC):
 
     @abstractmethod
     def set_julian_date(self, jd: float) -> None:
-        """Jump simulation to a specific Julian date (may reinitialize)."""
+        """Jump to a Julian date in the engine's declared scale (may reinitialize)."""
         ...
+
+    @property
+    def supported_jd_range(self) -> tuple[float, float] | None:
+        """Inclusive supported epoch range, or ``None`` when not declared."""
+        return None
+
+    def cancel_pending_operation(self) -> None:
+        """Request cooperative cancellation of an in-progress long operation."""
+        return None
 
     @abstractmethod
     def get_energy(self) -> float:

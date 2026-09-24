@@ -1,18 +1,18 @@
-export const enum TaxonomyClass {
+export enum TaxonomyClass {
   C = 'C',
   S = 'S',
   M = 'M',
   Unknown = 'U',
 }
 
-export const enum MaterialClass {
+export enum MaterialClass {
   Carbonaceous = 0, // C-type
   Silicaceous = 1, // S-type
   Metallic = 2, // M-type
   Unknown = 3,
 }
 
-export const enum MassClass {
+export enum MassClass {
   Rubble = 0, // sub-40 m analog (very small body)
   Small = 1, // 40-250 m
   Medium = 2, // 250 m - 2 km
@@ -21,7 +21,7 @@ export const enum MassClass {
   Giant = 5, // > 120 km
 }
 
-export const enum MissionPriorityClass {
+export enum MissionPriorityClass {
   Archive = 'archive',
   Background = 'background',
   Standard = 'standard',

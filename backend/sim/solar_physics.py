@@ -210,6 +210,8 @@ class SolarCoronaPhysicsModel:
         self.model_name = "quasi_mhd_corona_v4"
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
+        from sim.pfss_magnetogram import PFSSCache
+        self._pfss_cache = PFSSCache()
 
     def _build_active_regions(self) -> list[ActiveRegionSeed]:
         rng = Random(self.seed * 31 + 7)
@@ -350,7 +352,7 @@ class SolarCoronaPhysicsModel:
                 "Coronal loops are anchored to bipolar active-region polarity pairs.",
                 "RTV-like temperature scaling and expanded CME speed envelope (20-3500 km/s).",
                 "Returns feature arcs in solar-radii units for direct 3D rendering.",
-                "Includes wall-clock transient activation so corona evolves even when simulation epoch is paused.",
+                "Epoch sampling is deterministic by default; observation overlays only affect rendering.",
             ],
         }
 
@@ -820,6 +822,65 @@ class SolarCoronaPhysicsModel:
             "arc": arc,
         }
 
+    @staticmethod
+    def _synthetic_coronal_holes(activity: float, jd: float) -> dict[str, Any]:
+        """Generate plausible synthetic coronal hole placements from activity.
+
+        At solar minimum: large polar coronal holes dominate.
+        At solar maximum: polar holes shrink; stochastic equatorial holes appear.
+        """
+        holes: list[dict[str, Any]] = []
+        # Polar holes: always present, shrink at solar max
+        polar_extent_lat = math.radians(35.0 * (1.0 - activity * 0.7))
+        polar_extent_lon = math.pi  # wrap around full longitude at poles
+        polar_area = max(0.01, 0.15 * (1.0 - activity * 0.65))
+        if polar_extent_lat > math.radians(5):
+            holes.append({
+                "center_lat_rad": math.radians(72.0),
+                "center_lon_rad": 0.0,
+                "extent_lat_rad": round(polar_extent_lat, 4),
+                "extent_lon_rad": round(polar_extent_lon, 4),
+                "area_fraction": round(polar_area, 5),
+                "type": "polar",
+            })
+            holes.append({
+                "center_lat_rad": math.radians(-72.0),
+                "center_lon_rad": 0.0,
+                "extent_lat_rad": round(polar_extent_lat, 4),
+                "extent_lon_rad": round(polar_extent_lon, 4),
+                "area_fraction": round(polar_area, 5),
+                "type": "polar",
+            })
+
+        # Equatorial holes at high activity
+        if activity > 0.35:
+            rng = Random(int(jd * 100) % 99991)
+            eq_count = int(1 + activity * 3)
+            for i in range(min(eq_count, 4)):
+                center_lat = math.radians(rng.uniform(-30, 30))
+                center_lon = math.radians(rng.uniform(-90, 90))
+                extent_lat = math.radians(rng.uniform(8, 22) * activity)
+                extent_lon = math.radians(rng.uniform(12, 35) * activity)
+                area_frac = 0.01 + rng.random() * 0.04 * activity
+                holes.append({
+                    "center_lat_rad": round(center_lat, 4),
+                    "center_lon_rad": round(center_lon, 4),
+                    "extent_lat_rad": round(extent_lat, 4),
+                    "extent_lon_rad": round(extent_lon, 4),
+                    "area_fraction": round(area_frac, 5),
+                    "type": "equatorial",
+                })
+
+        coverage = sum(h["area_fraction"] for h in holes)
+        return {
+            "source": "synthetic",
+            "coverage_fraction": round(min(0.5, coverage), 4),
+            "polar_open_flux_north": round(polar_area if polar_extent_lat > math.radians(5) else 0.0, 4),
+            "polar_open_flux_south": round(polar_area if polar_extent_lat > math.radians(5) else 0.0, 4),
+            "hole_count": len(holes),
+            "holes": holes,
+        }
+
     def _build_parker_spiral(
         self,
         jd: float,
@@ -828,6 +889,8 @@ class SolarCoronaPhysicsModel:
         point_count: int = 80,
         max_extent_au: float = 3.0,
         wind_speed_kms_override: float | None = None,
+        coronal_holes: dict[str, Any] | None = None,
+        wsa_result: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         omega_sun_rad_day = 2.0 * math.pi / 25.38
         source_surface_radii = 2.5
@@ -843,18 +906,75 @@ class SolarCoronaPhysicsModel:
             else None
         )
 
+        # Import WSA lookup if available
+        has_wsa = wsa_result is not None and isinstance(wsa_result, dict) and wsa_result.get("open_mask") is not None
+
+        # Extract coronal hole boundaries for fallback fast/slow wind assignment
+        ch_holes = []
+        if isinstance(coronal_holes, dict):
+            raw_holes = coronal_holes.get("holes")
+            if isinstance(raw_holes, list):
+                for h in raw_holes:
+                    if isinstance(h, dict):
+                        clat = h.get("center_lat_rad")
+                        elat = h.get("extent_lat_rad")
+                        if isinstance(clat, (float, int)) and isinstance(elat, (float, int)):
+                            ch_holes.append((float(clat), float(elat)))
+
         for i in range(safe_line_count):
             arm_phase = rotation_phase + (2.0 * math.pi * i / safe_line_count)
             sector_wave = math.sin(arm_phase * 2.1 + activity * 1.3)
-            intrinsic_wind = 420.0 + 220.0 * sector_wave
+
+            # HCS tilt: ~7° at solar minimum → ~75° at solar maximum.
+            hcs_tilt_deg = 7.25 + 67.75 * (activity ** 1.8)
+            hcs_tilt_rad = math.radians(_clamp(hcs_tilt_deg, 7.0, 75.0))
+
+            # Source surface latitude for this arm
+            source_lat = hcs_tilt_rad * math.sin(arm_phase + i * 0.33)
+
+            # ── Determine wind speed ──────────────────────────────────
+            in_coronal_hole = False
+            wind_speed_source = "empirical"
+
+            if has_wsa:
+                # Use WSA model: look up velocity at source surface coordinates
+                from sim.pfss_magnetogram import wsa_velocity_at_source_surface
+                wsa_v = wsa_velocity_at_source_surface(
+                    wsa_result,
+                    ss_lat_rad=source_lat,
+                    ss_lon_rad=arm_phase % (2.0 * math.pi),
+                )
+                intrinsic_wind = wsa_v
+                in_coronal_hole = wsa_v > 550.0  # WSA fast wind threshold
+                wind_speed_source = "wsa_arge_2003"
+            else:
+                # Fallback: coronal hole heuristic
+                if ch_holes:
+                    hcs_tilt_rad_check = hcs_tilt_rad
+                    for ch_center_lat, ch_extent_lat in ch_holes:
+                        is_polar = abs(ch_center_lat) > math.radians(50)
+                        if is_polar:
+                            polar_coupling = 1.0 - activity * 0.85
+                            if i % 3 != 0 and polar_coupling > 0.3:
+                                in_coronal_hole = True
+                                break
+                        else:
+                            if abs(source_lat - ch_center_lat) < ch_extent_lat:
+                                in_coronal_hole = True
+                                break
+
+                if in_coronal_hole:
+                    intrinsic_wind = 720.0 + 60.0 * sector_wave
+                else:
+                    intrinsic_wind = 400.0 + 50.0 * sector_wave
+
             wind_speed_kms = (
                 _clamp(0.58 * override_wind + 0.42 * intrinsic_wind, 280.0, 900.0)
                 if override_wind is not None
-                else _clamp(intrinsic_wind, 300.0, 860.0)
+                else _clamp(intrinsic_wind, 265.0, 860.0)
             )
             wind_speed_au_day = wind_speed_kms / (AU_KM / 86_400.0)
             polarity_sign = 1.0 if i % 2 == 0 else -1.0
-            hcs_tilt_rad = math.radians(7.25 + activity * 15.0)
             arc: list[list[float]] = []
 
             for p in range(safe_point_count):
@@ -862,7 +982,7 @@ class SolarCoronaPhysicsModel:
                 r_au = source_surface_au + (max_radius_au - source_surface_au) * (frac**1.45)
                 delta_r = r_au - source_surface_au
                 phi = arm_phase - (omega_sun_rad_day / max(1e-6, wind_speed_au_day)) * delta_r
-                lat = hcs_tilt_rad * 0.16 * math.sin(phi + i * 0.33)
+                lat = hcs_tilt_rad * math.sin(phi + i * 0.33)
                 direction = _vector_from_lat_lon(lat, phi)
                 r_solar = r_au / SOLAR_RADIUS_AU
                 arc.append([direction[0] * r_solar, direction[1] * r_solar, direction[2] * r_solar])
@@ -871,8 +991,10 @@ class SolarCoronaPhysicsModel:
                 {
                     "id": f"spiral-{i:02d}",
                     "polarity": polarity_sign,
-                    "source_lat_deg": 0.0,
+                    "source_lat_deg": round(math.degrees(source_lat), 1),
                     "wind_speed_kms": round(wind_speed_kms, 1),
+                    "wind_speed_source": wind_speed_source,
+                    "in_coronal_hole": in_coronal_hole,
                     "arc": arc,
                 }
             )
@@ -885,6 +1007,7 @@ class SolarCoronaPhysicsModel:
             "max_extent_au": max_radius_au,
             "max_extent_solar_radii": max_radius_au / SOLAR_RADIUS_AU,
             "wind_speed_kms": mean_wind,
+            "wind_speed_model": "wsa_arge_2003" if has_wsa else "empirical_ch_bimodal",
             "omega_sun_rad_day": omega_sun_rad_day,
             "lines": lines,
         }
@@ -896,6 +1019,7 @@ class SolarCoronaPhysicsModel:
         max_features: int = 220,
         forcing: str = "synthetic",
         realtime_data: dict[str, Any] | None = None,
+        wall_jd: float | None = None,
     ) -> dict[str, Any]:
         fidelity_key = fidelity.strip().lower()
         if fidelity_key not in self.FIDELITY_POINT_COUNT:
@@ -908,7 +1032,7 @@ class SolarCoronaPhysicsModel:
             forcing,
             realtime_data,
         )
-        wall_jd = utc_now_to_julian_date()
+        wall_jd = jd if wall_jd is None else wall_jd
         safe_max_features = max(8, min(2_048, int(max_features)))
 
         scored: list[tuple[float, FluxTubeSeed, float, float]] = []
@@ -950,6 +1074,42 @@ class SolarCoronaPhysicsModel:
         else:
             spiral_points = 96
 
+        # ─── Coronal Hole Extraction / Synthesis ────────────────────────────
+        coronal_holes_data: dict[str, Any] | None = None
+        if isinstance(realtime_data, dict):
+            sdo_aia = realtime_data.get("sdo_aia")
+            if isinstance(sdo_aia, dict):
+                coronal_holes_data = sdo_aia.get("coronal_holes")
+        if not isinstance(coronal_holes_data, dict) or not coronal_holes_data.get("holes"):
+            coronal_holes_data = self._synthetic_coronal_holes(activity, jd)
+
+        # ─── PFSS Magnetogram-Driven Field ──────────────────────────────
+        # Must run before Parker spiral so WSA velocity map is available.
+        if fidelity_key == "preview":
+            pfss_lines = 40
+            pfss_lmax = 9
+        elif fidelity_key == "operational":
+            pfss_lines = 80
+            pfss_lmax = 12
+        elif fidelity_key == "high":
+            pfss_lines = 120
+            pfss_lmax = 15
+        else:
+            pfss_lines = 180
+            pfss_lmax = 15
+
+        # Trigger PFSS cache (it will fetch GONG or use synthetic fallback appropriately)
+        pfss_field_lines = self._pfss_cache.get_or_compute(
+            jd=jd,
+            activity=activity,
+            n_lines=pfss_lines,
+            lmax=pfss_lmax,
+            gong_timeout_s=3.5,
+        )
+
+        # Extract internal WSA result for Parker spiral wind speeds (NumPy grids; not JSON-serializable).
+        wsa_result = pfss_field_lines.get("_wsa_result") if isinstance(pfss_field_lines, dict) else None
+
         parker_spiral = self._build_parker_spiral(
             jd=jd,
             activity=activity,
@@ -957,7 +1117,13 @@ class SolarCoronaPhysicsModel:
             point_count=spiral_points,
             max_extent_au=3.0,
             wind_speed_kms_override=wind_speed_kms_override,
+            coronal_holes=coronal_holes_data,
+            wsa_result=wsa_result,
         )
+
+        pfss_public = dict(pfss_field_lines) if isinstance(pfss_field_lines, dict) else pfss_field_lines
+        if isinstance(pfss_public, dict):
+            pfss_public.pop("_wsa_result", None)
 
         return {
             "schema": {"name": "solar_physics_state", "version": 1},
@@ -989,7 +1155,9 @@ class SolarCoronaPhysicsModel:
                 "topology_model": "bipolar_active_region_pairs",
                 "features": features,
             },
+            "coronal_holes": coronal_holes_data,
             "heliosphere": {
                 "parker_spiral": parker_spiral,
             },
+            "pfss_field_lines": pfss_public,
         }

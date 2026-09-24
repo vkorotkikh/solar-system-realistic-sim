@@ -4,6 +4,79 @@
 
 > Companion parts: **[Report 0 — Baseline](MAJOR_ISSUE_REPORT_0_BASELINE_2026-08-23.md)** · **[Report B — Blocked-Check Closure](MAJOR_ISSUE_REPORT_B_BLOCKED_CHECKS_2026-08-23.md)** · **[Report C — sun-focus & New-Issue Hunt](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md)**
 
+## 2026-09-24 current-branch reconciliation
+
+> **Authoritative current status for `fix/nbody-osculating-initial-state`; code audited through `a864ea4`.** The original report body below is preserved unchanged as a historical record of `main @ aa6e39a` on 2026-08-23. Its `CONFIRMED`/`REVISED` counts and severity statements must not be read as current-branch status.
+
+### Scope and normalization
+
+This reconciliation counts **30 primary findings**: F-01 through F-20, K-13, and the nine bullets in original §5, normalized in order as N-01 through N-09. Original Report A accidentally skips F-10 in both its verdict table and headline lists even though it says it covers F-01..F-20. F-10 is reconstructed from `CODEBASE_EVALUATION_REPORT_2026-08-23.md:96` (real-time tile/cache jitter) and the matching cache roadmap in Report C. Without that reconstructed row, the literal Report A inventory contains 29 primary findings.
+
+The three already-refuted subclaims — F-08 “~60 missing paths,” F-15 “epoch quantization in the shipped binary,” and F-20 “worker and CPU both propagate every tick” — are annotations on their parent findings, not additional primary rows. They remain refuted. If counted separately, the inventory would contain 33 items and the `NOT-A-BUG` count would be four rather than one.
+
+| Current status | Count | Normalized IDs |
+|---|---:|---|
+| **ACTIVE** | **10** | F-08, F-13, F-15, F-16, F-17, N-01, N-02, N-06, N-07, N-09 |
+| **PARTIAL** | **8** | F-03, F-05, F-09, F-11, F-18, F-19, N-03, N-05 |
+| **RESOLVED** | **11** | F-01, F-02, F-04, F-06, F-07, F-10, F-12, F-14, F-20, K-13, N-04 |
+| **NOT-A-BUG** | **1** | N-08 |
+
+`DUPLICATE` count: **0**. `ACTIVE` means the current code still contains the reported mechanism. `PARTIAL` means a material mitigation landed but a scientifically or operationally relevant part remains. `RESOLVED` means the original defect is closed by current code and proportionate regression evidence.
+
+### Validation snapshot
+
+- Full backend suite: **176 passed** with 5 deprecation warnings.
+- Full frontend Vitest suite: **108/108 passed across 7 files**, including asteroid-integrity/source-state, model-worker, and committed moon/planet/orbit regression gates.
+- Production Vite build: **passed**, compiling **40 modules**; the only reported issue was the non-fatal approximately 892.90 kB main-chunk warning.
+- Strict TypeScript checking is still not clean: a fresh `npm run typecheck` reported **280** `error TS` lines, which is why F-09 remains partial even though Vite builds successfully.
+
+The selected fixes after the prior pin map primarily to Reports B and C, so this report's 30-row
+counts do not change. For cross-report context: `90f4134` bounds/cancels WebSocket seeks and caps
+admission, `a40005a` repairs PFSS cache identity/single-flight, `3f3b787` enforces unpowered flyby
+continuity, and `84ddcd1` makes asteroid catalog integrity fail closed with visible provenance.
+`ea54bea` further hardens the already-resolved F-06 Lambert certificate.
+
+### Current finding table
+
+| ID | Status through `a864ea4` | Current evidence and scoped disposition |
+|---|---|---|
+| **F-01** | **RESOLVED** | `0c99424` moves the GPU orbit translation after the instance rotation/scale in both `worldPosition` and `projectVertex` (`src/frontend/features/asteroids/beltRenderer.ts:175-212`). Add a shader-order or rendered-radius regression so a three.js shader edit cannot silently restore the collapse. |
+| **F-02** | **RESOLVED** | REBOUND readiness loads and validates the scientific input and probes the configured integrator (`backend/sim/rebound_nbody.py:98-144`); IAS15-specific fields are guarded (`:247-255`). Invalid inputs withhold availability/high fidelity (`backend/tests/test_server_validation.py:46-68`, `test_nbody_initial_conditions.py:261-269`). |
+| **F-03** | **PARTIAL** | Invalid comparisons are quarantined as `comparable_to_solver:false` and reported `incomparable_reference` (`backend/benchmark/accuracy.py:205-212`), but the rows remain sourced/labeled `strict-gmat-orekit-tudat` and tests accept `referenceIntegrityOk:true` with zero comparable coverage (`reference_scenarios.json:5-158`, `test_benchmark_accuracy.py:14-35`). Remove the strict/integrity claim or commit reproducible decks, endpoint states, frame/time scale, branch/revolution choice, kernels, and metric. |
+| **F-04** | **RESOLVED** | `2226277` replaces mean-element initialization with fail-closed, committed DE441 Cartesian states and DE440 GM ratios (`backend/data/initial_conditions.py`, `backend/sim/rebound_nbody.py:232-356`). Multi-epoch Horizons tests gate the active IAS15 model; the exact 2026 closure requires Earth <2,000 km, Saturn-system <100 km, and Saturn-center <500 km (`test_nbody_horizons_accuracy.py:61-117,155-182`). |
+| **F-05** | **PARTIAL** | The converter now transforms both orbit normal and periapsis (`src/sim/catalog.ts:319-349`), closing the original Io/Callisto/Enceladus/Triton frame failures. The regression gate still permits known phase/catalog defects up to two orbital radii for Titan, Iapetus, Phoebe and a 180° plane tolerance for Cordelia (`moonFrameCheck.ts:23-72`). Correct those source epochs/phases/precession terms and tighten the overrides. |
+| **F-06** | **RESOLVED** | Lambert output is withheld unless the requested TOF is bracketed/certified, and successful solutions expose `computedTofDays`, `rootResidualDays`, and bracket status. `ea54bea` adds Illinois-weighted bracket convergence, refuses to return an uncertified best point when the iteration budget is exhausted, and adds strict residual/failure regressions. Infeasible one-day Earth→Mars returns no solution/422 rather than an uncertified HTTP 200. |
+| **F-07** | **RESOLVED** | `68aff6b` propagates mean anomaly as `M(T)=L(T)-varpi(T)` from JPL's tabulated mean-longitude rate (`src/data/planets.ts:14-26`, `src/sim/orbitMath.ts:128-157`), removing the SF-1 double-counting regression. `f1c79b9` adds a committed six-epoch Horizons gate (`planetPositionCheck.ts`, `planetPositions.horizons.test.ts`). Treat the 2100 row as an explicitly out-of-domain stress sample because the selected Standish table is documented through 2050. |
+| **F-08** | **ACTIVE** | `README.md:51-69` still instructs users to select REBOUND/TudatPy and click Connect, but `index.html` has no engine/connect controls and `src/main.ts` does not import the only WebSocket client (`simulationClient.ts`). Wire the dormant client/UI end-to-end or remove the shipped-product claim. The historical “~60 missing paths” subclaim remains refuted. |
+| **F-09** | **PARTIAL** | The error count has fallen substantially, but strict checking still reports 280 errors and `package.json` keeps `vite build` separate from `typecheck`. Eliminate errors in the reachable graph, then make typecheck and tests mandatory in CI/build; a successful Vite transpile is not a type-safety gate. |
+| **F-10** | **RESOLVED** | After the earlier single-flight/completion-TTL work, `e740b21` keys snapshots by `latest` versus an exact finite JD and uses a bounded LRU (`backend/sim/solar_realtime_data.py:78-164`). `test_solar_realtime_data_cache.py` gates cross-JD isolation, latest-vs-explicit identity, refresh, eviction, and non-finite rejection. |
+| **F-11** | **PARTIAL** | HTTP CORS and browser WebSocket origins are allowlisted; `90f4134` also caps `/ws/sim` admission before engine setup, while report paths are confined and accidental overwrite is refused atomically. Dev launch still defaults to public `0.0.0.0` with reload, no authentication exists, the report endpoint accepts explicit `allow_overwrite:true` without identity-based authorization, and some responses expose absolute paths. Default to loopback and require authorization for state-changing writes. |
+| **F-12** | **RESOLVED** | The shipped `main.ts` calls resize at initialization and on resize events, not inside its animation loop (`src/main.ts:945-957,1122-1176`). Dormant `frontend/app/animationLoop.ts:195` still contains the old per-frame call and must be corrected before that stack is reactivated. |
+| **F-13** | **ACTIVE** | H29 still applies a `1e12`-scaled speculative displacement directly to model state on wall-clock `deltaSeconds` (`src/main.ts:730-743`; `src/workers/modelWorker.ts:104-137`), including while the Julian-date clock is paused. Keep scientific state immutable and apply this as a renderer-only transform with persistent hypothesis labeling. |
+| **F-14** | **RESOLVED** | Fixed-epoch synthetic corona sampling defaults its visual epoch to the requested JD and is exactly deterministic (`backend/sim/solar_physics.py:1015-1049`; `test_solar_physics_model.py:167-175`). Live assimilation remains intentionally observation-time dependent and should continue to be labeled separately. |
+| **F-15** | **ACTIVE** | Absolute JD and per-instance epoch are still GLSL/attribute float32 values (`beltRenderer.ts:61-65,124-128,350-354,460-462`), producing coarse orbital phase steps. The synthetic round-trip generator also demands `1e-4` day fidelity from arbitrary fractional epochs stored as float32 (`asteroidCatalogLoader.ts:57-62,266-305`). Use relative epochs or high/low splits and gate the actual catalog; the shipped-binary-loss subclaim remains refuted because its quarter-day epochs are exactly representable. |
+| **F-16** | **ACTIVE** | `scripts/fetch_gaia_catalog.py` can overwrite `stars_catalog.json` with tuple-only output while retaining no per-row source identity, query/retrieval record, license, or manifest (`:1-12,37-43,169-203`). Write a distinct artifact plus a hashed provenance/license manifest, or retain per-row provenance through a documented merge. |
+| **F-17** | **ACTIVE** | `new WebGLRenderer` is unguarded (`src/frontend/app/sceneSetup.ts:147-160`), and `index.html` has neither a visible fallback nor ARIA/role/tabindex support for the canvas interaction. Add WebGL feature/error handling, accessible labels and keyboard equivalents, plus a browser test with WebGL unavailable. |
+| **F-18** | **PARTIAL** | The byte-identical temporary renderer is gone and CPU asteroid/KBO code shares `solveKeplerFast`, but `scripts/ingest-moon-textures.mjs:5` imports a nonexistent `.js` module and `scripts/fetch_jpl_sbdb.py:36` targets deleted `src/data/planets.js`. Repair or retire them and add import/dry-run script smoke tests. |
+| **F-19** | **PARTIAL** | Backend adapters now declare and normalize AU/AU-day J2000-ecliptic fields, but malformed/missing vectors silently become zero (`backend/sim/contracts.py:19-22,31-78`), schema metadata is not mandatory, and the frontend ignores velocity/frame/unit metadata. Make schema version, origin, frame, units and time scale required; fail closed and validate at the client boundary. Correct Tudat's stale AU/year module comment as well. |
+| **F-20** | **RESOLVED** | `b6c4ce3` filters the shipped worker model from 434 catalog bodies to the 10 visible/required bodies, preserves source-index mapping, and publishes a versioned Float64 six-field state contract (`src/main.ts:110-143`; `modelWorkerContract.ts:29-42,92-147`). Five tests gate filtering, mapping, precision, schema and the 480-byte payload. The worker-plus-CPU double-propagation subclaim remains refuted. |
+| **K-13** | **RESOLVED** | H29 emits `metric_slipstream` (`smbhPropagation.ts:568-581`), the AGN engine recognizes it, and `sunController.ts:368-395,486-493` creates, triggers and updates the warp mesh. Add a direct channel-to-visible-mesh regression. |
+| **N-01** | **ACTIVE** | `/solar/physics` still ignores undeclared query keys (`backend/server.py:960-981`), so `julian_date=...` can silently select the wall epoch. Reject `request.query_params - allowed` or move to a strict request model; gate typo cases as 422. |
+| **N-02** | **ACTIVE** | Observations with calculated confidence zero still receive a base blend of 0.25/0.78 and set `applied:true` (`backend/sim/solar_physics.py:487-519`). At/below the confidence floor, use synthetic state with zero weight and `applied:false`; add a stale-but-present observation fixture, not only a missing-data test. |
+| **N-03** | **PARTIAL** | The literal trailing-space case is trimmed, but unmapped bodies still send a raw catalog name to Horizons without checking returned target identity (`backend/mission/ephemeris_service.py:237-247`). Require an explicit Horizons/SPK ID and reject ambiguous fallback. |
+| **N-04** | **RESOLVED** | `3f5d097` gives both `tof_min_days` and `tof_max_days` strict `gt=0` constraints (`backend/server.py:719-725`) and tests negative/zero requests as 422 (`backend/tests/test_compute_budget.py:86-107`). |
+| **N-05** | **PARTIAL** | Server grid caps, dedicated executors, lifetime-owned permits and cooperative cancellation now bound request amplification (`3f5d097`; `backend/server.py:434-475,1165-1208`). The scan still accumulates every successful point and failure before slicing the response (`backend/trajectory/lambert.py:381-441`). Replace full lists with bounded top-K/online Pareto state and aggregate failure counters. |
+| **N-06** | **ACTIVE** | Lambert and porkchop endpoints still catch `KeyError`/`ValueError` but not ephemeris-provider exhaustion `RuntimeError` (`backend/server.py:1147-1158,1180-1208`), so that path remains an HTTP 500. Map transient provider exhaustion to structured 503; reserve 422 for a valid provider returning no physical solution. |
+| **N-07** | **ACTIVE** | The H29 disclaimer is written once into `#body-info` (`src/main.ts:1088-1095`) and ordinary body selection overwrites that same node (`:1031-1033`). Move it to a persistent adjacent status/live region controlled by the selected hypothesis. |
+| **N-08** | **NOT-A-BUG** | The custom shader replacement omits three.js's conditional `worldpos_vertex` guard, but the current shader compiles and the unconditional local declaration is harmless. Preserve the upstream guard or add a shader-compile upgrade test as maintenance hardening; this is not a current runtime defect. |
+| **N-09** | **ACTIVE** | Belt and Kuiper meshes still disable frustum culling (`src/frontend/features/asteroids/beltRenderer.ts:382-383,499-500,560`). Define conservative bounds that include GPU orbital displacement, re-enable culling, and test visibility from representative camera directions. |
+
+### Commit-level change in priority
+
+The original headline N-body defect is scientifically closed by `2226277`; current work should not continue treating it as the dominant blocker. The subsequent commits summarized above additionally close bounded WebSocket resource ownership, PFSS cache identity, asteroid integrity/provenance, and unpowered-flyby continuity in their Report B/C rows. The highest-priority remaining scientific-contract work in this report is now F-03/F-05/F-19 and N-01/N-02/N-03/N-06; the original report body follows only for historical evidence.
+
+---
+
 ## What this part is
 
 The comprehensive evaluation of 2026-08-23 (`CODEBASE_EVALUATION_REPORT_2026-08-23.md`) produced 20 findings, F-01..F-20, every one of them re-derived by a single reviewer. Its planned independent adversarial pass **never ran** — its verifier agents died on a spend limit. This part closes that gap.

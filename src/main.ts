@@ -39,9 +39,14 @@ import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/featur
 import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
+import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import {
   buildCatalogIndexContract,
+  buildModelWorkerCatalog,
   type CatalogIndexContract,
+  isValidModelWorkerStateArray,
+  MODEL_WORKER_RECORD_SIZE,
+  MODEL_WORKER_STATE_SCHEMA_VERSION,
   type ModelWorkerCatalog,
   type ModelWorkerInitMessage,
   type ModelWorkerOutboundMessage,
@@ -57,7 +62,7 @@ import { createTextureManager } from './frontend/app/textureManager';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt } from './sim/asteroidBelt';
-import { generateKuiperBelt, propagateKBOPositions } from './sim/kuiperBelt';
+import { generateKuiperBelt, propagateKBOPositions, propagateBinaryKBOPositions } from './sim/kuiperBelt';
 import type { CatalogBody } from './sim/catalog';
 import {
   loadPhase1AsteroidCatalog,
@@ -66,6 +71,13 @@ import {
   PHASE1_LOAD_LATENCY_BUDGET_MS
 } from './sim/phase1AsteroidCatalog';
 import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
+import {
+  failedAsteroidCatalogStatus,
+  loadingAsteroidCatalogStatus,
+  rejectedAsteroidCatalogStatus,
+  renderAsteroidCatalogSourceStatus,
+  verifiedAsteroidCatalogStatus,
+} from './frontend/features/asteroids/catalogSourceStatus';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +101,7 @@ const dom = {
   statusFocus: document.getElementById('status-focus'),
   statusBodies: document.getElementById('status-bodies'),
   statusZoom: document.getElementById('status-zoom'),
+  statusCatalog: document.getElementById('status-catalog'),
   zoomSensitivity: document.getElementById('zoom-sensitivity'),
   zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
   viewportShell: document.getElementById('viewport-shell'),
@@ -100,39 +113,45 @@ const dom = {
   triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
 };
 
+renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatus());
+
 // ── Data & State ─────────────────────────────────────────────────────────────
 
 const catalog = createSolarSystemCatalog();
-const model = new SolarSystemModel(catalog);
-const modelWorkerCatalog: ModelWorkerCatalog = {
-  bodies: catalog.bodies.map((body) => ({
-    id: body.id,
-    parentId: body.parentId ?? null,
-    orbit: body.orbit ?? null
-  }))
-};
-const catalogIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
-const catalogParentIndexByIndex = catalogIndexContract.parentIndexByIndex;
-const catalogBodyCount = catalogIndexContract.idByIndex.length;
+// Moon rendering is not currently exposed by the shipped UI. Keep those 424
+// catalog records available for provenance/search, but do not pretend to keep
+// hidden dynamical states current or spend a worker tick propagating them.
+const showMoons = false;
+const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
+  includeMoons: showMoons
+});
+const propagatedBodies = modelWorkerCatalog.bodies.map((body) => catalog.bodies[body.sourceIndex]);
+const model = new SolarSystemModel({ bodies: propagatedBodies });
+const modelWorkerIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
+const modelWorkerParentIndexByIndex = modelWorkerIndexContract.parentIndexByIndex;
+const modelWorkerSourceIndexByIndex = modelWorkerIndexContract.sourceIndexByIndex;
+const modelWorkerBodyCount = modelWorkerIndexContract.idByIndex.length;
 const bodyById = new Map(catalog.bodies.map((b) => [b.id, b]));
 const simState = createSimulationState({
   currentJulianDate,
   defaultTimeScaleDaysPerSec: DEFAULT_TIME_SCALE_DAYS_PER_SEC
 });
-const modelWorkerWorldX = new Float32Array(catalogBodyCount);
-const modelWorkerWorldY = new Float32Array(catalogBodyCount);
-const modelWorkerWorldZ = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVx = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVy = new Float32Array(catalogBodyCount);
-const modelWorkerWorldVz = new Float32Array(catalogBodyCount);
-const modelWorkerPositionsDirty = new Uint8Array(catalogBodyCount);
+const modelWorkerWorldX = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldY = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldZ = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVx = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
+const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
+const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
 let modelWorker: Worker | null = null;
 let modelWorkerEnabled = false;
 let modelWorkerReady = false;
+let modelWorkerTickInFlight = false;
 let modelWorkerSequence = 0;
+let lastModelWorkerAcceptedSequence = -1;
+let lastModelWorkerAppliedSequence = -1;
 let latestModelWorkerState: ModelWorkerStateMessage | null = null;
-const MODEL_WORKER_RECORD_SIZE = 7;
-const ASTEROID_BELT_TARGET_COUNT = 15_000;
+const ASTEROID_BELT_TARGET_COUNT = 50_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
@@ -224,8 +243,8 @@ const sunCtrl = createSunController({
 const bodyNodes = new Map();
 const bodyMeshes = new Map();
 const bodySpinGroups = new Map();
-const orbitLines = [];
-const labels = [];
+const orbitLines: Line[] = [];
+const labels: { bodyId: string; sprite: Sprite }[] = [];
 
 function createLabelCanvas(text: string) {
   const canvas = document.createElement('canvas');
@@ -233,6 +252,7 @@ function createLabelCanvas(text: string) {
   canvas.width = size;
   canvas.height = 64;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
   ctx.font = 'bold 28px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -269,25 +289,38 @@ function createBodyNode(body: CatalogBody) {
 
   let material: MeshBasicMaterial | MeshStandardMaterial;
   let geometry: SphereGeometry;
+  let mesh;
 
-  if (body.id === 'sun') {
+  if (['earth', 'moon', 'mars'].includes(body.id)) {
+    const radius = bodyBaseRadiusAu(body);
+    const quadtree = new PlanetQuadtree(body.id, radius, camera);
+    mesh = quadtree.group;
+    mesh.userData.isQuadtree = true;
+    mesh.userData.quadtree = quadtree;
+  } else if (body.id === 'sun') {
     geometry = geometryCache.sun;
     material = sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'star') {
     geometry = geometryCache.planet;
     material = new MeshBasicMaterial({ color: new Color(body.color) });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'moon') {
     geometry = geometryCache.moon;
     material = new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else {
     geometry = geometryCache.planet;
     const col = PLANET_COLORS[body.id] ?? body.color ?? '#888';
     material = new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 });
+    mesh = new Mesh(geometry, material);
+    mesh.scale.setScalar(bodyBaseRadiusAu(body));
   }
 
-  const mesh = new Mesh(geometry, material);
   const radius = bodyBaseRadiusAu(body);
-  mesh.scale.setScalar(radius);
   mesh.userData.bodyId = body.id;
   mesh.userData.rotationPeriodHours = body.rotationPeriodHours ?? null;
   mesh.userData.rotationOffsetRad = ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
@@ -378,7 +411,6 @@ const surveyMilkySphere = { position: new Vector3() };
 
 // ── Scene Assembly ───────────────────────────────────────────────────────────
 
-const showMoons = false;
 for (const body of catalog.bodies) {
   if (body.type === 'moon' && !showMoons) continue;
   createBodyNode(body);
@@ -396,6 +428,8 @@ let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { include
 const kuiperPop = generateKuiperBelt(5_000);
 
 const kuiperPositions = new Float32Array(kuiperPop.count * 3);
+const kuiperBinaryPositions = new Float32Array(kuiperPop.binaryCount * 3);
+const kuiperBinaryIndices: number[] = new Array(kuiperPop.binaryCount).fill(0);
 
 const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
 const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.massKg);
@@ -408,6 +442,9 @@ asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbatio
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
 solarSystemGroup.add(kuiperBeltRenderer.mesh);
+if (kuiperBeltRenderer.companionMesh) {
+  solarSystemGroup.add(kuiperBeltRenderer.companionMesh);
+}
 
 function refreshAsteroidBeltRenderer(population) {
   solarSystemGroup.remove(asteroidBeltRenderer.mesh);
@@ -446,14 +483,17 @@ function initPhaseOneAsteroids() {
   }).then((catalog) => {
     const gate = catalog.acceptance;
     if (!catalog.accepted) {
-      const reasons: string[] = [];
-      if (!gate.version.passed && gate.version.reason) reasons.push(gate.version.reason);
-      if (!gate.rows.passed && gate.rows.reason) reasons.push(gate.rows.reason);
-      if (!gate.taxonomy.passed && gate.taxonomy.reason) reasons.push(gate.taxonomy.reason);
-      if (!gate.checksum.passed && gate.checksum.reason) reasons.push(gate.checksum.reason);
-      if (!gate.latency.passed && gate.latency.reason) reasons.push(gate.latency.reason);
+      const reasons = gate.rejections.map(({ code, message }) => `[${code}] ${message}`);
+      renderAsteroidCatalogSourceStatus(
+        dom.statusCatalog,
+        rejectedAsteroidCatalogStatus(gate.rejections)
+      );
       console.warn('[phase-1] Acceptance gates failed:', reasons.join(' | '));
       return;
+    }
+
+    if (!gate.latency.passed && gate.latency.reason) {
+      console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
     }
 
     if (!catalog.asteroids.length) return;
@@ -467,6 +507,10 @@ function initPhaseOneAsteroids() {
     );
     if (phaseOnePopulation.count <= 0) return;
     refreshAsteroidBeltRenderer(phaseOnePopulation);
+    renderAsteroidCatalogSourceStatus(
+      dom.statusCatalog,
+      verifiedAsteroidCatalogStatus(catalog.sourceCount)
+    );
     refillBodyList();
     console.info(
       `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
@@ -481,12 +525,17 @@ function initPhaseOneAsteroids() {
       `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
     );
   }).catch((error) => {
+    renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
     console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
   });
 }
 
 propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
 kuiperBeltRenderer.updatePositions(kuiperPositions);
+if (kuiperPop.binaryCount > 0) {
+  propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
+  kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
+}
 initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
@@ -571,7 +620,14 @@ function applyScaleMode() {
   for (const body of catalog.bodies) {
     const mesh = bodyMeshes.get(body.id);
     if (!mesh) continue;
-    mesh.scale.setScalar(bodyBaseRadiusAu(body));
+    if (mesh.userData.isQuadtree) {
+      // Quadtrees rebuild geometry based on camera distance, scale doesn't apply directly via mesh.scale
+      // Instead, the new radius logic dictates standard size.
+      // For a robust implementation, the whole quadtree should likely be re-instanced or resize via uniforms
+      // For simplicity, we assume quadtree LODs aren't strictly changed scaling post-init.
+    } else {
+      mesh.scale.setScalar(bodyBaseRadiusAu(body));
+    }
   }
   sunCtrl.onScaleChange();
   // Notify belt renderers so asteroids use physical sizes in realistic mode
@@ -608,6 +664,7 @@ function disableModelWorkerIntegration() {
   modelWorker = null;
   modelWorkerEnabled = false;
   modelWorkerReady = false;
+  modelWorkerTickInFlight = false;
   latestModelWorkerState = null;
 }
 
@@ -631,6 +688,14 @@ function initializeModelWorker() {
     if (!message || typeof message !== 'object') return;
 
     if (message.type === 'ready') {
+      if (
+        message.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
+        || message.bodyCount !== modelWorkerBodyCount
+      ) {
+        console.warn('[modelWorker] incompatible ready contract');
+        disableModelWorkerIntegration();
+        return;
+      }
       modelWorkerReady = true;
       return;
     }
@@ -638,18 +703,25 @@ function initializeModelWorker() {
     if (message.type === 'state') {
       const stateMessage = message;
       const sequence = Number(stateMessage.sequence);
-      if (!Number.isFinite(sequence) || sequence < 0) return;
+      modelWorkerTickInFlight = false;
+      if (
+        stateMessage.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
+        || !Number.isInteger(sequence)
+        || sequence <= lastModelWorkerAcceptedSequence
+        || !Number.isFinite(stateMessage.tickJd)
+        || !isValidModelWorkerStateArray(stateMessage.bodies, modelWorkerBodyCount)
+      ) {
+        console.warn('[modelWorker] rejected malformed or stale state payload');
+        return;
+      }
 
-      const bodies = stateMessage.bodies instanceof Float32Array
-        ? stateMessage.bodies
-        : new Float32Array(stateMessage.bodies ?? 0);
-
-      if (bodies.length !== catalogBodyCount * MODEL_WORKER_RECORD_SIZE) return;
+      lastModelWorkerAcceptedSequence = sequence;
 
       latestModelWorkerState = {
         type: 'state',
+        schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
         sequence,
-        bodies,
+        bodies: stateMessage.bodies,
         tickJd: Number(stateMessage.tickJd),
         profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
       };
@@ -690,12 +762,16 @@ function updateModelLocally(deltaSeconds) {
 }
 
 function dispatchModelWorkerTick(deltaSeconds) {
-  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady) return;
+  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
 
   const warpState = sunCtrl.getWarpState();
   const metricState = warpState && warpState.direction
     ? {
-      direction: [warpState.direction.x, warpState.direction.y, warpState.direction.z],
+      direction: [
+        warpState.direction.x,
+        warpState.direction.y,
+        warpState.direction.z
+      ] as [number, number, number],
       sourceDistanceCm: warpState.sourceDistanceCm,
       energyErg: warpState.energyErg,
       timeSec: warpState.timeSec,
@@ -715,7 +791,9 @@ function dispatchModelWorkerTick(deltaSeconds) {
 
   try {
     modelWorker.postMessage(tickMessage);
+    modelWorkerTickInFlight = true;
   } catch (error) {
+    modelWorkerTickInFlight = false;
     console.warn('[modelWorker] tick failed:', error);
     disableModelWorkerIntegration();
   }
@@ -725,51 +803,81 @@ function applyLatestWorkerSnapshot() {
   if (!latestModelWorkerState || !modelWorkerReady) return false;
 
   const message = latestModelWorkerState;
+  if (message.sequence <= lastModelWorkerAppliedSequence) return false;
+
+  // Never let a delayed worker response freeze or rewind the scene. At most
+  // three animation frames of simulation-time skew are accepted; otherwise the
+  // main-thread fallback computes the current state and the worker catches up.
+  const maxSnapshotAgeDays = Math.max(1e-6, Math.abs(simState.timeScaleDaysPerSec) * 0.05);
+  if (Math.abs(simState.julianDate - message.tickJd) > maxSnapshotAgeDays) {
+    lastModelWorkerAppliedSequence = message.sequence;
+    return false;
+  }
+
   const bodies = message.bodies;
-  const expectedCount = catalogBodyCount;
+  const expectedCount = modelWorkerBodyCount;
   if (bodies.length !== expectedCount * MODEL_WORKER_RECORD_SIZE) return false;
 
   modelWorkerPositionsDirty.fill(0);
 
   for (let i = 0; i < expectedCount; i += 1) {
     const record = i * MODEL_WORKER_RECORD_SIZE;
-    const rawIndex = bodies[record];
-    const bodyIndex = Math.trunc(rawIndex);
-
-    if (!Number.isInteger(bodyIndex) || bodyIndex < 0 || bodyIndex >= expectedCount) {
-      continue;
-    }
-
-    modelWorkerWorldX[bodyIndex] = bodies[record + 1];
-    modelWorkerWorldY[bodyIndex] = bodies[record + 2];
-    modelWorkerWorldZ[bodyIndex] = bodies[record + 3];
-    modelWorkerWorldVx[bodyIndex] = bodies[record + 4];
-    modelWorkerWorldVy[bodyIndex] = bodies[record + 5];
-    modelWorkerWorldVz[bodyIndex] = bodies[record + 6];
-    modelWorkerPositionsDirty[bodyIndex] = 1;
+    modelWorkerWorldX[i] = bodies[record];
+    modelWorkerWorldY[i] = bodies[record + 1];
+    modelWorkerWorldZ[i] = bodies[record + 2];
+    modelWorkerWorldVx[i] = bodies[record + 3];
+    modelWorkerWorldVy[i] = bodies[record + 4];
+    modelWorkerWorldVz[i] = bodies[record + 5];
+    modelWorkerPositionsDirty[i] = 1;
   }
 
-  for (let bodyIndex = 0; bodyIndex < expectedCount; bodyIndex += 1) {
-    if (!modelWorkerPositionsDirty[bodyIndex]) continue;
+  for (let workerIndex = 0; workerIndex < expectedCount; workerIndex += 1) {
+    if (!modelWorkerPositionsDirty[workerIndex]) continue;
 
-    const body = catalog.bodies[bodyIndex];
+    const sourceIndex = modelWorkerSourceIndexByIndex[workerIndex];
+    const body = catalog.bodies[sourceIndex];
     if (!body) continue;
+
+    const wx = modelWorkerWorldX[workerIndex];
+    const wy = modelWorkerWorldY[workerIndex];
+    const wz = modelWorkerWorldZ[workerIndex];
+    const vx = modelWorkerWorldVx[workerIndex];
+    const vy = modelWorkerWorldVy[workerIndex];
+    const vz = modelWorkerWorldVz[workerIndex];
+
+    // Update the model independently of rendering reachability. A missing
+    // scene node must never turn a valid propagated state into a frozen one.
+    const state = model.getState(body.id);
+    if (state) {
+      state.worldPosition.set(wx, wy, wz);
+      state.worldVelocity.set(vx, vy, vz);
+
+      const parentIndex = modelWorkerParentIndexByIndex[workerIndex];
+      if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
+        state.relativePosition.set(
+          wx - modelWorkerWorldX[parentIndex],
+          wy - modelWorkerWorldY[parentIndex],
+          wz - modelWorkerWorldZ[parentIndex]
+        );
+        state.relativeVelocity.set(
+          vx - modelWorkerWorldVx[parentIndex],
+          vy - modelWorkerWorldVy[parentIndex],
+          vz - modelWorkerWorldVz[parentIndex]
+        );
+      } else {
+        state.relativePosition.set(wx, wy, wz);
+        state.relativeVelocity.set(vx, vy, vz);
+      }
+    }
 
     const node = bodyNodes.get(body.id);
     if (!node) continue;
-
-    const wx = modelWorkerWorldX[bodyIndex];
-    const wy = modelWorkerWorldY[bodyIndex];
-    const wz = modelWorkerWorldZ[bodyIndex];
-    const vx = modelWorkerWorldVx[bodyIndex];
-    const vy = modelWorkerWorldVy[bodyIndex];
-    const vz = modelWorkerWorldVz[bodyIndex];
 
     if (body.parentId) {
       if (body.parentId === 'sun') {
         node.position.set(wx, wy, wz);
       } else {
-        const parentIndex = catalogParentIndexByIndex[bodyIndex];
+        const parentIndex = modelWorkerParentIndexByIndex[workerIndex];
         if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
           node.position.set(
             wx - modelWorkerWorldX[parentIndex],
@@ -788,30 +896,9 @@ function applyLatestWorkerSnapshot() {
       node.visible = showMoons;
     }
 
-    const state = model.getState(body.id);
-    if (!state) continue;
-
-    state.worldPosition.set(wx, wy, wz);
-    state.worldVelocity.set(vx, vy, vz);
-
-    const parentIndex = catalogParentIndexByIndex[bodyIndex];
-    if (parentIndex >= 0 && modelWorkerPositionsDirty[parentIndex]) {
-      state.relativePosition.set(
-        wx - modelWorkerWorldX[parentIndex],
-        wy - modelWorkerWorldY[parentIndex],
-        wz - modelWorkerWorldZ[parentIndex]
-      );
-      state.relativeVelocity.set(
-        vx - modelWorkerWorldVx[parentIndex],
-        vy - modelWorkerWorldVy[parentIndex],
-        vz - modelWorkerWorldVz[parentIndex]
-      );
-    } else {
-      state.relativePosition.set(wx, wy, wz);
-      state.relativeVelocity.set(vx, vy, vz);
-    }
   }
 
+  lastModelWorkerAppliedSequence = message.sequence;
   return true;
 }
 
@@ -1017,7 +1104,7 @@ dom.agnStochastic?.addEventListener('change', () => {
 });
 
 dom.agnHypothesis?.addEventListener('change', () => {
-  const hypothesis = dom.agnHypothesis.value;
+  const hypothesis = (dom.agnHypothesis as HTMLSelectElement | null)?.value;
   if (hypothesis === 'h29' && dom.bodyInfo) {
     dom.bodyInfo.textContent = sunCtrl.getWarpInfoText?.() || 'H29 Warp Wave Selected';
   } else {
@@ -1037,11 +1124,11 @@ camera.lookAt(controls.target);
 updateCameraClipPlanes();
 updateBodyInfoPanel('sun');
 
-for (const line of orbitLines) line.visible = Boolean(dom.toggleOrbits?.checked);
-for (const entry of labels) entry.sprite.visible = Boolean(dom.toggleLabels?.checked);
+for (const line of orbitLines) line.visible = Boolean((dom.toggleOrbits as HTMLInputElement | null)?.checked);
+for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
-sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
+sunCtrl.setAgnObserverFrameMode(Boolean((dom.agnObserverFrame as HTMLInputElement | null)?.checked));
 
 resizeRenderer();
 renderer.render(scene, camera);
@@ -1050,7 +1137,7 @@ renderer.render(scene, camera);
 
 let prevTimestamp = performance.now();
 
-function animate(timestamp) {
+function animate(timestamp: number) {
   requestAnimationFrame(animate);
   const deltaSeconds = Math.max(0, (timestamp - prevTimestamp) / 1_000);
   prevTimestamp = timestamp;
@@ -1062,17 +1149,39 @@ function animate(timestamp) {
   syncAsteroidBeltInputs();
   propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
   kuiperBeltRenderer.updatePositions(kuiperPositions);
+  if (kuiperPop.binaryCount > 0) {
+    propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
+    kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
+  }
 
-  const simTimeSec = (simState.julianDate - J2000_JD) * DAY_SECONDS;
-  sunCtrl.update(simState.julianDate, simTimeSec);
+  // Solar visuals run on the WALL clock, not the simulation epoch. Feeding the
+  // epoch (~8.4e8 s) into sunController's `uniform float time` freezes every
+  // procedural effect: float32 ULP at that magnitude is 64 s, so a 1 s advance
+  // does not change the uniform. main's 56930fb paired this with a rate-bounded
+  // visual clock in sunVisuals.ts, which this tree does not carry.
+  sunCtrl.update(simState.julianDate, timestamp * 0.001);
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();
 
+  for (const mesh of bodyMeshes.values()) {
+    if (mesh.userData.isQuadtree) {
+      mesh.userData.quadtree.update();
+
+      const sunWorldPos = new Vector3(0, 0, 0);
+      const planetWorldPos = new Vector3();
+      mesh.getWorldPosition(planetWorldPos);
+      const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+
+      const meshInverse = mesh.matrixWorld.clone().invert();
+      const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+      mesh.userData.quadtree.setLightDirection(sunLocalDir);
+    }
+  }
+
   backgroundStars.position.copy(camera.position);
   controls.update();
   updateCameraClipPlanes();
-  resizeRenderer();
   renderer.render(scene, camera);
   timeController.updateHud();
 
@@ -1083,3 +1192,51 @@ function animate(timestamp) {
 }
 
 requestAnimationFrame(animate);
+
+// ── Resource Cleanup ──────────────────────────────────────────────────────────
+
+window.addEventListener('beforeunload', () => {
+  if (modelWorker) {
+    modelWorker.terminate();
+    modelWorker = null;
+  }
+
+  asteroidBeltRenderer.dispose();
+  kuiperBeltRenderer.dispose();
+
+  for (const mesh of bodyMeshes.values()) {
+    if (mesh.geometry) mesh.geometry.dispose();
+    if (mesh.material) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((m: { dispose: () => void }) => m.dispose());
+      } else {
+        mesh.material.dispose();
+      }
+    }
+  }
+
+  for (const line of orbitLines) {
+    line.geometry.dispose();
+    if (Array.isArray(line.material)) {
+      line.material.forEach((m: { dispose: () => void }) => m.dispose());
+    } else {
+      line.material.dispose();
+    }
+  }
+
+  for (const entry of labels) {
+    const sprite = entry.sprite;
+    if (sprite.material.map) sprite.material.map.dispose();
+    sprite.material.dispose();
+  }
+
+  backgroundStars.geometry.dispose();
+  if (Array.isArray(backgroundStars.material)) {
+    backgroundStars.material.forEach((m: { dispose: () => void }) => m.dispose());
+  } else {
+    backgroundStars.material.dispose();
+  }
+
+  if (sunTexture) sunTexture.dispose();
+  renderer.dispose();
+});

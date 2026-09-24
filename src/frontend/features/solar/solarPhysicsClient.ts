@@ -1,8 +1,50 @@
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
+import { clamp } from '../../../constants';
+import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
+
+/** Subset of `GET /solar/physics` JSON used by the frontend sun stack. */
+export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLike {
+  activity_index?: number;
+  synthetic_activity_index?: number;
+  corona?: {
+    features?: Array<Record<string, unknown>>;
+  };
+  pfss_field_lines?: {
+    source?: string;
+    carrington_rotation?: number;
+  };
+  coronal_holes?: unknown;
+  heliosphere?: unknown;
+  [key: string]: unknown;
+}
+
+interface SolarPhysicsClientOptions {
+  baseUrl: () => string;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  maxFeatures?: number;
+  fidelity?: string;
+  forcing?: string;
+  liveData?: boolean;
 }
 
 export class SolarPhysicsClient {
+  baseUrl: () => string;
+  pollIntervalMs: number;
+  timeoutMs: number;
+  maxFeatures: number;
+  fidelity: string;
+  forcing: string;
+  liveData: boolean;
+  lastError: string | null;
+  lastSuccessMs: number;
+  lastRefreshMs: number;
+  lastLatencyMs: number;
+  inFlight: boolean;
+  nextRefreshMs: number;
+  latest: SolarPhysicsStatePayload | null;
+  abortController: AbortController | null;
+  _reqId: number;
+
   constructor({
     baseUrl,
     pollIntervalMs = 1_800,
@@ -11,7 +53,7 @@ export class SolarPhysicsClient {
     fidelity = 'high',
     forcing = 'hybrid',
     liveData = true
-  }) {
+  }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
     this.pollIntervalMs = clamp(Number(pollIntervalMs), 300, 30_000);
     this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
@@ -31,11 +73,11 @@ export class SolarPhysicsClient {
     this._reqId = 0;
   }
 
-  latestState() {
+  latestState(): SolarPhysicsStatePayload | null {
     return this.latest;
   }
 
-  status() {
+  status(): Record<string, unknown> {
     return {
       lastError: this.lastError,
       lastSuccessMs: this.lastSuccessMs,
@@ -46,7 +88,7 @@ export class SolarPhysicsClient {
     };
   }
 
-  dispose() {
+  dispose(): void {
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -54,7 +96,7 @@ export class SolarPhysicsClient {
     this.inFlight = false;
   }
 
-  async maybeRefresh(jd, force = false) {
+  async maybeRefresh(jd: number, force = false): Promise<boolean> {
     const nowMs = Date.now();
 
     if (this.inFlight) {
@@ -82,7 +124,7 @@ export class SolarPhysicsClient {
     });
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
-    let timeoutHandle = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
     this.abortController = controller;
     
@@ -100,15 +142,15 @@ export class SolarPhysicsClient {
       if (!response.ok) {
         throw new Error(`Solar physics request failed (${response.status})`);
       }
-      const payload = await response.json();
+      const payload = (await response.json()) as SolarPhysicsStatePayload;
       this.latest = payload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();
       this.lastError = null;
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
-    } catch (error) {
-      this.lastError = error?.message ?? String(error);
+    } catch (error: unknown) {
+      this.lastError = error instanceof Error ? error.message : String(error);
       this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs);
       return false;
     } finally {

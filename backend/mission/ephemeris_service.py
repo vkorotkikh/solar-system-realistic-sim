@@ -101,6 +101,10 @@ class EphemerisService:
             "kepler": True,
         }
 
+    def provider_chain(self) -> List[str]:
+        """Return the ordered provider fallback chain for this instance."""
+        return list(self._provider_chain())
+
     def sample_state(self, body_id: str, jd: float) -> EphemerisSample:
         if body_id not in self._body_by_id:
             raise KeyError(f"Unknown body `{body_id}`")
@@ -138,8 +142,8 @@ class EphemerisService:
     def _provider_chain(self) -> List[str]:
         if self._provider == "auto":
             # Keep default mission planning deterministic/offline-friendly while
-            # still preferring high-fidelity SPICE when available.
-            return ["spice", "kepler", "horizons"]
+            # still preferring high-fidelity SPICE and Horizons when available.
+            return ["spice", "horizons", "kepler"]
         return [self._provider]
 
     def _sample_kepler(self, body_id: str, jd: float) -> EphemerisSample:

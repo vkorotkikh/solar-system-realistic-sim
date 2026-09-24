@@ -1,7 +1,28 @@
-import { Vector3 } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 
-export function createCameraTransitions({ camera, controls }) {
-  const state = {
+interface ControlsLike {
+  enabled: boolean;
+  target: Vector3;
+}
+
+interface CameraTransitionState {
+  active: boolean;
+  elapsedSec: number;
+  durationSec: number;
+  startTarget: Vector3;
+  startCamera: Vector3;
+  endTarget: Vector3;
+  endCamera: Vector3;
+  onComplete: (() => void) | null;
+}
+
+interface CreateCameraTransitionsArgs {
+  camera: PerspectiveCamera;
+  controls: ControlsLike;
+}
+
+export function createCameraTransitions({ camera, controls }: CreateCameraTransitionsArgs) {
+  const state: CameraTransitionState = {
     active: false,
     elapsedSec: 0,
     durationSec: 1.0,
@@ -12,7 +33,12 @@ export function createCameraTransitions({ camera, controls }) {
     onComplete: null
   };
 
-  function startCameraTransition(endTarget, endCamera, durationSec = 1.2, onComplete = null) {
+  function startCameraTransition(
+    endTarget: Vector3,
+    endCamera: Vector3,
+    durationSec = 1.2,
+    onComplete: (() => void) | null = null
+  ): void {
     state.active = true;
     state.elapsedSec = 0;
     state.durationSec = Math.max(0.05, durationSec);
@@ -24,7 +50,7 @@ export function createCameraTransitions({ camera, controls }) {
     controls.enabled = false;
   }
 
-  function updateCameraTransition(deltaSeconds) {
+  function updateCameraTransition(deltaSeconds: number): void {
     if (!state.active) return;
     state.elapsedSec += Math.max(0, deltaSeconds);
     const normalized = Math.min(1, state.elapsedSec / state.durationSec);
@@ -38,23 +64,23 @@ export function createCameraTransitions({ camera, controls }) {
       state.active = false;
       state.onComplete = null;
       controls.enabled = true;
-      if (onCompleteHandler) {
+      if (typeof onCompleteHandler === 'function') {
         onCompleteHandler();
       }
     }
   }
 
-  function cancelCameraTransition() {
+  function cancelCameraTransition(): void {
     state.active = false;
     state.onComplete = null;
     controls.enabled = true;
   }
 
-  function isCameraTransitionActive() {
+  function isCameraTransitionActive(): boolean {
     return state.active;
   }
 
-  function flyToInterstellarTarget(targetPosition, onComplete) {
+  function flyToInterstellarTarget(targetPosition: Vector3, onComplete: (() => void) | null = null): void {
     // Calculate a safe standoff distance for the approach (e.g. 1000 AU)
     // The actual system switch handles the final precision approach.
     const approachDistance = 1000;

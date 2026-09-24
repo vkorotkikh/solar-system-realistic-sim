@@ -1,71 +1,72 @@
 #!/usr/bin/env node
 /**
- * Moon frame-conversion regression gate.
+ * Moon frame-conversion regression gate (standalone diagnostic runner).
  *
  * `src/sim/catalog.ts` converts satellite elements from their source frame
  * (`laplace`, `equatorial`) into the ecliptic frame the propagator expects.
  * A sign or node-referencing error there is invisible in the UI today because
  * moons are not rendered (`showMoons = false`), but it silently corrupts every
- * non-ecliptic moon's position — historically by up to two orbital radii.
+ * non-ecliptic moon's position -- historically by up to two orbital radii.
  *
- * This check propagates each moon's catalog elements and compares the resulting
+ * This propagates each moon's catalog elements and compares the resulting
  * parent-relative state against a committed JPL Horizons snapshot. It needs no
  * network: the truth values live in scripts/fixtures/.
  *
- *   node scripts/verify-moon-frames.mjs [--verbose]
+ * Two independent quantities are gated per moon (see src/sim/moonFrameCheck.ts):
+ *   dr/r  -- relative position error; catches everything, but conflates plane
+ *            error with phase error
+ *   plane -- angle between modelled and true orbit normals; phase-immune, so it
+ *            still bites on the moons whose dr/r tolerance is deliberately loose
  *
- * Exit 0 = all moons within tolerance. Exit 1 = regression.
+ * The same comparison runs inside `npm test` as src/sim/moonFrames.horizons.test.ts.
+ * This runner exists for the sorted table and for debugging without vitest.
+ *
+ *   node scripts/verify-moon-frames.mjs [--verbose] [--json]
+ *
+ * MOON_FRAMES_CACHE_DIR overrides where the esbuild bundle is written.
+ *
+ * Exit 0 = all moons within tolerance.
+ * Exit 1 = regression (a moon is outside tolerance, or missing from the catalog).
+ * Exit 2 = the check could not run (missing/malformed fixture, bundle failure).
  */
 
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { build } from 'esbuild';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const VERBOSE = process.argv.includes('--verbose');
+const AS_JSON = process.argv.includes('--json');
 
-const AU_KM = 149597870.7;
-const DAY_SEC = 86400;
-const J2000_JD = 2451545.0;
-
-// Per-moon tolerance on |r_model - r_truth| / |r_truth|.
-// The default is tight; the listed moons carry a known element-set defect in
-// src/data/moons.json (correct orbit plane, wrong phase) that is tracked
-// separately -- they are pinned here so the gate still catches a frame
-// regression on them without failing on the pre-existing data issue.
-const DEFAULT_TOL = 0.15;
-const KNOWN_DATA_DEFECT = {
-  Titan: 2.0,
-  Iapetus: 2.0,
-  Phoebe: 2.0,
-  Cordelia: 2.0,
-  Pasiphae: 0.2,
-  Sinope: 0.2,
-  Carme: 0.2
-};
-
-const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const mag = (a) => Math.hypot(a[0], a[1], a[2]);
-const cross = (a, b) => [
-  a[1] * b[2] - a[2] * b[1],
-  a[2] * b[0] - a[0] * b[2],
-  a[0] * b[1] - a[1] * b[0]
-];
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const angleDeg = (a, b) =>
-  (Math.acos(Math.max(-1, Math.min(1, dot(a, b) / (mag(a) * mag(b))))) * 180) / Math.PI;
+function cacheDir() {
+  // Preferred location keeps the artefact inside the repo it belongs to, but
+  // node_modules may be absent, symlinked to a shared tree, or read-only.
+  const preferred =
+    process.env.MOON_FRAMES_CACHE_DIR ||
+    path.join(ROOT, 'node_modules', '.cache', 'verify-moon-frames');
+  try {
+    fs.mkdirSync(preferred, { recursive: true });
+    fs.accessSync(preferred, fs.constants.W_OK);
+    return preferred;
+  } catch {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'verify-moon-frames-'));
+  }
+}
 
 async function loadSim() {
-  const entry = path.join(ROOT, 'node_modules', '.cache', 'verify-moon-frames-entry.mjs');
-  fs.mkdirSync(path.dirname(entry), { recursive: true });
+  const dir = cacheDir();
+  const entry = path.join(dir, 'entry.mjs');
+  const from = (rel) => JSON.stringify(path.join(ROOT, rel));
   fs.writeFileSync(
     entry,
-    `export { createSolarSystemCatalog } from ${JSON.stringify(path.join(ROOT, 'src/sim/catalog.ts'))};\n` +
-      `export { propagateKeplerOrbit } from ${JSON.stringify(path.join(ROOT, 'src/sim/orbitMath.ts'))};\n`
+    `export { createSolarSystemCatalog } from ${from('src/sim/catalog.ts')};\n` +
+      `export { propagateKeplerOrbit } from ${from('src/sim/orbitMath.ts')};\n` +
+      `export { evaluateMoonFrames, validateFixture } from ${from('src/sim/moonFrameCheck.ts')};\n`
   );
-  const outfile = path.join(ROOT, 'node_modules', '.cache', 'verify-moon-frames-bundle.cjs');
+  const outfile = path.join(dir, 'bundle.cjs');
   await build({
     entryPoints: [entry],
     bundle: true,
@@ -78,90 +79,76 @@ async function loadSim() {
   return require(outfile);
 }
 
-function parentRelativeState(sim, catalog, moon, jd) {
-  const pos = { x: 0, y: 0, z: 0 };
-  const vel = { x: 0, y: 0, z: 0 };
-  const target = { set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
-  const tvel = { set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
-  Object.setPrototypeOf(pos, target);
-  Object.setPrototypeOf(vel, tvel);
-  const p = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
-  const v = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
-  sim.propagateKeplerOrbit(moon.orbit, jd - moon.orbit.epochJd, p, v);
-  return {
-    r: [p.x * AU_KM, p.y * AU_KM, p.z * AU_KM],
-    v: [(v.x * AU_KM) / DAY_SEC, (v.y * AU_KM) / DAY_SEC, (v.z * AU_KM) / DAY_SEC]
-  };
-}
-
 async function main() {
   const fixturePath = path.join(HERE, 'fixtures', 'moon-frames-j2000-horizons.json');
   if (!fs.existsSync(fixturePath)) {
     console.error(`missing fixture: ${fixturePath}`);
     process.exit(2);
   }
-  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  let fixture;
+  try {
+    fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  } catch (err) {
+    console.error(`unreadable fixture ${fixturePath}: ${err.message}`);
+    process.exit(2);
+  }
+
   const sim = await loadSim();
+
+  const fixtureProblems = sim.validateFixture(fixture);
+  if (fixtureProblems.length) {
+    console.error([`fixture ${fixturePath}:`, ...fixtureProblems].join('\n  '));
+    process.exit(2);
+  }
+
   const catalog = sim.createSolarSystemCatalog();
+  const { rows, missing } = sim.evaluateMoonFrames(catalog, sim.propagateKeplerOrbit, fixture);
+  const radialWarnings = rows.map((r) => r.radialWarning).filter(Boolean);
+  const failures = rows.filter((r) => !r.ok).length + missing.length;
+  const checked = rows.length;
 
-  const byName = new Map();
-  for (const b of catalog.bodies) {
-    if (b.type === 'moon' && !byName.has(b.name)) byName.set(b.name, b);
-  }
-
-  const rows = [];
-  let failures = 0;
-  let checked = 0;
-
-  for (const [name, truth] of Object.entries(fixture.bodies)) {
-    const moon = byName.get(name);
-    if (!moon) {
-      console.error(`  MISSING from catalog: ${name}`);
-      failures += 1;
-      continue;
-    }
-    const st = parentRelativeState(sim, catalog, moon, truth.jd ?? J2000_JD);
-    const rt = [truth.x, truth.y, truth.z];
-    const vt = [truth.vx, truth.vy, truth.vz];
-    const dr = mag(sub(st.r, rt));
-    const rel = dr / mag(rt);
-    const sep = angleDeg(st.r, rt);
-    const plane = angleDeg(cross(st.r, st.v), cross(rt, vt));
-    const tol = KNOWN_DATA_DEFECT[name] ?? DEFAULT_TOL;
-    const ok = rel <= tol;
-    if (!ok) failures += 1;
-    checked += 1;
-    rows.push({ name, frame: moon.orbitFrameSource ?? 'ecliptic', rel, sep, plane, tol, ok });
-  }
-
-  rows.sort((a, b) => b.rel - a.rel);
-  const header = 'moon         frame        dr/r      sep(deg)  plane(deg)  tol     ';
-  if (VERBOSE || failures) {
-    console.log(header);
+  if (AS_JSON) {
+    console.log(JSON.stringify({ checked, failures, missing, radialWarnings, rows }, null, 2));
+  } else if (VERBOSE || failures) {
+    for (const name of missing) console.error(`  MISSING from catalog: ${name}`);
+    console.log('moon         frame        dr/r      sep(deg)  plane(deg)   tol  planeTol  verdict');
     for (const r of rows) {
+      const why = r.ok
+        ? 'ok'
+        : `FAIL (${[!r.positionOk && 'dr/r', !r.planeOk && 'plane'].filter(Boolean).join('+')})`;
       console.log(
         r.name.padEnd(12),
         String(r.frame).padEnd(12),
         r.rel.toFixed(4).padStart(8),
-        r.sep.toFixed(2).padStart(9),
-        r.plane.toFixed(2).padStart(11),
-        r.tol.toFixed(2).padStart(6),
-        r.ok ? '  ok' : '  FAIL'
+        r.sepDeg.toFixed(2).padStart(9),
+        r.planeDeg.toFixed(2).padStart(11),
+        r.positionTol.toFixed(2).padStart(6),
+        String(r.planeTolDeg).padStart(9),
+        ' ' + why
       );
     }
     console.log('');
+  }
+
+  if (radialWarnings.length) {
+    console.error(
+      'fixture radial-magnitude warnings (|r| is frame-invariant, so these point at the\n' +
+        'snapshot or the element set, NOT at the frame conversion):\n  ' +
+        radialWarnings.join('\n  ') +
+        '\n'
+    );
   }
 
   if (failures) {
     console.error(
       `moon-frame check FAILED: ${failures} of ${checked} moons outside tolerance.\n` +
         'A frame-conversion regression places moons on the wrong side of their parent.\n' +
-        'See src/sim/catalog.ts (orbitNormalFromElements / elementsFromPlane / ' +
-        'PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC).'
+        'See src/sim/catalog.ts (convertMoonOrbitFrameToEcliptic / orbitNormalFromElements /\n' +
+        'elementsFromOrbitNormal / sourcePoleInEcliptic).'
     );
     process.exit(1);
   }
-  console.log(`moon-frame check passed: ${checked} moons within tolerance.`);
+  if (!AS_JSON) console.log(`moon-frame check passed: ${checked} moons within tolerance.`);
 }
 
 main().catch((err) => {

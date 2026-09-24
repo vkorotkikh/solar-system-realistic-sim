@@ -3,6 +3,8 @@
  * Each texture is generated as a canvas element that can be used with CanvasTexture.
  */
 
+import { lerp } from './constants';
+
 const W = 1024;
 const H = 512;
 
@@ -78,10 +80,6 @@ function fbm(x: number, y: number, z: number, octaves = 5, lacunarity = 2.0, gai
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
 }
 
 function lerpRGB(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number, t: number): RGB {

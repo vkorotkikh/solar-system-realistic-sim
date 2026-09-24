@@ -19,12 +19,63 @@ export const CHANNEL_VISUAL_WEIGHTS = {
   aia_304: { blendBoost: 0.35, emissionBoost: 0.55, activityBoost: 0.35, coronaHue: [1.0, 0.18, 0.08] },
 };
 
-function asFiniteNumber(value) {
+type AiaChannelKey = keyof typeof CHANNEL_VISUAL_WEIGHTS;
+
+interface AiaChannelEntryLike {
+  image_id?: unknown;
+  image_date?: unknown;
+  tile_url?: unknown;
+}
+
+interface AiaSourceLike {
+  freshness_proxy?: unknown;
+  activity_proxy?: unknown;
+  channel_activity_proxy?: Record<string, unknown> | null;
+  visualization?: {
+    preferred_channel?: unknown;
+  } | null;
+  channels?: Record<string, AiaChannelEntryLike> | null;
+}
+
+export interface SolarObservationPhysicsStateLike {
+  data_assimilation?: {
+    applied?: unknown;
+    observed_confidence?: unknown;
+    sources?: {
+      sdo_aia?: AiaSourceLike | null;
+    } | null;
+  } | null;
+}
+
+interface PickedAiaChannel {
+  channel: string;
+  imageId: string;
+  imageDate: string | null;
+  tileUrl: string;
+}
+
+function isKnownAiaChannel(value: string): value is AiaChannelKey {
+  return Object.prototype.hasOwnProperty.call(CHANNEL_VISUAL_WEIGHTS, value);
+}
+
+function asFiniteNumber(value: unknown): number | null {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY, overrideChannel = null) {
+function asFreshnessProxy(imageDate: unknown): number | null {
+  if (typeof imageDate !== 'string' || !imageDate) return null;
+  const parsedMs = Date.parse(imageDate);
+  if (!Number.isFinite(parsedMs)) return null;
+  const ageMs = Math.max(0, Date.now() - parsedMs);
+  return clampUnit(1 - ageMs / (6 * 3_600_000));
+}
+
+export function pickAiaObservationChannel(
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
+  preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY,
+  overrideChannel: string | null = null
+): PickedAiaChannel | null {
   const sdoAia = physicsState?.data_assimilation?.sources?.sdo_aia;
   if (!sdoAia || typeof sdoAia !== 'object') return null;
 
@@ -66,7 +117,11 @@ export function pickAiaObservationChannel(physicsState, preferredOrder = DEFAULT
   return null;
 }
 
-export function buildAiaProxyTextureUrl(baseUrl, channel, imageId = null) {
+export function buildAiaProxyTextureUrl(
+  baseUrl: string | null | undefined,
+  channel: string | null | undefined,
+  imageId: string | null = null
+): string | null {
   const base = `${baseUrl ?? ''}`.trim().replace(/\/+$/, '');
   const normalizedChannel = `${channel ?? ''}`.trim().toLowerCase();
   if (!base || !normalizedChannel) return null;
@@ -79,12 +134,32 @@ export function buildAiaProxyTextureUrl(baseUrl, channel, imageId = null) {
   return `${base}/solar/realtime/aia-tile?${query.toString()}`;
 }
 
-export function deriveSunObservationControls(physicsState, fallbackActivity = 0.5, activeChannel = null) {
+export function deriveSunObservationControls(
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
+  fallbackActivity = 0.5,
+  activeChannel = null as string | null,
+  {
+    hasObservationTexture = false,
+    selectedChannel = undefined as string | null | undefined,
+    selectedImageDate = undefined as string | null | undefined
+  } = {}
+) {
   const assimilation = physicsState?.data_assimilation;
   const sdoAia = assimilation?.sources?.sdo_aia;
+  const selectedChannelKey = `${selectedChannel ?? activeChannel ?? ''}`.trim().toLowerCase() || null;
+  const selectedEntry = selectedChannelKey ? sdoAia?.channels?.[selectedChannelKey] : null;
 
   const confidenceRaw = asFiniteNumber(assimilation?.observed_confidence);
   const confidence = confidenceRaw !== null ? clampUnit(confidenceRaw) : 0;
+
+  const freshnessRaw = asFiniteNumber(sdoAia?.freshness_proxy);
+  const selectedFreshness = asFreshnessProxy(selectedImageDate ?? selectedEntry?.image_date);
+  const observedFreshness = clampUnit(
+    Math.max(
+      freshnessRaw !== null ? freshnessRaw : 0,
+      selectedFreshness !== null ? selectedFreshness : 0
+    )
+  );
 
   let sdoSignal = asFiniteNumber(sdoAia?.activity_proxy);
   if (sdoSignal === null && sdoAia?.channel_activity_proxy && typeof sdoAia.channel_activity_proxy === 'object') {
@@ -105,28 +180,47 @@ export function deriveSunObservationControls(physicsState, fallbackActivity = 0.
   if (sdoSignal === null) {
     sdoSignal = clampUnit(asFiniteNumber(fallbackActivity) ?? 0.5);
   }
+  const channelActivityRaw = selectedChannelKey && sdoAia?.channel_activity_proxy && typeof sdoAia.channel_activity_proxy === 'object'
+    ? asFiniteNumber(sdoAia.channel_activity_proxy[selectedChannelKey])
+    : null;
+  const channelActivity = channelActivityRaw !== null ? clampUnit(channelActivityRaw) : sdoSignal;
 
   const assimilationApplied = assimilation?.applied === true;
-  let observationBlend = clampUnit(
-    (assimilationApplied ? 0.12 : 0.04)
-    + confidence * (assimilationApplied ? 0.52 : 0.14)
-    + sdoSignal * 0.12
+  const imageryQuality = clampUnit(
+    confidence * 0.52
+    + observedFreshness * 0.28
+    + channelActivity * 0.20
   );
-  let observationEmission = clampUnit(0.16 + sdoSignal * 0.78);
+  let observationBlend = clampUnit(
+    (assimilationApplied ? 0.10 : 0.03)
+    + confidence * (assimilationApplied ? 0.42 : 0.12)
+    + observedFreshness * 0.18
+    + sdoSignal * 0.10
+  );
+  let observationEmission = clampUnit(0.12 + sdoSignal * 0.60 + channelActivity * 0.18 + observedFreshness * 0.10);
 
-  const channelKey = activeChannel && activeChannel !== 'auto' ? activeChannel : null;
-  const weights = channelKey ? (CHANNEL_VISUAL_WEIGHTS[channelKey] ?? null) : null;
+  if (!hasObservationTexture) {
+    observationBlend *= 0.42;
+    observationEmission *= 0.78;
+  }
+
+  const channelKey = selectedChannelKey && selectedChannelKey !== 'auto' ? selectedChannelKey : null;
+  const weights = channelKey && isKnownAiaChannel(channelKey)
+    ? CHANNEL_VISUAL_WEIGHTS[channelKey]
+    : null;
 
   let coronaHue = null;
   let activityBoost = 0;
 
   if (weights) {
-    // When a specific channel is actively selected, force strong visual impact
-    // even without backend data, so the user sees an immediate dramatic change
-    observationBlend = clampUnit(observationBlend + weights.blendBoost);
-    observationEmission = clampUnit(observationEmission + weights.emissionBoost);
-    activityBoost = weights.activityBoost ?? 0;
-    coronaHue = weights.coronaHue ?? null;
+    const channelInfluence = clampUnit(
+      (hasObservationTexture ? 0.24 : 0.02)
+      + imageryQuality * 0.76
+    );
+    observationBlend = clampUnit(observationBlend + weights.blendBoost * channelInfluence);
+    observationEmission = clampUnit(observationEmission + weights.emissionBoost * channelInfluence);
+    activityBoost = (weights.activityBoost ?? 0) * channelInfluence;
+    coronaHue = channelInfluence > 0.08 ? (weights.coronaHue ?? null) : null;
   }
 
   return {
@@ -134,6 +228,7 @@ export function deriveSunObservationControls(physicsState, fallbackActivity = 0.
     observationEmission,
     observedSignal: sdoSignal,
     observedConfidence: confidence,
+    observedFreshness,
     coronaHue,
     activityBoost
   };

@@ -11,48 +11,116 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   Sprite,
   SpriteMaterial,
   SphereGeometry,
   Vector3
 } from 'three';
 import { AU_KM, J2000_JD, julianDateFromUnixMs } from '../../../constants';
+import {
+  PRIMARY_MODELS,
+  meanMotionFromSemimajorAxis,
+  propagateAroundPrimary,
+  semimajorAxisFromMeanMotion,
+  type PrimaryModel,
+  type PropagatedSatellite
+} from './satellitePropagationCore';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
 const DAY_SECONDS = 86_400;
 
-const PRIMARY_MODELS = {
-  earth: {
-    id: 'earth',
-    muKm3S2: 398_600.4418,
-    j2: 1.08262668e-3,
-    equatorialRadiusKm: 6_378.137,
-    obliquityRad: 23.439291111 * DEG_TO_RAD
-  },
-  moon: {
-    id: 'moon',
-    muKm3S2: 4_902.800066,
-    j2: 2.032e-4,
-    equatorialRadiusKm: 1_738.1,
-    obliquityRad: 1.5424 * DEG_TO_RAD
-  },
-  mars: {
-    id: 'mars',
-    muKm3S2: 42_828.375214,
-    j2: 1.96045e-3,
-    equatorialRadiusKm: 3_396.19,
-    obliquityRad: 25.19 * DEG_TO_RAD
-  }
-};
-
 const DEFAULT_TLE_SOURCES_EARTH = {
   stations: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
   geo: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle'
 };
-const SATELLITE_ICON_TEXTURES = new Map();
+const SATELLITE_ICON_TEXTURES = new Map<string, CanvasTexture>();
 
-function clamp01(value) {
+interface SatelliteCatalogEntry {
+  id?: string;
+  name?: string;
+  category?: string;
+  epochJd?: number;
+  aKm?: number;
+  altitudeKm?: number;
+  e?: number;
+  iDeg?: number;
+  ascendingNodeDeg?: number;
+  argPeriapsisDeg?: number;
+  meanAnomalyDeg?: number;
+  meanMotionRevDay?: number;
+  periodHours?: number;
+  periodDays?: number;
+  frame?: string;
+}
+
+interface MarkerPixelSize {
+  min: number;
+  preferred: number;
+  max: number;
+}
+
+interface MarkerColorOverrides {
+  default?: string;
+  [category: string]: string | undefined;
+}
+
+interface NormalizedSatellite extends PropagatedSatellite {
+  id: string;
+  name: string;
+  category: string;
+  meanMotionRevDay: number;
+}
+
+interface SatelliteWorkerSnapshot {
+  jd0: number;
+  jd1: number;
+  positions0: Float32Array;
+  positions1: Float32Array;
+  count: number;
+}
+
+interface SatelliteWorkerReadyMessage {
+  type: 'ready';
+  count: number;
+}
+
+interface SatelliteWorkerSnapshotMessage {
+  type: 'snapshot';
+  jd0: number;
+  jd1: number;
+  count: number;
+  positions0: Float32Array | ArrayLike<number>;
+  positions1: Float32Array | ArrayLike<number>;
+}
+
+type SatelliteWorkerMessage = SatelliteWorkerReadyMessage | SatelliteWorkerSnapshotMessage;
+
+interface SatelliteViewState {
+  camera?: { fov: number; position: Vector3 };
+  viewportHeight?: number;
+}
+
+interface OrbitalSatelliteSystemOptions {
+  primaryId?: string;
+  maxGeoCount?: number;
+  showOrbits?: boolean;
+  useJ2?: boolean;
+  tleSources?: Record<string, string> | null;
+  catalogSatellites?: SatelliteCatalogEntry[];
+  useInstancing?: boolean;
+  useWorkerPropagation?: boolean;
+  workerLeadSeconds?: number;
+  workerCadenceMs?: number;
+  maxOrbitLines?: number;
+  markerStyle?: string;
+  markerPixelSize?: Partial<MarkerPixelSize> | null;
+  markerBaseScaleAu?: number | null;
+  markerColorOverrides?: MarkerColorOverrides | null;
+}
+
+function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
@@ -60,27 +128,7 @@ function nowMs() {
   return globalThis.performance?.now?.() ?? Date.now();
 }
 
-function normalizeRadians(angle) {
-  const wrapped = angle % TWO_PI;
-  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
-}
-
-function solveKepler(meanAnomalyRad, eccentricity, tolerance = 1e-9, maxIterations = 24) {
-  const e = Math.max(0, Math.min(0.999999, eccentricity));
-  let eccentricAnomaly = e < 0.8 ? meanAnomalyRad : Math.PI;
-
-  for (let i = 0; i < maxIterations; i += 1) {
-    const f = eccentricAnomaly - e * Math.sin(eccentricAnomaly) - meanAnomalyRad;
-    const fp = 1 - e * Math.cos(eccentricAnomaly);
-    const delta = f / fp;
-    eccentricAnomaly -= delta;
-    if (Math.abs(delta) < tolerance) break;
-  }
-
-  return eccentricAnomaly;
-}
-
-function tleEpochToJulian(epochYearTwoDigits, dayOfYearFloat) {
+function tleEpochToJulian(epochYearTwoDigits: number, dayOfYearFloat: number): number {
   const twoDigitYear = Number(epochYearTwoDigits);
   const year = twoDigitYear >= 57 ? 1900 + twoDigitYear : 2000 + twoDigitYear;
   const dayWhole = Math.floor(dayOfYearFloat);
@@ -90,71 +138,92 @@ function tleEpochToJulian(epochYearTwoDigits, dayOfYearFloat) {
   return julianDateFromUnixMs(unixMs);
 }
 
-function sanitizeId(name) {
+function sanitizeId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function meanMotionFromSemimajorAxis(aKm, muKm3S2) {
-  const nRadSec = Math.sqrt(muKm3S2 / (aKm * aKm * aKm));
-  return (nRadSec * DAY_SECONDS) / TWO_PI;
-}
-
-function semimajorAxisFromMeanMotion(meanMotionRevDay, muKm3S2) {
-  const nRadSec = (meanMotionRevDay * TWO_PI) / DAY_SECONDS;
-  return Math.cbrt(muKm3S2 / (nRadSec * nRadSec));
-}
-
-function normalizeCatalogSatellite(entry, primaryModel) {
+function normalizeCatalogSatellite(entry: SatelliteCatalogEntry, primaryModel: PrimaryModel): NormalizedSatellite | null {
   const name = `${entry.name ?? 'Satellite'}`.trim();
   const id = entry.id ? `${entry.id}` : `sat-${sanitizeId(name)}`;
   const category = `${entry.category ?? 'science'}`;
-
-  const meanMotionRevDay = Number.isFinite(entry.meanMotionRevDay)
+  const periodHours = Number(entry.periodHours);
+  const periodDays = Number(entry.periodDays);
+  const altitudeKm = Number(entry.altitudeKm);
+  const providedMeanMotionRevDay = typeof entry.meanMotionRevDay === 'number' && Number.isFinite(entry.meanMotionRevDay)
     ? entry.meanMotionRevDay
-    : Number.isFinite(entry.periodHours)
-      ? 24 / entry.periodHours
-      : Number.isFinite(entry.periodDays)
-        ? 1 / entry.periodDays
-        : null;
-
-  const aKm = Number.isFinite(entry.aKm)
+    : null;
+  const providedAKm = typeof entry.aKm === 'number' && Number.isFinite(entry.aKm)
     ? entry.aKm
-    : Number.isFinite(entry.altitudeKm)
-      ? primaryModel.equatorialRadiusKm + entry.altitudeKm
-      : meanMotionRevDay
-        ? semimajorAxisFromMeanMotion(meanMotionRevDay, primaryModel.muKm3S2)
-        : null;
+    : null;
 
-  if (!Number.isFinite(aKm) || aKm <= 0) {
+  const meanMotionRevDay = providedMeanMotionRevDay
+    ?? (
+      Number.isFinite(periodHours)
+        ? 24 / periodHours
+        : Number.isFinite(periodDays)
+          ? 1 / periodDays
+          : null
+    );
+
+  const aKm = providedAKm
+    ?? (
+      Number.isFinite(altitudeKm)
+        ? primaryModel.equatorialRadiusKm + altitudeKm
+        : typeof meanMotionRevDay === 'number'
+          ? semimajorAxisFromMeanMotion(meanMotionRevDay, primaryModel.muKm3S2)
+          : null
+    );
+
+  if (typeof aKm !== 'number' || !Number.isFinite(aKm) || aKm <= 0) {
     return null;
   }
 
-  const resolvedMeanMotion = Number.isFinite(meanMotionRevDay)
+  const resolvedMeanMotion = typeof meanMotionRevDay === 'number' && Number.isFinite(meanMotionRevDay)
     ? meanMotionRevDay
     : meanMotionFromSemimajorAxis(aKm, primaryModel.muKm3S2);
 
-  if (!Number.isFinite(resolvedMeanMotion) || resolvedMeanMotion <= 0) {
+  if (typeof resolvedMeanMotion !== 'number' || !Number.isFinite(resolvedMeanMotion) || resolvedMeanMotion <= 0) {
     return null;
   }
+
+  const eccentricity = typeof entry.e === 'number' && Number.isFinite(entry.e)
+    ? Math.max(0, Math.min(0.9999, entry.e))
+    : 0;
+  const inclinationDeg = typeof entry.iDeg === 'number' && Number.isFinite(entry.iDeg) ? entry.iDeg : 0;
+  const ascendingNodeDeg = typeof entry.ascendingNodeDeg === 'number' && Number.isFinite(entry.ascendingNodeDeg)
+    ? entry.ascendingNodeDeg
+    : 0;
+  const argPeriapsisDeg = typeof entry.argPeriapsisDeg === 'number' && Number.isFinite(entry.argPeriapsisDeg)
+    ? entry.argPeriapsisDeg
+    : 0;
+  const meanAnomalyDeg = typeof entry.meanAnomalyDeg === 'number' && Number.isFinite(entry.meanAnomalyDeg)
+    ? entry.meanAnomalyDeg
+    : 0;
 
   return {
     id,
     name,
     category,
-    epochJd: Number.isFinite(entry.epochJd) ? entry.epochJd : J2000_JD,
+    epochJd: Number.isFinite(entry.epochJd) ? Number(entry.epochJd) : J2000_JD,
     aKm,
-    e: Number.isFinite(entry.e) ? Math.max(0, Math.min(0.9999, entry.e)) : 0,
-    iRad: (Number.isFinite(entry.iDeg) ? entry.iDeg : 0) * DEG_TO_RAD,
-    raanRad: (Number.isFinite(entry.ascendingNodeDeg) ? entry.ascendingNodeDeg : 0) * DEG_TO_RAD,
-    argPeriapsisRad: (Number.isFinite(entry.argPeriapsisDeg) ? entry.argPeriapsisDeg : 0) * DEG_TO_RAD,
-    meanAnomalyRad: (Number.isFinite(entry.meanAnomalyDeg) ? entry.meanAnomalyDeg : 0) * DEG_TO_RAD,
+    e: eccentricity,
+    iRad: inclinationDeg * DEG_TO_RAD,
+    raanRad: ascendingNodeDeg * DEG_TO_RAD,
+    argPeriapsisRad: argPeriapsisDeg * DEG_TO_RAD,
+    meanAnomalyRad: meanAnomalyDeg * DEG_TO_RAD,
     meanMotionRevDay: resolvedMeanMotion,
     meanMotionRadSec: (resolvedMeanMotion * TWO_PI) / DAY_SECONDS,
     frame: `${entry.frame ?? 'ecliptic'}`.toLowerCase()
   };
 }
 
-function parseTleElements(name, line1, line2, category, primaryModel) {
+function parseTleElements(
+  name: string,
+  line1: string,
+  line2: string,
+  category: string,
+  primaryModel: PrimaryModel
+): NormalizedSatellite | null {
   const epochYear = Number(line1.slice(18, 20));
   const epochDay = Number(line1.slice(20, 32));
   const iDeg = Number(line2.slice(8, 16));
@@ -198,13 +267,13 @@ function parseTleElements(name, line1, line2, category, primaryModel) {
   };
 }
 
-function parseTleBlock(tleText, category, primaryModel) {
+function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryModel): NormalizedSatellite[] {
   const lines = tleText
     .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .map((line: string) => line.trim())
+    .filter((line: string) => line.length > 0);
 
-  const satellites = [];
+  const satellites: NormalizedSatellite[] = [];
 
   for (let i = 0; i < lines.length - 2; i += 1) {
     let name = lines[i];
@@ -233,80 +302,7 @@ function parseTleBlock(tleText, category, primaryModel) {
   return satellites;
 }
 
-function toEcliptic(primaryModel, frame, xPrimary, yPrimary, zPrimary, out) {
-  if (frame === 'ecliptic') {
-    out.set(xPrimary / AU_KM, yPrimary / AU_KM, zPrimary / AU_KM);
-    return out;
-  }
-
-  const obliquity = Number.isFinite(primaryModel.obliquityRad) ? primaryModel.obliquityRad : 0;
-  const cosOb = Math.cos(obliquity);
-  const sinOb = Math.sin(obliquity);
-  const y = cosOb * yPrimary + sinOb * zPrimary;
-  const z = -sinOb * yPrimary + cosOb * zPrimary;
-  out.set(xPrimary / AU_KM, y / AU_KM, z / AU_KM);
-  return out;
-}
-
-function propagateAroundPrimary(satellite, jd, applyJ2, primaryModel, outPositionAu) {
-  const dtSec = (jd - satellite.epochJd) * DAY_SECONDS;
-
-  const e = satellite.e;
-  const i = satellite.iRad;
-  const a = satellite.aKm;
-  const n = satellite.meanMotionRadSec;
-
-  let raan = satellite.raanRad;
-  let argPeriapsis = satellite.argPeriapsisRad;
-  let meanAnomaly = satellite.meanAnomalyRad + n * dtSec;
-
-  if (applyJ2 && Number.isFinite(primaryModel.j2) && primaryModel.j2 > 0) {
-    const p = a * (1 - e * e);
-    const pRatio2 = (primaryModel.equatorialRadiusKm * primaryModel.equatorialRadiusKm) / (p * p);
-    const j2Factor = 1.5 * primaryModel.j2 * pRatio2 * n;
-    const cosI = Math.cos(i);
-    const cosI2 = cosI * cosI;
-
-    const raanDot = -j2Factor * cosI;
-    const argDot = 0.5 * j2Factor * (5 * cosI2 - 1);
-    const mDotJ2 = 0.5 * j2Factor * Math.sqrt(Math.max(1e-9, 1 - e * e)) * (3 * cosI2 - 1);
-
-    raan += raanDot * dtSec;
-    argPeriapsis += argDot * dtSec;
-    meanAnomaly += mDotJ2 * dtSec;
-  }
-
-  const M = normalizeRadians(meanAnomaly);
-  const E = solveKepler(M, e);
-  const cosE = Math.cos(E);
-  const sinE = Math.sin(E);
-  const sqrtOneMinusESquared = Math.sqrt(Math.max(1e-9, 1 - e * e));
-
-  const xPerifocal = a * (cosE - e);
-  const yPerifocal = a * (sqrtOneMinusESquared * sinE);
-
-  const cosO = Math.cos(raan);
-  const sinO = Math.sin(raan);
-  const cosW = Math.cos(argPeriapsis);
-  const sinW = Math.sin(argPeriapsis);
-  const cosI = Math.cos(i);
-  const sinI = Math.sin(i);
-
-  const r11 = cosO * cosW - sinO * sinW * cosI;
-  const r12 = -cosO * sinW - sinO * cosW * cosI;
-  const r21 = sinO * cosW + cosO * sinW * cosI;
-  const r22 = -sinO * sinW + cosO * cosW * cosI;
-  const r31 = sinW * sinI;
-  const r32 = cosW * sinI;
-
-  const xPrimary = r11 * xPerifocal + r12 * yPerifocal;
-  const yPrimary = r21 * xPerifocal + r22 * yPerifocal;
-  const zPrimary = r31 * xPerifocal + r32 * yPerifocal;
-
-  return toEcliptic(primaryModel, satellite.frame, xPrimary, yPrimary, zPrimary, outPositionAu);
-}
-
-function fallbackByPrimary(primaryId) {
+function fallbackByPrimary(primaryId: string): SatelliteCatalogEntry[] {
   if (primaryId === 'moon') {
     return [
       {
@@ -380,7 +376,7 @@ function fallbackByPrimary(primaryId) {
   ];
 }
 
-async function fetchTleText(url) {
+async function fetchTleText(url: string): Promise<string> {
   const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`Failed TLE fetch (${response.status})`);
@@ -388,12 +384,16 @@ async function fetchTleText(url) {
   return response.text();
 }
 
-function pickEarthSatellites(stationSatellites, geoSatellites, maxGeoCount) {
-  const iss = stationSatellites.find((sat) => sat.name.toLowerCase().includes('iss')) ?? stationSatellites[0] ?? null;
+function pickEarthSatellites(
+  stationSatellites: NormalizedSatellite[],
+  geoSatellites: NormalizedSatellite[],
+  maxGeoCount: number
+): NormalizedSatellite[] {
+  const iss = stationSatellites.find((sat: NormalizedSatellite) => sat.name.toLowerCase().includes('iss')) ?? stationSatellites[0] ?? null;
 
   const geo = geoSatellites
-    .filter((sat) => sat.meanMotionRevDay > 0.95 && sat.meanMotionRevDay < 1.05)
-    .sort((a, b) => {
+    .filter((sat: NormalizedSatellite) => sat.meanMotionRevDay > 0.95 && sat.meanMotionRevDay < 1.05)
+    .sort((a: NormalizedSatellite, b: NormalizedSatellite) => {
       const ecc = a.e - b.e;
       if (Math.abs(ecc) > 1e-9) return ecc;
       return a.iRad - b.iRad;
@@ -402,11 +402,11 @@ function pickEarthSatellites(stationSatellites, geoSatellites, maxGeoCount) {
 
   return [
     ...(iss ? [{ ...iss, category: 'leo' }] : []),
-    ...geo.map((sat) => ({ ...sat, category: 'geo' }))
+    ...geo.map((sat: NormalizedSatellite) => ({ ...sat, category: 'geo' }))
   ];
 }
 
-function markerColor(category, colorOverrides = null) {
+function markerColor(category: string, colorOverrides: MarkerColorOverrides | null = null): string {
   if (colorOverrides && typeof colorOverrides === 'object') {
     if (typeof colorOverrides[category] === 'string') return colorOverrides[category];
     if (typeof colorOverrides.default === 'string') return colorOverrides.default;
@@ -418,8 +418,8 @@ function markerColor(category, colorOverrides = null) {
   return '#d8dde6';
 }
 
-function markerScaleAu(realisticMode, primaryModel, markerBaseScaleAu = null) {
-  if (Number.isFinite(markerBaseScaleAu) && markerBaseScaleAu > 0) {
+function markerScaleAu(realisticMode: boolean, primaryModel: PrimaryModel, markerBaseScaleAu: number | null = null): number {
+  if (typeof markerBaseScaleAu === 'number' && Number.isFinite(markerBaseScaleAu) && markerBaseScaleAu > 0) {
     return markerBaseScaleAu;
   }
   if (!realisticMode) return 0.00062;
@@ -427,7 +427,7 @@ function markerScaleAu(realisticMode, primaryModel, markerBaseScaleAu = null) {
   return Math.max(2.2e-7, basedOnPrimary);
 }
 
-function normalizeMarkerPixelSize(markerPixelSize) {
+function normalizeMarkerPixelSize(markerPixelSize: Partial<MarkerPixelSize> | null): MarkerPixelSize | null {
   if (!markerPixelSize || typeof markerPixelSize !== 'object') return null;
   const preferred = Number(markerPixelSize.preferred);
   const min = Number(markerPixelSize.min);
@@ -443,11 +443,11 @@ function normalizeMarkerPixelSize(markerPixelSize) {
   };
 }
 
-function createSatelliteSpriteTexture(category, colorOverrides = null) {
+function createSatelliteSpriteTexture(category: string, colorOverrides: MarkerColorOverrides | null = null): CanvasTexture | null {
   const paletteKey = markerColor(category, colorOverrides);
   const cacheKey = `${category}:${paletteKey}`;
   if (SATELLITE_ICON_TEXTURES.has(cacheKey)) {
-    return SATELLITE_ICON_TEXTURES.get(cacheKey);
+    return SATELLITE_ICON_TEXTURES.get(cacheKey) ?? null;
   }
 
   const canvas = document.createElement('canvas');
@@ -493,6 +493,48 @@ function createSatelliteSpriteTexture(category, colorOverrides = null) {
 }
 
 export class OrbitalSatelliteSystem {
+  primaryId: string;
+  primaryModel: PrimaryModel;
+  maxGeoCount: number;
+  showOrbits: boolean;
+  useJ2: boolean;
+  tleSources: Record<string, string> | null;
+  catalogSatellites: SatelliteCatalogEntry[];
+  group: Group;
+  markerGeometry: SphereGeometry;
+  markerStyle: string;
+  markerPixelSize: MarkerPixelSize | null;
+  markerBaseScaleAu: number | null;
+  markerColorOverrides: MarkerColorOverrides | null;
+  currentMarkerScaleAu: number;
+  satellites: NormalizedSatellite[];
+  meshById: Map<string, Mesh | Sprite>;
+  meshByIndex: Array<Mesh | Sprite>;
+  orbitLineById: Map<string, Line>;
+  useInstancing: boolean;
+  markerInstancedMesh: InstancedMesh | null;
+  markerIndexById: Map<string, number>;
+  currentPositionsAu: Float32Array;
+  matrixScratch: Matrix4;
+  markerColorScratch: Color;
+  positionScratch: Vector3;
+  markerWorldPositionScratch: Vector3;
+  useWorkerPropagation: boolean;
+  workerLeadSeconds: number;
+  workerCadenceMs: number;
+  maxOrbitLines: number;
+  worker: Worker | null;
+  workerReady: boolean;
+  workerBusy: boolean;
+  workerSnapshot: SatelliteWorkerSnapshot | null;
+  workerLastRequestAtMs: number;
+  lastJdSample: number | null;
+  lastPerfSampleMs: number | null;
+  estimatedJdRate: number;
+  initialized: boolean;
+  lastError: string | null;
+  orbitLinesClamped: boolean;
+
   constructor({
     primaryId = 'earth',
     maxGeoCount = 28,
@@ -509,7 +551,7 @@ export class OrbitalSatelliteSystem {
     markerPixelSize = null,
     markerBaseScaleAu = null,
     markerColorOverrides = null
-  } = {}) {
+  }: OrbitalSatelliteSystemOptions = {}) {
     this.primaryId = primaryId;
     this.primaryModel = PRIMARY_MODELS[primaryId] ?? PRIMARY_MODELS.earth;
     this.maxGeoCount = maxGeoCount;
@@ -562,12 +604,12 @@ export class OrbitalSatelliteSystem {
     this.orbitLinesClamped = false;
   }
 
-  attachTo(parentNode) {
+  attachTo(parentNode: Object3D | null | undefined): void {
     if (!parentNode) return;
     parentNode.add(this.group);
   }
 
-  status() {
+  status(): Record<string, unknown> {
     return {
       initialized: this.initialized,
       primaryId: this.primaryId,
@@ -584,10 +626,10 @@ export class OrbitalSatelliteSystem {
     };
   }
 
-  async initialize() {
+  async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    let loaded = [];
+    let loaded: NormalizedSatellite[] = [];
     try {
       if (this.tleSources && Object.keys(this.tleSources).length > 0) {
         const entries = Object.entries(this.tleSources);
@@ -602,18 +644,18 @@ export class OrbitalSatelliteSystem {
           loaded = parsedByGroup.flat();
         }
       }
-    } catch (error) {
-      this.lastError = error?.message ?? String(error);
+    } catch (error: unknown) {
+      this.lastError = error instanceof Error ? error.message : String(error);
       loaded = [];
     }
 
     const catalog = this.catalogSatellites
       .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
-      .filter(Boolean);
+      .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
 
     const merged = [...loaded, ...catalog];
-    const deduped = [];
-    const seen = new Set();
+    const deduped: NormalizedSatellite[] = [];
+    const seen = new Set<string>();
     for (const sat of merged) {
       if (seen.has(sat.id)) continue;
       seen.add(sat.id);
@@ -625,7 +667,7 @@ export class OrbitalSatelliteSystem {
     if (this.satellites.length === 0) {
       this.satellites = fallbackByPrimary(this.primaryId)
         .map((entry) => normalizeCatalogSatellite(entry, this.primaryModel))
-        .filter(Boolean);
+        .filter((satellite): satellite is NormalizedSatellite => Boolean(satellite));
     }
 
     this.buildSceneObjects();
@@ -635,21 +677,21 @@ export class OrbitalSatelliteSystem {
     this.initialized = true;
   }
 
-  initializeWorker() {
+  initializeWorker(): void {
     if (!this.useWorkerPropagation || typeof Worker === 'undefined' || this.worker) {
       return;
     }
 
     try {
       this.worker = new Worker(new URL('./satellitePropagationWorker.ts', import.meta.url), { type: 'module' });
-    } catch (error) {
-      this.lastError = `Satellite worker unavailable: ${error?.message ?? String(error)}`;
+    } catch (error: unknown) {
+      this.lastError = `Satellite worker unavailable: ${error instanceof Error ? error.message : String(error)}`;
       this.useWorkerPropagation = false;
       this.worker = null;
       return;
     }
 
-    this.worker.onmessage = (event) => {
+    this.worker.onmessage = (event: MessageEvent<SatelliteWorkerMessage>) => {
       const message = event?.data;
       if (!message || typeof message !== 'object') return;
 
@@ -696,7 +738,7 @@ export class OrbitalSatelliteSystem {
     });
   }
 
-  disableWorker() {
+  disableWorker(): void {
     if (this.worker) {
       this.worker.terminate();
     }
@@ -707,7 +749,7 @@ export class OrbitalSatelliteSystem {
     this.useWorkerPropagation = false;
   }
 
-  buildSceneObjects() {
+  buildSceneObjects(): void {
     this.group.clear();
     this.meshById.clear();
     this.meshByIndex.length = 0;
@@ -736,7 +778,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  buildInstancedMarkers() {
+  buildInstancedMarkers(): void {
     const material = new MeshBasicMaterial({
       color: new Color('#ffffff'),
       vertexColors: true
@@ -767,7 +809,7 @@ export class OrbitalSatelliteSystem {
     this.markerInstancedMesh = instancedMesh;
   }
 
-  buildIndividualMarkers() {
+  buildIndividualMarkers(): void {
     for (let i = 0; i < this.satellites.length; i += 1) {
       const sat = this.satellites[i];
       let marker;
@@ -797,7 +839,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  createOrbitLine(satellite) {
+  createOrbitLine(satellite: NormalizedSatellite): Line {
     const segments = satellite.category === 'geo' ? 220 : satellite.category === 'nrho' ? 280 : 180;
     const positions = new Float32Array((segments + 1) * 3);
     const point = new Vector3();
@@ -824,22 +866,22 @@ export class OrbitalSatelliteSystem {
     );
   }
 
-  setVisible(visible) {
+  setVisible(visible: boolean): void {
     this.group.visible = Boolean(visible);
   }
 
-  setOrbitVisibility(visible) {
+  setOrbitVisibility(visible: boolean): void {
     this.showOrbits = Boolean(visible);
     for (const orbitLine of this.orbitLineById.values()) {
       orbitLine.visible = this.showOrbits;
     }
   }
 
-  setJ2Enabled(enabled) {
+  setJ2Enabled(enabled: boolean): void {
     this.useJ2 = Boolean(enabled);
   }
 
-  applyScaleMode(realisticMode) {
+  applyScaleMode(realisticMode: boolean): void {
     this.currentMarkerScaleAu = markerScaleAu(Boolean(realisticMode), this.primaryModel, this.markerBaseScaleAu);
     if (this.markerInstancedMesh) {
       this.rebuildInstancedMatricesFromPositions();
@@ -850,7 +892,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  rebuildInstancedMatricesFromPositions() {
+  rebuildInstancedMatricesFromPositions(): void {
     if (!this.markerInstancedMesh) return;
 
     for (let i = 0; i < this.satellites.length; i += 1) {
@@ -867,18 +909,25 @@ export class OrbitalSatelliteSystem {
     this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  updateJdRateEstimate(jd) {
+  updateJdRateEstimate(jd: number): void {
     const now = nowMs();
-    if (Number.isFinite(this.lastJdSample) && Number.isFinite(this.lastPerfSampleMs)) {
-      const dtSeconds = Math.max(1e-6, (now - this.lastPerfSampleMs) / 1_000);
-      const rawRate = (jd - this.lastJdSample) / dtSeconds;
+    const lastJdSample = this.lastJdSample;
+    const lastPerfSampleMs = this.lastPerfSampleMs;
+    if (
+      typeof lastJdSample === 'number'
+      && Number.isFinite(lastJdSample)
+      && typeof lastPerfSampleMs === 'number'
+      && Number.isFinite(lastPerfSampleMs)
+    ) {
+      const dtSeconds = Math.max(1e-6, (now - lastPerfSampleMs) / 1_000);
+      const rawRate = (jd - lastJdSample) / dtSeconds;
       this.estimatedJdRate = this.estimatedJdRate * 0.75 + rawRate * 0.25;
     }
     this.lastJdSample = jd;
     this.lastPerfSampleMs = now;
   }
 
-  applyWorkerSnapshot(jd) {
+  applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
     if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
@@ -899,7 +948,7 @@ export class OrbitalSatelliteSystem {
     return true;
   }
 
-  shouldRequestWorkerSnapshot(jd) {
+  shouldRequestWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return true;
 
     const minJd = Math.min(this.workerSnapshot.jd0, this.workerSnapshot.jd1);
@@ -912,7 +961,7 @@ export class OrbitalSatelliteSystem {
     return jd <= minJd + margin || jd >= maxJd - margin;
   }
 
-  requestWorkerSnapshot(jd) {
+  requestWorkerSnapshot(jd: number): void {
     if (!this.worker || !this.workerReady || this.workerBusy) return;
 
     const now = nowMs();
@@ -934,7 +983,7 @@ export class OrbitalSatelliteSystem {
     this.workerLastRequestAtMs = now;
   }
 
-  applyMarkerPositionByIndex(index, x, y, z) {
+  applyMarkerPositionByIndex(index: number, x: number, y: number, z: number): void {
     const base = index * 3;
     this.currentPositionsAu[base] = x;
     this.currentPositionsAu[base + 1] = y;
@@ -952,12 +1001,12 @@ export class OrbitalSatelliteSystem {
     mesh.position.set(x, y, z);
   }
 
-  flushMarkerPositionUpdates() {
+  flushMarkerPositionUpdates(): void {
     if (!this.markerInstancedMesh) return;
     this.markerInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  applyScreenSpaceMarkerScaling(viewState) {
+  applyScreenSpaceMarkerScaling(viewState: SatelliteViewState | null): void {
     if (this.markerInstancedMesh || !this.markerPixelSize) return;
     const camera = viewState?.camera ?? null;
     const viewportHeight = Number(viewState?.viewportHeight ?? 0);
@@ -976,7 +1025,7 @@ export class OrbitalSatelliteSystem {
     }
   }
 
-  update(jd, viewState = null) {
+  update(jd: number, viewState: SatelliteViewState | null = null): void {
     if (!this.initialized) return;
 
     this.updateJdRateEstimate(jd);

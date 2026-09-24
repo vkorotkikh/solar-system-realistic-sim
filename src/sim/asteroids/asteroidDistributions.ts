@@ -1,5 +1,23 @@
 import { MU_SUN_AU3_DAY2 } from '../../constants';
 
+// Module-level seeded PRNG for deterministic asteroid generation.
+// Use seedDistributionRng() to reset with a specific seed.
+function mulberry32(seed: number): () => number {
+    let s = seed | 0;
+    return (): number => {
+        s = (s + 0x6d2b79f5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+let _rng = mulberry32(12345);
+
+export function seedDistributionRng(seed: number): void {
+    _rng = mulberry32(seed);
+}
+
 /**
  * Asteroid Taxonomies with their approximate albedos and colors.
  * C-Type: Carbonaceous (Very dark, outer belt)
@@ -21,8 +39,8 @@ export const TAXONOMIES = {
  * Outer belt (>2.82 AU): predominantly C-type
  * Trojans (~5.2 AU): D-type
  */
-export function sampleTaxonomy(aAu: number) {
-    const r = Math.random();
+export function sampleTaxonomy(aAu: number): (typeof TAXONOMIES)[keyof typeof TAXONOMIES] {
+    const r = _rng();
     if (aAu > 5.0) return TAXONOMIES.D;
 
     if (aAu < 2.5) {
@@ -50,7 +68,7 @@ export function sampleTaxonomy(aAu: number) {
  */
 export function samplePowerLawSize(minRadius: number, maxRadius: number, q = 2.5) {
     // P(r) = C * r^(-q)
-    const u = Math.random();
+    const u = _rng();
     // Integral of r^-q is [r^(1-q)] / (1-q)
     const exponent = 1.0 - q;
     const minVal = Math.pow(minRadius, exponent);
@@ -61,8 +79,8 @@ export function samplePowerLawSize(minRadius: number, maxRadius: number, q = 2.5
 
 // Box-Muller transform for normal distribution
 function randomGaussian(mean = 0, stdDev = 1) {
-    const u = 1 - Math.random();
-    const v = Math.random();
+    const u = 1 - _rng();
+    const v = _rng();
     const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     return z * stdDev + mean;
 }
@@ -100,13 +118,13 @@ function isInsideKirkwoodGap(a: number): boolean {
 export function generateAsteroidElement(population = 'main-belt') {
     let a!: number, e!: number, i!: number, ascendingNodeDeg: number, argPeriapsisDeg: number, meanAnomalyDeg!: number;
 
-    ascendingNodeDeg = Math.random() * 360;
-    argPeriapsisDeg = Math.random() * 360;
+    ascendingNodeDeg = _rng() * 360;
+    argPeriapsisDeg = _rng() * 360;
 
     if (population === 'main-belt') {
         // Try to sample a valid element that avoids Kirkwood gaps
         for (let attempts = 0; attempts < 50; attempts++) {
-            let r = Math.random();
+            let r = _rng();
             let selectedFamily = FAMILIES[FAMILIES.length - 1]; // Background
             for (const fam of FAMILIES) {
                 r -= fam.weight;
@@ -117,7 +135,7 @@ export function generateAsteroidElement(population = 'main-belt') {
             }
 
             if (selectedFamily.name === 'Background') {
-                a = 2.1 + Math.random() * 1.2;
+                a = 2.1 + _rng() * 1.2;
                 e = Math.abs(randomGaussian(0.12, 0.08));
                 i = Math.abs(randomGaussian(8.0, 6.0));
             } else {
@@ -130,7 +148,7 @@ export function generateAsteroidElement(population = 'main-belt') {
                 break;
             }
         }
-        meanAnomalyDeg = Math.random() * 360;
+        meanAnomalyDeg = _rng() * 360;
     }
     else if (population === 'hilda') {
         // 3:2 resonance with Jupiter (~3.96 AU)
@@ -138,7 +156,7 @@ export function generateAsteroidElement(population = 'main-belt') {
         e = Math.abs(randomGaussian(0.15, 0.05));
         i = Math.abs(randomGaussian(8.0, 4.0));
         // Hildas avoid Jupiter at perihelion through a specific resonance angle
-        meanAnomalyDeg = Math.random() * 360;
+        meanAnomalyDeg = _rng() * 360;
     }
     else if (population.startsWith('trojan')) {
         // Jupiter Trojans (1:1 resonance, ~5.2 AU)
@@ -164,7 +182,7 @@ export function generateAsteroidElement(population = 'main-belt') {
         e = Math.abs(randomGaussian(0.3, 0.2));
         if (e >= 1.0) e = 0.9;
         i = Math.abs(randomGaussian(10.0, 10.0));
-        meanAnomalyDeg = Math.random() * 360;
+        meanAnomalyDeg = _rng() * 360;
     }
 
     const periodDays = 2 * Math.PI * Math.sqrt((a * a * a) / MU_SUN_AU3_DAY2);

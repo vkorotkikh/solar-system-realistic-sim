@@ -22,6 +22,23 @@ import {
     Color
 } from 'three';
 
+interface GwParams {
+    frequency?: number;
+    strain?: number;
+    direction?: Vector3;
+    isAgnEvent?: number;
+    shockwaveDist?: number;
+}
+
+interface GwVisualization {
+    mesh: Mesh;
+    update: (dtSec: number) => void;
+    toggle: (on: boolean) => void;
+    setParams: (params: GwParams) => void;
+    getInfoText: () => string;
+    dispose: () => void;
+}
+
 const GW_VERTEX_SHADER = `
 uniform float time;
 uniform float frequency;       // Hz
@@ -139,7 +156,7 @@ void main() {
  * @param {number} size - Grid size in scene units
  * @returns {Object} GW visualization object with mesh, update, toggle methods
  */
-export function createGWVisualization(size = 10) {
+export function createGWVisualization(size = 10): GwVisualization {
     const geometry = new PlaneGeometry(size, size, 384, 384);
     geometry.rotateX(-Math.PI / 2); // Lay flat on ecliptic plane
 
@@ -190,13 +207,7 @@ export function createGWVisualization(size = 10) {
          * Set GW parameters.
          * @param {Object} params
          */
-        setParams({ frequency, strain, direction, isAgnEvent, shockwaveDist }: {
-            frequency?: number;
-            strain?: number;
-            direction?: Vector3;
-            isAgnEvent?: number;
-            shockwaveDist?: number;
-        }) {
+        setParams({ frequency, strain, direction, isAgnEvent, shockwaveDist }: GwParams) {
             if (frequency !== undefined) material.uniforms.frequency.value = frequency;
             if (strain !== undefined) material.uniforms.strainAmplitude.value = strain;
             if (direction) material.uniforms.propagationDir.value.copy(direction);

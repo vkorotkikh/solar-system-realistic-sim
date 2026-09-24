@@ -1,59 +1,61 @@
-type ArcPoint = [number, number, number];
+export type SolarArcPoint = [number, number, number];
 
-interface SolarFeature {
+export interface SolarFeature {
   id: string;
   kind: string;
   brightness: number;
   speedFactor: number;
   peakExtent: number;
-  arc: ArcPoint[];
+  arc: SolarArcPoint[];
 }
 
-interface SolarFeatureSet {
+export interface SolarFeatureSet {
   features: SolarFeature[];
   featureById: Map<string, SolarFeature>;
   activityIndex: number | null;
   epochJd: number;
 }
 
-interface BlendEntry {
+export interface SolarFeatureBlendEntry {
   id: string;
   kind: string;
-  fromFeature: SolarFeature | null;
-  toFeature: SolarFeature | null;
+  fromFeature: SolarFeature;
+  toFeature: SolarFeature;
   fromWeight: number;
   toWeight: number;
 }
 
-interface BlendViewInput {
-  currentFeatureSet: SolarFeatureSet | null;
-  targetFeatureSet: SolarFeatureSet | null;
-  blendStartMs: number;
-  blendDurationMs: number;
-  nowMs?: number;
-  featureLimit?: number;
-}
-
-interface BlendView {
+export interface SolarFeatureBlendView {
   blendAlpha: number;
   activityIndex: number | null;
-  entries: BlendEntry[];
-  [key: string]: unknown;
+  entries: SolarFeatureBlendEntry[];
+  nextCurrentFeatureSet: SolarFeatureSet | null;
+  nextTargetFeatureSet: SolarFeatureSet | null;
+  nextBlendStartMs: number;
+  complete: boolean;
 }
 
-interface PhysicsState {
-  corona?: { features?: unknown[] };
-  activity_index?: unknown;
-  epoch_jd?: unknown;
-}
-
-interface RawFeature {
-  id?: string;
-  kind?: string;
+export interface SolarPhysicsFeatureLike {
+  id?: unknown;
+  kind?: unknown;
   brightness?: unknown;
   expansion_speed_kms?: unknown;
   peak_extent_solar_radii?: unknown;
-  arc?: unknown;
+  arc?: unknown[] | null;
+  base_dir?: unknown;
+  paired_dir?: unknown;
+  emergence?: unknown;
+  active_region_id?: unknown;
+  region_id?: unknown;
+}
+
+export interface SolarPhysicsStateLike {
+  corona?: {
+    features?: SolarPhysicsFeatureLike[] | null;
+  } | null;
+  activity_index?: unknown;
+  epoch_jd?: unknown;
+  heliosphere?: { parker_spiral?: { lines?: unknown } | null } | null;
 }
 
 export function clampUnit(value: number): number {
@@ -65,7 +67,7 @@ export function lerpNumber(a: number, b: number, t: number): number {
 }
 
 export function normalizeSolarFeatureSetFromState(
-  physicsState: PhysicsState | null | undefined,
+  physicsState: SolarPhysicsStateLike | null | undefined,
   fallbackEpochJd: number,
   featureLimit = 220
 ): SolarFeatureSet | null {
@@ -76,11 +78,11 @@ export function normalizeSolarFeatureSetFromState(
   const features: SolarFeature[] = [];
   const featureById = new Map<string, SolarFeature>();
   for (let i = 0; i < sourceFeatures.length && features.length < safeLimit; i += 1) {
-    const feature = sourceFeatures[i] as RawFeature | null;
-    const arcRaw = Array.isArray(feature?.arc) ? (feature!.arc as unknown[]) : null;
+    const feature = sourceFeatures[i];
+    const arcRaw = Array.isArray(feature?.arc) ? feature.arc : null;
     if (!arcRaw || arcRaw.length < 2) continue;
 
-    const arc: ArcPoint[] = [];
+    const arc: SolarArcPoint[] = [];
     for (const sample of arcRaw) {
       if (!Array.isArray(sample) || sample.length !== 3) continue;
       const x = Number(sample[0]);
@@ -105,7 +107,7 @@ export function normalizeSolarFeatureSetFromState(
     const peakExtentRaw = Number(feature?.peak_extent_solar_radii);
     const peakExtent = Number.isFinite(peakExtentRaw) ? Math.max(1, peakExtentRaw) : 1.0;
 
-    const normalizedFeature: SolarFeature = {
+    const normalized: SolarFeature = {
       id,
       kind,
       brightness,
@@ -113,8 +115,8 @@ export function normalizeSolarFeatureSetFromState(
       peakExtent,
       arc
     };
-    features.push(normalizedFeature);
-    featureById.set(id, normalizedFeature);
+    features.push(normalized);
+    featureById.set(id, normalized);
   }
 
   if (features.length === 0) return null;
@@ -128,16 +130,19 @@ export function normalizeSolarFeatureSetFromState(
   };
 }
 
-export function sampleCoronalArcPoint(arc: unknown, phase: number): ArcPoint | null {
+export function sampleCoronalArcPoint(
+  arc: SolarArcPoint[] | null | undefined,
+  phase: number
+): SolarArcPoint | null {
   if (!Array.isArray(arc) || arc.length === 0) return null;
-  if (arc.length === 1) return arc[0] as ArcPoint;
+  if (arc.length === 1) return arc[0];
   const t = Math.max(0, Math.min(0.999999, phase));
   const scaled = t * (arc.length - 1);
   const idx = Math.floor(scaled);
   const next = Math.min(arc.length - 1, idx + 1);
   const frac = scaled - idx;
-  const p0 = arc[idx] as unknown[];
-  const p1 = arc[next] as unknown[];
+  const p0 = arc[idx];
+  const p1 = arc[next];
   if (!Array.isArray(p0) || !Array.isArray(p1) || p0.length !== 3 || p1.length !== 3) return null;
   const x = Number(p0[0]) + (Number(p1[0]) - Number(p0[0])) * frac;
   const y = Number(p0[1]) + (Number(p1[1]) - Number(p0[1])) * frac;
@@ -147,10 +152,10 @@ export function sampleCoronalArcPoint(arc: unknown, phase: number): ArcPoint | n
 }
 
 export function sampleSolarFeatureEntryPoint(
-  entry: BlendEntry | null | undefined,
+  entry: SolarFeatureBlendEntry | null | undefined,
   phase: number,
   blendAlpha: number
-): ArcPoint | null {
+): SolarArcPoint | null {
   const fromWeight = Number(entry?.fromWeight);
   const toWeight = Number(entry?.toWeight);
   const hasFrom = Number.isFinite(fromWeight) ? fromWeight > 0.5 : true;
@@ -168,7 +173,10 @@ export function sampleSolarFeatureEntryPoint(
   return toPoint ?? fromPoint;
 }
 
-export function solarFeatureEntryBrightness(entry: BlendEntry | null | undefined, blendAlpha: number): number {
+export function solarFeatureEntryBrightness(
+  entry: SolarFeatureBlendEntry | null | undefined,
+  blendAlpha: number
+): number {
   const fromBrightnessRaw = Number(entry?.fromFeature?.brightness);
   const toBrightnessRaw = Number(entry?.toFeature?.brightness);
   const fromBrightness = Number.isFinite(fromBrightnessRaw) ? Math.max(0, fromBrightnessRaw) : 0;
@@ -193,12 +201,19 @@ export function buildSolarFeatureBlendView({
   blendDurationMs,
   nowMs = Date.now(),
   featureLimit = 220
-}: BlendViewInput) {
+}: {
+  currentFeatureSet: SolarFeatureSet | null;
+  targetFeatureSet: SolarFeatureSet | null;
+  blendStartMs: number;
+  blendDurationMs: number;
+  nowMs?: number;
+  featureLimit?: number;
+}): SolarFeatureBlendView {
   if (!currentFeatureSet && !targetFeatureSet) {
     return {
       blendAlpha: 1,
       activityIndex: null,
-      entries: [] as BlendEntry[],
+      entries: [],
       nextCurrentFeatureSet: currentFeatureSet,
       nextTargetFeatureSet: targetFeatureSet,
       nextBlendStartMs: blendStartMs,
@@ -207,7 +222,7 @@ export function buildSolarFeatureBlendView({
   }
 
   let nextCurrentFeatureSet = currentFeatureSet;
-  let nextTargetFeatureSet: SolarFeatureSet | null = targetFeatureSet;
+  let nextTargetFeatureSet = targetFeatureSet;
   let nextBlendStartMs = blendStartMs;
 
   if (!nextCurrentFeatureSet && nextTargetFeatureSet) {
@@ -218,7 +233,7 @@ export function buildSolarFeatureBlendView({
     return {
       blendAlpha: 1,
       activityIndex: null,
-      entries: [] as BlendEntry[],
+      entries: [],
       nextCurrentFeatureSet,
       nextTargetFeatureSet,
       nextBlendStartMs,
@@ -228,7 +243,7 @@ export function buildSolarFeatureBlendView({
 
   const safeLimit = Math.max(8, Math.min(2_048, Math.floor(Number(featureLimit) || 220)));
   if (!nextTargetFeatureSet) {
-    const entries: BlendEntry[] = nextCurrentFeatureSet.features
+    const entries = nextCurrentFeatureSet.features
       .slice(0, safeLimit)
       .map((feature) => ({
         id: feature.id,
@@ -252,8 +267,8 @@ export function buildSolarFeatureBlendView({
   const durationMs = Math.max(240, Number(blendDurationMs) || 900);
   const linearAlpha = clampUnit((nowMs - nextBlendStartMs) / durationMs);
   const blendAlpha = linearAlpha * linearAlpha * (3 - 2 * linearAlpha);
-  const entries: BlendEntry[] = [];
-  const seen = new Set<string>();
+  const entries: SolarFeatureBlendEntry[] = [];
+  const seen = new Set();
 
   for (const targetFeature of nextTargetFeatureSet.features) {
     const fromFeature = nextCurrentFeatureSet.featureById.get(targetFeature.id) ?? targetFeature;
@@ -284,7 +299,7 @@ export function buildSolarFeatureBlendView({
     }
   }
 
-  let activityIndex: number | null = nextCurrentFeatureSet.activityIndex;
+  let activityIndex = nextCurrentFeatureSet.activityIndex;
   const currentActivity = Number(nextCurrentFeatureSet.activityIndex);
   const targetActivity = Number(nextTargetFeatureSet.activityIndex);
   if (Number.isFinite(currentActivity) && Number.isFinite(targetActivity)) {
@@ -304,7 +319,7 @@ export function buildSolarFeatureBlendView({
     blendAlpha: complete ? 1 : blendAlpha,
     activityIndex: complete ? nextCurrentFeatureSet.activityIndex : activityIndex,
     entries: complete
-      ? nextCurrentFeatureSet.features.slice(0, safeLimit).map((feature): BlendEntry => ({
+      ? nextCurrentFeatureSet.features.slice(0, safeLimit).map((feature) => ({
           id: feature.id,
           kind: feature.kind,
           fromFeature: feature,
@@ -321,7 +336,7 @@ export function buildSolarFeatureBlendView({
 }
 
 export function materializeSolarFeatureSetFromBlendView(
-  blendView: BlendView | null | undefined,
+  blendView: SolarFeatureBlendView | null | undefined,
   fallbackEpochJd: number
 ): SolarFeatureSet | null {
   if (!blendView || !Array.isArray(blendView.entries) || blendView.entries.length === 0) return null;
@@ -333,7 +348,7 @@ export function materializeSolarFeatureSetFromBlendView(
     const fromCount = entry?.fromFeature?.arc?.length ?? 0;
     const toCount = entry?.toFeature?.arc?.length ?? 0;
     const pointCount = Math.max(2, fromCount, toCount);
-    const arc: ArcPoint[] = [];
+    const arc: SolarArcPoint[] = [];
 
     for (let i = 0; i < pointCount; i += 1) {
       const phase = pointCount <= 1 ? 0 : i / (pointCount - 1);
@@ -356,7 +371,7 @@ export function materializeSolarFeatureSetFromBlendView(
       ? lerpNumber(peakFrom, peakTo, blendAlpha)
       : (Number.isFinite(peakTo) ? peakTo : (Number.isFinite(peakFrom) ? peakFrom : 1.0));
 
-    const normalizedFeature: SolarFeature = {
+    const normalized: SolarFeature = {
       id: `${entry?.id ?? `feature-${features.length}`}`,
       kind: `${entry?.kind ?? 'loop'}`.toLowerCase(),
       brightness,
@@ -364,9 +379,9 @@ export function materializeSolarFeatureSetFromBlendView(
       peakExtent,
       arc
     };
-    if (featureById.has(normalizedFeature.id)) continue;
-    features.push(normalizedFeature);
-    featureById.set(normalizedFeature.id, normalizedFeature);
+    if (featureById.has(normalized.id)) continue;
+    features.push(normalized);
+    featureById.set(normalized.id, normalized);
   }
 
   if (features.length === 0) return null;

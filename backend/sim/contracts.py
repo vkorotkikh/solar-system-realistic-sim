@@ -22,6 +22,12 @@ def _vec3(values: Any) -> List[float]:
     return [_finite_float(values[idx], 0.0) for idx in range(3)]
 
 
+def _text_field(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.strip()
+
+
 def normalize_state_update(
     state: Dict[str, Any],
     *,
@@ -44,8 +50,13 @@ def normalize_state_update(
             }
 
     force_models = state.get("force_models") if isinstance(state.get("force_models"), dict) else {}
+    position_frame = _text_field(state.get("position_frame")) if isinstance(state, dict) else ""
+    velocity_frame = _text_field(state.get("velocity_frame")) if isinstance(state, dict) else ""
+    position_units = _text_field(state.get("position_units")) if isinstance(state, dict) else ""
+    velocity_units = _text_field(state.get("velocity_units")) if isinstance(state, dict) else ""
+    jd_time_scale = _text_field(state.get("jd_time_scale")) if isinstance(state, dict) else ""
 
-    return {
+    payload = {
         "type": "state_update",
         "engine": engine_name,
         "fidelity": fidelity,
@@ -53,6 +64,18 @@ def normalize_state_update(
         "bodies": bodies_out,
         "force_models": force_models,
     }
+    if position_frame:
+        payload["position_frame"] = position_frame
+    if velocity_frame:
+        payload["velocity_frame"] = velocity_frame
+    if position_units:
+        payload["position_units"] = position_units
+    if velocity_units:
+        payload["velocity_units"] = velocity_units
+    if jd_time_scale:
+        payload["jd_time_scale"] = jd_time_scale
+
+    return payload
 
 
 def attach_runtime_telemetry(

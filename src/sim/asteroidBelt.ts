@@ -1,11 +1,12 @@
-import { J2000_JD, MU_SUN_AU3_DAY2 } from '../constants';
+import { J2000_JD } from '../constants';
+import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
 
 // ── Taxonomy ─────────────────────────────────────────────────────────────────
 // Tholen/SMASSII spectral classification mapped to visual properties.
 // Fractions from DeMeo & Carry 2014 debiased main-belt survey.
 
-export const enum AsteroidTaxonomy {
+export enum AsteroidTaxonomy {
   C = 0,  // Carbonaceous — 75 % of belt, dark, outer-belt dominated
   S = 1,  // Silicaceous  — 17 %, stony, inner-belt
   M = 2,  // Metallic     — 8 %, iron-nickel
@@ -176,7 +177,7 @@ export function generateAsteroidBelt(
     const ascendingNodeDeg = rand() * 360;
     const argPeriapsisDeg = rand() * 360;
     const meanAnomalyDeg = rand() * 360;
-    const periodDays = 365.25 * Math.pow(aAu, 1.5) / Math.sqrt(1);
+    const periodDays = 365.25 * Math.pow(aAu, 1.5);
 
     const taxonomy = taxonomyFromSemiMajor(aAu, rand());
     const diameterKm = sampleDiameterKm(rand);
@@ -211,14 +212,6 @@ export function generateAsteroidBelt(
 
 const DEG = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
-
-function solveKeplerFast(M: number, e: number): number {
-  let E = M;
-  for (let i = 0; i < 6; i++) {
-    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-  }
-  return E;
-}
 
 export function propagateBeltPositions(
   asteroids: readonly AsteroidDef[],

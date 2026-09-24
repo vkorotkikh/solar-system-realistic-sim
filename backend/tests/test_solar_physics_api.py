@@ -252,3 +252,60 @@ def test_solar_physics_times_out_with_short_budget(monkeypatch) -> None:
     elapsed = time.monotonic() - start
     assert response.status_code == 503
     assert elapsed < 1.0
+
+
+def test_solar_physics_returns_coronal_hole_section() -> None:
+    """The /solar/physics response must include coronal_holes with required fields."""
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "operational",
+            "max_features": 32,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    ch = payload.get("coronal_holes")
+    assert ch is not None
+    assert "source" in ch
+    assert "holes" in ch
+    assert isinstance(ch["holes"], list)
+    assert "coverage_fraction" in ch
+    assert "hole_count" in ch
+    assert ch["hole_count"] == len(ch["holes"])
+    # Check that each hole has required fields
+    if ch["holes"]:
+        hole = ch["holes"][0]
+        assert "center_lat_rad" in hole
+        assert "center_lon_rad" in hole
+        assert "extent_lat_rad" in hole
+        assert "extent_lon_rad" in hole
+        assert "type" in hole
+
+
+def test_solar_physics_returns_pfss_field_lines() -> None:
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd": 2_460_000.5,
+            "fidelity": "preview",  # Faster solve
+            "max_features": 64,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    
+    assert "pfss_field_lines" in payload
+    pfss = payload["pfss_field_lines"]
+    
+    assert "source" in pfss
+    assert "carrington_rotation" in pfss
+    assert "source_surface_radii" in pfss
+    assert "lines" in pfss
+    assert isinstance(pfss["lines"], list)
+    assert len(pfss["lines"]) > 0
+    assert "arc" in pfss["lines"][0]
+    assert "is_open" in pfss["lines"][0]

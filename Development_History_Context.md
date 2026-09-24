@@ -156,6 +156,298 @@ Follow-ups / open questions:
 - The next runtime pass should be architectural, not cosmetic: worker contracts for orbital propagation, sun feature state, SMBH/AGN timeline computation, and asteroid generation.
 - **UPDATE 2026-03-07:** `// @ts-nocheck` has been removed from all 41 files. Type annotation work is in progress (see top entry).
 
+### 2026-03-22 — Procedural Quadtree LOD and Shaders for Planetary Surfaces
+Status: DONE
+
+What changed:
+- **Quadtree LOD System (`quadtreeLOD.ts`):** Replaced static low-poly `SphereGeometry` for Earth, Moon, and Mars with a dynamic quadtree mesh generation system. Subdivides terrain chunks (up to level 7, spanning 6 cube faces) dynamically based on distance to the camera to ensure massive geometric detail when zoomed in.
+- **Procedural Displacement Shaders (`planetShaders.ts`):** Custom high-performance GLSL vertex and fragment shaders that compute dynamic terrain height using 3D Fractal Brownian Motion (FBM) and ridged noise. Normal vectors are calculated per-vertex using finite-differences. Added fragment-level micro-bump mapping and extended color blending to improve realism when hovering right above the surface. 
+- **Solar System Integration (`main.ts`, `localSystemRenderer.ts`):** Wired the Quadtree logic into the active animation loops `update()` call and instanced it in place of standard planet meshes. Calculates local-space lighting direction to correctly shade the planets.
+
+Why it changed:
+- The user requested realistic, high-fidelity modeling of planetary surfaces that could seamlessly scale from a deep space overview down to the level of surface details like the Grand Canyon.
+
+Evidence/validation:
+- Build pipeline and TypeScript typechecker passed with no errors regarding geometry substitution.
+- Verified visual detail down to surface level scaling dynamically via LOD patching.
+
+Files touched:
+- `src/frontend/features/planetary/quadtreeLOD.ts` [NEW]
+- `src/frontend/features/planetary/planetShaders.ts` [NEW]
+- `src/main.ts`
+- `src/frontend/app/localSystemRenderer.ts`
+
+Follow-ups / open questions:
+- OPEN: Consider extending procedural topology logic to other planets like Mercury and Venus.
+- OPEN: Test maximum hardware capacity for `MAX_LOD_LEVEL` on varying browsers.
+
+### 2026-03-21 — Data-Driven Global Magnetic Field (PFSS solver)
+Status: DONE
+
+What changed:
+- **PFSS Backend Solver (`pfss_magnetogram.py`):** A custom numpy-based solver for the Altschuler-Newkirk PFSS model. Ingests GONG synoptic magnetograms, decomposes into spherical harmonics (up to ℓ=15), solves the potential field, and traces field lines out to the source surface (2.5 Rsun). Handles open/closed tagging based on footpoint and endpoint.
+- **Frontend Integration (`solarMagnetics.ts`, `sunController.ts`):** Renders the exact traced coordinates from the backend rather than using local analytical dipole/quadrupole approximations. Incorporates Carrington rotation into the caching signature to ensure visual updates on solar rotation boundaries.
+
+Why it changed:
+- SOTA evaluation showed our analytical model was unrealistic. We needed a true magnetogram-driven topology to hit SOTA benchmarks and reproduce actual streamer belts and coronal holes.
+
+Evidence/validation:
+- Pytest covers caching, fallback logic, Carrington rotation calculations, and geometry validation (open lines must reach > 2.4 Rsun).
+- Frontend successfully falls back to analytical when GONG is down, or correctly renders lines matching the exact GONG map state.
+
+Files touched:
+- `backend/sim/pfss_magnetogram.py`
+- `backend/sim/solar_physics.py`
+- `src/frontend/features/solar/solarMagnetics.ts`
+- `src/sunController.ts`
+
+### 2026-03-21 — Data-Driven Coronal Hole Detection & Fast-Wind Coupling
+Status: DONE
+
+What changed:
+- **AIA 193Å Coronal Hole Detection (`solar_realtime_data.py`):** Added `detect_coronal_holes()` method (163 lines). Thresholds AIA 193Å tiles at `0.25 × median(disk)` — inspired by CATCHES (Heinemann+ 2019) and SPoCA (Verbeeck+ 2014). Pipeline: grayscale conversion → disk mask via circle geometry → intensity thresholding → morphological erode/dilate cleanup (3×3 kernel, scipy-free) → BFS connected component labeling → heliographic lat/lon bounding box mapping via plate-carrée approximation. Returns up to 8 regions sorted by area, with coverage fraction, polar open flux, and per-hole type classification (polar >50° lat, equatorial otherwise). Integrated into `_fetch_sdo_aia()` reusing the already-cached 193Å tile.
+- **Synthetic Coronal Hole Fallback (`solar_physics.py`):** Added `_synthetic_coronal_holes()` static method. Generates physically plausible holes from activity index: polar holes centered at ±72° lat with extent that shrinks 70% from solar min to max; stochastic equatorial holes appear when `activity > 0.35` (seeded PRNG from JD for reproducibility). Fallback activates automatically when realtime data is unavailable.
+- **Parker Spiral Fast-Wind Coupling (`solar_physics.py`):** Updated `_build_parker_spiral()` to accept `coronal_holes` parameter. Polar coronal holes feed fast wind (660-780 km/s) to 4/6 spiral arms at solar minimum via super-radial expansion model (coupling diminishes toward solar max). Equatorial holes use direct HCS-tilt-based latitude matching. Each spiral line now includes `in_coronal_hole: bool` flag and physically meaningful wind speed (fast: 660-780 km/s, slow: 350-450 km/s). `sample_state()` extracts coronal holes from realtime data or synthesizes, passes to Parker spiral, includes in output under `coronal_holes`.
+- **Corona Shader Upgrade (`sunVisuals.ts`):** Added `coronalHoles[8]` vec4 array (center_lon, center_lat, extent_lon, extent_lat) and `coronalHoleCount` float uniform. Fragment shader computes per-fragment lat/lon from normal direction, matches against hole boundaries with longitude wrap-around and smooth edge falloff via `smoothstep`. Emission drops ~5× inside holes (`alpha *= mix(1.0, 0.2, inHole)`). Falls back to `coronalHoleActivity`-driven polar darkening when `coronalHoleCount == 0`. Uniform update in `updateSunMaterialUniforms()`, 8-element Vector4 initialization in `createSunCoronaShell()`.
+- **Solar Wind Enhancement (`solarWind.ts`):** Added `solarWindSpeedWithHoles()` — checks if latitude falls inside any coronal hole boundary for fast/slow wind assignment with fallback to existing `solarWindSpeed()`.
+- **Controller Wiring (`sunController.ts`):** Passes `solarPhysicsState?.coronal_holes ?? null` as `coronalHoleData` to `updateSunMaterialUniforms()`.
+- **Bug Found & Fixed:** Initial implementation only checked `source_lat = hcs_tilt * sin(phase)` against coronal hole boundaries, but HCS tilt at solar minimum (~7°) never reaches polar hole boundaries at ±72°. Fixed by adding polar super-radial expansion coupling: polar holes feed fast wind to most spiral arms at solar minimum regardless of HCS tilt, with coupling strength diminishing toward solar max.
+
+Why it changed:
+- SOTA evaluation identified coronal hole detection as a 🔴 Major gap. The simulation had no mechanism to identify or visualize coronal holes, and the Parker spiral used a generic latitude-only wind model that didn't distinguish fast/slow wind channels.
+
+Evidence/validation:
+- `pytest tests/test_solar_physics_model.py tests/test_solar_physics_api.py -v` — **15/15 passed** (0.51s), including 4 new tests:
+  - `test_synthetic_coronal_holes_present_at_solar_minimum` — verifies polar holes exist, coverage > 5%
+  - `test_synthetic_coronal_holes_coverage_decreases_at_solar_max` — verifies polar area shrinks
+  - `test_parker_spiral_fast_wind_in_coronal_holes` — verifies fast wind > 600 km/s in holes, slow < 500 km/s outside
+  - `test_solar_physics_returns_coronal_hole_section` — verifies API response includes all required fields
+- Smoke test output at solar minimum (activity 0.107): 4/6 spiral arms ⚡ fast wind (663-778 km/s), 2/6 🌊 slow wind (399-414 km/s) — matches Ulysses observations.
+- Smoke test output at solar maximum (activity 0.919): 2/6 ⚡ fast wind from equatorial holes, 4/6 🌊 slow wind — matches mixed streamer-dominated heliosphere.
+
+Files touched:
+- `backend/sim/solar_realtime_data.py` — `detect_coronal_holes()`, `_fetch_sdo_aia()` integration, `coronal_holes` field
+- `backend/sim/solar_physics.py` — `_synthetic_coronal_holes()`, `_build_parker_spiral()` (coronal hole coupling), `sample_state()` (extraction/synthesis/output)
+- `src/frontend/features/solar/sunVisuals.ts` — corona shader uniforms, fragment matching logic, uniform update
+- `src/frontend/features/solar/solarWind.ts` — `solarWindSpeedWithHoles()`
+- `src/sunController.ts` — data flow wiring
+- `backend/tests/test_solar_physics_model.py` — 3 new tests
+- `backend/tests/test_solar_physics_api.py` — 1 new test
+
+Follow-ups / open questions:
+- OPEN: Add coronal hole debug overlay panel showing detected boundaries on the solar disk.
+- OPEN: Replace BFS flood-fill with `scipy.ndimage.label` when available for ~10× faster connected-component labeling.
+- OPEN: Wire `solarWindSpeedWithHoles()` into the frontend wind profile generation loop (`generateWindProfile()`).
+- OPEN: Visual verification of corona darkening at coronal hole boundaries in browser.
+
+### 2026-03-12 — DEM Channel Response, Transition Region Shell & HCS Tilt Physics Fix
+Status: IN-PROGRESS
+
+What changed:
+- **DEM Channel Response (corona shader):** Added a `demChannelResponse()` GLSL function implementing Gaussian instrument response functions for all 5 AIA passbands based on Lemen et al. 2012 (Solar Physics 275). Each channel has a peak `log T` and sigma: 094Å→6.8/0.22, 171Å→5.8/0.28, 193Å→6.2/0.32, 211Å→6.3/0.25, 304Å→4.7/0.35. A simplified radial corona temperature profile (1 MK inner → 2.2 MK mid → 1.5 MK outer, plus burst/activity heating) drives the response, modulating corona alpha when a channel is active.
+- **AIA False-Color Corona:** When a specific AIA channel is selected, the corona shader now tints to match SDO/AIA false-color conventions: 094Å green (Fe XVIII), 171Å blue-white (Fe IX), 193Å brown-gold (Fe XII), 211Å purple (Fe XIV), 304Å red (He II). Blends 65% toward channel color scaled by DEM response intensity.
+- **Transition Region (TR) Shell:** New `createTransitionRegionShell()` and `updateTransitionRegionShell()` functions in `sunVisuals.ts`. The TR is a thin (~100 km) emissive layer at ~1.004 R☉ between the chromosphere (20,000 K) and corona (1 MK). Rendered as a `BackSide` additive-blended sphere at 1.006× Sun radius with:
+  - Limb brightening: `pow(1-μ, 2.8)` — strong limb emission characteristic of optically thin EUV layers.
+  - Supergranulation network pattern (~30 Mm cells) using multi-octave noise.
+  - Activity-dependent emission scaling.
+  - Channel-dependent appearance: 304Å makes TR the dominant feature (channelBoost 3.2×, magenta-red); 171Å moderate; 193/211Å dim; 094Å invisible (too cool for Fe XVIII).
+- **DEM-Aware Coronal Loops:** `updateSunCoronalLoopsFromBlendView()` now accepts an `activeChannel` parameter. Loop colors and opacity modulation are channel-specific: 094Å dims quiet loops and boosts CMEs (Fe XVIII response); 171Å boosts quiet loops and dims CMEs (Fe IX response); 304Å dims all coronal loops (too hot for He II). Each channel uses its SDO false-color palette.
+- **HCS Tilt Physics Fix (backend):** Replaced linear HCS tilt formula (`7.25 + activity * 15.0` = max 22°) with polynomial ramp `7.25 + 67.75 * (activity^1.8)` clamped to [7°, 75°], matching Wilcox Solar Observatory observations of heliospheric current sheet tilt ranging from ~7° at solar minimum to ~75° at solar maximum. The polynomial's exponent (1.8) produces a gentle rise at low activity and steep ramp above activity ~0.5.
+- **Parker Spiral Latitude Fix:** Removed artificial `0.16×` damping factor on spiral arm latitude excursion. Spiral arms now show full HCS-tilt-driven latitudinal oscillation (`lat = hcs_tilt_rad * sin(phi + ...)`), producing flat spiral at solar minimum and highly warped current sheet geometry at solar maximum.
+- **Sun Controller Integration:** Wired transition region shell into Sun group hierarchy, per-frame update path, and scale-mode resize. Threaded `activeChannel` through to `updateSunMaterialUniforms` and `updateSunCoronalLoopsFromBlendView`.
+
+Why it changed:
+- Prior OPEN item from Phase 13 (coronal loop temperature stratification, DEM-aware AIA channels) is now partially addressed.
+- The transition region was the only major solar atmospheric layer not yet rendered — completing the photosphere→chromosphere→TR→corona stack.
+- HCS tilt was under-parameterized (max 22° vs observed 75°), producing unrealistically flat Parker spiral geometry at solar maximum.
+
+Evidence/validation:
+- Changes are in working tree (uncommitted). Build validation pending.
+- DEM response function produces expected behavior: 094Å filters out cool corona, 304Å filters out hot corona, 171/193/211Å respond at their documented peak temperatures.
+
+Files touched:
+- `src/frontend/features/solar/sunVisuals.ts` — DEM shader, TR shell, channel-aware loop coloring, `channelMode` uniform
+- `backend/sim/solar_physics.py` — HCS tilt polynomial, Parker spiral latitude fix
+- `src/sunController.ts` — TR shell wiring, activeChannel threading
+
+Follow-ups / open questions:
+- OPEN: Commit and build-validate the DEM + TR changes.
+- OPEN: Surface material (photosphere shader) does not yet respond to `channelMode` — adding DEM-driven photospheric appearance would complete the channel-filter visualization stack.
+- OPEN: TR shell currently shares geometry with corona; consider a dedicated higher-resolution sphere for the thin TR layer.
+- OPEN: Phase 13 remaining items: DEM-aware AIA channel rendering for photosphere, irradiance variability model.
+
+### 2026-03-09 — Comprehensive TypeScript Type Safety Pass
+Status: DONE
+
+What changed:
+- Executed a 7-commit type safety sweep across ~15 modules, adding explicit TypeScript interfaces, parameter type annotations, return type declarations, and structured option types. This is the largest single typing effort since the JS→TS migration completed.
+- Modules enhanced:
+  - **Solar stack:** `solarWind.ts` (wind state/particle interfaces), `solarPhysicsClient.ts` (API response/query types), `solarProminences.ts` (prominence geometry/lifecycle types), `solarMagnetics.ts` (field line config/dipole interfaces), `solarObservationTexture.ts` (channel/observation control types), `gravitationalWaves.ts` (GW visualization params), `solarFeatureBlending.ts` (blend state/view interfaces).
+  - **Planetary:** `satelliteSystem.ts` (satellite orbit/propagation interfaces), `cloudDataPipeline.ts` (cloud layer/tile types).
+  - **Navigation/Rendering:** `nearbySystemsRenderer.ts` (star marker/rendering interfaces), `plannerController.ts` (mission plan/leg types), `labelSystem.ts` (label config/overlay types), `localSystemRenderer.ts` (local body/ring rendering interfaces).
+  - **Camera:** `transitions.ts` (transition config/state types).
+- Total: ~774 lines of type definitions added across 15 files.
+
+Why it changed:
+- Addresses the long-standing OPEN item: "~80+ pre-existing `implicit any` TypeScript errors across many files need gradual typing."
+- Typing these modules provides compile-time safety for the most complex rendering and physics interfaces.
+
+Evidence/validation:
+- Each commit focused on a coherent module group (solar, planetary, navigation, etc.).
+- Interfaces follow existing runtime shapes — no behavioral changes, purely additive type safety.
+
+Files touched:
+- `src/frontend/features/solar/{solarWind,solarPhysicsClient,solarProminences,solarMagnetics,solarObservationTexture,gravitationalWaves,solarFeatureBlending}.ts`
+- `src/frontend/features/planetary/{satelliteSystem,cloudDataPipeline}.ts`
+- `src/frontend/app/{nearbySystemsRenderer,plannerController,labelSystem,localSystemRenderer}.ts`
+- `src/frontend/camera/transitions.ts`
+
+Follow-ups / open questions:
+- OPEN: `animationLoop.ts`, `cameraController.ts`, `inputHandler.ts`, `uiBindings.ts`, `main.ts` still have implicit-any gaps — these are the remaining high-value typing targets.
+- OPEN: Consider adding a `src/types/` barrel file aggregating shared interfaces for cross-module contracts.
+
+### 2026-03-09 — Testing Infrastructure: Vitest + Unit Tests
+Status: DONE
+
+What changed:
+- Added Vitest as the frontend testing framework (`package.json` devDependency, configuration).
+- Created unit tests for `stateStore` (state management change tracking, dirty flag behavior) and `orbitMath` (Kepler solver, orbital element calculations).
+- Added trajectory regression tests and WebSocket protocol version handling in `simulationClient.ts`.
+
+Why it changed:
+- No frontend unit testing framework existed prior to this. Vitest was chosen for native ESM/TypeScript support and Vite integration.
+- `stateStore` and `orbitMath` are high-risk modules (state correctness and physics accuracy) that benefit most from regression coverage.
+
+Evidence/validation:
+- `stateStore.test.ts` and `orbitMath.test.ts` created and passing.
+- `test_trajectory_regression.py` updated for backend parity.
+
+Files touched:
+- `package.json`, `package-lock.json` — Vitest devDependency
+- `src/frontend/app/stateStore.test.ts` — [NEW]
+- `src/sim/orbitMath.test.ts` — [NEW]
+- `src/frontend/app/simulationClient.ts` — WebSocket protocol version
+- `backend/tests/test_trajectory_regression.py` — trajectory regression update
+
+Follow-ups / open questions:
+- OPEN: Expand test coverage to `solarSystemModel.ts` (propagation accuracy), `asteroidDistributions.ts` (PRNG determinism), and `catalog.ts` (data parsing).
+- OPEN: Add `npm run test` script and wire into CI gate alongside `npm run typecheck`.
+
+### 2026-03-09 — Multi-Module Enhancements: State Management, Secular Rates, Cloud Pipeline
+Status: DONE
+
+What changed:
+- **State management refactor:** Improved change tracking in `stateStore.ts` with cleaner dirty-flag propagation for simulation state mutations.
+- **Secular orbital rates:** Added linear secular rate coefficients (da/dt, de/dt, dI/dt, dΩ/dt, dω/dt) for planetary orbits in `planets.ts`. These correct for slow orbital element drift over centuries, improving long-duration propagation accuracy beyond the J2000 osculating elements.
+- **Cloud data pipeline:** Enhanced `cloudDataPipeline.ts` with structured type definitions for cloud layer tiles, blending parameters, and eviction lifecycle.
+- **Camera transitions:** Added typed interfaces to `transitions.ts` for transition configuration, easing profiles, and interpolation state.
+- **Solar corona engineering plan:** Added `my-notes/` document outlining the engineering plan for upcoming solar corona physics improvements (DEM channels, transition region, etc.).
+
+Why it changed:
+- Secular rates address a known accuracy gap: osculating elements alone drift visibly for outer planets over simulation timescales of hundreds of years.
+- State management and pipeline typing were prerequisites for the broader type safety pass.
+
+Evidence/validation:
+- Build passes after all changes.
+- Secular rate values sourced from Standish 1992 / Meeus planetary tables.
+
+Files touched:
+- `src/frontend/app/stateStore.ts` — change tracking refactor
+- `src/data/planets.ts` — secular rate coefficients
+- `src/frontend/features/planetary/cloudDataPipeline.ts` — typed interfaces
+- `src/frontend/camera/transitions.ts` — typed interfaces
+- `my-notes/` — solar corona engineering plan document
+
+Follow-ups / open questions:
+- OPEN: Wire secular rates into `solarSystemModel.ts` propagation to actually use the coefficients at runtime.
+- OPEN: Validate secular rate drift against JPL Horizons for Jupiter/Saturn over ±500 year windows.
+
+### 2026-03-09 — Binary KBO System Implementation
+Status: DONE
+
+What changed:
+- Added binary KBO companion support across the full stack (frontend data model, rendering, propagation, backend physics, tests).
+- ~20% of generated KBOs now have gravitationally-bound companions with mutual Keplerian orbits.
+
+Why it changed:
+- Codebase audit identified "No binary KBOs" as the biggest gap in the Kuiper Belt simulation (7/10 score). Observationally, ~30% of cold classical KBOs are binaries (Noll+ 2008).
+
+Evidence/validation:
+- Vite build succeeds (37 modules, 1.54s).
+- Backend tests in `test_kuiper_binary.py` (8 cases) pass when `rebound` is available; gracefully skip otherwise.
+- Binary companions rendered via a separate `InstancedMesh` in `beltRenderer.ts` — no breaking changes to existing asteroid belt rendering.
+
+Files touched:
+- `src/sim/kuiperBelt.ts` — `BinaryCompanionDef`, `BINARY_FRACTION`, `generateBinaryCompanion()`, `propagateBinaryKBOPositions()`
+- `src/frontend/features/asteroids/beltRenderer.ts` — companion mesh construction, `updateBinaryPositions()`
+- `src/main.ts` — import, buffer allocation, scene addition, animation loop, cleanup
+- `backend/sim/kuiper.py` — binary pair generation, `get_state()` now returns dict with `positions` + `binary_pairs`
+- `backend/tests/test_kuiper_binary.py` — [NEW]
+
+Follow-ups / open questions:
+- Consider visual indicators (tidal bridge lines) for tight binary pairs.
+- Support named binary KBOs (1998 WW31, Borasisi–Pabu) in the `NAMED_KBOS` array.
+- Backend `get_state()` return type change may require WebSocket handler update in `server.py`.
+
+### 2026-03-07 — Comprehensive Codebase Audit: Medium/Low Severity Fix Pass
+Status: DONE
+
+What changed:
+- Completed a 15-item fix pass addressing medium and low severity issues from a comprehensive codebase analysis (issues #9–#23). All fixes applied, one issue (#11) was already resolved.
+
+Summary of fixes:
+1. **Chunked async asteroid pipeline (#9):** Added chunked processing (10k per batch) with `setTimeout(0)` yields and reused `Vector3`/`Color` objects to prevent main-thread blocking and GC pressure during ~1.9M asteroid generation.
+2. **Reusable Color in beltRenderer (#10):** Added module-level `_reusableColor` object for `addInstanceColorData` to eliminate per-call allocations.
+3. **Sequential fetches (#11):** Already fixed — `Promise.all` was in place at line 634 of `phase1AsteroidCatalog.ts`.
+4. **force-cache → no-cache (#12):** Changed `cache: 'force-cache'` to `cache: 'no-cache'` in `loadPhase1CatalogMetadata()` to prevent stale metadata causing checksum mismatches.
+5. **CSV parser (#13):** Replaced naive comma-split parser in `scripts/fetch_utils.py` with Python `csv.DictReader` for RFC-compliant field handling.
+6. **Resource cleanup (#14):** Added `beforeunload` handler in `main.ts` disposing worker, belt renderers, body meshes (geometry + materials), orbit lines, label sprites, background stars, sun texture, and renderer.
+7. **resizeRenderer every frame (#15):** Removed redundant `resizeRenderer()` call from animation loop — already handled by `window.addEventListener('resize')`.
+8. **Deduplicate utilities (#16):** Consolidated `clamp()` imports to `constants.ts` across 4 files, `lerp()` to `constants.ts` in `textures.ts`, extracted `solveKeplerFast()` to `orbitMath.ts`, and exported `disposeThreeMaterial` from `textureManager.ts`.
+9. **Dead code (#17):** Deleted `temp_nearbySystemsRenderer.ts` (1127 lines), deleted fake `asteroidCatalogLoader.test.ts`, removed unused `MU_SUN_AU3_DAY2` import and `Math.sqrt(1)` no-op from `asteroidBelt.ts`.
+10. **Typo (#18):** Renamed `ALCBEO_SCALE_U16` → `ALBEDO_SCALE_U16` in `asteroidCatalogLoader.ts`.
+11. **BFS Array.shift() (#19):** Replaced O(n) `Array.shift()` in `buildUpdateOrder()` with O(1) index counter pattern in `solarSystemModel.ts`.
+12. **Math.random() → seeded PRNG (#20):** Added module-level mulberry32 seeded PRNG to `asteroidDistributions.ts`, replaced all `Math.random()` calls with `_rng()`, exported `seedDistributionRng()`.
+13. **const enum → enum (#21):** Changed `const enum` to regular `enum` in `asteroidBelt.ts`, `kuiperBelt.ts`, and `asteroidTaxonomyResolver.ts` (7 enums total) to prevent erasure breaking web worker imports.
+14. **Null-checks (#22):** Added `getContext('2d')` null guards in `main.ts`, `labelSystem.ts` (3 functions), and `nearbySystemsRenderer.ts`.
+15. **Shader patching warning (#23):** Added fragility warning comment before `onBeforeCompile` in `beltRenderer.ts`.
+
+Why it changed:
+- Codebase analysis identified these as remaining medium/low severity issues after severe/high issues were already addressed.
+
+Evidence/validation:
+- Build check confirmed no new TypeScript errors introduced. All pre-existing `implicit any` errors are unchanged.
+- Each fix verified against the specific issue description and affected code.
+
+Files touched:
+- `src/sim/asteroids/asteroidPipeline.ts` — chunked processing, object reuse
+- `src/frontend/features/asteroids/beltRenderer.ts` — reusable Color, shader warning
+- `src/sim/phase1AsteroidCatalog.ts` — cache policy fix
+- `scripts/fetch_utils.py` — CSV parser replacement
+- `src/main.ts` — resource cleanup handler, resize removal, null-checks, type annotations
+- `src/sim/solarSystemModel.ts` — BFS optimization
+- `src/sim/asteroids/asteroidDistributions.ts` — seeded PRNG
+- `src/data/asteroidCatalogLoader.ts` — typo fix (ALBEDO)
+- `src/sim/asteroidBelt.ts` — dead code removal, const enum → enum, solveKeplerFast import
+- `src/sim/kuiperBelt.ts` — const enum → enum, solveKeplerFast import
+- `src/data/asteroidTaxonomyResolver.ts` — const enum → enum
+- `src/frontend/app/labelSystem.ts` — null-checks
+- `src/frontend/app/nearbySystemsRenderer.ts` — null-check
+- `src/sim/orbitMath.ts` — exported solveKeplerFast
+- `src/constants.ts` — canonical clamp/lerp exports
+- `src/textures.ts` — lerp import from constants
+- `src/sim/catalog.ts` — clamp import from constants
+- `src/frontend/features/planetary/cloudDataPipeline.ts` — clamp import from constants
+- `src/frontend/features/solar/solarPhysicsClient.ts` — clamp import from constants
+- `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts` — clamp import from constants
+- `src/frontend/app/textureManager.ts` — disposeThreeMaterial export
+- `src/frontend/app/routeRenderer.ts` — disposeThreeMaterial import
+- Deleted: `src/frontend/app/temp_nearbySystemsRenderer.ts`, `src/data/asteroidCatalogLoader.test.ts`
+
+Follow-ups / open questions:
+- OPEN: ~80+ pre-existing `implicit any` TypeScript errors across many files need gradual typing (animationLoop.ts, cameraController.ts, inputHandler.ts, etc.).
+- OPEN: `asteroidPipeline.ts` still uses `Math.random()` for bucket selection and spin axis generation (lines 59, 74-76, 81) — these were intentionally left as non-deterministic since they affect rendering only, not orbital mechanics.
+
 ### 2026-02-26 10:16:00 UTC — Superluminal modeling feature moved and TS-converted
 Status: DONE
 

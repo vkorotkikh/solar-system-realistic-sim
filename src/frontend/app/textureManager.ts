@@ -21,6 +21,19 @@ export interface TextureManager {
   loadHiResTexture: (url: string, options?: LoadTextureOptions) => Texture;
 }
 
+export function disposeThreeMaterial(material: unknown): void {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    material.forEach(disposeThreeMaterial);
+    return;
+  }
+
+  const maybeDisposable = material as { dispose?: () => void };
+  if (typeof maybeDisposable.dispose === 'function') {
+    maybeDisposable.dispose();
+  }
+}
+
 export function createTextureManager({
   maxAnisotropy,
   crossOrigin = 'anonymous'
@@ -35,19 +48,6 @@ export function createTextureManager({
     texture.generateMipmaps = true;
     if (isColorMap) {
       texture.colorSpace = SRGBColorSpace;
-    }
-  }
-
-  function disposeThreeMaterial(material: unknown) {
-    if (!material) return;
-    if (Array.isArray(material)) {
-      material.forEach(disposeThreeMaterial);
-      return;
-    }
-
-    const maybeDisposable = material as { dispose?: () => void };
-    if (typeof maybeDisposable.dispose === 'function') {
-      maybeDisposable.dispose();
     }
   }
 

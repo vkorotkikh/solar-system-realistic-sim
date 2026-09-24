@@ -1,6 +1,6 @@
 # Ultra-Realistic Asteroid Belt Pipeline
 
-This folder contains the prototype code for a physically accurate, instanced 3D asteroid simulation. It solves the 6 critical weaknesses identified in the current CPU-driven `THREE.Points` implementation.
+This folder contains the code for a physically accurate, instanced 3D asteroid simulation. It replaces the original CPU-driven `THREE.Points` implementation with GPU-instanced meshes, realistic distributions, and custom shaders.
 
 ## Overview of Modules
 
@@ -18,47 +18,49 @@ This folder contains the prototype code for a physically accurate, instanced 3D 
 
 3. **`asteroidPipeline.ts`**
    - The central entrypoint class `AsteroidSimulationPipeline`.
-   - Replaces the sprawling logic in `main.js`.
-   - On `initialize()`, it generates arrays of elements, sizes, colors, and random spin vectors for 100k+ objects.
-   - On `update(jd)`, it propagates the orbits and updates the `InstancedMesh` instance matrices.
+   - On `initialize()`, generates arrays of elements, sizes, colors, and random spin vectors for 100k+ objects.
+   - On `update(jd)`, propagates the orbits and updates the `InstancedMesh` instance matrices.
 
-## How to Integrate into `src/main.js`
+4. **`asteroidShaders.ts`**
+   - Custom WebGL vertex and fragment shaders for GPU-driven Kepler propagation.
+   - Enables the pipeline to scale beyond CPU-iterated instance matrices.
+   - Designed for Phase 6 GPU-compute scaling to 1.5M+ particles.
 
-To implement this pipeline in the main application:
+## Integration
 
-### 1. Remove the old implementations
-In `src/main.js`, locate and **delete or comment out** the block labelled `Asteroid Belt (element-driven + adaptive LOD refinement)` (roughly lines 2070 to 2417). This includes `ASTEROID_BASE_COUNT`, `asteroidBaseGeometry`, `asteroidBelt`, and `updateAsteroidDetail()`.
+The pipeline is consumed by the frontend belt renderer at `src/frontend/features/asteroids/beltRenderer.ts` and the main application entry point at `src/main.ts`.
 
-### 2. Import the new Pipeline
-```javascript
+### Importing the Pipeline
+
+```typescript
 import { AsteroidSimulationPipeline } from './sim/asteroids/asteroidPipeline';
 ```
 
-*(Note: Ensure `../physics.js` or `../orbitMath` exports `propagateKeplerOrbit` correctly to match the import in `asteroidPipeline.ts`).*
+### Initialization
 
-### 3. Initialize in your scene setup
-Somewhere inside the mounting logic or `init()` function of `main.js`:
-
-```javascript
+```typescript
 const asteroidEngine = new AsteroidSimulationPipeline();
 asteroidEngine.initialize(simState.useRealisticScale ? 1.0 : 1.0).then(group => {
-  // Add the newly generated InstancedMeshes to the scene
   solarSystemGroup.add(group);
 });
 ```
 
-### 4. Hook into the Animation Loop
-In the `animate` or `update` loop where the Julian Date is advanced (e.g. `animationLoop.js` or `main.js` tick function):
+### Animation Loop
 
-```javascript
-function onSimulationTick(jd) {
-  // Update planets...
+Hook into the simulation tick where the Julian Date is advanced (e.g. `animationLoop.ts`):
 
+```typescript
+function onSimulationTick(jd: number) {
   if (dom.toggleAsteroids.checked) {
     asteroidEngine.update(jd);
   }
 }
 ```
 
-### Future Scaling (The 1.5 Million GPU Update)
-Currently, `asteroidPipeline.ts` updates instance matrices inside standard JS arrays. This is excellent for ~100k objects. To scale to the true 1.5 million targets, Phase 6 involves replacing the `.update(jd)` logic with a custom WebGL Vertex Shader attached to the InstancedMesh, ensuring the CPU never iterates over the array after initialization.
+## Orbit Math Dependency
+
+The pipeline imports `propagateKeplerOrbit` from `src/sim/orbitMath.ts` for Kepler equation solving and coordinate transforms.
+
+## Future Scaling (The 1.5 Million GPU Update)
+
+Currently, `asteroidPipeline.ts` updates instance matrices inside standard JS arrays. This is excellent for ~100k objects. To scale to the true 1.5 million targets, the plan involves replacing the `.update(jd)` logic with the custom WebGL shaders in `asteroidShaders.ts`, ensuring the CPU never iterates over the array after initialization.

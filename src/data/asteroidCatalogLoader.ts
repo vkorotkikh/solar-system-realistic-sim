@@ -52,14 +52,14 @@ const STRIDE_BYTES = 36;
 
 const ANGLE_SCALE_U16 = 65535;
 const ECENTRICITY_SCALE_U16 = 65535;
-const ALCBEO_SCALE_U16 = 65535;
+const ALBEDO_SCALE_U16 = 65535;
 
 const PERIOD_EPSILON_DAYS = 1e-4;
 const A_EPSILON_AU = 1e-6;
 const ECC_EPSILON = 1 / ECENTRICITY_SCALE_U16;
 const ANGLE_EPSILON_DEG = 360 / ANGLE_SCALE_U16;
 const DIAMETER_EPSILON_KM = 1e-5;
-const ALBEDO_EPSILON = 1 / ALCBEO_SCALE_U16;
+const ALBEDO_EPSILON = 1 / ALBEDO_SCALE_U16;
 
 function throwIfInvalidBuffer(buffer: ArrayBuffer, expectedBytes: number): void {
   if (buffer.byteLength < expectedBytes) {

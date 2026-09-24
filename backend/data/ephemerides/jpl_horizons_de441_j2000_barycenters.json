@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "dataset_id": "jpl-horizons-de441-j2000-reduced-major-bodies-v1",
+  "description": "Instantaneous J2000 Cartesian states for the reduced DE440-aligned major-body point-mass model used by the REBOUND backend.",
+  "epoch": {
+    "jd_tdb": 2451545.0,
+    "time_scale": "TDB",
+    "label": "A.D. 2000-Jan-01 12:00 TDB"
+  },
+  "input_frame": {
+    "origin": "solar_system_barycenter",
+    "orientation": "ecliptic_j2000",
+    "reference_system": "ICRF",
+    "position_unit": "AU",
+    "velocity_unit": "AU/day",
+    "aberration_correction": "NONE"
+  },
+  "dynamics": {
+    "representation": "planetary_system_barycenters_with_explicit_earth_moon",
+    "state_ephemeris": "DE441",
+    "gravity_parameter_unit": "km^3/s^2",
+    "gravity_parameter_source": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc",
+    "gravity_parameter_sha256": "924ddf4fb9ead9fe8a1aa55780bcabde40b09d00065d58226e24b68d8092f140",
+    "gravity_parameter_last_modified": "Wed, 14 Dec 2022 20:00:00 GMT",
+    "scope_note": "Earth and Moon are separate active particles with BODY399/BODY301 GMs. Mars through Pluto are planetary-system barycenters with matching BODY4-BODY9 system GMs because their satellites are not integrated."
+  },
+  "provenance": {
+    "provider": "NASA/JPL Horizons API",
+    "api_version": "1.2",
+    "retrieved_utc": "2026-08-26T04:31:41Z",
+    "api_url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "documentation_url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+    "query": {
+      "EPHEM_TYPE": "VECTORS",
+      "CENTER": "500@0",
+      "TLIST": "2451545.0",
+      "TLIST_TYPE": "JD",
+      "TIME_TYPE": "TDB",
+      "REF_PLANE": "ECLIPTIC",
+      "REF_SYSTEM": "ICRF",
+      "OUT_UNITS": "AU-D",
+      "VEC_TABLE": "2",
+      "VEC_CORR": "NONE",
+      "CSV_FORMAT": "YES",
+      "VEC_LABELS": "YES",
+      "OBJ_DATA": "NO",
+      "MAKE_EPHEM": "YES",
+      "format": "json"
+    },
+    "result_fingerprint_contract": "SHA-256 of canonical target/center/frame/unit headers, JDTDB, and six-vector; excludes the request-generation timestamp"
+  },
+  "bodies": {
+    "sun": {
+      "horizons_target_id": "10",
+      "target_name": "Sun",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "1ffc072c348cb1685b8afeead1c9c41569b354c0039f0f910ea2fedbb94d1a24",
+      "gm_km3_s2": 132712440041.27942,
+      "position_au": [-0.007137179161607904, -0.002795997495567612, 0.0002062985061910257],
+      "velocity_au_per_day": [5.378460339618783e-06, -7.406916207973516e-06, -9.43429343213747e-08]
+    },
+    "mercury": {
+      "horizons_target_id": "1",
+      "target_name": "Mercury barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "c65489cf3763fb77758caa4107a27a925fd69e4a4d57a13349359eb31f5e2e90",
+      "gm_km3_s2": 22031.868551400003,
+      "position_au": [-0.1372307845370601, -0.450083615630924, -0.02439200845186075],
+      "velocity_au_per_day": [0.02137177412835578, -0.006455396660044872, -0.002487957757771483]
+    },
+    "venus": {
+      "horizons_target_id": "2",
+      "target_name": "Venus barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "98ea075c3f2f9751ca5e7fffa6262d021fc845fd62ca0efee73d71219a066b7e",
+      "gm_km3_s2": 324858.592,
+      "position_au": [-0.725439475506997, -0.03545030569537367, 0.04122048053303724],
+      "velocity_au_per_day": [0.0008034959761149407, -0.02030262561844178, -0.0003235458586621571]
+    },
+    "earth": {
+      "horizons_target_id": "399",
+      "target_name": "Earth",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "f7ebd6e341e02b7e1aad05d357abf69ae76f9b017cd8e73debad74c4397e3ae2",
+      "gm_km3_s2": 398600.43550702266,
+      "position_au": [-0.1842722784343177, 0.964445689270963, 0.0002022132246085051],
+      "velocity_au_per_day": [-0.01720224660838933, -0.003166189060532839, 1.064592514002072e-08]
+    },
+    "mars": {
+      "horizons_target_id": "4",
+      "target_name": "Mars system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "4d7ad61627f90344ecaa95114857c57dea02cabf5b9787f00ce38eaacc9e8b63",
+      "gm_km3_s2": 42828.3758157561,
+      "position_au": [1.383578742584679, -0.01621231564790753, -0.03426136426966323],
+      "velocity_au_per_day": [0.0006768779813732038, 0.01517984117494233, 0.0003015574196696519]
+    },
+    "jupiter": {
+      "horizons_target_id": "5",
+      "target_name": "Jupiter system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "a7bfbc2c82bb875472792fe5461a41dff314aa7bce6b7189e964f5a796ca9c35",
+      "gm_km3_s2": 126712764.09999998,
+      "position_au": [3.994039981964449, 2.935780109470535, -0.1015789781275531],
+      "velocity_au_per_day": [-0.004562935066413099, 0.006435799094013335, 7.548517732342305e-05]
+    },
+    "saturn": {
+      "horizons_target_id": "6",
+      "target_name": "Saturn system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "16628ba31db86e93797a0fa3ba939764bc9003489b2b7e356d983cd1022aa0d4",
+      "gm_km3_s2": 37940584.8418,
+      "position_au": [6.399271680371201, 6.567193619416989, -0.3688701277386623],
+      "velocity_au_per_day": [-0.004286973413503631, 0.003882908781806891, 0.0001028535064646593]
+    },
+    "uranus": {
+      "horizons_target_id": "7",
+      "target_name": "Uranus system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "a3aed4578d44fe38609ec452c953011b229acfa373ca16707354ab9d1141f58f",
+      "gm_km3_s2": 5794556.3999999985,
+      "position_au": [14.42471943522018, -13.73711746626653, -0.2379353892930592],
+      "velocity_au_per_day": [0.002683484051759769, 0.002665288979504713, -2.486640648937235e-05]
+    },
+    "neptune": {
+      "horizons_target_id": "8",
+      "target_name": "Neptune system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "40ad726dbbe392c0cb803bd574641461f173cdddf96d071b704ed72cefc9228d",
+      "gm_km3_s2": 6836527.100580399,
+      "position_au": [16.80490978889128, -24.99455888678026, 0.1274291784264387],
+      "velocity_au_per_day": [0.002584652719387356, 0.001769493903808153, -9.600395792023743e-05]
+    },
+    "pluto": {
+      "horizons_target_id": "9",
+      "target_name": "Pluto system barycenter",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "2eeb63a91e097ab824fe704a4bd7459d443a9526b55763ed0373222acd33b170",
+      "gm_km3_s2": 975.5,
+      "position_au": [-9.882489409085188, -27.96159262368592, 5.85065221499273],
+      "velocity_au_per_day": [0.003034129306353885, -0.001545193083508789, -0.0007122969936787857]
+    },
+    "moon": {
+      "horizons_target_id": "301",
+      "target_name": "Moon",
+      "state_ephemeris": "DE441",
+      "result_fingerprint_sha256": "f5fcc254da6e5cef5c15b7fac26045b3c84ba545a4a030e3013e9438cd6e347a",
+      "gm_km3_s2": 4902.80011845755,
+      "position_au": [-0.1862215600840044, 0.9626075632308897, 0.000444671198490556],
+      "velocity_au_per_day": [-0.01683057613107253, -0.003588367637063646, -6.634893538849906e-06]
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import rawMoons from '../data/moons.json';
-import { AU_KM, MAJOR_BODY_IDS, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
+import { AU_KM, MAJOR_BODY_IDS, clamp, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
 import {
   MAJOR_MOON_RADII_KM,
   MOON_ROTATION_PERIOD_HOURS,
@@ -10,7 +10,7 @@ import {
 } from '../data/planets';
 import type { KeplerOrbit } from './orbitMath';
 
-interface RawMoonRecord {
+export interface RawMoonRecord {
   id: number;
   planet: string;
   name: string;
@@ -69,6 +69,12 @@ interface OrbitNormal {
   z: number;
 }
 
+interface FrameBasis {
+  x: OrbitNormal;
+  y: OrbitNormal;
+  z: OrbitNormal;
+}
+
 const PARENT_TINTS: Record<string, string> = {
   Earth: '#d2d8e3',
   Mars: '#c9b8a7',
@@ -83,42 +89,34 @@ const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 const EARTH_OBLIQUITY_DEG = 23.439281;
 const PARENT_AXIAL_TILT_DEG: Record<string, number> = Object.fromEntries(
-  PLANETS.map((planet) => [planet.id, planet.axialTiltDeg ?? 0])
+  PLANETS.map((planet) => [planet.id, Math.abs(planet.axialTiltDeg ?? 0)])
 );
-const PARENT_SPIN_AXIS_LONGITUDE_DEG: Record<string, number> = Object.fromEntries(
-  PLANETS.map((planet) => {
-    const axisLon = (planet as { spinAxisLongitudeDeg?: unknown }).spinAxisLongitudeDeg;
-    const axisLonDeg = typeof axisLon === 'number' && Number.isFinite(axisLon) ? axisLon : 0;
-    return [planet.id, axisLonDeg];
-  })
-);
-const J2000_ECLIPTIC_OBLIQUITY_RAD = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
+// JPL publishes satellite elements referred to a body-fixed plane (parent equator or
+// local Laplace plane) with the node measured from that plane's ascending node on the
+// Earth mean equator of J2000 -- not on the ecliptic. The source frame's x-axis must
+// therefore be built from the equatorial pole, expressed here in ecliptic coordinates.
 const SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS: OrbitNormal = {
   x: 0,
-  y: Math.sin(J2000_ECLIPTIC_OBLIQUITY_RAD),
-  z: Math.cos(J2000_ECLIPTIC_OBLIQUITY_RAD)
+  y: Math.sin(EARTH_OBLIQUITY_DEG * DEG_TO_RAD),
+  z: Math.cos(EARTH_OBLIQUITY_DEG * DEG_TO_RAD)
 };
-// Authoritative parent equator poles for non-ecliptic moon frames where source-frame pole data is omitted.
-// Keys are catalog body ids (lower-case), matching the parentId passed to
-// parentPoleInEcliptic; see planetNameToId.
+// Authoritative parent poles for parent-equator moon records that carry no per-moon
+// pole (moons.json leaves poleRaDeg/poleDecDeg null for the Uranian and Plutonian
+// 'equatorial' entries). PARENT_AXIAL_TILT_DEG alone cannot express these: it drops the
+// pole's ecliptic longitude entirely.
 //
-// These must point along the parent's ROTATIONAL ANGULAR MOMENTUM, which is the
-// axis the satellite elements are referenced to — not necessarily the IAU north
-// pole. For planets the IAU fixes north by the invariable-plane rule, so for a
-// retrograde rotator like Uranus (obliquity 97.77 deg) the IAU north pole points
-// opposite the angular momentum and must be negated. Dwarf planets such as Pluto
-// use the right-hand rule, so their IAU pole already is the angular momentum.
-// Verified against Horizons r x v: Ariel 0.003 deg, Charon 0.084 deg.
+// The vector must be the parent's ROTATIONAL ANGULAR MOMENTUM, which is what the
+// satellite elements are referenced to -- not necessarily the IAU north pole. The IAU
+// fixes planetary north by the invariable-plane rule, so for a retrograde rotator like
+// Uranus (obliquity 97.77 deg) the IAU pole is anti-parallel to the moons' orbital
+// angular momentum and must be negated. Dwarf planets such as Pluto use the right-hand
+// rule, so their IAU pole already is the angular momentum direction.
+// Keys are catalog body ids (lower case), matching the parentId argument -- see
+// planetNameToId in createSolarSystemCatalog.
 const PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC: Record<string, OrbitNormal> = {
-  uranus: negateVector(
-    normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175)))
-  ),
+  uranus: negateVector(normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(257.311, -15.175)))),
   pluto: normalizeVector(equatorialToEcliptic(raDecToEquatorialUnit(132.993, -6.163)))
 };
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 function normalizeDegrees(value: number): number {
   const mod = value % 360;
@@ -130,8 +128,11 @@ function orbitNormalFromElements(iDeg: number | undefined, ascendingNodeDeg: num
   const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
   const sinI = Math.sin(i);
 
-  // Angular-momentum direction for the Rz(Omega) * Rx(i) * Rz(argp) transform
-  // used by propagateKeplerOrbit: h = (sin i sin Omega, -sin i cos Omega, cos i).
+  // Angular-momentum direction for the Rz(Omega) * Rx(i) * Rz(argPeriapsis) transform
+  // that propagateKeplerOrbit actually applies:
+  //   h = (sin i sin Omega, -sin i cos Omega, cos i).
+  // The previous (-sin Omega sin i, cos Omega sin i, cos i) is Rz(180 deg) of that, so
+  // the source plane was tilted the wrong way about the frame node line.
   return {
     x: Math.sin(omega) * sinI,
     y: -Math.cos(omega) * sinI,
@@ -167,42 +168,102 @@ function crossProduct(a: OrbitNormal, b: OrbitNormal): OrbitNormal {
   };
 }
 
-function rotateVectorAroundAxis(vector: OrbitNormal, axis: OrbitNormal, angleDeg: number): OrbitNormal {
-  const axisUnit = normalizeVector(axis);
+function dotProduct(a: OrbitNormal, b: OrbitNormal): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function rotateVectorAroundX(vector: OrbitNormal, angleDeg: number): OrbitNormal {
   const angle = angleDeg * DEG_TO_RAD;
-  const sinA = Math.sin(angle);
   const cosA = Math.cos(angle);
-  const oneMinusCosA = 1 - cosA;
-  const dot = vector.x * axisUnit.x + vector.y * axisUnit.y + vector.z * axisUnit.z;
-  const cross = crossProduct(axisUnit, vector);
-
+  const sinA = Math.sin(angle);
   return {
-    x: vector.x * cosA + cross.x * sinA + axisUnit.x * dot * oneMinusCosA,
-    y: vector.y * cosA + cross.y * sinA + axisUnit.y * dot * oneMinusCosA,
-    z: vector.z * cosA + cross.z * sinA + axisUnit.z * dot * oneMinusCosA
+    x: vector.x,
+    y: vector.y * cosA - vector.z * sinA,
+    z: vector.y * sinA + vector.z * cosA
   };
 }
 
-function eclipticNormalFromEquatorialCoords(latDeg: number, lonDeg: number): OrbitNormal {
-  const latRad = latDeg * DEG_TO_RAD;
-  const lonRad = lonDeg * DEG_TO_RAD;
-  const cosLat = Math.cos(latRad);
+function elementsFromOrbitNormal(normal: OrbitNormal): { iDeg: number; ascendingNodeDeg: number } {
+  const z = clamp(normal.z, -1, 1);
+  const iRad = Math.acos(z);
+  // Inverse of orbitNormalFromElements: h.x = sin i sin Omega, h.y = -sin i cos Omega.
+  const ascendingNodeRad = Math.atan2(normal.x, -normal.y);
   return {
-    x: cosLat * Math.cos(lonRad),
-    y: cosLat * Math.sin(lonRad),
-    z: Math.sin(latRad)
+    iDeg: iRad * RAD_TO_DEG,
+    ascendingNodeDeg: normalizeDegrees(ascendingNodeRad * RAD_TO_DEG)
   };
 }
 
-function parentPoleInEcliptic(parentId: string): OrbitNormal {
-  const override = PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC[parentId];
-  if (override) {
-    return override;
+function transformSourceVectorToEcliptic(vector: OrbitNormal, basis: FrameBasis): OrbitNormal {
+  return {
+    x: basis.x.x * vector.x + basis.y.x * vector.y + basis.z.x * vector.z,
+    y: basis.x.y * vector.x + basis.y.y * vector.y + basis.z.y * vector.z,
+    z: basis.x.z * vector.x + basis.y.z * vector.y + basis.z.z * vector.z
+  };
+}
+
+function periapsisVectorFromElements(
+  inclinationDeg: number | undefined,
+  ascendingNodeDeg: number | undefined,
+  argPeriapsisDeg: number | undefined
+): OrbitNormal {
+  const i = (inclinationDeg ?? 0) * DEG_TO_RAD;
+  const omega = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
+  const argPeriapsis = (argPeriapsisDeg ?? 0) * DEG_TO_RAD;
+
+  const cosNode = Math.cos(omega);
+  const sinNode = Math.sin(omega);
+  const cosArg = Math.cos(argPeriapsis);
+  const sinArg = Math.sin(argPeriapsis);
+  const cosI = Math.cos(i);
+  const sinI = Math.sin(i);
+
+  return {
+    x: cosNode * cosArg - sinNode * sinArg * cosI,
+    y: sinNode * cosArg + cosNode * sinArg * cosI,
+    z: sinArg * sinI
+  };
+}
+
+function basisFromSourcePole(sourcePole: OrbitNormal): FrameBasis {
+  // Zero point of the source frame's longitudes: the ascending node of the source plane
+  // on the Earth mean equator of J2000, which is where JPL measures the published node.
+  let planeXAxis = crossProduct(SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS, sourcePole);
+  if (vectorMagnitude(planeXAxis) < 1e-9) {
+    planeXAxis = { x: 1, y: 0, z: 0 };
+  } else {
+    planeXAxis = normalizeVector(planeXAxis);
   }
 
-  const parentTiltDeg = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
-  const parentPoleLonDeg = PARENT_SPIN_AXIS_LONGITUDE_DEG[parentId] ?? 0;
-  return normalizeVector(eclipticNormalFromEquatorialCoords(90 - parentTiltDeg, parentPoleLonDeg));
+  return {
+    x: planeXAxis,
+    y: normalizeVector(crossProduct(sourcePole, planeXAxis)),
+    z: sourcePole
+  };
+}
+
+function normalizeAngleWithinPlaneDegrees(normal: OrbitNormal, periapsisVector: OrbitNormal): number {
+  const nodeVector = crossProduct({ x: 0, y: 0, z: 1 }, normal);
+  const nodeMagnitude = vectorMagnitude(nodeVector);
+  const projectionScale = dotProduct(periapsisVector, normal);
+  const periapsisProjected = normalizeVector({
+    x: periapsisVector.x - normal.x * projectionScale,
+    y: periapsisVector.y - normal.y * projectionScale,
+    z: periapsisVector.z - normal.z * projectionScale
+  });
+
+  if (nodeMagnitude < 1e-9) {
+    return normalizeDegrees(Math.atan2(periapsisProjected.y, periapsisProjected.x) * RAD_TO_DEG);
+  }
+
+  const nodeUnit = normalizeVector(nodeVector);
+  const transverseUnit = normalizeVector(crossProduct(normal, nodeUnit));
+  return normalizeDegrees(
+    Math.atan2(
+      dotProduct(periapsisProjected, transverseUnit),
+      dotProduct(periapsisProjected, nodeUnit)
+    ) * RAD_TO_DEG
+  );
 }
 
 function raDecToEquatorialUnit(raDeg: number | null | undefined, decDeg: number | null | undefined): OrbitNormal {
@@ -217,7 +278,7 @@ function raDecToEquatorialUnit(raDeg: number | null | undefined, decDeg: number 
 }
 
 function equatorialToEcliptic(vectorEq: OrbitNormal): OrbitNormal {
-  const obliquity = J2000_ECLIPTIC_OBLIQUITY_RAD;
+  const obliquity = EARTH_OBLIQUITY_DEG * DEG_TO_RAD;
   const cosOb = Math.cos(obliquity);
   const sinOb = Math.sin(obliquity);
   return {
@@ -227,108 +288,41 @@ function equatorialToEcliptic(vectorEq: OrbitNormal): OrbitNormal {
   };
 }
 
-function sourcePoleInEcliptic(moon: RawMoonRecord, parentId: string, sourceFrame: string): OrbitNormal {
+function sourcePoleInEcliptic(
+  moon: Pick<RawMoonRecord, 'poleRaDeg' | 'poleDecDeg' | 'poleTiltDeg'>,
+  parentId: string,
+  sourceFrame: string
+): OrbitNormal {
   if (Number.isFinite(moon.poleRaDeg) && Number.isFinite(moon.poleDecDeg)) {
     const poleEq = raDecToEquatorialUnit(moon.poleRaDeg, moon.poleDecDeg);
     return normalizeVector(equatorialToEcliptic(poleEq));
   }
 
-  const parentPole = parentPoleInEcliptic(parentId);
-  if (sourceFrame !== 'laplace') {
-    return parentPole;
+  // No per-moon pole. Prefer an authoritative parent pole when we have one; the axial
+  // tilt fallback below knows only the tilt magnitude, not the pole's longitude.
+  // Every Laplace record in moons.json carries an explicit pole, so only parent-equator
+  // records reach here today; the Laplace branch is left exactly as it was so that the
+  // per-moon Laplace tilt is never silently dropped.
+  const parentPoleOverride = PARENT_EQUATOR_POLE_OVERRIDE_ECLIPTIC[parentId];
+  if (parentPoleOverride && sourceFrame !== 'laplace') {
+    return parentPoleOverride;
   }
 
+  const parentTilt = PARENT_AXIAL_TILT_DEG[parentId] ?? 0;
   const laplaceTilt = Number.isFinite(moon.poleTiltDeg) ? (moon.poleTiltDeg as number) : 0;
-  if (!Number.isFinite(laplaceTilt) || Math.abs(laplaceTilt) < 1e-12) {
-    return parentPole;
-  }
-
-  const laplaceAxis = crossProduct(parentPole, { x: 0, y: 0, z: 1 });
-  if (vectorMagnitude(laplaceAxis) < 1e-12) {
-    return parentPole;
-  }
-  return rotateVectorAroundAxis(parentPole, laplaceAxis, laplaceTilt);
+  const frameTiltDeg = sourceFrame === 'laplace'
+    ? parentTilt + laplaceTilt
+    : parentTilt;
+  return normalizeVector(rotateVectorAroundX({ x: 0, y: 0, z: 1 }, frameTiltDeg));
 }
 
-function transformVectorFromSourcePlane(
-  vector: OrbitNormal,
-  planeXAxis: OrbitNormal,
-  planeYAxis: OrbitNormal,
-  sourcePole: OrbitNormal
-): OrbitNormal {
-  return {
-    x: planeXAxis.x * vector.x + planeYAxis.x * vector.y + sourcePole.x * vector.z,
-    y: planeXAxis.y * vector.x + planeYAxis.y * vector.y + sourcePole.y * vector.z,
-    z: planeXAxis.z * vector.x + planeYAxis.z * vector.y + sourcePole.z * vector.z
-  };
-}
-
-function sourcePeriapsisDirection(iDeg: number | undefined, ascendingNodeDeg: number | undefined, argPeriapsisDeg: number | undefined): OrbitNormal {
-  const i = (iDeg ?? 0) * DEG_TO_RAD;
-  const ascendingNode = (ascendingNodeDeg ?? 0) * DEG_TO_RAD;
-  const argPeriapsis = (argPeriapsisDeg ?? 0) * DEG_TO_RAD;
-  const sinI = Math.sin(i);
-  const cosI = Math.cos(i);
-
-  return {
-    x: Math.cos(ascendingNode) * Math.cos(argPeriapsis) - Math.sin(ascendingNode) * Math.sin(argPeriapsis) * cosI,
-    y: Math.sin(ascendingNode) * Math.cos(argPeriapsis) + Math.cos(ascendingNode) * Math.sin(argPeriapsis) * cosI,
-    z: Math.sin(argPeriapsis) * sinI
-  };
-}
-
-function elementsFromPlane(normal: OrbitNormal, periapsis: OrbitNormal): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
-  const eclipticNorth: OrbitNormal = { x: 0, y: 0, z: 1 };
-  const iDeg = Math.acos(clamp(normal.z, -1, 1)) * RAD_TO_DEG;
-  // Inverse of orbitNormalFromElements: h.x = sin i sin Omega, h.y = -sin i cos Omega.
-  const ascendingNodeDeg = normalizeDegrees(Math.atan2(normal.x, -normal.y) * RAD_TO_DEG);
-
-  let nodeAxis = crossProduct(eclipticNorth, normal);
-  if (vectorMagnitude(nodeAxis) < 1e-12) {
-    nodeAxis = { x: 1, y: 0, z: 0 };
-  } else {
-    nodeAxis = normalizeVector(nodeAxis);
-  }
-
-  const periapsisAlongNode = nodeAxis.x * periapsis.x + nodeAxis.y * periapsis.y + nodeAxis.z * periapsis.z;
-  const nodePerp = normalizeVector(crossProduct(normal, nodeAxis));
-  const periapsisAlongPerp = nodePerp.x * periapsis.x + nodePerp.y * periapsis.y + nodePerp.z * periapsis.z;
-  const argPeriapsisDeg = normalizeDegrees(Math.atan2(periapsisAlongPerp, periapsisAlongNode) * RAD_TO_DEG);
-
-  return {
-    iDeg,
-    ascendingNodeDeg,
-    argPeriapsisDeg
-  };
-}
-
-function convertElementsFromPlaneToEcliptic(
-  moon: RawMoonRecord,
-  sourceFrame: string,
+export function convertMoonOrbitFrameToEcliptic(
+  moon: Pick<
+    RawMoonRecord,
+    'planet' | 'frame' | 'inclinationDeg' | 'ascendingNodeDeg' | 'argPeriapsisDeg' | 'poleRaDeg' | 'poleDecDeg' | 'poleTiltDeg'
+  >,
   parentId: string
-): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number } {
-  const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
-  let planeXAxis = crossProduct(SOURCE_FRAME_REFERENCE_ECLIPTIC_AXIS, sourcePole);
-  if (vectorMagnitude(planeXAxis) < 1e-9) {
-    planeXAxis = { x: 1, y: 0, z: 0 };
-  } else {
-    planeXAxis = normalizeVector(planeXAxis);
-  }
-  const planeYAxis = normalizeVector(crossProduct(sourcePole, planeXAxis));
-
-  const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
-  const sourcePeriapsis = sourcePeriapsisDirection(moon.inclinationDeg, moon.ascendingNodeDeg, moon.argPeriapsisDeg);
-
-  const eclipticNormal = normalizeVector(
-    transformVectorFromSourcePlane(sourceNormal, planeXAxis, planeYAxis, sourcePole)
-  );
-  const eclipticPeriapsis = normalizeVector(
-    transformVectorFromSourcePlane(sourcePeriapsis, planeXAxis, planeYAxis, sourcePole)
-  );
-  return elementsFromPlane(eclipticNormal, eclipticPeriapsis);
-}
-
-function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number; sourceFrame: string } {
+): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number; sourceFrame: string } {
   const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
   if (sourceFrame === 'ecliptic' || sourceFrame.length === 0) {
     return {
@@ -339,15 +333,74 @@ function normalizeMoonOrbitFrame(moon: RawMoonRecord, parentId: string): { iDeg:
     };
   }
 
-  // JPL moon elements are not consistently published in one frame.
-  // Convert equatorial/Laplace entries into ecliptic elements using source pole orientation.
-  const converted = convertElementsFromPlaneToEcliptic(moon, sourceFrame, parentId);
+  const sourcePole = sourcePoleInEcliptic(moon, parentId, sourceFrame);
+  const basis = basisFromSourcePole(sourcePole);
+  const sourceNormal = orbitNormalFromElements(moon.inclinationDeg, moon.ascendingNodeDeg);
+  const sourcePeriapsis = periapsisVectorFromElements(moon.inclinationDeg, moon.ascendingNodeDeg, moon.argPeriapsisDeg);
+  const eclipticNormal = normalizeVector(transformSourceVectorToEcliptic(sourceNormal, basis));
+  const eclipticPeriapsis = normalizeVector(transformSourceVectorToEcliptic(sourcePeriapsis, basis));
+  const resolvedElements = elementsFromOrbitNormal(eclipticNormal);
+
   return {
-    iDeg: converted.iDeg,
-    ascendingNodeDeg: converted.ascendingNodeDeg,
-    argPeriapsisDeg: converted.argPeriapsisDeg,
+    iDeg: resolvedElements.iDeg,
+    ascendingNodeDeg: resolvedElements.ascendingNodeDeg,
+    argPeriapsisDeg: normalizeAngleWithinPlaneDegrees(eclipticNormal, eclipticPeriapsis),
     sourceFrame
   };
+}
+
+function precessionRateDegreesPerCentury(periodYears: number | null, directionSign: number): number | undefined {
+  if (!Number.isFinite(periodYears)) {
+    return undefined;
+  }
+
+  const years = Number(periodYears);
+  if (years === 0) {
+    return 0;
+  }
+
+  return directionSign * (36_000 / years);
+}
+
+export function resolveMoonSecularRates(
+  moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'>
+): KeplerOrbit['secularRates'] | undefined {
+  const argRate = precessionRateDegreesPerCentury(moon.apsisPrecessionYears, 1);
+  const nodeRate = precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1);
+
+  if (argRate === undefined && nodeRate === undefined) {
+    return undefined;
+  }
+
+  return {
+    argPeriapsisDegPerCentury: argRate,
+    ascendingNodeDegPerCentury: nodeRate
+  };
+}
+
+export function resolveMoonRotationPeriodHours(
+  moon: Pick<RawMoonRecord, 'name' | 'periodDays'>
+): number | null {
+  const explicit = (MOON_ROTATION_PERIOD_HOURS as Record<string, number | undefined>)[moon.name];
+  if (Number.isFinite(explicit)) {
+    return explicit ?? null;
+  }
+
+  if (!MAJOR_MOONS.has(moon.name) || !Number.isFinite(moon.periodDays) || moon.periodDays <= 0) {
+    return null;
+  }
+
+  const rotationHours = moon.periodDays * 24;
+  return moon.name === 'Triton' ? -rotationHours : rotationHours;
+}
+
+function normalizeMoonOrbitFrame(
+  moon: RawMoonRecord,
+  parentId: string
+): { iDeg: number; ascendingNodeDeg: number; argPeriapsisDeg: number; sourceFrame: string } {
+  // JPL moon elements are not consistently published in one frame.
+  // Convert equatorial/Laplace entries into ecliptic elements using source pole orientation.
+  return convertMoonOrbitFrameToEcliptic(moon, parentId);
 }
 
 function stableHash(input: string): number {
@@ -532,7 +585,7 @@ export function createSolarSystemCatalog(): SolarCatalog {
       realRadiusAu: radiusKm / AU_KM,
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
-      rotationPeriodHours: (MOON_ROTATION_PERIOD_HOURS as Record<string, number | undefined>)[moon.name] ?? null,
+      rotationPeriodHours: resolveMoonRotationPeriodHours(moon),
       reference: moon.reference,
       orbitFrameSource: frameNormalized.sourceFrame,
       orbit: {
@@ -543,7 +596,8 @@ export function createSolarSystemCatalog(): SolarCatalog {
         ascendingNodeDeg: frameNormalized.ascendingNodeDeg,
         argPeriapsisDeg: frameNormalized.argPeriapsisDeg,
         meanAnomalyDeg: moon.meanAnomalyDeg,
-        periodDays: moon.periodDays
+        periodDays: moon.periodDays,
+        secularRates: resolveMoonSecularRates(moon)
       }
     });
   }

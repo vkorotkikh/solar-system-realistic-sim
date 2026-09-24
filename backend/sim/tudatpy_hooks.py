@@ -45,6 +45,11 @@ AU_M = 149_597_870_700.0       # 1 AU in metres
 DAY_S = 86_400.0                # 1 day in seconds
 DAYS_PER_YEAR = 365.25
 YEAR_S = DAYS_PER_YEAR * DAY_S
+
+STATE_POSITION_FRAME = "barycentric"
+STATE_VELOCITY_FRAME = "barycentric"
+STATE_POSITION_UNITS = "AU"
+STATE_VELOCITY_UNITS = "AU/day"
 J2000_JD = 2_451_545.0
 GM_SUN_SI = 1.32712440018e20   # m^3 s^-2
 J2000_OBLIQUITY_RAD = math.radians(23.439291111)
@@ -126,7 +131,7 @@ def _state_vector_contract() -> Dict[str, Any]:
         "origin": "system_barycenter",
         "orientation": "ecliptic_j2000",
         "position_unit": "AU",
-        "velocity_unit": "AU/year",
+        "velocity_unit": "AU/day",
     }
 
 
@@ -319,6 +324,10 @@ class TudatPyEngine(SimulationEngine):
                 "fidelity": self.fidelity_level,
                 "jd": self._jd,
                 "state_vector_contract": _state_vector_contract(),
+                "position_frame": STATE_POSITION_FRAME,
+                "velocity_frame": STATE_VELOCITY_FRAME,
+                "position_units": STATE_POSITION_UNITS,
+                "velocity_units": STATE_VELOCITY_UNITS,
                 "force_models": force_models,
                 "bodies": {},
             }
@@ -352,13 +361,13 @@ class TudatPyEngine(SimulationEngine):
             pos_au = _equatorial_to_ecliptic_j2000(
                 barycentric_si[:3]
             ) / AU_M
-            vel_auy = _equatorial_to_ecliptic_j2000(
+            vel_aud = _equatorial_to_ecliptic_j2000(
                 barycentric_si[3:]
-            ) * (YEAR_S / AU_M)
+            ) * (DAY_S / AU_M)
 
             bodies_out[body_id] = {
                 "pos": [round(float(v), 10) for v in pos_au],
-                "vel": [round(float(v), 10) for v in vel_auy],
+                "vel": [round(float(v), 10) for v in vel_aud],
             }
 
         return {
@@ -367,6 +376,14 @@ class TudatPyEngine(SimulationEngine):
             "jd": self._jd,
             "fidelity": self.fidelity_level,
             "state_vector_contract": _state_vector_contract(),
+            # Declared explicitly: consumers (e.g. the Kuiper engine) scale by these
+            # rather than assuming. Propagation runs in the SSB/J2000 global frame and
+            # the loop above converts SI -> AU and m/s -> AU/day, then rotates
+            # equatorial -> ecliptic J2000.
+            "position_frame": STATE_POSITION_FRAME,
+            "velocity_frame": STATE_VELOCITY_FRAME,
+            "position_units": STATE_POSITION_UNITS,
+            "velocity_units": STATE_VELOCITY_UNITS,
             "force_models": force_models,
             "bodies": bodies_out,
         }

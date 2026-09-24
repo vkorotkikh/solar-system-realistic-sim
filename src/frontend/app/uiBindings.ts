@@ -1,10 +1,96 @@
+import type { SimulationStateStore } from './stateStore';
+
+interface ControlsLike {
+  zoomSpeed: number;
+}
+
+interface InteractiveElementLike {
+  addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
+  textContent?: string | null;
+}
+
+interface ValueElementLike extends InteractiveElementLike {
+  value: string;
+}
+
+interface ToggleElementLike extends ValueElementLike {
+  checked: boolean;
+}
+
+interface UiDomBindings {
+  togglePlay: InteractiveElementLike;
+  zoomSensitivity?: ValueElementLike | null;
+  toggleOrbits: ToggleElementLike;
+  toggleLabels: ToggleElementLike;
+  toggleLocators: ToggleElementLike;
+  toggleGravityVectors: ToggleElementLike;
+  toggleMoons: ToggleElementLike;
+  toggleAsteroids: ToggleElementLike;
+  toggleKuiper: ToggleElementLike;
+  toggleOort: ToggleElementLike;
+  toggleEnhancedMilky: ToggleElementLike;
+  toggleSurveyMilky: ToggleElementLike;
+  toggleNearbySystems: ToggleElementLike;
+  toggleEarthSatellites: ToggleElementLike;
+  toggleSatelliteJ2: ToggleElementLike;
+  bodySearch: ValueElementLike;
+  starSystemList?: ValueElementLike | null;
+  canvas: InteractiveElementLike;
+  bodyList: ValueElementLike;
+  focusBody: InteractiveElementLike;
+  followBody: InteractiveElementLike;
+  clearFollow: InteractiveElementLike;
+  statusFocus: { textContent: string | null };
+  returnSolarSystem?: InteractiveElementLike | null;
+  simConnect: InteractiveElementLike;
+  simBackend: ValueElementLike;
+  simStatus: { textContent: string | null };
+  toggleRealisticScale?: ToggleElementLike | null;
+}
+
+interface QuickViewPreset {
+  element?: InteractiveElementLike | null;
+  bodyId: string;
+  altitudeKm: number;
+}
+
+interface UiBindingHandlers {
+  sendServerMessage: (message: Record<string, unknown>) => void;
+  updateZoomMetricsUI: () => void;
+  focusBodyAtAltitude: (bodyId: string, altitudeKm: number, options: { follow: boolean }) => void;
+  applyRenderVisibility: () => void;
+  refillBodyList: (query: string) => void;
+  selectStarSystem: (systemId: string, options: { hardSnap: boolean }) => Promise<void> | void;
+  systemViewModeLocal: string;
+  setHoveredNearbySystem: (systemId: string | null) => void;
+  updateNearbySystemHoverAtClientPosition: (clientX: number, clientY: number) => void;
+  pickBodyAtClientPosition: (clientX: number, clientY: number) => string | null;
+  selectBodyAndTrack: (bodyId: string, options: { hardSnap: boolean; follow: boolean }) => void;
+  pickNearbySystemAtClientPosition: (clientX: number, clientY: number) => { id: string } | null;
+  updateEarthOrbitGuidesVisibility: () => void;
+  returnToSolarSystemView: (options: { hardSnap: boolean }) => void;
+  disconnectSimulation: () => void;
+  connectSimulation: (backend: string) => void;
+  applyScaleMode: () => void;
+  updateBodyInfoPanel: (bodyId: string) => void;
+  bodyDisplayName: (bodyId: string) => string | null | undefined;
+}
+
+interface SetupUiBindingsArgs {
+  dom: UiDomBindings;
+  simState: SimulationStateStore;
+  controls: ControlsLike;
+  quickViewPresets: QuickViewPreset[];
+  handlers: UiBindingHandlers;
+}
+
 export function setupUiBindings({
   dom,
   simState,
   controls,
   quickViewPresets,
   handlers
-}) {
+}: SetupUiBindingsArgs) {
   dom.togglePlay.addEventListener('click', () => {
     simState.paused = !simState.paused;
     dom.togglePlay.textContent = simState.paused ? 'Resume' : 'Pause';
@@ -14,9 +100,10 @@ export function setupUiBindings({
   });
 
   if (dom.zoomSensitivity) {
-    dom.zoomSensitivity.value = `${simState.zoomSensitivity}`;
-    dom.zoomSensitivity.addEventListener('input', () => {
-      simState.zoomSensitivity = Number(dom.zoomSensitivity.value);
+    const zoomSensitivity = dom.zoomSensitivity;
+    zoomSensitivity.value = `${simState.zoomSensitivity}`;
+    zoomSensitivity.addEventListener('input', () => {
+      simState.zoomSensitivity = Number(zoomSensitivity.value);
       if (!Number.isFinite(simState.zoomSensitivity)) {
         simState.zoomSensitivity = 1.0;
       }
@@ -54,28 +141,30 @@ export function setupUiBindings({
   });
 
   dom.starSystemList?.addEventListener('change', () => {
-    const systemId = dom.starSystemList.value || 'solar-system';
+    const systemId = dom.starSystemList?.value || 'solar-system';
     void handlers.selectStarSystem(systemId, { hardSnap: true });
   });
 
-  let dragPickPointerId = null;
+  let dragPickPointerId: number | null = null;
   let dragPickStartX = 0;
   let dragPickStartY = 0;
   let dragPickMoved = false;
   const dragPickThresholdPx = 7;
 
-  dom.canvas.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    dragPickPointerId = event.pointerId;
-    dragPickStartX = event.clientX;
-    dragPickStartY = event.clientY;
+  dom.canvas.addEventListener('pointerdown', (event: Event) => {
+    const pointerEvent = event as PointerEvent;
+    if (pointerEvent.button !== 0) return;
+    dragPickPointerId = pointerEvent.pointerId;
+    dragPickStartX = pointerEvent.clientX;
+    dragPickStartY = pointerEvent.clientY;
     dragPickMoved = false;
   });
 
-  dom.canvas.addEventListener('pointermove', (event) => {
-    if (dragPickPointerId === event.pointerId) {
-      const dx = event.clientX - dragPickStartX;
-      const dy = event.clientY - dragPickStartY;
+  dom.canvas.addEventListener('pointermove', (event: Event) => {
+    const pointerEvent = event as PointerEvent;
+    if (dragPickPointerId === pointerEvent.pointerId) {
+      const dx = pointerEvent.clientX - dragPickStartX;
+      const dy = pointerEvent.clientY - dragPickStartY;
       if (dx * dx + dy * dy > dragPickThresholdPx * dragPickThresholdPx) {
         dragPickMoved = true;
       }
@@ -84,25 +173,26 @@ export function setupUiBindings({
     if (simState.systemViewMode === handlers.systemViewModeLocal) {
       handlers.setHoveredNearbySystem(null);
     } else {
-      handlers.updateNearbySystemHoverAtClientPosition(event.clientX, event.clientY);
+      handlers.updateNearbySystemHoverAtClientPosition(pointerEvent.clientX, pointerEvent.clientY);
     }
   });
 
-  dom.canvas.addEventListener('pointerup', (event) => {
-    if (dragPickPointerId !== event.pointerId) return;
-    const shouldPick = !dragPickMoved && event.button === 0;
+  dom.canvas.addEventListener('pointerup', (event: Event) => {
+    const pointerEvent = event as PointerEvent;
+    if (dragPickPointerId !== pointerEvent.pointerId) return;
+    const shouldPick = !dragPickMoved && pointerEvent.button === 0;
     dragPickPointerId = null;
     dragPickMoved = false;
     if (!shouldPick) return;
 
-    const pickedBodyId = handlers.pickBodyAtClientPosition(event.clientX, event.clientY);
+    const pickedBodyId = handlers.pickBodyAtClientPosition(pointerEvent.clientX, pointerEvent.clientY);
     if (pickedBodyId) {
       handlers.selectBodyAndTrack(pickedBodyId, { hardSnap: true, follow: true });
       return;
     }
 
     if (simState.systemViewMode !== handlers.systemViewModeLocal) {
-      const pickedNearbySystem = handlers.pickNearbySystemAtClientPosition(event.clientX, event.clientY);
+      const pickedNearbySystem = handlers.pickNearbySystemAtClientPosition(pointerEvent.clientX, pointerEvent.clientY);
       if (pickedNearbySystem) {
         void handlers.selectStarSystem(pickedNearbySystem.id, { hardSnap: true });
       }
@@ -172,8 +262,9 @@ export function setupUiBindings({
   });
 
   if (dom.toggleRealisticScale) {
-    dom.toggleRealisticScale.addEventListener('change', () => {
-      simState.useRealisticScale = dom.toggleRealisticScale.checked;
+    const toggleRealisticScale = dom.toggleRealisticScale;
+    toggleRealisticScale.addEventListener('change', () => {
+      simState.useRealisticScale = toggleRealisticScale.checked;
       handlers.applyScaleMode();
       if (simState.focusedBodyId) {
         handlers.updateBodyInfoPanel(simState.focusedBodyId);

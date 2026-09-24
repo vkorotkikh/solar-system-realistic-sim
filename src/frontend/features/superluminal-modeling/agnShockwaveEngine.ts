@@ -12,6 +12,7 @@
  */
 
 import { Vector3 } from 'three';
+import { clamp } from '../../../constants';
 import {
     SOURCE_CATALOG, EVENT_PRESETS,
     SGR_A, C_CM_S
@@ -46,10 +47,6 @@ const H29_CHANNELS = new Set(['metric_slipstream', 'warpMetric']);
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
 
 function toRadians(deg) {
     return (deg * Math.PI) / 180;

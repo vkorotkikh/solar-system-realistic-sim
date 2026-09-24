@@ -323,6 +323,8 @@ export const PLANET_VISUAL_PROFILES = {
   }
 };
 
-export function planetVisualProfile(bodyId) {
-  return PLANET_VISUAL_PROFILES[bodyId] ?? null;
+type VisualProfileId = keyof typeof PLANET_VISUAL_PROFILES;
+
+export function planetVisualProfile(bodyId: string) {
+  return PLANET_VISUAL_PROFILES[bodyId as VisualProfileId] ?? null;
 }

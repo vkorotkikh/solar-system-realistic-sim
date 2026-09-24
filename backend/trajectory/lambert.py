@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from threading import Event
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from mission.ephemeris_service import EphemerisService
@@ -14,6 +15,10 @@ from mission.orbital import (
     vector_length,
     vector_sub,
 )
+
+
+class PorkchopScanCancelled(RuntimeError):
+    """Raised when a request owner cancels an in-progress grid scan."""
 
 
 def _stumpff_c2(z: float) -> float:
@@ -74,6 +79,92 @@ def _transfer_angle(r1: Sequence[float], r2: Sequence[float], *, prograde: bool)
     return theta
 
 
+def _solve_bracketed_z(
+    z_left: float,
+    z_right: float,
+    tof_target: float,
+    r1_mag: float,
+    r2_mag: float,
+    A: float,
+    mu: float,
+    *,
+    max_iter: int,
+    tol_days: float,
+    left_state: Optional[Tuple[float, float, float, float]] = None,
+    right_state: Optional[Tuple[float, float, float, float]] = None,
+) -> Optional[Tuple[float, Tuple[float, float, float, float]]]:
+    if left_state is None:
+        left_state = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
+    if right_state is None:
+        right_state = _tof_from_z(z_right, r1_mag, r2_mag, A, mu)
+    if left_state is None or right_state is None:
+        return None
+
+    f_left = left_state[0] - tof_target
+    f_right = right_state[0] - tof_target
+    if abs(f_left) <= tol_days:
+        return z_left, left_state
+    if abs(f_right) <= tol_days:
+        return z_right, right_state
+    if f_left * f_right > 0.0:
+        return None
+
+    best_z = z_left if abs(f_left) <= abs(f_right) else z_right
+    best_state = left_state if best_z == z_left else right_state
+    best_abs = min(abs(f_left), abs(f_right))
+    weighted_left = f_left
+    weighted_right = f_right
+    last_updated = None
+
+    for _ in range(max_iter):
+        midpoint = 0.5 * (z_left + z_right)
+        if abs(weighted_right - weighted_left) > 1e-14:
+            z_trial = z_right - weighted_right * (z_right - z_left) / (weighted_right - weighted_left)
+        else:
+            z_trial = midpoint
+
+        lower = min(z_left, z_right)
+        upper = max(z_left, z_right)
+        if not math.isfinite(z_trial) or z_trial <= lower or z_trial >= upper:
+            z_trial = midpoint
+
+        trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
+        if trial_state is None:
+            if z_trial != midpoint:
+                z_trial = midpoint
+                trial_state = _tof_from_z(z_trial, r1_mag, r2_mag, A, mu)
+            if trial_state is None:
+                break
+
+        f_trial = trial_state[0] - tof_target
+        if abs(f_trial) < best_abs:
+            best_z = z_trial
+            best_state = trial_state
+            best_abs = abs(f_trial)
+        if abs(f_trial) <= tol_days:
+            return z_trial, trial_state
+
+        if f_left * f_trial <= 0.0:
+            z_right = z_trial
+            right_state = trial_state
+            f_right = f_trial
+            weighted_right = f_right
+            weighted_left = weighted_left * 0.5 if last_updated == "right" else f_left
+            last_updated = "right"
+        else:
+            z_left = z_trial
+            left_state = trial_state
+            f_left = f_trial
+            weighted_left = f_left
+            weighted_right = weighted_right * 0.5 if last_updated == "left" else f_right
+            last_updated = "left"
+
+        if abs(z_right - z_left) <= 1e-8:
+            break
+
+    return (best_z, best_state) if best_abs <= tol_days else None
+
+
 def solve_lambert_universal(
     r1: Sequence[float],
     r2: Sequence[float],
@@ -105,12 +196,12 @@ def solve_lambert_universal(
     z_max = 40.0
     step = 0.25
 
-    sampled: List[Tuple[float, float]] = []
+    sampled: List[Tuple[float, float, Tuple[float, float, float, float]]] = []
     z = z_min
     while z <= z_max + 1e-12:
         tof_state = _tof_from_z(z, r1_mag, r2_mag, A, mu)
         if tof_state is not None:
-            sampled.append((z, tof_state[0] - tof_target))
+            sampled.append((z, tof_state[0] - tof_target, tof_state))
         z += step
 
     if not sampled:
@@ -118,64 +209,60 @@ def solve_lambert_universal(
 
     root_low: Optional[float] = None
     root_high: Optional[float] = None
+    root_low_state: Optional[Tuple[float, float, float, float]] = None
+    root_high_state: Optional[Tuple[float, float, float, float]] = None
     best_z = sampled[0][0]
     best_abs = abs(sampled[0][1])
+    best_state = sampled[0][2]
 
     for idx in range(len(sampled) - 1):
-        z0, f0 = sampled[idx]
-        z1, f1 = sampled[idx + 1]
+        z0, f0, state0 = sampled[idx]
+        z1, f1, state1 = sampled[idx + 1]
         if abs(f0) < best_abs:
             best_z = z0
             best_abs = abs(f0)
+            best_state = state0
         if abs(f1) < best_abs:
             best_z = z1
             best_abs = abs(f1)
+            best_state = state1
         if f0 == 0.0:
             root_low = z0
             root_high = z0
+            root_low_state = state0
+            root_high_state = state0
             break
         if f0 * f1 < 0.0:
             root_low = z0
             root_high = z1
+            root_low_state = state0
+            root_high_state = state1
             break
 
-    if root_low is None or root_high is None:
+    root_bracketed = root_low is not None and root_high is not None
+
+    if not root_bracketed:
         z_star = best_z
-        tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-        if tof_state is None:
+        tof_state = best_state
+        if abs(tof_state[0] - tof_target) > tol_days:
             return None
     else:
-        z_left = root_low
-        z_right = root_high
-        z_star = 0.5 * (z_left + z_right)
-        tof_state = None
-
-        for _ in range(max_iter):
-            z_star = 0.5 * (z_left + z_right)
-            tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-            if tof_state is None:
-                z_left = z_star + 1e-4
-                continue
-
-            f_mid = tof_state[0] - tof_target
-            if abs(f_mid) <= tol_days:
-                break
-
-            tof_left = _tof_from_z(z_left, r1_mag, r2_mag, A, mu)
-            if tof_left is None:
-                z_left += 1e-4
-                continue
-
-            f_left = tof_left[0] - tof_target
-            if f_left * f_mid <= 0.0:
-                z_right = z_star
-            else:
-                z_left = z_star
-
-        if tof_state is None:
-            tof_state = _tof_from_z(z_star, r1_mag, r2_mag, A, mu)
-            if tof_state is None:
-                return None
+        root_solution = _solve_bracketed_z(
+            root_low,
+            root_high,
+            tof_target,
+            r1_mag,
+            r2_mag,
+            A,
+            mu,
+            max_iter=max_iter,
+            tol_days=tol_days,
+            left_state=root_low_state,
+            right_state=root_high_state,
+        )
+        if root_solution is None:
+            return None
+        z_star, tof_state = root_solution
 
     tof_value, y, _, _ = tof_state
     f = 1.0 - y / r1_mag
@@ -193,6 +280,56 @@ def solve_lambert_universal(
         "transferAngleDeg": math.degrees(theta),
         "computedTofDays": tof_value,
         "z": z_star,
+        "rootResidualDays": abs(tof_value - tof_target),
+        "rootBracketed": root_bracketed,
+        "revolutions": 0,
+        "pathSense": "prograde" if prograde else "retrograde",
+    }
+
+
+def compute_lambert_leg_from_state_vectors(
+    start_position_au: Sequence[float],
+    start_velocity_au_day: Sequence[float],
+    end_position_au: Sequence[float],
+    end_velocity_au_day: Sequence[float],
+    tof_days: float,
+    *,
+    prograde: bool = True,
+) -> Optional[Dict[str, Any]]:
+    lambert = solve_lambert_universal(
+        start_position_au,
+        end_position_au,
+        tof_days,
+        prograde=prograde,
+    )
+    if lambert is None:
+        return None
+
+    v_depart = lambert["v1"]
+    v_arrive = lambert["v2"]
+    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, start_velocity_au_day)))
+    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(end_velocity_au_day, v_arrive)))
+    chord = vector_length(vector_sub(end_position_au, start_position_au))
+
+    return {
+        "tofDays": float(tof_days),
+        "computedTofDays": float(lambert["computedTofDays"]),
+        "solverZ": float(lambert["z"]),
+        "rootResidualDays": float(lambert["rootResidualDays"]),
+        "rootBracketed": bool(lambert["rootBracketed"]),
+        "revolutions": int(lambert["revolutions"]),
+        "pathSense": str(lambert["pathSense"]),
+        "pathLengthAu": chord,
+        "transferAngleDeg": float(lambert["transferAngleDeg"]),
+        "deltaVDepartureKmS": delta_v_depart,
+        "deltaVArrivalKmS": delta_v_arrive,
+        "startPosition": list(start_position_au),
+        "endPosition": list(end_position_au),
+        "departureVelocityApprox": list(v_depart),
+        "arrivalVelocityApprox": list(v_arrive),
+        "fromPlanetVelocity": list(start_velocity_au_day),
+        "toPlanetVelocity": list(end_velocity_au_day),
+        "solver": "lambert_universal",
     }
 
 
@@ -209,41 +346,27 @@ def compute_lambert_leg(
     from_state = ephemeris.sample_state(from_id, departure_jd)
     to_state = ephemeris.sample_state(to_id, arrival_jd)
 
-    lambert = solve_lambert_universal(
+    leg = compute_lambert_leg_from_state_vectors(
         from_state.position_au,
+        from_state.velocity_au_day,
         to_state.position_au,
+        to_state.velocity_au_day,
         tof_days,
         prograde=prograde,
     )
-    if lambert is None:
+    if leg is None:
         return None
 
-    v_depart = lambert["v1"]
-    v_arrive = lambert["v2"]
-    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, from_state.velocity_au_day)))
-    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(to_state.velocity_au_day, v_arrive)))
-
-    chord = vector_length(vector_sub(to_state.position_au, from_state.position_au))
-
-    return {
+    leg.update(
+        {
         "fromId": from_id,
         "toId": to_id,
         "departureJd": float(departure_jd),
         "arrivalJd": arrival_jd,
-        "tofDays": float(tof_days),
-        "pathLengthAu": chord,
-        "transferAngleDeg": float(lambert["transferAngleDeg"]),
-        "deltaVDepartureKmS": delta_v_depart,
-        "deltaVArrivalKmS": delta_v_arrive,
-        "startPosition": list(from_state.position_au),
-        "endPosition": list(to_state.position_au),
-        "departureVelocityApprox": list(v_depart),
-        "arrivalVelocityApprox": list(v_arrive),
-        "fromPlanetVelocity": list(from_state.velocity_au_day),
-        "toPlanetVelocity": list(to_state.velocity_au_day),
         "stateSource": {"from": from_state.source, "to": to_state.source},
-        "solver": "lambert_universal",
-    }
+        }
+    )
+    return leg
 
 
 def _pareto_by_tof(points: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -270,6 +393,7 @@ def scan_porkchop_window(
     tof_max_days: float,
     tof_step_days: float,
     prograde: bool = True,
+    cancel_event: Event | None = None,
 ) -> Dict[str, Any]:
     dep_step = max(0.5, float(departure_step_days))
     tof_step = max(5.0, float(tof_step_days))
@@ -281,6 +405,8 @@ def scan_porkchop_window(
     while dep <= departure_end_jd + 1e-12:
         tof = float(tof_min_days)
         while tof <= tof_max_days + 1e-12:
+            if cancel_event is not None and cancel_event.is_set():
+                raise PorkchopScanCancelled("porkchop scan cancelled by request owner")
             leg = compute_lambert_leg(
                 ephemeris,
                 from_id,

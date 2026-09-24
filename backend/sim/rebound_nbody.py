@@ -2,13 +2,18 @@
 REBOUND N-body simulation engine — high-fidelity gravitational dynamics.
 
 Uses REBOUND's IAS15 integrator (15th-order adaptive, machine-precision).
-All bodies exert mutual gravitational forces on each other.
+The validated major-system particles exert mutual gravity. Catalog-only small
+bodies use approximate element states and are propagated as massless particles
+until equally traceable Cartesian initial conditions and GMs are available.
 
 Serialized state vectors use the shared backend contract: barycentric
-J2000-ecliptic positions in AU and velocities in AU/year.
+J2000-ecliptic positions in AU and velocities in AU/day.
 """
 
 import math
+import threading
+from collections import OrderedDict
+from pathlib import Path
 from typing import Any, Dict, List
 
 try:
@@ -16,14 +21,40 @@ try:
 except ImportError:
     rebound = None  # type: ignore
 
+from data.initial_conditions import (
+    DEFAULT_INITIAL_CONDITIONS_PATH,
+    EXPECTED_SCIENTIFIC_PAYLOAD_SHA256,
+    INTERNAL_GRAVITY_BODY_IDS,
+    J2000_JD_TDB,
+    NBodyInitialConditions,
+    load_nbody_initial_conditions,
+)
+
 from .base import SimulationEngine
 
 MSUN_KG = 1.98847e30
-J2000_JD = 2_451_545.0
+J2000_JD = J2000_JD_TDB
 DAYS_PER_YEAR = 365.25
+SECONDS_PER_DAY = 86_400.0
+AU_KM = 149_597_870.7
+STATE_POSITION_FRAME = "barycentric"
+STATE_VELOCITY_FRAME = "barycentric"
+STATE_POSITION_UNITS = "AU"
+STATE_VELOCITY_UNITS = "AU/day"
+STATE_JD_TIME_SCALE = "TDB"
 CHECKPOINT_INTERVAL_YEARS = 10.0
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
+MAX_CHECKPOINTS = 8
+# This is the interval covered by the committed multi-epoch Horizons oracle.
+# Refuse to imply high-fidelity behavior outside the range that is actually
+# tested rather than accepting an arbitrarily expensive or unvalidated seek.
+SUPPORTED_JD_MIN_TDB = 2_447_892.5  # 1990-01-01 TDB
+SUPPORTED_JD_MAX_TDB = 2_469_807.5  # 2050-01-01 TDB
+
+
+class SeekCancelledError(RuntimeError):
+    """Raised when a cooperative REBOUND seek is cancelled by its owner."""
 
 
 def _state_vector_contract() -> Dict[str, Any]:
@@ -31,26 +62,40 @@ def _state_vector_contract() -> Dict[str, Any]:
     return {
         "schema_version": 1,
         "reference_frame": "barycentric_ecliptic_j2000",
-        "origin": "system_barycenter",
+        "origin": "integrated_particle_barycenter",
         "orientation": "ecliptic_j2000",
         "position_unit": "AU",
-        "velocity_unit": "AU/year",
+        "velocity_unit": "AU/day",
+        "jd_time_scale": STATE_JD_TIME_SCALE,
     }
 
 
 class REBOUNDEngine(SimulationEngine):
     """Full N-body gravitational simulation using REBOUND."""
 
-    def __init__(self, integrator: str = "ias15"):
+    def __init__(
+        self,
+        integrator: str = "ias15",
+        *,
+        initial_conditions_path: str | Path = DEFAULT_INITIAL_CONDITIONS_PATH,
+        checkpoint_limit: int = MAX_CHECKPOINTS,
+    ):
         self.sim: Any | None = None
         self.body_ids: List[str] = []
         self.start_jd: float = J2000_JD
         self._stored_bodies: List[Dict] = []
         self._integrator = integrator
         self._initial_energy: float = 0.0
-        self._checkpoints: Dict[int, Any] = {}
+        self._checkpoints: OrderedDict[int, Any] = OrderedDict()
+        self._checkpoint_limit = max(1, int(checkpoint_limit))
         self._checkpoint_interval_years: float = CHECKPOINT_INTERVAL_YEARS
         self._direct_backward_seek_max_years: float = DIRECT_BACKWARD_SEEK_MAX_YEARS
+        self._seek_cancel_event = threading.Event()
+        self._initial_conditions_path = Path(initial_conditions_path)
+        self._initial_conditions: NBodyInitialConditions | None = None
+        self._cartesian_body_ids: List[str] = []
+        self._element_fallback_body_ids: List[str] = []
+        self._internal_gravity_body_ids: List[str] = []
 
     @property
     def engine_name(self) -> str:
@@ -58,32 +103,191 @@ class REBOUNDEngine(SimulationEngine):
 
     @property
     def fidelity_level(self) -> str:
-        return "high"
+        # Only IAS15 is covered by the committed multi-epoch Horizons gates.
+        return "high" if self._integrator == "ias15" else "normal"
+
+    @property
+    def supported_jd_range(self) -> tuple[float, float]:
+        return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
+
+    def cancel_pending_operation(self) -> None:
+        self._seek_cancel_event.set()
+
+    def _raise_if_seek_cancelled(self) -> None:
+        if self._seek_cancel_event.is_set():
+            raise SeekCancelledError("REBOUND epoch seek was cancelled")
+
+    @staticmethod
+    def _validate_supported_jd(jd: float) -> float:
+        try:
+            requested_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Julian date must be finite") from exc
+        if not math.isfinite(requested_jd):
+            raise ValueError("Julian date must be finite")
+        if not SUPPORTED_JD_MIN_TDB <= requested_jd <= SUPPORTED_JD_MAX_TDB:
+            raise ValueError(
+                "Julian date is outside the validated REBOUND interval "
+                f"[{SUPPORTED_JD_MIN_TDB}, {SUPPORTED_JD_MAX_TDB}] JDTDB"
+            )
+        return requested_jd
 
     @property
     def available(self) -> bool:
-        return rebound is not None
+        return bool(self.readiness_status()["available"])
+
+    def readiness_status(self) -> Dict[str, Any]:
+        """Report dependency and scientific-input readiness without live I/O."""
+        status: Dict[str, Any] = {
+            "available": False,
+            "fidelity": None,
+            "configured_fidelity": self.fidelity_level,
+            "dependency": {
+                "name": "rebound",
+                "available": rebound is not None,
+                "version": getattr(rebound, "__version__", None) if rebound is not None else None,
+            },
+            "initial_conditions": {
+                "available": False,
+                "path": str(self._initial_conditions_path),
+            },
+        }
+        if rebound is None:
+            status["error"] = "REBOUND is not installed"
+            return status
+
+        try:
+            initial_conditions = load_nbody_initial_conditions(
+                self._initial_conditions_path
+            )
+            status["initial_conditions"] = {
+                "available": True,
+                "path": str(self._initial_conditions_path),
+                "dataset_id": initial_conditions.dataset_id,
+                "epoch_jd_tdb": initial_conditions.epoch_jd_tdb,
+                "state_ephemeris": initial_conditions.state_ephemeris,
+                "representation": initial_conditions.representation,
+            }
+
+            # Exercise the small compatibility surface needed by initialize().
+            probe = rebound.Simulation()
+            probe.units = ("yr", "AU", "Msun")
+            probe.integrator = self._integrator
+            probe.add(m=1.0)
+            if len(probe.particles) != 1:
+                raise RuntimeError("REBOUND probe did not create a particle")
+        except Exception as exc:
+            status["error"] = str(exc)
+            return status
+
+        status["available"] = True
+        status["fidelity"] = self.fidelity_level
+        return status
 
     def list_body_ids(self) -> List[str]:
         return list(self.body_ids)
 
+    def _force_model_metadata(self) -> Dict[str, Any]:
+        initial_conditions: Dict[str, Any]
+        if self._initial_conditions is None:
+            initial_conditions = {
+                "status": "not_initialized",
+                "path": str(self._initial_conditions_path),
+            }
+        else:
+            initial_conditions = self._initial_conditions.force_model_metadata()
+            initial_conditions.update(
+                {
+                    "status": "loaded",
+                    "cartesian_body_ids": list(self._cartesian_body_ids),
+                    "approximate_element_body_ids": list(
+                        self._element_fallback_body_ids
+                    ),
+                    "approximate_elements_are_massless": True,
+                    "internal_gravity_body_ids": list(
+                        self._internal_gravity_body_ids
+                    ),
+                    "output_origin": "integrated_particle_barycenter",
+                    "input_to_output_origin_transform": "REBOUND move_to_com at J2000",
+                    "model_scope": (
+                        "Newtonian point masses; Earth and Moon are separate active "
+                        "particles; Mars through Pluto represent planetary-system "
+                        "barycenters; catalog-only small bodies are massless"
+                    ),
+                    "scientific_payload_sha256": (
+                        EXPECTED_SCIENTIFIC_PAYLOAD_SHA256
+                    ),
+                    "validated_jd_tdb_range": [
+                        SUPPORTED_JD_MIN_TDB,
+                        SUPPORTED_JD_MAX_TDB,
+                    ],
+                    "checkpoint_limit": self._checkpoint_limit,
+                }
+            )
+        return {
+            "n_body_point_mass": True,
+            "integrator": self._integrator,
+            "rebound_version": (
+                getattr(rebound, "__version__", None)
+                if rebound is not None
+                else None
+            ),
+            "initial_conditions": initial_conditions,
+            "state_vector_contract": _state_vector_contract(),
+        }
+
+    def _base_state(self) -> Dict[str, Any]:
+        return {
+            "type": "state_update",
+            "engine": self.engine_name,
+            "fidelity": self.fidelity_level,
+            "position_frame": STATE_POSITION_FRAME,
+            "velocity_frame": STATE_VELOCITY_FRAME,
+            "position_units": STATE_POSITION_UNITS,
+            "velocity_units": STATE_VELOCITY_UNITS,
+            "jd_time_scale": STATE_JD_TIME_SCALE,
+            "force_models": self._force_model_metadata(),
+            "bodies": {},
+        }
+
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
+        """Build the model at ``start_jd``, interpreted strictly as JDTDB."""
         if rebound is None:
             raise RuntimeError(
                 "REBOUND is not installed. Install backend dependencies:\n"
                 "  python -m pip install -r requirements.txt"
             )
-        self._stored_bodies = bodies
-        self.start_jd = start_jd
-        self.body_ids = []
 
-        self.sim = rebound.Simulation()
-        self.sim.units = ("yr", "AU", "Msun")
-        self.sim.integrator = self._integrator
+        requested_start_jd = self._validate_supported_jd(start_jd)
+        if not bodies:
+            raise ValueError("at least one body is required")
+
+        body_ids_in = [str(body.get("id", "")).strip() for body in bodies]
+        if any(not body_id for body_id in body_ids_in):
+            raise ValueError("every body must have a non-empty `id`")
+        if len(set(body_ids_in)) != len(body_ids_in):
+            raise ValueError("body IDs must be unique")
+        if body_ids_in[0] != "sun":
+            raise ValueError("the Sun must be the first body in a REBOUND system")
+
+        # Validate the complete scientific input before mutating engine state.
+        initial_conditions = load_nbody_initial_conditions(
+            self._initial_conditions_path
+        )
+        new_sim = rebound.Simulation()
+        new_sim.units = ("yr", "AU", "Msun")
+        # Pin G to the same DE440 solar GM used for all mass ratios.  This avoids
+        # mixing approximate kg/Msun catalog conversions with JPL system GMs.
+        new_sim.G = (
+            initial_conditions.sun_gm_km3_s2
+            * (DAYS_PER_YEAR * SECONDS_PER_DAY) ** 2
+            / (AU_KM ** 3)
+        )
+        new_sim.integrator = self._integrator
 
         # IAS15 specific settings for high accuracy
         if self._integrator == "ias15":
-            ri_ias15 = getattr(self.sim, "ri_ias15", None)
+            ri_ias15 = getattr(new_sim, "ri_ias15", None)
             if ri_ias15 is not None:
                 try:
                     ri_ias15.min_dt = 0  # let integrator choose
@@ -93,45 +297,109 @@ class REBOUNDEngine(SimulationEngine):
 
         # WHFast settings for speed
         if self._integrator == "whfast":
-            self.sim.dt = 0.001  # ~0.365 days
+            new_sim.dt = 0.001  # ~0.365 days
 
+        new_body_ids: List[str] = []
+        cartesian_body_ids: List[str] = []
+        element_fallback_body_ids: List[str] = []
         for body in bodies:
-            if body["type"] == "star":
+            body_id = str(body["id"])
+            state = initial_conditions.bodies.get(body_id)
+            if state is not None:
+                mass_ratio = state.gm_km3_s2 / initial_conditions.sun_gm_km3_s2
+                new_sim.add(
+                    m=mass_ratio,
+                    x=state.position_au[0],
+                    y=state.position_au[1],
+                    z=state.position_au[2],
+                    vx=state.velocity_au_per_day[0] * DAYS_PER_YEAR,
+                    vy=state.velocity_au_per_day[1] * DAYS_PER_YEAR,
+                    vz=state.velocity_au_per_day[2] * DAYS_PER_YEAR,
+                )
+                new_body_ids.append(body_id)
+                cartesian_body_ids.append(body_id)
+            elif body["type"] == "star":
                 mass_msun = body["mass_kg"] / MSUN_KG
-                self.sim.add(m=mass_msun)
-                self.body_ids.append(body["id"])
+                new_sim.add(m=mass_msun)
+                new_body_ids.append(body_id)
+                element_fallback_body_ids.append(body_id)
             elif body.get("orbit"):
                 orbit = body["orbit"]
-                mass_kg = body["mass_kg"] or 0
-                mass_msun = mass_kg / MSUN_KG
                 mean_anomaly_deg = orbit["mean_anomaly_deg"]
                 epoch_jd = orbit.get("epoch_jd")
                 if epoch_jd is not None and orbit.get("period_days"):
-                    delta_days = start_jd - epoch_jd
-                    mean_anomaly_deg = (mean_anomaly_deg + 360.0 * (delta_days / orbit["period_days"])) % 360.0
+                    # Every particle must describe the same canonical instant.
+                    # Integrating to requested_start_jd happens exactly once below.
+                    delta_days = initial_conditions.epoch_jd_tdb - epoch_jd
+                    mean_anomaly_deg = (
+                        mean_anomaly_deg
+                        + 360.0 * (delta_days / orbit["period_days"])
+                    ) % 360.0
 
-                self.sim.add(
-                    m=mass_msun,
+                new_sim.add(
+                    # These catalog elements do not carry the same reproducible
+                    # epoch/frame/GM contract as the committed major-body data.
+                    # They therefore cannot perturb the validated active model.
+                    m=0.0,
                     a=orbit["a_au"],
                     e=orbit["e"],
                     inc=math.radians(orbit["i_deg"]),
                     Omega=math.radians(orbit["ascending_node_deg"]),
                     omega=math.radians(orbit["arg_periapsis_deg"]),
                     M=math.radians(mean_anomaly_deg),
-                    primary=self.sim.particles[0],
+                    primary=new_sim.particles[0],
                 )
-                self.body_ids.append(body["id"])
+                new_body_ids.append(body_id)
+                element_fallback_body_ids.append(body_id)
 
-        # Move to centre-of-mass frame for proper N-body dynamics
-        self.sim.move_to_com()
-        self._initial_energy = self.sim.energy()
-        self._checkpoints = {}
+        internal_gravity_body_ids: List[str] = []
+        for body_id in INTERNAL_GRAVITY_BODY_IDS:
+            if body_id in body_ids_in:
+                continue
+            state = initial_conditions.bodies[body_id]
+            mass_ratio = state.gm_km3_s2 / initial_conditions.sun_gm_km3_s2
+            new_sim.add(
+                m=mass_ratio,
+                x=state.position_au[0],
+                y=state.position_au[1],
+                z=state.position_au[2],
+                vx=state.velocity_au_per_day[0] * DAYS_PER_YEAR,
+                vy=state.velocity_au_per_day[1] * DAYS_PER_YEAR,
+                vz=state.velocity_au_per_day[2] * DAYS_PER_YEAR,
+            )
+            internal_gravity_body_ids.append(body_id)
+
+        # Horizons input is SSB-relative.  The exported contract intentionally
+        # uses the center of mass of the particles actually integrated here.
+        new_sim.move_to_com()
+        initial_energy = new_sim.energy()
+        initial_checkpoint = None
+        copy_fn = getattr(new_sim, "copy", None)
+        if callable(copy_fn):
+            try:
+                initial_checkpoint = copy_fn()
+            except Exception:
+                initial_checkpoint = None
+
+        # All source states are at J2000. Integrate once to the requested epoch.
+        target = (requested_start_jd - initial_conditions.epoch_jd_tdb) / DAYS_PER_YEAR
+        if abs(target) > SEEK_EPSILON_YEARS:
+            new_sim.integrate(target)
+
+        # Commit the new system atomically only after construction succeeds.
+        self.sim = new_sim
+        self._stored_bodies = list(bodies)
+        self.start_jd = requested_start_jd
+        self.body_ids = new_body_ids
+        self._initial_conditions = initial_conditions
+        self._cartesian_body_ids = cartesian_body_ids
+        self._element_fallback_body_ids = element_fallback_body_ids
+        self._internal_gravity_body_ids = internal_gravity_body_ids
+        self._initial_energy = initial_energy
+        self._checkpoints = OrderedDict()
+        if initial_checkpoint is not None:
+            self._checkpoints[0] = initial_checkpoint
         self._store_checkpoint()
-
-        # If requested start differs from J2000, integrate forward
-        if abs(start_jd - J2000_JD) > 0.01:
-            target = (start_jd - J2000_JD) / DAYS_PER_YEAR
-            self.sim.integrate(target)
 
     def step(self, dt_days: float) -> None:
         if self.sim is None:
@@ -140,41 +408,30 @@ class REBOUNDEngine(SimulationEngine):
         self.sim.integrate(target)
 
     def get_state(self) -> Dict[str, Any]:
-        force_models = {
-            "n_body_point_mass": True,
-            "integrator": self._integrator,
-            # The server's contract normalizer preserves force_models, so keep
-            # a copy here as well as at the top level for WS clients.
-            "state_vector_contract": _state_vector_contract(),
-        }
+        force_models = self._force_model_metadata()
         if self.sim is None:
-            return {
-                "type": "state_update",
-                "engine": self.engine_name,
-                "fidelity": self.fidelity_level,
-                "jd": 0,
-                "state_vector_contract": _state_vector_contract(),
-                "force_models": force_models,
-                "bodies": {},
-            }
+            payload = self._base_state()
+            payload["jd"] = 0
+            payload["force_models"] = force_models
+            return payload
 
         bodies: Dict[str, Dict] = {}
         for i, body_id in enumerate(self.body_ids):
             p = self.sim.particles[i]
             bodies[body_id] = {
                 "pos": [round(p.x, 10), round(p.y, 10), round(p.z, 10)],
-                "vel": [round(p.vx, 10), round(p.vy, 10), round(p.vz, 10)],
+                "vel": [
+                    round(p.vx / DAYS_PER_YEAR, 10),
+                    round(p.vy / DAYS_PER_YEAR, 10),
+                    round(p.vz / DAYS_PER_YEAR, 10),
+                ],
             }
 
-        return {
-            "type": "state_update",
-            "engine": self.engine_name,
-            "fidelity": self.fidelity_level,
-            "jd": self.get_julian_date(),
-            "state_vector_contract": _state_vector_contract(),
-            "force_models": force_models,
-            "bodies": bodies,
-        }
+        payload = self._base_state()
+        payload["jd"] = self.get_julian_date()
+        payload["bodies"] = bodies
+        payload["force_models"] = force_models
+        return payload
 
     def get_julian_date(self) -> float:
         if self.sim is None:
@@ -210,6 +467,9 @@ class REBOUNDEngine(SimulationEngine):
         if abs(float(self.sim.t) - checkpoint_time) > 1e-8:
             return
         self._checkpoints[checkpoint_idx] = checkpoint
+        self._checkpoints.move_to_end(checkpoint_idx)
+        while len(self._checkpoints) > self._checkpoint_limit:
+            self._checkpoints.popitem(last=False)
 
     def _restore_checkpoint_at_or_before(self, target_years: float) -> bool:
         if not self._checkpoints:
@@ -226,15 +486,18 @@ class REBOUNDEngine(SimulationEngine):
         restored = self._copy_simulation(snapshot)
         if restored is None:
             return False
+        self._checkpoints.move_to_end(candidate_idx)
         self.sim = restored
         return True
 
     def _integrate_forward_with_checkpoints(self, target_years: float) -> None:
         if self.sim is None:
             return
+        self._raise_if_seek_cancelled()
         if target_years <= float(self.sim.t) + SEEK_EPSILON_YEARS:
             if abs(target_years - float(self.sim.t)) > SEEK_EPSILON_YEARS:
                 self.sim.integrate(target_years)
+                self._raise_if_seek_cancelled()
             return
 
         current_years = float(self.sim.t)
@@ -243,21 +506,27 @@ class REBOUNDEngine(SimulationEngine):
             checkpoint_years = self._checkpoint_time_for_index(next_checkpoint_idx)
             if checkpoint_years >= target_years - SEEK_EPSILON_YEARS:
                 break
+            self._raise_if_seek_cancelled()
             self.sim.integrate(checkpoint_years)
+            self._raise_if_seek_cancelled()
             self._store_checkpoint()
             next_checkpoint_idx += 1
 
+        self._raise_if_seek_cancelled()
         self.sim.integrate(target_years)
+        self._raise_if_seek_cancelled()
         self._store_checkpoint()
 
     def set_julian_date(self, jd: float) -> None:
         """
-        Jump to a specific JD using checkpoint-assisted seeking.
+        Jump to a specific JDTDB using checkpoint-assisted seeking.
 
         Forward jumps integrate from current state and materialize checkpoints.
         Backward jumps restore nearest checkpoint at-or-before target, then
         integrate forward to the requested epoch.
         """
+        requested_jd = self._validate_supported_jd(jd)
+        self._seek_cancel_event.clear()
         if not self._stored_bodies:
             return
         if self.sim is None:
@@ -265,7 +534,7 @@ class REBOUNDEngine(SimulationEngine):
         if self.sim is None:
             return
 
-        target_years = (jd - J2000_JD) / DAYS_PER_YEAR
+        target_years = (requested_jd - J2000_JD) / DAYS_PER_YEAR
         current_years = float(self.sim.t)
         if abs(target_years - current_years) <= SEEK_EPSILON_YEARS:
             return

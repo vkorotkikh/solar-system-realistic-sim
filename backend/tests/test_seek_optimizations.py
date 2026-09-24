@@ -102,18 +102,18 @@ def test_rebound_set_julian_date_uses_checkpoints_for_backward_seek(monkeypatch)
     engine.initialize(_sample_bodies())
     assert _FakeSimulation.created_count == 1
 
-    jd_2100 = J2000_JD + 100.0 * DAYS_PER_YEAR
-    engine.set_julian_date(jd_2100)
+    jd_2050 = J2000_JD + 50.0 * DAYS_PER_YEAR
+    engine.set_julian_date(jd_2050)
     assert engine.sim is not None
-    assert math.isclose(engine.sim.t, 100.0, rel_tol=0.0, abs_tol=1e-12)
+    assert math.isclose(engine.sim.t, 50.0, rel_tol=0.0, abs_tol=1e-12)
 
-    jd_2095 = J2000_JD + 95.0 * DAYS_PER_YEAR
-    engine.set_julian_date(jd_2095)
+    jd_2045 = J2000_JD + 45.0 * DAYS_PER_YEAR
+    engine.set_julian_date(jd_2045)
 
     # Checkpoint restore + forward integrate should avoid full reinitialize.
     assert _FakeSimulation.created_count == 1
     assert engine.sim is not None
-    assert math.isclose(engine.sim.t, 95.0, rel_tol=0.0, abs_tol=1e-12)
+    assert math.isclose(engine.sim.t, 45.0, rel_tol=0.0, abs_tol=1e-12)
 
 
 def test_tudat_set_julian_date_reuses_existing_chunk(monkeypatch) -> None:

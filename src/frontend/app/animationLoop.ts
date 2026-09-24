@@ -1,3 +1,77 @@
+import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
+import type { SimulationStateStore } from './stateStore';
+import type { SimulationClient, ServerStateUpdateMessage } from './simulationClient';
+import type { SolarSystemModel } from '../../sim/solarSystemModel';
+
+interface AnimationLoopControls {
+  update: () => void;
+}
+
+interface SatelliteSystemLike {
+  update: (julianDate: number, viewState: { camera: PerspectiveCamera; viewportHeight: number }) => void;
+}
+
+interface AnimationDomLike {
+  statusFocus: { textContent: string | null };
+}
+
+interface PositionedObject {
+  position: Vector3;
+}
+
+interface AnimationTimeController {
+  advanceLocalTime: (deltaSeconds: number) => void;
+  updateHud: () => void;
+}
+
+interface CreateAnimationLoopArgs {
+  simState: SimulationStateStore;
+  simClient: SimulationClient;
+  systemViewModeLocal: string;
+  applyServerState: (state: ServerStateUpdateMessage) => void;
+  applyServerKuiper: (points: number[][]) => void;
+  timeController: AnimationTimeController;
+  model: SolarSystemModel;
+  updateSceneBodies: () => void;
+  updateLocalSystemScene: (julianDate: number) => void;
+  updateBodyRotations: (julianDate: number) => void;
+  updateSunDynamics: (julianDate: number, realtimeSeconds: number) => void;
+  updateEarthWeather: (julianDate: number) => void;
+  updateMarsWeather: (julianDate: number) => void;
+  maybeRefreshSolarPhysics: (nowMs: number) => void;
+  maybeRefreshEarthCloudCoverage: (nowMs: number) => void;
+  maybeRefreshMarsCloudCoverage: (nowMs: number) => void;
+  updateEarthSurfaceLod: () => void;
+  updateMoonEarthshine: () => void;
+  updateMarsSeasonalAppearance: (julianDate: number) => void;
+  getSatelliteSystems: () => Array<SatelliteSystemLike | null | undefined>;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
+  updateAsteroidBelt: (julianDate: number) => void;
+  updateRouteVisualization: () => void;
+  updateAsteroidDetail: (julianDate: number, deltaSimDays: number) => void;
+  updateKuiperDetail: () => void;
+  updateOortVisibility: () => void;
+  updateFollowTarget: () => void;
+  bodyDisplayName: (bodyId: string) => string | null | undefined;
+  dom: AnimationDomLike;
+  backgroundStars: PositionedObject;
+  surveyMilkySphere: PositionedObject;
+  updateNearbySystemsPositions: (julianDate: number) => void;
+  syncSystemViewModeWithCameraRange: () => void;
+  applyNearbySystemsVisibility: () => void;
+  updateCameraTransition: (deltaSeconds: number) => void;
+  updateAdaptiveZoomBehavior: () => void;
+  controls: AnimationLoopControls;
+  resizeRenderer: () => void;
+  updateCameraClipPlanes: () => void;
+  updateLocatorOverlays: () => void;
+  updateGravityVectors: () => void;
+  updateZoomMetricsUI: () => void;
+  scene: Scene;
+  requestAnimationFrameImpl?: typeof requestAnimationFrame;
+}
+
 export function createAnimationLoop({
   simState,
   simClient,
@@ -44,10 +118,10 @@ export function createAnimationLoop({
   updateZoomMetricsUI,
   scene,
   requestAnimationFrameImpl = requestAnimationFrame
-}) {
+}: CreateAnimationLoopArgs) {
   let previousTimestamp = performance.now();
 
-  function animate(timestamp) {
+  function animate(timestamp: number): void {
     const deltaSeconds = Math.max(0, (timestamp - previousTimestamp) / 1_000);
     previousTimestamp = timestamp;
     const previousJd = simState.julianDate;
