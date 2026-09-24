@@ -73,10 +73,16 @@ export function createTimeController({
 
   function updateHud() {
     if (dom.timeScaleValue) {
-      dom.timeScaleValue.textContent = simState.timeScaleDaysPerSec.toFixed(1);
+      const value = simState.timeScaleDaysPerSec;
+      const prefix = value > 0 ? '+' : '';
+      dom.timeScaleValue.textContent = `${prefix}${value.toFixed(1)} d/s`;
     }
     if (dom.timeDate) {
-      dom.timeDate.textContent = formatJulianAsDate(simState.julianDate);
+      const formattedDate = formatJulianAsDate(simState.julianDate);
+      dom.timeDate.textContent = formattedDate;
+      if ('dateTime' in dom.timeDate) {
+        (dom.timeDate as HTMLTimeElement).dateTime = formattedDate;
+      }
     }
   }
 

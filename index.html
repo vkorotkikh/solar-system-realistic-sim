@@ -3,120 +3,395 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sun Model Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#06090c" />
+  <title>Sun Model Lab · Solar Observatory</title>
 </head>
 
 <body>
   <div id="app">
-    <aside id="control-panel">
+    <aside id="control-panel" aria-labelledby="app-title">
       <header class="panel-header">
-        <p class="eyebrow">Sun-Focus Branch</p>
-        <h1>Sun Model Lab</h1>
-        <p class="subtitle">Isolated sun model with barebones solar system context.</p>
+        <div class="panel-brand">
+          <span class="brand-mark" aria-hidden="true">
+            <span class="brand-mark__core"></span>
+          </span>
+          <div>
+            <p class="eyebrow">Solar observatory</p>
+            <h1 id="app-title">Sun Model Lab</h1>
+          </div>
+        </div>
+        <button
+          id="panel-close"
+          class="icon-button panel-close"
+          type="button"
+          aria-label="Collapse controls"
+          aria-controls="control-panel"
+          aria-expanded="true"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+        <p class="subtitle">Real-time heliocentric model and solar observation workspace.</p>
+        <div class="session-state">
+          <span class="session-state__signal" aria-hidden="true"></span>
+          <span>Live simulation</span>
+          <span class="session-state__frame">J2000 frame</span>
+        </div>
       </header>
 
-      <section class="panel-section">
-        <h2>Time</h2>
-        <div class="row row-inline">
-          <button id="toggle-play" type="button">Pause</button>
-          <button id="now-time" type="button">Now</button>
-        </div>
-        <label for="time-scale">Simulation speed (days/sec)</label>
-        <input id="time-scale" type="range" min="-120" max="120" step="1" value="4" />
-        <div class="row row-inline">
-          <span id="time-scale-value">4.0</span>
-          <span id="time-date">--</span>
-        </div>
-      </section>
+      <div class="panel-scroll" id="control-sections">
+        <details class="panel-disclosure" open>
+          <summary aria-controls="time-controls" aria-expanded="true">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5V12l3 2" />
+              </svg>
+              Time
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="time-controls">
+            <div class="time-readout">
+              <span class="readout-label">Simulation date</span>
+              <time id="time-date" datetime="">—</time>
+            </div>
+            <div class="button-row button-row--two">
+              <button id="toggle-play" class="button button--primary" type="button" aria-pressed="false">
+                <svg class="button-icon pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 6v12M16 6v12" />
+                </svg>
+                <span>Pause</span>
+              </button>
+              <button id="now-time" class="button button--secondary" type="button">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3a9 9 0 1 0 8.3 5.5M12 7v5l3 2" />
+                  <path d="M17 3h4v4" />
+                </svg>
+                <span>Jump to now</span>
+              </button>
+            </div>
 
-      <section class="panel-section">
-        <h2>Display</h2>
-        <label><input id="toggle-orbits" type="checkbox" checked /> Show orbits</label>
-        <label><input id="toggle-magnetic-field" type="checkbox" /> Show solar magnetic field</label>
-        <label><input id="toggle-labels" type="checkbox" checked /> Show labels</label>
-        <label><input id="toggle-realistic-scale" type="checkbox" /> Realistic scale</label>
-        <label for="aia-channel">Solar observation channel</label>
-        <select id="aia-channel">
-          <option value="auto" selected>Auto (best available)</option>
-          <option value="aia_094">94 &#197; &ndash; Flare plasma</option>
-          <option value="aia_171">171 &#197; &ndash; Quiet corona</option>
-          <option value="aia_193">193 &#197; &ndash; Active corona</option>
-          <option value="aia_211">211 &#197; &ndash; Active regions</option>
-          <option value="aia_304">304 &#197; &ndash; Chromosphere</option>
-        </select>
-      </section>
+            <div class="control-heading">
+              <label for="time-scale">Simulation speed</label>
+              <output id="time-scale-value" for="time-scale">+4.0 d/s</output>
+            </div>
+            <input
+              id="time-scale"
+              class="range-control"
+              type="range"
+              min="-120"
+              max="120"
+              step="1"
+              value="4"
+              aria-describedby="time-scale-context"
+            />
+            <div class="range-context" id="time-scale-context" aria-hidden="true">
+              <span>−120 reverse</span>
+              <span>0</span>
+              <span>+120 forward</span>
+            </div>
+          </div>
+        </details>
 
-      <section class="panel-section">
-        <h2>Navigation</h2>
-        <label for="zoom-sensitivity">Zoom sensitivity</label>
-        <input id="zoom-sensitivity" type="range" min="0.2" max="4" step="0.05" value="1" />
-        <span id="zoom-sensitivity-value">x1.00</span>
-      </section>
+        <details class="panel-disclosure" open>
+          <summary aria-controls="display-controls" aria-expanded="true">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
+              Display
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="display-controls">
+            <fieldset class="switch-group">
+              <legend class="visually-hidden">Scene visibility</legend>
+              <label class="switch-control">
+                <input id="toggle-orbits" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Show orbits</span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-magnetic-field" type="checkbox" />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Solar magnetic field</span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-labels" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Body labels</span>
+              </label>
+              <label class="switch-control">
+                <input id="toggle-realistic-scale" type="checkbox" />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Realistic scale</span>
+              </label>
+            </fieldset>
 
-      <section class="panel-section">
-        <h2>Explorer</h2>
-        <select id="body-list" size="10"></select>
-        <div class="row row-inline">
-          <button id="focus-body" type="button">Focus</button>
-          <button id="follow-body" type="button">Follow</button>
-          <button id="clear-follow" type="button">Free Cam</button>
-        </div>
-        <pre id="body-info" class="info-box"></pre>
-      </section>
+            <div class="field-stack">
+              <label for="aia-channel">Solar observation channel</label>
+              <select id="aia-channel">
+                <option value="auto" selected>Auto · best available</option>
+                <option value="aia_094">94 &#197; · Flare plasma</option>
+                <option value="aia_171">171 &#197; · Quiet corona</option>
+                <option value="aia_193">193 &#197; · Active corona</option>
+                <option value="aia_211">211 &#197; · Active regions</option>
+                <option value="aia_304">304 &#197; · Chromosphere</option>
+              </select>
+            </div>
+          </div>
+        </details>
 
-      <section class="panel-section">
-        <h2>Cataclysmic Events</h2>
-        <label for="agn-source">SMBH source</label>
-        <select id="agn-source">
-          <option value="SagittariusA" selected>Sgr A* — Milky Way (4.15×10⁶ M☉)</option>
-          <option value="CentaurusA">Cen A — Nearest Active AGN (5.5×10⁷ M☉)</option>
-          <option value="Maffei1">Maffei 1 — Hidden Giant Elliptical (~3×10⁸ M☉)</option>
-          <option value="M87">M87* — Virgo Monster (6.5×10⁹ M☉, educational)</option>
-        </select>
-        <label for="agn-preset">Event preset</label>
-        <select id="agn-preset">
-          <option value="" selected>Custom (default energy)</option>
-          <option value="SgrA_CurrentFlare">Sgr A* Typical Flare (10³⁹ erg)</option>
-          <option value="SgrA_SuperFlare">Sgr A* Super-Flare ~300 yr ago (10⁴³ erg)</option>
-          <option value="SgrA_WarpWave_H29">H29: The Metric-Frame-Dragging Slipstream</option>
-          <option value="SgrA_FermiBubble_Inner">Fermi Bubble Event ~5 Myr (10⁵⁶ erg)</option>
-          <option value="SgrA_FermiBubble_Outer">eROSITA Bubble ~15 Myr (10⁵⁷ erg)</option>
-          <option value="CenA_CurrentJet">Cen A Active Jet — UHECRs NOW (10⁵⁶ erg)</option>
-          <option value="Maffei1_Hypothetical">Maffei 1 Hidden Outburst (10⁵⁵ erg)</option>
-          <option value="M87_Monster">M87* Full Power Jet (10⁵⁸ erg)</option>
-          <option value="MW_M31_Merger">MW-M31 Merger ~4.5 Gyr future (10⁶² erg)</option>
-        </select>
-        <label for="agn-hypothesis">Propagation model</label>
-        <select id="agn-hypothesis">
-          <option value="compound" selected>Standard compound shockwave</option>
-          <option value="h29">H29: Metric-Frame-Dragging Slipstream</option>
-        </select>
-        <label>
-          <input id="agn-observer-frame" type="checkbox" checked />
-          Observer frame (apparent superluminal projection)
-        </label>
-        <label>
-          <input id="agn-stochastic" type="checkbox" />
-          Continuous stochastic flaring (JWST 2025: 5-6/day)
-        </label>
-        <button id="trigger-agn-shockwave" type="button" class="danger">Trigger SMBH Compound Shockwave</button>
-      </section>
+        <details class="panel-disclosure">
+          <summary aria-controls="navigation-controls" aria-expanded="false">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" />
+              </svg>
+              Navigation
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="navigation-controls">
+            <div class="control-heading">
+              <label for="zoom-sensitivity">Zoom sensitivity</label>
+              <output id="zoom-sensitivity-value" for="zoom-sensitivity">1.00×</output>
+            </div>
+            <input
+              id="zoom-sensitivity"
+              class="range-control"
+              type="range"
+              min="0.2"
+              max="4"
+              step="0.05"
+              value="1"
+              aria-describedby="zoom-sensitivity-context"
+            />
+            <div class="range-context" id="zoom-sensitivity-context" aria-hidden="true">
+              <span>0.20× precise</span>
+              <span>4.00× fast</span>
+            </div>
+          </div>
+        </details>
+
+        <details class="panel-disclosure" open>
+          <summary aria-controls="explorer-controls" aria-expanded="true">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="10.5" cy="10.5" r="6.5" />
+                <path d="m15.5 15.5 5 5" />
+              </svg>
+              Explorer
+            </span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="explorer-controls">
+            <div class="field-stack">
+              <label for="body-search">Find a major body</label>
+              <div class="search-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10.5" cy="10.5" r="6.5" />
+                  <path d="m15.5 15.5 5 5" />
+                </svg>
+                <input
+                  id="body-search"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Search Sun, Earth, Pluto…"
+                  aria-controls="body-list"
+                  aria-describedby="body-match-count"
+                />
+              </div>
+            </div>
+            <div class="list-heading">
+              <label for="body-list">Major bodies</label>
+              <output id="body-match-count" aria-live="polite">10 bodies</output>
+            </div>
+            <select id="body-list" size="6" aria-describedby="body-list-help"></select>
+            <p id="body-list-help" class="control-help">Select a target, then choose a camera action.</p>
+            <div class="button-row camera-actions" aria-label="Camera mode">
+              <button id="focus-body" class="button button--secondary" type="button" aria-pressed="true">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+                </svg>
+                <span>Focus</span>
+              </button>
+              <button id="follow-body" class="button button--secondary" type="button" aria-pressed="false">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12a7 7 0 1 0 2-4.9" />
+                  <path d="M4 4v5h5" />
+                </svg>
+                <span>Follow</span>
+              </button>
+              <button id="clear-follow" class="button button--ghost" type="button" aria-pressed="false">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+                <span>Free cam</span>
+              </button>
+            </div>
+
+            <section id="body-info" class="body-card" aria-labelledby="body-info-name" aria-live="polite">
+              <div class="body-card__header">
+                <div>
+                  <p class="body-card__eyebrow">Selected target</p>
+                  <h3 id="body-info-name">Sun</h3>
+                </div>
+                <span id="body-info-type" class="type-badge">Star</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Radius</dt>
+                  <dd id="body-info-radius">696,340 km</dd>
+                </div>
+                <div>
+                  <dt>Solar distance</dt>
+                  <dd id="body-info-distance">0.0000 AU</dd>
+                </div>
+                <div>
+                  <dt>Orbital period</dt>
+                  <dd id="body-info-period">—</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </details>
+
+        <details class="panel-disclosure panel-disclosure--danger">
+          <summary aria-controls="cataclysm-controls" aria-expanded="false">
+            <span class="section-heading" role="heading" aria-level="2">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 2.8 19h18.4L12 3Z" />
+                <path d="M12 9v4.5M12 17h.01" />
+              </svg>
+              Cataclysmic Events
+            </span>
+            <span class="advanced-badge">Advanced</span>
+            <svg class="disclosure-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 10 4 4 4-4" />
+            </svg>
+          </summary>
+          <div class="section-content" id="cataclysm-controls">
+            <p class="experiment-intro">
+              Educational experiment zone. These controls visualize extreme and speculative source models; they do not represent a forecast.
+            </p>
+            <div class="field-stack">
+              <label for="agn-source">SMBH source</label>
+              <select id="agn-source">
+                <option value="SagittariusA" selected>Sgr A* · Milky Way (4.15×10⁶ M☉)</option>
+                <option value="CentaurusA">Cen A · Nearest active AGN (5.5×10⁷ M☉)</option>
+                <option value="Maffei1">Maffei 1 · Hidden giant (~3×10⁸ M☉)</option>
+                <option value="M87">M87* · Virgo source (6.5×10⁹ M☉)</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="agn-preset">Event preset</label>
+              <select id="agn-preset">
+                <option value="" selected>Custom · default energy</option>
+                <option value="SgrA_CurrentFlare">Sgr A* typical flare (10³⁹ erg)</option>
+                <option value="SgrA_SuperFlare">Sgr A* super-flare (10⁴³ erg)</option>
+                <option value="SgrA_WarpWave_H29">H29 metric-frame-dragging slipstream</option>
+                <option value="SgrA_FermiBubble_Inner">Fermi Bubble event (10⁵⁶ erg)</option>
+                <option value="SgrA_FermiBubble_Outer">eROSITA Bubble (10⁵⁷ erg)</option>
+                <option value="CenA_CurrentJet">Cen A active jet (10⁵⁶ erg)</option>
+                <option value="Maffei1_Hypothetical">Maffei 1 hidden outburst (10⁵⁵ erg)</option>
+                <option value="M87_Monster">M87* full-power jet (10⁵⁸ erg)</option>
+                <option value="MW_M31_Merger">Milky Way–M31 merger (10⁶² erg)</option>
+              </select>
+            </div>
+            <div class="field-stack">
+              <label for="agn-hypothesis">Propagation model</label>
+              <select id="agn-hypothesis" aria-describedby="experiment-status">
+                <option value="compound" selected>Standard compound shockwave</option>
+                <option value="h29">H29 metric-frame-dragging slipstream</option>
+              </select>
+            </div>
+            <p id="experiment-status" class="experiment-status" role="status" aria-live="polite">
+              Standard compound transport model selected.
+            </p>
+            <fieldset class="switch-group switch-group--experiment">
+              <legend class="visually-hidden">Experiment options</legend>
+              <label class="switch-control">
+                <input id="agn-observer-frame" type="checkbox" checked />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Observer-frame projection</span>
+              </label>
+              <label class="switch-control">
+                <input id="agn-stochastic" type="checkbox" />
+                <span class="switch-track" aria-hidden="true"><span></span></span>
+                <span class="switch-copy">Continuous stochastic flaring</span>
+              </label>
+            </fieldset>
+            <button id="trigger-agn-shockwave" class="button button--danger" type="button">
+              <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m13 2-7 12h6l-1 8 7-12h-6l1-8Z" />
+              </svg>
+              <span>Trigger compound shockwave</span>
+            </button>
+          </div>
+        </details>
+      </div>
     </aside>
 
-    <main id="viewport-shell">
-      <canvas id="space-canvas"></canvas>
-      <div id="status-bar">
-        <span id="status-focus">Focus: Sun</span>
-        <span id="status-bodies">Bodies: --</span>
-        <span id="status-zoom">Range: --</span>
+    <div id="panel-backdrop" class="panel-backdrop" aria-hidden="true"></div>
+
+    <main id="viewport-shell" aria-label="Interactive solar system visualization">
+      <canvas
+        id="space-canvas"
+        aria-label="Three-dimensional solar system model. Drag to orbit, scroll or pinch to zoom, and double-click a body to follow it."
+      ></canvas>
+
+      <div class="viewport-toolbar">
+        <button
+          id="panel-toggle"
+          class="button control-menu-button"
+          type="button"
+          aria-label="Open simulation controls"
+          aria-controls="control-panel"
+          aria-expanded="true"
+        >
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+          <span>Controls</span>
+        </button>
+        <div class="frame-indicator" aria-hidden="true">
+          <span></span>
+          Heliocentric view
+        </div>
+      </div>
+
+      <p class="interaction-hint" aria-hidden="true">
+        <span><kbd>Drag</kbd> orbit</span>
+        <span><kbd>Scroll</kbd> zoom</span>
+        <span><kbd>Double-click</kbd> follow body</span>
+      </p>
+
+      <div id="status-bar" aria-label="Simulation status">
+        <span id="status-focus" data-camera-mode="focus">Focused · Sun</span>
+        <span id="status-bodies">Bodies · —</span>
+        <span id="status-zoom">Range · —</span>
         <span
           id="status-catalog"
           role="status"
           aria-live="polite"
           aria-atomic="true"
           data-catalog-state="loading"
-        >Asteroids: procedural fallback (catalog verification pending)</span>
+        >Asteroids · procedural fallback · catalog verification pending</span>
       </div>
     </main>
   </div>

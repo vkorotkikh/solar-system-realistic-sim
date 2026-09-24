@@ -81,36 +81,55 @@ import {
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
+function elementById<T extends HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`Missing required UI element: #${id}`);
+  return element as T;
+}
+
 const dom = {
-  canvas: document.getElementById('space-canvas'),
-  togglePlay: document.getElementById('toggle-play'),
-  nowTime: document.getElementById('now-time'),
-  timeScale: document.getElementById('time-scale'),
-  timeScaleValue: document.getElementById('time-scale-value'),
-  timeDate: document.getElementById('time-date'),
-  toggleOrbits: document.getElementById('toggle-orbits'),
-  toggleMagneticField: document.getElementById('toggle-magnetic-field'),
-  toggleLabels: document.getElementById('toggle-labels'),
-  toggleRealisticScale: document.getElementById('toggle-realistic-scale'),
-  aiaChannel: document.getElementById('aia-channel'),
-  bodyList: document.getElementById('body-list'),
-  focusBody: document.getElementById('focus-body'),
-  followBody: document.getElementById('follow-body'),
-  clearFollow: document.getElementById('clear-follow'),
-  bodyInfo: document.getElementById('body-info'),
-  statusFocus: document.getElementById('status-focus'),
-  statusBodies: document.getElementById('status-bodies'),
-  statusZoom: document.getElementById('status-zoom'),
-  statusCatalog: document.getElementById('status-catalog'),
-  zoomSensitivity: document.getElementById('zoom-sensitivity'),
-  zoomSensitivityValue: document.getElementById('zoom-sensitivity-value'),
-  viewportShell: document.getElementById('viewport-shell'),
-  agnSource: document.getElementById('agn-source'),
-  agnPreset: document.getElementById('agn-preset'),
-  agnHypothesis: document.getElementById('agn-hypothesis'),
-  agnObserverFrame: document.getElementById('agn-observer-frame'),
-  agnStochastic: document.getElementById('agn-stochastic'),
-  triggerAgnShockwave: document.getElementById('trigger-agn-shockwave')
+  app: elementById<HTMLElement>('app'),
+  controlPanel: elementById<HTMLElement>('control-panel'),
+  panelToggle: elementById<HTMLButtonElement>('panel-toggle'),
+  panelClose: elementById<HTMLButtonElement>('panel-close'),
+  panelBackdrop: elementById<HTMLElement>('panel-backdrop'),
+  canvas: elementById<HTMLCanvasElement>('space-canvas'),
+  togglePlay: elementById<HTMLButtonElement>('toggle-play'),
+  nowTime: elementById<HTMLButtonElement>('now-time'),
+  timeScale: elementById<HTMLInputElement>('time-scale'),
+  timeScaleValue: elementById<HTMLOutputElement>('time-scale-value'),
+  timeDate: elementById<HTMLTimeElement>('time-date'),
+  toggleOrbits: elementById<HTMLInputElement>('toggle-orbits'),
+  toggleMagneticField: elementById<HTMLInputElement>('toggle-magnetic-field'),
+  toggleLabels: elementById<HTMLInputElement>('toggle-labels'),
+  toggleRealisticScale: elementById<HTMLInputElement>('toggle-realistic-scale'),
+  aiaChannel: elementById<HTMLSelectElement>('aia-channel'),
+  bodySearch: elementById<HTMLInputElement>('body-search'),
+  bodyMatchCount: elementById<HTMLOutputElement>('body-match-count'),
+  bodyList: elementById<HTMLSelectElement>('body-list'),
+  focusBody: elementById<HTMLButtonElement>('focus-body'),
+  followBody: elementById<HTMLButtonElement>('follow-body'),
+  clearFollow: elementById<HTMLButtonElement>('clear-follow'),
+  bodyInfo: elementById<HTMLElement>('body-info'),
+  bodyInfoName: elementById<HTMLElement>('body-info-name'),
+  bodyInfoType: elementById<HTMLElement>('body-info-type'),
+  bodyInfoRadius: elementById<HTMLElement>('body-info-radius'),
+  bodyInfoDistance: elementById<HTMLElement>('body-info-distance'),
+  bodyInfoPeriod: elementById<HTMLElement>('body-info-period'),
+  statusFocus: elementById<HTMLElement>('status-focus'),
+  statusBodies: elementById<HTMLElement>('status-bodies'),
+  statusZoom: elementById<HTMLElement>('status-zoom'),
+  statusCatalog: elementById<HTMLElement>('status-catalog'),
+  zoomSensitivity: elementById<HTMLInputElement>('zoom-sensitivity'),
+  zoomSensitivityValue: elementById<HTMLOutputElement>('zoom-sensitivity-value'),
+  viewportShell: elementById<HTMLElement>('viewport-shell'),
+  agnSource: elementById<HTMLSelectElement>('agn-source'),
+  agnPreset: elementById<HTMLSelectElement>('agn-preset'),
+  agnHypothesis: elementById<HTMLSelectElement>('agn-hypothesis'),
+  agnObserverFrame: elementById<HTMLInputElement>('agn-observer-frame'),
+  agnStochastic: elementById<HTMLInputElement>('agn-stochastic'),
+  experimentStatus: elementById<HTMLElement>('experiment-status'),
+  triggerAgnShockwave: elementById<HTMLButtonElement>('trigger-agn-shockwave')
 };
 
 renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatus());
@@ -543,7 +562,7 @@ syncAsteroidBeltInputs();
 
 const tempVec = new Vector3();
 
-function focusBody(bodyId, hardSnap = false) {
+function focusBody(bodyId: string, hardSnap = false) {
   const body = bodyById.get(bodyId);
   const node = bodyNodes.get(bodyId);
   if (!body || !node) return;
@@ -568,7 +587,23 @@ function focusBody(bodyId, hardSnap = false) {
   }
 
   simState.focusedBodyId = bodyId;
-  if (dom.statusFocus) dom.statusFocus.textContent = `Focus: ${body.name}`;
+}
+
+type CameraMode = 'focus' | 'follow' | 'free';
+
+function updateCameraMode(mode: CameraMode, bodyId = simState.focusedBodyId || 'sun') {
+  const bodyName = bodyById.get(bodyId)?.name ?? 'Sun';
+  const statusText = mode === 'follow'
+    ? `Following · ${bodyName}`
+    : mode === 'free'
+      ? `Free camera · ${bodyName} reference`
+      : `Focused · ${bodyName}`;
+
+  dom.statusFocus.textContent = statusText;
+  dom.statusFocus.dataset.cameraMode = mode;
+  dom.focusBody.setAttribute('aria-pressed', String(mode === 'focus'));
+  dom.followBody.setAttribute('aria-pressed', String(mode === 'follow'));
+  dom.clearFollow.setAttribute('aria-pressed', String(mode === 'free'));
 }
 
 function updateFollowTarget() {
@@ -581,18 +616,24 @@ function updateFollowTarget() {
   camera.position.copy(tempVec).add(offset);
 }
 
-function updateBodyInfoPanel(bodyId) {
+function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
-  if (!body || !dom.bodyInfo) return;
+  if (!body) return;
   const state = model.getState(bodyId);
   const dist = state?.worldPosition.length() ?? 0;
-  dom.bodyInfo.textContent = [
-    `Name: ${body.name}`,
-    `Type: ${body.type}`,
-    `Radius: ${body.radiusKm.toFixed(1)} km`,
-    `Distance from Sun: ${dist.toFixed(4)} AU`,
-    body.orbit ? `Orbital period: ${body.orbit.periodDays.toFixed(1)} days` : ''
-  ].filter(Boolean).join('\n');
+  const typeLabel = body.type.charAt(0).toUpperCase() + body.type.slice(1);
+
+  dom.bodyInfo.dataset.bodyId = body.id;
+  dom.bodyInfoName.textContent = body.name;
+  dom.bodyInfoType.textContent = typeLabel;
+  dom.bodyInfoRadius.textContent = `${body.radiusKm.toLocaleString(undefined, {
+    minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
+    maximumFractionDigits: 1
+  })} km`;
+  dom.bodyInfoDistance.textContent = `${dist.toFixed(4)} AU`;
+  dom.bodyInfoPeriod.textContent = body.orbit
+    ? `${body.orbit.periodDays.toLocaleString(undefined, { maximumFractionDigits: 1 })} days`
+    : '—';
 }
 
 // ── Body List ────────────────────────────────────────────────────────────────
@@ -600,18 +641,40 @@ function updateBodyInfoPanel(bodyId) {
 const majorBodies = catalog.bodies.filter((b) =>
   b.type === 'star' || b.type === 'planet' || b.type === 'dwarf'
 );
+let preferredBodyId = 'sun';
 
 function refillBodyList() {
-  if (!dom.bodyList) return;
-  dom.bodyList.innerHTML = '';
-  for (const body of majorBodies) {
+  const query = dom.bodySearch.value.trim().toLocaleLowerCase();
+  const visibleBodies = query
+    ? majorBodies.filter((body) => (
+      `${body.name} ${body.id} ${body.type}`.toLocaleLowerCase().includes(query)
+    ))
+    : majorBodies;
+
+  const options = document.createDocumentFragment();
+  for (const body of visibleBodies) {
     const option = document.createElement('option');
     option.value = body.id;
-    option.textContent = `${body.name} [${body.type}]`;
-    dom.bodyList.appendChild(option);
+    option.textContent = `${body.name} · ${body.type.charAt(0).toUpperCase()}${body.type.slice(1)}`;
+    option.selected = body.id === preferredBodyId;
+    options.appendChild(option);
   }
+
+  dom.bodyList.replaceChildren(options);
+  if (visibleBodies.some((body) => body.id === preferredBodyId)) {
+    dom.bodyList.value = preferredBodyId;
+  } else if (visibleBodies.length > 0) {
+    dom.bodyList.value = visibleBodies[0].id;
+  }
+
+  const matchCount = visibleBodies.length;
+  dom.bodyMatchCount.textContent = `${matchCount} ${matchCount === 1 ? 'body' : 'bodies'}`;
+  dom.bodyList.disabled = matchCount === 0;
+  dom.focusBody.disabled = matchCount === 0;
+  dom.followBody.disabled = matchCount === 0;
+
   const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
-  if (dom.statusBodies) dom.statusBodies.textContent = `Bodies: ${totalBodies.toLocaleString()}`;
+  dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
 }
 
 // ── Scale Mode ───────────────────────────────────────────────────────────────
@@ -964,7 +1027,7 @@ function resizeRenderer() {
   const w = dom.canvas.clientWidth;
   const h = dom.canvas.clientHeight;
   if (w <= 0 || h <= 0) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio ?? 2));
   if (dom.canvas.width !== w || dom.canvas.height !== h) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
@@ -973,6 +1036,120 @@ function resizeRenderer() {
 }
 window.addEventListener('resize', resizeRenderer);
 resizeRenderer();
+
+let rendererResizeFrame = 0;
+function queueRendererResize() {
+  if (rendererResizeFrame) return;
+  rendererResizeFrame = window.requestAnimationFrame(() => {
+    rendererResizeFrame = 0;
+    resizeRenderer();
+  });
+}
+
+const viewportResizeObserver = typeof ResizeObserver === 'undefined'
+  ? null
+  : new ResizeObserver(queueRendererResize);
+viewportResizeObserver?.observe(dom.viewportShell);
+
+// ── Panel & Disclosure UI ───────────────────────────────────────────────────
+
+const panelBreakpoint = window.matchMedia('(max-width: 1100px)');
+let desktopPanelOpen = true;
+let mobilePanelOpen = false;
+
+function isPanelOpen() {
+  return panelBreakpoint.matches ? mobilePanelOpen : desktopPanelOpen;
+}
+
+function focusablePanelElements() {
+  const selector = [
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'summary',
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(',');
+  return [...dom.controlPanel.querySelectorAll<HTMLElement>(selector)]
+    .filter((element) => element.getClientRects().length > 0);
+}
+
+function applyPanelState({ moveFocus = false } = {}) {
+  const open = isPanelOpen();
+  dom.app.classList.toggle('panel-is-open', open);
+  dom.app.classList.toggle('panel-is-closed', !open);
+  dom.controlPanel.inert = !open;
+  dom.controlPanel.setAttribute('aria-hidden', String(!open));
+  dom.panelToggle.setAttribute('aria-expanded', String(open));
+  dom.panelClose.setAttribute('aria-expanded', String(open));
+  dom.panelClose.setAttribute(
+    'aria-label',
+    panelBreakpoint.matches ? 'Close simulation controls' : 'Collapse simulation controls'
+  );
+
+  if (moveFocus) {
+    window.requestAnimationFrame(() => {
+      if (open) {
+        dom.panelClose.focus({ preventScroll: true });
+      } else {
+        dom.panelToggle.focus({ preventScroll: true });
+      }
+    });
+  }
+  queueRendererResize();
+}
+
+function setPanelOpen(open: boolean, moveFocus = true) {
+  if (panelBreakpoint.matches) {
+    mobilePanelOpen = open;
+  } else {
+    desktopPanelOpen = open;
+  }
+  applyPanelState({ moveFocus });
+}
+
+dom.panelToggle.addEventListener('click', () => setPanelOpen(true));
+dom.panelClose.addEventListener('click', () => setPanelOpen(false));
+dom.panelBackdrop.addEventListener('click', () => {
+  if (panelBreakpoint.matches) setPanelOpen(false);
+});
+
+panelBreakpoint.addEventListener('change', () => {
+  applyPanelState();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && isPanelOpen()) {
+    event.preventDefault();
+    setPanelOpen(false);
+    return;
+  }
+
+  if (event.key !== 'Tab' || !panelBreakpoint.matches || !isPanelOpen()) return;
+  const focusable = focusablePanelElements();
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && (active === first || !dom.controlPanel.contains(active))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || !dom.controlPanel.contains(active))) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-disclosure')) {
+  const summary = disclosure.querySelector<HTMLElement>('summary');
+  const syncDisclosureState = () => {
+    summary?.setAttribute('aria-expanded', String(disclosure.open));
+  };
+  disclosure.addEventListener('toggle', syncDisclosureState);
+  syncDisclosureState();
+}
+
+applyPanelState();
 
 // ── UI Events ────────────────────────────────────────────────────────────────
 
@@ -986,71 +1163,94 @@ const timeController = createTimeController({
 });
 timeController.bindUi();
 
-dom.togglePlay?.addEventListener('click', () => {
+function updatePlayButton() {
+  const label = dom.togglePlay.querySelector('span');
+  if (label) label.textContent = simState.paused ? 'Resume' : 'Pause';
+  dom.togglePlay.dataset.paused = String(Boolean(simState.paused));
+  dom.togglePlay.setAttribute('aria-pressed', String(Boolean(simState.paused)));
+  dom.togglePlay.setAttribute(
+    'aria-label',
+    simState.paused ? 'Resume simulation' : 'Pause simulation'
+  );
+}
+
+dom.togglePlay.addEventListener('click', () => {
   simState.paused = !simState.paused;
-  dom.togglePlay.textContent = simState.paused ? 'Play' : 'Pause';
+  updatePlayButton();
 });
 
-dom.toggleOrbits?.addEventListener('change', () => {
+dom.toggleOrbits.addEventListener('change', () => {
   const vis = dom.toggleOrbits.checked;
   for (const line of orbitLines) line.visible = vis;
 });
 
-dom.toggleLabels?.addEventListener('change', () => {
+dom.toggleLabels.addEventListener('change', () => {
   const vis = dom.toggleLabels.checked;
   for (const entry of labels) entry.sprite.visible = vis;
 });
 
-dom.toggleRealisticScale?.addEventListener('change', () => {
+dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
   applyScaleMode();
 });
 
-dom.aiaChannel?.addEventListener('change', () => {
+dom.aiaChannel.addEventListener('change', () => {
   sunCtrl.setAiaChannelOverride(dom.aiaChannel.value);
 });
 
-dom.zoomSensitivity?.addEventListener('input', () => {
+dom.zoomSensitivity.addEventListener('input', () => {
   const v = Number(dom.zoomSensitivity.value);
   if (Number.isFinite(v)) {
     controls.zoomSpeed = v;
-    if (dom.zoomSensitivityValue) dom.zoomSensitivityValue.textContent = `x${v.toFixed(2)}`;
+    dom.zoomSensitivityValue.textContent = `${v.toFixed(2)}×`;
   }
 });
 
-dom.focusBody?.addEventListener('click', () => {
-  const bodyId = dom.bodyList?.value;
+dom.bodySearch.addEventListener('input', () => {
+  refillBodyList();
+});
+
+dom.bodySearch.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && dom.bodySearch.value) {
+    event.stopPropagation();
+    dom.bodySearch.value = '';
+    refillBodyList();
+  }
+});
+
+dom.focusBody.addEventListener('click', () => {
+  const bodyId = dom.bodyList.value;
   if (bodyId) {
+    preferredBodyId = bodyId;
     simState.followBodyId = null;
     focusBody(bodyId, true);
     updateBodyInfoPanel(bodyId);
+    updateCameraMode('focus', bodyId);
   }
 });
 
-dom.followBody?.addEventListener('click', () => {
-  const bodyId = dom.bodyList?.value;
+dom.followBody.addEventListener('click', () => {
+  const bodyId = dom.bodyList.value;
   if (bodyId) {
+    preferredBodyId = bodyId;
     simState.followBodyId = bodyId;
     focusBody(bodyId, true);
     updateBodyInfoPanel(bodyId);
-    const body = bodyById.get(bodyId);
-    if (body && dom.statusFocus) dom.statusFocus.textContent = `Following: ${body.name}`;
+    updateCameraMode('follow', bodyId);
   }
 });
 
-dom.clearFollow?.addEventListener('click', () => {
+dom.clearFollow.addEventListener('click', () => {
   simState.followBodyId = null;
-  if (dom.statusFocus && simState.focusedBodyId) {
-    const body = bodyById.get(simState.focusedBodyId);
-    dom.statusFocus.textContent = `Focus: ${body?.name ?? 'Sun'}`;
-  }
+  updateCameraMode('free');
 });
 
-dom.bodyList?.addEventListener('change', () => {
+dom.bodyList.addEventListener('change', () => {
+  preferredBodyId = dom.bodyList.value;
   updateBodyInfoPanel(dom.bodyList.value);
 });
 
-dom.canvas?.addEventListener('dblclick', (e) => {
+dom.canvas.addEventListener('dblclick', (e) => {
   const rect = dom.canvas.getBoundingClientRect();
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1061,9 +1261,14 @@ dom.canvas?.addEventListener('dblclick', (e) => {
   if (hits.length > 0) {
     const bodyId = hits[0].object?.userData?.bodyId;
     if (bodyId) {
+      preferredBodyId = bodyId;
       simState.followBodyId = bodyId;
       focusBody(bodyId, true);
       updateBodyInfoPanel(bodyId);
+      if ([...dom.bodyList.options].some((option) => option.value === bodyId)) {
+        dom.bodyList.value = bodyId;
+      }
+      updateCameraMode('follow', bodyId);
     }
   }
 });
@@ -1095,20 +1300,22 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
   sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
 });
 
-dom.agnObserverFrame?.addEventListener('change', () => {
+dom.agnObserverFrame.addEventListener('change', () => {
   sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
 });
 
-dom.agnStochastic?.addEventListener('change', () => {
+dom.agnStochastic.addEventListener('change', () => {
   sunCtrl.setAgnStochasticFlaring(Boolean(dom.agnStochastic?.checked));
 });
 
-dom.agnHypothesis?.addEventListener('change', () => {
-  const hypothesis = (dom.agnHypothesis as HTMLSelectElement | null)?.value;
-  if (hypothesis === 'h29' && dom.bodyInfo) {
-    dom.bodyInfo.textContent = sunCtrl.getWarpInfoText?.() || 'H29 Warp Wave Selected';
+dom.agnHypothesis.addEventListener('change', () => {
+  if (dom.agnHypothesis.value === 'h29') {
+    dom.experimentStatus.dataset.model = 'speculative';
+    dom.experimentStatus.textContent =
+      'H29 selected · speculative metric-frame-dragging visualization with amplified display effects.';
   } else {
-    updateBodyInfoPanel(simState.focusedBodyId || 'sun');
+    dom.experimentStatus.dataset.model = 'standard';
+    dom.experimentStatus.textContent = 'Standard compound transport model selected.';
   }
 });
 
@@ -1119,10 +1326,12 @@ model.update(simState.julianDate);
 initializeModelWorker();
 updateSceneBodies();
 focusBody('sun', true);
+updateCameraMode('focus', 'sun');
 controls.update();
 camera.lookAt(controls.target);
 updateCameraClipPlanes();
 updateBodyInfoPanel('sun');
+updatePlayButton();
 
 for (const line of orbitLines) line.visible = Boolean((dom.toggleOrbits as HTMLInputElement | null)?.checked);
 for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
@@ -1187,7 +1396,7 @@ function animate(timestamp: number) {
 
   if (dom.statusZoom) {
     const dist = camera.position.distanceTo(controls.target);
-    dom.statusZoom.textContent = `Range: ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+    dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
   }
 }
 
@@ -1196,6 +1405,9 @@ requestAnimationFrame(animate);
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
+  viewportResizeObserver?.disconnect();
+  if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
+
   if (modelWorker) {
     modelWorker.terminate();
     modelWorker = null;
