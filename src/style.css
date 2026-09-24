@@ -136,7 +136,6 @@ svg {
   grid-template-columns: var(--panel-width) minmax(0, 1fr);
   overflow: hidden;
   background: var(--color-bg);
-  transition: grid-template-columns var(--motion-panel) var(--ease-standard);
 }
 
 #app.panel-is-closed {
