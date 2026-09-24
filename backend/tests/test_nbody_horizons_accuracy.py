@@ -79,42 +79,31 @@ def test_default_ias15_model_stays_inside_multi_epoch_horizons_envelope(epoch) -
             f"{body_id} at {epoch['label']}: {velocity_error_m_s:.6f} m/s"
         )
 
+    if epoch["label"] == "2026-08-23":
+        earth_error_km, _ = _relative_error(state, epoch["bodies"], "earth")
+        saturn_system_error_km, _ = _relative_error(state, epoch["bodies"], "saturn")
 
-def test_reported_2026_earth_and_saturn_defect_is_closed() -> None:
-    epoch = next(item for item in TRUTH["epochs"] if item["label"] == "2026-08-23")
-    engine = REBOUNDEngine(integrator="ias15")
-    engine.initialize(ALL_BODIES, start_jd=epoch["jd_tdb"])
-    state = engine.get_state()
+        # Earth is target 399; Saturn is the system barycenter (target 6).
+        assert TRUTH["target_contract"]["earth"]["horizons_target_id"] == "399"
+        assert TRUTH["target_contract"]["saturn"]["horizons_target_id"] == "6"
+        assert earth_error_km < 2_000.0
+        assert saturn_system_error_km < 100.0
 
-    earth_error_km, _ = _relative_error(state, epoch["bodies"], "earth")
-    saturn_system_error_km, _ = _relative_error(state, epoch["bodies"], "saturn")
-
-    # Earth is target 399 because the hidden Moon is integrated explicitly.
-    # Saturn is target 6, matching the system-barycenter particle disclosed by
-    # force_models.initial_conditions.horizons_targets.
-    assert TRUTH["target_contract"]["earth"]["horizons_target_id"] == "399"
-    assert TRUTH["target_contract"]["saturn"]["horizons_target_id"] == "6"
-    assert earth_error_km < 2_000.0
-    assert saturn_system_error_km < 100.0
-
-    # The public Saturn particle is intentionally the system barycenter, but
-    # also gate the apples-to-apples visible planet-center metric from the
-    # original defect report. The remaining offset is real satellite reflex
-    # motion, not a mislabeled osculating state.
-    proxy = TRUTH["planet_center_proxy_checks"][0]
-    assert proxy["horizons_target_id"] == "699"
-    model_saturn_heliocentric = [
-        state["bodies"]["saturn"]["pos"][idx]
-        - state["bodies"]["sun"]["pos"][idx]
-        for idx in range(3)
-    ]
-    saturn_center_error_km = _norm(
-        [
-            model_saturn_heliocentric[idx] - proxy["position_au"][idx]
+        # Keep the separate visible planet-center check from the defect report.
+        proxy = TRUTH["planet_center_proxy_checks"][0]
+        assert proxy["horizons_target_id"] == "699"
+        model_saturn_heliocentric = [
+            state["bodies"]["saturn"]["pos"][idx]
+            - state["bodies"]["sun"]["pos"][idx]
             for idx in range(3)
         ]
-    ) * AU_KM
-    assert saturn_center_error_km < 500.0
+        saturn_center_error_km = _norm(
+            [
+                model_saturn_heliocentric[idx] - proxy["position_au"][idx]
+                for idx in range(3)
+            ]
+        ) * AU_KM
+        assert saturn_center_error_km < 500.0
 
 
 def test_hidden_moon_preserves_the_earth_moon_relative_state() -> None:

@@ -19,14 +19,9 @@ from sim.kuiper import KuiperBeltEngine
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-@pytest.fixture
-def engine():
-    return KuiperBeltEngine(particle_count=500)
-
-
-@pytest.fixture
-def activated_engine(engine):
+def _make_activated_engine():
     """Activate the engine with minimal massive body setup."""
+    engine = KuiperBeltEngine(particle_count=500)
     engine.activate(
         sun_pos=[0.0, 0.0, 0.0],
         sun_vel=[0.0, 0.0, 0.0],
@@ -36,6 +31,16 @@ def activated_engine(engine):
         spread_au=5.0,
     )
     return engine
+
+
+@pytest.fixture(scope="module")
+def activated_engine():
+    return _make_activated_engine()
+
+
+@pytest.fixture
+def fresh_activated_engine():
+    return _make_activated_engine()
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -79,14 +84,13 @@ class TestBinaryKBOGeneration:
                 + (velocities[primary_idx][1] - velocities[companion_idx][1]) ** 2
                 + (velocities[primary_idx][2] - velocities[companion_idx][2]) ** 2
             )
-            assert dv > 0.0, "Binary companions should not be perfectly co-moving"
+            assert dv > 1e-8, f"Binary pair {pair} still looks co-moving"
 
     def test_binary_pairs_are_close(self, activated_engine):
         """Companion should be within 200,000 km (~0.0013 AU) of its primary."""
         state = activated_engine.get_state()
         assert state is not None
         positions = state["positions"]
-        velocities = state["velocities"]
         pairs = state["binary_pairs"]
         max_sep_au = 200_000 / 149_597_870.7  # ~0.00134 AU
         for pair in pairs:
@@ -99,10 +103,6 @@ class TestBinaryKBOGeneration:
                 f"Companion at {dist:.6f} AU from primary, "
                 f"expected < {max_sep_au * 2:.6f} AU"
             )
-            pv = velocities[pair[0]]
-            cv = velocities[pair[1]]
-            dv = math.sqrt((pv[0] - cv[0]) ** 2 + (pv[1] - cv[1]) ** 2 + (pv[2] - cv[2]) ** 2)
-            assert dv > 1e-8, f"Binary pair {pair} still looks co-moving"
 
     def test_binary_pairs_no_overlap(self, activated_engine):
         """No particle should appear in more than one binary pair."""
@@ -129,28 +129,28 @@ class TestBinaryKBOGeneration:
             for val in pos:
                 assert isinstance(val, float)
 
-    def test_deactivate_clears_binary_pairs(self, activated_engine):
+    def test_deactivate_clears_binary_pairs(self, fresh_activated_engine):
         """Deactivation should clean up binary pair tracking."""
-        activated_engine.deactivate()
-        assert activated_engine._binary_pairs == []
-        assert activated_engine.active is False
+        fresh_activated_engine.deactivate()
+        assert fresh_activated_engine._binary_pairs == []
+        assert fresh_activated_engine.active is False
 
 
 class TestKuiperBeltEngineLifecycle:
-    def test_step_without_crash(self, activated_engine):
+    def test_step_without_crash(self, fresh_activated_engine):
         """Stepping the simulation should not crash with binary particles."""
-        activated_engine.step(dt_days=10.0)
-        state = activated_engine.get_state()
+        fresh_activated_engine.step(dt_days=10.0)
+        state = fresh_activated_engine.get_state()
         assert state is not None
         assert len(state["positions"]) > 0
 
-    def test_should_send_cadence(self, activated_engine):
+    def test_should_send_cadence(self, fresh_activated_engine):
         """should_send() should return True every 5th frame."""
         # Frame 0: True (0 % 5 == 0)
-        assert activated_engine.should_send() is True
-        activated_engine.step(1.0)  # frame 1
-        assert activated_engine.should_send() is False
+        assert fresh_activated_engine.should_send() is True
+        fresh_activated_engine.step(1.0)  # frame 1
+        assert fresh_activated_engine.should_send() is False
         for _ in range(4):
-            activated_engine.step(1.0)
+            fresh_activated_engine.step(1.0)
         # Now at frame 5
-        assert activated_engine.should_send() is True
+        assert fresh_activated_engine.should_send() is True

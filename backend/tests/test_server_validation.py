@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 import server
+from mission import MissionPlannerAgent
 from server import app
 
 client = TestClient(app)
@@ -99,7 +100,16 @@ def test_mission_plan_rejects_non_numeric_payload_mass() -> None:
     assert "payload_mass_kg" in response.text
 
 
-def test_mission_plan_returns_422_when_no_verified_candidate_exists() -> None:
+def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch) -> None:
+    monkeypatch.setattr(
+        MissionPlannerAgent,
+        "plan",
+        lambda *_args, **_kwargs: {
+            "status": "no_verified_candidate",
+            "recommendation": None,
+            "alternatives": [],
+        },
+    )
     response = client.post(
         "/mission/plan",
         json={
