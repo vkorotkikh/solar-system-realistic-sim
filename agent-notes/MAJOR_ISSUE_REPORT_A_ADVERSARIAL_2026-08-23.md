@@ -4,9 +4,9 @@
 
 > Companion parts: **[Report 0 — Baseline](MAJOR_ISSUE_REPORT_0_BASELINE_2026-08-23.md)** · **[Report B — Blocked-Check Closure](MAJOR_ISSUE_REPORT_B_BLOCKED_CHECKS_2026-08-23.md)** · **[Report C — sun-focus & New-Issue Hunt](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md)**
 
-## 2026-08-27 current-branch reconciliation (`e740b21`)
+## 2026-09-24 current-branch reconciliation
 
-> **This section is the authoritative status for the current branch.** The original report body below is preserved unchanged as a historical record of `main @ aa6e39a` on 2026-08-23. Its `CONFIRMED`/`REVISED` counts and severity statements must not be read as the status of `e740b21`.
+> **Authoritative current status for `fix/nbody-osculating-initial-state`; code audited through `a864ea4`.** The original report body below is preserved unchanged as a historical record of `main @ aa6e39a` on 2026-08-23. Its `CONFIRMED`/`REVISED` counts and severity statements must not be read as current-branch status.
 
 ### Scope and normalization
 
@@ -25,26 +25,32 @@ The three already-refuted subclaims — F-08 “~60 missing paths,” F-15 “ep
 
 ### Validation snapshot
 
-- Full backend suite: **143 passed**.
-- Full frontend Vitest suite: **100/100 passed across 6 files**, including **5 passed** at the model-worker boundary (`src/workers/modelWorkerContract.test.ts`) and the committed moon/planet/orbit regression gates.
-- Production Vite build: **passed**, compiling **39 modules**; the only reported issue was the non-fatal bundle-size warning.
+- Full backend suite: **176 passed** with 5 deprecation warnings.
+- Full frontend Vitest suite: **108/108 passed across 7 files**, including asteroid-integrity/source-state, model-worker, and committed moon/planet/orbit regression gates.
+- Production Vite build: **passed**, compiling **40 modules**; the only reported issue was the non-fatal approximately 892.90 kB main-chunk warning.
 - Strict TypeScript checking is still not clean: a fresh `npm run typecheck` reported **280** `error TS` lines, which is why F-09 remains partial even though Vite builds successfully.
+
+The selected fixes after the prior pin map primarily to Reports B and C, so this report's 30-row
+counts do not change. For cross-report context: `90f4134` bounds/cancels WebSocket seeks and caps
+admission, `a40005a` repairs PFSS cache identity/single-flight, `3f3b787` enforces unpowered flyby
+continuity, and `84ddcd1` makes asteroid catalog integrity fail closed with visible provenance.
+`ea54bea` further hardens the already-resolved F-06 Lambert certificate.
 
 ### Current finding table
 
-| ID | Status at `e740b21` | Current evidence and scoped disposition |
+| ID | Status through `a864ea4` | Current evidence and scoped disposition |
 |---|---|---|
 | **F-01** | **RESOLVED** | `0c99424` moves the GPU orbit translation after the instance rotation/scale in both `worldPosition` and `projectVertex` (`src/frontend/features/asteroids/beltRenderer.ts:175-212`). Add a shader-order or rendered-radius regression so a three.js shader edit cannot silently restore the collapse. |
 | **F-02** | **RESOLVED** | REBOUND readiness loads and validates the scientific input and probes the configured integrator (`backend/sim/rebound_nbody.py:98-144`); IAS15-specific fields are guarded (`:247-255`). Invalid inputs withhold availability/high fidelity (`backend/tests/test_server_validation.py:46-68`, `test_nbody_initial_conditions.py:261-269`). |
 | **F-03** | **PARTIAL** | Invalid comparisons are quarantined as `comparable_to_solver:false` and reported `incomparable_reference` (`backend/benchmark/accuracy.py:205-212`), but the rows remain sourced/labeled `strict-gmat-orekit-tudat` and tests accept `referenceIntegrityOk:true` with zero comparable coverage (`reference_scenarios.json:5-158`, `test_benchmark_accuracy.py:14-35`). Remove the strict/integrity claim or commit reproducible decks, endpoint states, frame/time scale, branch/revolution choice, kernels, and metric. |
 | **F-04** | **RESOLVED** | `2226277` replaces mean-element initialization with fail-closed, committed DE441 Cartesian states and DE440 GM ratios (`backend/data/initial_conditions.py`, `backend/sim/rebound_nbody.py:232-356`). Multi-epoch Horizons tests gate the active IAS15 model; the exact 2026 closure requires Earth <2,000 km, Saturn-system <100 km, and Saturn-center <500 km (`test_nbody_horizons_accuracy.py:61-117,155-182`). |
 | **F-05** | **PARTIAL** | The converter now transforms both orbit normal and periapsis (`src/sim/catalog.ts:319-349`), closing the original Io/Callisto/Enceladus/Triton frame failures. The regression gate still permits known phase/catalog defects up to two orbital radii for Titan, Iapetus, Phoebe and a 180° plane tolerance for Cordelia (`moonFrameCheck.ts:23-72`). Correct those source epochs/phases/precession terms and tighten the overrides. |
-| **F-06** | **RESOLVED** | Lambert output is now withheld unless the requested TOF is bracketed/certified, and successful solutions expose `computedTofDays`, `rootResidualDays`, and bracket status (`backend/trajectory/lambert.py:217-259`). Infeasible one-day Earth→Mars returns no solution/422 rather than an uncertified HTTP 200. |
+| **F-06** | **RESOLVED** | Lambert output is withheld unless the requested TOF is bracketed/certified, and successful solutions expose `computedTofDays`, `rootResidualDays`, and bracket status. `ea54bea` adds Illinois-weighted bracket convergence, refuses to return an uncertified best point when the iteration budget is exhausted, and adds strict residual/failure regressions. Infeasible one-day Earth→Mars returns no solution/422 rather than an uncertified HTTP 200. |
 | **F-07** | **RESOLVED** | `68aff6b` propagates mean anomaly as `M(T)=L(T)-varpi(T)` from JPL's tabulated mean-longitude rate (`src/data/planets.ts:14-26`, `src/sim/orbitMath.ts:128-157`), removing the SF-1 double-counting regression. `f1c79b9` adds a committed six-epoch Horizons gate (`planetPositionCheck.ts`, `planetPositions.horizons.test.ts`). Treat the 2100 row as an explicitly out-of-domain stress sample because the selected Standish table is documented through 2050. |
 | **F-08** | **ACTIVE** | `README.md:51-69` still instructs users to select REBOUND/TudatPy and click Connect, but `index.html` has no engine/connect controls and `src/main.ts` does not import the only WebSocket client (`simulationClient.ts`). Wire the dormant client/UI end-to-end or remove the shipped-product claim. The historical “~60 missing paths” subclaim remains refuted. |
 | **F-09** | **PARTIAL** | The error count has fallen substantially, but strict checking still reports 280 errors and `package.json` keeps `vite build` separate from `typecheck`. Eliminate errors in the reachable graph, then make typecheck and tests mandatory in CI/build; a successful Vite transpile is not a type-safety gate. |
 | **F-10** | **RESOLVED** | After the earlier single-flight/completion-TTL work, `e740b21` keys snapshots by `latest` versus an exact finite JD and uses a bounded LRU (`backend/sim/solar_realtime_data.py:78-164`). `test_solar_realtime_data_cache.py` gates cross-JD isolation, latest-vs-explicit identity, refresh, eviction, and non-finite rejection. |
-| **F-11** | **PARTIAL** | CORS is allowlisted, report paths are confined, and accidental overwrite is refused atomically (`backend/server.py:89-117,654-677`; `backend/benchmark/accuracy.py:397-421`). Dev launch still defaults to public `0.0.0.0`, and the unauthenticated report endpoint accepts explicit `allow_overwrite:true` (`scripts/dev-full.mjs:44-55`, `backend/server.py:1278-1292,1815`). Default to loopback and require authorization for state-changing writes. |
+| **F-11** | **PARTIAL** | HTTP CORS and browser WebSocket origins are allowlisted; `90f4134` also caps `/ws/sim` admission before engine setup, while report paths are confined and accidental overwrite is refused atomically. Dev launch still defaults to public `0.0.0.0` with reload, no authentication exists, the report endpoint accepts explicit `allow_overwrite:true` without identity-based authorization, and some responses expose absolute paths. Default to loopback and require authorization for state-changing writes. |
 | **F-12** | **RESOLVED** | The shipped `main.ts` calls resize at initialization and on resize events, not inside its animation loop (`src/main.ts:945-957,1122-1176`). Dormant `frontend/app/animationLoop.ts:195` still contains the old per-frame call and must be corrected before that stack is reactivated. |
 | **F-13** | **ACTIVE** | H29 still applies a `1e12`-scaled speculative displacement directly to model state on wall-clock `deltaSeconds` (`src/main.ts:730-743`; `src/workers/modelWorker.ts:104-137`), including while the Julian-date clock is paused. Keep scientific state immutable and apply this as a renderer-only transform with persistent hypothesis labeling. |
 | **F-14** | **RESOLVED** | Fixed-epoch synthetic corona sampling defaults its visual epoch to the requested JD and is exactly deterministic (`backend/sim/solar_physics.py:1015-1049`; `test_solar_physics_model.py:167-175`). Live assimilation remains intentionally observation-time dependent and should continue to be labeled separately. |
@@ -67,7 +73,7 @@ The three already-refuted subclaims — F-08 “~60 missing paths,” F-15 “ep
 
 ### Commit-level change in priority
 
-The original headline N-body defect is scientifically closed by `2226277`; current work should not continue treating it as the dominant blocker. `68aff6b` plus `f1c79b9` close and gate SF-1/browser mean-anomaly propagation, `b6c4ce3` closes hidden-moon worker waste and float32 state loss, `3f5d097` closes negative TOF admission and binds compute permits to actual worker lifetime, and `e740b21` closes wrong-epoch solar-cache reuse. The highest-priority remaining scientific-contract work in this report is now F-03/F-05/F-19 and N-01/N-02/N-03/N-06; the original report body follows only for historical evidence.
+The original headline N-body defect is scientifically closed by `2226277`; current work should not continue treating it as the dominant blocker. The subsequent commits summarized above additionally close bounded WebSocket resource ownership, PFSS cache identity, asteroid integrity/provenance, and unpowered-flyby continuity in their Report B/C rows. The highest-priority remaining scientific-contract work in this report is now F-03/F-05/F-19 and N-01/N-02/N-03/N-06; the original report body follows only for historical evidence.
 
 ---
 

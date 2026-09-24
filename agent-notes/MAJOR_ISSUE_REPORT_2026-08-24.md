@@ -1,6 +1,6 @@
 # Major-Issue Report — `main @ 44088f8` (2026-08-24)
 
-## 2026-08-27 current-branch reconciliation
+## 2026-09-24 current-branch reconciliation
 
 > **Authoritative status update.** The original report below remains an evidence record for
 > `main @ 44088f8`; its present-tense status and roadmap language is historical. This section
@@ -12,11 +12,11 @@
 | Item | Reconciled value |
 |---|---|
 | Branch | `fix/nbody-osculating-initial-state` |
-| Audited HEAD | `e740b21` (`fix: key realtime solar snapshots by epoch`) |
+| Code audited through | `a864ea4` (`test: remove assertions superseded by Horizons gates`) |
 | Scientific baseline fix | `2226277` (`fix: seed n-body model from validated JPL states`) |
-| Backend verification | **143 passed**, 5 deprecation warnings, 41.79 s |
-| Frontend verification | **100 passed** in 6 Vitest files |
-| Production bundle | **PASS**; Vite transformed 39 modules (bundle-size warning only) |
+| Backend verification | **176 passed**, 5 deprecation warnings |
+| Frontend verification | **108 passed** in 7 Vitest files |
+| Production bundle | **PASS**; Vite transformed 40 modules (approximately 892.90 kB main-chunk warning only) |
 | Strict TypeScript | **FAIL**; **280 errors** remain, so this is still not a release gate |
 
 Status terms used here are deliberately strict:
@@ -37,16 +37,16 @@ the several mission-economics symptoms form one mass-flow root cause, while the 
 MGA flyby and its route-budget defect remain separate). Report B deliberately retains a more
 granular symptom-level register, so its rows map many-to-one into this ledger.
 
-| Current disposition at `e740b21` | Root-cause groups |
+| Current disposition through `a864ea4` | Root-cause groups |
 |---|---:|
-| **ACTIVE** | **23** |
-| **PARTIAL** | **12** |
-| **RESOLVED** | **16** |
+| **ACTIVE** | **18** |
+| **PARTIAL** | **11** |
+| **RESOLVED** | **22** |
 | **NOT-A-BUG** | **4** |
 | **DUPLICATE** | **1** |
 | **Total** | **56** |
 
-Accordingly, **35 distinct root-cause groups still require work**: 23 active and 12 partial.
+Accordingly, **29 distinct root-cause groups still require work**: 18 active and 11 partial.
 Blocked or unreplayable checks—including real-GPU performance, TudatPy installation, and two
 checks whose original fuzz/offline inputs were not preserved—are tracked in Report B but are not
 counted as code defects. Report-local counts are also recorded in Reports A, B, and C so the
@@ -54,9 +54,9 @@ normalization can be audited rather than inferred:
 
 | Register | ACTIVE | PARTIAL | RESOLVED | NOT-A-BUG | BLOCKED | DUPLICATE |
 |---|---:|---:|---:|---:|---:|---:|
-| Canonical cross-report / Report C (`R01`–`R56`) | 23 | 12 | 16 | 4 | 0 | 1 |
+| Canonical cross-report / Report C (`R01`–`R56`) | 18 | 11 | 22 | 4 | 0 | 1 |
 | Report A (30 primary findings) | 10 | 8 | 11 | 1 | 0 | 0 |
-| Report B (50 canonical symptom-level rows) | 27 | 5 | 8 | 6 | 4 | 0 |
+| Report B (50 canonical symptom-level rows) | 18 | 7 | 15 | 6 | 4 | 0 |
 
 For this report's own explicit 18 major and 16 medium rows, the current split is:
 
@@ -92,9 +92,10 @@ described as **model-barycentric**, not as exact SSB ephemerides.
 
 ### Implemented remediation in this pass
 
-The N-body correction above was the prerequisite requested first. The next **five remaining
-defects** selected by live scientific impact and resource risk were then fixed, with negative TOF
-validation closed as an additional sixth fix.
+The N-body correction above was the prerequisite requested first. Two implementation passes then
+closed ten selected defects by live scientific impact and resource risk, with negative TOF
+validation and stricter Lambert convergence certification landed as additional hardening. The
+rows below record both passes; adjacent issues remain open where explicitly stated.
 
 | Finding | Commit | Current disposition and acceptance evidence |
 |---|---|---|
@@ -104,6 +105,12 @@ validation closed as an additional sixth fix.
 | 424 hidden moons consumed 97.7% of each worker payload and then froze (`M-12` / `F-20`) | `b6c4ce3` | **RESOLVED for the shipped scene.** Only 10 active rendered bodies are propagated and serialized; payload falls from 12,152 to **480 bytes/tick**. One-in-flight, sequence, and freshness guards protect application. |
 | Realtime solar TTL cache served one requested epoch for another (`M-16` / `F-10` / `B-SOL-02`) | `e740b21` | **RESOLVED.** Snapshot identity now includes exact finite JD versus `latest`; a bounded 16-entry TTL/LRU cache and matching single-flight key prevent cross-epoch poisoning and unbounded growth. Seven dedicated tests cover isolation, reuse, refresh, eviction, and non-finite input. |
 | Zero/negative porkchop TOF admitted all-failure memory work (`m-10` / `N-04` / `B-PORK-02`) | `3f5d097` | **RESOLVED.** Both TOF bounds are schema-constrained with `gt=0`; endpoint regressions cover zero and negative values. |
+| Unbounded, non-cancellable REBOUND seeks/checkpoints (`R23` / `B-WS-02/06`) | `90f4134` | **RESOLVED.** Seeks are restricted to the validated 1990–2050 JDTDB range, long forward integration is segmented for cooperative cancellation, checkpoints use an eight-entry LRU, and endpoint admission remains held until the worker exits. |
+| Unlimited WebSocket engines/threads (`R25`) | `90f4134` | **RESOLVED.** Browser origin and four-session admission checks happen before engine construction; slots are released only after actual runner termination. Authentication and safe bind defaults remain R11/F-11. |
+| Incomplete PFSS cache identity/stampede (`R15`) | `a40005a` | **RESOLVED.** The normalized key covers every result-affecting request input, the cache is bounded LRU, and identical concurrent misses share one success/error computation. |
+| Asteroid catalog integrity/provenance fail-open (`R45` / `B-AST-01/02/04`) | `84ddcd1` | **RESOLVED.** Valid metadata plus matching SHA-256 are mandatory; FNV cannot substitute, latency is telemetry, and persistent accessible status identifies verified/fallback/failure state. Independent expected-row, source-precision, and taxonomy work remains open. |
+| Unpowered MGA `|v∞|` discontinuity and averaged turn bound (`R47` / `B-MGA-03/04`) | `3f3b787` | **RESOLVED.** Mismatched asymptotic speeds are rejected beyond documented absolute/relative tolerances and maximum turn is derived from incoming `v∞`. Route enumeration/accounting remains R48/B-MGA-01/02/05. |
+| Lambert bracket exit could return an uncertified best point | `ea54bea` | **RESOLVED.** Illinois-weighted refinement now returns only a root within the requested TOF tolerance; exhausted and strict-convergence cases have dedicated regressions. |
 
 Other previously landed fixes that remain credited include the asteroid transform order (`M-01`),
 Lambert time-of-flight certification, IAS15 compatibility, benchmark-report overwrite opt-in
@@ -117,23 +124,21 @@ moon rows still carry bad phase conventions.
 The next work should be accepted by executable physical or lifecycle invariants, not by a green
 mock-only test:
 
-1. **Bound and cancel WebSocket seeks/checkpoints.** Declare a supported JDTDB interval, check a
-   stop token inside every integration chunk, cap each seek's work, use a bounded LRU checkpoint
-   store, cap live connections, and regression-test disconnect during a far-future seek.
-2. **Make MGA flybys conserve energy.** For an unpowered flyby require
-   `abs(|vinf,out| - |vinf,in|)` within a documented tolerance; otherwise charge the powered-flyby
-   impulse. Compute turn limits from incoming `vinf`, honor `max_assists`, and expose generated,
-   evaluated, distinct-route, and pruned counts.
+1. **Finish server and WebSocket hardening.** Add authentication, safe loopback/reload defaults,
+   write authorization, and path redaction; close the remaining Sun-elements, paused-Kuiper, and
+   requested-versus-delivered time-scale protocol defects.
+2. **Make MGA route search/accounting honest.** Honor `max_assists`, diversify and count distinct
+   body routes, expose generated/evaluated/pruned counts, and populate or remove the hardcoded
+   `turnDeficitPenalty` field.
 3. **Replace the benchmark oracle.** Delete unsupported “strict tool capture” rows or commit the
    exact GMAT/Orekit/Tudat inputs, versions, frames, epochs, revolution/branch convention, and raw
    outputs. Keep incompatible rows non-scoring until they are reproducible.
-4. **Fail closed on asteroid integrity and provenance.** Require metadata plus SHA-256 and row-count
-   agreement, distinguish corruption from slow transport, surface a visible typed fallback, retain
-   source precision, and label inferred taxonomy as `Unknown` with provenance rather than measured
-   composition.
-5. **Finish solar input identity and upstream safety.** Key PFSS by every scientifically relevant
-   input, single-flight identical work, cap all upstream bytes, replace the dead SWPC products with
-   documented current feeds and schema fixtures, and return typed upstream failures rather than 500.
+4. **Regenerate honest asteroid science data.** Add an independent expected-row and real/procedural
+   fraction contract, retain source precision, and label inferred taxonomy as `Unknown` with
+   provenance rather than measured composition.
+5. **Finish solar upstream safety.** Cap all upstream bytes, replace the dead SWPC products with
+   documented current feeds and schema fixtures, publish coverage/confidence, and return typed
+   upstream failures rather than 500.
 6. **Unify remaining scientific frames and dimensions.** Establish one explicit solar-axis frame,
    centralize differential-rotation laws, correct SMBH Schwarzschild radii and heliosphere-time
    units, and replace the single Helioviewer tile with a full-disk projection before calling it an

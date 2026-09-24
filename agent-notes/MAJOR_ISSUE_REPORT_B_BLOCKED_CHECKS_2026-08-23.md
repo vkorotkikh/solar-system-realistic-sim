@@ -4,17 +4,17 @@
 
 > Companion parts: **[Report 0 — Baseline](MAJOR_ISSUE_REPORT_0_BASELINE_2026-08-23.md)** · **[Report A — Adversarial Verification](MAJOR_ISSUE_REPORT_A_ADVERSARIAL_2026-08-23.md)** · **[Report C — sun-focus & New-Issue Hunt](MAJOR_ISSUE_REPORT_C_SUNFOCUS_HUNT_2026-08-23.md)**
 
-## 2026-08-27 current-branch reconciliation
+## 2026-09-24 current-branch reconciliation
 
-> **Authoritative current-status overlay for `fix/nbody-osculating-initial-state @ e740b21`.** The original `main @ aa6e39a` report is preserved verbatim below as historical evidence. This section supersedes only its present-tense status conclusions. It inventories **50 canonical findings/observations**; the eight bullets in original §9 are recap aliases and are deliberately excluded from the counts.
+> **Authoritative current status for `fix/nbody-osculating-initial-state`; code audited through `a864ea4`.** The original `main @ aa6e39a` report is preserved verbatim below as historical evidence. This section supersedes only its present-tense status conclusions. It inventories **50 canonical findings/observations**; the eight bullets in original §9 are recap aliases and are deliberately excluded from the counts.
 
 ### Status accounting
 
 | Status | Count | Meaning here |
 |---|---:|---|
-| **ACTIVE** | **27** | The reported defect remains on `e740b21`. |
-| **PARTIAL** | **5** | Material mitigation landed, but the original contract is not completely closed or verified. |
-| **RESOLVED** | **8** | Current code and a proportionate regression gate close the reported mechanism. |
+| **ACTIVE** | **18** | The reported defect remains at the audited code pin. |
+| **PARTIAL** | **7** | Material mitigation landed, but the original contract is not completely closed or verified. |
+| **RESOLVED** | **15** | Current code and a proportionate regression gate close the reported mechanism. |
 | **BLOCKED** | **4** | The report did not preserve enough replay input, or this environment still lacks the required external runtime/hardware. |
 | **NOT-A-BUG** | **6** | A clean/refuted result or an intentional behavior, retained so it is not re-filed as a defect. |
 | **Canonical total** | **50** | Excludes the eight duplicate recap bullets in original §9. |
@@ -28,12 +28,15 @@ Report-local IDs are stable handles for this reconciliation. Original §9 maps t
 - **Worker boundary (`b6c4ce3`)** moves propagated state transport to a versioned `Float64Array` contract, rejects stale/malformed snapshots, and preserves source-index mapping. It likewise closes a later branch regression rather than a canonical Report B row.
 - **Compute lifetime and TOF (`3f5d097`)** keeps endpoint permits attached to worker completion, adds cooperative porkchop cancellation, uses dedicated bounded executors, and rejects non-positive TOF. It resolves `B-PORK-02/03`; `B-PORK-01` remains partial because a successful accepted scan still accumulates all bounded points/failures before response slicing.
 - **Solar epoch cache (`e740b21`)** replaces the single snapshot slot with a bounded epoch-keyed LRU and distinct `latest` identity, resolving `B-SOL-02` with isolation, refresh, eviction, and non-finite-JD tests.
+- **WebSocket resources (`90f4134`)** enforce the validated 1990–2050 JDTDB seek interval, segment long integrations for cooperative cancellation, cap checkpoints at eight, and add pre-engine origin/four-session admission. This resolves `B-WS-02/06`; the cap also closes canonical R25 even though Report B has no separate row for it.
+- **PFSS and MGA (`a40005a`, `3f3b787`)** complete PFSS cache identity/single-flight (canonical R15) and require ideal unpowered flybys to conserve `|v∞|` while deriving turn limits from the incoming hyperbola. The latter resolves `B-MGA-03/04`; route enumeration and the hardcoded route penalty remain open.
+- **Asteroid provenance (`84ddcd1`)** requires valid metadata plus matching SHA-256, separates load latency from integrity, and presents persistent typed source/fallback state. This resolves `B-AST-01/02/04`; the independent expected-row and mixed-population fraction contracts remain partial.
 
-Fresh verification at `e740b21`:
+Fresh verification of code through `a864ea4`:
 
-- Backend: `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=backend /tmp/solar-nbody-fix-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests` → **143 passed, 5 warnings in 42.15 s**. Environment: Python **3.14.6**, pytest **9.1.1**, FastAPI **0.141.1**, REBOUND **5.1.1**.
-- Frontend: full Vitest → **100/100 tests passed across 6 files**, including the worker contract and Horizons planet-position gates.
-- Production build: Vite → **passed, 39 modules transformed**; only the existing bundle-size warning remains.
+- Backend: `pytest -q backend/tests` → **176 passed, 5 warnings** with REBOUND **5.1.1**.
+- Frontend: full Vitest → **108/108 tests passed across 7 files**, including asteroid integrity/source-state, worker-contract, and Horizons gates.
+- Production build: Vite → **passed, 40 modules transformed**; only the existing approximately 892.90 kB main-chunk warning remains. Strict TypeScript remains a separate failing gate with **280 errors**.
 
 ### Canonical finding reconciliation
 
@@ -41,18 +44,18 @@ Fresh verification at `e740b21`:
 |---|---|---|
 | `B-MGA-01` | **ACTIVE** | `mga.py` still applies `MAX_COMPLETED=48` to completed beam partials globally, so early body routes exhaust later routes' budget. Allocate/count per body route and gate route coverage. |
 | `B-MGA-02` | **ACTIVE** | Routes remain ordered by length then lexicographically; tests still do not prove that `max_assists=1/2/3` explore different route sets. Rank/diversify seeds and add that invariant. |
-| `B-MGA-03` | **ACTIVE** | Flyby code still averages incoming/outgoing `v∞`, accepts magnitude mismatch, and charges only first departure plus final arrival. Enforce unpowered conservation or explicitly charge powered-flyby Δv. |
-| `B-MGA-04` | **ACTIVE** | Maximum turn is still computed from averaged rather than incoming `v∞`. Use the incoming hyperbola for the unpowered feasibility bound and gate the flip cases. |
+| `B-MGA-03` | **RESOLVED** | `3f3b787` rejects ideal unpowered encounters when incoming/outgoing `|v∞|` differ beyond `max(0.001 km/s, 1e-4 relative)`, rather than granting a free powered impulse. Diagnostics and focused mismatch/tolerance tests gate the rule. |
+| `B-MGA-04` | **RESOLVED** | `3f3b787` computes maximum turn from incoming `v∞` and gates the distinction from the former averaged-speed calculation. |
 | `B-MGA-05` | **ACTIVE** | `turnDeficitPenalty` remains hardcoded `0.0`. Populate it from required-minus-available turn or remove the field/score contract. |
 | `B-PORK-01` | **PARTIAL** | Server-side windows, grid points, concurrency, timeout, and worker lifetime are bounded, but `scan_porkchop_window` still appends every accepted bounded point/failure and slices only the returned payload. Retain top-k/summary data during iteration. |
 | `B-PORK-02` | **RESOLVED** | `3f5d097` makes both TOF bounds `Field(..., gt=0.0)` and adds API regressions for negative and zero TOF. |
 | `B-PORK-03` | **RESOLVED** | `3f5d097` supplies a cancellation event checked inside the grid loop and releases the permit only when the worker future finishes; tests cover pre-cancellation and post-timeout permit ownership. |
 | `B-WS-01` | **NOT-A-BUG** | The original rerun refuted normal abrupt-disconnect zombies; current code does not supply contrary evidence. Keep a multi-connection reclamation smoke gate. |
-| `B-WS-02` | **ACTIVE** | WebSocket `stop()` still joins only three seconds and long REBOUND seek integration has no runner stop token. Add bounded integration segments with a disconnect/stop check. |
+| `B-WS-02` | **RESOLVED** | `90f4134` integrates long forward seeks in at-most-ten-year segments with a runner cancellation event; stop/disconnect requests cancellation and endpoint ownership remains held until the real thread exits. Tests cover cancellation between segments and the stop/dequeue race. |
 | `B-WS-03` | **ACTIVE** | Querying orbital elements for the Sun still asks REBOUND for the Sun about itself; the resulting command exception latches `_runtime_error`, and resume does not clear it. Return `not_available` without latching. |
 | `B-WS-04` | **ACTIVE** | Kuiper `_frame_counter` still advances only in `step()`, so pausing on a multiple of five makes `should_send()` true every output frame. Gate sends on new Kuiper state/version. |
 | `B-WS-05` | **ACTIVE** | Runner integration still advances fixed `time_scale / target_fps` rather than measured elapsed time while telemetry reports requested scale. Report delivered rate or integrate bounded elapsed time. |
-| `B-WS-06` | **ACTIVE** | REBOUND checkpoints remain an unpruned dictionary. Add a count/memory budget with deterministic eviction and a millennial-seek test. |
+| `B-WS-06` | **RESOLVED** | `90f4134` replaces the unbounded checkpoint dictionary with a deterministic eight-entry LRU and tests eviction at the declared limit. The supported seek interval is also bounded to 1990–2050 JDTDB. |
 | `B-WS-07` | **NOT-A-BUG** | Checkpoint-assisted seek remains reproducible; current real-IAS15 tests compare a checkpoint seek with the direct 2026 solution. Preserve the gate. |
 | `B-MIS-01` | **BLOCKED** | The reported single “unexpected 200” has no preserved request body, seed, or expected contract, so it cannot be replayed. Recover/persist the fuzz corpus before assigning a defect. |
 | `B-MIS-02` | **ACTIVE** | Raw JSON `NaN`/`±Infinity` still reaches the framework validation-error serialization failure and returns 500. Add a sanitizing validation handler and assert structured 422s. |
@@ -71,12 +74,12 @@ Fresh verification at `e740b21`:
 | `B-SOL-08` | **ACTIVE** | Missing provider weights are still silently renormalized into a full-scale activity proxy. Publish coverage/confidence and reject “high fidelity” below a documented threshold. |
 | `B-SOL-09` | **NOT-A-BUG** | The AIA SSRF remains refuted: channel is allowlisted and no caller-controlled URL/image ID reaches the upstream URL. Preserve an unknown-parameter/allowlist test. |
 | `B-SOL-10` | **PARTIAL** | Frontend `image_id`/`v` query terms still alter the browser cache key but are ignored by backend selection, so they do not certify an exact snapshot. Remove them in favor of ETags or validate an opaque snapshot ID. |
-| `B-AST-01` | **ACTIVE** | Corrupt/truncated/rejected catalogs still leave the pre-created procedural belt and expose only console warnings; visible body status does not disclose provenance/failure. Add a user-visible source state and browser fixtures. |
-| `B-AST-02` | **ACTIVE** | Missing metadata still passes checksum acceptance and silently falls back to FNV-1a. Require production metadata plus SHA-256. |
-| `B-AST-03` | **ACTIVE** | Authoritative row checks remain conditional on metadata, so a self-consistent tiny binary can pass when metadata is absent. Require an independent expected row contract. |
-| `B-AST-04` | **ACTIVE** | Load latency still participates in data-validity acceptance. Separate integrity from performance telemetry so valid slow bytes remain usable. |
+| `B-AST-01` | **RESOLVED** | `84ddcd1` renders persistent accessible loading, verified, typed fallback, and load-failure states while retaining the procedural belt on rejection. Ten focused tests cover the underlying state contracts. |
+| `B-AST-02` | **RESOLVED** | `84ddcd1` fails closed when metadata is missing/invalid or lacks a valid matching 64-hex SHA-256; FNV is never accepted as an integrity substitute. |
+| `B-AST-03` | **PARTIAL** | Missing metadata can no longer admit a tiny catalog, but row authority still comes from the same metadata: a self-consistent SHA-verified three-row fixture passes. Add an independent production expected-row contract. |
+| `B-AST-04` | **RESOLVED** | `84ddcd1` removes latency from integrity acceptance. A slow catalog with valid metadata/SHA-256 remains accepted and produces separate performance telemetry. |
 | `B-AST-05` | **RESOLVED** | Metadata now fetches with `cache:'no-cache'` (`6bf33cb`), closing the stale `force-cache` checksum mismatch mechanism. |
-| `B-AST-06` | **ACTIVE** | A materially different procedural/mixed population can still be presented without visible catalog/procedural provenance. Label source and real-row fraction. |
+| `B-AST-06` | **PARTIAL** | Persistent UI now distinguishes verified catalog, typed procedural fallback, and load failure, but an accepted short catalog can still be procedurally padded without displaying the real-row/procedural fraction. |
 | `B-UI-01` | **RESOLVED** | Orbit translation is now applied after instance rotation/scale in both asteroid vertex paths (`0c99424`, reinforced by `330fc3a`), so the belt no longer collapses into the Sun. |
 | `B-UI-02` | **RESOLVED** | `metric_slipstream` now dispatches `triggerWarpWaveImpact`, whose controller callback enables the warp mesh (`63320e8`). |
 | `B-UI-03` | **ACTIVE** | The H29-named preset still changes energy only; propagation scenario remains controlled by the separate hypothesis dropdown. Make the preset select H29 atomically or rename it. |
@@ -92,7 +95,7 @@ Fresh verification at `e740b21`:
 
 ### Current priority after reconciliation
 
-The fixes above materially lower the priority of porkchop denial-of-service, cross-epoch solar poisoning, the collapsed asteroid belt, H29 mesh dispatch, and the former IAS15 initialization failure. The highest-priority Report B work still present is: physically impossible MGA assists (`B-MGA-03/04`), uninterruptible WebSocket seeks (`B-WS-02`), mission mass/risk inconsistency (`B-MIS-03/04/05`), and unbounded upstream reads (`B-SOL-05`).
+The fixes above close the reported MGA energy/turn mechanism, uninterruptible-seek/checkpoint defects, and asteroid integrity/provenance failure modes without overclaiming adjacent work. The highest-priority Report B work still present is route enumeration/accounting (`B-MGA-01/02/05`), remaining WebSocket protocol errors (`B-WS-03/04/05`), mission mass/risk inconsistency (`B-MIS-03/04/05`), independent asteroid row/fraction contracts (`B-AST-03/06`), and unbounded/dead solar upstreams (`B-SOL-05–08`).
 
 ## What this part is
 

@@ -4,19 +4,19 @@
 
 > Companion parts: **[Report 0 — Baseline](MAJOR_ISSUE_REPORT_0_BASELINE_2026-08-23.md)** · **[Report A — Adversarial Verification](MAJOR_ISSUE_REPORT_A_ADVERSARIAL_2026-08-23.md)** · **[Report B — Blocked-Check Closure](MAJOR_ISSUE_REPORT_B_BLOCKED_CHECKS_2026-08-23.md)**
 
-## 2026-08-27 current-branch reconciliation
+## 2026-09-24 current-branch reconciliation
 
-> **Authoritative current status for `fix/nbody-osculating-initial-state @ e740b21`.** The original 2026-08-23 report is preserved unchanged below as historical evidence: its measurements and conclusions describe `origin/sun-focus @ fd793f4`, not the current branch. Statuses here supersede the old headline and roadmap wherever they conflict.
+> **Authoritative current status for `fix/nbody-osculating-initial-state`; code audited through `a864ea4`.** The original 2026-08-23 report is preserved unchanged below as historical evidence: its measurements and conclusions describe `origin/sun-focus @ fd793f4`, not the current branch. The old audited pin, `e740b21`, is an ancestor of this branch. Statuses here supersede the old headline and roadmap wherever they conflict.
 
 ### Current totals
 
-The report normalizes to **56 distinct findings**. At current HEAD: **23 ACTIVE, 12 PARTIAL, 16 RESOLVED, 4 NOT-A-BUG, 1 DUPLICATE**.
+The report normalizes to **56 distinct findings**. At the implementation pin: **18 ACTIVE, 11 PARTIAL, 22 RESOLVED, 4 NOT-A-BUG, 1 DUPLICATE**. Thus **29 findings remain unresolved** (active or partial).
 
 | Status | Count | Meaning in this reconciliation |
 |---|---:|---|
-| **ACTIVE** | **23** | The defect remains observable or the required scientific/operational contract is absent. |
-| **PARTIAL** | **12** | A material mitigation landed, but a stated failure mode or acceptance criterion remains. |
-| **RESOLVED** | **16** | The original defect is closed by implementation plus proportionate regression evidence. |
+| **ACTIVE** | **18** | The defect remains observable or the required scientific/operational contract is absent. |
+| **PARTIAL** | **11** | A material mitigation landed, but a stated failure mode or acceptance criterion remains. |
+| **RESOLVED** | **22** | The original defect is closed by implementation plus proportionate regression evidence. |
 | **NOT-A-BUG** | **4** | Re-execution or primary-source review did not support the report's proposed defect. |
 | **DUPLICATE** | **1** | The item is not independent of another normalized finding. |
 
@@ -27,43 +27,47 @@ The report normalizes to **56 distinct findings**. At current HEAD: **23 ACTIVE,
 - `b6c4ce3` moved worker state to an index-free `Float64Array`, enforces one outstanding tick, rejects malformed/out-of-order states, and falls back to current main-thread propagation when a snapshot is absent or too old. This prevents the old permanent visual freeze, but it is not a full watchdog: a silently hung worker is not terminated or respawned, and snapshots within the explicit approximately-three-frame age allowance can still differ from the HUD epoch.
 - `3f5d097` closes the compute-permit lifetime defect. PFSS, AIA tile, porkchop, and mission work use owned bounded executors; timeout/disconnect does not release a semaphore until the worker actually exits. Porkchop additionally requires positive TOF bounds and checks a cooperative cancellation event within the scan.
 - `e740b21` keys realtime-solar snapshots by exact requested JD versus `latest`, retains single-flight, rejects non-finite epochs, and bounds the cache with LRU eviction. The broader upstream item remains partial: one refresh still fans out across multiple sequential Helioviewer reads, and the two committed NOAA SWPC `/products/solar-wind/*-1-day.json` URLs returned HTTP 404 on 2026-08-27.
+- `90f4134` bounds REBOUND seeks to the validated 1990–2050 JDTDB interval, integrates long seeks in cancellable ten-year segments, limits checkpoints to an eight-entry LRU, and holds a four-connection WebSocket admission permit until the worker thread actually exits. Browser WebSocket origins are allowlisted before engine construction; authentication and safe public-bind defaults remain separate R11 work.
+- `a40005a` gives PFSS a normalized full-input cache key, finite-input validation, bounded LRU behavior, and same-key single-flight. `3f3b787` rejects unpowered MGA encounters whose incoming/outgoing `|v∞|` differ beyond `max(0.001 km/s, 1e-4 relative)` and computes the turn bound from incoming `v∞`.
+- `84ddcd1` makes Phase-1 asteroid loading fail closed unless valid metadata supplies a matching 64-hex SHA-256, separates latency telemetry from integrity, and exposes persistent typed verified/fallback status in an ARIA live region. It does not repair the separate period/taxonomy or independent expected-row-contract findings.
+- `a864ea4` removes the mirrored moon-frame unit test and retains the independent 21-body Horizons oracle as the scientific gate, closing the test-quality finding without claiming the remaining catalog phase tolerances are fixed.
 
-### Re-executed validation at `e740b21`
+### Re-executed validation at `a864ea4`
 
-- Backend: **143 passed**, 5 deprecation warnings (`pytest -q backend/tests`). This includes worker-owned compute-budget lifetime, cooperative porkchop cancellation, positive TOF rejection, N-body Horizons accuracy, and epoch-keyed solar-cache tests.
-- Frontend: **100 passed in 6 files**, including **5 worker-contract tests**, 21 moon-frame/Horizons tests, and 66 planet-position/Horizons cases.
+- Backend: **176 passed**, 5 deprecation warnings (`pytest -q backend/tests`). This includes bounded/cancellable WebSocket resources, PFSS cache identity/single-flight, unpowered-flyby invariants, certified Lambert convergence, N-body Horizons accuracy, and the earlier compute/solar-cache gates.
+- Frontend: **108 passed in 7 files**, including 10 asteroid-integrity/source-status tests, **5 worker-contract tests**, 21 moon-frame/Horizons tests, and 66 planet-position/Horizons cases.
 - Planet oracle: **8 planets × 6 epochs = 48 rows passed**, spanning 1900–2100; aggregate position error `3.6918e7 km` against the declared `7.5e7 km` aggregate budget.
-- Production bundle: `vite build` passed; it still reports an approximately 890 kB main-chunk warning. Build does not yet invoke typecheck or either test suite, and strict TypeScript still has 280 errors.
+- Production bundle: `vite build` passed with **40 modules transformed**; it still reports an approximately 893 kB main-chunk warning. Build does not yet invoke typecheck or either test suite, and strict TypeScript still has **280 errors**.
 
 ### Normalized 56-finding inventory
 
 | ID | Current status | Normalized finding and current evidence |
 |---|---|---|
 | **R01** | **PARTIAL** | Strict TypeScript debt improved from 344 to 280 errors, but is not closed (`package.json` keeps typecheck separate from build). |
-| **R02** | **RESOLVED** | Vitest is wired and the current frontend suite is 100/100 green rather than the original 8-test baseline. |
+| **R02** | **RESOLVED** | Vitest is wired and the current frontend suite is 108/108 green rather than the original 8-test baseline. |
 | **R03** | **RESOLVED** | The REBOUND 5.1.1 IAS15 break is closed: dependency pinned, `ri_ias15` feature-detected, readiness constructs a probe simulation, and unmocked IAS15 tests pass. |
 | **R04** | **ACTIVE** | A substantial alternate frontend stack remains unreachable; `simulationClient.ts` and `animationLoop.ts` still have no production importer. |
-| **R05** | **RESOLVED** | Lambert rejects uncertified/non-converged time-of-flight roots and surfaces residual/bracketing evidence for accepted roots. |
+| **R05** | **RESOLVED** | Lambert rejects uncertified/non-converged time-of-flight roots and surfaces residual/bracketing evidence for accepted roots. `ea54bea` also prevents an exhausted bracket iteration from returning its uncertified best sample and gates strict residual convergence. |
 | **R06** | **PARTIAL** | Benchmark false scoring is stopped with `incomparable_reference`, but validation coverage remains zero and no reproducible GMAT/Orekit/Tudat decks/logs replace the invalid references. |
 | **R07** | **RESOLVED** | Asteroid metadata now uses `no-cache`, matching binary revalidation and removing the stale-checksum split. |
 | **R08** | **RESOLVED** | SF-1 secular propagation now uses `Mdot = Ldot - varpidot` and is guarded by the 48-row Horizons test (`68aff6b`, `f1c79b9`). |
 | **R09** | **RESOLVED** | SF-2 Kuiper activation requires declared velocity units, converts supported units, and refuses to guess. |
 | **R10** | **RESOLVED** | Moon plane normals and periapsis directions are transformed together and gated against a 21-body committed Horizons fixture. |
-| **R11** | **PARTIAL** | CORS and endpoint bounds improved, but the server still defaults to `0.0.0.0` with reload, lacks a WS origin/auth gate and connection cap, and exposes absolute paths in some responses. |
+| **R11** | **PARTIAL** | CORS and endpoint bounds improved; `90f4134` adds a pre-engine WebSocket origin allowlist and connection cap. The server still defaults to `0.0.0.0` with reload, has no authentication, permits authorized-by-flag report overwrites without an identity check, and exposes absolute paths in some responses. |
 | **R12** | **ACTIVE** | The approximately 39 MB `src/assets` texture corpus remains unreferenced by reachable runtime code. |
 | **R13** | **RESOLVED** | Benchmark report paths are contained below the approved notes directory and overwrite behavior has dedicated tests. |
 | **R14** | **RESOLVED** | SF-3 compute exhaustion is bounded by rate/concurrency limits plus the owned executor whose permit remains attached to actual PFSS worker lifetime (`3f5d097`, `test_compute_budget.py`). Authentication policy remains tracked separately in R11. |
-| **R15** | **ACTIVE** | PFSS cache identity is still only Carrington rotation although synthetic output depends on JD/activity and output depends on `n_lines`/`lmax`; duplicate concurrent computes also remain possible. |
+| **R15** | **RESOLVED** | `a40005a` keys PFSS solutions by Carrington rotation plus exact finite JD, clamped activity, effective `n_lines`/`lmax`, and GONG timeout; it uses a bounded true LRU and same-key single-flight with shared success/error completion (`test_pfss_cache.py`). |
 | **R16** | **PARTIAL** | Ephemeris provider reporting improved, but `auto` still makes an otherwise local planning request network-dependent through `spice -> horizons -> kepler`. |
 | **R17** | **ACTIVE** | Claimed binary-KBO primaries and companions remain massless; tests do not establish negative two-body energy or long-term binding. |
 | **R18** | **PARTIAL** | Kuiper WS protocol metadata exists, but mismatches only warn and the latent server-object/client-`number[][]` schema conflict remains in dead code. |
-| **R19** | **PARTIAL** | The mirrored/tautological moon unit test remains, although an independent Horizons oracle now prevents it from being the sole correctness evidence. |
+| **R19** | **RESOLVED** | `a864ea4` removes the mirrored/tautological moon conversion assertion; the independent committed 21-body Horizons oracle remains the correctness gate. This test-quality closure does not relax the separate known catalog phase tolerances tracked under R10/F-05. |
 | **R20** | **NOT-A-BUG** | A 20 km/s modeled CME lower bound is not inherently invalid; official SOHO/LASCO sky-plane catalogs include speeds of roughly 20 km/s. |
 | **R21** | **DUPLICATE** | The 50k belt-count/fp32 claim depended on the belt transform-order defect in R44; the count increase is not an independent correctness issue. |
 | **R22** | **ACTIVE** | Realistic-scale toggling still skips quadtree meshes (`applyScaleMode` retains the explicit TODO). |
-| **R23** | **ACTIVE** | `set_julian_date` still accepts unbounded finite epochs, integration lacks cooperative stop, and `_checkpoints` is never pruned. |
+| **R23** | **RESOLVED** | `90f4134` enforces the validated 1990–2050 JDTDB interval, integrates long forward seeks in at-most-ten-year segments with cooperative cancellation, caps checkpoints at eight with deterministic LRU eviction, and keeps endpoint admission owned until a stopping worker actually exits. Boundary, cancellation, eviction, and runner-error tests gate the contract. |
 | **R24** | **RESOLVED** | Porkchop grid cardinality/concurrency/timeout bounds, positive TOF schema constraints, owned permit lifetime, and cooperative timeout/disconnect cancellation are now implemented and tested (`3f5d097`). |
-| **R25** | **ACTIVE** | `/ws/sim` still has no connection cap; each accepted session creates a REBOUND engine and OS thread. The 3,000-particle Kuiper sim is activated later, not allocated immediately. |
+| **R25** | **RESOLVED** | `90f4134` admits at most four `/ws/sim` sessions by default, rejects disallowed browser origins and excess sessions before engine setup, and releases a permit only after the worker thread exits. Endpoint tests cover rejection-before-readiness and capacity reuse. |
 | **R26** | **PARTIAL** | Worker stalls no longer freeze the scene because a missing new sequence triggers current local propagation, but no elapsed-time watchdog terminates or respawns a hung worker. |
 | **R27** | **PARTIAL** | Worker snapshots now carry/check `tickJd` and overly old states fall back locally, but states inside the allowed approximately-three-frame skew can still render at a slightly different epoch from the HUD. |
 | **R28** | **ACTIVE** | Solar coordinate conventions remain inconsistent: backend feature latitude uses +Z as pole while shader/body-local solar layers use +Y before scene transforms. |
@@ -83,9 +87,9 @@ The report normalizes to **56 distinct findings**. At current HEAD: **23 ACTIVE,
 | **R42** | **NOT-A-BUG** | The browser time machinery remained well-behaved under the report's extreme-rate/reverse-time checks; backend seek abuse is separately R23. |
 | **R43** | **NOT-A-BUG** | Sequence monotonicity itself remains sound; `b6c4ce3` additionally closes the separate Float32 worker-state precision/index-boundary defect with five contract tests. |
 | **R44** | **RESOLVED** | Belt orbital translation is applied after instance rotation/scale, so the annulus no longer collapses into the Sun. |
-| **R45** | **ACTIVE** | Asteroid loading still accepts missing metadata/checksum and can downgrade integrity to FNV; slow-valid and invalid data are not cleanly separated. |
+| **R45** | **RESOLVED** | `84ddcd1` requires valid metadata and a matching 64-hex SHA-256, never substitutes FNV, reports typed rejection reasons, treats load latency as telemetry rather than integrity, and renders persistent accessible verified/fallback/load-failure provenance. The independent expected-row and inferred-taxonomy issues remain R38–R41 / Report B AST-03/06. |
 | **R46** | **RESOLVED** | REBOUND major-body initialization now uses validated Cartesian Horizons states and GM-consistent masses rather than fitted elements (`2226277`). |
-| **R47** | **ACTIVE** | MGA flybys still average incoming/outgoing `vinfinity` magnitudes and check only turn angle; magnitude discontinuity is neither rejected nor charged as a powered flyby. |
+| **R47** | **RESOLVED** | `3f3b787` rejects ideal unpowered flybys unless incoming/outgoing `|v∞|` agree within `max(0.001 km/s, 1e-4 relative)`, derives maximum turn from incoming `v∞`, and exposes magnitude/turn diagnostics. Five focused physics tests gate mismatch, tolerance, turn-limit, and missing-body failure paths. Route-budget/accounting work remains R48. |
 | **R48** | **ACTIVE** | MGA still returns best plus five alternatives without separately reporting generated routes, evaluated beam partials, and distinct completed routes. |
 | **R49** | **PARTIAL** | Exact-JD/latest cache identity, single-flight, finite-JD validation, and bounded LRU are resolved (`e740b21`); sequential upstream fan-out and dead SWPC URLs remain. |
 | **R50** | **RESOLVED** | Belt propagation now uses `uJulianDate - epochJd`, not an absolute-JD phase advance. |
@@ -98,14 +102,13 @@ The report normalizes to **56 distinct findings**. At current HEAD: **23 ACTIVE,
 
 ### Current priority order
 
-1. Bound and cooperatively cancel `set_julian_date`; prune checkpoints (R23).
-2. Add non-local server/WS origin, authentication, connection admission, safe bind defaults, and path redaction (R11/R25).
-3. Make PFSS cache identity complete and single-flight (R15), then finish the realtime upstream/SWPC work (R49).
-4. Fail asteroid integrity closed and regenerate scientifically honest period/taxonomy data (R38–R41/R45).
-5. Enforce flyby `|vinfinity|` continuity or charge powered mismatch; expose honest route accounting (R47/R48).
-6. Unify the solar coordinate and rotation contracts and correct Hathaway/Helioviewer modeling (R28–R31).
-7. Correct remaining SMBH dimensional constants (R35/R36), then restore benchmark truth coverage (R06).
-8. Close the release gate, dead-stack, licensing, and resilience debt (R01/R04/R12/R52/R55/R56).
+1. Finish server authentication, safe bind/reload defaults, write authorization, and path redaction (R11), plus the remaining WebSocket protocol defects recorded in Report B.
+2. Regenerate scientifically honest asteroid periods/taxonomy and add an independent expected-row/real-fraction contract (R38–R41; Report B AST-03/06).
+3. Make MGA route enumeration/accounting honor its advertised search space and remove the hardcoded route penalty field (R48; Report B MGA-01/02/05).
+4. Cap realtime upstream reads, replace dead SWPC products, and publish coverage/confidence (R49 and Report B SOL-05–08).
+5. Unify the solar coordinate and rotation contracts and correct Hathaway/Helioviewer modeling (R28–R31).
+6. Correct remaining SMBH dimensional constants (R35/R36), then restore benchmark truth coverage (R06).
+7. Close the release gate, dead-stack, licensing, and resilience debt (R01/R04/R12/R52/R55/R56).
 
 ## What this part is
 
