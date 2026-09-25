@@ -531,3 +531,7 @@ Start Phase 0. The first implementation PR should contain only semantic branch c
 preservation tests. If any deployment is non-loopback, land the containment commit immediately next.
 The first new scientific fix after that should be R3.1, because optimizing or exposing a PFSS solver
 whose basis functions are wrong only makes invalid output faster and more available.
+
+The implementation-ready work order, scientific budgets, test matrix, operational architecture, and
+definition of done are in
+[`R3R4_PFSS_IMPLEMENTATION_PROMPT_2026-09-25.md`](R3R4_PFSS_IMPLEMENTATION_PROMPT_2026-09-25.md).
