@@ -56,17 +56,63 @@ const HEALTH_PROBE_REUSE_MS = 30_000;
 
 type HealthProbeVerdict = 'origin-allowed' | 'origin-refused' | 'unreachable' | 'inconclusive';
 type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out';
+/** What made us probe; a verdict is only reused for the same kind of failure. */
+type HealthProbeTrigger = 'type-error' | 'timeout';
+
+/** Once the reply's headers are in, the server has answered; reading the body gets its own budget. */
+const BODY_READ_TIMEOUT_MS = 15_000;
+/** A timer firing this much later than scheduled means the page was blocked, not the server slow. */
+const TIMER_STALL_TOLERANCE_MS = 500;
+/** One-off extra time after a stalled timer, so network events queued behind the stall are handled first. */
+const TIMER_STALL_GRACE_MS = 1_000;
+/** Upper bound on how long a server's Retry-After can postpone the next attempt. */
+const MAX_RETRY_AFTER_MS = 120_000;
 
 class SolarPhysicsRequestError extends Error {
   kind: SolarPhysicsFailureKind;
   httpStatus: number | null;
+  retryAfterMs: number | null;
 
-  constructor(kind: SolarPhysicsFailureKind, message: string, httpStatus: number | null = null) {
+  constructor(
+    kind: SolarPhysicsFailureKind,
+    message: string,
+    httpStatus: number | null = null,
+    retryAfterMs: number | null = null
+  ) {
     super(message);
     this.name = 'SolarPhysicsRequestError';
     this.kind = kind;
     this.httpStatus = httpStatus;
+    this.retryAfterMs = retryAfterMs;
   }
+}
+
+/**
+ * setTimeout that tolerates a blocked main thread. A long frame (shader compilation at start-up
+ * takes 2-3 s in software GL) delays the timer and the network callbacks alike; without the grace
+ * period the timer can win and report a reply that arrived in time as a timeout.
+ */
+function startDeadline(delayMs: number, onExpire: () => void): () => void {
+  let handle: ReturnType<typeof setTimeout> | undefined;
+  let graced = false;
+  const arm = (ms: number) => {
+    const dueAtMs = Date.now() + ms;
+    handle = setTimeout(() => {
+      if (!graced && Date.now() - dueAtMs > TIMER_STALL_TOLERANCE_MS) {
+        graced = true;
+        arm(TIMER_STALL_GRACE_MS);
+        return;
+      }
+      onExpire();
+    }, ms);
+  };
+  arm(delayMs);
+  return () => clearTimeout(handle);
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  const seconds = Number(value);
+  return value !== null && value.trim() !== '' && Number.isFinite(seconds) && seconds >= 0 ? seconds * 1_000 : null;
 }
 
 export function formatSeconds(ms: number): string {
@@ -118,7 +164,7 @@ export class SolarPhysicsClient {
   nextRefreshMs: number;
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
-  lastProbe: { verdict: HealthProbeVerdict; atMs: number } | null;
+  lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; atMs: number } | null;
   _reqId: number;
 
   constructor({
@@ -206,16 +252,16 @@ export class SolarPhysicsClient {
     });
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
-    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
+    let bodyTimedOut = false;
     const controller = new AbortController();
     this.abortController = controller;
-    
+    let cancelDeadline = startDeadline(this.timeoutMs, () => {
+      timedOut = true;
+      controller.abort();
+    });
+
     try {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, this.timeoutMs);
       const startMs = Date.now();
       let response: Response;
       try {
@@ -230,20 +276,29 @@ export class SolarPhysicsClient {
       // If a new request started while we were awaiting, ignore this result
       if (this._reqId !== currentReqId) return false;
 
+      cancelDeadline();
+      cancelDeadline = startDeadline(BODY_READ_TIMEOUT_MS, () => {
+        bodyTimedOut = true;
+        controller.abort();
+      });
+
       if (!response.ok) {
+        // A readable error reply proves the server is up and allows this origin.
+        this.lastProbe = null;
         const detail = await readErrorDetail(response);
         throw new SolarPhysicsRequestError(
           classifyHttpFailure(response.status, detail),
           `Solar physics request failed (${response.status})${detail ? `: ${detail}` : ''}`,
-          response.status
+          response.status,
+          parseRetryAfterMs(response.headers.get('Retry-After'))
         );
       }
       let payload: unknown;
       try {
         payload = await response.json();
       } catch (error: unknown) {
-        throw timedOut
-          ? this.timeoutError()
+        throw bodyTimedOut
+          ? new SolarPhysicsRequestError('network', `Solar physics reply stalled for ${formatSeconds(BODY_READ_TIMEOUT_MS)} s`)
           : new SolarPhysicsRequestError('invalid-response', `Solar physics response was not valid JSON (${String(error)})`);
       }
       if (this._reqId !== currentReqId) return false;
@@ -262,7 +317,7 @@ export class SolarPhysicsClient {
     } catch (error: unknown) {
       // A superseded or deliberately cancelled request says nothing about the server.
       if (this._reqId !== currentReqId) return false;
-      if (controller.signal.aborted && !timedOut) return false;
+      if (controller.signal.aborted && !timedOut && !bodyTimedOut) return false;
       const failure = error instanceof SolarPhysicsRequestError
         ? error
         : new SolarPhysicsRequestError('network', error instanceof Error ? error.message : String(error));
@@ -274,12 +329,11 @@ export class SolarPhysicsClient {
         atMs: Date.now()
       };
       this.consecutiveFailures += 1;
-      this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs);
+      const retryAfterMs = Math.min(MAX_RETRY_AFTER_MS, failure.retryAfterMs ?? 0);
+      this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs, retryAfterMs);
       return false;
     } finally {
-      if (timeoutHandle !== null) {
-        clearTimeout(timeoutHandle);
-      }
+      cancelDeadline();
       if (this._reqId === currentReqId) {
         this.abortController = null;
         this.inFlight = false;
@@ -302,7 +356,7 @@ export class SolarPhysicsClient {
   async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal): Promise<unknown> {
     if (!timedOut && !(error instanceof TypeError)) return error;
     if (signal.aborted && !timedOut) return error;
-    const verdict = await this.probeHealth();
+    const verdict = await this.probeHealth(timedOut ? 'timeout' : 'type-error');
     if (timedOut) {
       return verdict === 'origin-refused' ? this.originRefusedError() : this.timeoutError();
     }
@@ -323,9 +377,16 @@ export class SolarPhysicsClient {
     return new SolarPhysicsRequestError('blocked', "Solar server does not allow this page's origin (CORS)");
   }
 
-  async probeHealth(): Promise<HealthProbeVerdict> {
+  /**
+   * A verdict is reused only for the same kind of failure: a timeout means a connection was
+   * accepted, which contradicts an "unreachable" verdict taken while nothing was listening.
+   */
+  async probeHealth(trigger: HealthProbeTrigger): Promise<HealthProbeVerdict> {
     const nowMs = Date.now();
-    if (this.lastProbe && nowMs - this.lastProbe.atMs < HEALTH_PROBE_REUSE_MS) return this.lastProbe.verdict;
+    const reusable = this.lastProbe
+      && this.lastProbe.trigger === trigger
+      && nowMs - this.lastProbe.atMs < HEALTH_PROBE_REUSE_MS;
+    if (reusable && this.lastProbe) return this.lastProbe.verdict;
     let verdict: HealthProbeVerdict;
     const cors = await this.fetchHealth('cors');
     if (cors === 'ok') {
@@ -336,7 +397,7 @@ export class SolarPhysicsClient {
       const noCors = await this.fetchHealth('no-cors');
       verdict = noCors === 'ok' ? 'origin-refused' : noCors === 'failed' ? 'unreachable' : 'inconclusive';
     }
-    this.lastProbe = { verdict, atMs: Date.now() };
+    this.lastProbe = { verdict, trigger, atMs: Date.now() };
     return verdict;
   }
 

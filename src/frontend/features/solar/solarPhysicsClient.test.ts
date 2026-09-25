@@ -19,6 +19,23 @@ function hangUntilAborted(init?: RequestInit): Promise<Response> {
   });
 }
 
+/** A 200 whose body arrives `delayMs` after the headers, and errors if the request is aborted. */
+function delayedBodyResponse(json: string, delayMs: number, init?: RequestInit): Response {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const handle = setTimeout(() => {
+        controller.enqueue(new TextEncoder().encode(json));
+        controller.close();
+      }, delayMs);
+      init?.signal?.addEventListener('abort', () => {
+        clearTimeout(handle);
+        controller.error(abortError());
+      });
+    },
+  });
+  return new Response(body, { status: 200 });
+}
+
 /** How `/health` behaves: answering everyone, answering only no-cors requests, or not at all. */
 function healthServer(behaviour: 'up' | 'refuses-origin' | 'down') {
   return (init?: RequestInit): Promise<Response> => {
@@ -43,6 +60,78 @@ function stubFetch(
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+describe('SolarPhysicsClient deadlines', () => {
+  it('does not report a timeout when the page was blocked while the reply arrived', async () => {
+    vi.useFakeTimers();
+    let deliver: ((response: Response) => void) | undefined;
+    stubFetch((init) => new Promise<Response>((resolve, reject) => {
+      deliver = resolve;
+      init?.signal?.addEventListener('abort', () => reject(abortError()));
+    }));
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD);
+    vi.setSystemTime(Date.now() + 3_000);
+    await vi.advanceTimersByTimeAsync(2_600);
+    deliver?.(new Response('{"activity_index":0.5}', { status: 200 }));
+
+    await expect(pending).resolves.toBe(true);
+    expect(client.status().lastFailure).toBeNull();
+  });
+
+  it('still times out after the one-off grace when no reply ever comes', async () => {
+    vi.useFakeTimers();
+    stubFetch(hangUntilAborted);
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD);
+    vi.setSystemTime(Date.now() + 3_000);
+    await vi.advanceTimersByTimeAsync(2_600 + 1_000);
+
+    await expect(pending).resolves.toBe(false);
+    expect(client.status().lastFailure?.kind).toBe('timeout');
+  });
+
+  it('lets a reply whose headers arrived in time finish its body after the request timeout', async () => {
+    vi.useFakeTimers();
+    stubFetch((init) => Promise.resolve(delayedBodyResponse('{"activity_index":0.5}', 5_000, init)));
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD);
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    await expect(pending).resolves.toBe(true);
+    expect(client.latestState()).toEqual({ activity_index: 0.5 });
+  });
+
+  it('gives up on a body that stalls past its own budget', async () => {
+    vi.useFakeTimers();
+    stubFetch((init) => Promise.resolve(delayedBodyResponse('{"activity_index":0.5}', 60_000, init)));
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD);
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await expect(pending).resolves.toBe(false);
+    expect(client.status().lastFailure?.kind).toBe('network');
+  });
+
+  it.each([
+    ['60', 60_000],
+    ['3600', 120_000],
+    [null, 6_000],
+  ] as const)('waits for Retry-After %s before the next attempt', async (retryAfter, waitMs) => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const headers: Record<string, string> = retryAfter ? { 'Retry-After': retryAfter } : {};
+    stubFetch(() => Promise.resolve(new Response('{"detail":"Solar request rate limit exceeded; retry later."}', { status: 429, headers })));
+    const client = createClient();
+
+    await client.maybeRefresh(JD);
+
+    expect(client.status().nextRefreshMs - 1_000_000).toBe(waitMs);
+  });
 });
 
 describe('SolarPhysicsClient failure classification', () => {
@@ -148,6 +237,26 @@ describe('SolarPhysicsClient failure classification', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     await client.maybeRefresh(JD);
     expect(probes()).toBe(4);
+  });
+
+  it('re-probes when a server that was unreachable starts answering and refuses the origin', async () => {
+    vi.useFakeTimers();
+    let serverUp = false;
+    stubFetch(
+      (init) => (serverUp ? hangUntilAborted(init) : Promise.reject(new TypeError('Failed to fetch'))),
+      (init) => healthServer(serverUp ? 'refuses-origin' : 'down')(init)
+    );
+    const client = createClient();
+    await client.maybeRefresh(JD);
+    expect(client.status().lastFailure?.kind).toBe('unreachable');
+
+    serverUp = true;
+    await vi.advanceTimersByTimeAsync(6_000);
+    const pending = client.maybeRefresh(JD);
+    await vi.advanceTimersByTimeAsync(2_600);
+    await pending;
+
+    expect(client.status().lastFailure?.kind).toBe('blocked');
   });
 
   it('does not count dispose() during the probe as a server failure', async () => {
