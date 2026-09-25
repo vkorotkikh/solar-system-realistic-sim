@@ -46,8 +46,7 @@ import {
 } from './frontend/features/solar/solarObservationTexture';
 import {
   describeSolarDataStatus,
-  type SolarDataSourceStatus,
-  type SolarObservationImageState
+  type SolarDataSourceStatus
 } from './frontend/features/solar/solarDataStatus';
 
 type GwDisplayer = ReturnType<typeof createGWVisualization>;
@@ -110,7 +109,7 @@ function fallbackSolarActivityFromJulianDate(julianDate: number): number {
  *   observationTextureLoader   – THREE.TextureLoader instance
  *   getSunRadiusAu             – () => number (current sun render radius)
  *   isMagneticFieldEnabled     – () => boolean
- *   onSolarDataStatus          – (status) => void, called when the Sun's data source changes
+ *   onSolarDataStatus          – (status) => void, called after every refresh attempt and image load
  */
 export function createSunController({
   camera,
@@ -155,9 +154,7 @@ export function createSunController({
   let solarObservationTextureLoadInFlight = false;
   let solarObservationTextureLastLoadMs = 0;
   let userAiaChannelOverride: string | null = null;
-  let solarObservationImageState: SolarObservationImageState = 'none';
-  let solarObservationImageChannel: string | null = null;
-  let lastSolarDataStatusText: string | null = null;
+  let solarObservationFailedChannel: string | null = null;
   let lastTimeSec: number | null = null;
 
   const solarPhysicsClient = new SolarPhysicsClient({
@@ -179,14 +176,9 @@ export function createSunController({
       backendBaseUrl: backendBaseUrl(),
       pageOrigin: globalThis.location?.origin ?? '',
       payload: solarPhysicsState,
-      observationImage: solarObservationImageState,
-      observationChannel: solarObservationImageChannel
+      displayedImageChannel: solarObservationTexture ? solarObservationTextureChannel : null,
+      failedImageChannel: solarObservationFailedChannel
     });
-    if (status.text === lastSolarDataStatusText) return;
-    lastSolarDataStatusText = status.text;
-    if (status.state === 'stale' || status.state === 'error') {
-      console.warn(`[solar] ${status.text}`);
-    }
     onSolarDataStatus?.(status);
   }
 
@@ -300,8 +292,6 @@ export function createSunController({
 
     solarObservationTextureLoadInFlight = true;
     solarObservationTextureLastLoadMs = nowMs;
-    solarObservationImageState = 'loading';
-    solarObservationImageChannel = nextChannel;
     observationTextureLoader.load(
       proxyUrl,
       (loaded: Texture) => {
@@ -315,13 +305,13 @@ export function createSunController({
         solarObservationTextureChannel = nextChannel;
         applySunObservationTextureToMaterials();
         solarObservationTextureLoadInFlight = false;
-        solarObservationImageState = 'loaded';
+        solarObservationFailedChannel = null;
         publishSolarDataStatus();
       },
       undefined,
       () => {
         solarObservationTextureLoadInFlight = false;
-        solarObservationImageState = 'failed';
+        solarObservationFailedChannel = nextChannel;
         publishSolarDataStatus();
       }
     );

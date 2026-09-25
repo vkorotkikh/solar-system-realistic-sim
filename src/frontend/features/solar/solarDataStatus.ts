@@ -1,4 +1,9 @@
-import { formatSeconds, type SolarPhysicsFailure, type SolarPhysicsStatePayload } from './solarPhysicsClient';
+import {
+  formatSeconds,
+  type SolarPhysicsFailure,
+  type SolarPhysicsFailureKind,
+  type SolarPhysicsStatePayload
+} from './solarPhysicsClient';
 
 /**
  * Where the Sun on screen currently gets its state from.
@@ -9,11 +14,13 @@ import { formatSeconds, type SolarPhysicsFailure, type SolarPhysicsStatePayload 
  */
 export type SolarDataSourceState = 'connecting' | 'backend' | 'stale' | 'error';
 
-export type SolarObservationImageState = 'none' | 'loading' | 'loaded' | 'failed';
-
 export interface SolarDataSourceStatus {
   state: SolarDataSourceState;
   text: string;
+  /** Changes only when the kind of situation changes; `text` also carries volatile detail. */
+  announcementKey: string;
+  /** Short sentence for screen readers, or null when nothing is worth announcing. */
+  announcement: string | null;
 }
 
 export interface SolarDataStatusInput {
@@ -23,8 +30,10 @@ export interface SolarDataStatusInput {
   backendBaseUrl: string;
   pageOrigin: string;
   payload: SolarPhysicsStatePayload | null;
-  observationImage: SolarObservationImageState;
-  observationChannel: string | null;
+  /** Channel of the AIA image currently drawn on the Sun, set only after it loaded. */
+  displayedImageChannel: string | null;
+  /** Channel of the most recent image load that failed, cleared by a successful load. */
+  failedImageChannel: string | null;
 }
 
 interface SolarDataStatusElement {
@@ -79,13 +88,44 @@ function describeForcing(payload: SolarPhysicsStatePayload | null): string {
     : `${forcing}, observations unavailable`;
 }
 
-function describeObservationImage(input: SolarDataStatusInput): string {
-  const channel = `${input.observationChannel ?? ''}`.replace(/^aia_/i, '');
-  const label = channel ? `AIA ${channel}` : 'AIA';
-  if (input.observationImage === 'loaded') return `; ${label} image`;
-  if (input.observationImage === 'failed') return `; ${label} image failed to load`;
-  return '';
+function aiaLabel(channel: string): string {
+  const wavelength = channel.replace(/^aia_0*/i, '');
+  return wavelength ? `AIA ${wavelength}` : 'AIA';
 }
+
+function describeObservationImage(input: SolarDataStatusInput): string {
+  const parts: string[] = [];
+  if (input.displayedImageChannel) parts.push(`${aiaLabel(input.displayedImageChannel)} image`);
+  if (input.failedImageChannel && input.failedImageChannel !== input.displayedImageChannel) {
+    parts.push(`${aiaLabel(input.failedImageChannel)} image failed to load`);
+  }
+  return parts.map((part) => `; ${part}`).join('');
+}
+
+/** Failure kinds a listener would act on the same way are announced as one situation. */
+function failureFamily(kind: SolarPhysicsFailureKind): 'slow' | 'blocked' | 'unreachable' | 'server-error' {
+  switch (kind) {
+    case 'timeout':
+    case 'busy':
+    case 'server-timeout':
+    case 'rate-limited':
+      return 'slow';
+    case 'blocked':
+      return 'blocked';
+    case 'unreachable':
+    case 'network':
+      return 'unreachable';
+    default:
+      return 'server-error';
+  }
+}
+
+const FAMILY_ANNOUNCEMENTS = {
+  slow: 'solar server too slow or busy',
+  blocked: "solar server does not allow this page's origin",
+  unreachable: 'solar server not reachable',
+  'server-error': 'solar server error',
+} as const;
 
 export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataSourceStatus {
   const hasBackendState = input.lastSuccessMs > 0 && input.payload !== null;
@@ -95,11 +135,16 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
       return {
         state: 'stale',
         text: `Sun: backend state from ${formatUtcMinute(input.lastSuccessMs)} (refresh failing: ${reason})`,
+        announcementKey: 'stale',
+        announcement: 'Sun data: backend updates failing, showing the last backend state.',
       };
     }
+    const family = failureFamily(input.lastFailure.kind);
     return {
       state: 'error',
       text: `Sun: procedural fallback (${reason})`,
+      announcementKey: `error:${family}`,
+      announcement: `Sun data unavailable: ${FAMILY_ANNOUNCEMENTS[family]}. Showing the procedural Sun.`,
     };
   }
   if (hasBackendState) {
@@ -107,11 +152,15 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
       state: 'backend',
       text: `Sun: backend solar model (${describeForcing(input.payload)}${describeObservationImage(input)})`
         + ` · updated ${formatUtcMinute(input.lastSuccessMs)}`,
+      announcementKey: 'backend',
+      announcement: 'Sun data: backend solar model connected.',
     };
   }
   return {
     state: 'connecting',
     text: 'Sun: procedural fallback (connecting to solar model server)',
+    announcementKey: 'connecting',
+    announcement: null,
   };
 }
 
@@ -120,9 +169,43 @@ export function renderSolarDataStatus(
   status: SolarDataSourceStatus
 ): void {
   if (!element) return;
-  // The element is a polite live region: rewriting identical text would re-announce it.
   if (element.textContent === status.text && element.dataset.solarState === status.state) return;
   element.textContent = status.text;
   element.title = status.text;
   element.dataset.solarState = status.state;
+}
+
+/**
+ * Feeds a polite live region only when the kind of situation changes, because the visible chip
+ * rewrites its text on every clock minute and failure detail. A switch between two failure
+ * situations must be seen twice in a row, so alternating timeouts and refusals don't chatter.
+ */
+export class SolarDataAnnouncer {
+  element: { textContent: string | null } | null | undefined;
+  announcedKey: string | null;
+  pendingKey: string | null;
+
+  constructor(element: { textContent: string | null } | null | undefined) {
+    this.element = element;
+    this.announcedKey = null;
+    this.pendingKey = null;
+  }
+
+  /** Returns true when the status was announced. */
+  observe(status: SolarDataSourceStatus): boolean {
+    if (status.announcementKey === this.announcedKey) {
+      this.pendingKey = null;
+      return false;
+    }
+    if (status.announcement === null) return false;
+    const switchingFailure = status.state === 'error' && this.announcedKey?.startsWith('error:') === true;
+    if (switchingFailure && this.pendingKey !== status.announcementKey) {
+      this.pendingKey = status.announcementKey;
+      return false;
+    }
+    this.announcedKey = status.announcementKey;
+    this.pendingKey = null;
+    if (this.element) this.element.textContent = status.announcement;
+    return true;
+  }
 }
