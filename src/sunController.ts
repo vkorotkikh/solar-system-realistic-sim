@@ -44,6 +44,11 @@ import {
   deriveSunObservationControls,
   pickAiaObservationChannel
 } from './frontend/features/solar/solarObservationTexture';
+import {
+  describeSolarDataStatus,
+  type SolarDataSourceStatus,
+  type SolarObservationImageState
+} from './frontend/features/solar/solarDataStatus';
 
 type GwDisplayer = ReturnType<typeof createGWVisualization>;
 type WarpDisplayer = ReturnType<typeof createWarpSlipstreamVisualization>;
@@ -57,6 +62,7 @@ export interface CreateSunControllerOptions {
   observationTextureLoader: TextureLoader;
   getSunRadiusAu: () => number;
   isMagneticFieldEnabled: () => boolean;
+  onSolarDataStatus?: (status: SolarDataSourceStatus) => void;
 }
 
 const TWO_PI = Math.PI * 2;
@@ -104,6 +110,7 @@ function fallbackSolarActivityFromJulianDate(julianDate: number): number {
  *   observationTextureLoader   – THREE.TextureLoader instance
  *   getSunRadiusAu             – () => number (current sun render radius)
  *   isMagneticFieldEnabled     – () => boolean
+ *   onSolarDataStatus          – (status) => void, called when the Sun's data source changes
  */
 export function createSunController({
   camera,
@@ -112,7 +119,8 @@ export function createSunController({
   configureLoadedTexture,
   observationTextureLoader,
   getSunRadiusAu,
-  isMagneticFieldEnabled
+  isMagneticFieldEnabled,
+  onSolarDataStatus
 }: CreateSunControllerOptions) {
   let sunSurfaceMaterial: Material | null = null;
   let sunCoronaMaterial: Material | null = null;
@@ -147,6 +155,9 @@ export function createSunController({
   let solarObservationTextureLoadInFlight = false;
   let solarObservationTextureLastLoadMs = 0;
   let userAiaChannelOverride: string | null = null;
+  let solarObservationImageState: SolarObservationImageState = 'none';
+  let solarObservationImageChannel: string | null = null;
+  let lastSolarDataStatusText: string | null = null;
   let lastTimeSec: number | null = null;
 
   const solarPhysicsClient = new SolarPhysicsClient({
@@ -158,6 +169,28 @@ export function createSunController({
     forcing: 'hybrid',
     liveData: true
   });
+
+  function publishSolarDataStatus() {
+    const clientStatus = solarPhysicsClient.status();
+    const status = describeSolarDataStatus({
+      lastSuccessMs: clientStatus.lastSuccessMs,
+      lastFailure: clientStatus.lastFailure,
+      timeoutMs: clientStatus.timeoutMs,
+      backendBaseUrl: backendBaseUrl(),
+      pageOrigin: globalThis.location?.origin ?? '',
+      payload: solarPhysicsState,
+      observationImage: solarObservationImageState,
+      observationChannel: solarObservationImageChannel
+    });
+    if (status.text === lastSolarDataStatusText) return;
+    lastSolarDataStatusText = status.text;
+    if (status.state === 'stale' || status.state === 'error') {
+      console.warn(`[solar] ${status.text}`);
+    }
+    onSolarDataStatus?.(status);
+  }
+
+  publishSolarDataStatus();
 
   // ── internal helpers ─────────────────────────────────────────────────────
 
@@ -267,6 +300,8 @@ export function createSunController({
 
     solarObservationTextureLoadInFlight = true;
     solarObservationTextureLastLoadMs = nowMs;
+    solarObservationImageState = 'loading';
+    solarObservationImageChannel = nextChannel;
     observationTextureLoader.load(
       proxyUrl,
       (loaded: Texture) => {
@@ -280,9 +315,15 @@ export function createSunController({
         solarObservationTextureChannel = nextChannel;
         applySunObservationTextureToMaterials();
         solarObservationTextureLoadInFlight = false;
+        solarObservationImageState = 'loaded';
+        publishSolarDataStatus();
       },
       undefined,
-      () => { solarObservationTextureLoadInFlight = false; }
+      () => {
+        solarObservationTextureLoadInFlight = false;
+        solarObservationImageState = 'failed';
+        publishSolarDataStatus();
+      }
     );
   }
 
@@ -530,7 +571,10 @@ export function createSunController({
         }
         solarPhysicsNextRefreshMs = nowMs + (status.lastError ? 6_000 : Number(status['pollIntervalMs']));
       })
-      .finally(() => { solarPhysicsRefreshInFlight = false; });
+      .finally(() => {
+        solarPhysicsRefreshInFlight = false;
+        publishSolarDataStatus();
+      });
   }
 
   function onScaleChange() {
