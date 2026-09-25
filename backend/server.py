@@ -31,8 +31,8 @@ from __future__ import annotations
 import asyncio
 import json
 import math
-import queue
 import os
+import queue
 import threading
 import time
 from collections import Counter, deque
@@ -181,10 +181,14 @@ SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_env_int(
     2,
     min_value=1,
 )
+SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP = _load_env_int(
+    "SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP",
+    4_096,
+    min_value=64,
+)
 SOLAR_PHYSICS_API_KEYS = frozenset(
     key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
 )
-
 SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_env_int(
     "SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW",
     60,
@@ -298,6 +302,17 @@ _aia_tile_executor = ThreadPoolExecutor(
     thread_name_prefix="solar-aia-io",
 )
 
+# The corona model is a Cycle-25 envelope. This generous validity window also
+# prevents arbitrary epochs from expanding the PFSS cache and compute surface.
+J2000_JD = 2_451_545.0
+SOLAR_PHYSICS_JD_HALF_RANGE_DAYS = _load_env_float(
+    "SOLAR_PHYSICS_JD_HALF_RANGE_DAYS",
+    200.0 * 365.25,
+    min_value=365.25,
+)
+SOLAR_PHYSICS_JD_MIN = J2000_JD - SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+SOLAR_PHYSICS_JD_MAX = J2000_JD + SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+
 
 def _extract_solar_api_key(request: Request) -> str | None:
     header_key = request.headers.get("x-api-key")
@@ -339,10 +354,8 @@ def _enforce_solar_request_rate_limit(request: Request) -> None:
     now = time.monotonic()
     window = max(1.0, SOLAR_PHYSICS_RATE_WINDOW_SECONDS)
     max_requests = max(1, SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW)
-
     identity = _extract_solar_api_key(request) or _client_identity(request)
     cutoff = now - window
-
     with _solar_physics_rate_lock:
         queue = _solar_physics_rate_locks.setdefault(identity, deque())
         while queue and queue[0] < cutoff:
@@ -356,6 +369,28 @@ def _enforce_solar_request_rate_limit(request: Request) -> None:
             )
         queue.append(now)
 
+        # Bound identity state even during a spoofed-address burst. Prefer stale
+        # entries, then evict least-recently-seen entries while retaining the
+        # current caller's history.
+        if len(_solar_physics_rate_locks) > SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP:
+            for stale in [
+                key
+                for key, seen in _solar_physics_rate_locks.items()
+                if not seen or seen[-1] < cutoff
+            ]:
+                _solar_physics_rate_locks.pop(stale, None)
+            overflow = len(_solar_physics_rate_locks) - SOLAR_PHYSICS_RATE_IDENTITY_SOFT_CAP
+            if overflow > 0:
+                candidates = sorted(
+                    (
+                        (key, seen)
+                        for key, seen in _solar_physics_rate_locks.items()
+                        if key != identity
+                    ),
+                    key=lambda item: item[1][-1] if item[1] else 0.0,
+                )
+                for key, _seen in candidates[:overflow]:
+                    _solar_physics_rate_locks.pop(key, None)
 
 def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
     now = time.monotonic()
@@ -978,6 +1013,15 @@ async def solar_physics_state(
             raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
         if not math.isfinite(epoch_jd):
             raise HTTPException(status_code=400, detail="`jd` must be finite")
+        if not (SOLAR_PHYSICS_JD_MIN <= epoch_jd <= SOLAR_PHYSICS_JD_MAX):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "`jd` must be within "
+                    f"[{SOLAR_PHYSICS_JD_MIN:.1f}, {SOLAR_PHYSICS_JD_MAX:.1f}] "
+                    "(the corona model's validity window)"
+                ),
+            )
 
     fidelity_key = fidelity.strip().lower()
     if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:

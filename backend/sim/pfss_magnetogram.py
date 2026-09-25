@@ -17,6 +17,7 @@ import io
 import math
 import struct
 import threading
+from collections import OrderedDict
 import time
 import urllib.request
 from typing import Any
@@ -1090,13 +1091,48 @@ def wsa_velocity_at_source_surface(
 
 # ─── PFSS Cache ────────────────────────────────────────────────────────────────
 
-class PFSSCache:
-    """Thread-safe cache for PFSS solutions keyed by Carrington rotation."""
+# Cache key: everything that changes the PFSS result. Keying on the Carrington
+# rotation alone (the previous behaviour) meant that whichever *fidelity* computed
+# a rotation first was served to every later caller regardless of what they asked
+# for -- so identical requests could return different payloads depending on call
+# order, contradicting the determinism the API claims. (This was SF-4.)
+CacheKey = tuple[int, int, int, int]  # (cr, n_lines, effective_lmax, activity_bucket)
 
-    def __init__(self, max_entries: int = 3):
+# A follower waiting on a leader's in-flight computation gives up after this long
+# rather than blocking a request thread indefinitely.
+DEFAULT_INFLIGHT_WAIT_S = 30.0
+
+
+class PFSSCache:
+    """Thread-safe cache for PFSS solutions.
+
+    Two properties beyond a plain dict cache:
+      * the key includes fidelity and activity, so a cached entry is only reused
+        for a genuinely identical request (fixes SF-4);
+      * concurrent misses for the same key coalesce onto a single computation
+        (single-flight), so N simultaneous requests cost one compute, not N.
+    """
+
+    def __init__(self, max_entries: int = 12, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
         self._lock = threading.Lock()
-        self._cache: dict[int, dict[str, Any]] = {}
+        # Insertion-ordered so eviction is FIFO/LRU-ish rather than by rotation number.
+        self._cache: "OrderedDict[CacheKey, dict[str, Any]]" = OrderedDict()
         self._max_entries = max_entries
+        self._inflight_wait_s = inflight_wait_s
+        # key -> (Event, result_holder). result_holder is a one-element list that the
+        # leader fills with either {"result": ...} or {"error": exc} before setting
+        # the Event, so a follower re-raises the leader's failure instead of hitting
+        # a KeyError on a cache slot that was never populated.
+        self._inflight: dict[CacheKey, tuple[threading.Event, list]] = {}
+
+    @staticmethod
+    def _key(jd: float, activity: float, n_lines: int, lmax: int) -> CacheKey:
+        return (
+            carrington_rotation_number(jd),
+            int(n_lines),
+            min(int(lmax), 15),
+            round(_clamp(float(activity), 0.0, 1.0) * 20),  # 5% activity buckets
+        )
 
     def get_or_compute(
         self,
@@ -1106,24 +1142,54 @@ class PFSSCache:
         lmax: int = 15,
         gong_timeout_s: float = 6.0,
     ) -> dict[str, Any]:
-        """Get cached PFSS result or compute fresh."""
-        cr = carrington_rotation_number(jd)
+        """Get cached PFSS result or compute fresh, coalescing concurrent misses."""
+        key = self._key(jd, activity, n_lines, lmax)
 
         with self._lock:
-            if cr in self._cache:
-                return self._cache[cr]
+            hit = self._cache.get(key)
+            if hit is not None:
+                self._cache.move_to_end(key)  # mark most-recently-used
+                return hit
+            existing = self._inflight.get(key)
+            if existing is None:
+                event, holder = threading.Event(), []
+                self._inflight[key] = (event, holder)
+                leader = True
+            else:
+                event, holder = existing
+                leader = False
 
-        # Compute outside the lock to avoid blocking
-        result = self._compute(cr, activity, jd, n_lines, lmax, gong_timeout_s)
+        if not leader:
+            # Follower: wait for the leader, then take its result or re-raise its error.
+            if not event.wait(timeout=self._inflight_wait_s):
+                raise TimeoutError("PFSS computation timed out waiting for in-flight result")
+            if holder and "error" in holder[0]:
+                raise holder[0]["error"]
+            with self._lock:
+                cached = self._cache.get(key)
+            if cached is not None:
+                return cached
+            # Leader finished but its entry was already evicted under contention;
+            # fall through and compute our own rather than fail.
+            return self._compute(key[0], activity, jd, n_lines, min(int(lmax), 15), gong_timeout_s)
 
-        with self._lock:
-            # Evict oldest if at capacity
-            while len(self._cache) >= self._max_entries:
-                oldest = min(self._cache.keys())
-                del self._cache[oldest]
-            self._cache[cr] = result
-
-        return result
+        # Leader: compute exactly once, publish, and wake any followers.
+        try:
+            result = self._compute(key[0], activity, jd, n_lines, min(int(lmax), 15), gong_timeout_s)
+            with self._lock:
+                self._cache[key] = result
+                self._cache.move_to_end(key)
+                while len(self._cache) > self._max_entries:
+                    self._cache.popitem(last=False)  # evict least-recently-used
+            holder.append({"result": result})
+            return result
+        except Exception as exc:  # noqa: BLE001 -- propagate to followers, then re-raise
+            holder.append({"error": exc})
+            raise
+        finally:
+            with self._lock:
+                self._inflight.pop(key, None)
+            event.set()
 
     def _compute(
         self,

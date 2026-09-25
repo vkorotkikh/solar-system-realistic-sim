@@ -1,3 +1,12 @@
+/**
+ * NOTE (R4): several tests in this file re-implement the frame-conversion math
+ * they check (raDecToEquatorialUnit, crossProduct, the plane->ecliptic rotation
+ * are recomputed locally and asserted equal to the code's output). That is
+ * tautological -- it agrees with the implementation by construction and passed
+ * while converted moon positions were ~2 orbital radii wrong (SF-9). Treat these
+ * as STRUCTURAL/consistency checks only. Accuracy is pinned by the multi-epoch
+ * JPL Horizons oracle in moonFrames.horizons.test.ts, never by recomputing the formula.
+ */
 import { describe, expect, it } from 'vitest';
 import {
   convertMoonOrbitFrameToEcliptic,
