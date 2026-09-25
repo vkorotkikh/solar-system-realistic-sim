@@ -17,6 +17,54 @@ export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLi
   [key: string]: unknown;
 }
 
+/** Why the most recent `/solar/physics` request failed, as far as the browser can tell. */
+export type SolarPhysicsFailureKind =
+  | 'timeout'
+  | 'busy'
+  | 'http'
+  | 'blocked'
+  | 'unreachable'
+  | 'network'
+  | 'invalid-response';
+
+export interface SolarPhysicsFailure {
+  kind: SolarPhysicsFailureKind;
+  message: string;
+  httpStatus: number | null;
+  atMs: number;
+}
+
+export interface SolarPhysicsClientStatus {
+  lastError: string | null;
+  lastFailure: SolarPhysicsFailure | null;
+  consecutiveFailures: number;
+  lastSuccessMs: number;
+  lastRefreshMs: number;
+  lastLatencyMs: number;
+  pollIntervalMs: number;
+  timeoutMs: number;
+  nextRefreshMs: number;
+}
+
+/** A no-cors probe of `/health` only has to tell "server answers" from "nothing listening". */
+const REACHABILITY_PROBE_TIMEOUT_MS = 2_000;
+
+class SolarPhysicsRequestError extends Error {
+  kind: SolarPhysicsFailureKind;
+  httpStatus: number | null;
+
+  constructor(kind: SolarPhysicsFailureKind, message: string, httpStatus: number | null = null) {
+    super(message);
+    this.name = 'SolarPhysicsRequestError';
+    this.kind = kind;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function formatSeconds(ms: number): string {
+  return `${Number((ms / 1_000).toFixed(1))}`;
+}
+
 interface SolarPhysicsClientOptions {
   baseUrl: () => string;
   pollIntervalMs?: number;
@@ -36,6 +84,8 @@ export class SolarPhysicsClient {
   forcing: string;
   liveData: boolean;
   lastError: string | null;
+  lastFailure: SolarPhysicsFailure | null;
+  consecutiveFailures: number;
   lastSuccessMs: number;
   lastRefreshMs: number;
   lastLatencyMs: number;
@@ -63,6 +113,8 @@ export class SolarPhysicsClient {
     this.liveData = Boolean(liveData);
 
     this.lastError = null;
+    this.lastFailure = null;
+    this.consecutiveFailures = 0;
     this.lastSuccessMs = 0;
     this.lastRefreshMs = 0;
     this.lastLatencyMs = 0;
@@ -77,13 +129,16 @@ export class SolarPhysicsClient {
     return this.latest;
   }
 
-  status(): Record<string, unknown> {
+  status(): SolarPhysicsClientStatus {
     return {
       lastError: this.lastError,
+      lastFailure: this.lastFailure,
+      consecutiveFailures: this.consecutiveFailures,
       lastSuccessMs: this.lastSuccessMs,
       lastRefreshMs: this.lastRefreshMs,
       lastLatencyMs: this.lastLatencyMs,
       pollIntervalMs: this.pollIntervalMs,
+      timeoutMs: this.timeoutMs,
       nextRefreshMs: this.nextRefreshMs
     };
   }
@@ -125,40 +180,115 @@ export class SolarPhysicsClient {
     const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
 
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let timedOut = false;
     const controller = new AbortController();
     this.abortController = controller;
     
     try {
-      timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, this.timeoutMs);
       const startMs = Date.now();
-      const response = await fetch(url, {
-        cache: 'no-store',
-        signal: controller.signal
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          cache: 'no-store',
+          signal: controller.signal
+        });
+      } catch (error: unknown) {
+        throw await this.classifyFetchError(error, timedOut);
+      }
       
       // If a new request started while we were awaiting, ignore this result
       if (this._reqId !== currentReqId) return false;
 
       if (!response.ok) {
-        throw new Error(`Solar physics request failed (${response.status})`);
+        throw new SolarPhysicsRequestError(
+          response.status === 503 ? 'busy' : 'http',
+          `Solar physics request failed (${response.status})`,
+          response.status
+        );
       }
-      const payload = (await response.json()) as SolarPhysicsStatePayload;
-      this.latest = payload;
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch (error: unknown) {
+        throw timedOut
+          ? this.timeoutError()
+          : new SolarPhysicsRequestError('invalid-response', `Solar physics response was not valid JSON (${String(error)})`);
+      }
+      if (!payload || typeof payload !== 'object') {
+        throw new SolarPhysicsRequestError('invalid-response', 'Solar physics response was not a JSON object');
+      }
+      this.latest = payload as SolarPhysicsStatePayload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();
       this.lastError = null;
+      this.lastFailure = null;
+      this.consecutiveFailures = 0;
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
     } catch (error: unknown) {
-      this.lastError = error instanceof Error ? error.message : String(error);
+      // A superseded or deliberately cancelled request says nothing about the server.
+      if (this._reqId !== currentReqId) return false;
+      if (!(error instanceof SolarPhysicsRequestError) && controller.signal.aborted && !timedOut) return false;
+      const failure = error instanceof SolarPhysicsRequestError
+        ? error
+        : new SolarPhysicsRequestError('network', error instanceof Error ? error.message : String(error));
+      this.lastError = failure.message;
+      this.lastFailure = {
+        kind: failure.kind,
+        message: failure.message,
+        httpStatus: failure.httpStatus,
+        atMs: Date.now()
+      };
+      this.consecutiveFailures += 1;
       this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs);
       return false;
     } finally {
       if (timeoutHandle !== null) {
         clearTimeout(timeoutHandle);
       }
-      this.abortController = null;
-      this.inFlight = false;
+      if (this._reqId === currentReqId) {
+        this.abortController = null;
+        this.inFlight = false;
+      }
+    }
+  }
+
+  timeoutError(): SolarPhysicsRequestError {
+    return new SolarPhysicsRequestError('timeout', `No reply from the solar server within ${formatSeconds(this.timeoutMs)} s`);
+  }
+
+  /**
+   * `fetch` rejects with the same opaque TypeError whether nothing is listening or the server
+   * answered but CORS hid the response. A no-cors request is exempt from CORS, so if it
+   * resolves the server is up and the page's origin is what was refused.
+   */
+  async classifyFetchError(error: unknown, timedOut: boolean): Promise<unknown> {
+    if (timedOut) return this.timeoutError();
+    if (!(error instanceof TypeError)) return error;
+    const reachable = await this.probeServerReachable();
+    return reachable
+      ? new SolarPhysicsRequestError('blocked', `Solar server refused this page's origin (CORS): ${error.message}`)
+      : new SolarPhysicsRequestError('unreachable', `Solar server not reachable: ${error.message}`);
+  }
+
+  async probeServerReachable(): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), REACHABILITY_PROBE_TIMEOUT_MS);
+    try {
+      await fetch(`${this.baseUrl()}/health`, {
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeoutHandle);
     }
   }
 }
