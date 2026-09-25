@@ -21,6 +21,8 @@ export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLi
 export type SolarPhysicsFailureKind =
   | 'timeout'
   | 'busy'
+  | 'server-timeout'
+  | 'rate-limited'
   | 'http'
   | 'blocked'
   | 'unreachable'
@@ -63,6 +65,23 @@ class SolarPhysicsRequestError extends Error {
 
 function formatSeconds(ms: number): string {
   return `${Number((ms / 1_000).toFixed(1))}`;
+}
+
+/** The backend answers 503 both when its two compute slots are taken and when its own compute budget ran out. */
+function classifyHttpFailure(status: number, detail: string): SolarPhysicsFailureKind {
+  if (status === 429) return 'rate-limited';
+  if (status === 503) return /timed out/i.test(detail) ? 'server-timeout' : 'busy';
+  return 'http';
+}
+
+async function readErrorDetail(response: Response): Promise<string> {
+  try {
+    const body: unknown = await response.json();
+    const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
+    return typeof detail === 'string' ? detail : '';
+  } catch {
+    return '';
+  }
 }
 
 interface SolarPhysicsClientOptions {
@@ -204,9 +223,10 @@ export class SolarPhysicsClient {
       if (this._reqId !== currentReqId) return false;
 
       if (!response.ok) {
+        const detail = await readErrorDetail(response);
         throw new SolarPhysicsRequestError(
-          response.status === 503 ? 'busy' : 'http',
-          `Solar physics request failed (${response.status})`,
+          classifyHttpFailure(response.status, detail),
+          `Solar physics request failed (${response.status})${detail ? `: ${detail}` : ''}`,
           response.status
         );
       }
@@ -264,14 +284,16 @@ export class SolarPhysicsClient {
   /**
    * `fetch` rejects with the same opaque TypeError whether nothing is listening or the server
    * answered but CORS hid the response. A no-cors request is exempt from CORS, so if it
-   * resolves the server is up and the page's origin is what was refused.
+   * resolves the server is up and the reply itself was blocked: either the page's origin is
+   * not allowed, or the server failed with a response that carries no CORS headers (an
+   * unhandled 500 does not).
    */
   async classifyFetchError(error: unknown, timedOut: boolean): Promise<unknown> {
     if (timedOut) return this.timeoutError();
     if (!(error instanceof TypeError)) return error;
     const reachable = await this.probeServerReachable();
     return reachable
-      ? new SolarPhysicsRequestError('blocked', `Solar server refused this page's origin (CORS): ${error.message}`)
+      ? new SolarPhysicsRequestError('blocked', `Browser blocked the solar server's reply (CORS): ${error.message}`)
       : new SolarPhysicsRequestError('unreachable', `Solar server not reachable: ${error.message}`);
   }
 

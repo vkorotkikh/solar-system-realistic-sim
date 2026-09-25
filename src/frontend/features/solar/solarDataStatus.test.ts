@@ -37,8 +37,10 @@ describe('describeSolarDataStatus', () => {
   it.each([
     ['timeout', null, 'solar server did not answer within 2.6 s'],
     ['busy', 503, 'solar server busy, HTTP 503'],
+    ['server-timeout', 503, 'solar server ran out of compute time, HTTP 503'],
+    ['rate-limited', 429, 'solar server rate limit reached, HTTP 429'],
     ['http', 500, 'solar server error, HTTP 500'],
-    ['blocked', null, 'solar server refused origin http://localhost:4173 (CORS)'],
+    ['blocked', null, 'browser blocked the reply: origin http://localhost:4173 not allowed by CORS, or a server error'],
     ['unreachable', null, 'solar server not reachable at http://localhost:8042'],
     ['invalid-response', null, 'solar server sent an invalid response'],
     ['network', null, 'network error: network failure'],

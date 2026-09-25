@@ -52,16 +52,28 @@ describe('SolarPhysicsClient failure classification', () => {
     expect(status.timeoutMs).toBe(2_600);
   });
 
-  it('classifies HTTP 503 as busy and other statuses as server errors', async () => {
-    stubFetch(() => Promise.resolve(new Response('{"detail":"saturated"}', { status: 503 })));
+  it.each([
+    [503, '{"detail":"Solar physics requests are temporarily saturated. Retry shortly."}', 'busy'],
+    [503, '{"detail":"Solar physics generation timed out. Try again later."}', 'server-timeout'],
+    [429, '{"detail":"Solar request rate limit exceeded; retry later."}', 'rate-limited'],
+    [500, 'Internal Server Error', 'http'],
+  ] as const)('classifies HTTP %i (%s) as %s', async (status, body, kind) => {
+    stubFetch(() => Promise.resolve(new Response(body, { status })));
+    const client = createClient();
+
+    await client.maybeRefresh(JD);
+
+    expect(client.status().lastFailure).toMatchObject({ kind, httpStatus: status });
+    expect(client.status().consecutiveFailures).toBe(1);
+  });
+
+  it('counts consecutive failures until a success', async () => {
+    stubFetch(() => Promise.resolve(new Response('busy', { status: 503 })));
     const client = createClient();
     await client.maybeRefresh(JD);
-    expect(client.status().lastFailure).toMatchObject({ kind: 'busy', httpStatus: 503 });
-
-    stubFetch(() => Promise.resolve(new Response('boom', { status: 500 })));
     await client.maybeRefresh(JD, true);
-    expect(client.status().lastFailure).toMatchObject({ kind: 'http', httpStatus: 500 });
     expect(client.status().consecutiveFailures).toBe(2);
+    expect(client.status().lastError).toBe('Solar physics request failed (503)');
   });
 
   it('reports a CORS refusal when the server answers a no-cors probe', async () => {

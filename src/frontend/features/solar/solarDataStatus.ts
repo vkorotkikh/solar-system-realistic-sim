@@ -47,10 +47,14 @@ function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput
       return `solar server did not answer within ${formatSeconds(input.timeoutMs)} s`;
     case 'busy':
       return 'solar server busy, HTTP 503';
+    case 'server-timeout':
+      return 'solar server ran out of compute time, HTTP 503';
+    case 'rate-limited':
+      return 'solar server rate limit reached, HTTP 429';
     case 'http':
       return `solar server error, HTTP ${failure.httpStatus ?? 'unknown'}`;
     case 'blocked':
-      return `solar server refused origin ${input.pageOrigin || 'of this page'} (CORS)`;
+      return `browser blocked the reply: origin ${input.pageOrigin || 'of this page'} not allowed by CORS, or a server error`;
     case 'unreachable':
       return `solar server not reachable at ${input.backendBaseUrl}`;
     case 'invalid-response':
