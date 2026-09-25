@@ -1,4 +1,4 @@
-import type { SolarPhysicsFailure, SolarPhysicsStatePayload } from './solarPhysicsClient';
+import { formatSeconds, type SolarPhysicsFailure, type SolarPhysicsStatePayload } from './solarPhysicsClient';
 
 /**
  * Where the Sun on screen currently gets its state from.
@@ -37,10 +37,6 @@ function formatUtcMinute(ms: number): string {
   return `${new Date(ms).toISOString().slice(11, 16)} UTC`;
 }
 
-function formatSeconds(ms: number): string {
-  return `${Number((ms / 1_000).toFixed(1))}`;
-}
-
 function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput): string {
   switch (failure.kind) {
     case 'timeout':
@@ -53,15 +49,19 @@ function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput
       return 'solar server rate limit reached, HTTP 429';
     case 'http':
       return `solar server error, HTTP ${failure.httpStatus ?? 'unknown'}`;
+    case 'server-error':
+      return 'solar server failed without a readable reply, likely an internal error';
     case 'blocked':
-      return `browser blocked the reply: origin ${input.pageOrigin || 'of this page'} not allowed by CORS, or a server error`;
+      return input.pageOrigin
+        ? `solar server does not allow this page's origin ${input.pageOrigin} (CORS)`
+        : "solar server does not allow this page's origin (CORS)";
     case 'unreachable':
       return `solar server not reachable at ${input.backendBaseUrl}`;
     case 'invalid-response':
       return 'solar server sent an invalid response';
     case 'network':
     default:
-      return `network error: ${failure.message}`;
+      return `network error contacting ${input.backendBaseUrl}`;
   }
 }
 

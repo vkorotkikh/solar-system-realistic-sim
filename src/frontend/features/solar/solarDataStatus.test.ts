@@ -40,10 +40,11 @@ describe('describeSolarDataStatus', () => {
     ['server-timeout', 503, 'solar server ran out of compute time, HTTP 503'],
     ['rate-limited', 429, 'solar server rate limit reached, HTTP 429'],
     ['http', 500, 'solar server error, HTTP 500'],
-    ['blocked', null, 'browser blocked the reply: origin http://localhost:4173 not allowed by CORS, or a server error'],
+    ['server-error', null, 'solar server failed without a readable reply, likely an internal error'],
+    ['blocked', null, "solar server does not allow this page's origin http://localhost:4173 (CORS)"],
     ['unreachable', null, 'solar server not reachable at http://localhost:8042'],
     ['invalid-response', null, 'solar server sent an invalid response'],
-    ['network', null, 'network error: network failure'],
+    ['network', null, 'network error contacting http://localhost:8042'],
   ] as const)('names the %s failure when the backend has never answered', (kind, httpStatus, reason) => {
     expect(describeSolarDataStatus(input({ lastFailure: failure(kind, httpStatus) }))).toEqual({
       state: 'error',

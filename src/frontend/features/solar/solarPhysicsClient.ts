@@ -24,6 +24,7 @@ export type SolarPhysicsFailureKind =
   | 'server-timeout'
   | 'rate-limited'
   | 'http'
+  | 'server-error'
   | 'blocked'
   | 'unreachable'
   | 'network'
@@ -48,8 +49,13 @@ export interface SolarPhysicsClientStatus {
   nextRefreshMs: number;
 }
 
-/** A no-cors probe of `/health` only has to tell "server answers" from "nothing listening". */
-const REACHABILITY_PROBE_TIMEOUT_MS = 2_000;
+/** Each `/health` probe only has to tell "answers" from "refused" from "nothing listening". */
+const HEALTH_PROBE_TIMEOUT_MS = 2_000;
+/** The origin allowlist and the server's reachability change rarely; don't re-probe every retry. */
+const HEALTH_PROBE_REUSE_MS = 30_000;
+
+type HealthProbeVerdict = 'origin-allowed' | 'origin-refused' | 'unreachable' | 'inconclusive';
+type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out';
 
 class SolarPhysicsRequestError extends Error {
   kind: SolarPhysicsFailureKind;
@@ -63,7 +69,7 @@ class SolarPhysicsRequestError extends Error {
   }
 }
 
-function formatSeconds(ms: number): string {
+export function formatSeconds(ms: number): string {
   return `${Number((ms / 1_000).toFixed(1))}`;
 }
 
@@ -112,6 +118,7 @@ export class SolarPhysicsClient {
   nextRefreshMs: number;
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
+  lastProbe: { verdict: HealthProbeVerdict; atMs: number } | null;
   _reqId: number;
 
   constructor({
@@ -141,6 +148,7 @@ export class SolarPhysicsClient {
     this.nextRefreshMs = 0;
     this.latest = null;
     this.abortController = null;
+    this.lastProbe = null;
     this._reqId = 0;
   }
 
@@ -216,7 +224,7 @@ export class SolarPhysicsClient {
           signal: controller.signal
         });
       } catch (error: unknown) {
-        throw await this.classifyFetchError(error, timedOut);
+        throw await this.classifyFetchError(error, timedOut, controller.signal);
       }
       
       // If a new request started while we were awaiting, ignore this result
@@ -238,7 +246,8 @@ export class SolarPhysicsClient {
           ? this.timeoutError()
           : new SolarPhysicsRequestError('invalid-response', `Solar physics response was not valid JSON (${String(error)})`);
       }
-      if (!payload || typeof payload !== 'object') {
+      if (this._reqId !== currentReqId) return false;
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
         throw new SolarPhysicsRequestError('invalid-response', 'Solar physics response was not a JSON object');
       }
       this.latest = payload as SolarPhysicsStatePayload;
@@ -247,12 +256,13 @@ export class SolarPhysicsClient {
       this.lastError = null;
       this.lastFailure = null;
       this.consecutiveFailures = 0;
+      this.lastProbe = null;
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
     } catch (error: unknown) {
       // A superseded or deliberately cancelled request says nothing about the server.
       if (this._reqId !== currentReqId) return false;
-      if (!(error instanceof SolarPhysicsRequestError) && controller.signal.aborted && !timedOut) return false;
+      if (controller.signal.aborted && !timedOut) return false;
       const failure = error instanceof SolarPhysicsRequestError
         ? error
         : new SolarPhysicsRequestError('network', error instanceof Error ? error.message : String(error));
@@ -282,33 +292,66 @@ export class SolarPhysicsClient {
   }
 
   /**
-   * `fetch` rejects with the same opaque TypeError whether nothing is listening or the server
-   * answered but CORS hid the response. A no-cors request is exempt from CORS, so if it
-   * resolves the server is up and the reply itself was blocked: either the page's origin is
-   * not allowed, or the server failed with a response that carries no CORS headers (an
-   * unhandled 500 does not).
+   * `fetch` rejects with the same opaque TypeError when nothing is listening, when CORS hides the
+   * reply, and when the server fails with a response that carries no CORS headers (an unhandled
+   * 500 does not). Probing `/health` twice tells these apart: a CORS request succeeds only if this
+   * origin is allowed, and a no-cors request is exempt from CORS, so it succeeds whenever the
+   * server is up. A disallowed origin is also reported after a timeout, because the server still
+   * runs the whole computation before the browser can refuse the reply.
    */
-  async classifyFetchError(error: unknown, timedOut: boolean): Promise<unknown> {
-    if (timedOut) return this.timeoutError();
-    if (!(error instanceof TypeError)) return error;
-    const reachable = await this.probeServerReachable();
-    return reachable
-      ? new SolarPhysicsRequestError('blocked', `Browser blocked the solar server's reply (CORS): ${error.message}`)
-      : new SolarPhysicsRequestError('unreachable', `Solar server not reachable: ${error.message}`);
+  async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal): Promise<unknown> {
+    if (!timedOut && !(error instanceof TypeError)) return error;
+    if (signal.aborted && !timedOut) return error;
+    const verdict = await this.probeHealth();
+    if (timedOut) {
+      return verdict === 'origin-refused' ? this.originRefusedError() : this.timeoutError();
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    switch (verdict) {
+      case 'origin-refused':
+        return this.originRefusedError();
+      case 'origin-allowed':
+        return new SolarPhysicsRequestError('server-error', `Solar server failed without a readable reply: ${message}`);
+      case 'unreachable':
+        return new SolarPhysicsRequestError('unreachable', `Solar server not reachable: ${message}`);
+      default:
+        return new SolarPhysicsRequestError('network', message);
+    }
   }
 
-  async probeServerReachable(): Promise<boolean> {
+  originRefusedError(): SolarPhysicsRequestError {
+    return new SolarPhysicsRequestError('blocked', "Solar server does not allow this page's origin (CORS)");
+  }
+
+  async probeHealth(): Promise<HealthProbeVerdict> {
+    const nowMs = Date.now();
+    if (this.lastProbe && nowMs - this.lastProbe.atMs < HEALTH_PROBE_REUSE_MS) return this.lastProbe.verdict;
+    let verdict: HealthProbeVerdict;
+    const cors = await this.fetchHealth('cors');
+    if (cors === 'ok') {
+      verdict = 'origin-allowed';
+    } else if (cors === 'timed-out') {
+      verdict = 'inconclusive';
+    } else {
+      const noCors = await this.fetchHealth('no-cors');
+      verdict = noCors === 'ok' ? 'origin-refused' : noCors === 'failed' ? 'unreachable' : 'inconclusive';
+    }
+    this.lastProbe = { verdict, atMs: Date.now() };
+    return verdict;
+  }
+
+  async fetchHealth(mode: RequestMode): Promise<HealthProbeOutcome> {
     const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), REACHABILITY_PROBE_TIMEOUT_MS);
+    let timedOut = false;
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, HEALTH_PROBE_TIMEOUT_MS);
     try {
-      await fetch(`${this.baseUrl()}/health`, {
-        mode: 'no-cors',
-        cache: 'no-store',
-        signal: controller.signal
-      });
-      return true;
+      await fetch(`${this.baseUrl()}/health`, { mode, cache: 'no-store', signal: controller.signal });
+      return 'ok';
     } catch {
-      return false;
+      return timedOut ? 'timed-out' : 'failed';
     } finally {
       clearTimeout(timeoutHandle);
     }
