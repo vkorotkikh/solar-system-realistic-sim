@@ -141,6 +141,48 @@ describe('renderSolarDataStatus', () => {
   });
 });
 
+describe('renderSolarDataStatus with a DOM', () => {
+  interface FakeNode {
+    className: string;
+    children: Array<FakeNode | string>;
+    textContent: string;
+    append: (...items: Array<FakeNode | string>) => void;
+  }
+
+  function fakeNode(): FakeNode {
+    const node: FakeNode = {
+      className: '',
+      children: [],
+      get textContent() { return node.children.map((child) => (typeof child === 'string' ? child : child.textContent)).join(''); },
+      set textContent(value: string) { node.children = [value]; },
+      append: (...items) => { node.children.push(...items); },
+    };
+    return node;
+  }
+
+  it('puts addresses in their own span inside one wrapper, keeping the text unchanged', () => {
+    const chip = fakeNode();
+    const element = {
+      get textContent() { return chip.textContent; },
+      set textContent(value: string | null) { chip.textContent = value ?? ''; },
+      title: '',
+      dataset: {} as DOMStringMap,
+      ownerDocument: { createElement: () => fakeNode() } as unknown as Pick<Document, 'createElement'>,
+      replaceChildren: (...nodes: Array<Node | string>) => { chip.children = nodes as unknown as FakeNode[]; },
+    };
+    const status = describeSolarDataStatus(input({ lastFailure: failure('unreachable') }));
+
+    renderSolarDataStatus(element, status);
+
+    expect(element.textContent).toBe(status.text);
+    expect(chip.children).toHaveLength(1);
+    const wrapper = chip.children[0] as FakeNode;
+    expect(wrapper.className).toBe('status-text');
+    const urls = wrapper.children.filter((child): child is FakeNode => typeof child !== 'string');
+    expect(urls.map((url) => [url.className, url.textContent])).toEqual([['status-url', 'http://localhost:8042']]);
+  });
+});
+
 describe('SolarDataAnnouncer', () => {
   function announcer() {
     const element = { textContent: null as string | null };

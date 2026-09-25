@@ -1112,6 +1112,12 @@ select option {
   background: var(--color-danger);
 }
 
+/* Chakra Petch merges the dots in "127.0.0.1" at this size; addresses get a monospace face. */
+#status-solar .status-url {
+  font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.95em;
+}
+
 #status-solar[data-solar-state='connecting']::before {
   background: var(--color-cyan);
 }
@@ -1206,12 +1212,16 @@ select option {
   .panel-close svg {
     transform: rotate(0deg);
   }
+
+  /* The status chips wrap onto extra rows at this width, so keep the hint clear of them. */
+  .interaction-hint {
+    top: calc(68px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
 }
 
 @media (max-width: 700px) {
   .interaction-hint {
-    top: calc(68px + env(safe-area-inset-top, 0px));
-    bottom: auto;
     gap: 10px;
   }
 

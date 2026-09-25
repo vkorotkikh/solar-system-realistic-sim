@@ -40,7 +40,11 @@ interface SolarDataStatusElement {
   textContent: string | null;
   title: string;
   dataset: DOMStringMap;
+  ownerDocument?: Pick<Document, 'createElement'> | null;
+  replaceChildren?: (...nodes: Array<Node | string>) => void;
 }
+
+const URL_PATTERN = /https?:\/\/[^\s)]+/g;
 
 function formatUtcMinute(ms: number): string {
   return `${new Date(ms).toISOString().slice(11, 16)} UTC`;
@@ -170,9 +174,28 @@ export function renderSolarDataStatus(
 ): void {
   if (!element) return;
   if (element.textContent === status.text && element.dataset.solarState === status.state) return;
-  element.textContent = status.text;
   element.title = status.text;
   element.dataset.solarState = status.state;
+  const doc = element.ownerDocument;
+  if (!doc || typeof element.replaceChildren !== 'function') {
+    element.textContent = status.text;
+    return;
+  }
+  // One inner wrapper: the chip is inline-flex, so loose text nodes would become separate flex items.
+  const wrapper = doc.createElement('span');
+  wrapper.className = 'status-text';
+  let last = 0;
+  for (const match of status.text.matchAll(URL_PATTERN)) {
+    const start = match.index ?? 0;
+    wrapper.append(status.text.slice(last, start));
+    const url = doc.createElement('span');
+    url.className = 'status-url';
+    url.textContent = match[0];
+    wrapper.append(url);
+    last = start + match[0].length;
+  }
+  wrapper.append(status.text.slice(last));
+  element.replaceChildren(wrapper);
 }
 
 /**
