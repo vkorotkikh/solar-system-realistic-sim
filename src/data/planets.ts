@@ -44,6 +44,7 @@ export const PLANETS = [
       meanAnomalyDeg: 174.79252722,
       periodDays: 87.9691,
       secularRates: {
+        meanLongitudeDegPerCentury: 149472.67411175,
         aAuPerCentury: 0.00000037,
         ePerCentury: 0.00001906,
         iDegPerCentury: -0.00594749,
@@ -72,6 +73,7 @@ export const PLANETS = [
       meanAnomalyDeg: 50.37663232,
       periodDays: 224.701,
       secularRates: {
+        meanLongitudeDegPerCentury: 58517.81538729,
         aAuPerCentury: 0.0000039,
         ePerCentury: -0.00004107,
         iDegPerCentury: -0.0007889,
@@ -104,6 +106,7 @@ export const PLANETS = [
       meanAnomalyDeg: 357.52688973,
       periodDays: 365.256,
       secularRates: {
+        meanLongitudeDegPerCentury: 35999.37244981,
         aAuPerCentury: 0.00000562,
         ePerCentury: -0.00004392,
         iDegPerCentury: -0.01294668,
@@ -132,6 +135,7 @@ export const PLANETS = [
       meanAnomalyDeg: 19.39019754,
       periodDays: 686.98,
       secularRates: {
+        meanLongitudeDegPerCentury: 19140.30268499,
         aAuPerCentury: 0.00001847,
         ePerCentury: 0.00007882,
         iDegPerCentury: -0.00813131,
@@ -160,6 +164,7 @@ export const PLANETS = [
       meanAnomalyDeg: 19.66796068,
       periodDays: 4_332.589,
       secularRates: {
+        meanLongitudeDegPerCentury: 3034.74612775,
         aAuPerCentury: -0.00011607,
         ePerCentury: -0.00013253,
         iDegPerCentury: -0.00183714,
@@ -190,6 +195,7 @@ export const PLANETS = [
       meanAnomalyDeg: 317.35536592,
       periodDays: 10_759.22,
       secularRates: {
+        meanLongitudeDegPerCentury: 1222.49362201,
         aAuPerCentury: -0.0012506,
         ePerCentury: -0.00050991,
         iDegPerCentury: 0.00193609,
@@ -220,6 +226,7 @@ export const PLANETS = [
       meanAnomalyDeg: 142.28382821,
       periodDays: 30_685.4,
       secularRates: {
+        meanLongitudeDegPerCentury: 428.48202785,
         aAuPerCentury: -0.00196176,
         ePerCentury: -0.00004397,
         iDegPerCentury: -0.00242939,
@@ -248,6 +255,7 @@ export const PLANETS = [
       meanAnomalyDeg: 259.91520804,
       periodDays: 60_189,
       secularRates: {
+        meanLongitudeDegPerCentury: 218.45945325,
         aAuPerCentury: 0.00026291,
         ePerCentury: 0.00005105,
         iDegPerCentury: 0.00035372,
