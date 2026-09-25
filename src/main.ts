@@ -273,7 +273,7 @@ const sunCtrl = createSunController({
   onSolarDataStatus: (status) => {
     renderSolarDataStatus(dom.statusSolar, status);
     if (solarDataAnnouncer.observe(status) && status.state !== 'backend') {
-      console.warn(`[solar] ${status.text}`);
+      console.warn(`[solar] ${status.text}${status.remedy ? `\n${status.remedy}` : ''}`);
     }
   }
 });

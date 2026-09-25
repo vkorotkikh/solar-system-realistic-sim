@@ -21,6 +21,10 @@ export interface SolarDataSourceStatus {
   announcementKey: string;
   /** Short sentence for screen readers, or null when nothing is worth announcing. */
   announcement: string | null;
+  /** What to do about it, for the console; null when there is nothing to do. */
+  remedy: string | null;
+  /** When the refresh attempt this status reflects finished; tells repeated attempts from republishes. */
+  observedAtMs: number;
 }
 
 export interface SolarDataStatusInput {
@@ -53,7 +57,7 @@ function formatUtcMinute(ms: number): string {
 function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput): string {
   switch (failure.kind) {
     case 'timeout':
-      return `solar server did not answer within ${formatSeconds(input.timeoutMs)} s`;
+      return `solar server too slow, no reply within ${formatSeconds(input.timeoutMs)} s`;
     case 'busy':
       return 'solar server busy, HTTP 503';
     case 'server-timeout':
@@ -63,11 +67,11 @@ function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput
     case 'http':
       return `solar server error, HTTP ${failure.httpStatus ?? 'unknown'}`;
     case 'server-error':
-      return 'solar server failed without a readable reply, likely an internal error';
+      return 'solar server error, reply unreadable (likely HTTP 500)';
     case 'blocked':
       return input.pageOrigin
-        ? `solar server does not allow this page's origin ${input.pageOrigin} (CORS)`
-        : "solar server does not allow this page's origin (CORS)";
+        ? `CORS: solar server does not allow origin ${input.pageOrigin}`
+        : "CORS: solar server does not allow this page's origin";
     case 'unreachable':
       return `solar server not reachable at ${input.backendBaseUrl}`;
     case 'invalid-response':
@@ -131,33 +135,61 @@ const FAMILY_ANNOUNCEMENTS = {
   'server-error': 'solar server error',
 } as const;
 
+function failureRemedy(family: keyof typeof FAMILY_ANNOUNCEMENTS, input: SolarDataStatusInput): string {
+  switch (family) {
+    case 'blocked':
+      return `Add ${input.pageOrigin || "this page's origin"} to SOLAR_CORS_ALLOWED_ORIGINS on the backend `
+        + '(the variable replaces the default list, so keep the origins you still use), '
+        + 'or open the page at http://localhost:5173.';
+    case 'unreachable':
+      return `Start the backend so that it answers at ${input.backendBaseUrl}: `
+        + 'cd backend && python -m uvicorn server:app --port 8042';
+    case 'slow':
+      return 'A default /solar/physics request takes several seconds on the backend, '
+        + 'longer than this page waits (audit finding H-1).';
+    default:
+      return 'Check the backend log for the failing /solar/physics request.';
+  }
+}
+
 export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataSourceStatus {
   const hasBackendState = input.lastSuccessMs > 0 && input.payload !== null;
   if (input.lastFailure) {
     const reason = failureReason(input.lastFailure, input);
+    const family = failureFamily(input.lastFailure.kind);
+    const remedy = failureRemedy(family, input);
+    const observedAtMs = input.lastFailure.atMs;
     if (hasBackendState) {
       return {
         state: 'stale',
         text: `Sun: backend state from ${formatUtcMinute(input.lastSuccessMs)} (refresh failing: ${reason})`,
         announcementKey: 'stale',
         announcement: 'Sun data: backend updates failing, showing the last backend state.',
+        remedy,
+        observedAtMs,
       };
     }
-    const family = failureFamily(input.lastFailure.kind);
     return {
       state: 'error',
       text: `Sun: procedural fallback (${reason})`,
       announcementKey: `error:${family}`,
       announcement: `Sun data unavailable: ${FAMILY_ANNOUNCEMENTS[family]}. Showing the procedural Sun.`,
+      remedy,
+      observedAtMs,
     };
   }
   if (hasBackendState) {
+    const imageUnavailable = input.failedImageChannel !== null && input.displayedImageChannel === null;
     return {
       state: 'backend',
       text: `Sun: backend solar model (${describeForcing(input.payload)}${describeObservationImage(input)})`
         + ` · updated ${formatUtcMinute(input.lastSuccessMs)}`,
-      announcementKey: 'backend',
-      announcement: 'Sun data: backend solar model connected.',
+      announcementKey: imageUnavailable ? 'backend:image-unavailable' : 'backend',
+      announcement: imageUnavailable
+        ? 'Sun data: backend solar model connected; AIA image unavailable.'
+        : 'Sun data: backend solar model connected.',
+      remedy: null,
+      observedAtMs: input.lastSuccessMs,
     };
   }
   return {
@@ -165,6 +197,8 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
     text: 'Sun: procedural fallback (connecting to solar model server)',
     announcementKey: 'connecting',
     announcement: null,
+    remedy: null,
+    observedAtMs: 0,
   };
 }
 
@@ -200,18 +234,21 @@ export function renderSolarDataStatus(
 
 /**
  * Feeds a polite live region only when the kind of situation changes, because the visible chip
- * rewrites its text on every clock minute and failure detail. A switch between two failure
- * situations must be seen twice in a row, so alternating timeouts and refusals don't chatter.
+ * rewrites its text on every clock minute and failure detail. The first announcement and a
+ * recovery to the backend are immediate; any other change must be seen on two separate refresh
+ * attempts in a row, so alternating failures or a single dropped poll don't chatter.
  */
 export class SolarDataAnnouncer {
   element: { textContent: string | null } | null | undefined;
   announcedKey: string | null;
   pendingKey: string | null;
+  pendingObservedAtMs: number;
 
   constructor(element: { textContent: string | null } | null | undefined) {
     this.element = element;
     this.announcedKey = null;
     this.pendingKey = null;
+    this.pendingObservedAtMs = 0;
   }
 
   /** Returns true when the status was announced. */
@@ -221,10 +258,16 @@ export class SolarDataAnnouncer {
       return false;
     }
     if (status.announcement === null) return false;
-    const switchingFailure = status.state === 'error' && this.announcedKey?.startsWith('error:') === true;
-    if (switchingFailure && this.pendingKey !== status.announcementKey) {
-      this.pendingKey = status.announcementKey;
-      return false;
+    const recovering = status.announcementKey === 'backend'
+      && this.announcedKey !== null
+      && !this.announcedKey.startsWith('backend');
+    if (this.announcedKey !== null && !recovering) {
+      if (this.pendingKey !== status.announcementKey) {
+        this.pendingKey = status.announcementKey;
+        this.pendingObservedAtMs = status.observedAtMs;
+        return false;
+      }
+      if (this.pendingObservedAtMs === status.observedAtMs) return false;
     }
     this.announcedKey = status.announcementKey;
     this.pendingKey = null;
