@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import socket
 from collections import deque
 from datetime import datetime, timedelta, timezone
 
@@ -417,6 +418,30 @@ def test_streaming_byte_limits_pass_exactly_and_reject_one_more(kind, delta, exp
         assert provider.cache_size == 0
 
 
+@pytest.mark.parametrize("truncated_part", ["listing", "file"])
+def test_declared_content_length_rejects_truncated_listing_and_file(truncated_part):
+    gong = gong_module()
+    filename = "mrzqs260925t2304c2316_301.fits.gz"
+    directory = day_url("20260925")
+    archive = listing(filename)
+    compressed = gzip.compress(b"fits")
+    listing_headers = {"Content-Length": str(len(archive) + 1)} if truncated_part == "listing" else {}
+    file_headers = {"Content-Length": str(len(compressed) + 1)} if truncated_part == "file" else {}
+    transport = Transport(
+        {
+            directory: Response(archive, headers=listing_headers),
+            file_url(filename): Response(compressed, headers=file_headers),
+        }
+    )
+    provider = gong.GongArchiveProvider(
+        transport, parser=lambda expanded, *, context, limits: expanded
+    )
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"))
+    assert caught.value.code == "content_length_mismatch"
+    assert provider.cache_size == 0
+
+
 def test_gzip_ratio_passes_at_exact_output_budget_and_rejects_one_more_byte():
     gong = gong_module()
     match = None
@@ -469,7 +494,14 @@ def test_gzip_integrity_attacks_fail_closed(mutate, code):
 
 
 @pytest.mark.parametrize(
-    "code", ["dns_timeout", "connect_timeout", "read_timeout", "socket_stall_timeout"]
+    "code",
+    [
+        "dns_timeout",
+        "connect_timeout",
+        "header_timeout",
+        "read_timeout",
+        "socket_stall_timeout",
+    ],
 )
 def test_injected_transport_expiry_preserves_stable_code(code):
     gong = gong_module()
@@ -557,6 +589,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
     limits = gong.GongArchiveLimits(
         dns_timeout_s=20.0,
         connect_timeout_s=20.0,
+        header_timeout_s=20.0,
         read_timeout_s=20.0,
         stall_timeout_s=20.0,
     )
@@ -571,6 +604,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
         "total_timeout_s": 10.0,
         "dns_timeout_s": 10.0,
         "connect_timeout_s": 10.0,
+        "header_timeout_s": 10.0,
         "read_timeout_s": 10.0,
         "stall_timeout_s": 10.0,
     }
@@ -578,6 +612,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
         "total_timeout_s": pytest.approx(7.0),
         "dns_timeout_s": pytest.approx(7.0),
         "connect_timeout_s": pytest.approx(7.0),
+        "header_timeout_s": pytest.approx(7.0),
         "read_timeout_s": pytest.approx(7.0),
         "stall_timeout_s": pytest.approx(7.0),
     }
@@ -771,21 +806,82 @@ def test_identical_validated_fits_reuses_science_with_current_attempt_provenance
 
 
 class AdapterRawResponse:
-    def __init__(self, *, clock: Clock, elapsed: float) -> None:
+    def __init__(
+        self,
+        *,
+        clock: Clock,
+        elapsed: float,
+        body: bytes | None = None,
+        header_elapsed: float = 0.0,
+        header_error: Exception | None = None,
+    ) -> None:
         self.status = 200
         self.headers = {}
         self._clock = clock
         self._elapsed = elapsed
+        self._body = body
+        self._header_elapsed = header_elapsed
+        self._header_error = header_error
+
+    def begin(self) -> None:
+        self._clock.advance(self._header_elapsed)
+        if self._header_error is not None:
+            raise self._header_error
 
     def geturl(self) -> str:
         return BASE
 
     def read(self, size: int) -> bytes:
         self._clock.advance(self._elapsed)
+        if self._body is not None:
+            return self._body[:size]
         raise TimeoutError("injected socket timeout")
 
     def close(self) -> None:
         pass
+
+
+class AdapterSocket:
+    def __init__(
+        self,
+        *,
+        clock: Clock,
+        connect_elapsed: float = 0.0,
+        connect_error: Exception | None = None,
+    ) -> None:
+        self.clock = clock
+        self.connect_elapsed = connect_elapsed
+        self.connect_error = connect_error
+        self.timeouts: list[float] = []
+        self.closed = False
+
+    def settimeout(self, timeout: float) -> None:
+        self.timeouts.append(timeout)
+
+    def connect(self, address) -> None:
+        self.clock.advance(self.connect_elapsed)
+        if self.connect_error is not None:
+            raise self.connect_error
+
+    def sendall(self, payload: bytes) -> None:
+        pass
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class AdapterTlsContext:
+    def wrap_socket(self, sock, *, server_hostname: str):
+        return sock
+
+
+ADDRESSES = [(2, 1, 6, "", ("127.0.0.1", 443))]
+
+
+def configure_adapter(transport, sock: AdapterSocket, raw: AdapterRawResponse) -> None:
+    transport._socket_factory = lambda *args: sock
+    transport._ssl_context_factory = AdapterTlsContext
+    transport._response_factory = lambda *args, **kwargs: raw
 
 
 @pytest.mark.parametrize(
@@ -799,13 +895,14 @@ def test_production_transport_distinguishes_read_deadline_from_socket_stall(
     clock = Clock()
     raw = AdapterRawResponse(clock=clock, elapsed=1.1)
     transport = gong.UrllibGongTransport(clock=clock)
-    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: [(None,)])
-    monkeypatch.setattr(transport._opener, "open", lambda *args, **kwargs: raw)
+    configure_adapter(transport, AdapterSocket(clock=clock), raw)
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
     response = transport.open(
         BASE,
         total_timeout_s=10.0,
         dns_timeout_s=2.0,
         connect_timeout_s=2.0,
+        header_timeout_s=2.0,
         read_timeout_s=read_timeout,
         stall_timeout_s=stall_timeout,
     )
@@ -814,13 +911,31 @@ def test_production_transport_distinguishes_read_deadline_from_socket_stall(
     assert caught.value.code == expected
 
 
+def test_successful_delayed_read_still_reports_socket_stall_without_private_socket():
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=1.1, body=b"x")
+    response = gong._BoundedHttpResponse(
+        raw,
+        clock=clock,
+        read_timeout_s=5.0,
+        stall_timeout_s=1.0,
+    )
+    with pytest.raises(gong.GongTransportError) as caught:
+        response.read(1)
+    assert caught.value.code == "socket_stall_timeout"
+
+
 def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
     gong = gong_module()
-    transport = gong.UrllibGongTransport()
+    clock = Clock()
+    transport = gong.UrllibGongTransport(clock=clock)
     monkeypatch.setattr(
         gong.socket,
         "getaddrinfo",
-        lambda *args, **kwargs: (_ for _ in ()).throw(gong.socket.gaierror("injected")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            gong.socket.gaierror(gong.socket.EAI_NONAME, "injected permanent failure")
+        ),
     )
     with pytest.raises(gong.GongTransportError) as dns:
         transport.open(
@@ -828,16 +943,18 @@ def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=2.0,
+            header_timeout_s=2.0,
             read_timeout_s=3.0,
             stall_timeout_s=4.0,
         )
-    assert dns.value.code == "dns_timeout"
+    assert dns.value.code == "dns_error"
 
-    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: [(None,)])
-    monkeypatch.setattr(
-        transport._opener,
-        "open",
-        lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError("injected")),
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    configure_adapter(
+        transport,
+        AdapterSocket(clock=clock, connect_error=TimeoutError("injected")),
+        raw,
     )
     with pytest.raises(gong.GongTransportError) as connect:
         transport.open(
@@ -845,6 +962,7 @@ def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=2.0,
+            header_timeout_s=2.0,
             read_timeout_s=3.0,
             stall_timeout_s=4.0,
         )
@@ -871,21 +989,21 @@ def test_production_dns_and_connect_budgets_pass_exactly_and_fail_after(
     def resolve(*args, **kwargs):
         if stage == "dns":
             clock.advance(elapsed)
-        return [(None,)]
-
-    def connect(*args, **kwargs):
-        if stage == "connect":
-            clock.advance(elapsed)
-        return raw
+        return ADDRESSES
 
     monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
-    monkeypatch.setattr(transport._opener, "open", connect)
+    configure_adapter(
+        transport,
+        AdapterSocket(clock=clock, connect_elapsed=elapsed if stage == "connect" else 0.0),
+        raw,
+    )
     if expected is None:
         response = transport.open(
             BASE,
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=1.0,
+            header_timeout_s=1.0,
             read_timeout_s=2.0,
             stall_timeout_s=2.0,
         )
@@ -897,6 +1015,7 @@ def test_production_dns_and_connect_budgets_pass_exactly_and_fail_after(
                 total_timeout_s=10.0,
                 dns_timeout_s=1.0,
                 connect_timeout_s=1.0,
+                header_timeout_s=1.0,
                 read_timeout_s=2.0,
                 stall_timeout_s=2.0,
             )
@@ -907,31 +1026,94 @@ def test_production_transport_reduces_later_stages_by_time_already_spent(monkeyp
     gong = gong_module()
     clock = Clock()
     raw = AdapterRawResponse(clock=clock, elapsed=0.0)
-    observed_connect_timeout = []
     transport = gong.UrllibGongTransport(clock=clock)
 
     def resolve(*args, **kwargs):
         clock.advance(2.0)
-        return [(None,)]
-
-    def connect(*args, timeout, **kwargs):
-        observed_connect_timeout.append(timeout)
-        clock.advance(1.1)
-        return raw
+        return ADDRESSES
 
     monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
-    monkeypatch.setattr(transport._opener, "open", connect)
+    sock = AdapterSocket(clock=clock, connect_elapsed=1.1)
+    configure_adapter(transport, sock, raw)
     with pytest.raises(gong.GongTransportError) as caught:
         transport.open(
             BASE,
             total_timeout_s=3.0,
             dns_timeout_s=5.0,
             connect_timeout_s=5.0,
+            header_timeout_s=5.0,
             read_timeout_s=5.0,
             stall_timeout_s=5.0,
         )
     assert caught.value.code == "connect_timeout"
-    assert observed_connect_timeout == [pytest.approx(1.0)]
+    assert sock.timeouts == [pytest.approx(1.0)]
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "error", "expected"),
+    [
+        (1.0, None, None),
+        (1.000001, None, "header_timeout"),
+        (0.0, TimeoutError("injected header stall"), "header_timeout"),
+    ],
+)
+def test_production_header_budget_is_distinct_from_connect(
+    monkeypatch, elapsed, error, expected
+):
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(
+        clock=clock,
+        elapsed=0.0,
+        header_elapsed=elapsed,
+        header_error=error,
+    )
+    transport = gong.UrllibGongTransport(clock=clock)
+    configure_adapter(transport, AdapterSocket(clock=clock), raw)
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
+    arguments = dict(
+        total_timeout_s=10.0,
+        dns_timeout_s=2.0,
+        connect_timeout_s=2.0,
+        header_timeout_s=1.0,
+        read_timeout_s=2.0,
+        stall_timeout_s=2.0,
+    )
+    if expected is None:
+        transport.open(BASE, **arguments).close()
+    else:
+        with pytest.raises(gong.GongTransportError) as caught:
+            transport.open(BASE, **arguments)
+        assert caught.value.code == expected
+
+
+@pytest.mark.parametrize(
+    ("dns_errno", "expected"),
+    [(socket.EAI_AGAIN, "dns_timeout"), (socket.EAI_NONAME, "dns_error")],
+)
+def test_production_dns_temporary_and_permanent_failures_are_distinct(
+    monkeypatch, dns_errno, expected
+):
+    gong = gong_module()
+    transport = gong.UrllibGongTransport()
+    monkeypatch.setattr(
+        gong.socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            gong.socket.gaierror(dns_errno, "injected")
+        ),
+    )
+    with pytest.raises(gong.GongTransportError) as caught:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=1.0,
+            connect_timeout_s=1.0,
+            header_timeout_s=1.0,
+            read_timeout_s=1.0,
+            stall_timeout_s=1.0,
+        )
+    assert caught.value.code == expected
 
 
 def test_deadline_after_parser_does_not_commit_cache():

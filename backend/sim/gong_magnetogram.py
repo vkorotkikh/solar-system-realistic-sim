@@ -9,15 +9,15 @@ while exposing an independently normalized CEA WCS and exact equal-area grid.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import io
 import json
 import math
 import re
 import socket
+import ssl
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 import warnings
 import zlib
 from collections import OrderedDict
@@ -890,6 +890,7 @@ class GongArchiveLimits:
     read_chunk_bytes: int = 64 * 1024
     dns_timeout_s: float = 5.0
     connect_timeout_s: float = 5.0
+    header_timeout_s: float = 5.0
     read_timeout_s: float = 10.0
     stall_timeout_s: float = 5.0
 
@@ -914,6 +915,7 @@ class GongArchiveLimits:
             "max_gzip_ratio",
             "dns_timeout_s",
             "connect_timeout_s",
+            "header_timeout_s",
             "read_timeout_s",
             "stall_timeout_s",
         ):
@@ -948,17 +950,13 @@ class GongTransport(Protocol):
         total_timeout_s: float,
         dns_timeout_s: float,
         connect_timeout_s: float,
+        header_timeout_s: float,
         read_timeout_s: float,
         stall_timeout_s: float,
     ) -> GongStreamResponse: ...
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
-class _UrllibResponse:
+class _BoundedHttpResponse:
     def __init__(
         self,
         response,
@@ -966,15 +964,18 @@ class _UrllibResponse:
         clock: Callable[[], float],
         read_timeout_s: float,
         stall_timeout_s: float,
+        sock=None,
+        url: str | None = None,
     ):
         self._response = response
         self._clock = clock
         self._read_started = clock()
         self._read_timeout_s = read_timeout_s
         self._stall_timeout_s = stall_timeout_s
+        self._sock = sock
         self.status = int(response.status)
         self.headers = dict(response.headers.items())
-        self.url = response.geturl()
+        self.url = url if url is not None else response.geturl()
 
     def read(self, size: int) -> bytes:
         remaining = self._read_timeout_s - (self._clock() - self._read_started)
@@ -983,12 +984,16 @@ class _UrllibResponse:
         read_deadline_is_first = remaining <= self._stall_timeout_s
         socket_timeout = max(min(remaining, self._stall_timeout_s), 1e-6)
         try:
-            self._response.fp.raw._sock.settimeout(socket_timeout)
+            if self._sock is not None:
+                self._sock.settimeout(socket_timeout)
+            else:
+                self._response.fp.raw._sock.settimeout(socket_timeout)
         except (AttributeError, OSError):
             # HTTPResponse implementations do not expose a public socket API.
             # The elapsed-time check still gives a cooperative read deadline.
             pass
         try:
+            read_started = self._clock()
             chunk = self._response.read(size)
         except (TimeoutError, socket.timeout) as exc:
             code = "read_timeout" if read_deadline_is_first else "socket_stall_timeout"
@@ -996,27 +1001,38 @@ class _UrllibResponse:
             raise GongTransportError(code, detail) from exc
         except OSError as exc:
             raise GongTransportError("read_error", "response read failed") from exc
-        if self._clock() - self._read_started > self._read_timeout_s:
+        read_finished = self._clock()
+        if read_deadline_is_first and read_finished - self._read_started > self._read_timeout_s:
+            raise GongTransportError("read_timeout", "response read deadline expired")
+        if read_finished - read_started > self._stall_timeout_s:
+            raise GongTransportError("socket_stall_timeout", "response socket stalled")
+        if read_finished - self._read_started > self._read_timeout_s:
             raise GongTransportError("read_timeout", "response read deadline expired")
         return chunk
 
     def close(self) -> None:
-        self._response.close()
+        try:
+            self._response.close()
+        finally:
+            if self._sock is not None:
+                self._sock.close()
 
 
-class UrllibGongTransport:
-    """Synchronous transport with automatic redirects disabled.
+class StdlibGongTransport:
+    """Direct HTTPS transport with automatic redirects disabled.
 
-    DNS, connection, total-read, and per-read socket-stall budgets are distinct.
-    This adapter is still intended for an offline/supervised tool: Python's
-    in-process resolver cannot be forcibly killed, and urllib exposes the socket
-    only through implementation details. Callers needing hard kill/reap/restart
-    guarantees must use the planned supervised-worker tranche.
+    DNS, TCP/TLS connection, response-header, total-body-read, and per-read
+    socket-stall budgets are separate phases. The adapter uses the resolved
+    address directly, so the connection phase cannot silently repeat DNS.
+    Python's in-process resolver still cannot be forcibly killed; callers needing
+    hard kill/reap/restart guarantees must use the supervised-worker tranche.
     """
 
     def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
-        self._opener = urllib.request.build_opener(_NoRedirect())
         self._clock = clock
+        self._socket_factory = socket.socket
+        self._ssl_context_factory = ssl.create_default_context
+        self._response_factory = http.client.HTTPResponse
 
     def open(
         self,
@@ -1025,6 +1041,7 @@ class UrllibGongTransport:
         total_timeout_s: float,
         dns_timeout_s: float,
         connect_timeout_s: float,
+        header_timeout_s: float,
         read_timeout_s: float,
         stall_timeout_s: float,
     ) -> GongStreamResponse:
@@ -1035,40 +1052,93 @@ class UrllibGongTransport:
         dns_started = transport_started
         dns_budget = min(dns_timeout_s, total_timeout_s)
         try:
-            socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-        except (socket.gaierror, TimeoutError, socket.timeout) as exc:
-            raise GongTransportError("dns_timeout", "DNS resolution failed or expired") from exc
+            addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+        except socket.gaierror as exc:
+            code = "dns_timeout" if exc.errno == socket.EAI_AGAIN else "dns_error"
+            detail = "DNS resolution expired" if code == "dns_timeout" else "DNS name resolution failed"
+            raise GongTransportError(code, detail) from exc
+        except (TimeoutError, socket.timeout) as exc:
+            raise GongTransportError("dns_timeout", "DNS resolution expired") from exc
         except OSError as exc:
             raise GongTransportError("dns_error", "DNS resolution failed") from exc
         if self._clock() - dns_started > dns_budget:
             raise GongTransportError("dns_timeout", "DNS resolution exceeded its deadline")
-        request = urllib.request.Request(url, headers={"User-Agent": "solar-pfss-gong/1"})
         connect_started = self._clock()
         total_remaining = total_timeout_s - (connect_started - transport_started)
         connect_budget = min(connect_timeout_s, max(total_remaining, 0.0))
+        tls_socket = self._connect(host, addresses, connect_started, connect_budget)
+        header_started = self._clock()
+        total_remaining = total_timeout_s - (header_started - transport_started)
+        header_budget = min(header_timeout_s, max(total_remaining, 0.0))
+        parsed = urllib.parse.urlsplit(url)
+        target = parsed.path or "/"
         try:
-            response = self._opener.open(request, timeout=max(connect_budget, 1e-6))
-        except urllib.error.HTTPError as exc:
-            response = exc
-        except urllib.error.URLError as exc:
-            reason = exc.reason
-            if isinstance(reason, socket.gaierror):
-                raise GongTransportError("dns_timeout", "DNS resolution failed or expired") from exc
-            if isinstance(reason, (TimeoutError, socket.timeout)):
-                raise GongTransportError("connect_timeout", "connection attempt expired") from exc
-            raise GongTransportError("connect_error", "connection attempt failed") from exc
+            tls_socket.settimeout(max(header_budget, 1e-6))
+            request = (
+                f"GET {target} HTTP/1.1\r\n"
+                f"Host: {host}\r\n"
+                "User-Agent: solar-pfss-gong/1\r\n"
+                "Accept-Encoding: identity\r\n"
+                "Connection: close\r\n\r\n"
+            ).encode("ascii")
+            tls_socket.sendall(request)
+            response = self._response_factory(tls_socket, method="GET")
+            response.begin()
         except (TimeoutError, socket.timeout) as exc:
-            raise GongTransportError("connect_timeout", "connection attempt expired") from exc
-        if self._clock() - connect_started > connect_budget:
+            tls_socket.close()
+            raise GongTransportError("header_timeout", "response header wait expired") from exc
+        except (OSError, http.client.HTTPException) as exc:
+            tls_socket.close()
+            raise GongTransportError("header_error", "response header exchange failed") from exc
+        if self._clock() - header_started > header_budget:
             response.close()
-            raise GongTransportError("connect_timeout", "connection attempt exceeded its deadline")
+            tls_socket.close()
+            raise GongTransportError("header_timeout", "response header wait exceeded its deadline")
         total_remaining = total_timeout_s - (self._clock() - transport_started)
-        return _UrllibResponse(
+        return _BoundedHttpResponse(
             response,
             clock=self._clock,
             read_timeout_s=min(read_timeout_s, max(total_remaining, 0.0)),
             stall_timeout_s=min(stall_timeout_s, max(total_remaining, 0.0)),
+            sock=tls_socket,
+            url=url,
         )
+
+    def _connect(self, host: str, addresses, started: float, budget: float):
+        last_error: OSError | None = None
+        saw_timeout = False
+        context = self._ssl_context_factory()
+        for family, socktype, proto, _, sockaddr in addresses:
+            remaining = budget - (self._clock() - started)
+            if remaining < 0.0:
+                saw_timeout = True
+                break
+            raw_socket = self._socket_factory(family, socktype, proto)
+            try:
+                raw_socket.settimeout(max(remaining, 1e-6))
+                raw_socket.connect(sockaddr)
+                tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
+                if self._clock() - started > budget:
+                    tls_socket.close()
+                    raise GongTransportError(
+                        "connect_timeout", "TCP/TLS connection exceeded its deadline"
+                    )
+                return tls_socket
+            except GongTransportError:
+                raise
+            except (TimeoutError, socket.timeout):
+                saw_timeout = True
+                raw_socket.close()
+            except OSError as exc:
+                last_error = exc
+                raw_socket.close()
+        if saw_timeout or self._clock() - started > budget:
+            raise GongTransportError("connect_timeout", "TCP/TLS connection expired")
+        raise GongTransportError("connect_error", "TCP/TLS connection failed") from last_error
+
+
+# Compatibility name for the original offline adapter API.
+UrllibGongTransport = StdlibGongTransport
 
 
 @dataclass(slots=True)
@@ -1351,6 +1421,7 @@ class GongArchiveProvider:
                     total_timeout_s=remaining,
                     dns_timeout_s=min(self._limits.dns_timeout_s, remaining),
                     connect_timeout_s=min(self._limits.connect_timeout_s, remaining),
+                    header_timeout_s=min(self._limits.header_timeout_s, remaining),
                     read_timeout_s=min(self._limits.read_timeout_s, remaining),
                     stall_timeout_s=min(self._limits.stall_timeout_s, remaining),
                 )
@@ -1380,6 +1451,7 @@ class GongArchiveProvider:
                 if response.status != 200:
                     raise GongArchiveError("http_status", f"archive returned HTTP {response.status}")
                 declared = _header(response.headers, "Content-Length")
+                declared_size: int | None = None
                 if declared is not None:
                     try:
                         declared_size = int(declared)
@@ -1415,6 +1487,11 @@ class GongArchiveProvider:
                     if budget.aggregate_bytes > self._limits.max_aggregate_bytes:
                         raise GongArchiveError("aggregate_limit", "responses exceed aggregate byte limit")
                     chunks.append(chunk)
+                if declared_size is not None and total != declared_size:
+                    raise GongArchiveError(
+                        "content_length_mismatch",
+                        "response ended before its declared Content-Length",
+                    )
                 return b"".join(chunks)
             finally:
                 response.close()
