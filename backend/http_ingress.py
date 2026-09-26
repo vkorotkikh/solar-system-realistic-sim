@@ -290,8 +290,15 @@ class NetworkRequestShapeMiddleware:
                     message="Content-Length must be a canonical non-negative integer.",
                 )
                 return
-            content_length = int(raw_content_length)
-            if content_length > self.limits.max_body_bytes:
+            encoded_limit = str(self.limits.max_body_bytes).encode("ascii")
+            exceeds_limit = (
+                len(raw_content_length) > len(encoded_limit)
+                or (
+                    len(raw_content_length) == len(encoded_limit)
+                    and raw_content_length > encoded_limit
+                )
+            )
+            if exceeds_limit:
                 await self._reject(
                     scope,
                     receive,
@@ -301,6 +308,7 @@ class NetworkRequestShapeMiddleware:
                     message="Request body exceeds the network-profile byte limit.",
                 )
                 return
+            content_length = int(raw_content_length)
 
         if len(transfer_encodings) != 0:
             if (

@@ -189,6 +189,11 @@ def test_network_ingress_rejects_declared_bodies_on_safe_methods(
             413,
             b'"request_body_too_large"',
         ),
+        (
+            _scope(headers=[(b"content-length", b"9" * 4_301)]),
+            413,
+            b'"request_body_too_large"',
+        ),
     ],
 )
 def test_network_ingress_enforces_shape_limits_before_downstream(
