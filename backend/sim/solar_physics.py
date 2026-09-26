@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from random import Random
 from typing import Any
 
@@ -188,6 +187,15 @@ class FluxTubeSeed:
     footpoint_jitter_lon_rad: float
 
 
+class ObservedSolarInputUnavailable(RuntimeError):
+    """Raised when data-driven forcing lacks a scientifically promoted provider."""
+
+    reason = "disabled_unvalidated"
+
+    def __init__(self) -> None:
+        super().__init__("observed solar input is disabled_unvalidated")
+
+
 class SolarCoronaPhysicsModel:
     """
     Quasi-MHD, backend-driven solar corona model.
@@ -359,44 +367,6 @@ class SolarCoronaPhysicsModel:
             ],
         }
 
-    @staticmethod
-    def _extract_numeric(mapping: dict[str, Any] | None, key: str) -> float | None:
-        if not isinstance(mapping, dict):
-            return None
-        value = mapping.get(key)
-        if not isinstance(value, (float, int)):
-            return None
-        value_f = float(value)
-        if not math.isfinite(value_f):
-            return None
-        return value_f
-
-    @staticmethod
-    def _parse_utc_timestamp(value: Any) -> datetime | None:
-        if not isinstance(value, str):
-            return None
-        raw = value.strip()
-        if not raw:
-            return None
-        # Normalize common UTC forms: "YYYY-MM-DD HH:MM:SS" and ISO8601 with Z.
-        normalized = raw.replace("Z", "+00:00")
-        if " " in normalized and "T" not in normalized:
-            normalized = normalized.replace(" ", "T")
-        try:
-            parsed = datetime.fromisoformat(normalized)
-        except ValueError:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
-
-    @staticmethod
-    def _freshness_weight(timestamp: datetime | None, max_age_s: float) -> float | None:
-        if timestamp is None:
-            return None
-        age_s = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
-        return _clamp(1.0 - age_s / max(1.0, max_age_s), 0.0, 1.0)
-
     def _apply_realtime_forcing(
         self,
         synthetic_activity: float,
@@ -409,6 +379,7 @@ class SolarCoronaPhysicsModel:
 
         assimilation = {
             "mode": forcing_key,
+            "effective_mode": "synthetic",
             "applied": False,
             "synthetic_activity_index": synthetic_activity,
             "observed_activity_index": None,
@@ -423,104 +394,16 @@ class SolarCoronaPhysicsModel:
                 "silso": None,
                 "sdo_aia": None,
             },
+            "observed_input_status": (
+                "not_requested" if forcing_key == "synthetic" else "disabled_unvalidated"
+            ),
         }
         if forcing_key == "synthetic":
             return synthetic_activity, assimilation, None
-        if not isinstance(realtime_data, dict):
+        if forcing_key == "hybrid":
+            assimilation["fallback_reason"] = "disabled_unvalidated"
             return synthetic_activity, assimilation, None
-
-        assimilation["source_status"] = realtime_data.get("source_status")
-        swpc = realtime_data.get("swpc")
-        silso = realtime_data.get("silso")
-        sdo_aia = realtime_data.get("sdo_aia")
-        assimilation["sources"]["swpc"] = swpc
-        assimilation["sources"]["silso"] = silso
-        assimilation["sources"]["sdo_aia"] = sdo_aia
-        assimilation["live_data_available"] = any(
-            isinstance(value, dict) for value in (swpc, silso, sdo_aia)
-        )
-
-        proxy_breakdown: dict[str, float] = {}
-        observed_proxy = self._extract_numeric(realtime_data, "combined_activity_proxy")
-        if observed_proxy is None:
-            weighted_sum = 0.0
-            weight_total = 0.0
-            swpc_proxy = self._extract_numeric(swpc, "activity_proxy")
-            silso_proxy = self._extract_numeric(silso, "activity_proxy")
-            sdo_proxy = self._extract_numeric(sdo_aia, "activity_proxy")
-            if swpc_proxy is not None:
-                weighted_sum += swpc_proxy * 0.5
-                weight_total += 0.5
-                proxy_breakdown["swpc"] = swpc_proxy
-            if silso_proxy is not None:
-                weighted_sum += silso_proxy * 0.35
-                weight_total += 0.35
-                proxy_breakdown["silso"] = silso_proxy
-            if sdo_proxy is not None:
-                weighted_sum += sdo_proxy * 0.15
-                weight_total += 0.15
-                proxy_breakdown["sdo_aia"] = sdo_proxy
-            if weight_total > 0:
-                observed_proxy = _clamp(weighted_sum / weight_total, 0.0, 1.0)
-        else:
-            proxy_breakdown["combined"] = observed_proxy
-
-        if observed_proxy is None:
-            assimilation["blended_activity_index"] = synthetic_activity
-            assimilation["proxy_breakdown"] = proxy_breakdown
-            return synthetic_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
-
-        swpc_time = self._parse_utc_timestamp(swpc.get("time_tag") if isinstance(swpc, dict) else None)
-        silso_date = self._parse_utc_timestamp(
-            f"{silso.get('date')}T00:00:00Z" if isinstance(silso, dict) and isinstance(silso.get("date"), str) else None
-        )
-        sdo_time = self._parse_utc_timestamp(
-            (
-                sdo_aia.get("latest_image_date_utc")
-                if isinstance(sdo_aia, dict) and isinstance(sdo_aia.get("latest_image_date_utc"), str)
-                else sdo_aia.get("request_date_utc")
-                if isinstance(sdo_aia, dict)
-                else None
-            )
-        )
-        swpc_weight = self._freshness_weight(swpc_time, max_age_s=4.0 * 3_600.0)
-        silso_weight = self._freshness_weight(silso_date, max_age_s=8.0 * 86_400.0)
-        sdo_weight = self._freshness_weight(sdo_time, max_age_s=10.0 * 3_600.0)
-
-        confidence_sum = 0.0
-        confidence_weight_total = 0.0
-        if swpc_weight is not None:
-            confidence_sum += swpc_weight * 0.48
-            confidence_weight_total += 0.48
-        if silso_weight is not None:
-            confidence_sum += silso_weight * 0.27
-            confidence_weight_total += 0.27
-        if sdo_weight is not None:
-            confidence_sum += sdo_weight * 0.25
-            confidence_weight_total += 0.25
-        observed_confidence = (
-            _clamp(confidence_sum / confidence_weight_total, 0.0, 1.0)
-            if confidence_weight_total > 0
-            else 0.0
-        )
-
-        assimilation["observed_activity_index"] = observed_proxy
-        assimilation["observed_confidence"] = observed_confidence
-        assimilation["proxy_breakdown"] = proxy_breakdown
-
-        if forcing_key == "data_driven":
-            blend_weight = 0.78 + 0.18 * observed_confidence
-        else:
-            # Hybrid keeps synthetic cycle continuity while nudging toward real-time observations.
-            blend_weight = 0.25 + 0.35 * observed_confidence
-        blend_weight = _clamp(blend_weight, 0.0, 1.0)
-        blended_activity = synthetic_activity * (1.0 - blend_weight) + observed_proxy * blend_weight
-        blended_activity = _clamp(blended_activity, 0.02, 0.98)
-
-        assimilation["applied"] = True
-        assimilation["blend_weight"] = blend_weight
-        assimilation["blended_activity_index"] = blended_activity
-        return blended_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
+        raise ObservedSolarInputUnavailable()
 
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
@@ -1116,10 +999,6 @@ class SolarCoronaPhysicsModel:
 
         # ─── Coronal Hole Extraction / Synthesis ────────────────────────────
         coronal_holes_data: dict[str, Any] | None = None
-        if isinstance(realtime_data, dict):
-            sdo_aia = realtime_data.get("sdo_aia")
-            if isinstance(sdo_aia, dict):
-                coronal_holes_data = sdo_aia.get("coronal_holes")
         if not isinstance(coronal_holes_data, dict) or not coronal_holes_data.get("holes"):
             coronal_holes_data = self._synthetic_coronal_holes(activity, jd)
 
@@ -1138,7 +1017,8 @@ class SolarCoronaPhysicsModel:
             pfss_lines = 180
             pfss_lmax = 15
 
-        # Trigger PFSS cache (it will fetch GONG or use synthetic fallback appropriately)
+        # Compute the deterministic synthetic PFSS product. Runtime observed
+        # magnetograms remain disabled until their validation gates are promoted.
         pfss_field_lines = self._pfss_cache.get_or_compute(
             jd=jd,
             activity=activity,
@@ -1164,10 +1044,18 @@ class SolarCoronaPhysicsModel:
         pfss_public = dict(pfss_field_lines) if isinstance(pfss_field_lines, dict) else pfss_field_lines
         if isinstance(pfss_public, dict):
             pfss_public.pop("_wsa_result", None)
+            if assimilation["mode"] == "hybrid":
+                pfss_public["fallback_reason"] = "disabled_unvalidated"
+            else:
+                pfss_public.pop("fallback_reason", None)
 
         return {
-            "schema": {"name": "solar_physics_state", "version": 1},
+            "schema": {"name": "solar_physics_state", "version": 2},
             "model": self.model_name,
+            "epoch_jd_tdb": float(jd),
+            "wall_epoch_jd_tdb": float(wall_jd),
+            "jd_time_scale": "TDB",
+            # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
             "wall_epoch_jd": float(wall_jd),
             "fidelity": fidelity_key,

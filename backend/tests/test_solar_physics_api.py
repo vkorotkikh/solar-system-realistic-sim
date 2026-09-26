@@ -1,12 +1,54 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 import time
 
 import server
 from server import app
 
 client = TestClient(app)
+
+
+def _fallback_reasons(value: object) -> list[str]:
+    reasons: list[str] = []
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if key == "fallback_reason" and isinstance(nested, str):
+                reasons.append(nested)
+            reasons.extend(_fallback_reasons(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            reasons.extend(_fallback_reasons(nested))
+    return reasons
+
+
+def _install_fast_solar_response(monkeypatch, calls: list[tuple[object, ...]]) -> None:
+    async def fake_owned_thread(_function, *args, **_kwargs):
+        calls.append(args)
+        _kwargs["guard"].release()
+        epoch_jd_tdb = float(args[0])
+        return {
+            "source": "backend",
+            "forcing": str(args[3]),
+            "live_data_enabled": False,
+            "epoch_jd_tdb": epoch_jd_tdb,
+            "wall_epoch_jd_tdb": epoch_jd_tdb,
+            "jd_time_scale": "TDB",
+            "epoch_jd": epoch_jd_tdb,
+            "wall_epoch_jd": epoch_jd_tdb,
+            "effective_forcing": "synthetic",
+            "live_data_requested": False,
+            "forcing_status": {
+                "requested": str(args[3]),
+                "effective": "synthetic",
+                "observed_input_status": "not_requested",
+                "runtime_eligible": False,
+            },
+        }
+
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server, "_run_owned_thread", fake_owned_thread)
 
 
 def test_solar_capabilities_exposes_fidelity_levels() -> None:
@@ -55,10 +97,256 @@ def test_solar_physics_returns_3d_coronal_features() -> None:
     assert first["temperature_mk"] > 0
     assert first["electron_density_m3"] > 0
     assert first["alfven_speed_kms"] > 0
+    assert _fallback_reasons(payload) == []
 
     speeds = [float(feature["expansion_speed_kms"]) for feature in payload["corona"]["features"]]
     assert min(speeds) >= 20.0
     assert max(speeds) <= 3_500.0
+
+
+def test_solar_physics_uses_canonical_jdtdb_and_returns_labelled_aliases(monkeypatch) -> None:
+    calls: list[tuple[object, ...]] = []
+    _install_fast_solar_response(monkeypatch, calls)
+
+    response = client.get("/solar/physics", params={"jd_tdb": 2_460_000.5})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert calls and calls[0][0] == 2_460_000.5
+    assert payload["epoch_jd_tdb"] == payload["epoch_jd"] == 2_460_000.5
+    assert payload["wall_epoch_jd_tdb"] == payload["wall_epoch_jd"] == 2_460_000.5
+    assert payload["jd_time_scale"] == "TDB"
+
+
+def test_solar_physics_defaults_to_current_jdtdb(monkeypatch) -> None:
+    expected_jd_tdb = 2_460_500.7508007
+    calls: list[tuple[object, ...]] = []
+    monkeypatch.setattr(server, "current_jd_tdb", lambda: expected_jd_tdb)
+    _install_fast_solar_response(monkeypatch, calls)
+
+    response = client.get("/solar/physics")
+
+    assert response.status_code == 200
+    assert calls and calls[0][0] == expected_jd_tdb
+    assert response.json()["epoch_jd_tdb"] == expected_jd_tdb
+
+
+def test_solar_physics_accepts_equal_legacy_epoch_alias(monkeypatch) -> None:
+    calls: list[tuple[object, ...]] = []
+    _install_fast_solar_response(monkeypatch, calls)
+
+    response = client.get(
+        "/solar/physics",
+        params={"jd_tdb": 2_460_000.5, "jd": 2_460_000.5},
+    )
+
+    assert response.status_code == 200
+    assert calls and calls[0][0] == 2_460_000.5
+
+
+def test_solar_epoch_query_openapi_contract_is_labelled_and_deprecated() -> None:
+    document = client.get("/openapi.json").json()
+
+    for path in ("/solar/physics", "/solar/realtime/aia-tile"):
+        parameters = {
+            parameter["name"]: parameter
+            for parameter in document["paths"][path]["get"]["parameters"]
+        }
+        canonical = parameters["jd_tdb"]
+        legacy = parameters["jd"]
+        assert "TDB" in canonical["description"]
+        assert canonical.get("deprecated") is not True
+        assert "TDB" in legacy["description"]
+        assert "alias" in legacy["description"].lower()
+        assert legacy["deprecated"] is True
+
+
+def test_historical_response_uses_separate_current_wall_epoch(monkeypatch) -> None:
+    requested_epoch = 2_459_000.5
+    wall_epoch = 2_460_500.7508007
+    model_calls: list[dict[str, object]] = []
+
+    def fake_sample_state(epoch_jd_tdb: float, **kwargs):
+        model_calls.append({"epoch": epoch_jd_tdb, **kwargs})
+        return {
+            "epoch_jd_tdb": epoch_jd_tdb,
+            "wall_epoch_jd_tdb": kwargs["wall_jd"],
+            "jd_time_scale": "TDB",
+            "epoch_jd": epoch_jd_tdb,
+            "wall_epoch_jd": kwargs["wall_jd"],
+            "data_assimilation": {"mode": kwargs["forcing"]},
+        }
+
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server, "current_jd_tdb", lambda: wall_epoch, raising=False)
+    monkeypatch.setattr(server.SOLAR_PHYSICS_MODEL, "sample_state", fake_sample_state)
+
+    response = client.get(
+        "/solar/physics",
+        params={"jd_tdb": requested_epoch, "fidelity": "preview", "max_features": 8},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["epoch_jd_tdb"] == payload["epoch_jd"] == requested_epoch
+    assert payload["wall_epoch_jd_tdb"] == payload["wall_epoch_jd"] == wall_epoch
+    assert payload["wall_epoch_jd_tdb"] != payload["epoch_jd_tdb"]
+    assert payload["jd_time_scale"] == "TDB"
+    assert model_calls[0]["wall_jd"] == wall_epoch
+
+
+def test_solar_physics_rejects_conflicting_epoch_aliases_before_admission(monkeypatch) -> None:
+    admission_calls = 0
+
+    def record_admission(_request) -> None:
+        nonlocal admission_calls
+        admission_calls += 1
+
+    monkeypatch.setattr(server, "_enforce_solar_request_rate_limit", record_admission)
+
+    response = client.get(
+        "/solar/physics",
+        params={"jd_tdb": 2_460_000.5, "jd": 2_460_001.5},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "conflicting_julian_date_aliases"
+    assert admission_calls == 0
+
+
+def test_solar_physics_rejects_nonfinite_canonical_epoch_before_admission(monkeypatch) -> None:
+    admission_calls = 0
+
+    def record_admission(_request) -> None:
+        nonlocal admission_calls
+        admission_calls += 1
+
+    monkeypatch.setattr(server, "_enforce_solar_request_rate_limit", record_admission)
+
+    response = client.get("/solar/physics", params={"jd_tdb": "nan"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_jd_tdb"
+    assert admission_calls == 0
+
+
+def test_data_driven_fails_before_compute_admission_or_provider(monkeypatch) -> None:
+    admission_calls = 0
+    execution_calls = 0
+    model_calls = 0
+    provider_calls = 0
+
+    def record_compute_admission(_guard) -> bool:
+        nonlocal admission_calls
+        admission_calls += 1
+        return True
+
+    async def record_execution(*_args, **_kwargs):
+        nonlocal execution_calls
+        execution_calls += 1
+        return {}
+
+    def record_provider(*_args, **_kwargs):
+        nonlocal provider_calls
+        provider_calls += 1
+        return {}
+
+    def record_model(*_args, **_kwargs):
+        nonlocal model_calls
+        model_calls += 1
+        return {}
+
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server, "_acquire_nonblocking", record_compute_admission)
+    monkeypatch.setattr(server, "_run_owned_thread", record_execution)
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest", record_provider)
+    monkeypatch.setattr(server.SOLAR_PHYSICS_MODEL, "sample_state", record_model)
+
+    response = client.get(
+        "/solar/physics",
+        params={"jd_tdb": 2_460_000.5, "forcing": "data_driven", "live_data": True},
+    )
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["code"] == "solar_observed_input_unavailable"
+    assert detail["provider"] == "gong_zqs"
+    assert detail["product"] == "zqs"
+    assert detail["status"] == detail["reason"] == "disabled_unvalidated"
+    assert (admission_calls, execution_calls, model_calls, provider_calls) == (0, 0, 0, 0)
+
+
+def test_synthetic_and_hybrid_builders_never_request_realtime_data(monkeypatch) -> None:
+    provider_calls = 0
+    model_inputs: list[object] = []
+
+    def forbidden_provider(*_args, **_kwargs):
+        nonlocal provider_calls
+        provider_calls += 1
+        return {"combined_activity_proxy": 0.99}
+
+    def fake_sample_state(
+        _epoch_jd_tdb: float,
+        *,
+        fidelity: str,
+        max_features: int,
+        forcing: str,
+        realtime_data,
+        wall_jd: float,
+    ):
+        model_inputs.append(realtime_data)
+        return {
+            "data_assimilation": {"mode": forcing},
+            "epoch_jd_tdb": _epoch_jd_tdb,
+            "wall_epoch_jd_tdb": wall_jd,
+            "jd_time_scale": "TDB",
+            "epoch_jd": _epoch_jd_tdb,
+            "wall_epoch_jd": wall_jd,
+        }
+
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest", forbidden_provider)
+    monkeypatch.setattr(server.SOLAR_PHYSICS_MODEL, "sample_state", fake_sample_state)
+
+    synthetic = server._build_solar_physics_state(
+        2_460_000.5,
+        "preview",
+        8,
+        "synthetic",
+        True,
+        False,
+    )
+    hybrid = server._build_solar_physics_state(
+        2_460_000.5,
+        "preview",
+        8,
+        "hybrid",
+        True,
+        False,
+    )
+
+    assert provider_calls == 0
+    assert model_inputs == [None, None]
+    assert synthetic["live_data_enabled"] is False
+    assert synthetic["live_data_requested"] is True
+    assert synthetic["effective_forcing"] == "synthetic"
+    assert synthetic["forcing_status"] == {
+        "requested": "synthetic",
+        "effective": "synthetic",
+        "observed_input_status": "not_requested",
+        "runtime_eligible": False,
+    }
+    assert "fallback_reason" not in synthetic
+    assert hybrid["live_data_enabled"] is False
+    assert hybrid["live_data_requested"] is True
+    assert hybrid["effective_forcing"] == "synthetic"
+    assert hybrid["forcing_status"] == {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": False,
+        "fallback_reason": "disabled_unvalidated",
+    }
+    assert hybrid["fallback_reason"] == "disabled_unvalidated"
 
 
 def test_solar_physics_rejects_unknown_fidelity() -> None:
@@ -107,6 +395,8 @@ def test_solar_physics_hybrid_mode_without_live_data_is_stable() -> None:
     assert payload["data_assimilation"]["observed_confidence"] == 0.0
     assert payload["data_assimilation"]["blend_weight"] == 0.0
     assert payload["activity_index"] == payload["data_assimilation"]["blended_activity_index"]
+    assert set(_fallback_reasons(payload)) == {"disabled_unvalidated"}
+    assert payload["pfss_field_lines"]["fallback_reason"] == "disabled_unvalidated"
 
 
 def test_solar_realtime_aia_tile_rejects_unknown_channel() -> None:
@@ -126,9 +416,13 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
         "content_type": "image/png",
     }
 
-    def fake_latest_aia_tile(channel: str, jd: float | None = None, force_refresh: bool = False):
+    def fake_latest_aia_tile(
+        channel: str,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+    ):
         assert channel == "aia_193"
-        assert jd is None
+        assert jd_tdb is None
         assert force_refresh is False
         return payload
 
@@ -142,6 +436,110 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
 
 
+def test_aia_tile_uses_canonical_jdtdb_query(monkeypatch) -> None:
+    requested_epochs: list[float | None] = []
+    payload = {
+        "channel": "aia_193",
+        "image_id": "184733789",
+        "image_date": "2026-02-17 03:19:41",
+        "tile_url": "https://example.invalid/tile.png",
+        "content": b"png",
+        "content_type": "image/png",
+    }
+
+    def fake_latest_aia_tile(
+        channel: str,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+    ):
+        assert channel == "aia_193"
+        assert force_refresh is False
+        requested_epochs.append(jd_tdb)
+        return payload
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    response = client.get(
+        "/solar/realtime/aia-tile",
+        params={"channel": "aia_193", "jd_tdb": 2_459_291.4394237916},
+    )
+
+    assert response.status_code == 200
+    assert requested_epochs == [2_459_291.4394237916]
+
+
+def test_aia_tile_accepts_equal_legacy_epoch_alias(monkeypatch) -> None:
+    requested_epochs: list[float | None] = []
+    payload = {
+        "channel": "aia_193",
+        "content": b"png",
+        "content_type": "image/png",
+    }
+
+    def fake_latest_aia_tile(
+        channel: str,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+    ):
+        requested_epochs.append(jd_tdb)
+        return payload
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    response = client.get(
+        "/solar/realtime/aia-tile",
+        params={"jd_tdb": 2_459_291.5, "jd": 2_459_291.5},
+    )
+
+    assert response.status_code == 200
+    assert requested_epochs == [2_459_291.5]
+
+
+def test_aia_tile_rejects_conflicting_epoch_aliases_before_admission(monkeypatch) -> None:
+    admission_calls = 0
+
+    def record_admission(_request) -> None:
+        nonlocal admission_calls
+        admission_calls += 1
+
+    monkeypatch.setattr(server, "_enforce_solar_aia_tile_rate_limit", record_admission)
+
+    response = client.get(
+        "/solar/realtime/aia-tile",
+        params={"jd_tdb": 2_459_291.5, "jd": 2_459_292.5},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "conflicting_julian_date_aliases"
+    assert admission_calls == 0
+
+
+@pytest.mark.parametrize(
+    ("parameter", "expected_code"),
+    (("jd_tdb", "invalid_jd_tdb"), ("jd", "invalid_jd")),
+)
+def test_aia_tile_rejects_nonfinite_epoch_before_admission(
+    monkeypatch,
+    parameter: str,
+    expected_code: str,
+) -> None:
+    admission_calls = 0
+
+    def record_admission(_request) -> None:
+        nonlocal admission_calls
+        admission_calls += 1
+
+    monkeypatch.setattr(server, "_enforce_solar_aia_tile_rate_limit", record_admission)
+
+    response = client.get("/solar/realtime/aia-tile", params={parameter: "nan"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == expected_code
+    assert admission_calls == 0
+
+
 def test_aia_tile_rejects_rate_limit(monkeypatch) -> None:
     payload = {
         "channel": "aia_193",
@@ -152,9 +550,13 @@ def test_aia_tile_rejects_rate_limit(monkeypatch) -> None:
         "content_type": "image/png",
     }
 
-    def fake_latest_aia_tile(channel: str, jd: float | None = None, force_refresh: bool = False):
+    def fake_latest_aia_tile(
+        channel: str,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+    ):
         assert channel == "aia_193"
-        assert jd is None
+        assert jd_tdb is None
         assert force_refresh is False
         return payload
 

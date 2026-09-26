@@ -40,9 +40,9 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
-from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,8 +86,9 @@ from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
-from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
+from sim.solar_physics import ObservedSolarInputUnavailable, SolarCoronaPhysicsModel
 from sim.solar_realtime_data import SolarRealtimeDataProvider
+from sim.solar_time import current_jd_tdb
 from trajectory import (
     DEFAULT_ASSIST_POOL,
     TRAJECTORY_OBJECTIVES,
@@ -948,6 +949,72 @@ def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
         queue.append(now)
 
 
+def _resolve_jd_tdb_query(
+    jd_tdb: str | None,
+    jd: str | None,
+    *,
+    default_to_now: bool,
+) -> float | None:
+    """Resolve the labelled JDTDB input and its temporary unlabelled alias."""
+
+    def parse(raw_value: str, parameter: str) -> float:
+        try:
+            parsed = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": f"invalid_{parameter}",
+                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                    "retryable": False,
+                },
+            ) from exc
+        if not math.isfinite(parsed):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": f"invalid_{parameter}",
+                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                    "retryable": False,
+                },
+            )
+        return parsed
+
+    canonical = parse(jd_tdb, "jd_tdb") if jd_tdb is not None else None
+    # Deprecated `jd` is interpreted as JDTDB for one compatibility window.
+    legacy = parse(jd, "jd") if jd is not None else None
+    if canonical is not None and legacy is not None and canonical != legacy:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "conflicting_julian_date_aliases",
+                "message": "`jd_tdb` and deprecated `jd` must identify the same JDTDB epoch.",
+                "retryable": False,
+            },
+        )
+    resolved = canonical if canonical is not None else legacy
+    if resolved is None and default_to_now:
+        return current_jd_tdb()
+    return resolved
+
+
+def _observed_solar_input_http_error(
+    exc: ObservedSolarInputUnavailable,
+) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={
+            "code": "solar_observed_input_unavailable",
+            "message": "Observed solar forcing is not runtime eligible.",
+            "provider": "gong_zqs",
+            "product": "zqs",
+            "status": exc.reason,
+            "reason": exc.reason,
+            "retryable": False,
+        },
+    )
+
+
 def _build_solar_physics_state(
     epoch_jd: float,
     fidelity_key: str,
@@ -956,26 +1023,39 @@ def _build_solar_physics_state(
     live_data: bool,
     force_data_refresh: bool,
 ) -> dict[str, Any]:
-    realtime_data = None
-    if live_data and forcing_key != "synthetic":
-        try:
-            realtime_data = SOLAR_REALTIME_DATA.latest(
-                jd=epoch_jd,
-                force_refresh=bool(force_data_refresh),
-            )
-        except Exception:
-            # Keep synthetic fallback resilient on transient upstream data failures.
-            realtime_data = None
+    if forcing_key == "data_driven":
+        raise ObservedSolarInputUnavailable()
+
+    # No observed provider is promoted. Synthetic and hybrid must therefore be
+    # deterministic and must never enter a realtime/provider code path.
+    wall_epoch_jd_tdb = current_jd_tdb()
 
     state = SOLAR_PHYSICS_MODEL.sample_state(
         epoch_jd,
         fidelity=fidelity_key,
         max_features=safe_max_features,
         forcing=forcing_key,
-        realtime_data=realtime_data,
+        realtime_data=None,
+        wall_jd=wall_epoch_jd_tdb,
     )
     state["forcing"] = forcing_key
-    state["live_data_enabled"] = bool(live_data)
+    state["effective_forcing"] = "synthetic"
+    state["live_data_requested"] = bool(live_data)
+    state["live_data_enabled"] = False
+    forcing_status = {
+        "requested": forcing_key,
+        "effective": "synthetic",
+        "observed_input_status": (
+            "not_requested" if forcing_key == "synthetic" else "disabled_unvalidated"
+        ),
+        "runtime_eligible": False,
+    }
+    if forcing_key == "hybrid":
+        forcing_status["fallback_reason"] = "disabled_unvalidated"
+        state["fallback_reason"] = "disabled_unvalidated"
+    else:
+        state.pop("fallback_reason", None)
+    state["forcing_status"] = forcing_status
     state["source"] = "backend"
     return state
 
@@ -1368,12 +1448,12 @@ def _enforce_trajectory_remote_search_policy(provider: str, operation: str) -> N
 
 def _build_aia_tile_payload(
     channel: str,
-    jd: float | None = None,
+    jd_tdb: float | None = None,
     force_refresh: bool = False,
 ) -> dict[str, Any]:
     return SOLAR_REALTIME_DATA.latest_aia_tile(
         channel=channel,
-        jd=jd,
+        jd_tdb=jd_tdb,
         force_refresh=bool(force_refresh),
     )
 
@@ -1902,9 +1982,20 @@ def solar_realtime_data(force_refresh: bool = False):
 async def solar_realtime_aia_tile(
     request: Request,
     channel: str = "aia_193",
-    jd: float | None = None,
+    jd_tdb: Annotated[
+        str | None,
+        Query(description="Julian Date in Barycentric Dynamical Time (TDB)."),
+    ] = None,
+    jd: Annotated[
+        str | None,
+        Query(
+            description="Deprecated alias for `jd_tdb`; interpreted as TDB.",
+            deprecated=True,
+        ),
+    ] = None,
     force_refresh: bool = False,
 ):
+    epoch_jd_tdb = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
     _require_optional_solar_api_key(request)
     _enforce_solar_aia_tile_rate_limit(request)
 
@@ -1929,7 +2020,7 @@ async def solar_realtime_aia_tile(
             executor=_aia_tile_executor,
             timeout_seconds=SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS,
             channel=channel_key,
-            jd=jd,
+            jd_tdb=epoch_jd_tdb,
             force_refresh=bool(force_refresh),
         )
     except asyncio.TimeoutError as exc:
@@ -1957,25 +2048,26 @@ async def solar_realtime_aia_tile(
 @app.get("/solar/physics")
 async def solar_physics_state(
     request: Request,
-    jd: float | None = None,
+    jd_tdb: Annotated[
+        str | None,
+        Query(description="Julian Date in Barycentric Dynamical Time (TDB)."),
+    ] = None,
+    jd: Annotated[
+        str | None,
+        Query(
+            description="Deprecated alias for `jd_tdb`; interpreted as TDB.",
+            deprecated=True,
+        ),
+    ] = None,
     fidelity: str = "operational",
     max_features: int = 220,
     forcing: str = "synthetic",
     live_data: bool = False,
     force_data_refresh: bool = False,
 ):
+    epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
+    assert epoch_jd is not None
     _require_optional_solar_api_key(request)
-    _enforce_solar_request_rate_limit(request)
-
-    if jd is None:
-        epoch_jd = utc_now_to_julian_date()
-    else:
-        try:
-            epoch_jd = float(jd)
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
-        if not math.isfinite(epoch_jd):
-            raise HTTPException(status_code=400, detail="`jd` must be finite")
 
     fidelity_key = fidelity.strip().lower()
     if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
@@ -1990,6 +2082,14 @@ async def solar_physics_state(
             status_code=400,
             detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
         )
+
+    if forcing_key == "data_driven":
+        try:
+            raise ObservedSolarInputUnavailable()
+        except ObservedSolarInputUnavailable as exc:
+            raise _observed_solar_input_http_error(exc) from exc
+
+    _enforce_solar_request_rate_limit(request)
 
     requested_max_features = int(max_features)
     safe_max_features = min(
@@ -2030,6 +2130,8 @@ async def solar_physics_state(
             status_code=503,
             detail="Solar physics generation timed out. Try again later.",
         ) from exc
+    except ObservedSolarInputUnavailable as exc:
+        raise _observed_solar_input_http_error(exc) from exc
     return state
 
 

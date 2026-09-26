@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from .solar_time import current_jd_tdb
+from .solar_time import jd_tdb_to_utc_datetime
 
 try:
     from PIL import Image
@@ -37,11 +37,6 @@ def _safe_float(value: Any) -> float | None:
 
 def _utc_iso_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _julian_to_utc(jd: float) -> datetime:
-    unix_seconds = (float(jd) - 2_440_587.5) * 86_400.0
-    return datetime.fromtimestamp(unix_seconds, tz=timezone.utc)
 
 
 class SolarRealtimeDataProvider:
@@ -112,25 +107,59 @@ class SolarRealtimeDataProvider:
                     "source_ids": self.AIA_SOURCE_IDS,
                     "supports_imagery_activity_proxy": Image is not None,
                 },
+                "gong_synoptic": self._gong_runtime_status(),
             },
             "cache_ttl_s": self.cache_ttl_s,
             "snapshot_cache_max_entries": self.snapshot_cache_max_entries,
             "timeout_s": self.timeout_s,
         }
 
-    def latest(self, jd: float | None = None, force_refresh: bool = False) -> dict[str, Any]:
-        requested_jd: float | None
-        if jd is None:
-            requested_jd = None
+    @staticmethod
+    def _gong_runtime_status() -> dict[str, Any]:
+        return {
+            "product": "zqs",
+            "ok": False,
+            "attempted": False,
+            "runtime_eligible": False,
+            "status": "disabled_unvalidated",
+            "reason": "disabled_unvalidated",
+        }
+
+    @staticmethod
+    def _resolve_jd_tdb_alias(
+        jd_tdb: float | None,
+        jd: float | None,
+    ) -> float | None:
+        def validate(value: float, name: str) -> float:
+            if isinstance(value, bool):
+                raise ValueError(f"{name} must be a finite Julian date in TDB")
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"{name} must be a finite Julian date in TDB") from exc
+            if not math.isfinite(parsed):
+                raise ValueError(f"{name} must be a finite Julian date in TDB")
+            return parsed
+
+        canonical = validate(jd_tdb, "jd_tdb") if jd_tdb is not None else None
+        # Deprecated `jd` is interpreted as JDTDB for one compatibility window.
+        legacy = validate(jd, "jd") if jd is not None else None
+        if canonical is not None and legacy is not None and canonical != legacy:
+            raise ValueError("jd_tdb and deprecated jd must identify the same JDTDB epoch")
+        return canonical if canonical is not None else legacy
+
+    def latest(
+        self,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+        *,
+        jd: float | None = None,
+    ) -> dict[str, Any]:
+        requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
+        if requested_jd_tdb is None:
             key = ("snapshot", "latest", None)
         else:
-            try:
-                requested_jd = float(jd)
-            except (TypeError, ValueError) as exc:
-                raise ValueError("jd must be a finite Julian date") from exc
-            if not math.isfinite(requested_jd):
-                raise ValueError("jd must be a finite Julian date")
-            key = ("snapshot", "jd", requested_jd)
+            key = ("snapshot", "jd_tdb", requested_jd_tdb)
 
         now_monotonic = time.monotonic()
         with self._lock:
@@ -143,7 +172,7 @@ class SolarRealtimeDataProvider:
                 self._snapshot_cache.pop(key, None)
 
         def fetch_and_cache_snapshot() -> dict[str, Any]:
-            snapshot = self._fetch_snapshot(requested_jd)
+            snapshot = self._fetch_snapshot(requested_jd_tdb)
             completed_monotonic = time.monotonic()
             with self._lock:
                 # Publish before the single-flight leader releases its entry so a
@@ -175,10 +204,16 @@ class SolarRealtimeDataProvider:
     def latest_aia_tile(
         self,
         channel: str = "aia_193",
-        jd: float | None = None,
+        jd_tdb: float | None = None,
         force_refresh: bool = False,
+        *,
+        jd: float | None = None,
     ) -> dict[str, Any]:
-        snapshot = self.latest(jd=jd, force_refresh=force_refresh)
+        requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
+        snapshot = self.latest(
+            jd_tdb=requested_jd_tdb,
+            force_refresh=force_refresh,
+        )
         channel_key = channel.strip().lower()
         sdo_aia = snapshot.get("sdo_aia")
         if not isinstance(sdo_aia, dict):
@@ -696,11 +731,11 @@ class SolarRealtimeDataProvider:
             "tile_url": tile_url,
         }
 
-    def _fetch_sdo_aia(self, jd: float | None) -> dict[str, Any]:
-        if jd is None:
+    def _fetch_sdo_aia(self, jd_tdb: float | None) -> dict[str, Any]:
+        if jd_tdb is None:
             request_date = datetime.now(timezone.utc)
         else:
-            request_date = _julian_to_utc(jd)
+            request_date = jd_tdb_to_utc_datetime(jd_tdb)
 
         channels: dict[str, dict[str, Any]] = {}
         channel_activity_proxy: dict[str, float] = {}
@@ -808,23 +843,7 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _fetch_gong_synoptic(self, jd: float | None = None) -> dict[str, Any]:
-        from sim.pfss_magnetogram import carrington_rotation_number, fetch_gong_synoptic_map
-
-        # Explicit request epochs and the wall-clock fallback are both JDTDB.
-        eval_jd = current_jd_tdb() if jd is None else float(jd)
-        cr = carrington_rotation_number(eval_jd)
-
-        # Check cache (in-proc) — this is a heavy array so we don't serialize it fully here,
-        # but just store the fact that we checked it. PFSSCache in solar_physics.py
-        # actually handles the heavy caching of the solved field lines.
-
-        return {
-            "carrington_rotation": cr,
-            "status": "ready"
-        }
-
-    def _fetch_snapshot(self, jd: float | None) -> dict[str, Any]:
+    def _fetch_snapshot(self, jd_tdb: float | None) -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "schema": {"name": "solar_realtime_context", "version": 1},
             "fetched_at_utc": _utc_iso_now(),
@@ -881,7 +900,7 @@ class SolarRealtimeDataProvider:
             }
 
         try:
-            sdo_aia = self._fetch_sdo_aia(jd)
+            sdo_aia = self._fetch_sdo_aia(jd_tdb)
             snapshot["sdo_aia"] = sdo_aia
             snapshot["source_status"]["sdo_aia"] = {
                 "ok": True,
@@ -900,20 +919,7 @@ class SolarRealtimeDataProvider:
                 "endpoint": self.HELIOVIEWER_CLOSEST_URL,
             }
 
-        try:
-            gong_synoptic = self._fetch_gong_synoptic(jd)
-            snapshot["gong_synoptic"] = gong_synoptic
-            snapshot["source_status"]["gong_synoptic"] = {
-                "ok": True,
-                "updated": _utc_iso_now(),
-                "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/",
-            }
-        except Exception as exc:
-            snapshot["source_status"]["gong_synoptic"] = {
-                "ok": False,
-                "error": str(exc),
-                "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/",
-            }
+        snapshot["source_status"]["gong_synoptic"] = self._gong_runtime_status()
 
         if weight_total > 0:
             snapshot["combined_activity_proxy"] = _clamp(weighted_sum / weight_total, 0.0, 1.0)

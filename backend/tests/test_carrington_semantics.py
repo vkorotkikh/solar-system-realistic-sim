@@ -9,9 +9,7 @@ from astropy.time import Time, TimeDelta
 
 import sim.pfss_magnetogram as pfss_magnetogram
 import sim.solar_physics as solar_physics
-import sim.solar_realtime_data as solar_realtime_data
 from sim.pfss_magnetogram import CARRINGTON_EPOCH_JD, carrington_rotation_number
-from sim.solar_realtime_data import SolarRealtimeDataProvider
 from sim.solar_time import (
     CARRINGTON_APPROXIMATE_SIDEREAL_PERIOD_DAYS,
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
@@ -231,23 +229,6 @@ def test_active_wall_clock_delegate_returns_jdtdb(monkeypatch: pytest.MonkeyPatc
     )
 
     assert solar_physics.utc_now_to_julian_date() == expected_jd_tdb
-
-
-def test_realtime_gong_default_uses_jdtdb_clock(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Catch the no-JD realtime path sending UTC JD to the JDTDB delegate."""
-
-    # One second after the mean CR 2280 boundary. Treating the corresponding
-    # raw UTC JD as TDB moves the instant ~69 seconds backward into CR 2279.
-    monkeypatch.setattr(
-        solar_realtime_data,
-        "current_jd_tdb",
-        lambda: 2_460_327.808711578,
-        raising=False,
-    )
-
-    result = SolarRealtimeDataProvider()._fetch_gong_synoptic(None)
-
-    assert result["carrington_rotation"] == 2280
 
 
 def test_jdtdb_to_utc_datetime_matches_literal_cr2242_instant() -> None:

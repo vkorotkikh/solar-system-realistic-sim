@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from sim.solar_physics import (
     CYCLE_25_START_JD,
     CYCLE_LENGTH_MONTHS,
     HATHAWAY_B,
     J2000_JD,
     MEAN_MONTH_DAYS,
+    ObservedSolarInputUnavailable,
     SolarCoronaPhysicsModel,
 )
 
@@ -30,6 +33,19 @@ def _cme_speeds_for_epoch(model: SolarCoronaPhysicsModel, jd: float, wall_jd: fl
         )
         speeds.append(float(feature["expansion_speed_kms"]))
     return speeds
+
+
+def _fallback_reasons(value: object) -> list[str]:
+    reasons: list[str] = []
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if key == "fallback_reason" and isinstance(nested, str):
+                reasons.append(nested)
+            reasons.extend(_fallback_reasons(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            reasons.extend(_fallback_reasons(nested))
+    return reasons
 
 
 def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
@@ -183,7 +199,73 @@ def test_sample_state_is_deterministic_for_fixed_epoch() -> None:
     state_b = model.sample_state(jd=jd, fidelity="high", max_features=64, forcing="synthetic")
 
     assert state_a == state_b
+    assert state_a["schema"] == {"name": "solar_physics_state", "version": 2}
     assert state_a["wall_epoch_jd"] == state_a["epoch_jd"] == jd
+    assert state_a["wall_epoch_jd_tdb"] == state_a["epoch_jd_tdb"] == jd
+    assert state_a["jd_time_scale"] == "TDB"
+    assert _fallback_reasons(state_a) == []
+
+
+def test_synthetic_forcing_ignores_observations_without_fallback_claim() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    synthetic_activity = 0.42
+    fake_observation = {
+        "combined_activity_proxy": 0.99,
+        "swpc": {"activity_proxy": 0.99, "solar_wind_speed_kms": 790.0},
+    }
+
+    activity, assimilation, wind_speed = model._apply_realtime_forcing(
+        synthetic_activity,
+        "synthetic",
+        fake_observation,
+    )
+
+    assert activity == synthetic_activity
+    assert wind_speed is None
+    assert assimilation["applied"] is False
+    assert assimilation["effective_mode"] == "synthetic"
+    assert assimilation["live_data_available"] is False
+    assert "fallback_reason" not in assimilation
+
+
+def test_hybrid_forcing_is_deterministic_disabled_synthetic() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    synthetic_activity = 0.42
+    fake_observation = {
+        "combined_activity_proxy": 0.99,
+        "swpc": {"activity_proxy": 0.99, "solar_wind_speed_kms": 790.0},
+    }
+
+    activity, assimilation, wind_speed = model._apply_realtime_forcing(
+        synthetic_activity,
+        "hybrid",
+        fake_observation,
+    )
+
+    assert activity == synthetic_activity
+    assert wind_speed is None
+    assert assimilation["applied"] is False
+    assert assimilation["effective_mode"] == "synthetic"
+    assert assimilation["live_data_available"] is False
+    assert assimilation["fallback_reason"] == "disabled_unvalidated"
+    assert assimilation["source_status"] is None
+    assert all(value is None for value in assimilation["sources"].values())
+
+    state = model.sample_state(
+        jd=2_460_000.5,
+        fidelity="preview",
+        max_features=8,
+        forcing="hybrid",
+    )
+    assert set(_fallback_reasons(state)) == {"disabled_unvalidated"}
+    assert state["pfss_field_lines"]["fallback_reason"] == "disabled_unvalidated"
+
+
+def test_data_driven_model_fails_closed_without_promoted_provider() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+
+    with pytest.raises(ObservedSolarInputUnavailable, match="disabled_unvalidated"):
+        model._apply_realtime_forcing(0.42, "data_driven", {"combined_activity_proxy": 0.8})
 
 
 def test_carrington_rotation_number() -> None:
