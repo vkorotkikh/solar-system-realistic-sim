@@ -96,8 +96,19 @@ def _boundary_intersections(starts, ends, r_ss):
     best = np.full(len(starts), np.inf)
     states = np.full(len(starts), '', dtype=object)
     # A nonzero tangent at the outer boundary leaves the shell immediately,
-    # despite its zero radial derivative. Inward self-hits still do not count.
-    outer_departure = (a > 0) & (safe_norm(starts) == r_ss) & (b >= 0)
+    # despite its zero radial derivative. Bound roundoff in both the radius
+    # and the derivative; the latter includes cancellation in ends - starts,
+    # amplified when normalizing a short segment. Resolvably inward self-hits
+    # still do not count. These tolerances apply only at the outer start.
+    eps = np.finfo(float).eps
+    start_radius = safe_norm(starts)
+    radius_roundoff = 8 * eps * np.maximum(start_radius, r_ss)
+    derivative_roundoff = 8 * eps * (1 + safe_norm(p) / np.maximum(length, eps))
+    # Never let subtraction uncertainty turn a clearly radial inward direction
+    # into a tangent, even for a segment only one representable coordinate long.
+    derivative_roundoff = np.minimum(derivative_roundoff, np.sqrt(eps))
+    outer_departure = ((a > 0) & (np.abs(start_radius - r_ss) <= radius_roundoff)
+                       & (b >= -derivative_roundoff))
     best[outer_departure] = 0.0
     states[outer_departure] = 'open'
     for radius, state, orientation in [(1.0, 'closed', -1), (r_ss, 'open', 1)]:

@@ -177,6 +177,7 @@ def test_wsa_batch_isolates_weak_lane_without_manufacturing_closed_flux():
     ([1.5, 0, 0], [1.5, 3, 0], 'open', [1.5, 2, 0]),
     ([1, 0, 0], [2, 0, 0], None, None),
     ([2.5, 0, 0], [2, 0, 0], None, None),
+    ([2.5, 0, 0], [np.nextafter(2.5, 0), 0, 0], None, None),
     ([1, 0, 0], [0.5, 0, 0], 'closed', [1, 0, 0]),
     ([1.5, 0, 0], [1.5, 0, 0], None, None),
     ([1.5, 0, 0], [-3, 0, 0], 'closed', [1, 0, 0]),
@@ -211,6 +212,34 @@ def test_outer_boundary_tangent_departure_is_open_in_scalar_and_batch():
     assert np.all(np.hypot.reduce(scalar.arc, axis=1) <= 2.5)
     assert batch.states[1] == 'indeterminate'
     assert batch.reasons[1] == 'max_steps'
+
+
+@pytest.mark.parametrize('angle', [0.1, 1.1])
+def test_rotated_outer_boundary_tangent_tolerates_roundoff(angle):
+    from sim.pfss_tracing import first_boundary_intersection, trace_field, trace_field_batch
+
+    radial = np.array([math.cos(angle), math.sin(angle), 0.0])
+    tangent = np.array([-math.sin(angle), math.cos(angle), 0.0])
+    start = 2.5 * radial
+    hit = first_boundary_intersection(start, start + tangent, 2.5)
+    assert hit is not None
+    assert hit.state == 'open'
+    assert hit.fraction == 0
+    np.testing.assert_array_equal(hit.endpoint, start)
+
+    # A discernibly inward radial component must not be mistaken for a tangent.
+    assert first_boundary_intersection(start, start - 0.01 * radial, 2.5) is None
+    assert first_boundary_intersection(start, start, 2.5) is None
+
+    field = ConstantField(tangent)
+    scalar = trace_field(field, start, max_steps=1)
+    batch = trace_field_batch(field, [start, 1.5 * radial], max_steps=1)
+    assert scalar.termination.state == batch.states[0] == 'open'
+    assert scalar.termination.endpoint_radius_residual <= 1e-6
+    assert batch.endpoint_radius_residuals[0] <= 1e-6
+    np.testing.assert_array_equal(scalar.endpoint, start)
+    np.testing.assert_array_equal(batch.endpoints[0], start)
+    assert batch.states[1] == 'indeterminate'
 
 
 def test_wsa_masks_exclude_unknown_from_closed_and_match_scalar():
