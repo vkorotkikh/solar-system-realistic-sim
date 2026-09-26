@@ -7,7 +7,7 @@ over WebSocket, with on-demand Kuiper belt local dynamics.
 
 Run:
     cd backend && pip install -r requirements.txt
-    uvicorn server:app --host 0.0.0.0 --port 8042 --reload
+    uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers
 
 Protocol (WebSocket /ws/sim):
     Client → Server:
@@ -29,6 +29,9 @@ Protocol (WebSocket /ws/sim):
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
+import ipaddress
 import json
 import math
 import queue
@@ -36,11 +39,14 @@ import os
 import threading
 import time
 from collections import Counter, OrderedDict, deque
+from collections.abc import Mapping, MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any, Optional
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -380,6 +386,192 @@ class _TrajectoryRateLimitMiddleware:
         await self.app(scope, receive, send)
 
 
+_DEFAULT_SOLAR_CORS_ALLOWED_ORIGINS = (
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+)
+SOLAR_FORWARDED_FOR_MAX_HOPS = 16
+SOLAR_FORWARDED_FOR_MAX_BYTES = 2_048
+SOLAR_API_KEY_MAX_COUNT = 64
+SOLAR_API_KEY_MAX_BYTES = 256
+SOLAR_TRUSTED_PROXY_MAX_CIDRS = 32
+SOLAR_TRUSTED_PROXY_CONFIG_MAX_BYTES = 4_096
+SOLAR_CORS_MAX_ORIGINS = 32
+SOLAR_CORS_ORIGIN_MAX_BYTES = 512
+
+
+@dataclass(frozen=True, slots=True)
+class SolarSecurityConfig:
+    """Validated solar-endpoint trust boundary.
+
+    Raw credentials are deliberately reduced to one-way digests while the
+    environment is loaded. The resulting object is therefore safe to retain
+    for process lifetime and to include in diagnostic representations.
+    """
+
+    profile: str
+    api_key_hashes: frozenset[str]
+    trusted_proxy_networks: tuple[
+        ipaddress.IPv4Network | ipaddress.IPv6Network,
+        ...,
+    ]
+    cors_allowed_origins: tuple[str, ...]
+
+    @property
+    def authentication_required(self) -> bool:
+        return self.profile == "network" or bool(self.api_key_hashes)
+
+    @property
+    def default_bind_host(self) -> str:
+        return "127.0.0.1" if self.profile == "local" else "0.0.0.0"
+
+
+def _api_key_digest(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _load_solar_security_config(
+    environ: Mapping[str, str] | None = None,
+) -> SolarSecurityConfig:
+    """Load the explicit local/network security profile or fail startup.
+
+    The local default keeps the historical single-machine workflow. A network
+    deployment is never permitted to silently fall back to unauthenticated
+    solar endpoints.
+    """
+
+    source = os.environ if environ is None else environ
+    profile = source.get("SOLAR_SECURITY_PROFILE", "local").strip().lower()
+    if profile not in {"local", "network"}:
+        raise RuntimeError(
+            "SOLAR_SECURITY_PROFILE must be either 'local' or 'network'."
+        )
+
+    raw_api_keys = source.get("SOLAR_PHYSICS_API_KEYS", "")
+    if len(raw_api_keys.encode("utf-8")) > (
+        SOLAR_API_KEY_MAX_COUNT * (SOLAR_API_KEY_MAX_BYTES + 1)
+    ):
+        raise RuntimeError("SOLAR_PHYSICS_API_KEYS exceeds its byte limit.")
+    raw_keys = tuple(
+        token.strip()
+        for token in raw_api_keys.split(",")
+        if token.strip()
+    )
+    if len(raw_keys) > SOLAR_API_KEY_MAX_COUNT:
+        raise RuntimeError(
+            f"SOLAR_PHYSICS_API_KEYS cannot contain more than "
+            f"{SOLAR_API_KEY_MAX_COUNT} keys."
+        )
+    if any(len(token.encode("utf-8")) > SOLAR_API_KEY_MAX_BYTES for token in raw_keys):
+        raise RuntimeError(
+            f"Each SOLAR_PHYSICS_API_KEYS token is limited to "
+            f"{SOLAR_API_KEY_MAX_BYTES} bytes."
+        )
+    if any(
+        not token.isascii()
+        or any(not 33 <= ord(character) <= 126 for character in token)
+        for token in raw_keys
+    ):
+        raise RuntimeError(
+            "SOLAR_PHYSICS_API_KEYS tokens must contain printable ASCII "
+            "characters without whitespace."
+        )
+    if profile == "network" and not raw_keys:
+        raise RuntimeError(
+            "SOLAR_PHYSICS_API_KEYS must contain at least one key when "
+            "SOLAR_SECURITY_PROFILE=network."
+        )
+    api_key_hashes = frozenset(_api_key_digest(token) for token in raw_keys)
+
+    raw_proxy_cidrs = source.get("SOLAR_TRUSTED_PROXY_CIDRS", "")
+    if len(raw_proxy_cidrs.encode("utf-8")) > SOLAR_TRUSTED_PROXY_CONFIG_MAX_BYTES:
+        raise RuntimeError("SOLAR_TRUSTED_PROXY_CIDRS exceeds its byte limit.")
+    proxy_cidrs = tuple(
+        cidr.strip() for cidr in raw_proxy_cidrs.split(",") if cidr.strip()
+    )
+    if len(proxy_cidrs) > SOLAR_TRUSTED_PROXY_MAX_CIDRS:
+        raise RuntimeError(
+            f"SOLAR_TRUSTED_PROXY_CIDRS cannot contain more than "
+            f"{SOLAR_TRUSTED_PROXY_MAX_CIDRS} networks."
+        )
+    trusted_proxy_networks: list[
+        ipaddress.IPv4Network | ipaddress.IPv6Network
+    ] = []
+    for cidr in proxy_cidrs:
+        try:
+            trusted_proxy_networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError as exc:
+            raise RuntimeError(
+                f"SOLAR_TRUSTED_PROXY_CIDRS contains invalid CIDR {cidr!r}."
+            ) from exc
+
+    cors_raw = source.get("SOLAR_CORS_ALLOWED_ORIGINS")
+    if cors_raw is None:
+        cors_origins = (
+            _DEFAULT_SOLAR_CORS_ALLOWED_ORIGINS if profile == "local" else ()
+        )
+    else:
+        cors_origins = tuple(
+            origin.strip() for origin in cors_raw.split(",") if origin.strip()
+        )
+        if not cors_origins:
+            raise RuntimeError("SOLAR_CORS_ALLOWED_ORIGINS cannot be empty.")
+    if len(cors_origins) > SOLAR_CORS_MAX_ORIGINS:
+        raise RuntimeError(
+            f"SOLAR_CORS_ALLOWED_ORIGINS cannot contain more than "
+            f"{SOLAR_CORS_MAX_ORIGINS} origins."
+        )
+    if any(
+        len(origin.encode("utf-8")) > SOLAR_CORS_ORIGIN_MAX_BYTES
+        for origin in cors_origins
+    ):
+        raise RuntimeError("SOLAR_CORS_ALLOWED_ORIGINS contains an oversized origin.")
+    if any(origin == "*" for origin in cors_origins):
+        raise RuntimeError(
+            "SOLAR_CORS_ALLOWED_ORIGINS cannot contain the wildcard origin '*'."
+        )
+    for origin in cors_origins:
+        try:
+            parsed = urlsplit(origin)
+            parsed_port = parsed.port
+        except ValueError as exc:
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS contains an invalid origin."
+            ) from exc
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or (
+                parsed_port is not None
+                and not 1 <= parsed_port <= 65_535
+            )
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
+            )
+
+    return SolarSecurityConfig(
+        profile=profile,
+        api_key_hashes=api_key_hashes,
+        trusted_proxy_networks=tuple(trusted_proxy_networks),
+        cors_allowed_origins=tuple(cors_origins),
+    )
+
+
+SOLAR_SECURITY_CONFIG = _load_solar_security_config()
+SOLAR_CORS_ALLOWED_ORIGINS = list(SOLAR_SECURITY_CONFIG.cors_allowed_origins)
+
+
 def _load_env_csv(name: str, default: list[str]) -> list[str]:
     raw = os.getenv(name)
     if raw is None:
@@ -389,18 +581,6 @@ def _load_env_csv(name: str, default: list[str]) -> list[str]:
         return list(default)
     return values if values else list(default)
 
-
-SOLAR_CORS_ALLOWED_ORIGINS = _load_env_csv(
-    "SOLAR_CORS_ALLOWED_ORIGINS",
-    [
-        "http://localhost:3000",
-        "https://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-)
 
 def _load_env_int(name: str, default: int, *, min_value: int) -> int:
     raw = os.getenv(name)
@@ -445,6 +625,7 @@ def _load_bounded_env_float(
     """Load a floating-point knob within a compile-time safety envelope."""
     return min(max_value, _load_env_float(name, default, min_value=min_value))
 
+
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
 DEFAULT_ENGINE = "rebound"
@@ -470,15 +651,17 @@ SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0
 
 SOLAR_PHYSICS_MAX_FEATURES = _load_env_int("SOLAR_PHYSICS_MAX_FEATURES", 256, min_value=64)
 SOLAR_PHYSICS_MIN_FEATURES = 8
-SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_env_int(
+SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW",
     36,
     min_value=2,
+    max_value=120,
 )
-SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_env_float(
+SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     "SOLAR_PHYSICS_RATE_WINDOW_SECONDS",
     60.0,
     min_value=1.0,
+    max_value=300.0,
 )
 SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
     "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
@@ -491,19 +674,37 @@ SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
     min_value=1,
     max_value=2,
 )
-SOLAR_PHYSICS_API_KEYS = frozenset(
-    key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
+SOLAR_RATE_LIMIT_MAX_IDENTITIES = _load_bounded_env_int(
+    "SOLAR_RATE_LIMIT_MAX_IDENTITIES",
+    1_024,
+    min_value=16,
+    max_value=4_096,
 )
 
-SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_env_int(
+SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
+    "SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW",
+    36,
+    min_value=2,
+    max_value=120,
+)
+SOLAR_REALTIME_RATE_WINDOW_SECONDS = _load_bounded_env_float(
+    "SOLAR_REALTIME_RATE_WINDOW_SECONDS",
+    60.0,
+    min_value=1.0,
+    max_value=300.0,
+)
+
+SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW",
     60,
     min_value=2,
+    max_value=240,
 )
-SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_env_float(
+SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     "SOLAR_AIA_TILE_RATE_WINDOW_SECONDS",
     60.0,
     min_value=1.0,
+    max_value=300.0,
 )
 SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = _load_env_int(
     "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
@@ -836,14 +1037,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
-_solar_physics_rate_locks: dict[str, deque[float]] = {}
+_solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_physics_rate_lock = threading.Lock()
+_solar_realtime_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
+_solar_realtime_rate_lock = threading.Lock()
 _solar_physics_concurrent_guard = threading.BoundedSemaphore(SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT)
-_solar_aia_tile_rate_locks: dict[str, deque[float]] = {}
+_solar_aia_tile_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
 _trajectory_plan_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT)
@@ -869,84 +1072,290 @@ _aia_tile_executor = ThreadPoolExecutor(
 )
 
 
+def _bounded_unique_request_header(
+    request: Request,
+    name: bytes,
+    *,
+    max_bytes: int,
+) -> tuple[bool, str | None]:
+    """Read one ASCII header without accepting duplicate-field ambiguity."""
+
+    value: bytes | None = None
+    aggregate_bytes = 0
+    matches = 0
+    for raw_name, raw_value in request.scope.get("headers", ()):
+        if bytes(raw_name).lower() != name:
+            continue
+        matches += 1
+        aggregate_bytes += len(raw_value)
+        if matches > 1 or aggregate_bytes > max_bytes:
+            return False, None
+        value = bytes(raw_value)
+    if value is None:
+        return True, None
+    try:
+        return True, value.decode("ascii")
+    except UnicodeDecodeError:
+        return False, None
+
+
 def _extract_solar_api_key(request: Request) -> str | None:
-    header_key = request.headers.get("x-api-key")
-    if header_key:
-        token = header_key.strip()
-        if token:
-            return token
-    auth = request.headers.get("authorization")
+    api_key_valid, header_key = _bounded_unique_request_header(
+        request,
+        b"x-api-key",
+        max_bytes=SOLAR_API_KEY_MAX_BYTES,
+    )
+    auth_valid, auth = _bounded_unique_request_header(
+        request,
+        b"authorization",
+        max_bytes=SOLAR_API_KEY_MAX_BYTES + len("Bearer "),
+    )
+    if not api_key_valid or not auth_valid:
+        return None
+
+    api_key_token = header_key.strip() if header_key else ""
+    bearer_token = ""
     if auth and auth.lower().startswith("bearer "):
-        token = auth[7:].strip()
-        if token:
-            return token
+        bearer_token = auth[7:].strip()
+    if api_key_token and bearer_token:
+        return None
+    token = api_key_token or bearer_token
+    if token and len(token.encode("utf-8")) <= SOLAR_API_KEY_MAX_BYTES:
+        return token
     return None
 
 
-def _client_identity(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
-    return "anonymous"
+def _address_in_trusted_proxy_networks(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    config: SolarSecurityConfig,
+) -> bool:
+    return any(
+        address.version == network.version and address in network
+        for network in config.trusted_proxy_networks
+    )
 
 
-def _require_optional_solar_api_key(request: Request) -> str | None:
-    if not SOLAR_PHYSICS_API_KEYS:
+def _parse_ip_address(
+    raw: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    try:
+        return ipaddress.ip_address(raw.strip())
+    except ValueError:
         return None
+
+
+def _client_identity(
+    request: Request,
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str:
+    """Return an authenticated subject or a validated network identity.
+
+    Forwarding headers are considered only when the ASGI peer is itself in an
+    explicitly configured trusted-proxy network. A right-to-left walk selects
+    the first non-trusted address, preventing intermediary proxy addresses from
+    fragmenting the store.
+    """
+
+    authenticated_subject = getattr(
+        request.state,
+        "solar_authenticated_subject",
+        None,
+    )
+    if isinstance(authenticated_subject, str) and authenticated_subject:
+        return authenticated_subject
+
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    peer_host = (
+        request.client.host.strip()
+        if request.client and request.client.host
+        else "anonymous"
+    )
+    peer_address = _parse_ip_address(peer_host)
+    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
+
+    forwarded_header_valid, forwarded_for = _bounded_unique_request_header(
+        request,
+        b"x-forwarded-for",
+        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
+    )
+    if (
+        not forwarded_header_valid
+        or not forwarded_for
+        or peer_address is None
+        or not _address_in_trusted_proxy_networks(peer_address, active_config)
+    ):
+        return f"peer:{peer_identity}"
+
+    raw_chain = forwarded_for.split(",")
+    if (
+        not raw_chain
+        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
+        or any(not item.strip() for item in raw_chain)
+    ):
+        return f"peer:{peer_identity}"
+    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
+    if any(address is None for address in parsed_chain):
+        return f"peer:{peer_identity}"
+
+    complete_chain = [
+        *(address for address in parsed_chain if address is not None),
+        peer_address,
+    ]
+    for address in reversed(complete_chain):
+        if not _address_in_trusted_proxy_networks(address, active_config):
+            return f"peer:{address}"
+    return f"peer:{complete_chain[0]}"
+
+
+def _require_optional_solar_api_key(
+    request: Request,
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str | None:
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
     token = _extract_solar_api_key(request)
-    if token is None or token not in SOLAR_PHYSICS_API_KEYS:
+    token_digest = _api_key_digest(token) if token is not None else None
+    authenticated = token_digest is not None and any(
+        hmac.compare_digest(token_digest, configured_digest)
+        for configured_digest in active_config.api_key_hashes
+    )
+    if active_config.authentication_required and not authenticated:
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid API key for solar endpoints.",
             headers={"WWW-Authenticate": "X-API-Key"},
         )
-    return token
+    if not authenticated or token_digest is None:
+        return None
+    subject = f"credential:sha256:{token_digest}"
+    request.state.solar_authenticated_subject = subject
+    return subject
+
+
+def _pop_oldest_rate_identity(
+    store: MutableMapping[str, deque[float]],
+) -> None:
+    if not store:
+        return
+    try:
+        store.popitem(last=False)  # type: ignore[call-arg]
+    except TypeError:
+        del store[next(iter(store))]
+
+
+def _move_rate_identity_to_end(
+    store: MutableMapping[str, deque[float]],
+    identity: str,
+) -> None:
+    move_to_end = getattr(store, "move_to_end", None)
+    if callable(move_to_end):
+        move_to_end(identity)
+
+
+def _record_solar_rate_request(
+    store: MutableMapping[str, deque[float]],
+    *,
+    identity: str,
+    now: float,
+    window_seconds: float,
+    max_requests: int,
+    max_identities: int,
+) -> int | None:
+    """Record one request in a bounded TTL/LRU sliding-window store."""
+
+    window = max(1.0, float(window_seconds))
+    request_limit = max(1, int(max_requests))
+    identity_limit = max(1, int(max_identities))
+    cutoff = float(now) - window
+
+    # OrderedDict insertion order is LRU order. Pruning from the cold end
+    # amortizes cleanup instead of turning every request into an O(cap) scan.
+    while store:
+        stored_identity = next(iter(store))
+        queue = store[stored_identity]
+        while queue and queue[0] <= cutoff:
+            queue.popleft()
+        if queue:
+            break
+        del store[stored_identity]
+
+    queue = store.get(identity)
+    if queue is None:
+        while len(store) >= identity_limit:
+            _pop_oldest_rate_identity(store)
+        queue = deque()
+        store[identity] = queue
+    else:
+        while queue and queue[0] <= cutoff:
+            queue.popleft()
+        _move_rate_identity_to_end(store, identity)
+
+    if len(queue) >= request_limit:
+        return max(1, int(math.ceil(queue[0] + window - float(now))))
+    queue.append(float(now))
+    return None
+
+
+def _enforce_solar_rate_limit(
+    request: Request,
+    *,
+    store: MutableMapping[str, deque[float]],
+    lock: threading.Lock,
+    window_seconds: float,
+    max_requests: int,
+    message: str,
+) -> None:
+    now = time.monotonic()
+    identity = _client_identity(request)
+    with lock:
+        retry_after = _record_solar_rate_request(
+            store,
+            identity=identity,
+            now=now,
+            window_seconds=window_seconds,
+            max_requests=max_requests,
+            max_identities=SOLAR_RATE_LIMIT_MAX_IDENTITIES,
+        )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=message,
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 def _enforce_solar_request_rate_limit(request: Request) -> None:
-    now = time.monotonic()
-    window = max(1.0, SOLAR_PHYSICS_RATE_WINDOW_SECONDS)
-    max_requests = max(1, SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW)
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_physics_rate_locks,
+        lock=_solar_physics_rate_lock,
+        window_seconds=SOLAR_PHYSICS_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW,
+        message="Solar request rate limit exceeded; retry later.",
+    )
 
-    identity = _extract_solar_api_key(request) or _client_identity(request)
-    cutoff = now - window
 
-    with _solar_physics_rate_lock:
-        queue = _solar_physics_rate_locks.setdefault(identity, deque())
-        while queue and queue[0] < cutoff:
-            queue.popleft()
-        if len(queue) >= max_requests:
-            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
-            raise HTTPException(
-                status_code=429,
-                detail="Solar request rate limit exceeded; retry later.",
-                headers={"Retry-After": str(retry_after)},
-            )
-        queue.append(now)
+def _enforce_solar_realtime_rate_limit(request: Request) -> None:
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_realtime_rate_locks,
+        lock=_solar_realtime_rate_lock,
+        window_seconds=SOLAR_REALTIME_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW,
+        message="Solar realtime request rate limit exceeded; retry later.",
+    )
 
 
 def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
-    now = time.monotonic()
-    window = max(1.0, SOLAR_AIA_TILE_RATE_WINDOW_SECONDS)
-    max_requests = max(1, SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW)
-
-    identity = _extract_solar_api_key(request) or _client_identity(request)
-    cutoff = now - window
-
-    with _solar_aia_tile_rate_lock:
-        queue = _solar_aia_tile_rate_locks.setdefault(identity, deque())
-        while queue and queue[0] < cutoff:
-            queue.popleft()
-        if len(queue) >= max_requests:
-            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
-            raise HTTPException(
-                status_code=429,
-                detail="Solar AIA tile request rate limit exceeded; retry later.",
-                headers={"Retry-After": str(retry_after)},
-            )
-        queue.append(now)
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_aia_tile_rate_locks,
+        lock=_solar_aia_tile_rate_lock,
+        window_seconds=SOLAR_AIA_TILE_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW,
+        message="Solar AIA tile request rate limit exceeded; retry later.",
+    )
 
 
 def _resolve_jd_tdb_query(
@@ -1969,7 +2378,9 @@ def solar_capabilities():
 
 
 @app.get("/solar/realtime")
-def solar_realtime_data(force_refresh: bool = False):
+def solar_realtime_data(request: Request, force_refresh: bool = False):
+    _require_optional_solar_api_key(request)
+    _enforce_solar_realtime_rate_limit(request)
     snapshot = SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
     return {
         "schema": {"name": "solar_realtime_endpoint", "version": 1},
@@ -3487,4 +3898,10 @@ async def simulation_websocket(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8042, reload=True)
+    uvicorn.run(
+        "server:app",
+        host=SOLAR_SECURITY_CONFIG.default_bind_host,
+        port=8042,
+        proxy_headers=False,
+        reload=SOLAR_SECURITY_CONFIG.profile == "local",
+    )
