@@ -125,7 +125,10 @@ def test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux(l, m, 
     expected = potential_field(l, m, sine, r, theta, phi)
     expected_xyz = cartesian(expected, theta, phi)
     batch = np.stack(field.evaluate_cartesian_batch(*xyz.T), axis=-1)
-    np.testing.assert_allclose(batch, expected_xyz, rtol=RELATIVE_BUDGET, atol=ABSOLUTE_BUDGET)
+    np.testing.assert_allclose(
+        batch, expected_xyz, rtol=RELATIVE_BUDGET, atol=ABSOLUTE_BUDGET,
+        err_msg="R4-PFSS-SOURCE-SURFACE",
+    )
     # Project batch Cartesian values back onto the local orthonormal frame.
     radial = xyz / RSS
     e_theta = np.stack((np.cos(theta) * np.cos(phi), np.cos(theta) * np.sin(phi),

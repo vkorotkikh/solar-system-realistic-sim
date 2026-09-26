@@ -1,0 +1,21 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -426,7 +426,7 @@ class PFSSField:
+             # Br coefficient
+             cl_br = ((l + 1) * r_ratio ** (-(l + 2)) + l * rss_pow * r_ratio ** (l - 1)) / denominator
+             # Btheta coefficient
+-            cl_bt = -(r_ratio ** (-(l + 2)) - rss_pow * r_ratio ** (l - 1)) / denominator
++            cl_bt = -(r_ratio ** (-(l + 2)) + rss_pow * r_ratio ** (l - 1)) / denominator
+             # Bphi coefficient is similar to Btheta
+             cl_bp = cl_bt  # Same radial factor for Bφ
+ 
+@@ -532,7 +532,7 @@ class PFSSField:
+             r_ratio_l1 = r ** (l - 1)
+             
+             cl_br = ((l + 1) * r_ratio_inv_l2 + l * rss_pow * r_ratio_l1) / denominator
+-            cl_bt = -(r_ratio_inv_l2 - rss_pow * r_ratio_l1) / denominator
++            cl_bt = -(r_ratio_inv_l2 + rss_pow * r_ratio_l1) / denominator
+             cl_bp = cl_bt
+ 
+             for m in range(l + 1):

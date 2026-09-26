@@ -78,7 +78,10 @@ def test_non_band_limited_fit_minimizes_correct_area_weighted_residual(factory):
     weights = (np.full(24, 2 / 24) if factory is equal_area_sine_latitude_grid
                else -np.diff(np.cos(np.arange(25) * np.pi / 24)))
     expected_dipole = np.sum(weights * grid.mu**4) / np.sum(weights * grid.mu**2)
-    np.testing.assert_allclose(g[1, 0], expected_dipole, rtol=0, atol=1e-12)
+    np.testing.assert_allclose(
+        g[1, 0], expected_dipole, rtol=0, atol=1e-12,
+        err_msg="R4-THETA-AREA-WEIGHTS",
+    )
     residual = br[:, 0] - g[0, 0] - g[1, 0] * grid.mu
     assert abs(np.sum(weights * residual)) < 1e-12
     assert abs(np.sum(weights * grid.mu * residual)) < 1e-12

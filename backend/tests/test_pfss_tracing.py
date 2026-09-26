@@ -30,7 +30,7 @@ def test_open_endpoint_does_not_overshoot():
     lines = trace_field_lines(RadialField(), n_lines=8)
     for line in lines:
         endpoint = line.get('endpoint', line['arc'][-1])
-        assert abs(math.hypot(*endpoint) - 2.5) <= 1e-6
+        assert abs(math.hypot(*endpoint) - 2.5) <= 1e-6, "R4-TRACE-EXACT-CROSSING"
 
 
 @pytest.mark.parametrize('polarity', [-1, 1])

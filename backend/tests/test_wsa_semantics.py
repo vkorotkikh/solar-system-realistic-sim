@@ -63,7 +63,10 @@ def test_inverse_square_tube_expansion_is_unity(polarity):
 def test_expansion_uses_exact_radial_components_not_tangential_magnitude(monkeypatch):
     field = RadialTube(tangent=5)
     result = controlled_map(monkeypatch, [['open'] * 4, ['closed'] * 4], field)
-    np.testing.assert_allclose(result['fs_map'][0], 1, atol=1e-12, rtol=0)
+    np.testing.assert_allclose(
+        result['fs_map'][0], 1, atol=1e-12, rtol=0,
+        err_msg="R4-WSA-RADIAL-COMPONENT",
+    )
     assert any(abs(r - 1) < 1e-14 for r in field.radii)
     assert any(abs(r - 2.5) < 1e-14 for r in field.radii)
 

@@ -40,7 +40,9 @@ def test_all_modes_against_immutable_oracle():
     for mode in ORACLE["modes"]:
         key = mode["l"], mode["m"]
         reference = np.array(mode["values"])
-        assert np.all(abs(values[key] - reference) <= 5e-13 * np.maximum(1, abs(reference))), key
+        assert np.all(abs(values[key] - reference) <= 5e-13 * np.maximum(1, abs(reference))), (
+            f"R4-LEGENDRE-RECURRENCE mode={key}"
+        )
         reference = np.array(mode["theta_derivatives"])
         assert np.all(abs(derivatives[key] - reference) <= 1e-8), key
 
@@ -147,8 +149,12 @@ def test_schmidt_normalization_is_applied_once_in_projection(longitude_mode):
     expected_g = np.zeros((2, 2))
     expected_h = np.zeros((2, 2))
     (expected_g if longitude_mode == "cosine" else expected_h)[1, 1] = 1.0
-    np.testing.assert_allclose(g, expected_g, rtol=0, atol=1e-10)
-    np.testing.assert_allclose(h, expected_h, rtol=0, atol=1e-10)
+    np.testing.assert_allclose(
+        g, expected_g, rtol=0, atol=1e-10, err_msg="R4-M-NORMALIZATION",
+    )
+    np.testing.assert_allclose(
+        h, expected_h, rtol=0, atol=1e-10, err_msg="R4-M-NORMALIZATION",
+    )
 
 
 @pytest.mark.parametrize("lmax", [-1, 65, 2.5, True])

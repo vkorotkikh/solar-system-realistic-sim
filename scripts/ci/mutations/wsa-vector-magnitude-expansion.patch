@@ -1,0 +1,22 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -952,7 +952,8 @@ def compute_wsa_velocity_map(
+     photosphere_fields = np.asarray(
+         field.evaluate_cartesian_batch(*photosphere_vectors.T), dtype=float,
+     ).T
+-    br_photosphere = np.sum(photosphere_fields * photosphere_vectors, axis=1)
++    # Historical defect: tangential field contaminates the radial expansion.
++    br_photosphere = safe_norm(photosphere_fields)
+     br_source_surface = np.full(n_points, np.nan)
+     if open_mask_flat.any():
+         open_endpoints = traces.endpoints[open_mask_flat]
+@@ -962,7 +963,7 @@ def compute_wsa_velocity_map(
+         open_fields = np.asarray(
+             field.evaluate_cartesian_batch(*open_endpoints.T), dtype=float,
+         ).T
+-        br_source_surface[open_mask_flat] = np.sum(open_fields * open_unit, axis=1)
++        br_source_surface[open_mask_flat] = safe_norm(open_fields)
+     valid_radial = (
+         open_mask_flat
+         & np.isfinite(br_photosphere)
