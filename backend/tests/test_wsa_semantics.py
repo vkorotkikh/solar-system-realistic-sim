@@ -126,6 +126,22 @@ def test_boundary_wraps_longitude_and_ignores_indeterminate(monkeypatch):
     assert result['indeterminate_fraction'] == .5
 
 
+def test_meridional_boundary_uses_the_spherical_edge_midpoint(monkeypatch):
+    states = [
+        ['open', 'closed', 'closed', 'closed'],
+        ['indeterminate'] * 4,
+    ]
+    result = controlled_map(monkeypatch, states)
+    open_theta = math.pi / 3
+    edge_theta = math.pi / 4  # midpoint of this row's [0, pi/2] theta edges
+    edge_phi = math.pi / 4
+    expected = math.acos(
+        math.cos(open_theta) * math.cos(edge_theta)
+        + math.sin(open_theta) * math.sin(edge_theta) * math.cos(edge_phi)
+    )
+    assert result['theta_b_map'][0, 0] == pytest.approx(expected, abs=1e-14)
+
+
 @pytest.mark.parametrize('max_steps,polarity', [(0, 1), (300, 0)])
 def test_exhausted_and_neutral_maps_stay_unavailable(max_steps, polarity):
     result = pfss.compute_wsa_velocity_map(RadialTube(polarity), n_lat=4, n_lon=8, max_steps=max_steps)
@@ -160,6 +176,21 @@ def test_lookup_bounded_by_two_local_target_cell_diagonals(rotation):
 @pytest.mark.parametrize('lat,lon', [(np.nan, 0), (0, np.inf), (2, 0)])
 def test_invalid_target_is_unavailable(lat, lon):
     assert pfss.wsa_velocity_at_source_surface(sparse_map(), lat, lon) is None
+
+
+@pytest.mark.parametrize('mutation', [
+    {'open_mask': np.array([['closed']], dtype=object)},
+    {'open_mask': np.array([[np.nan]])},
+    {'velocity_map': np.array([[-100.0]])},
+    {'velocity_map': np.array([[851.0]])},
+    {'grid_theta': np.array([100.0]), 'grid_phi': np.array([0.0])},
+    {'grid_phi': np.array([0.0, 0.1, 0.5])},
+    {'model': 'wsa_arge_2003'},
+])
+def test_lookup_rejects_malformed_or_out_of_contract_samples(mutation):
+    result = sparse_map()
+    result.update(mutation)
+    assert pfss.wsa_velocity_at_source_surface(result, 0, 0) is None
 
 
 @pytest.mark.parametrize('result', [None, {}, sparse_map(math.pi)])

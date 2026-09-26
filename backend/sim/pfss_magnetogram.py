@@ -711,7 +711,6 @@ def _great_circle_distances(target: np.ndarray, candidates: np.ndarray) -> np.nd
 
 def _open_closed_boundary_midpoints(
     states: np.ndarray,
-    theta_arr: np.ndarray,
     phi_arr: np.ndarray,
 ) -> np.ndarray:
     """Return edge midpoints that separate confirmed open and closed cells."""
@@ -731,10 +730,20 @@ def _open_closed_boundary_midpoints(
     # Longitude is periodic.  The midpoint after the final cell wraps to zero.
     delta_phi = 2.0 * math.pi / n_lon
     for i_lat in range(n_lat):
+        theta_north = math.acos(
+            _clamp(1.0 - 2.0 * i_lat / n_lat, -1.0, 1.0),
+        )
+        theta_south = math.acos(
+            _clamp(1.0 - 2.0 * (i_lat + 1) / n_lat, -1.0, 1.0),
+        )
+        theta_midpoint = 0.5 * (theta_north + theta_south)
         for i_lon in range(n_lon):
             next_lon = (i_lon + 1) % n_lon
             if is_boundary(states[i_lat, i_lon], states[i_lat, next_lon]):
-                points.append((float(theta_arr[i_lat]), (float(phi_arr[i_lon]) + 0.5 * delta_phi) % (2.0 * math.pi)))
+                phi_midpoint = (
+                    float(phi_arr[i_lon]) + 0.5 * delta_phi
+                ) % (2.0 * math.pi)
+                points.append((theta_midpoint, phi_midpoint))
 
     if not points:
         return np.empty((0, 3), dtype=float)
@@ -760,15 +769,32 @@ def _validated_wsa_samples(
     wsa_result: dict[str, Any],
 ) -> tuple[np.ndarray, np.ndarray, int, int] | None:
     """Extract finite, shape-consistent source-surface samples and grid size."""
+    if wsa_result.get("model") != WSA_MODEL_VERSION:
+        return None
     try:
-        ss_theta = np.asarray(wsa_result.get("ss_theta"), dtype=float)
-        ss_phi = np.asarray(wsa_result.get("ss_phi"), dtype=float)
-        velocity = np.asarray(wsa_result.get("velocity_map"), dtype=float)
-        open_mask = np.asarray(wsa_result.get("open_mask"), dtype=bool)
-        grid_theta = np.asarray(wsa_result.get("grid_theta"), dtype=float)
-        grid_phi = np.asarray(wsa_result.get("grid_phi"), dtype=float)
+        raw_theta = np.asarray(wsa_result.get("ss_theta"))
+        raw_phi = np.asarray(wsa_result.get("ss_phi"))
+        raw_velocity = np.asarray(wsa_result.get("velocity_map"))
+        open_mask = np.asarray(wsa_result.get("open_mask"))
+        raw_grid_theta = np.asarray(wsa_result.get("grid_theta"))
+        raw_grid_phi = np.asarray(wsa_result.get("grid_phi"))
     except (TypeError, ValueError):
         return None
+    numeric_kinds = {"f", "i", "u"}
+    if (
+        raw_theta.dtype.kind not in numeric_kinds
+        or raw_phi.dtype.kind not in numeric_kinds
+        or raw_velocity.dtype.kind not in numeric_kinds
+        or raw_grid_theta.dtype.kind not in numeric_kinds
+        or raw_grid_phi.dtype.kind not in numeric_kinds
+        or open_mask.dtype.kind != "b"
+    ):
+        return None
+    ss_theta = raw_theta.astype(float, copy=False)
+    ss_phi = raw_phi.astype(float, copy=False)
+    velocity = raw_velocity.astype(float, copy=False)
+    grid_theta = raw_grid_theta.astype(float, copy=False)
+    grid_phi = raw_grid_phi.astype(float, copy=False)
     if (
         ss_theta.ndim != 2
         or not ss_theta.size
@@ -783,6 +809,17 @@ def _validated_wsa_samples(
         or not np.isfinite(grid_phi).all()
     ):
         return None
+    expected_theta = np.arccos(np.linspace(
+        1.0 - 1.0 / grid_theta.size,
+        -1.0 + 1.0 / grid_theta.size,
+        grid_theta.size,
+    ))
+    expected_phi = np.arange(grid_phi.size, dtype=float) * 2.0 * math.pi / grid_phi.size
+    if (
+        not np.allclose(grid_theta, expected_theta, rtol=0, atol=1e-12)
+        or not np.allclose(grid_phi, expected_phi, rtol=0, atol=1e-12)
+    ):
+        return None
     valid = (
         open_mask
         & np.isfinite(ss_theta)
@@ -790,6 +827,8 @@ def _validated_wsa_samples(
         & np.isfinite(velocity)
         & (ss_theta >= 0)
         & (ss_theta <= math.pi)
+        & (velocity >= 265.0)
+        & (velocity <= 850.0)
     )
     if not valid.any():
         return None
@@ -806,6 +845,7 @@ def _source_surface_coverage_fraction(
     phi_arr: np.ndarray,
 ) -> float:
     sample_result = {
+        "model": WSA_MODEL_VERSION,
         "ss_theta": ss_theta,
         "ss_phi": ss_phi,
         "velocity_map": velocity_map,
@@ -941,7 +981,7 @@ def compute_wsa_velocity_map(
     # edge midpoint separating adjacent confirmed-open/confirmed-closed cells.
     # Indeterminate cells cannot create either side of a boundary.
     theta_b_map = np.full((n_lat, n_lon), np.nan)
-    boundary_vectors = _open_closed_boundary_midpoints(trace_states, theta_arr, phi_arr)
+    boundary_vectors = _open_closed_boundary_midpoints(trace_states, phi_arr)
     if boundary_vectors.size:
         for i_lat_o, i_lon_o in np.argwhere(open_mask):
             target = _unit_vectors(
