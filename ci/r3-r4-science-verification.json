@@ -37,6 +37,10 @@
       "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
     },
     {
+      "path": "scripts/ci/verify_r3_r4.py",
+      "sha256": "aa0169fd9a6356a5c3d83f66a76460f7d0db98204a3027b654ce9925b6c2d42c"
+    },
+    {
       "path": "backend/sim/spherical_harmonics.py",
       "sha256": "d166e005fa5a460e062ba9f0139729719eb8d9281b55ffd39722ee2122a20fad"
     },

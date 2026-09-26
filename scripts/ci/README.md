@@ -34,7 +34,8 @@ The runner fails closed when:
 - the manifest is outside the repository, or the manifest, a pinned input, or a
   mutation patch is untracked or differs from `HEAD`;
 - a pinned package, requirements file, source, test, fixture, generator, or
-  patch hash drifts;
+  patch hash drifts; the verifier script itself is a tracked, clean, hashed
+  manifest input;
 - a recorded full fix commit does not resolve exactly or is not an ancestor of
   the tested commit;
 - a required node's normalized repository-relative test file is not itself a
@@ -65,6 +66,9 @@ subprocess; the selected scientific nodes spawn no programs.
 exact requirements and invokes the `all` lane for pushes, pull requests, and
 manual dispatches. The workflow is operational but still uses hosted-runner and
 action references rather than an attested immutable container/action chain.
+Repository-hosted branch protection and required-check configuration are
+external state: this workflow cannot by itself prove that GitHub blocks merges
+when the job is absent or red.
 
 The current matrix covers the old Legendre recurrence, uniform-theta weights on
 an equal-area map, the extra `m>0` normalization, corrupted PFSS source-surface

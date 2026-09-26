@@ -692,6 +692,7 @@ def run(argv: list[str] | None = None) -> int:
                 "global-typescript-zero-error-gate",
                 "multi-worker-global-coordinator-and-process-release-integration",
                 "immutable-action-container-and-os-network-attestation",
+                "github-required-check-and-branch-protection-configuration",
             ],
         }
         if args.mode in ("mutations", "all"):
