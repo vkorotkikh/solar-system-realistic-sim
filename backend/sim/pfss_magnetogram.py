@@ -24,6 +24,12 @@ from typing import Any
 
 import numpy as np
 
+from .spherical_harmonics import (
+    schmidt_azimuthal_factor,
+    schmidt_legendre,
+    schmidt_legendre_with_theta_derivative,
+)
+
 # ─── Physical Constants ────────────────────────────────────────────────────────
 
 SOURCE_SURFACE_RADII = 2.5        # Standard PFSS source surface
@@ -279,38 +285,8 @@ def _clamp_arr(arr: np.ndarray, lo: float, hi: float) -> np.ndarray:
 # ─── Spherical Harmonic Decomposition ─────────────────────────────────────────
 
 def _associated_legendre(lmax: int, cos_theta: np.ndarray) -> dict[tuple[int, int], np.ndarray]:
-    """Compute fully normalized associated Legendre functions P_l^m(cos θ).
-
-    Uses the recurrence relation for Schmidt semi-normalized harmonics,
-    which is the standard for geomagnetism and solar physics.
-    Returns dict[(l, m)] → array of shape (n_theta,).
-    """
-    n = cos_theta.shape[0]
-    sin_theta = np.sqrt(1.0 - cos_theta**2)
-    result: dict[tuple[int, int], np.ndarray] = {}
-
-    # P_0^0 = 1
-    result[(0, 0)] = np.ones(n)
-
-    for l in range(1, lmax + 1):
-        # P_l^l (diagonal)
-        if l == 1:
-            result[(1, 1)] = sin_theta.copy()
-        else:
-            result[(l, l)] = result[(l - 1, l - 1)] * sin_theta * math.sqrt((2 * l - 1) / (2 * l))
-
-        # P_l^{l-1} (sub-diagonal)
-        result[(l, l - 1)] = cos_theta * math.sqrt(2 * l - 1) * result[(l - 1, l - 1)]
-
-        # P_l^m for m < l-1 (horizontal recurrence)
-        for m in range(l - 2, -1, -1):
-            a = math.sqrt(((2 * l - 1) * (2 * l + 1)) / ((l - m) * (l + m)))
-            b = math.sqrt(((2 * l + 1) * (l + m - 1) * (l - m - 1)) / ((l - m) * (l + m) * (2 * l - 3)))
-            result[(l, m)] = a * cos_theta * result[(l - 1, m)]
-            if (l - 2, m) in result:
-                result[(l, m)] -= b * result[(l - 2, m)]
-
-    return result
+    """Legacy delegate for the shared Schmidt quasi-normalized basis."""
+    return schmidt_legendre(lmax, cos_theta)
 
 
 def decompose_spherical_harmonics(
@@ -363,9 +339,8 @@ def decompose_spherical_harmonics(
             # Integrate over colatitude with sin(theta) weight
             weight = p * sin_theta * d_theta  # (n_lat,)
 
-            # Normalization factor
-            epsilon_m = 1.0 if m == 0 else 2.0
-            norm = (2 * l + 1) / (4.0 * np.pi) * epsilon_m
+            # The Schmidt basis already includes the real-mode normalization.
+            norm = (2 * l + 1) / (4.0 * np.pi)
 
             g_lm[l, m] = norm * np.sum(br_cos * weight)
             h_lm[l, m] = norm * np.sum(br_sin * weight)
@@ -405,7 +380,7 @@ class PFSSField:
         Units match the input coefficient units (typically Gauss for g_lm).
         """
         cos_t = math.cos(theta)
-        sin_t = max(1e-10, math.sin(theta))
+        sin_t = math.sin(theta)
 
         # Compute Legendre functions at this colatitude
         plm_vals: dict[tuple[int, int], float] = {}
@@ -459,7 +434,7 @@ class PFSSField:
 
                 br_val += cl_br * plm * gh_cos
                 bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * plm * m * gh_sin / sin_t
+                bp_val += cl_bp * float(schmidt_azimuthal_factor(m, cos_t, plm, dplm)) * gh_sin
 
         return (br_val, bt_val, bp_val)
 
@@ -492,42 +467,10 @@ class PFSSField:
         plm: dict[tuple[int, int], float],
         dplm: dict[tuple[int, int], float],
     ) -> None:
-        """Compute P_l^m and dP_l^m/dθ at a single point."""
-        plm[(0, 0)] = 1.0
-        dplm[(0, 0)] = 0.0
-
-        for l in range(1, self.lmax + 1):
-            # Diagonal: P_l^l
-            if l == 1:
-                plm[(1, 1)] = sin_t
-                dplm[(1, 1)] = cos_t
-            else:
-                fac = math.sqrt((2 * l - 1) / (2 * l))
-                plm[(l, l)] = fac * sin_t * plm[(l - 1, l - 1)]
-                dplm[(l, l)] = fac * (cos_t * plm[(l - 1, l - 1)] + sin_t * dplm[(l - 1, l - 1)])
-
-            # Sub-diagonal: P_l^{l-1}
-            fac_sub = math.sqrt(2 * l - 1)
-            plm[(l, l - 1)] = fac_sub * cos_t * plm[(l - 1, l - 1)]
-            dplm[(l, l - 1)] = fac_sub * (-sin_t * plm[(l - 1, l - 1)] + cos_t * dplm[(l - 1, l - 1)])
-
-            # Horizontal recurrence for m < l-1
-            for m in range(l - 2, -1, -1):
-                a_num = (2 * l - 1) * (2 * l + 1)
-                a_den = (l - m) * (l + m)
-                a = math.sqrt(a_num / a_den)
-
-                b_num = (2 * l + 1) * (l + m - 1) * (l - m - 1)
-                b_den = (l - m) * (l + m) * (2 * l - 3)
-                b = math.sqrt(b_num / b_den) if b_den > 0 else 0.0
-
-                plm_prev = plm.get((l - 1, m), 0.0)
-                dplm_prev = dplm.get((l - 1, m), 0.0)
-                plm_prev2 = plm.get((l - 2, m), 0.0)
-                dplm_prev2 = dplm.get((l - 2, m), 0.0)
-
-                plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
-                dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
+        """Legacy scalar delegate; sin_t is retained only for call compatibility."""
+        values, derivatives = schmidt_legendre_with_theta_derivative(self.lmax, cos_t)
+        plm.update({key: float(value) for key, value in values.items()})
+        dplm.update({key: float(value) for key, value in derivatives.items()})
 
     def evaluate_cartesian_batch(self, x: np.ndarray, y: np.ndarray, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Evaluate B vectorially at Cartesian positions (x, y, z) in solar radii. Returns (Bx, By, Bz)."""
@@ -559,7 +502,7 @@ class PFSSField:
     def _evaluate_batch(self, r: np.ndarray, theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Vectorized B(r, θ, φ) integration."""
         cos_t = np.cos(theta)
-        sin_t = np.maximum(1e-10, np.sin(theta))
+        sin_t = np.sin(theta)
         n_points = len(r)
         
         plm_vals, dplm_vals = self._legendre_batch(cos_t, sin_t)
@@ -598,50 +541,13 @@ class PFSSField:
                 
                 br_val += cl_br * plm * gh_cos
                 bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * plm * m * gh_sin / sin_t
+                bp_val += cl_bp * schmidt_azimuthal_factor(m, cos_t, plm, dplm) * gh_sin
                 
         return br_val, bt_val, bp_val
 
     def _legendre_batch(self, cos_t: np.ndarray, sin_t: np.ndarray) -> tuple[dict[tuple[int, int], np.ndarray], dict[tuple[int, int], np.ndarray]]:
-        """Vectorized computation of P_l^m and dP_l^m/dθ."""
-        plm: dict[tuple[int, int], np.ndarray] = {}
-        dplm: dict[tuple[int, int], np.ndarray] = {}
-        n_points = len(cos_t)
-        
-        plm[(0, 0)] = np.ones(n_points)
-        dplm[(0, 0)] = np.zeros(n_points)
-        
-        for l in range(1, self.lmax + 1):
-            if l == 1:
-                plm[(1, 1)] = sin_t.copy()
-                dplm[(1, 1)] = cos_t.copy()
-            else:
-                fac = math.sqrt((2 * l - 1) / (2 * l))
-                plm[(l, l)] = fac * sin_t * plm[(l - 1, l - 1)]
-                dplm[(l, l)] = fac * (cos_t * plm[(l - 1, l - 1)] + sin_t * dplm[(l - 1, l - 1)])
-
-            fac_sub = math.sqrt(2 * l - 1)
-            plm[(l, l - 1)] = fac_sub * cos_t * plm[(l - 1, l - 1)]
-            dplm[(l, l - 1)] = fac_sub * (-sin_t * plm[(l - 1, l - 1)] + cos_t * dplm[(l - 1, l - 1)])
-
-            for m in range(l - 2, -1, -1):
-                a_num = (2 * l - 1) * (2 * l + 1)
-                a_den = (l - m) * (l + m)
-                a = math.sqrt(a_num / a_den)
-
-                b_num = (2 * l + 1) * (l + m - 1) * (l - m - 1)
-                b_den = (l - m) * (l + m) * (2 * l - 3)
-                b = math.sqrt(b_num / b_den) if b_den > 0 else 0.0
-
-                plm_prev = plm.get((l - 1, m), np.zeros(n_points))
-                dplm_prev = dplm.get((l - 1, m), np.zeros(n_points))
-                plm_prev2 = plm.get((l - 2, m), np.zeros(n_points))
-                dplm_prev2 = dplm.get((l - 2, m), np.zeros(n_points))
-
-                plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
-                dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
-
-        return plm, dplm
+        """Legacy batch delegate; sin_t is retained only for call compatibility."""
+        return schmidt_legendre_with_theta_derivative(self.lmax, cos_t)
 
 
 # ─── Field Line Tracer ─────────────────────────────────────────────────────────
