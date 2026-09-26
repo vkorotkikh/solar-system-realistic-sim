@@ -9,13 +9,35 @@ ambiguous framing before request bodies or application models are consumed.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from starlette.responses import JSONResponse
 
 
 _CANONICAL_CONTENT_LENGTH = re.compile(rb"(?:0|[1-9][0-9]*)\Z")
+
+
+def scope_route_path(scope: Mapping[str, object]) -> str:
+    """Return the app-relative path for direct and root-path-prefixed scopes."""
+
+    path = scope.get("path")
+    if not isinstance(path, str):
+        return ""
+    root_path = scope.get("root_path", "")
+    if (
+        not isinstance(root_path, str)
+        or not root_path.startswith("/")
+        or root_path == "/"
+    ):
+        return path
+    normalized_root = root_path.rstrip("/")
+    if path == normalized_root:
+        return "/"
+    prefix = f"{normalized_root}/"
+    if path.startswith(prefix):
+        return path[len(normalized_root) :]
+    return path
 
 
 @dataclass(frozen=True, slots=True)

@@ -61,7 +61,11 @@ from benchmark import (
     benchmark_against_references,
     generate_accuracy_report,
 )
-from http_ingress import NetworkRequestLimits, NetworkRequestShapeMiddleware
+from http_ingress import (
+    NetworkRequestLimits,
+    NetworkRequestShapeMiddleware,
+    scope_route_path,
+)
 from data.bodies import ALL_BODIES
 from data.nearby_systems import (
     CATALOG_NAME,
@@ -230,7 +234,7 @@ class _RequestBodyLimitMiddleware:
         if (
             scope.get("type") != "http"
             or str(scope.get("method", "")).upper() != "POST"
-            or str(scope.get("path", "")) not in self.paths
+            or scope_route_path(scope) not in self.paths
         ):
             await self.app(scope, receive, send)
             return
@@ -405,7 +409,7 @@ class _TrajectoryRateLimitMiddleware:
         if (
             scope.get("type") != "http"
             or str(scope.get("method", "")).upper() not in {"GET", "POST"}
-            or str(scope.get("path", "")) not in self.paths
+            or scope_route_path(scope) not in self.paths
         ):
             await self.app(scope, receive, send)
             return
@@ -716,7 +720,7 @@ class _NetworkAuthenticationMiddleware:
 
         route = (
             str(scope.get("method", "")).upper(),
-            str(scope.get("path", "")),
+            scope_route_path(scope),
         )
         if route in NETWORK_PUBLIC_HTTP_ROUTES:
             await self.app(scope, receive, send)

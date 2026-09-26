@@ -498,6 +498,85 @@ def test_trajectory_body_limit_counts_chunked_messages_without_content_length() 
     assert sent[0]["status"] == 413
 
 
+def test_root_path_cannot_bypass_trajectory_streaming_body_limit() -> None:
+    inner_called = False
+    sent = []
+    messages = iter(
+        [
+            {"type": "http.request", "body": b"12345", "more_body": True},
+            {"type": "http.request", "body": b"67890", "more_body": False},
+        ]
+    )
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_called
+        inner_called = True
+
+    async def receive():
+        return next(messages)
+
+    async def send(message):
+        sent.append(message)
+
+    middleware = server._RequestBodyLimitMiddleware(
+        inner,
+        max_body_bytes=8,
+        paths={"/trajectory/plan"},
+    )
+    asyncio.run(
+        middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "root_path": "/api",
+                "path": "/api/trajectory/plan",
+                "headers": [],
+            },
+            receive,
+            send,
+        )
+    )
+
+    assert inner_called is False
+    assert sent[0]["status"] == 413
+
+
+def test_root_path_cannot_bypass_trajectory_rate_limit() -> None:
+    inner_calls = 0
+    sent = []
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=1,
+        window_seconds=60.0,
+        paths={"/trajectory/plan"},
+    )
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "root_path": "/api",
+        "path": "/api/trajectory/plan",
+        "headers": [],
+        "client": ("192.0.2.10", 1234),
+    }
+
+    asyncio.run(middleware(scope, receive, send))
+    asyncio.run(middleware(scope, receive, send))
+
+    assert inner_calls == 1
+    assert sent[0]["status"] == 429
+
+
 def test_trajectory_body_limit_rejects_unbounded_empty_chunk_stream() -> None:
     inner_called = False
     sent = []
