@@ -270,9 +270,24 @@ def test_server_process_limits_do_not_exceed_supervisor_hard_caps() -> None:
         HARD_MAX_PROCESS_WORKERS,
         HARD_MAX_RESULT_BYTES,
         HARD_MAX_TIMEOUT_SECONDS,
+        MIN_SUPPORTED_SOLAR_RESULT_BYTES,
     )
 
     assert 1 <= server.SOLAR_PHYSICS_PROCESS_WORKERS <= HARD_MAX_PROCESS_WORKERS
     assert 0 <= server.SOLAR_PHYSICS_PROCESS_QUEUE <= HARD_MAX_PROCESS_QUEUE
     assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES <= HARD_MAX_RESULT_BYTES
+    assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES >= MIN_SUPPORTED_SOLAR_RESULT_BYTES
     assert server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS <= HARD_MAX_TIMEOUT_SECONDS
+
+
+def test_solar_wire_budget_environment_cannot_undercut_supported_floor(
+    monkeypatch,
+) -> None:
+    from sim.process_supervisor import MIN_SUPPORTED_SOLAR_RESULT_BYTES
+
+    monkeypatch.setenv("SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES", "65536")
+
+    assert (
+        server._load_solar_physics_result_byte_limit()
+        == MIN_SUPPORTED_SOLAR_RESULT_BYTES
+    )

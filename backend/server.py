@@ -100,6 +100,7 @@ from sim.process_supervisor import (
     HARD_MAX_PROCESS_WORKERS,
     HARD_MAX_RESULT_BYTES,
     HARD_MAX_TIMEOUT_SECONDS,
+    MIN_SUPPORTED_SOLAR_RESULT_BYTES,
     ProcessCancelled,
     ProcessCrashed,
     ProcessResultRejected,
@@ -725,12 +726,16 @@ SOLAR_PHYSICS_PROCESS_QUEUE = _load_bounded_env_int(
     min_value=0,
     max_value=HARD_MAX_PROCESS_QUEUE,
 )
-SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES = _load_bounded_env_int(
-    "SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES",
-    DEFAULT_MAX_RESULT_BYTES,
-    min_value=64 * 1_024,
-    max_value=HARD_MAX_RESULT_BYTES,
-)
+def _load_solar_physics_result_byte_limit() -> int:
+    return _load_bounded_env_int(
+        "SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES",
+        DEFAULT_MAX_RESULT_BYTES,
+        min_value=MIN_SUPPORTED_SOLAR_RESULT_BYTES,
+        max_value=HARD_MAX_RESULT_BYTES,
+    )
+
+
+SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES = _load_solar_physics_result_byte_limit()
 # Compatibility metric for operators that consumed the prior limit. It now
 # means concurrently running solar worker processes, not in-process threads.
 SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = SOLAR_PHYSICS_PROCESS_WORKERS

@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from sim.process_supervisor import DEFAULT_MAX_RESULT_BYTES, _encode_envelope
+from sim.process_supervisor import (
+    DEFAULT_MAX_RESULT_BYTES,
+    MIN_SUPPORTED_SOLAR_RESULT_BYTES,
+    _encode_envelope,
+)
 from sim.solar_process_worker import (
     execute_solar_physics_job,
     validate_solar_physics_result,
@@ -40,6 +44,7 @@ def test_real_supported_worker_result_fits_default_wire_budget(
     validated = validate_solar_physics_result(result, payload)
 
     assert len(wire_bytes) <= DEFAULT_MAX_RESULT_BYTES
+    assert len(wire_bytes) <= MIN_SUPPORTED_SOLAR_RESULT_BYTES
     assert validated["fidelity"] == fidelity
     assert validated["corona"]["feature_count"] <= max_features
     assert "_solar_worker_request" not in validated

@@ -25,7 +25,11 @@ HARD_MAX_PROCESS_WORKERS = 2
 HARD_MAX_PROCESS_QUEUE = 4
 HARD_MAX_RESULT_BYTES = 8 * 1024 * 1024
 HARD_MAX_TIMEOUT_SECONDS = 60.0
-DEFAULT_MAX_RESULT_BYTES = 2 * 1024 * 1024
+# Real gates cover high/180 and every fidelity at max_features=256. The largest
+# current result is ~1.15 MiB, so 2 MiB is the supported floor with growth
+# margin, not merely a tunable default.
+MIN_SUPPORTED_SOLAR_RESULT_BYTES = 2 * 1024 * 1024
+DEFAULT_MAX_RESULT_BYTES = MIN_SUPPORTED_SOLAR_RESULT_BYTES
 _MAX_JSON_NODES = 250_000
 _MAX_JSON_DEPTH = 64
 _POLL_SECONDS = 0.01
