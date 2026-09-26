@@ -2989,12 +2989,24 @@ async def solar_realtime_aia_tile(
     response.headers["X-Solar-AIA-Channel"] = str(tile.get("channel") or channel_key)
     artifact = tile.get("artifact")
     artifact_schema = artifact.get("schema") if isinstance(artifact, dict) else None
+    artifact_name = (
+        artifact_schema.get("name") if isinstance(artifact_schema, dict) else None
+    )
+    artifact_version = (
+        artifact_schema.get("version") if isinstance(artifact_schema, dict) else None
+    )
     if (
-        isinstance(artifact_schema, dict)
-        and artifact_schema.get("name") == "helioviewer_viewport_tile"
-        and artifact_schema.get("version") == 1
+        artifact_name in {"helioviewer_viewport_tile", "solar_surface_texture"}
+        and artifact_version == 1
     ):
-        response.headers["X-Solar-AIA-Artifact"] = "helioviewer_viewport_tile/v1"
+        response.headers["X-Solar-AIA-Artifact"] = f"{artifact_name}/v1"
+
+    surface_artifact_valid = bool(
+        isinstance(artifact, dict)
+        and artifact_name == "solar_surface_texture"
+        and artifact_version == 1
+        and artifact.get("delivery") == "raw_on_demand"
+    )
 
     spatial_use = tile.get("spatial_use")
     spatial_contract = (
@@ -3004,8 +3016,10 @@ async def solar_realtime_aia_tile(
         spatial_contract.get("schema") if isinstance(spatial_contract, dict) else None
     )
     spatial_eligible = bool(
-        isinstance(spatial_use, dict)
+        surface_artifact_valid
+        and isinstance(spatial_use, dict)
         and spatial_use.get("eligible") is True
+        and spatial_use.get("reason") is None
         and isinstance(spatial_contract_schema, dict)
         and spatial_contract_schema.get("name") == "solar_surface_texture_projection"
         and spatial_contract_schema.get("version") == 1
@@ -3021,14 +3035,22 @@ async def solar_realtime_aia_tile(
         reason = (
             spatial_use.get("reason") if isinstance(spatial_use, dict) else None
         )
-        safe_reason = (
-            reason
-            if isinstance(reason, str)
-            and 0 < len(reason) <= 128
-            and reason.isascii()
-            and reason.replace("_", "").isalnum()
-            else "missing_validated_spatial_projection_contract"
-        )
+        if (
+            artifact_name is not None
+            and artifact_name != "solar_surface_texture"
+            and isinstance(spatial_use, dict)
+            and spatial_use.get("eligible") is True
+        ):
+            safe_reason = "artifact_not_spatial_surface_texture"
+        else:
+            safe_reason = (
+                reason
+                if isinstance(reason, str)
+                and 0 < len(reason) <= 128
+                and reason.isascii()
+                and reason.replace("_", "").isalnum()
+                else "missing_validated_spatial_projection_contract"
+            )
         response.headers["X-Solar-AIA-Spatial-Reason"] = safe_reason
     if tile.get("image_id") is not None:
         response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])

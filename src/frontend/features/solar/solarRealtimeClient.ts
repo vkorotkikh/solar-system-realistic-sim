@@ -169,6 +169,16 @@ function validateNullableFinite(value: unknown, context: string): void {
   }
 }
 
+function hasExactSurfaceProjectionContract(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.schema)) return false;
+  return value.schema.name === 'solar_surface_texture_projection'
+    && value.schema.version === 1
+    && value.projection === 'equirectangular'
+    && value.coordinate_frame === 'iau_sun_body_fixed'
+    && value.coverage === 'full_surface'
+    && value.uv_mapping === 'sun_surface_uv_v1';
+}
+
 function validateAiaSnapshot(value: unknown): SolarRealtimeAiaSnapshot {
   if (!isRecord(value) || !isRecord(value.channels)) {
     throw new Error('Solar realtime snapshot sdo_aia must include a channels object');
@@ -196,29 +206,39 @@ function validateAiaSnapshot(value: unknown): SolarRealtimeAiaSnapshot {
       throw new Error(`Solar realtime sdo_aia channel ${channel} artifact is invalid`);
     }
     const artifactSchema = rawEntry.artifact.schema;
+    const artifactName = isRecord(artifactSchema) ? artifactSchema.name : null;
     if (
-      !isRecord(artifactSchema) ||
-      !['helioviewer_viewport_tile', 'solar_surface_texture'].includes(
-        `${artifactSchema.name ?? ''}`
-      ) ||
-      artifactSchema.version !== 1 ||
-      rawEntry.artifact.delivery !== 'raw_on_demand'
+      !isRecord(artifactSchema)
+      || !['helioviewer_viewport_tile', 'solar_surface_texture'].includes(
+        `${artifactName ?? ''}`
+      )
+      || artifactSchema.version !== 1
+      || rawEntry.artifact.delivery !== 'raw_on_demand'
     ) {
       throw new Error(`Solar realtime sdo_aia channel ${channel} artifact contract is invalid`);
     }
     if (!isRecord(rawEntry.spatial_use) || typeof rawEntry.spatial_use.eligible !== 'boolean') {
       throw new Error(`Solar realtime sdo_aia channel ${channel} spatial_use is invalid`);
     }
-    if (rawEntry.spatial_use.eligible) {
-      if (rawEntry.spatial_use.reason !== null || !isRecord(rawEntry.spatial_use.contract)) {
-        throw new Error(`Solar realtime sdo_aia channel ${channel} eligible spatial_use is invalid`);
+    if (artifactName === 'helioviewer_viewport_tile') {
+      if (
+        rawEntry.spatial_use.eligible !== false
+        || typeof rawEntry.spatial_use.reason !== 'string'
+        || !rawEntry.spatial_use.reason.trim()
+        || rawEntry.spatial_use.contract !== null
+      ) {
+        throw new Error(
+          `Solar realtime sdo_aia channel ${channel} viewport artifact must disable spatial use`
+        );
       }
     } else if (
-      typeof rawEntry.spatial_use.reason !== 'string' ||
-      !rawEntry.spatial_use.reason.trim() ||
-      rawEntry.spatial_use.contract !== null
+      rawEntry.spatial_use.eligible !== true
+      || rawEntry.spatial_use.reason !== null
+      || !hasExactSurfaceProjectionContract(rawEntry.spatial_use.contract)
     ) {
-      throw new Error(`Solar realtime sdo_aia channel ${channel} disabled spatial_use is invalid`);
+      throw new Error(
+        `Solar realtime sdo_aia channel ${channel} surface artifact projection contract is invalid`
+      );
     }
   }
   validateOptionalFinite(value.freshness_s, 'Solar realtime sdo_aia freshness_s');

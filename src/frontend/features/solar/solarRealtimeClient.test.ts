@@ -5,6 +5,7 @@ import {
   SOLAR_REALTIME_REQUEST_TIMEOUT_MS,
   SolarRealtimeClient,
   observationStateFromSolarRealtime,
+  validateSolarRealtimePayload,
   type SolarRealtimePayload
 } from './solarRealtimeClient';
 import {
@@ -351,6 +352,84 @@ describe('SolarRealtimeClient delivery contract', () => {
       reason: 'unsupported_spatial_projection_contract'
     });
     expect(pickAiaObservationChannel(state)).toBeNull();
+  });
+
+  it('rejects a viewport artifact that claims spatial eligibility', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+    if (!channel) throw new Error('fixture channel missing');
+    channel.spatial_use = {
+      eligible: true,
+      reason: null,
+      contract: {
+        schema: { name: 'solar_surface_texture_projection', version: 1 },
+        projection: 'equirectangular',
+        coordinate_frame: 'iau_sun_body_fixed',
+        coverage: 'full_surface',
+        uv_mapping: 'sun_surface_uv_v1'
+      }
+    };
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(
+      'viewport artifact must disable spatial use'
+    );
+  });
+
+  it('rejects a surface artifact without the exact eligible projection contract', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+    if (!channel) throw new Error('fixture channel missing');
+    channel.artifact = {
+      schema: { name: 'solar_surface_texture', version: 1 },
+      delivery: 'raw_on_demand'
+    };
+    channel.spatial_use = {
+      eligible: true,
+      reason: null,
+      contract: {
+        schema: { name: 'solar_surface_texture_projection', version: 1 },
+        projection: 'equirectangular',
+        coordinate_frame: 'iau_sun_body_fixed',
+        coverage: 'partial',
+        uv_mapping: 'sun_surface_uv_v1'
+      }
+    };
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(
+      'surface artifact projection contract is invalid'
+    );
+  });
+
+  it('accepts only the complete projected surface artifact union member', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+    if (!channel) throw new Error('fixture channel missing');
+    channel.artifact = {
+      schema: { name: 'solar_surface_texture', version: 1 },
+      delivery: 'raw_on_demand'
+    };
+    channel.spatial_use = {
+      eligible: true,
+      reason: null,
+      contract: {
+        schema: { name: 'solar_surface_texture_projection', version: 1 },
+        projection: 'equirectangular',
+        coordinate_frame: 'iau_sun_body_fixed',
+        coverage: 'full_surface',
+        uv_mapping: 'sun_surface_uv_v1'
+      }
+    };
+
+    const validated = validateSolarRealtimePayload(payload);
+    const selection = pickAiaObservationChannel(
+      observationStateFromSolarRealtime(validated)
+    );
+
+    expect(selection).toMatchObject({
+      channel: 'aia_193',
+      imageId: 'hv-193-42',
+      spatialUse: 'eligible'
+    });
   });
 
   it('can select a validated projected channel after a nonspatial preferred channel', () => {

@@ -484,6 +484,90 @@ def test_aia_tile_response_rejects_unvalidated_spatial_eligibility_claim(
     )
 
 
+def test_aia_tile_response_cannot_label_a_viewport_artifact_spatially_eligible(
+    monkeypatch,
+) -> None:
+    payload = {
+        "channel": "aia_193",
+        "content": b"png",
+        "content_type": "image/png",
+        "artifact": {
+            "schema": {"name": "helioviewer_viewport_tile", "version": 1},
+            "delivery": "raw_on_demand",
+        },
+        "spatial_use": {
+            "eligible": True,
+            "reason": None,
+            "contract": {
+                "schema": {
+                    "name": "solar_surface_texture_projection",
+                    "version": 1,
+                },
+                "projection": "equirectangular",
+                "coordinate_frame": "iau_sun_body_fixed",
+                "coverage": "full_surface",
+                "uv_mapping": "sun_surface_uv_v1",
+            },
+        },
+    }
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: payload,
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 200
+    assert response.headers["x-solar-aia-artifact"] == (
+        "helioviewer_viewport_tile/v1"
+    )
+    assert response.headers["x-solar-aia-spatial-use"] == "disabled"
+    assert response.headers["x-solar-aia-spatial-reason"] == (
+        "artifact_not_spatial_surface_texture"
+    )
+
+
+def test_aia_tile_response_labels_only_the_complete_surface_texture_contract_eligible(
+    monkeypatch,
+) -> None:
+    payload = {
+        "channel": "aia_193",
+        "content": b"png",
+        "content_type": "image/png",
+        "artifact": {
+            "schema": {"name": "solar_surface_texture", "version": 1},
+            "delivery": "raw_on_demand",
+        },
+        "spatial_use": {
+            "eligible": True,
+            "reason": None,
+            "contract": {
+                "schema": {
+                    "name": "solar_surface_texture_projection",
+                    "version": 1,
+                },
+                "projection": "equirectangular",
+                "coordinate_frame": "iau_sun_body_fixed",
+                "coverage": "full_surface",
+                "uv_mapping": "sun_surface_uv_v1",
+            },
+        },
+    }
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: payload,
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 200
+    assert response.headers["x-solar-aia-artifact"] == "solar_surface_texture/v1"
+    assert response.headers["x-solar-aia-spatial-use"] == "eligible"
+    assert "x-solar-aia-spatial-reason" not in response.headers
+
+
 def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image(
     monkeypatch,
 ) -> None:
