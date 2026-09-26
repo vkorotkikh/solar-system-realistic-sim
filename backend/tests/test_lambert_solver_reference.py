@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import pytest
 
+from data.bodies import ALL_BODIES
 from mission.orbital import au_per_day_to_km_per_sec, vector_length, vector_sub
-from trajectory.lambert import solve_lambert_universal
+from trajectory import solve_direct_lambert
+import trajectory.lambert as lambert_module
+from trajectory.lambert import (
+    compute_lambert_leg_from_state_vectors,
+    solve_lambert_universal,
+)
 
 
 REFERENCE_CASES = [
@@ -75,6 +81,33 @@ def test_lambert_solver_rejects_an_exhausted_uncertified_root() -> None:
     assert solution is None
 
 
+@pytest.mark.parametrize("entry_point", ["solver", "state_vectors"])
+def test_lambert_vector_validation_reads_at_most_four_values(entry_point: str) -> None:
+    consumed = 0
+
+    def poison_vector():
+        nonlocal consumed
+        while True:
+            consumed += 1
+            if consumed > 4:
+                raise AssertionError("Lambert validation consumed an unbounded vector")
+            yield float(consumed)
+
+    with pytest.raises(ValueError, match="three finite values"):
+        if entry_point == "solver":
+            solve_lambert_universal(poison_vector(), [1.0, 0.0, 0.0], 100.0)
+        else:
+            compute_lambert_leg_from_state_vectors(
+                poison_vector(),
+                [0.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                100.0,
+            )
+
+    assert consumed == 4
+
+
 def test_lambert_solver_meets_a_strict_time_of_flight_certificate() -> None:
     case = REFERENCE_CASES[1]
     tolerance_days = 1e-10
@@ -91,3 +124,90 @@ def test_lambert_solver_meets_a_strict_time_of_flight_certificate() -> None:
     assert solution is not None
     assert solution["rootBracketed"] is True
     assert solution["rootResidualDays"] <= tolerance_days
+
+
+def test_lambert_solver_rejects_close_but_unbracketed_coarse_sample(monkeypatch) -> None:
+    case = REFERENCE_CASES[0]
+    requested_tof = 260.0
+
+    monkeypatch.setattr(
+        lambert_module,
+        "_tof_from_z",
+        lambda *_args, **_kwargs: (requested_tof + 0.5, 1.0, 0.5, 1.0 / 6.0),
+    )
+
+    assert (
+        solve_lambert_universal(
+            case["r1"],
+            case["r2"],
+            requested_tof,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"mu": 0.0},
+        {"mu": -1.0},
+        {"mu": float("nan")},
+        {"tol_days": float("inf")},
+        {"tol_days": 1.0},
+        {"max_iter": True},
+        {"max_iter": 513},
+    ],
+)
+def test_lambert_solver_rejects_unsafe_numerical_controls(kwargs: dict) -> None:
+    case = REFERENCE_CASES[0]
+
+    with pytest.raises(ValueError):
+        solve_lambert_universal(case["r1"], case["r2"], case["tof_days"], **kwargs)
+
+
+def test_state_vector_wrapper_rejects_nonfinite_velocity() -> None:
+    case = REFERENCE_CASES[0]
+
+    with pytest.raises(ValueError, match="start_velocity"):
+        lambert_module.compute_lambert_leg_from_state_vectors(
+            case["r1"],
+            [float("nan"), 0.0, 0.0],
+            case["r2"],
+            case["planet_v2"],
+            case["tof_days"],
+        )
+
+
+@pytest.mark.parametrize("tof_days", [0.1, 1.0])
+def test_lambert_solver_rejects_unbracketed_short_tof(tof_days: float) -> None:
+    case = REFERENCE_CASES[0]
+
+    assert solve_lambert_universal(case["r1"], case["r2"], tof_days) is None
+
+
+@pytest.mark.parametrize("tof_days", [2.0, 5.0, 10.0])
+def test_short_tof_solution_must_still_be_bracketed_and_certified(tof_days: float) -> None:
+    case = REFERENCE_CASES[0]
+
+    solution = solve_lambert_universal(case["r1"], case["r2"], tof_days)
+
+    assert solution is not None
+    assert solution["rootBracketed"] is True
+    assert solution["rootResidualDays"] <= 1.0e-4
+
+
+@pytest.mark.parametrize("tof_days", [2.0, 5.0, 10.0])
+def test_original_short_tof_wrapper_regression_fails_explicitly(tof_days: float) -> None:
+    departure_jd = 2_460_600.5
+
+    result = solve_direct_lambert(
+        ALL_BODIES,
+        from_id="earth",
+        to_id="mars",
+        departure_jd=departure_jd,
+        arrival_jd=departure_jd + tof_days,
+        ephemeris_provider="kepler",
+    )
+
+    assert result["solution"] is None
+    assert result["error"] == "No Lambert solution for requested geometry/time"

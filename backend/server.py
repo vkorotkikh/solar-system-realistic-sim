@@ -35,7 +35,7 @@ import queue
 import os
 import threading
 import time
-from collections import Counter, deque
+from collections import Counter, OrderedDict, deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from functools import partial
@@ -43,10 +43,17 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
+from starlette.responses import JSONResponse
 
-from benchmark import benchmark_against_references, generate_accuracy_report
+from benchmark import (
+    MAX_REFERENCE_SCENARIOS,
+    benchmark_against_references,
+    generate_accuracy_report,
+)
 from data.bodies import ALL_BODIES
 from data.nearby_systems import (
     CATALOG_NAME,
@@ -59,6 +66,22 @@ from data.nearby_systems import (
     query_nearby_systems,
 )
 from mission import MissionPlannerAgent
+from mission.ephemeris_service import (
+    EphemerisBudgetExceeded,
+    EphemerisCancelled,
+    EphemerisError,
+    EphemerisProtocolError,
+    EphemerisProviderUnavailable,
+    EphemerisTargetUnsupported,
+    EphemerisUpstreamRateLimited,
+    EphemerisUpstreamTimeout,
+    HORIZONS_CONCURRENCY_LIMIT,
+    HORIZONS_MAX_TIMEOUT_S,
+    HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S,
+    HORIZONS_PROVIDER_OUTAGE_MAX_COOLDOWN_S,
+    HORIZONS_SUCCESS_CACHE_MAXSIZE,
+    TRAJECTORY_STATE_CONTRACT,
+)
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
@@ -71,6 +94,34 @@ from trajectory import (
     plan_interplanetary_route,
     run_porkchop_scan,
     solve_direct_lambert,
+)
+from trajectory.budget import (
+    HARD_MAX_UNIQUE_EPHEMERIS_STATES,
+    PlanningBudgetExceeded,
+    PlanningCancelled,
+    PlanningContext,
+    PlanningDeadlineExceeded,
+    PlanningLimits,
+)
+from trajectory.contracts import (
+    HARD_MAX_ASSIST_POOL_SIZE,
+    HARD_MAX_ROUTE_TOPOLOGIES,
+    TrajectoryRequestRejected,
+    ValidatedTrajectoryPlan,
+    eligible_assist_body_ids,
+    eligible_endpoint_body_ids,
+    estimate_route_count,
+    validate_plan_request,
+)
+from trajectory.lambert import (
+    MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
+    MIN_PORKCHOP_TOF_STEP_DAYS,
+)
+from trajectory.mga import (
+    GLOBAL_BEAM_WIDTH,
+    MAX_COMPLETED,
+    MAX_PARTIALS_PER_ROUTE_PREFIX,
+    MAX_RETURNED_ALTERNATIVES,
 )
 
 # TudatPy is optional (conda-only package)
@@ -86,6 +137,246 @@ app = FastAPI(
     description="N-body gravitational simulation server for the Solar System Mission Lab.",
     version="0.1.0",
 )
+
+
+class _RequestBodyLimitMiddleware:
+    """Reject selected JSON request bodies before FastAPI parses them.
+
+    Checking only ``Content-Length`` is insufficient for chunked requests. For
+    the small scientific-control payloads in scope, buffering at most the hard
+    ceiling before handing the messages to FastAPI gives deterministic ingress
+    memory and validation cost while preserving the underlying receive channel
+    for later disconnect detection.
+    """
+
+    def __init__(
+        self,
+        app,
+        *,
+        max_body_bytes: int,
+        paths: set[str],
+        max_body_messages: int = 1_024,
+    ) -> None:
+        self.app = app
+        self.max_body_bytes = int(max_body_bytes)
+        self.max_body_messages = int(max_body_messages)
+        self.paths = frozenset(paths)
+
+    def _error_response(self, code: str, message: str, *, observed: int | None = None) -> JSONResponse:
+        context: dict[str, Any] = {"maximumBodyBytes": self.max_body_bytes}
+        if observed is not None:
+            context["observedBodyBytes"] = int(observed)
+        return JSONResponse(
+            status_code=(
+                413
+                if code in {
+                    "trajectory_request_body_too_large",
+                    "trajectory_request_body_too_fragmented",
+                }
+                else 400
+            ),
+            content={
+                "detail": {
+                    "code": code,
+                    "message": message,
+                    "retryable": False,
+                    "context": context,
+                }
+            },
+        )
+
+    async def __call__(self, scope, receive, send) -> None:
+        if (
+            scope.get("type") != "http"
+            or str(scope.get("method", "")).upper() != "POST"
+            or str(scope.get("path", "")) not in self.paths
+        ):
+            await self.app(scope, receive, send)
+            return
+
+        content_length: int | None = None
+        for raw_name, raw_value in scope.get("headers", []):
+            if raw_name.lower() != b"content-length":
+                continue
+            try:
+                content_length = int(raw_value.decode("ascii"))
+            except (UnicodeDecodeError, ValueError):
+                response = self._error_response(
+                    "trajectory_invalid_content_length",
+                    "Request Content-Length must be a non-negative integer.",
+                )
+                await response(scope, receive, send)
+                return
+            if content_length < 0:
+                response = self._error_response(
+                    "trajectory_invalid_content_length",
+                    "Request Content-Length must be a non-negative integer.",
+                )
+                await response(scope, receive, send)
+                return
+            break
+
+        if content_length is not None and content_length > self.max_body_bytes:
+            response = self._error_response(
+                "trajectory_request_body_too_large",
+                "Trajectory request body exceeds the configured byte limit.",
+                observed=content_length,
+            )
+            await response(scope, receive, send)
+            return
+
+        buffered_body = bytearray()
+        observed = 0
+        message_count = 0
+        disconnected = False
+        while True:
+            message = await receive()
+            message_count += 1
+            if message_count > self.max_body_messages:
+                response = self._error_response(
+                    "trajectory_request_body_too_fragmented",
+                    "Trajectory request body contains too many streaming fragments.",
+                    observed=observed,
+                )
+                await response(scope, receive, send)
+                return
+            if message.get("type") == "http.disconnect":
+                disconnected = True
+                break
+            if message.get("type") != "http.request":
+                continue
+            body = message.get("body", b"")
+            body_bytes = bytes(body) if isinstance(body, (bytes, bytearray)) else b""
+            observed += len(body_bytes)
+            if observed > self.max_body_bytes:
+                response = self._error_response(
+                    "trajectory_request_body_too_large",
+                    "Trajectory request body exceeds the configured byte limit.",
+                    observed=observed,
+                )
+                await response(scope, receive, send)
+                return
+            buffered_body.extend(body_bytes)
+            if not message.get("more_body", False):
+                break
+
+        if disconnected:
+            buffered_messages: list[dict[str, Any]] = []
+            if buffered_body:
+                buffered_messages.append(
+                    {
+                        "type": "http.request",
+                        "body": bytes(buffered_body),
+                        "more_body": True,
+                    }
+                )
+            buffered_messages.append({"type": "http.disconnect"})
+        else:
+            buffered_messages = [
+                {
+                    "type": "http.request",
+                    "body": bytes(buffered_body),
+                    "more_body": False,
+                }
+            ]
+
+        buffered_index = 0
+
+        async def replay_receive():
+            nonlocal buffered_index
+            if buffered_index < len(buffered_messages):
+                message = buffered_messages[buffered_index]
+                buffered_index += 1
+                return message
+            return await receive()
+
+        await self.app(scope, replay_receive, send)
+
+
+class _TrajectoryRateLimitMiddleware:
+    """Bound trajectory ingress per peer before reading or parsing its body."""
+
+    def __init__(
+        self,
+        app,
+        *,
+        max_requests: int,
+        window_seconds: float,
+        paths: set[str],
+        max_identities: int = 4_096,
+        clock=time.monotonic,
+    ) -> None:
+        self.app = app
+        self.max_requests = max(1, int(max_requests))
+        self.window_seconds = max(1.0, float(window_seconds))
+        self.max_identities = max(1, int(max_identities))
+        self.paths = frozenset(paths)
+        self.clock = clock
+        self._requests: OrderedDict[str, deque[float]] = OrderedDict()
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _identity(scope: dict[str, Any]) -> str:
+        client = scope.get("client")
+        if isinstance(client, (tuple, list)) and client:
+            host = str(client[0]).strip()
+            if host:
+                return host[:255]
+        return "anonymous"
+
+    def _retry_after(self, identity: str) -> int | None:
+        now = float(self.clock())
+        cutoff = now - self.window_seconds
+        with self._lock:
+            queue = self._requests.get(identity)
+            if queue is None:
+                if len(self._requests) >= self.max_identities:
+                    # Bound memory even under high-cardinality peer churn. Peer
+                    # identity comes from the ASGI transport, not spoofable
+                    # forwarding headers.
+                    self._requests.popitem(last=False)
+                queue = deque()
+                self._requests[identity] = queue
+            else:
+                self._requests.move_to_end(identity)
+
+            while queue and queue[0] <= cutoff:
+                queue.popleft()
+            if len(queue) >= self.max_requests:
+                return max(1, int(math.ceil(queue[0] + self.window_seconds - now)))
+            queue.append(now)
+        return None
+
+    async def __call__(self, scope, receive, send) -> None:
+        if (
+            scope.get("type") != "http"
+            or str(scope.get("method", "")).upper() not in {"GET", "POST"}
+            or str(scope.get("path", "")) not in self.paths
+        ):
+            await self.app(scope, receive, send)
+            return
+
+        retry_after = self._retry_after(self._identity(scope))
+        if retry_after is not None:
+            response = JSONResponse(
+                status_code=429,
+                headers={"Retry-After": str(retry_after)},
+                content={
+                    "detail": {
+                        "code": "trajectory_rate_limit_exceeded",
+                        "message": "Trajectory request rate limit exceeded; retry later.",
+                        "retryable": True,
+                        "context": {
+                            "maximumRequests": self.max_requests,
+                            "windowSeconds": self.window_seconds,
+                        },
+                    }
+                },
+            )
+            await response(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
 
 
 def _load_env_csv(name: str, default: list[str]) -> list[str]:
@@ -110,15 +401,6 @@ SOLAR_CORS_ALLOWED_ORIGINS = _load_env_csv(
     ],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 def _load_env_int(name: str, default: int, *, min_value: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -139,6 +421,28 @@ def _load_env_float(name: str, default: float, *, min_value: float) -> float:
     except (TypeError, ValueError):
         return default
     return max(min_value, value)
+
+
+def _load_bounded_env_int(
+    name: str,
+    default: int,
+    *,
+    min_value: int,
+    max_value: int,
+) -> int:
+    """Load an integer knob without permitting safety ceilings to be disabled."""
+    return min(max_value, _load_env_int(name, default, min_value=min_value))
+
+
+def _load_bounded_env_float(
+    name: str,
+    default: float,
+    *,
+    min_value: float,
+    max_value: float,
+) -> float:
+    """Load a floating-point knob within a compile-time safety envelope."""
+    return min(max_value, _load_env_float(name, default, min_value=min_value))
 
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
@@ -180,10 +484,11 @@ SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
     12.0,
     min_value=0.5,
 )
-SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
     "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT",
     2,
     min_value=1,
+    max_value=2,
 )
 SOLAR_PHYSICS_API_KEYS = frozenset(
     key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
@@ -209,75 +514,329 @@ SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_env_float(
     4.0,
     min_value=0.5,
 )
-TRAJECTORY_PORKCHOP_MAX_GRID_POINTS = _load_env_int(
-    "TRAJECTORY_PORKCHOP_MAX_GRID_POINTS",
-    20_000,
-    min_value=100,
+TRAJECTORY_REQUEST_MAX_BODY_BYTES = _load_bounded_env_int(
+    "TRAJECTORY_REQUEST_MAX_BODY_BYTES",
+    32 * 1_024,
+    min_value=4 * 1_024,
+    max_value=32 * 1_024,
 )
-TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS = _load_env_float(
+TRAJECTORY_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
+    "TRAJECTORY_RATE_LIMIT_PER_WINDOW",
+    60,
+    min_value=1,
+    max_value=60,
+)
+TRAJECTORY_RATE_LIMIT_WINDOW_SECONDS = _load_bounded_env_float(
+    "TRAJECTORY_RATE_LIMIT_WINDOW_SECONDS",
+    60.0,
+    min_value=60.0,
+    max_value=300.0,
+)
+TRAJECTORY_RATE_LIMIT_MAX_IDENTITIES = _load_bounded_env_int(
+    "TRAJECTORY_RATE_LIMIT_MAX_IDENTITIES",
+    4_096,
+    min_value=128,
+    max_value=4_096,
+)
+TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE",
+    HARD_MAX_ASSIST_POOL_SIZE,
+    min_value=1,
+    max_value=HARD_MAX_ASSIST_POOL_SIZE,
+)
+TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES",
+    HARD_MAX_ROUTE_TOPOLOGIES,
+    min_value=1,
+    max_value=HARD_MAX_ROUTE_TOPOLOGIES,
+)
+TRAJECTORY_PLAN_MAX_ROUTE_PREFIXES = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_ROUTE_PREFIXES",
+    256,
+    min_value=1,
+    max_value=256,
+)
+TRAJECTORY_PLAN_MAX_LEG_REQUESTS = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_LEG_REQUESTS",
+    2_400,
+    min_value=1,
+    max_value=2_400,
+)
+TRAJECTORY_PLAN_MAX_LEG_EVALUATIONS = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_LEG_EVALUATIONS",
+    2_000,
+    min_value=1,
+    max_value=2_000,
+)
+TRAJECTORY_PLAN_MAX_EPHEMERIS_QUERIES = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_EPHEMERIS_QUERIES",
+    4_000,
+    min_value=2,
+    max_value=4_000,
+)
+TRAJECTORY_PLAN_MAX_UNIQUE_EPHEMERIS_STATES = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_UNIQUE_EPHEMERIS_STATES",
+    2_000,
+    min_value=2,
+    max_value=2_000,
+)
+TRAJECTORY_PLAN_MAX_REMOTE_EPHEMERIS_STATES = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_REMOTE_EPHEMERIS_STATES",
+    128,
+    min_value=2,
+    max_value=128,
+)
+TRAJECTORY_PLAN_MAX_EXTERNAL_REQUESTS = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_MAX_EXTERNAL_REQUESTS",
+    16,
+    min_value=1,
+    max_value=16,
+)
+TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS = _load_bounded_env_float(
+    "TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS",
+    7.0,
+    min_value=0.25,
+    max_value=7.0,
+)
+TRAJECTORY_PLAN_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "TRAJECTORY_PLAN_COMPUTE_TIMEOUT_SECONDS",
+    8.0,
+    min_value=0.5,
+    max_value=8.0,
+)
+TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS = min(
+    TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS,
+    max(0.1, TRAJECTORY_PLAN_COMPUTE_TIMEOUT_SECONDS - 0.25),
+)
+TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+    "TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT",
+    1,
+    min_value=1,
+    max_value=1,
+)
+TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS = _load_bounded_env_float(
+    "TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS",
+    5.0,
+    min_value=0.25,
+    max_value=5.0,
+)
+TRAJECTORY_LAMBERT_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "TRAJECTORY_LAMBERT_COMPUTE_TIMEOUT_SECONDS",
+    6.0,
+    min_value=0.5,
+    max_value=6.0,
+)
+TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS = min(
+    TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS,
+    max(0.1, TRAJECTORY_LAMBERT_COMPUTE_TIMEOUT_SECONDS - 0.25),
+)
+TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+    "TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+    max_value=2,
+)
+# Remote ephemerides are safe for a direct two-state Lambert request. Search
+# endpoints stay disabled until bounded finalist batching is implemented.
+TRAJECTORY_HORIZONS_SEARCH_ENABLED = False
+TRAJECTORY_PLAN_MIN_LEG_TOF_DAYS = 45.0
+TRAJECTORY_PLAN_MAX_LEG_TOF_DAYS = 2_000.0
+TRAJECTORY_PLAN_MAX_ASSIST_TOF_SEEDS_PER_EXTENSION = 8
+TRAJECTORY_PLAN_MAX_DIRECT_TOF_SEEDS = 15
+TRAJECTORY_LAMBERT_MAX_REVOLUTIONS = 0
+TRAJECTORY_PORKCHOP_MAX_GRID_POINTS = _load_bounded_env_int(
+    "TRAJECTORY_PORKCHOP_MAX_GRID_POINTS",
+    2_000,
+    min_value=100,
+    max_value=2_000,
+)
+TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS = _load_bounded_env_float(
     "TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS",
     3_650.0,
     min_value=1.0,
+    max_value=3_650.0,
 )
-TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS = _load_env_float(
+TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS = _load_bounded_env_float(
     "TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS",
     3_650.0,
     min_value=1.0,
+    max_value=3_650.0,
 )
-TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS = _load_env_float(
+TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS = _load_bounded_env_float(
     "TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS",
-    0.5,
-    min_value=0.25,
+    MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
+    min_value=MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
+    max_value=TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS,
 )
-TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS = _load_env_float(
+TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS = _load_bounded_env_float(
     "TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS",
-    5.0,
-    min_value=1.0,
+    MIN_PORKCHOP_TOF_STEP_DAYS,
+    min_value=MIN_PORKCHOP_TOF_STEP_DAYS,
+    max_value=TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS,
 )
-TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
     "TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS",
     8.0,
     min_value=0.5,
+    max_value=8.0,
 )
-TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+TRAJECTORY_PORKCHOP_INTERNAL_DEADLINE_SECONDS = min(
+    7.0,
+    max(0.1, TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS - 0.25),
+)
+TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
     "TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT",
     2,
     min_value=1,
+    max_value=2,
 )
-MISSION_PLAN_MAX_RISK_SAMPLES = _load_env_int(
+MISSION_PLAN_MAX_RISK_SAMPLES = _load_bounded_env_int(
     "MISSION_PLAN_MAX_RISK_SAMPLES",
     5_000,
     min_value=50,
+    max_value=5_000,
 )
-MISSION_PLAN_MAX_VEHICLE_STAGES = _load_env_int(
+MISSION_PLAN_MAX_VEHICLE_STAGES = _load_bounded_env_int(
     "MISSION_PLAN_MAX_VEHICLE_STAGES",
     12,
     min_value=1,
+    max_value=12,
 )
-MISSION_PLAN_MAX_ASSIST_POOL_SIZE = _load_env_int(
+MISSION_PLAN_MAX_ASSIST_POOL_SIZE = _load_bounded_env_int(
     "MISSION_PLAN_MAX_ASSIST_POOL_SIZE",
-    12,
+    HARD_MAX_ASSIST_POOL_SIZE,
     min_value=1,
+    max_value=HARD_MAX_ASSIST_POOL_SIZE,
 )
-MISSION_PLAN_MAX_PAYLOAD_MASS_KG = _load_env_float(
+MISSION_PLAN_MAX_PAYLOAD_MASS_KG = _load_bounded_env_float(
     "MISSION_PLAN_MAX_PAYLOAD_MASS_KG",
     5_000_000.0,
     min_value=1.0,
+    max_value=5_000_000.0,
 )
-MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
     "MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS",
     12.0,
     min_value=0.5,
+    max_value=12.0,
 )
-MISSION_PLAN_CONCURRENT_REQUEST_LIMIT = _load_env_int(
+MISSION_PLAN_INTERNAL_DEADLINE_SECONDS = min(
+    11.0,
+    max(0.1, MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS - 0.25),
+)
+MISSION_PLAN_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
     "MISSION_PLAN_CONCURRENT_REQUEST_LIMIT",
     1,
     min_value=1,
+    max_value=1,
 )
-HEAVY_COMPUTE_THREAD_LIMIT = _load_env_int(
+BENCHMARK_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "BENCHMARK_COMPUTE_TIMEOUT_SECONDS",
+    9.0,
+    min_value=0.5,
+    max_value=10.0,
+)
+BENCHMARK_INTERNAL_DEADLINE_SECONDS = min(
+    8.0,
+    max(0.1, BENCHMARK_COMPUTE_TIMEOUT_SECONDS - 0.25),
+)
+BENCHMARK_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+    "BENCHMARK_CONCURRENT_REQUEST_LIMIT",
+    1,
+    min_value=1,
+    max_value=1,
+)
+HEAVY_COMPUTE_THREAD_LIMIT = _load_bounded_env_int(
     "HEAVY_COMPUTE_THREAD_LIMIT",
     2,
     min_value=1,
+    max_value=2,
+)
+
+
+def _configured_default_assist_pool(
+    *,
+    max_pool_size: int,
+    max_route_topologies: int,
+) -> tuple[str, ...]:
+    """Keep implicit defaults valid when operators lower safety ceilings."""
+
+    candidates = tuple(DEFAULT_ASSIST_POOL[: max(0, int(max_pool_size))])
+    while (
+        candidates
+        and estimate_route_count(len(candidates), 3) > max_route_topologies
+    ):
+        candidates = candidates[:-1]
+    return candidates
+
+
+TRAJECTORY_CONFIGURED_DEFAULT_ASSIST_POOL = _configured_default_assist_pool(
+    max_pool_size=TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE,
+    max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+)
+MISSION_CONFIGURED_DEFAULT_ASSIST_POOL = _configured_default_assist_pool(
+    max_pool_size=MISSION_PLAN_MAX_ASSIST_POOL_SIZE,
+    max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+)
+
+TRAJECTORY_INGRESS_PATHS = {
+    "/trajectory/plan",
+    "/trajectory/lambert",
+    "/trajectory/porkchop",
+    "/mission/plan",
+    "/benchmark/accuracy",
+    "/benchmark/accuracy/report",
+}
+
+
+@app.exception_handler(RequestValidationError)
+async def _bounded_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+):
+    """Keep trajectory-family schema failures on the public error contract."""
+
+    if request.url.path not in TRAJECTORY_INGRESS_PATHS:
+        return await request_validation_exception_handler(request, exc)
+    errors = [
+        {
+            "type": str(error.get("type", "validation_error")),
+            "location": [str(part) for part in error.get("loc", ())],
+            "message": str(error.get("msg", "Invalid request value")),
+        }
+        for error in exc.errors()[:64]
+    ]
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "code": "trajectory_request_validation_error",
+                "message": "The request does not match the endpoint schema.",
+                "retryable": False,
+                "context": {"errors": errors},
+            }
+        },
+    )
+
+
+app.add_middleware(
+    _RequestBodyLimitMiddleware,
+    max_body_bytes=TRAJECTORY_REQUEST_MAX_BODY_BYTES,
+    paths=TRAJECTORY_INGRESS_PATHS,
+)
+app.add_middleware(
+    _TrajectoryRateLimitMiddleware,
+    max_requests=TRAJECTORY_RATE_LIMIT_PER_WINDOW,
+    window_seconds=TRAJECTORY_RATE_LIMIT_WINDOW_SECONDS,
+    max_identities=TRAJECTORY_RATE_LIMIT_MAX_IDENTITIES,
+    paths=TRAJECTORY_INGRESS_PATHS,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 _solar_physics_rate_locks: dict[str, deque[float]] = {}
@@ -286,8 +845,11 @@ _solar_physics_concurrent_guard = threading.BoundedSemaphore(SOLAR_PHYSICS_CONCU
 _solar_aia_tile_rate_locks: dict[str, deque[float]] = {}
 _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
+_trajectory_plan_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT)
+_trajectory_lambert_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT)
 _trajectory_porkchop_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT)
 _mission_plan_concurrent_guard = threading.BoundedSemaphore(MISSION_PLAN_CONCURRENT_REQUEST_LIMIT)
+_benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_REQUEST_LIMIT)
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
 _ws_sim_active_connections = 0
@@ -503,6 +1065,307 @@ async def _run_owned_thread(
         raise
 
 
+class _RequestOwnerDisconnected(asyncio.CancelledError):
+    """Internal signal: the HTTP peer left while owned work was still running."""
+
+
+async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float = 0.05) -> None:
+    while True:
+        if await request.is_disconnected():
+            return
+        await asyncio.sleep(poll_seconds)
+
+
+async def _run_request_owned_thread(
+    request: Request,
+    function,
+    *args,
+    guard: threading.BoundedSemaphore,
+    executor: ThreadPoolExecutor,
+    timeout_seconds: float,
+    owner_context: PlanningContext,
+    **kwargs,
+):
+    """Run an owned worker and cooperatively cancel it after peer disconnect.
+
+    ASGI servers do not universally cancel a response handler when the client
+    closes the connection.  Polling the request channel prevents an abandoned
+    browser fetch from continuing a full trajectory search.  As with
+    ``_run_owned_thread``, the compute permit remains owned until the actual
+    worker future exits.
+    """
+
+    worker_task = asyncio.create_task(
+        _run_owned_thread(
+            function,
+            *args,
+            guard=guard,
+            executor=executor,
+            timeout_seconds=timeout_seconds,
+            owner_cancel_event=owner_context.cancel_event,
+            **kwargs,
+        )
+    )
+    disconnect_task = asyncio.create_task(_wait_for_request_disconnect(request))
+    try:
+        done, _pending = await asyncio.wait(
+            (worker_task, disconnect_task),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        # Prefer a completed scientific result in a same-tick race.
+        if worker_task in done:
+            return await worker_task
+
+        await disconnect_task
+        owner_context.cancel("client_disconnected")
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise _RequestOwnerDisconnected()
+    except _RequestOwnerDisconnected:
+        raise
+    except asyncio.CancelledError:
+        # Handler cancellation and HTTP disconnect are not guaranteed to be the
+        # same event across ASGI servers. Explicitly detach only the waiter;
+        # `_run_owned_thread` keeps the semaphore owned until the real worker
+        # exits and its completion callback releases it.
+        owner_context.cancel("request_cancelled")
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise
+    finally:
+        if not disconnect_task.done():
+            disconnect_task.cancel()
+            try:
+                await disconnect_task
+            except asyncio.CancelledError:
+                pass
+
+
+def _trajectory_http_exception(
+    status_code: int,
+    code: str,
+    message: str,
+    *,
+    retryable: bool = False,
+    context: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "code": code,
+            "message": message,
+            "retryable": bool(retryable),
+            "context": dict(context or {}),
+        },
+        headers=headers,
+    )
+
+
+def _ephemeris_http_exception(exc: EphemerisError) -> HTTPException:
+    status_code = 503
+    if isinstance(exc, EphemerisTargetUnsupported):
+        status_code = 422
+    elif isinstance(exc, EphemerisProtocolError):
+        status_code = 502
+    elif isinstance(exc, EphemerisUpstreamTimeout):
+        status_code = 504
+    elif isinstance(
+        exc,
+        (
+            EphemerisProviderUnavailable,
+            EphemerisUpstreamRateLimited,
+            EphemerisBudgetExceeded,
+            EphemerisCancelled,
+        ),
+    ):
+        status_code = 503
+
+    payload = exc.to_dict()
+    payload.pop("code", None)
+    payload.pop("message", None)
+    headers = None
+    if exc.retry_after_s is not None:
+        retry_after = max(1, min(60, int(math.ceil(float(exc.retry_after_s)))))
+        headers = {"Retry-After": str(retry_after)}
+    return _trajectory_http_exception(
+        status_code,
+        exc.code,
+        str(exc),
+        retryable=exc.retryable,
+        context=payload,
+        headers=headers,
+    )
+
+
+def _trajectory_plan_limits() -> PlanningLimits:
+    return PlanningLimits(
+        ephemeris_queries=TRAJECTORY_PLAN_MAX_EPHEMERIS_QUERIES,
+        unique_ephemeris_states=TRAJECTORY_PLAN_MAX_UNIQUE_EPHEMERIS_STATES,
+        remote_ephemeris_states=TRAJECTORY_PLAN_MAX_REMOTE_EPHEMERIS_STATES,
+        external_requests=TRAJECTORY_PLAN_MAX_EXTERNAL_REQUESTS,
+        leg_requests=TRAJECTORY_PLAN_MAX_LEG_REQUESTS,
+        leg_evaluations=TRAJECTORY_PLAN_MAX_LEG_EVALUATIONS,
+        route_prefixes=TRAJECTORY_PLAN_MAX_ROUTE_PREFIXES,
+    )
+
+
+def _trajectory_lambert_limits() -> PlanningLimits:
+    return PlanningLimits(
+        ephemeris_queries=2,
+        unique_ephemeris_states=2,
+        remote_ephemeris_states=2,
+        external_requests=2,
+        leg_requests=1,
+        leg_evaluations=1,
+        route_prefixes=1,
+    )
+
+
+def _trajectory_porkchop_limits() -> PlanningLimits:
+    # Remote providers are gated for grid searches in Phase 1, so any attempted
+    # upstream operation fails the shared budget closed.
+    return PlanningLimits(
+        ephemeris_queries=TRAJECTORY_PORKCHOP_MAX_GRID_POINTS * 2,
+        unique_ephemeris_states=min(
+            HARD_MAX_UNIQUE_EPHEMERIS_STATES,
+            TRAJECTORY_PORKCHOP_MAX_GRID_POINTS * 2,
+        ),
+        remote_ephemeris_states=0,
+        external_requests=0,
+        leg_requests=TRAJECTORY_PORKCHOP_MAX_GRID_POINTS,
+        leg_evaluations=TRAJECTORY_PORKCHOP_MAX_GRID_POINTS,
+        route_prefixes=0,
+    )
+
+
+def _mission_plan_limits() -> PlanningLimits:
+    # One aggregate budget is shared by outbound planning and every return
+    # candidate considered by MissionPlannerAgent.
+    return _trajectory_plan_limits()
+
+
+def _benchmark_limits() -> PlanningLimits:
+    # Every scenario shares this one budget and one pinned ephemeris session.
+    # Horizons is rejected before admission, so remote counters are closed.
+    return PlanningLimits(
+        ephemeris_queries=MAX_REFERENCE_SCENARIOS * 2,
+        unique_ephemeris_states=MAX_REFERENCE_SCENARIOS * 2,
+        remote_ephemeris_states=0,
+        external_requests=0,
+        leg_requests=MAX_REFERENCE_SCENARIOS,
+        leg_evaluations=MAX_REFERENCE_SCENARIOS,
+        route_prefixes=0,
+    )
+
+
+def _validate_trajectory_plan_payload(payload: TrajectoryPlanRequest) -> ValidatedTrajectoryPlan:
+    return validate_plan_request(
+        ALL_BODIES,
+        from_id=payload.from_id,
+        to_id=payload.to_id,
+        departure_jd=payload.departure_jd,
+        objective=payload.objective,
+        max_assists=payload.max_assists,
+        assist_pool=payload.assist_pool,
+        default_assist_pool=TRAJECTORY_CONFIGURED_DEFAULT_ASSIST_POOL,
+        max_assist_pool_size=TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE,
+        max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+    )
+
+
+def _validate_trajectory_endpoint_pair(
+    *,
+    from_id: str,
+    to_id: str,
+    departure_jd: float,
+) -> None:
+    """Apply non-combinatorial endpoint eligibility before provider creation."""
+
+    validate_plan_request(
+        ALL_BODIES,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        objective="min_distance",
+        max_assists=0,
+        assist_pool=[],
+        default_assist_pool=[],
+        max_assist_pool_size=TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE,
+        max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+    )
+
+
+def _validate_mission_trajectory_payload(payload: MissionPlanRequest) -> None:
+    target_id = payload.target_id or payload.to_id or "psyche"
+    return_id = payload.return_id or payload.from_id
+    _ensure_bodies_known(
+        (payload.from_id, "departure"),
+        (target_id, "target"),
+        (return_id, "return"),
+    )
+    if payload.from_id == target_id:
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_same_body",
+            "Mission departure and target bodies must differ.",
+        )
+    if target_id == return_id:
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_same_body",
+            "Mission target and return bodies must differ.",
+        )
+
+    # Validate both route directions before admission. Keep the submitted pool
+    # intact for MissionPlannerAgent because each direction removes different
+    # endpoint bodies from its own effective pool.
+    validate_plan_request(
+        ALL_BODIES,
+        from_id=payload.from_id,
+        to_id=target_id,
+        departure_jd=payload.departure_jd,
+        objective=payload.objective,
+        max_assists=payload.max_assists,
+        assist_pool=payload.assist_pool,
+        default_assist_pool=MISSION_CONFIGURED_DEFAULT_ASSIST_POOL,
+        max_assist_pool_size=MISSION_PLAN_MAX_ASSIST_POOL_SIZE,
+        max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+    )
+    validate_plan_request(
+        ALL_BODIES,
+        from_id=target_id,
+        to_id=return_id,
+        departure_jd=payload.departure_jd,
+        objective="min_distance",
+        max_assists=max(0, payload.max_assists - 1),
+        assist_pool=payload.assist_pool,
+        default_assist_pool=MISSION_CONFIGURED_DEFAULT_ASSIST_POOL,
+        max_assist_pool_size=MISSION_PLAN_MAX_ASSIST_POOL_SIZE,
+        max_route_topologies=TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+    )
+
+
+def _enforce_trajectory_remote_search_policy(provider: str, operation: str) -> None:
+    if provider != "horizons" or TRAJECTORY_HORIZONS_SEARCH_ENABLED:
+        return
+    raise _trajectory_http_exception(
+        422,
+        "ephemeris_provider_not_supported_for_operation",
+        (
+            "Explicit Horizons ephemerides are temporarily limited to direct "
+            "Lambert requests until bounded remote finalist verification is enabled."
+        ),
+        context={"provider": provider, "operation": operation},
+    )
+
+
 def _build_aia_tile_payload(
     channel: str,
     jd: float | None = None,
@@ -515,8 +1378,14 @@ def _build_aia_tile_payload(
     )
 
 
-def _run_mission_plan(mission_payload: dict[str, Any]) -> dict[str, Any]:
-    return MissionPlannerAgent(ALL_BODIES).plan(mission_payload)
+def _run_mission_plan(
+    mission_payload: dict[str, Any],
+    planning_context: PlanningContext,
+) -> dict[str, Any]:
+    return MissionPlannerAgent(ALL_BODIES).plan(
+        mission_payload,
+        planning_context=planning_context,
+    )
 
 
 def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
@@ -524,94 +1393,179 @@ def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
     departure_end = float(payload.departure_end_jd)
     tof_min = float(payload.tof_min_days)
     tof_max = float(payload.tof_max_days)
-    departure_step = max(
-        float(payload.departure_step_days),
-        TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS,
-    )
-    tof_step = max(float(payload.tof_step_days), TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS)
+    departure_step = float(payload.departure_step_days)
+    tof_step = float(payload.tof_step_days)
+
+    if departure_step < TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS:
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            (
+                "`departure_step_days` must be at least "
+                f"{TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS:g} days"
+            ),
+            context={
+                "departureStepDays": departure_step,
+                "minimumDepartureStepDays": TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS,
+            },
+        )
+    if tof_step < TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS:
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            f"`tof_step_days` must be at least {TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS:g} days",
+            context={
+                "tofStepDays": tof_step,
+                "minimumTofStepDays": TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS,
+            },
+        )
 
     if departure_end <= departure_start:
-        raise HTTPException(
-            status_code=400,
-            detail="`departure_end_jd` must be greater than `departure_start_jd`",
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            "`departure_end_jd` must be greater than `departure_start_jd`",
+            context={
+                "departureStartJd": departure_start,
+                "departureEndJd": departure_end,
+            },
         )
 
     if tof_max <= tof_min:
-        raise HTTPException(
-            status_code=400,
-            detail="`tof_max_days` must be greater than `tof_min_days`",
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            "`tof_max_days` must be greater than `tof_min_days`",
+            context={"tofMinDays": tof_min, "tofMaxDays": tof_max},
         )
 
     departure_window = departure_end - departure_start
     tof_window = tof_max - tof_min
     if departure_window > TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "trajectory_complexity_limit",
+            (
                 f"`departure_end_jd - departure_start_jd` must be <= "
                 f"{TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS} days"
             ),
+            context={
+                "departureWindowDays": departure_window,
+                "maximumDepartureWindowDays": TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS,
+            },
         )
 
     if tof_window > TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "trajectory_complexity_limit",
+            (
                 f"`tof_max_days - tof_min_days` must be <= "
                 f"{TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS} days"
             ),
+            context={
+                "tofWindowDays": tof_window,
+                "maximumTofWindowDays": TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS,
+            },
         )
 
     departure_samples = int(departure_window / departure_step) + 1
     tof_samples = int(tof_window / tof_step) + 1
     estimated_points = departure_samples * tof_samples
     if estimated_points > TRAJECTORY_PORKCHOP_MAX_GRID_POINTS:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "trajectory_complexity_limit",
+            (
                 f"Trajectory porkchop request is too large; estimated grid points "
                 f"{estimated_points} > {TRAJECTORY_PORKCHOP_MAX_GRID_POINTS}"
             ),
+            context={
+                "estimatedGridPoints": estimated_points,
+                "maximumGridPoints": TRAJECTORY_PORKCHOP_MAX_GRID_POINTS,
+            },
+        )
+
+    # Each cell can introduce one destination-arrival state, while every
+    # departure row introduces one source state. Reject a grid whose worst-case
+    # unique state count cannot fit the request-owned state-computation budget;
+    # otherwise an admitted scan can deterministically fail halfway through and
+    # discard already certified points.
+    estimated_unique_states = departure_samples + estimated_points
+    unique_state_limit = min(
+        HARD_MAX_UNIQUE_EPHEMERIS_STATES,
+        estimated_points * 2,
+    )
+    if estimated_unique_states > unique_state_limit:
+        raise _trajectory_http_exception(
+            413,
+            "trajectory_complexity_limit",
+            "Trajectory porkchop grid exceeds the unique-state computation budget.",
+            context={
+                "estimatedGridPoints": estimated_points,
+                "estimatedUniqueEphemerisStates": estimated_unique_states,
+                "maximumUniqueEphemerisStates": unique_state_limit,
+            },
         )
 
 
 def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
     vehicle = payload.vehicle
     if vehicle is not None and len(vehicle.stages) > MISSION_PLAN_MAX_VEHICLE_STAGES:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            (
                 f"`vehicle.stages` is limited to {MISSION_PLAN_MAX_VEHICLE_STAGES} "
                 "entries to prevent request amplification"
             ),
+            context={
+                "vehicleStageCount": len(vehicle.stages),
+                "maximumVehicleStageCount": MISSION_PLAN_MAX_VEHICLE_STAGES,
+            },
         )
 
     assist_pool = payload.assist_pool or []
     if len(assist_pool) > MISSION_PLAN_MAX_ASSIST_POOL_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            (
                 f"`assist_pool` is limited to {MISSION_PLAN_MAX_ASSIST_POOL_SIZE} "
                 "entries to prevent request amplification"
             ),
+            context={
+                "assistPoolSize": len(assist_pool),
+                "maximumAssistPoolSize": MISSION_PLAN_MAX_ASSIST_POOL_SIZE,
+            },
         )
 
     if float(payload.payload_mass_kg) > MISSION_PLAN_MAX_PAYLOAD_MASS_KG:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            (
                 f"`payload_mass_kg` is limited to {MISSION_PLAN_MAX_PAYLOAD_MASS_KG:.1f} "
                 "to constrain mission-cost runtime"
             ),
+            context={
+                "payloadMassKg": float(payload.payload_mass_kg),
+                "maximumPayloadMassKg": MISSION_PLAN_MAX_PAYLOAD_MASS_KG,
+            },
         )
 
     if int(payload.risk_samples) > MISSION_PLAN_MAX_RISK_SAMPLES:
-        raise HTTPException(
-            status_code=413,
-            detail=(
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            (
                 f"`risk_samples` is limited to {MISSION_PLAN_MAX_RISK_SAMPLES} "
                 "for bounded Monte Carlo cost"
             ),
+            context={
+                "riskSamples": int(payload.risk_samples),
+                "maximumRiskSamples": MISSION_PLAN_MAX_RISK_SAMPLES,
+            },
         )
 
 
@@ -648,6 +1602,8 @@ def _normalize_body_id(value: str) -> str:
     cleaned = value.strip().lower()
     if not cleaned:
         raise ValueError("must be a non-empty string")
+    if len(cleaned) > 64:
+        raise ValueError("must contain at most 64 characters")
     return cleaned
 
 
@@ -673,14 +1629,24 @@ def _normalize_assist_pool(value: list[str] | None) -> list[str] | None:
         body_id = item.strip().lower()
         if not body_id:
             raise ValueError("must contain non-empty string values")
+        if len(body_id) > 64:
+            raise ValueError("body identifiers must contain at most 64 characters")
         cleaned.append(body_id)
-    return list(dict.fromkeys(cleaned))
+    # Preserve cardinality and duplicates here. The trajectory contract rejects
+    # duplicates explicitly so callers cannot hide oversized/ambiguous pools
+    # behind normalization.
+    return cleaned
 
 
 def _ensure_bodies_known(*body_ids: tuple[str, str]) -> None:
     for body_id, label in body_ids:
         if body_id not in KNOWN_BODY_IDS:
-            raise HTTPException(status_code=404, detail=f"Unknown {label} body `{body_id}`")
+            raise _trajectory_http_exception(
+                404,
+                "trajectory_unknown_body",
+                f"Unknown {label} body `{body_id}`",
+                context={"bodyId": body_id, "role": label},
+            )
 
 
 def _resolve_benchmark_report_path(output_path: str | None, default_filename: str) -> Path:
@@ -1117,50 +2083,333 @@ def nearby_system_detail(system_ref: str):
 
 @app.get("/trajectory/capabilities")
 def trajectory_capabilities():
-    planner_body_ids = [
-        body["id"]
-        for body in ALL_BODIES
-        if body.get("orbit") is not None and body.get("type") != "moon"
+    planner_body_ids = list(eligible_endpoint_body_ids(ALL_BODIES))
+    assist_body_ids = list(eligible_assist_body_ids(ALL_BODIES))
+    physical_center_provider_ids = [
+        body_id
+        for body_id in (
+            "mercury",
+            "venus",
+            "earth",
+            "mars",
+            "jupiter",
+            "saturn",
+            "uranus",
+            "neptune",
+            "pluto",
+        )
+        if body_id in planner_body_ids
     ]
+    state_contract = TRAJECTORY_STATE_CONTRACT
     return {
+        "schema": {"name": "trajectory_capabilities", "version": 2},
         "objectives": list(TRAJECTORY_OBJECTIVES),
         "default_objective": "min_distance",
         "max_assists": 3,
-        "default_assist_pool": list(DEFAULT_ASSIST_POOL),
+        "default_assist_pool": list(TRAJECTORY_CONFIGURED_DEFAULT_ASSIST_POOL),
         "ephemeris_providers": ["auto", "spice", "horizons", "kepler"],
         "planner_body_ids": planner_body_ids,
+        "assist_body_ids": assist_body_ids,
+        "stateVectorContract": {
+            "frameId": state_contract.frame_id,
+            "origin": state_contract.origin,
+            "orientation": state_contract.orientation,
+            "epochCoordinate": "julian_date",
+            "timeScale": state_contract.jd_time_scale,
+            "positionUnit": state_contract.position_unit,
+            "velocityUnit": state_contract.velocity_unit,
+            "corrections": state_contract.corrections,
+        },
+        "limits": {
+            "maxRequestBodyBytes": TRAJECTORY_REQUEST_MAX_BODY_BYTES,
+            "maxRequestsPerRateWindow": TRAJECTORY_RATE_LIMIT_PER_WINDOW,
+            "rateWindowSeconds": TRAJECTORY_RATE_LIMIT_WINDOW_SECONDS,
+            "maxAssistPoolSize": TRAJECTORY_PLAN_MAX_ASSIST_POOL_SIZE,
+            "maxAssists": 3,
+            "maxRouteTopologies": TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+            "maxRoutePrefixes": TRAJECTORY_PLAN_MAX_ROUTE_PREFIXES,
+            "globalBeamWidth": GLOBAL_BEAM_WIDTH,
+            "maxPartialsPerRoutePrefix": MAX_PARTIALS_PER_ROUTE_PREFIX,
+            "maxLegEvaluations": TRAJECTORY_PLAN_MAX_LEG_EVALUATIONS,
+            "maxLegRequestsPerPlan": TRAJECTORY_PLAN_MAX_LEG_REQUESTS,
+            "maxEphemerisQueriesPerPlan": TRAJECTORY_PLAN_MAX_EPHEMERIS_QUERIES,
+            "maxUniqueEphemerisStatesPerPlan": (
+                TRAJECTORY_PLAN_MAX_UNIQUE_EPHEMERIS_STATES
+            ),
+            "maxCompletedRoutesRetained": MAX_COMPLETED,
+            "maxReturnedAlternatives": MAX_RETURNED_ALTERNATIVES,
+            "minimumPlanLegTofDays": TRAJECTORY_PLAN_MIN_LEG_TOF_DAYS,
+            "maximumPlanLegTofDays": TRAJECTORY_PLAN_MAX_LEG_TOF_DAYS,
+            "maxAssistTofSeedsPerExtension": (
+                TRAJECTORY_PLAN_MAX_ASSIST_TOF_SEEDS_PER_EXTENSION
+            ),
+            "maxDirectTofSeeds": TRAJECTORY_PLAN_MAX_DIRECT_TOF_SEEDS,
+            "maxPorkchopGridPoints": TRAJECTORY_PORKCHOP_MAX_GRID_POINTS,
+            "maxPorkchopUniqueEphemerisStates": (
+                _trajectory_porkchop_limits().unique_ephemeris_states
+            ),
+            "maxPorkchopDepartureWindowDays": TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS,
+            "maxPorkchopTofWindowDays": TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS,
+            "minimumPorkchopDepartureStepDays": TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS,
+            "minimumPorkchopTofStepDays": TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS,
+            "planInternalDeadlineMs": int(TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS * 1_000),
+            "planTimeoutMs": int(TRAJECTORY_PLAN_COMPUTE_TIMEOUT_SECONDS * 1_000),
+            "maxConcurrentPlans": TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT,
+            "lambertInternalDeadlineMs": int(TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS * 1_000),
+            "lambertTimeoutMs": int(TRAJECTORY_LAMBERT_COMPUTE_TIMEOUT_SECONDS * 1_000),
+            "maxConcurrentLambertRequests": TRAJECTORY_LAMBERT_CONCURRENT_REQUEST_LIMIT,
+            "porkchopInternalDeadlineMs": int(
+                TRAJECTORY_PORKCHOP_INTERNAL_DEADLINE_SECONDS * 1_000
+            ),
+            "porkchopTimeoutMs": int(
+                TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS * 1_000
+            ),
+            "maxConcurrentPorkchopRequests": (
+                TRAJECTORY_PORKCHOP_CONCURRENT_REQUEST_LIMIT
+            ),
+            "missionInternalDeadlineMs": int(
+                MISSION_PLAN_INTERNAL_DEADLINE_SECONDS * 1_000
+            ),
+            "missionTimeoutMs": int(MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS * 1_000),
+            "maxConcurrentMissionRequests": MISSION_PLAN_CONCURRENT_REQUEST_LIMIT,
+            "benchmarkInternalDeadlineMs": int(
+                BENCHMARK_INTERNAL_DEADLINE_SECONDS * 1_000
+            ),
+            "benchmarkTimeoutMs": int(BENCHMARK_COMPUTE_TIMEOUT_SECONDS * 1_000),
+            "maxConcurrentBenchmarkRequests": BENCHMARK_CONCURRENT_REQUEST_LIMIT,
+            "sharedHeavyWorkerThreads": HEAVY_COMPUTE_THREAD_LIMIT,
+            "maxRemoteEphemerisStatesPerPlan": TRAJECTORY_PLAN_MAX_REMOTE_EPHEMERIS_STATES,
+            "maxExternalRequestsPerPlan": TRAJECTORY_PLAN_MAX_EXTERNAL_REQUESTS,
+        },
+        "providerPolicies": {
+            "auto": {
+                "networkAccess": False,
+                "resolvedProvider": "kepler",
+                "targetCoverage": {
+                    "bodyIds": planner_body_ids,
+                    "targetDefinition": "catalog_orbit_reference",
+                },
+                "operations": ["plan", "lambert", "porkchop", "mission", "benchmark"],
+            },
+            "spice": {
+                "networkAccess": False,
+                "availability": "optional_local_tooling",
+                "targetCoverage": {
+                    "bodyIds": physical_center_provider_ids,
+                    "targetDefinition": "body_center",
+                },
+                "operations": ["plan", "lambert", "porkchop", "mission", "benchmark"],
+            },
+            "horizons": {
+                "networkAccess": True,
+                "directLambertOnly": not TRAJECTORY_HORIZONS_SEARCH_ENABLED,
+                "absoluteRequestTimeoutMs": int(HORIZONS_MAX_TIMEOUT_S * 1_000),
+                "globalConcurrencyPerProcess": HORIZONS_CONCURRENCY_LIMIT,
+                "automaticRetries": 0,
+                "successCacheMaxEntries": HORIZONS_SUCCESS_CACHE_MAXSIZE,
+                "sameKeySingleFlight": True,
+                "halfOpenProbeLimit": 1,
+                "outageCooldownSeconds": {
+                    "minimum": HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S,
+                    "maximum": HORIZONS_PROVIDER_OUTAGE_MAX_COOLDOWN_S,
+                },
+                "remoteFinalistVerification": False,
+                "targetCoverage": {
+                    "bodyIds": physical_center_provider_ids,
+                    "targetDefinition": "body_center",
+                },
+                "operations": ["lambert"] if not TRAJECTORY_HORIZONS_SEARCH_ENABLED else [
+                    "plan",
+                    "lambert",
+                    "porkchop",
+                    "mission",
+                ],
+                "searchEnabled": TRAJECTORY_HORIZONS_SEARCH_ENABLED,
+            },
+            "kepler": {
+                "networkAccess": False,
+                "targetCoverage": {
+                    "bodyIds": planner_body_ids,
+                    "targetDefinition": "catalog_orbit_reference",
+                },
+                "operations": ["plan", "lambert", "porkchop", "mission", "benchmark"],
+            },
+        },
+        "providerSemantics": {
+            "pinnedPerRequest": True,
+            "fallbackAfterFailure": False,
+            "autoMayUseNetwork": False,
+        },
+        "lambert": {
+            "algorithm": "universal_variables",
+            "supportedRevolutions": [0],
+            "maximumRevolutions": TRAJECTORY_LAMBERT_MAX_REVOLUTIONS,
+            "pathSenses": ["prograde", "retrograde"],
+            "timeOfFlightDays": {
+                "minimumExclusive": 0.0,
+                "maximum": None,
+            },
+        },
+        "searchSemantics": {
+            "bounded": True,
+            "searchSpaceExhaustive": False,
+            "optimalityGuaranteed": False,
+            "remoteFinalistVerification": False,
+            "tofSeedRangeDays": {
+                "minimum": TRAJECTORY_PLAN_MIN_LEG_TOF_DAYS,
+                "maximum": TRAJECTORY_PLAN_MAX_LEG_TOF_DAYS,
+            },
+        },
+        "knownLimitations": [
+            {
+                "code": "bounded_approximate_search",
+                "message": (
+                    "MGA planning uses a bounded global beam; results are not an exhaustive "
+                    "or globally optimal search."
+                ),
+            },
+            {
+                "code": "zero_revolution_lambert_only",
+                "message": "The Lambert solver currently supports zero-revolution transfers only.",
+            },
+            {
+                "code": "remote_finalist_verification_unavailable",
+                "message": (
+                    "Horizons finalist batching and remote re-verification are not implemented; "
+                    "Horizons is restricted to direct Lambert requests."
+                ),
+            },
+            {
+                "code": "bounded_plan_tof_seeds",
+                "message": (
+                    "MGA leg time-of-flight candidates are seeded only within the advertised "
+                    f"{TRAJECTORY_PLAN_MIN_LEG_TOF_DAYS:g}-"
+                    f"{TRAJECTORY_PLAN_MAX_LEG_TOF_DAYS:g} day range."
+                ),
+            },
+            {
+                "code": "catalog_kepler_approximation",
+                "message": (
+                    "Auto/Kepler states use catalog two-body orbital elements rather than a "
+                    "high-fidelity numerical ephemeris."
+                ),
+            },
+            {
+                "code": "path_length_is_endpoint_chord_metric",
+                "message": (
+                    "pathLengthAu and totalPathLengthAu sum endpoint chord distances; they "
+                    "are not the integrated distance flown along the transfer orbit."
+                ),
+            },
+            {
+                "code": "assist_gain_is_velocity_deflection",
+                "message": (
+                    "assistGainKmS is a patched-conic velocity-deflection estimate, not "
+                    "propulsive delta-v or guaranteed spacecraft energy gain."
+                ),
+            },
+        ],
     }
 
 
 @app.post("/trajectory/plan")
-def trajectory_plan(payload: TrajectoryPlanRequest):
+async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
     if payload.from_id == payload.to_id:
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_same_body",
+            "`from_id` and `to_id` must differ",
+        )
 
     _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
+    _enforce_trajectory_remote_search_policy(payload.ephemeris_provider, "plan")
 
     try:
-        result = plan_interplanetary_route(
+        validated = _validate_trajectory_plan_payload(payload)
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(
+            422,
+            exc.code,
+            str(exc),
+            context=exc.context,
+        ) from exc
+
+    if not _acquire_nonblocking(_trajectory_plan_concurrent_guard):
+        raise _trajectory_http_exception(
+            503,
+            "trajectory_saturated",
+            "Trajectory planning capacity is currently occupied. Retry shortly.",
+            retryable=True,
+            headers={"Retry-After": "2"},
+        )
+
+    planning_context = PlanningContext.with_timeout(
+        TRAJECTORY_PLAN_INTERNAL_DEADLINE_SECONDS,
+        limits=_trajectory_plan_limits(),
+    )
+
+    try:
+        result = await _run_request_owned_thread(
+            request,
+            plan_interplanetary_route,
             ALL_BODIES,
+            guard=_trajectory_plan_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=TRAJECTORY_PLAN_COMPUTE_TIMEOUT_SECONDS,
+            owner_context=planning_context,
             from_id=payload.from_id,
             to_id=payload.to_id,
-            departure_jd=float(payload.departure_jd),
-            objective=payload.objective,
-            max_assists=payload.max_assists,
-            assist_pool=payload.assist_pool,
+            departure_jd=validated.departure_jd,
+            objective=validated.objective,
+            max_assists=validated.max_assists,
+            assist_pool=list(validated.effective_assist_pool),
             ephemeris_provider=payload.ephemeris_provider,
             prograde=payload.prograde,
+            planning_context=planning_context,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
+    except asyncio.TimeoutError as exc:
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "trajectory_deadline_exceeded",
+            "Trajectory planning exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
+        ) from exc
 
     if result.get("best") is None:
-        raise HTTPException(status_code=422, detail="No feasible route could be evaluated")
+        search = result.get("search") if isinstance(result.get("search"), dict) else {}
+        if search.get("budgetExhausted") or str(search.get("terminationReason", "")).endswith(
+            "budget_exhausted"
+        ):
+            raise _trajectory_http_exception(
+                503,
+                "trajectory_compute_budget_exhausted",
+                "The bounded trajectory search exhausted its work budget without a result.",
+                context={"search": search},
+            )
+        raise _trajectory_http_exception(
+            422,
+            "trajectory_no_feasible_route",
+            "No feasible route was found in the configured bounded search.",
+            context={"search": search},
+        )
 
     result["source"] = "backend"
     result["constraints"] = {
-        "objective": payload.objective,
-        "max_assists": payload.max_assists,
+        "objective": validated.objective,
+        "max_assists": validated.max_assists,
+        "effective_assist_pool": list(validated.effective_assist_pool),
+        "estimated_route_count": validated.estimated_route_count,
         "ephemeris_provider": payload.ephemeris_provider,
         "prograde": payload.prograde,
     }
@@ -1168,56 +2417,147 @@ def trajectory_plan(payload: TrajectoryPlanRequest):
 
 
 @app.post("/trajectory/lambert")
-def trajectory_lambert(payload: TrajectoryLambertRequest):
+async def trajectory_lambert(request: Request, payload: TrajectoryLambertRequest):
     if payload.from_id == payload.to_id:
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_same_body",
+            "`from_id` and `to_id` must differ",
+        )
     if payload.arrival_jd <= payload.departure_jd:
-        raise HTTPException(status_code=400, detail="`arrival_jd` must be greater than `departure_jd`")
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            "`arrival_jd` must be greater than `departure_jd`",
+        )
+    if not math.isfinite(float(payload.arrival_jd) - float(payload.departure_jd)):
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_invalid_time_range",
+            "The requested Lambert time of flight must be finite.",
+        )
 
     _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
+    try:
+        _validate_trajectory_endpoint_pair(
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_jd=payload.departure_jd,
+        )
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
+
+    if not _acquire_nonblocking(_trajectory_lambert_concurrent_guard):
+        raise _trajectory_http_exception(
+            503,
+            "trajectory_lambert_saturated",
+            "Direct Lambert capacity is currently occupied. Retry shortly.",
+            retryable=True,
+            headers={"Retry-After": "2"},
+        )
+
+    planning_context = PlanningContext.with_timeout(
+        TRAJECTORY_LAMBERT_INTERNAL_DEADLINE_SECONDS,
+        limits=_trajectory_lambert_limits(),
+    )
 
     try:
-        result = solve_direct_lambert(
+        result = await _run_request_owned_thread(
+            request,
+            solve_direct_lambert,
             ALL_BODIES,
+            guard=_trajectory_lambert_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=TRAJECTORY_LAMBERT_COMPUTE_TIMEOUT_SECONDS,
+            owner_context=planning_context,
             from_id=payload.from_id,
             to_id=payload.to_id,
             departure_jd=float(payload.departure_jd),
             arrival_jd=float(payload.arrival_jd),
             ephemeris_provider=payload.ephemeris_provider,
             prograde=payload.prograde,
+            planning_context=planning_context,
         )
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except TrajectoryRequestRejected as exc:
+        status_code = 400 if exc.code in {
+            "trajectory_same_body",
+            "trajectory_invalid_time_range",
+        } else 422
+        raise _trajectory_http_exception(
+            status_code,
+            exc.code,
+            str(exc),
+            context=exc.context,
+        ) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
+    except asyncio.TimeoutError as exc:
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "trajectory_lambert_deadline_exceeded",
+            "Direct Lambert computation exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
+        ) from exc
 
     if result.get("solution") is None:
-        raise HTTPException(status_code=422, detail=result.get("error", "No Lambert solution"))
+        raise _trajectory_http_exception(
+            422,
+            "trajectory_no_lambert_solution",
+            str(result.get("error", "No Lambert solution")),
+        )
     return result
 
 
 @app.post("/trajectory/porkchop")
-async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
+async def trajectory_porkchop(request: Request, payload: TrajectoryPorkchopRequest):
+    _enforce_trajectory_remote_search_policy(payload.ephemeris_provider, "porkchop")
     _enforce_porkchop_request_size(payload)
     if payload.from_id == payload.to_id:
-        raise HTTPException(status_code=400, detail="`from_id` and `to_id` must differ")
+        raise _trajectory_http_exception(
+            400,
+            "trajectory_same_body",
+            "`from_id` and `to_id` must differ",
+        )
 
     _ensure_bodies_known((payload.from_id, "departure"), (payload.to_id, "destination"))
+    try:
+        _validate_trajectory_endpoint_pair(
+            from_id=payload.from_id,
+            to_id=payload.to_id,
+            departure_jd=payload.departure_start_jd,
+        )
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
 
     if not _acquire_nonblocking(_trajectory_porkchop_concurrent_guard):
-        raise HTTPException(
-            status_code=503,
-            detail="Trajectory porkchop scan requests are temporarily saturated. Retry shortly.",
+        raise _trajectory_http_exception(
+            503,
+            "trajectory_porkchop_saturated",
+            "Trajectory porkchop capacity is currently occupied. Retry shortly.",
+            retryable=True,
             headers={"Retry-After": "2"},
         )
 
-    cancel_event = threading.Event()
+    planning_context = PlanningContext.with_timeout(
+        TRAJECTORY_PORKCHOP_INTERNAL_DEADLINE_SECONDS,
+        limits=_trajectory_porkchop_limits(),
+    )
     try:
-        result = await _run_owned_thread(
+        result = await _run_request_owned_thread(
+            request,
             run_porkchop_scan,
             ALL_BODIES,
             guard=_trajectory_porkchop_concurrent_guard,
             executor=_heavy_compute_executor,
             timeout_seconds=TRAJECTORY_PORKCHOP_COMPUTE_TIMEOUT_SECONDS,
-            owner_cancel_event=cancel_event,
+            owner_context=planning_context,
             from_id=payload.from_id,
             to_id=payload.to_id,
             departure_start_jd=float(payload.departure_start_jd),
@@ -1228,14 +2568,35 @@ async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
             tof_step_days=float(payload.tof_step_days),
             ephemeris_provider=payload.ephemeris_provider,
             prograde=payload.prograde,
-            cancel_event=cancel_event,
+            cancel_event=planning_context.cancel_event,
+            planning_context=planning_context,
         )
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except TrajectoryRequestRejected as exc:
+        status_code = 400 if exc.code in {
+            "trajectory_same_body",
+            "trajectory_invalid_time_range",
+        } else 422
+        raise _trajectory_http_exception(
+            status_code,
+            exc.code,
+            str(exc),
+            context=exc.context,
+        ) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
     except asyncio.TimeoutError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Trajectory porkchop scan timed out. Try again later.",
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "trajectory_porkchop_deadline_exceeded",
+            "Trajectory porkchop scan exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
         ) from exc
     return result
 
@@ -1243,6 +2604,7 @@ async def trajectory_porkchop(payload: TrajectoryPorkchopRequest):
 @app.get("/mission/capabilities")
 def mission_capabilities():
     return {
+        "schema": {"name": "mission_capabilities", "version": 2},
         "agents": [
             "MissionPlannerAgent",
             "TrajectoryAgent",
@@ -1257,74 +2619,211 @@ def mission_capabilities():
             "mining_service",
             "risk_service",
         ],
+        "trajectory": {
+            "defaultAssistPool": list(MISSION_CONFIGURED_DEFAULT_ASSIST_POOL),
+            "maxAssistPoolSize": MISSION_PLAN_MAX_ASSIST_POOL_SIZE,
+            "maxAssists": 3,
+            "maxRouteTopologies": TRAJECTORY_PLAN_MAX_ROUTE_TOPOLOGIES,
+            "providerPolicies": {
+                "auto": "local_kepler",
+                "horizons": "rejected_before_work",
+            },
+        },
+        "limits": {
+            "maxVehicleStages": MISSION_PLAN_MAX_VEHICLE_STAGES,
+            "maxRiskSamples": MISSION_PLAN_MAX_RISK_SAMPLES,
+            "internalDeadlineMs": int(MISSION_PLAN_INTERNAL_DEADLINE_SECONDS * 1_000),
+            "timeoutMs": int(MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS * 1_000),
+            "maxConcurrentRequests": MISSION_PLAN_CONCURRENT_REQUEST_LIMIT,
+        },
     }
 
 
 @app.post("/mission/plan")
-async def mission_plan(payload: MissionPlanRequest):
+async def mission_plan(request: Request, payload: MissionPlanRequest):
+    _enforce_trajectory_remote_search_policy(payload.ephemeris_provider, "mission")
+    try:
+        _validate_mission_trajectory_payload(payload)
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
     _enforce_mission_plan_request_size(payload)
 
     if not _acquire_nonblocking(_mission_plan_concurrent_guard):
-        raise HTTPException(
-            status_code=503,
-            detail="Mission planning requests are temporarily saturated. Retry shortly.",
+        raise _trajectory_http_exception(
+            503,
+            "mission_plan_saturated",
+            "Mission planning capacity is currently occupied. Retry shortly.",
+            retryable=True,
             headers={"Retry-After": "2"},
         )
 
     mission_payload = payload.model_dump(exclude_none=True)
+    if payload.assist_pool is None:
+        mission_payload["assist_pool"] = list(MISSION_CONFIGURED_DEFAULT_ASSIST_POOL)
+    planning_context = PlanningContext.with_timeout(
+        MISSION_PLAN_INTERNAL_DEADLINE_SECONDS,
+        limits=_mission_plan_limits(),
+    )
 
     try:
-        result = await _run_owned_thread(
+        result = await _run_request_owned_thread(
+            request,
             _run_mission_plan,
             mission_payload,
+            planning_context,
             guard=_mission_plan_concurrent_guard,
             executor=_heavy_compute_executor,
             timeout_seconds=MISSION_PLAN_COMPUTE_TIMEOUT_SECONDS,
+            owner_context=planning_context,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
     except asyncio.TimeoutError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Mission planning timed out. Try again later.",
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "mission_deadline_exceeded",
+            "Mission planning exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
         ) from exc
+    if (
+        result.get("recommendation") is None
+        and result.get("status") == "trajectory_search_inconclusive"
+    ):
+        raise _trajectory_http_exception(
+            503,
+            "trajectory_compute_budget_exhausted",
+            "Mission trajectory search stopped at a bounded work limit before reaching a conclusive outcome.",
+            retryable=True,
+            context={"trajectorySearch": result.get("trajectorySearch", {})},
+        )
     if result.get("recommendation") is None:
-        raise HTTPException(status_code=422, detail=result.get("status", "No feasible mission recommendation"))
+        raise _trajectory_http_exception(
+            422,
+            "mission_no_feasible_recommendation",
+            str(result.get("status", "No feasible mission recommendation")),
+        )
     return result
 
 
 @app.get("/benchmark/accuracy")
-def benchmark_accuracy(ephemeris_provider: str = "auto"):
+async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto"):
     try:
         provider = _normalize_ephemeris_provider(ephemeris_provider)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"`ephemeris_provider` {exc}") from exc
 
+    _enforce_trajectory_remote_search_policy(provider, "benchmark")
+    if not _acquire_nonblocking(_benchmark_concurrent_guard):
+        raise _trajectory_http_exception(
+            503,
+            "benchmark_saturated",
+            "Trajectory benchmark capacity is currently occupied. Retry shortly.",
+            retryable=True,
+            headers={"Retry-After": "2"},
+        )
+
+    planning_context = PlanningContext.with_timeout(
+        BENCHMARK_INTERNAL_DEADLINE_SECONDS,
+        limits=_benchmark_limits(),
+    )
+
     try:
-        return benchmark_against_references(ALL_BODIES, ephemeris_provider=provider)
+        return await _run_request_owned_thread(
+            request,
+            benchmark_against_references,
+            ALL_BODIES,
+            ephemeris_provider=provider,
+            planning_context=planning_context,
+            guard=_benchmark_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
+            owner_context=planning_context,
+        )
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except asyncio.TimeoutError as exc:
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "benchmark_deadline_exceeded",
+            "Trajectory benchmark exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
+        ) from exc
 
 
 @app.post("/benchmark/accuracy/report")
-def benchmark_accuracy_report(payload: AccuracyReportRequest):
+async def benchmark_accuracy_report(request: Request, payload: AccuracyReportRequest):
+    _enforce_trajectory_remote_search_policy(payload.ephemeris_provider, "benchmark_report")
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     output_path = _resolve_benchmark_report_path(
         payload.output_path,
         default_filename=f"ACCURACY_REPORT_{timestamp}.md",
     )
+    if not _acquire_nonblocking(_benchmark_concurrent_guard):
+        raise _trajectory_http_exception(
+            503,
+            "benchmark_saturated",
+            "Trajectory benchmark capacity is currently occupied. Retry shortly.",
+            retryable=True,
+            headers={"Retry-After": "2"},
+        )
+
+    planning_context = PlanningContext.with_timeout(
+        BENCHMARK_INTERNAL_DEADLINE_SECONDS,
+        limits=_benchmark_limits(),
+    )
 
     try:
-        return generate_accuracy_report(
+        return await _run_request_owned_thread(
+            request,
+            generate_accuracy_report,
             ALL_BODIES,
             output_path=output_path,
             ephemeris_provider=payload.ephemeris_provider,
             allow_overwrite=payload.allow_overwrite,
+            planning_context=planning_context,
+            guard=_benchmark_concurrent_guard,
+            executor=_heavy_compute_executor,
+            timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
+            owner_context=planning_context,
         )
     except FileExistsError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PlanningDeadlineExceeded as exc:
+        raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
+    except PlanningBudgetExceeded as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except PlanningCancelled as exc:
+        raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
+    except EphemerisError as exc:
+        raise _ephemeris_http_exception(exc) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except asyncio.TimeoutError as exc:
+        planning_context.cancel("endpoint_timeout")
+        raise _trajectory_http_exception(
+            504,
+            "benchmark_deadline_exceeded",
+            "Trajectory benchmark report exceeded its endpoint deadline.",
+            context=planning_context.snapshot(),
+        ) from exc
 
 
 # ── Simulation Runner (background thread) ────────────────────────────────────

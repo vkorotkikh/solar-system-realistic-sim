@@ -50,7 +50,7 @@ def test_direct_lambert_solution_exists() -> None:
     assert result["ephemerisProviderChain"] == ["kepler"]
 
 
-def test_auto_ephemeris_prefers_horizons_before_kepler(monkeypatch) -> None:
+def test_auto_ephemeris_is_local_only_and_never_attempts_horizons(monkeypatch) -> None:
     call_order: list[str] = []
     body_by_id = {body["id"]: body for body in ALL_BODIES}
 
@@ -60,9 +60,11 @@ def test_auto_ephemeris_prefers_horizons_before_kepler(monkeypatch) -> None:
             body_id=body_id,
             jd=jd,
             position_au=list(state["position"]),
-            velocity_au_day=list(state["velocity"]),
-            source=source,
-        )
+        velocity_au_day=list(state["velocity"]),
+        source=source,
+        target_definition=("catalog_orbit_reference" if source == "kepler" else "body_center"),
+        provider_revision="test-provider",
+    )
 
     def fake_spice(self, body_id: str, jd: float):
         call_order.append("spice")
@@ -91,11 +93,12 @@ def test_auto_ephemeris_prefers_horizons_before_kepler(monkeypatch) -> None:
 
     assert result["solution"] is not None
     assert result["ephemerisProviderRequested"] == "auto"
-    assert result["ephemerisProvider"] == "horizons"
-    assert result["ephemerisProviderChain"] == ["spice", "horizons", "kepler"]
-    assert result["solution"]["stateSource"] == {"from": "horizons", "to": "horizons"}
-    assert "kepler" not in call_order
-    assert call_order[:2] == ["spice", "horizons"]
+    assert result["ephemerisProvider"] == "kepler"
+    assert result["ephemerisProviderChain"] == ["kepler"]
+    assert result["solution"]["stateSource"] == {"from": "kepler", "to": "kepler"}
+    assert "spice" not in call_order
+    assert "horizons" not in call_order
+    assert call_order == ["kepler", "kepler"]
 
 
 def test_porkchop_scan_returns_ranked_points() -> None:

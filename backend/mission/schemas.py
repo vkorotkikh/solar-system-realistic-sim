@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from typing import Any, Dict, List, Optional
+
+
+MAX_MISSION_ASSIST_POOL_SIZE = 8
+MAX_MISSION_RISK_SAMPLES = 5_000
+MAX_MISSION_VEHICLE_STAGES = 12
 
 
 def _as_str(value: Any, default: str) -> str:
@@ -18,6 +24,8 @@ def _as_float(value: Any, default: float) -> float:
         parsed = float(value)
     except Exception:
         return float(default)
+    if not math.isfinite(parsed):
+        raise ValueError("mission numeric values must be finite")
     return parsed
 
 
@@ -47,19 +55,23 @@ def _as_optional_str_list(value: Any) -> Optional[List[str]]:
     if value is None:
         return None
     if not isinstance(value, list):
-        return None
+        raise ValueError("assist_pool must be a list when provided")
+    if len(value) > MAX_MISSION_ASSIST_POOL_SIZE:
+        raise ValueError(
+            f"assist_pool is limited to {MAX_MISSION_ASSIST_POOL_SIZE} entries"
+        )
     cleaned: List[str] = []
     for item in value:
         if not isinstance(item, str):
-            continue
+            raise ValueError("assist_pool entries must be strings")
         stripped = item.strip()
         if not stripped:
-            continue
+            raise ValueError("assist_pool entries must be non-empty strings")
         cleaned.append(stripped)
-    if not cleaned:
-        return None
-    # Preserve order, drop duplicates.
-    return list(dict.fromkeys(cleaned))
+    # Preserve an explicit empty pool and duplicates. The shared trajectory
+    # contract removes direction-specific endpoints and rejects duplicates;
+    # normalizing either here would let mission callers bypass those semantics.
+    return cleaned
 
 
 @dataclass(frozen=True)
@@ -151,6 +163,10 @@ def _parse_vehicle(raw_vehicle: Any) -> Optional[VehicleSchema]:
     raw_stages = raw_vehicle.get("stages")
     if not isinstance(raw_stages, list):
         return None
+    if len(raw_stages) > MAX_MISSION_VEHICLE_STAGES:
+        raise ValueError(
+            f"vehicle.stages is limited to {MAX_MISSION_VEHICLE_STAGES} entries"
+        )
 
     stages: List[StageSchema] = []
     for idx, raw_stage in enumerate(raw_stages):
@@ -193,7 +209,10 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
         payload_mass_kg=max(1.0, _as_float(payload.get("payload_mass_kg"), 6_500.0)),
         reserve_fraction=max(0.0, min(0.4, _as_float(payload.get("reserve_fraction"), 0.06))),
         handling_loss_fraction=max(0.0, min(0.6, _as_float(payload.get("handling_loss_fraction"), 0.04))),
-        risk_samples=max(30, min(50_000, _as_int(payload.get("risk_samples"), 240))),
+        risk_samples=max(
+            30,
+            min(MAX_MISSION_RISK_SAMPLES, _as_int(payload.get("risk_samples"), 240)),
+        ),
         risk_seed=_as_int(payload.get("risk_seed"), 17),
         risk_failure_probability_threshold=max(
             0.0,
@@ -212,6 +231,9 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
 
 
 __all__ = [
+    "MAX_MISSION_ASSIST_POOL_SIZE",
+    "MAX_MISSION_RISK_SAMPLES",
+    "MAX_MISSION_VEHICLE_STAGES",
     "MissionRequestSchema",
     "StageSchema",
     "VehicleSchema",

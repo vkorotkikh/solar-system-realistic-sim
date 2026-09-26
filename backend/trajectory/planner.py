@@ -7,11 +7,95 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from mission.ephemeris_service import EphemerisService
 
-from .lambert import compute_lambert_leg, scan_porkchop_window
-from .mga import optimize_mga_route
+from .budget import PlanningContext, PlanningLimits, default_planning_context
+from .contracts import TrajectoryRequestRejected, validate_plan_request
+from .lambert import (
+    TrajectoryInputError,
+    _compute_lambert_leg_reserved,
+    scan_porkchop_window,
+    validate_direct_lambert_request,
+    validate_porkchop_request,
+)
+from .mga import MAX_ASSIST_POOL_SIZE, optimize_mga_route
 
 TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist", "min_time")
 DEFAULT_ASSIST_POOL = ["mercury", "venus", "earth", "mars", "jupiter", "saturn"]
+
+
+def _reject_invalid_entry(exc: TrajectoryInputError) -> TrajectoryRequestRejected:
+    return TrajectoryRequestRejected(exc.code, str(exc), context=exc.context)
+
+
+def _validate_catalog_endpoints(
+    bodies: Sequence[Dict[str, Any]],
+    *,
+    from_id: str,
+    to_id: str,
+    departure_jd: float,
+) -> tuple[str, str]:
+    validated = validate_plan_request(
+        bodies,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        objective="min_time",
+        max_assists=0,
+        assist_pool=[],
+        default_assist_pool=[],
+    )
+    return validated.from_id, validated.to_id
+
+
+def _ephemeris_session(
+    bodies: Sequence[Dict[str, Any]],
+    *,
+    ephemeris_provider: str,
+    planning_context: PlanningContext | None,
+    ephemeris: EphemerisService | None,
+) -> EphemerisService:
+    if ephemeris is not None:
+        if type(ephemeris) is not EphemerisService:
+            raise ValueError(
+                "Injected ephemeris session must be an exact EphemerisService"
+            )
+        requested = str(ephemeris_provider).strip().lower()
+        expected = "kepler" if requested == "auto" else requested
+        resolved = str(ephemeris.resolved_provider).strip().lower()
+        if resolved != expected:
+            raise ValueError(
+                "Injected ephemeris session provider does not match the requested provider "
+                f"(`{resolved}` != `{expected}`)"
+            )
+        owned_context = getattr(
+            ephemeris,
+            "planning_context",
+            getattr(ephemeris, "_context", None),
+        )
+        if planning_context is None or owned_context is not planning_context:
+            raise ValueError(
+                "Injected ephemeris session must be owned by the supplied planning context"
+            )
+        return ephemeris
+    return EphemerisService(
+        bodies,
+        provider=ephemeris_provider,
+        context=planning_context,
+    )
+
+
+def _reject_remote_search_provider(
+    ephemeris_provider: str,
+    ephemeris: EphemerisService | None,
+) -> None:
+    if ephemeris is not None and type(ephemeris) is not EphemerisService:
+        raise ValueError("Injected ephemeris session must be an exact EphemerisService")
+    requested = str(ephemeris_provider).strip().lower()
+    resolved = str(getattr(ephemeris, "resolved_provider", "")).strip().lower()
+    if requested == "horizons" or resolved == "horizons":
+        raise ValueError(
+            "Horizons is not supported for search operations; use `kepler`/`auto` "
+            "for planning or direct Lambert for an explicit Horizons transfer"
+        )
 
 
 def _summarize_state_sources(*source_groups: Any) -> str:
@@ -59,72 +143,61 @@ def plan_interplanetary_route(
     assist_pool: Optional[List[str]] = None,
     ephemeris_provider: str = "auto",
     prograde: bool = True,
+    planning_context: PlanningContext | None = None,
+    ephemeris: EphemerisService | None = None,
 ) -> Dict[str, Any]:
-    body_by_id = {body["id"]: body for body in bodies}
-    if from_id not in body_by_id or to_id not in body_by_id:
-        return {"best": None, "alternatives": []}
-    if from_id == to_id:
-        return {"best": None, "alternatives": []}
-
-    objective_key = objective if objective in TRAJECTORY_OBJECTIVES else "min_distance"
-    max_assists = max(0, min(3, int(max_assists)))
-
-    assist_candidates = assist_pool or list(DEFAULT_ASSIST_POOL)
-    assist_candidates = [candidate for candidate in assist_candidates if candidate in body_by_id]
-
-    ephemeris = EphemerisService(bodies, provider=ephemeris_provider)
-    ephemeris_chain = ephemeris.provider_chain()
+    context = planning_context or default_planning_context()
+    validated = validate_plan_request(
+        bodies,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        objective=objective,
+        max_assists=max_assists,
+        assist_pool=assist_pool,
+        default_assist_pool=DEFAULT_ASSIST_POOL,
+        max_assist_pool_size=MAX_ASSIST_POOL_SIZE,
+    )
+    _reject_remote_search_provider(ephemeris_provider, ephemeris)
+    session = _ephemeris_session(
+        bodies,
+        ephemeris_provider=ephemeris_provider,
+        planning_context=context,
+        ephemeris=ephemeris,
+    )
+    required_assists = (
+        validated.effective_assist_pool if validated.max_assists > 0 else ()
+    )
+    session.preflight([validated.from_id, validated.to_id, *required_assists])
+    ephemeris_chain = session.provider_chain()
 
     optimized = optimize_mga_route(
         bodies,
-        ephemeris=ephemeris,
-        from_id=from_id,
-        to_id=to_id,
-        departure_jd=float(departure_jd),
-        objective=objective_key,
-        max_assists=max_assists,
-        assist_pool=assist_candidates,
+        ephemeris=session,
+        from_id=validated.from_id,
+        to_id=validated.to_id,
+        departure_jd=validated.departure_jd,
+        objective=validated.objective,
+        max_assists=validated.max_assists,
+        assist_pool=validated.effective_assist_pool,
         prograde=prograde,
+        planning_context=context,
     )
 
     best = optimized.get("best")
     alternatives = optimized.get("alternatives", [])
 
-    if best is None:
-        # Fallback to a direct Lambert leg if MGA scan cannot find a route.
-        for tof in (80.0, 120.0, 180.0, 260.0, 360.0, 520.0, 700.0, 980.0):
-            direct_leg = compute_lambert_leg(
-                ephemeris,
-                from_id,
-                to_id,
-                float(departure_jd),
-                tof,
-                prograde=prograde,
-            )
-            if direct_leg is None:
-                continue
-            total_delta_v = float(direct_leg["deltaVDepartureKmS"]) + float(direct_leg["deltaVArrivalKmS"])
-            best = {
-                "bodyRoute": [from_id, to_id],
-                "legs": [direct_leg],
-                "assists": [],
-                "objective": objective_key,
-                "totalAssistGainKmS": 0.0,
-                "totalDeltaVKmS": total_delta_v,
-                "totalPathLengthAu": float(direct_leg["pathLengthAu"]),
-                "totalTimeDays": float(direct_leg["tofDays"]),
-                "turnDeficitPenalty": 0.0,
-                "score": -total_delta_v,
-                "hardConstraintMode": "flyby_turn_limit",
-            }
-            break
-
     return {
         "best": best,
         "alternatives": alternatives,
-        "solver": "lambert_mga",
-        "ephemerisProvider": _summarize_leg_sources(best.get("legs", [])) if isinstance(best, dict) else ephemeris.provider,
-        "ephemerisProviderRequested": ephemeris.provider,
+        "search": optimized.get("search", {}),
+        "solver": best.get("solver", "lambert_mga_bounded") if isinstance(best, dict) else "lambert_mga_bounded",
+        "ephemerisProvider": (
+            _summarize_leg_sources(best.get("legs", []))
+            if isinstance(best, dict)
+            else session.resolved_provider
+        ),
+        "ephemerisProviderRequested": ephemeris_provider,
         "ephemerisProviderChain": ephemeris_chain,
     }
 
@@ -138,13 +211,47 @@ def solve_direct_lambert(
     arrival_jd: float,
     ephemeris_provider: str = "auto",
     prograde: bool = True,
+    planning_context: PlanningContext | None = None,
+    ephemeris: EphemerisService | None = None,
 ) -> Dict[str, Any]:
-    if arrival_jd <= departure_jd:
-        return {"solution": None, "error": "`arrival_jd` must be greater than `departure_jd`"}
+    try:
+        from_id, to_id, departure_jd, arrival_jd = validate_direct_lambert_request(
+            from_id=from_id,
+            to_id=to_id,
+            departure_jd=departure_jd,
+            arrival_jd=arrival_jd,
+        )
+    except TrajectoryInputError as exc:
+        raise _reject_invalid_entry(exc) from exc
+    from_id, to_id = _validate_catalog_endpoints(
+        bodies,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+    )
 
-    ephemeris = EphemerisService(bodies, provider=ephemeris_provider)
-    leg = compute_lambert_leg(
-        ephemeris,
+    context = planning_context or PlanningContext.with_timeout(
+        4.0,
+        limits=PlanningLimits(
+            ephemeris_queries=2,
+            unique_ephemeris_states=2,
+            remote_ephemeris_states=2,
+            external_requests=2,
+            leg_requests=1,
+            leg_evaluations=1,
+            route_prefixes=0,
+        ),
+    )
+    session = _ephemeris_session(
+        bodies,
+        ephemeris_provider=ephemeris_provider,
+        planning_context=context,
+        ephemeris=ephemeris,
+    )
+    session.preflight([from_id, to_id])
+    context.reserve(leg_requests=1, leg_evaluations=1)
+    leg = _compute_lambert_leg_reserved(
+        session,
         from_id,
         to_id,
         departure_jd,
@@ -159,9 +266,10 @@ def solve_direct_lambert(
     return {
         "solution": leg,
         "ephemerisProvider": resolved_provider,
-        "ephemerisProviderRequested": ephemeris.provider,
-        "ephemerisProviderChain": ephemeris.provider_chain(),
+        "ephemerisProviderRequested": ephemeris_provider,
+        "ephemerisProviderChain": session.provider_chain(),
         "solver": "lambert_universal",
+        "planningContext": context.snapshot(),
     }
 
 
@@ -179,25 +287,71 @@ def run_porkchop_scan(
     ephemeris_provider: str = "auto",
     prograde: bool = True,
     cancel_event: Event | None = None,
+    planning_context: PlanningContext | None = None,
+    ephemeris: EphemerisService | None = None,
 ) -> Dict[str, Any]:
-    ephemeris = EphemerisService(bodies, provider=ephemeris_provider)
-    result = scan_porkchop_window(
-        ephemeris,
+    try:
+        validated = validate_porkchop_request(
+            from_id=from_id,
+            to_id=to_id,
+            departure_start_jd=departure_start_jd,
+            departure_end_jd=departure_end_jd,
+            departure_step_days=departure_step_days,
+            tof_min_days=tof_min_days,
+            tof_max_days=tof_max_days,
+            tof_step_days=tof_step_days,
+        )
+    except TrajectoryInputError as exc:
+        raise _reject_invalid_entry(exc) from exc
+    from_id = validated["from_id"]
+    to_id = validated["to_id"]
+    departure_start_jd = validated["departure_start_jd"]
+    departure_end_jd = validated["departure_end_jd"]
+    departure_step_days = validated["departure_step_days"]
+    tof_min_days = validated["tof_min_days"]
+    tof_max_days = validated["tof_max_days"]
+    tof_step_days = validated["tof_step_days"]
+    from_id, to_id = _validate_catalog_endpoints(
+        bodies,
         from_id=from_id,
         to_id=to_id,
-        departure_start_jd=departure_start_jd,
-        departure_end_jd=departure_end_jd,
-        departure_step_days=departure_step_days,
-        tof_min_days=tof_min_days,
-        tof_max_days=tof_max_days,
-        tof_step_days=tof_step_days,
-        prograde=prograde,
-        cancel_event=cancel_event,
+        departure_jd=departure_start_jd,
     )
+
+    if planning_context is not None and cancel_event is not None:
+        if planning_context.cancel_event is not cancel_event:
+            raise ValueError("Porkchop cancellation event must belong to the planning context")
+    context = planning_context or default_planning_context(cancel_event=cancel_event)
+    _reject_remote_search_provider(ephemeris_provider, ephemeris)
+    session = _ephemeris_session(
+        bodies,
+        ephemeris_provider=ephemeris_provider,
+        planning_context=context,
+        ephemeris=ephemeris,
+    )
+    session.preflight([from_id, to_id])
+    try:
+        result = scan_porkchop_window(
+            session,
+            from_id=from_id,
+            to_id=to_id,
+            departure_start_jd=departure_start_jd,
+            departure_end_jd=departure_end_jd,
+            departure_step_days=departure_step_days,
+            tof_min_days=tof_min_days,
+            tof_max_days=tof_max_days,
+            tof_step_days=tof_step_days,
+            prograde=prograde,
+            cancel_event=cancel_event,
+            planning_context=context,
+        )
+    except TrajectoryInputError as exc:
+        raise _reject_invalid_entry(exc) from exc
     result["solver"] = "lambert_porkchop"
-    result["ephemerisProviderRequested"] = ephemeris.provider
-    result["ephemerisProviderChain"] = ephemeris.provider_chain()
-    result["ephemerisProvider"] = ephemeris.provider
+    result["ephemerisProviderRequested"] = ephemeris_provider
+    result["ephemerisProviderChain"] = session.provider_chain()
+    result["ephemerisProvider"] = session.resolved_provider
+    result["planningContext"] = context.snapshot()
     return result
 
 
