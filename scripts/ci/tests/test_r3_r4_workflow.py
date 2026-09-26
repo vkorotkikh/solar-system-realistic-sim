@@ -30,6 +30,11 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
     assert setup["with"]["python-version"] == "3.12.13"
     commands = "\n".join(step.get("run", "") for step in steps)
     assert "python -m pip install -r ci/r3-r4-requirements.txt" in commands
+    assert (
+        "python -m pytest --noconftest -q "
+        "scripts/ci/tests/test_verify_r3_r4_runner.py "
+        "scripts/ci/tests/test_r3_r4_workflow.py"
+    ) in commands
     assert "python scripts/ci/verify_r3_r4.py" in commands
     assert "--manifest ci/r3-r4-science-verification.json" in commands
     assert "--artifacts \"$RUNNER_TEMP/r3-r4-science-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT\"" in commands

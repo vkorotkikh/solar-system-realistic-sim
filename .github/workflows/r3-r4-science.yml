@@ -34,6 +34,12 @@ jobs:
       - name: Install the isolated R3/R4 test environment
         run: python -m pip install -r ci/r3-r4-requirements.txt
 
+      - name: Exercise runner and workflow fail-closed contracts
+        run: >-
+          python -m pytest --noconftest -q
+          scripts/ci/tests/test_verify_r3_r4_runner.py
+          scripts/ci/tests/test_r3_r4_workflow.py
+
       - name: Run the exact baseline and mutation manifest
         run: |
           python scripts/ci/verify_r3_r4.py \
