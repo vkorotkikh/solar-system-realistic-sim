@@ -344,6 +344,59 @@ def test_aia_channel_declares_viewport_artifact_as_nonspatial(
     }
 
 
+def test_aia_snapshot_never_reads_viewport_pixels_or_derives_science(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+
+    def closest(source_id: int, _date_utc: datetime) -> dict[str, Any]:
+        return {
+            "source_id": source_id,
+            "image_id": f"image-{source_id}",
+            "image_date": "2026-09-26 14:59:00",
+            "tile_url": f"https://example.invalid/{source_id}.png",
+            "artifact": {
+                "schema": {"name": "helioviewer_viewport_tile", "version": 1},
+                "delivery": "raw_on_demand",
+            },
+            "spatial_use": {
+                "eligible": False,
+                "reason": provider.AIA_SPATIAL_USE_DISABLED_REASON,
+                "contract": None,
+            },
+        }
+
+    monkeypatch.setattr(provider, "_fetch_helioviewer_closest", closest)
+
+    binary_reads: list[str] = []
+
+    def forbidden_binary_read(url: str, **_kwargs: Any) -> tuple[bytes, str]:
+        binary_reads.append(url)
+        raise AssertionError("snapshot generation must remain metadata-only")
+
+    monkeypatch.setattr(provider, "_fetch_binary_cached", forbidden_binary_read)
+
+    snapshot = provider._fetch_sdo_aia(2_459_291.4394237916)
+
+    assert binary_reads == []
+    assert snapshot["channel_activity_proxy"] is None
+    assert snapshot["activity_proxy"] is None
+    assert snapshot["coronal_holes"] is None
+    assert snapshot["scientific_inference"] == {
+        "status": "disabled",
+        "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+        "activity_proxy": None,
+        "coronal_holes": None,
+    }
+    assert all("analysis" not in channel for channel in snapshot["channels"].values())
+    assert (
+        provider.capabilities()["sources"]["sdo_aia"][
+            "supports_imagery_activity_proxy"
+        ]
+        is False
+    )
+
+
 def test_aia_provider_accepts_equal_legacy_epoch_alias(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
