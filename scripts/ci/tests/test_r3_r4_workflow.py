@@ -25,7 +25,9 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
         "TZ": "UTC",
     }
     steps = job["steps"]
-    assert any(step.get("uses", "").startswith("actions/checkout@") for step in steps)
+    checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0
+    assert checkout["with"]["persist-credentials"] is False
     setup = next(step for step in steps if step.get("uses", "").startswith("actions/setup-python@"))
     assert setup["with"]["python-version"] == "3.12.13"
     commands = "\n".join(step.get("run", "") for step in steps)
