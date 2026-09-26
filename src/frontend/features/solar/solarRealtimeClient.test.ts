@@ -400,5 +400,8 @@ describe('SolarRealtimeClient delivery contract', () => {
     });
 
     expect(controls.observationBlend).toBe(0);
+    expect(controls.observationEmission).toBe(0);
+    expect(controls.activityBoost).toBe(0);
+    expect(controls.coronaHue).toBeNull();
   });
 });

@@ -320,7 +320,12 @@ export function deriveSunObservationControls(
   // A channel label or activity scalar cannot authorize sampling a spatial map.
   // Keep the shader-side spatial blend dark unless the loaded texture passed the
   // explicit projection contract and still matches the selected observation.
-  if (!hasUsableObservationTexture) observationBlend = 0;
+  if (!hasUsableObservationTexture) {
+    observationBlend = 0;
+    observationEmission = 0;
+    activityBoost = 0;
+    coronaHue = null;
+  }
 
   return {
     observationBlend,
