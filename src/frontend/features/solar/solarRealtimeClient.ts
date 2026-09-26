@@ -12,6 +12,8 @@ import {
 export const SOLAR_REALTIME_POLL_INTERVAL_MS = 120_000;
 export const SOLAR_REALTIME_REQUEST_TIMEOUT_MS = 15_000;
 export const SOLAR_REALTIME_ERROR_BACKOFF_MS = 30_000;
+export const SOLAR_AIA_MAX_RENDER_AGE_MS = 6 * 60 * 60 * 1_000;
+const SOLAR_REALTIME_MAX_FUTURE_SKEW_MS = 5 * 60 * 1_000;
 
 export interface SolarRealtimeSourceStatus {
   ok: boolean;
@@ -89,6 +91,10 @@ export interface SolarRealtimeClientStatus {
   aiaUpdatedAtUtc: string | null;
   aiaSpatialUse: AiaSpatialUseStatus | 'unavailable';
   aiaSpatialReason: string | null;
+  aiaRenderEligible: boolean;
+  aiaRenderReason: string | null;
+  aiaRenderAgeMs: number | null;
+  aiaMaxRenderAgeMs: number;
   sourceStatus: SolarRealtimeSnapshot['source_status'] | null;
   lastError: string | null;
   lastSuccessMs: number;
@@ -99,6 +105,13 @@ export interface SolarRealtimeClientStatus {
   timeoutMs: number;
   inFlight: boolean;
   disposed: boolean;
+}
+
+export interface SolarAiaRenderStatus {
+  eligible: boolean;
+  reason: string | null;
+  ageMs: number | null;
+  maxAgeMs: number;
 }
 
 interface SolarRealtimeClientOptions {
@@ -332,6 +345,74 @@ export function observationStateFromSolarRealtime(
   };
 }
 
+function evaluateAiaRenderGate({
+  observation,
+  snapshotFetchedAtUtc,
+  snapshotAgeMs,
+  staleAfterMs,
+  lastError,
+  disposed,
+  nowMs
+}: {
+  observation: ReturnType<typeof inspectAiaObservationChannel>;
+  snapshotFetchedAtUtc: string | null;
+  snapshotAgeMs: number | null;
+  staleAfterMs: number;
+  lastError: string | null;
+  disposed: boolean;
+  nowMs: number;
+}): {
+  eligible: boolean;
+  reason: string | null;
+  ageMs: number | null;
+} {
+  if (!observation) {
+    return { eligible: false, reason: 'no_aia_artifact_available', ageMs: null };
+  }
+  if (observation.spatialUse !== 'eligible') {
+    return {
+      eligible: false,
+      reason: observation.reason ?? 'missing_validated_spatial_projection_contract',
+      ageMs: null
+    };
+  }
+  if (disposed) {
+    return { eligible: false, reason: 'realtime_client_disposed', ageMs: null };
+  }
+  if (lastError !== null) {
+    return { eligible: false, reason: 'realtime_refresh_failed', ageMs: null };
+  }
+
+  const fetchedAtMs = snapshotFetchedAtUtc === null
+    ? Number.NaN
+    : Date.parse(snapshotFetchedAtUtc);
+  if (
+    snapshotAgeMs === null
+    || !Number.isFinite(fetchedAtMs)
+    || fetchedAtMs - nowMs > SOLAR_REALTIME_MAX_FUTURE_SKEW_MS
+  ) {
+    return { eligible: false, reason: 'realtime_snapshot_timestamp_invalid', ageMs: null };
+  }
+  if (snapshotAgeMs > staleAfterMs) {
+    return { eligible: false, reason: 'realtime_snapshot_stale', ageMs: null };
+  }
+
+  const imageDateMs = observation.imageDate === null
+    ? Number.NaN
+    : Date.parse(observation.imageDate);
+  if (
+    !Number.isFinite(imageDateMs)
+    || imageDateMs - nowMs > SOLAR_REALTIME_MAX_FUTURE_SKEW_MS
+  ) {
+    return { eligible: false, reason: 'aia_observation_timestamp_invalid', ageMs: null };
+  }
+  const ageMs = Math.max(0, nowMs - imageDateMs);
+  if (ageMs > SOLAR_AIA_MAX_RENDER_AGE_MS) {
+    return { eligible: false, reason: 'aia_observation_too_old', ageMs };
+  }
+  return { eligible: true, reason: null, ageMs };
+}
+
 export class SolarRealtimeClient {
   readonly baseUrl: () => string;
   readonly pollIntervalMs: number;
@@ -374,6 +455,45 @@ export class SolarRealtimeClient {
     return this.latest;
   }
 
+  renderableObservationState(
+    nowMs = Date.now(),
+    overrideChannel: string | null = null
+  ): SolarObservationPhysicsStateLike | null {
+    const state = observationStateFromSolarRealtime(this.latest);
+    return this.observationRenderStatus(nowMs, overrideChannel).eligible ? state : null;
+  }
+
+  observationRenderStatus(
+    nowMs = Date.now(),
+    overrideChannel: string | null = null
+  ): SolarAiaRenderStatus {
+    const snapshot = this.latest?.snapshot ?? null;
+    const fetchedAtMs = snapshot ? Date.parse(snapshot.fetched_at_utc) : Number.NaN;
+    const snapshotAgeMs = Number.isFinite(fetchedAtMs)
+      ? Math.max(0, nowMs - fetchedAtMs)
+      : null;
+    const observation = inspectAiaObservationChannel(
+      observationStateFromSolarRealtime(this.latest),
+      undefined,
+      overrideChannel
+    );
+    const gate = evaluateAiaRenderGate({
+      observation,
+      snapshotFetchedAtUtc: snapshot?.fetched_at_utc ?? null,
+      snapshotAgeMs,
+      staleAfterMs: this.staleAfterMs,
+      lastError: this.lastError,
+      disposed: this.isDisposed,
+      nowMs
+    });
+    return {
+      eligible: gate.eligible,
+      reason: gate.reason,
+      ageMs: gate.ageMs,
+      maxAgeMs: SOLAR_AIA_MAX_RENDER_AGE_MS
+    };
+  }
+
   status(nowMs = Date.now()): SolarRealtimeClientStatus {
     const snapshot = this.latest?.snapshot ?? null;
     const fetchedAtMs = snapshot ? Date.parse(snapshot.fetched_at_utc) : Number.NaN;
@@ -392,6 +512,7 @@ export class SolarRealtimeClient {
     const aiaObservation = inspectAiaObservationChannel(
       observationStateFromSolarRealtime(this.latest)
     );
+    const renderGate = this.observationRenderStatus(nowMs);
     return {
       source: this.latest?.source ?? null,
       freshness: snapshot === null ? 'unavailable' : (stale ? 'stale' : 'fresh'),
@@ -400,6 +521,10 @@ export class SolarRealtimeClient {
       aiaUpdatedAtUtc,
       aiaSpatialUse: aiaObservation?.spatialUse ?? 'unavailable',
       aiaSpatialReason: aiaObservation?.reason ?? 'no_aia_artifact_available',
+      aiaRenderEligible: renderGate.eligible,
+      aiaRenderReason: renderGate.reason,
+      aiaRenderAgeMs: renderGate.ageMs,
+      aiaMaxRenderAgeMs: renderGate.maxAgeMs,
       sourceStatus: snapshot?.source_status ?? null,
       lastError: this.lastError,
       lastSuccessMs: this.lastSuccessMs,

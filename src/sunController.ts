@@ -228,6 +228,15 @@ export function createSunController({
       ?? solarPhysicsState;
   }
 
+  function getRenderableObservationState(
+    nowMs = Date.now()
+  ): SolarObservationPhysicsStateLike | null {
+    return solarRealtimeClient.renderableObservationState(
+      nowMs,
+      userAiaChannelOverride
+    );
+  }
+
   function buildMagneticFieldSignature(activity: number) {
     const quantizedActivity = Math.round(clampUnit(activity) * 12);
     const pfssSignature = solarPhysicsState?.pfss_field_lines
@@ -290,7 +299,7 @@ export function createSunController({
   function maybeRefreshObservationTexture(nowMs = Date.now(), force = false) {
     if (solarDeliveryDisposed) return;
 
-    const observationState = getObservationState();
+    const observationState = getRenderableObservationState(nowMs);
     const selection = pickAiaObservationChannel(
       observationState,
       undefined,
@@ -326,7 +335,7 @@ export function createSunController({
       proxyUrl,
       (loaded: Texture) => {
         const currentSelection = pickAiaObservationChannel(
-          getObservationState(),
+          getRenderableObservationState(Date.now()),
           undefined,
           userAiaChannelOverride
         );
@@ -480,7 +489,7 @@ export function createSunController({
     const activity = Number.isFinite(blendedActivityRaw)
       ? clampUnit(blendedActivityRaw)
       : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
-    const observationState = getObservationState();
+    const observationState = getRenderableObservationState(Date.now());
     const observationSelection = pickAiaObservationChannel(
       observationState,
       undefined,
@@ -640,8 +649,8 @@ export function createSunController({
     if (status.disposed || status.inFlight) return;
     if (!force && nowMs < status.nextRefreshMs) return;
 
-    void solarRealtimeClient.maybeRefresh(force).then((updated) => {
-      if (updated) maybeRefreshObservationTexture(Date.now(), force);
+    void solarRealtimeClient.maybeRefresh(force).then(() => {
+      maybeRefreshObservationTexture(Date.now(), force);
     });
   }
 
@@ -679,26 +688,35 @@ export function createSunController({
 
   function getSolarDeliveryStatus() {
     const observationState = getObservationState();
+    const nowMs = Date.now();
+    const realtimeStatus = solarRealtimeClient.status(nowMs);
+    const observationRenderStatus = solarRealtimeClient.observationRenderStatus(
+      nowMs,
+      userAiaChannelOverride
+    );
+    const renderableObservationState = getRenderableObservationState(nowMs);
     const selection = inspectAiaObservationChannel(
       observationState,
       undefined,
       userAiaChannelOverride
     );
     const eligibleSelection = pickAiaObservationChannel(
-      observationState,
+      renderableObservationState,
       undefined,
       userAiaChannelOverride
     );
     return {
       disposed: solarDeliveryDisposed,
       physics: solarPhysicsClient.status(),
-      realtime: solarRealtimeClient.status(),
+      realtime: realtimeStatus,
       observation: {
         channel: selection?.channel ?? null,
         imageId: selection?.imageId ?? null,
         imageDate: selection?.imageDate ?? null,
         spatialUse: selection?.spatialUse ?? 'unavailable',
         reason: selection?.reason ?? 'no_aia_artifact_available',
+        renderEligible: observationRenderStatus.eligible,
+        renderReason: observationRenderStatus.reason,
         activeRenderChannel: loadedObservationMatches(eligibleSelection)
           ? eligibleSelection?.channel ?? null
           : null,

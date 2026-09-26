@@ -12,16 +12,17 @@ function responseWith(payload: unknown, status = 200): Response {
 }
 
 function realtimePayload(spatiallyEligible = false): Record<string, unknown> {
+  const observedAtUtc = new Date().toISOString();
   return {
     schema: { name: 'solar_realtime_endpoint', version: 1 },
     source: 'backend',
     snapshot: {
       schema: { name: 'solar_realtime_context', version: 1 },
-      fetched_at_utc: new Date().toISOString(),
+      fetched_at_utc: observedAtUtc,
       source_status: {
         swpc: { ok: false, error: 'offline' },
         silso: { ok: false, error: 'offline' },
-        sdo_aia: { ok: true, updated: '2026-09-26T14:59:00Z' },
+        sdo_aia: { ok: true, updated: observedAtUtc },
         gong_synoptic: { ok: false, status: 'disabled_unvalidated' }
       },
       swpc: null,
@@ -30,7 +31,7 @@ function realtimePayload(spatiallyEligible = false): Record<string, unknown> {
         channels: {
           aia_193: {
             image_id: 'realtime-only-image',
-            image_date: '2026-09-26T14:59:00Z',
+            image_date: observedAtUtc,
             tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42',
             artifact: {
               schema: {
@@ -222,6 +223,146 @@ describe('sun controller solar delivery', () => {
       activeRenderChannel: null,
       textureLoaded: false,
       loadInFlight: false
+    });
+    controller.disposeSolarDelivery();
+  });
+
+  it('revokes a loaded projected texture immediately after realtime refresh failure', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseWith(realtimePayload(true)))
+      .mockRejectedValueOnce(new Error('network offline'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    const disposeLoadedTexture = vi.fn();
+    if (!settleTexture) throw new Error('texture callback was not captured');
+    (settleTexture as (texture: Texture) => void)({
+      dispose: disposeLoadedTexture,
+      needsUpdate: false
+    } as unknown as Texture);
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().realtime.lastError).toBe('network offline');
+    });
+
+    expect(disposeLoadedTexture).toHaveBeenCalledTimes(1);
+    expect(controller.getSolarDeliveryStatus()).toMatchObject({
+      realtime: {
+        aiaRenderEligible: false,
+        aiaRenderReason: 'realtime_refresh_failed'
+      },
+      observation: {
+        renderEligible: false,
+        renderReason: 'realtime_refresh_failed',
+        activeRenderChannel: null,
+        textureLoaded: false
+      }
+    });
+    controller.disposeSolarDelivery();
+  });
+
+  it('revokes a loaded projected texture when the snapshot freshness deadline passes', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:00Z'));
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(realtimePayload(true))));
+
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    const disposeLoadedTexture = vi.fn();
+    if (!settleTexture) throw new Error('texture callback was not captured');
+    (settleTexture as (texture: Texture) => void)({
+      dispose: disposeLoadedTexture,
+      needsUpdate: false
+    } as unknown as Texture);
+
+    vi.advanceTimersByTime(300_001);
+    controller.update(2_460_000.5, 1);
+
+    expect(disposeLoadedTexture).toHaveBeenCalledTimes(1);
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      renderEligible: false,
+      renderReason: 'realtime_snapshot_stale',
+      activeRenderChannel: null,
+      textureLoaded: false
+    });
+    controller.disposeSolarDelivery();
+  });
+
+  it('applies the render-age gate to the user-selected projected channel', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:00Z'));
+    const payload = realtimePayload(true) as {
+      snapshot: {
+        sdo_aia: {
+          channels: Record<string, Record<string, unknown>>;
+        };
+      };
+    };
+    const freshChannel = payload.snapshot.sdo_aia.channels.aia_193;
+    payload.snapshot.sdo_aia.channels.aia_304 = {
+      ...structuredClone(freshChannel),
+      image_id: 'old-304-image',
+      image_date: '2026-09-26T08:59:59Z'
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(payload)));
+
+    const load = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    controller.setAiaChannelOverride('aia_304');
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().realtime.source).toBe('backend');
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      channel: 'aia_304',
+      imageId: 'old-304-image',
+      spatialUse: 'eligible',
+      renderEligible: false,
+      renderReason: 'aia_observation_too_old',
+      activeRenderChannel: null,
+      textureLoaded: false
     });
     controller.disposeSolarDelivery();
   });

@@ -102,6 +102,34 @@ function validPayload(imageId = 'hv-193-42'): SolarRealtimePayload {
   };
 }
 
+function projectedPayload({
+  fetchedAtUtc = '2026-09-26T15:00:00Z',
+  imageDateUtc = '2026-09-26T14:59:00Z'
+} = {}): SolarRealtimePayload {
+  const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+  payload.snapshot.fetched_at_utc = fetchedAtUtc;
+  payload.snapshot.source_status.sdo_aia.updated = imageDateUtc;
+  const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+  if (!channel) throw new Error('fixture channel missing');
+  channel.image_date = imageDateUtc;
+  channel.artifact = {
+    schema: { name: 'solar_surface_texture', version: 1 },
+    delivery: 'raw_on_demand'
+  };
+  channel.spatial_use = {
+    eligible: true,
+    reason: null,
+    contract: {
+      schema: { name: 'solar_surface_texture_projection', version: 1 },
+      projection: 'equirectangular',
+      coordinate_frame: 'iau_sun_body_fixed',
+      coverage: 'full_surface',
+      uv_mapping: 'sun_surface_uv_v1'
+    }
+  };
+  return payload;
+}
+
 function deferred<T>(): {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -234,6 +262,87 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(client.status()).toMatchObject({
       freshness: 'stale',
       lastError: 'network offline'
+    });
+  });
+
+  it('discloses a fresh projected observation as render eligible', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:30Z'));
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(projectedPayload())));
+    const client = new SolarRealtimeClient({ baseUrl: () => 'http://backend.test' });
+
+    await expect(client.maybeRefresh(true)).resolves.toBe(true);
+
+    expect(client.status()).toMatchObject({
+      aiaSpatialUse: 'eligible',
+      aiaRenderEligible: true,
+      aiaRenderReason: null,
+      aiaRenderAgeMs: 90_000,
+      aiaMaxRenderAgeMs: 21_600_000
+    });
+  });
+
+  it('revokes projected rendering immediately after a refresh failure', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:30Z'));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseWith(projectedPayload()))
+      .mockRejectedValueOnce(new Error('network offline'));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarRealtimeClient({ baseUrl: () => 'http://backend.test' });
+    await client.maybeRefresh(true);
+
+    await expect(client.maybeRefresh(true)).resolves.toBe(false);
+
+    expect(client.status()).toMatchObject({
+      freshness: 'stale',
+      aiaSpatialUse: 'eligible',
+      aiaRenderEligible: false,
+      aiaRenderReason: 'realtime_refresh_failed'
+    });
+  });
+
+  it('revokes projected rendering when the snapshot freshness deadline passes', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:00Z'));
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(projectedPayload({
+      fetchedAtUtc: '2026-09-26T15:00:00Z',
+      imageDateUtc: '2026-09-26T15:00:00Z'
+    }))));
+    const client = new SolarRealtimeClient({
+      baseUrl: () => 'http://backend.test',
+      pollIntervalMs: 30_000,
+      staleAfterMs: 30_000
+    });
+    await client.maybeRefresh(true);
+
+    vi.advanceTimersByTime(30_001);
+
+    expect(client.status()).toMatchObject({
+      freshness: 'stale',
+      aiaRenderEligible: false,
+      aiaRenderReason: 'realtime_snapshot_stale'
+    });
+  });
+
+  it('revokes a fresh snapshot whose projected observation exceeds the render age', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-26T15:00:00Z'));
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(projectedPayload({
+      fetchedAtUtc: '2026-09-26T15:00:00Z',
+      imageDateUtc: '2026-09-26T08:59:59Z'
+    }))));
+    const client = new SolarRealtimeClient({ baseUrl: () => 'http://backend.test' });
+
+    await client.maybeRefresh(true);
+
+    expect(client.status()).toMatchObject({
+      freshness: 'fresh',
+      aiaSpatialUse: 'eligible',
+      aiaRenderEligible: false,
+      aiaRenderReason: 'aia_observation_too_old',
+      aiaRenderAgeMs: 21_601_000
     });
   });
 
