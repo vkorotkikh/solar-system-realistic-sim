@@ -83,7 +83,7 @@ describe('SolarPhysicsClient time contract', () => {
     expect(client.pollIntervalMs).toBe(SOLAR_PHYSICS_POLL_INTERVAL_MS);
     expect(client.pollIntervalMs).toBeGreaterThanOrEqual(30_000);
     expect(client.timeoutMs).toBe(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
-    expect(client.timeoutMs).toBeGreaterThan(12_000);
+    expect(client.timeoutMs).toBeGreaterThan(18_000);
     expect(client.timeoutMs).toBeLessThanOrEqual(20_000);
   });
 
@@ -242,5 +242,22 @@ describe('SolarPhysicsClient time contract', () => {
     expect(client.inFlight).toBe(false);
     expect(client.abortController).toBeNull();
     expect(client.lastError).toBeNull();
+  });
+
+  it('makes disposal terminal and suppresses a late response', async () => {
+    const pending = deferred<Response>();
+    const fetchMock = vi.fn(() => pending.promise);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+    const refresh = client.maybeRefresh(2_460_000.5, true);
+    client.dispose();
+    pending.resolve(responseWith(validPayload()));
+
+    await expect(refresh).resolves.toBe(false);
+    await expect(client.maybeRefresh(2_460_001.5, true)).resolves.toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(client.latestState()).toBeNull();
+    expect(client.status()).toMatchObject({ disposed: true, inFlight: false });
   });
 });

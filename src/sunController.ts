@@ -146,6 +146,7 @@ export function createSunController({
   let solarPhysicsBlendDurationMs = 1_050;
   let solarPhysicsRefreshInFlight = false;
   let solarPhysicsNextRefreshMs = 0;
+  let solarDeliveryDisposed = false;
 
   let solarObservationTexture: Texture | null = null;
   let solarObservationTextureImageId: string | null = null;
@@ -263,7 +264,7 @@ export function createSunController({
   }
 
   function maybeRefreshObservationTexture(nowMs = Date.now(), force = false) {
-    if (solarObservationTextureLoadInFlight) return;
+    if (solarDeliveryDisposed || solarObservationTextureLoadInFlight) return;
 
     const observationState = getObservationState();
     if (!observationState) return;
@@ -288,6 +289,11 @@ export function createSunController({
     observationTextureLoader.load(
       proxyUrl,
       (loaded: Texture) => {
+        if (solarDeliveryDisposed) {
+          if (typeof loaded.dispose === 'function') loaded.dispose();
+          solarObservationTextureLoadInFlight = false;
+          return;
+        }
         configureLoadedTexture(loaded);
         loaded.needsUpdate = true;
         if (solarObservationTexture && solarObservationTexture !== loaded && typeof solarObservationTexture.dispose === 'function') {
@@ -518,6 +524,7 @@ export function createSunController({
   }
 
   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
+    if (solarDeliveryDisposed) return;
     // Realtime observation delivery has its own cadence, deadline, one-flight,
     // and LKG. Run it before the physics gates so imagery does not depend on a
     // successful or even idle `/solar/physics` request.
@@ -532,6 +539,7 @@ export function createSunController({
 
     void solarPhysicsClient.maybeRefresh(requestJd, force)
       .then((updated) => {
+        if (solarDeliveryDisposed) return;
         const status = solarPhysicsClient.status();
         if (updated) {
           solarPhysicsState = solarPhysicsClient.latestState();
@@ -572,6 +580,7 @@ export function createSunController({
   }
 
   function maybeRefreshRealtime(nowMs = Date.now(), force = false) {
+    if (solarDeliveryDisposed) return;
     const status = solarRealtimeClient.status(nowMs);
     if (status.disposed || status.inFlight) return;
     if (!force && nowMs < status.nextRefreshMs) return;
@@ -621,6 +630,7 @@ export function createSunController({
       userAiaChannelOverride
     );
     return {
+      disposed: solarDeliveryDisposed,
       physics: solarPhysicsClient.status(),
       realtime: solarRealtimeClient.status(),
       observation: {
@@ -636,8 +646,17 @@ export function createSunController({
   }
 
   function disposeSolarDelivery() {
+    if (solarDeliveryDisposed) return;
+    solarDeliveryDisposed = true;
     solarPhysicsClient.dispose();
     solarRealtimeClient.dispose();
+    if (solarObservationTexture && typeof solarObservationTexture.dispose === 'function') {
+      solarObservationTexture.dispose();
+    }
+    solarObservationTexture = null;
+    solarObservationTextureImageId = null;
+    solarObservationTextureChannel = null;
+    solarObservationTextureLoadInFlight = false;
   }
 
   return {

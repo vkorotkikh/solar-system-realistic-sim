@@ -85,4 +85,61 @@ describe('sun controller solar delivery', () => {
     });
     controller.disposeSolarDelivery();
   });
+
+  it('rejects late texture success and all refreshes after terminal disposal', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/solar/realtime')) return responseWith(realtimePayload());
+      if (url.includes('/solar/physics?')) return responseWith({}, 503);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((
+      _url: string,
+      onLoad: (texture: Texture) => void
+    ) => {
+      settleTexture = onLoad;
+    });
+    const configureLoadedTexture = vi.fn((_texture: Texture) => undefined);
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture,
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    controller.maybeRefreshPhysics(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+
+    controller.disposeSolarDelivery();
+    const requestCountAtDisposal = fetchMock.mock.calls.length;
+    const disposeIncomingTexture = vi.fn();
+    const incomingTexture = {
+      dispose: disposeIncomingTexture,
+      needsUpdate: false
+    } as unknown as Texture;
+    if (!settleTexture) throw new Error('Texture load callback was not captured');
+    const finishTexture = settleTexture as (texture: Texture) => void;
+    finishTexture(incomingTexture);
+    controller.maybeRefreshPhysics(Date.now(), true);
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await Promise.resolve();
+
+    expect(disposeIncomingTexture).toHaveBeenCalledTimes(1);
+    expect(configureLoadedTexture).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(requestCountAtDisposal);
+    expect(controller.getSolarDeliveryStatus()).toMatchObject({
+      disposed: true,
+      observation: {
+        textureLoaded: false,
+        loadInFlight: false
+      },
+      physics: { disposed: true, inFlight: false },
+      realtime: { disposed: true, inFlight: false }
+    });
+  });
 });

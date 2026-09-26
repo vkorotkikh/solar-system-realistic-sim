@@ -1,12 +1,12 @@
 import { clamp } from '../../../constants';
 import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
 
-// The backend admits up to 12 s for a solar-physics computation. Keep the
+// The backend admits up to 18 s for a solar-physics computation. Keep the
 // browser deadline above that ceiling, while bounding it tightly enough that a
 // disconnected backend cannot strand the delivery loop. Physics is expensive
 // and evolves slowly relative to a frame, so polling twice a minute is ample.
 export const SOLAR_PHYSICS_POLL_INTERVAL_MS = 30_000;
-export const SOLAR_PHYSICS_REQUEST_TIMEOUT_MS = 15_000;
+export const SOLAR_PHYSICS_REQUEST_TIMEOUT_MS = 20_000;
 export const SOLAR_PHYSICS_ERROR_BACKOFF_MS = 30_000;
 
 export type SolarForcingMode = 'synthetic' | 'hybrid' | 'data_driven';
@@ -186,6 +186,7 @@ export class SolarPhysicsClient {
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
   _reqId: number;
+  disposed: boolean;
 
   constructor({
     baseUrl,
@@ -213,6 +214,7 @@ export class SolarPhysicsClient {
     this.latest = null;
     this.abortController = null;
     this._reqId = 0;
+    this.disposed = false;
   }
 
   latestState(): SolarPhysicsStatePayload | null {
@@ -226,11 +228,16 @@ export class SolarPhysicsClient {
       lastRefreshMs: this.lastRefreshMs,
       lastLatencyMs: this.lastLatencyMs,
       pollIntervalMs: this.pollIntervalMs,
-      nextRefreshMs: this.nextRefreshMs
+      nextRefreshMs: this.nextRefreshMs,
+      inFlight: this.inFlight,
+      disposed: this.disposed
     };
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this._reqId += 1;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -240,6 +247,8 @@ export class SolarPhysicsClient {
 
   async maybeRefresh(jd: number, force = false): Promise<boolean> {
     const nowMs = Date.now();
+
+    if (this.disposed) return false;
 
     if (this.inFlight) {
       if (force) {
@@ -270,7 +279,9 @@ export class SolarPhysicsClient {
     const controller = new AbortController();
     this.abortController = controller;
     const ownsRequest = (): boolean =>
-      this._reqId === currentReqId && this.abortController === controller;
+      !this.disposed &&
+      this._reqId === currentReqId &&
+      this.abortController === controller;
     
     try {
       timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
