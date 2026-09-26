@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from contextlib import contextmanager
 import hashlib
 from importlib import metadata
 import json
@@ -65,7 +66,15 @@ def _relative_path(repo: Path, value: Any, label: str) -> Path:
     return resolved
 
 
-def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
+def _canonical_package_name(value: str) -> str:
+    return re.sub(r"[-_.]+", "-", value).lower()
+
+
+def _load_manifest(repo: Path, path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        manifest_relative = path.resolve().relative_to(repo).as_posix()
+    except ValueError as exc:
+        raise VerificationError("manifest must be inside the repository") from exc
     try:
         manifest = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
@@ -83,6 +92,13 @@ def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
         for name, version in packages.items()
     ):
         raise VerificationError("environment.packages must pin at least one exact version")
+    requirements = _object(environment.get("requirements"), "environment.requirements")
+    requirements_path = _relative_path(
+        repo, requirements.get("path"), "environment.requirements.path",
+    ).relative_to(repo).as_posix()
+    requirements_sha256 = str(requirements.get("sha256", ""))
+    if not re.fullmatch(r"[0-9a-f]{64}", requirements_sha256):
+        raise VerificationError("environment.requirements.sha256 must be lowercase SHA-256")
     variables = _object(environment.get("variables"), "environment.variables")
     required_variables = {
         "PYTHONHASHSEED": "0",
@@ -99,6 +115,7 @@ def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
     if not isinstance(inputs, list) or not inputs:
         raise VerificationError("inputs must be a nonempty list")
     input_paths: set[str] = set()
+    input_hashes: dict[str, str] = {}
     for index, raw in enumerate(inputs):
         item = _object(raw, f"inputs[{index}]")
         resolved = _relative_path(repo, item.get("path"), f"inputs[{index}].path")
@@ -108,11 +125,51 @@ def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
         input_paths.add(relative)
         if not re.fullmatch(r"[0-9a-f]{64}", str(item.get("sha256", ""))):
             raise VerificationError(f"inputs[{index}].sha256 must be lowercase SHA-256")
+        input_hashes[relative] = item["sha256"]
+    if input_hashes.get(requirements_path) != requirements_sha256:
+        raise VerificationError(
+            "environment.requirements must reference a pinned input with the same SHA-256",
+        )
+    requirements_file = _relative_path(repo, requirements_path, "environment.requirements.path")
+    if not requirements_file.is_file():
+        raise VerificationError(f"pinned requirements file is missing: {requirements_path}")
+    requirement_pins: dict[str, str] = {}
+    for line_number, raw_line in enumerate(requirements_file.read_text().splitlines(), 1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;]+)", line)
+        if match is None:
+            raise VerificationError(
+                f"requirements line {line_number} must be an exact name==version pin",
+            )
+        name, version = _canonical_package_name(match.group(1)), match.group(2)
+        if name in requirement_pins:
+            raise VerificationError(f"duplicate requirements pin: {name}")
+        requirement_pins[name] = version
+    expected_pins = {
+        _canonical_package_name(name): version for name, version in packages.items()
+    }
+    if requirement_pins != expected_pins:
+        raise VerificationError(
+            "environment.packages and the pinned requirements file must match exactly",
+        )
 
     pytest_config = _object(manifest.get("pytest"), "pytest")
+    if pytest_config.get("conftest_policy") != "disabled":
+        raise VerificationError("pytest.conftest_policy must be 'disabled'")
     nodes = _strings(pytest_config.get("required_nodes"), "pytest.required_nodes")
     if any("::" not in node for node in nodes):
         raise VerificationError("every required node must be an exact pytest node ID")
+    for node in nodes:
+        file_portion = node.split("::", 1)[0]
+        normalized = _relative_path(repo, file_portion, "required node file").relative_to(repo).as_posix()
+        if file_portion != normalized:
+            raise VerificationError(
+                f"required node file must use a normalized repository-relative path: {file_portion}",
+            )
+        if normalized not in input_paths:
+            raise VerificationError(f"required node file is not a pinned input: {normalized}")
     pythonpath = _strings(pytest_config.get("pythonpath", []), "pytest.pythonpath", nonempty=False)
     for index, value in enumerate(pythonpath):
         _relative_path(repo, value, f"pytest.pythonpath[{index}]")
@@ -155,11 +212,13 @@ def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
         except re.error as exc:
             raise VerificationError(f"mutation {mutation_id} assertion regex is invalid: {exc}") from exc
         fixed_commit = mutation.get("fixed_commit")
-        if not isinstance(fixed_commit, str) or not re.fullmatch(r"[0-9a-f]{7,64}", fixed_commit):
-            raise VerificationError(f"mutation {mutation_id} fixed_commit must be a hexadecimal object ID")
+        if not isinstance(fixed_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", fixed_commit):
+            raise VerificationError(
+                f"mutation {mutation_id} fixed_commit must be a full 40-hex object ID",
+            )
         if not isinstance(mutation.get("oracle_class"), str) or not mutation["oracle_class"]:
             raise VerificationError(f"mutation {mutation_id} lacks oracle_class")
-    return manifest
+    return manifest, manifest_relative
 
 
 def _verify_environment(manifest: dict[str, Any]) -> None:
@@ -189,15 +248,27 @@ def _git(repo: Path, *args: str, timeout: int = 30) -> subprocess.CompletedProce
         raise VerificationError(f"git {' '.join(args)} failed: {exc}") from exc
 
 
-def _verify_repository(repo: Path, manifest: dict[str, Any]) -> str:
+def _require_tracked_clean(repo: Path, relative_path: str, label: str) -> None:
+    tracked = _git(repo, "ls-files", "--error-unmatch", "--", relative_path)
+    if tracked.returncode != 0:
+        raise VerificationError(f"{label} must be tracked: {relative_path}")
+    clean = _git(repo, "diff", "--quiet", "HEAD", "--", relative_path)
+    if clean.returncode != 0:
+        raise VerificationError(f"{label} must be tracked and clean: {relative_path}")
+
+
+def _verify_repository(
+    repo: Path, manifest: dict[str, Any], manifest_relative: str,
+) -> tuple[str, dict[str, str]]:
     root = _git(repo, "rev-parse", "--show-toplevel")
     if root.returncode != 0 or Path(root.stdout.strip()).resolve() != repo:
         raise VerificationError("--repo must be the root of a git worktree")
     head = _git(repo, "rev-parse", "HEAD")
     if head.returncode != 0:
         raise VerificationError("repository has no committed HEAD")
-    pinned_paths = []
+    _require_tracked_clean(repo, manifest_relative, "manifest")
     for item in manifest["inputs"]:
+        _require_tracked_clean(repo, item["path"], "pinned input")
         path = _relative_path(repo, item["path"], "input path")
         if not path.is_file():
             raise VerificationError(f"pinned input is missing: {item['path']}")
@@ -206,11 +277,9 @@ def _verify_repository(repo: Path, manifest: dict[str, Any]) -> str:
             raise VerificationError(
                 f"input SHA-256 mismatch for {item['path']}: expected {item['sha256']}, got {actual}",
             )
-        pinned_paths.append(item["path"])
-    clean = _git(repo, "diff", "--quiet", "HEAD", "--", *pinned_paths)
-    if clean.returncode != 0:
-        raise VerificationError("pinned inputs differ from committed HEAD")
+    resolved_fixed_commits: dict[str, str] = {}
     for mutation in manifest["mutations"]:
+        _require_tracked_clean(repo, mutation["patch"], "mutation patch")
         patch = _relative_path(repo, mutation["patch"], "mutation patch")
         if not patch.is_file():
             raise VerificationError(f"mutation patch is missing: {mutation['patch']}")
@@ -231,7 +300,14 @@ def _verify_repository(repo: Path, manifest: dict[str, Any]) -> str:
                 f"mutation {mutation['id']} fixed_commit is not an ancestor of HEAD: "
                 f"{mutation['fixed_commit']}",
             )
-    return head.stdout.strip()
+        resolved = commit.stdout.strip()
+        if resolved != mutation["fixed_commit"]:
+            raise VerificationError(
+                f"mutation {mutation['id']} fixed_commit did not resolve exactly: "
+                f"{mutation['fixed_commit']} -> {resolved}",
+            )
+        resolved_fixed_commits[mutation["id"]] = resolved
+    return head.stdout.strip(), resolved_fixed_commits
 
 
 _OFFLINE_GUARD = '''"""Injected by the R3/R4 verifier: reject outbound Python sockets."""
@@ -320,6 +396,45 @@ def _run_process(
         raise VerificationError(f"{label} could not start: {exc}") from exc
 
 
+def _prepare_artifacts(repo: Path, requested: Path | None) -> Path:
+    if requested is None:
+        parent = repo / "artifacts"
+        parent.mkdir(parents=True, exist_ok=True)
+        return Path(tempfile.mkdtemp(prefix="r3-r4-science-", dir=parent)).resolve()
+    raw = requested if requested.is_absolute() else Path.cwd() / requested
+    if raw.is_symlink():
+        raise VerificationError("artifact directory cannot be a symlink")
+    artifacts = raw.resolve()
+    if artifacts.exists():
+        if not artifacts.is_dir() or any(artifacts.iterdir()):
+            raise VerificationError("artifact directory must be absent or empty")
+    else:
+        artifacts.mkdir(parents=True, mode=0o700)
+    return artifacts
+
+
+@contextmanager
+def _detached_worktree(source_repo: Path, commit: str, label: str):
+    temp_root = Path(tempfile.mkdtemp(prefix=f"r3-r4-{label}-"))
+    added = False
+    try:
+        add = _git(source_repo, "worktree", "add", "--detach", str(temp_root), commit, timeout=60)
+        if add.returncode != 0:
+            raise VerificationError(f"cannot create detached {label} worktree: {add.stderr}")
+        added = True
+        yield temp_root
+    finally:
+        if added:
+            remove = _git(source_repo, "worktree", "remove", "--force", str(temp_root), timeout=60)
+            if remove.returncode != 0:
+                shutil.rmtree(temp_root, ignore_errors=True)
+                _git(source_repo, "worktree", "prune", timeout=30)
+            else:
+                shutil.rmtree(temp_root, ignore_errors=True)
+        else:
+            shutil.rmtree(temp_root, ignore_errors=True)
+
+
 def _collected_nodes(output: str) -> list[str]:
     return [
         line.strip() for line in output.splitlines()
@@ -338,7 +453,7 @@ def _collect_exact(
     result = _run_process(
         [
             sys.executable, "-m", "pytest", "-p", "r3_r4_pytest_guard",
-            "--collect-only", "-q", *nodes,
+            "--noconftest", "--collect-only", "-q", *nodes,
         ],
         cwd=repo,
         env=env,
@@ -381,18 +496,31 @@ def _run_pytest(
     label: str,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, int]]:
     junit_path.parent.mkdir(parents=True, exist_ok=True)
-    result = _run_process(
-        [
-            sys.executable, "-m", "pytest", "-p", "r3_r4_pytest_guard",
-            "-q", "-o", "xfail_strict=True",
-            f"--junitxml={junit_path}", *nodes,
-        ],
-        cwd=repo,
-        env=env,
-        timeout=manifest["pytest"]["timeout_seconds"],
-        label=label,
+    if junit_path.exists():
+        raise VerificationError(f"refusing to replace preexisting JUnit artifact: {junit_path}")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{junit_path.name}.", suffix=".tmp", dir=junit_path.parent,
     )
-    return result, _junit_counts(junit_path)
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    temporary_path.unlink()
+    try:
+        result = _run_process(
+            [
+                sys.executable, "-m", "pytest", "-p", "r3_r4_pytest_guard",
+                "--noconftest", "-q", "-o", "xfail_strict=True",
+                f"--junitxml={temporary_path}", *nodes,
+            ],
+            cwd=repo,
+            env=env,
+            timeout=manifest["pytest"]["timeout_seconds"],
+            label=label,
+        )
+        counts = _junit_counts(temporary_path)
+        os.replace(temporary_path, junit_path)
+        return result, counts
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _baseline(
@@ -511,44 +639,67 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    if path.exists():
+        raise VerificationError(f"refusing to replace preexisting summary: {path}")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent,
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump(payload, stream, indent=2, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
 def run(argv: list[str] | None = None) -> int:
     args = _arguments(argv)
     repo = args.repo.resolve()
     manifest_path = args.manifest.resolve()
-    artifacts = (args.artifacts or (repo / "artifacts/r3-r4-science")).resolve()
-    artifacts.mkdir(parents=True, exist_ok=True)
-    guard_dir = artifacts / "offline-python"
-    guard_dir.mkdir(parents=True, exist_ok=True)
-    (guard_dir / "sitecustomize.py").write_text(_OFFLINE_GUARD)
-    (guard_dir / "r3_r4_pytest_guard.py").write_text(_PYTEST_GUARD)
-
-    manifest = _load_manifest(repo, manifest_path)
+    manifest, manifest_relative = _load_manifest(repo, manifest_path)
     _verify_environment(manifest)
-    base_commit = _verify_repository(repo, manifest)
-    env = _test_environment(repo, manifest, guard_dir)
-    summary: dict[str, Any] = {
-        "schema_version": 1,
-        "base_commit": base_commit,
-        "manifest_sha256": _sha256(manifest_path),
-        "python_socket_guard": True,
-        "baseline": _baseline(repo, manifest, env, artifacts),
-        "mutations": [],
-        "scope_gaps": [
-            "independent-real-GONG-PFSS-corpus",
-            "playwright-and-load-lanes",
-            "global-typescript-zero-error-gate",
-            "multi-worker-global-coordinator-and-process-release-integration",
-            "immutable-container-attestation",
-        ],
-    }
-    if args.mode in ("mutations", "all"):
-        summary["mutations"] = [
-            _mutation(repo, base_commit, mutation, manifest, guard_dir, artifacts)
-            for mutation in manifest["mutations"]
-        ]
-    (artifacts / "summary.json").write_text(
-        json.dumps(summary, indent=2, sort_keys=True) + "\n",
+    base_commit, resolved_fixed_commits = _verify_repository(
+        repo, manifest, manifest_relative,
     )
+    artifacts = _prepare_artifacts(repo, args.artifacts)
+    with tempfile.TemporaryDirectory(prefix="r3-r4-private-guard-") as guard_name:
+        guard_dir = Path(guard_name)
+        guard_dir.chmod(0o700)
+        (guard_dir / "sitecustomize.py").write_text(_OFFLINE_GUARD)
+        (guard_dir / "r3_r4_pytest_guard.py").write_text(_PYTEST_GUARD)
+        with _detached_worktree(repo, base_commit, "baseline") as baseline_repo:
+            baseline_env = _test_environment(baseline_repo, manifest, guard_dir)
+            baseline = _baseline(baseline_repo, manifest, baseline_env, artifacts)
+        summary: dict[str, Any] = {
+            "schema_version": 1,
+            "base_commit": base_commit,
+            "baseline_worktree": "detached-head",
+            "manifest_path": manifest_relative,
+            "manifest_sha256": _sha256(manifest_path),
+            "requirements": manifest["environment"]["requirements"],
+            "resolved_fixed_commits": resolved_fixed_commits,
+            "python_socket_guard": True,
+            "baseline": baseline,
+            "mutations": [],
+            "scope_gaps": [
+                "independent-real-GONG-PFSS-corpus",
+                "playwright-and-load-lanes",
+                "global-typescript-zero-error-gate",
+                "multi-worker-global-coordinator-and-process-release-integration",
+                "immutable-action-container-and-os-network-attestation",
+            ],
+        }
+        if args.mode in ("mutations", "all"):
+            summary["mutations"] = [
+                _mutation(repo, base_commit, mutation, manifest, guard_dir, artifacts)
+                for mutation in manifest["mutations"]
+            ]
+    _atomic_write_json(artifacts / "summary.json", summary)
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 

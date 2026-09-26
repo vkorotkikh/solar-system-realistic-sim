@@ -61,6 +61,14 @@ def _fixture(
     patch_dir.mkdir()
     patch_path = patch_dir / "change-value.patch"
     patch_path.write_text(_patch("VALUE = 2", mutation_after))
+    effective_packages = (
+        package_versions if package_versions is not None
+        else {"pytest": metadata.version("pytest")}
+    )
+    requirements_path = repo / "requirements.txt"
+    requirements_path.write_text(
+        "".join(f"{name}=={version}\n" for name, version in effective_packages.items())
+    )
     _git(repo, "init", "-q")
     _git(repo, "add", ".")
     _git(
@@ -81,9 +89,11 @@ def _fixture(
         "schema_version": 1,
         "environment": {
             "python": ".".join(str(part) for part in sys.version_info[:3]),
-            "packages": package_versions
-            if package_versions is not None
-            else {"pytest": metadata.version("pytest")},
+            "requirements": {
+                "path": "requirements.txt",
+                "sha256": _sha(requirements_path),
+            },
+            "packages": effective_packages,
             "variables": {
                 "PYTHONHASHSEED": "0",
                 "OMP_NUM_THREADS": "1",
@@ -93,8 +103,10 @@ def _fixture(
         "inputs": [
             {"path": "science.py", "sha256": _sha(repo / "science.py")},
             {"path": "test_science.py", "sha256": _sha(repo / "test_science.py")},
+            {"path": "requirements.txt", "sha256": _sha(requirements_path)},
         ],
         "pytest": {
+            "conftest_policy": "disabled",
             "pythonpath": ["."],
             "timeout_seconds": 20,
             "required_nodes": [required_node],
@@ -229,7 +241,7 @@ def test_manifest_or_patch_hash_drift_fails_closed(tmp_path):
     result = _run("--repo", str(repo), "--manifest", str(manifest), "mutations")
 
     assert result.returncode != 0
-    assert "patch SHA-256 mismatch" in result.stderr
+    assert "patch must be tracked and clean" in result.stderr
 
 
 def test_fixed_commit_must_resolve_to_an_ancestor(tmp_path):
@@ -237,8 +249,145 @@ def test_fixed_commit_must_resolve_to_an_ancestor(tmp_path):
     manifest = json.loads(manifest_path.read_text())
     manifest["mutations"][0]["fixed_commit"] = "f" * 40
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    _git(repo, "add", "manifest.json")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "set unknown fix id",
+    )
 
     result = _run("--repo", str(repo), "--manifest", str(manifest_path), "mutations")
 
     assert result.returncode != 0
     assert "fixed_commit does not resolve" in result.stderr
+
+
+def test_external_manifest_is_rejected_even_when_contents_are_identical(tmp_path):
+    repo, manifest = _fixture(tmp_path)
+    external = tmp_path / "external-manifest.json"
+    external.write_bytes(manifest.read_bytes())
+
+    result = _run("--repo", str(repo), "--manifest", str(external), "baseline")
+
+    assert result.returncode != 0
+    assert "manifest must be inside the repository" in result.stderr
+
+
+def test_dirty_tracked_manifest_is_rejected(tmp_path):
+    repo, manifest = _fixture(tmp_path)
+    manifest.write_text(manifest.read_text() + "\n")
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest), "baseline")
+
+    assert result.returncode != 0
+    assert "manifest must be tracked and clean" in result.stderr
+
+
+def test_required_node_file_must_be_a_pinned_input(tmp_path):
+    repo, manifest_path = _fixture(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["inputs"] = [
+        item for item in manifest["inputs"] if item["path"] != "test_science.py"
+    ]
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    _git(repo, "add", "manifest.json")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "remove test pin",
+    )
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest_path), "baseline")
+
+    assert result.returncode != 0
+    assert "required node file is not a pinned input" in result.stderr
+
+
+def test_required_node_file_must_be_normalized_repo_relative(tmp_path):
+    repo, manifest_path = _fixture(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    node = manifest["pytest"]["required_nodes"][0]
+    malformed = "./" + node
+    manifest["pytest"]["required_nodes"] = [malformed]
+    manifest["mutations"][0]["node"] = malformed
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    _git(repo, "add", "manifest.json")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "malform test node",
+    )
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest_path), "baseline")
+
+    assert result.returncode != 0
+    assert "normalized repository-relative path" in result.stderr
+
+
+def test_preexisting_artifacts_and_python_modules_are_rejected(tmp_path):
+    repo, manifest = _fixture(tmp_path)
+    artifacts = repo / "artifacts"
+    poison = artifacts / "offline-python"
+    poison.mkdir(parents=True)
+    (poison / "r3_r4_pytest_guard.py").write_text(
+        "def pytest_collection_modifyitems(items):\n    items.clear()\n",
+    )
+    stale = artifacts / "summary.json"
+    stale.write_text('{"baseline":{"passed":999}}\n')
+
+    result = _run(
+        "--repo", str(repo), "--manifest", str(manifest),
+        "--artifacts", str(artifacts), "all",
+    )
+
+    assert result.returncode != 0
+    assert "artifact directory must be absent or empty" in result.stderr
+    assert json.loads(stale.read_text())["baseline"]["passed"] == 999
+
+
+def test_baseline_executes_from_detached_head(tmp_path):
+    body = (
+        "from pathlib import Path\n"
+        "import subprocess\n"
+        "def test_invariant():\n"
+        "    assert Path('.git').is_file(), 'R4-BASELINE-NOT-WORKTREE'\n"
+        "    attached = subprocess.run(\n"
+        "        ['git', 'symbolic-ref', '-q', 'HEAD'], capture_output=True\n"
+        "    )\n"
+        "    assert attached.returncode == 1, 'R4-BASELINE-NOT-DETACHED'\n"
+        "    assert science.VALUE == 2\n"
+    )
+    repo, manifest = _fixture(tmp_path, test_body=body)
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest), "baseline")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_abbreviated_fixed_commit_is_rejected(tmp_path):
+    repo, manifest_path = _fixture(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["mutations"][0]["fixed_commit"] = manifest["mutations"][0]["fixed_commit"][:7]
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    _git(repo, "add", "manifest.json")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "abbreviate fix id",
+    )
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest_path), "baseline")
+
+    assert result.returncode != 0
+    assert "full 40-hex object ID" in result.stderr
+
+
+def test_unpinned_conftest_cannot_poison_collection(tmp_path):
+    repo, manifest = _fixture(tmp_path)
+    (repo / "conftest.py").write_text("raise RuntimeError('CONFTST-POISON')\n")
+    _git(repo, "add", "conftest.py")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "poison ambient conftest",
+    )
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest), "baseline")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONFTST-POISON" not in result.stdout + result.stderr
