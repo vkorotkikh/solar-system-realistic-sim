@@ -278,6 +278,12 @@ def test_server_process_limits_do_not_exceed_supervisor_hard_caps() -> None:
     assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES <= HARD_MAX_RESULT_BYTES
     assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES >= MIN_SUPPORTED_SOLAR_RESULT_BYTES
     assert server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS <= HARD_MAX_TIMEOUT_SECONDS
+    assert (
+        server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS
+        <= server.SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS
+        < 20.0
+    )
+    assert server.SOLAR_PHYSICS_MAX_FEATURES == 256
 
 
 def test_solar_wire_budget_environment_cannot_undercut_supported_floor(
@@ -290,4 +296,16 @@ def test_solar_wire_budget_environment_cannot_undercut_supported_floor(
     assert (
         server._load_solar_physics_result_byte_limit()
         == MIN_SUPPORTED_SOLAR_RESULT_BYTES
+    )
+
+
+def test_solar_compute_timeout_environment_cannot_outlive_browser_deadline(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS", "60")
+
+    assert (
+        server._load_solar_physics_compute_timeout()
+        == server.SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS
+        == 19.0
     )

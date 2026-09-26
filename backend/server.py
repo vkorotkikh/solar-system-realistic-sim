@@ -99,7 +99,6 @@ from sim.process_supervisor import (
     HARD_MAX_PROCESS_QUEUE,
     HARD_MAX_PROCESS_WORKERS,
     HARD_MAX_RESULT_BYTES,
-    HARD_MAX_TIMEOUT_SECONDS,
     MIN_SUPPORTED_SOLAR_RESULT_BYTES,
     ProcessCancelled,
     ProcessCrashed,
@@ -683,12 +682,7 @@ SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
 SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
 
 
-SOLAR_PHYSICS_MAX_FEATURES = _load_bounded_env_int(
-    "SOLAR_PHYSICS_MAX_FEATURES",
-    256,
-    min_value=64,
-    max_value=256,
-)
+SOLAR_PHYSICS_MAX_FEATURES = 256
 SOLAR_PHYSICS_MIN_FEATURES = 8
 SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW",
@@ -702,12 +696,19 @@ SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     min_value=1.0,
     max_value=300.0,
 )
-SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
-    "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
-    18.0,
-    min_value=0.5,
-    max_value=HARD_MAX_TIMEOUT_SECONDS,
-)
+SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS = 19.0
+
+
+def _load_solar_physics_compute_timeout() -> float:
+    return _load_bounded_env_float(
+        "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
+        18.0,
+        min_value=0.5,
+        max_value=SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS,
+    )
+
+
+SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_solar_physics_compute_timeout()
 _SOLAR_PHYSICS_LEGACY_WORKER_LIMIT = _load_bounded_env_int(
     "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT",
     2,

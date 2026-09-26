@@ -1,13 +1,14 @@
 import { clamp } from '../../../constants';
 import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
 
-// The backend admits up to 18 s for a solar-physics computation. Keep the
+// The backend admits at most 19 s for a solar-physics computation. Keep the
 // browser deadline above that ceiling, while bounding it tightly enough that a
 // disconnected backend cannot strand the delivery loop. Physics is expensive
 // and evolves slowly relative to a frame, so polling twice a minute is ample.
 export const SOLAR_PHYSICS_POLL_INTERVAL_MS = 30_000;
 export const SOLAR_PHYSICS_REQUEST_TIMEOUT_MS = 20_000;
 export const SOLAR_PHYSICS_ERROR_BACKOFF_MS = 30_000;
+export const SOLAR_PHYSICS_MAX_FEATURES = 256;
 
 export type SolarForcingMode = 'synthetic' | 'hybrid' | 'data_driven';
 
@@ -199,8 +200,15 @@ export class SolarPhysicsClient {
   }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
     this.pollIntervalMs = clamp(Number(pollIntervalMs), 5_000, 300_000);
-    this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
-    this.maxFeatures = clamp(Number(maxFeatures), 8, 2_048);
+    // A shorter browser deadline would detach from work the backend is still
+    // entitled to run. Keep the public option for compatibility but enforce
+    // the cross-runtime ownership contract.
+    this.timeoutMs = clamp(
+      Number(timeoutMs),
+      SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
+      SOLAR_PHYSICS_REQUEST_TIMEOUT_MS
+    );
+    this.maxFeatures = clamp(Number(maxFeatures), 8, SOLAR_PHYSICS_MAX_FEATURES);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
     this.forcing = forcing ?? 'hybrid';
     this.liveData = Boolean(liveData);
