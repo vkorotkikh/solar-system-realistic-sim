@@ -2,9 +2,14 @@ import { Group } from 'three';
 import type { BufferGeometry, Camera, Material, Mesh, Object3D, Sprite, Texture, TextureLoader } from 'three';
 import { J2000_JD } from './constants';
 import {
+  SOLAR_PHYSICS_POLL_INTERVAL_MS,
   SolarPhysicsClient,
   type SolarPhysicsStatePayload
 } from './frontend/features/solar/solarPhysicsClient';
+import {
+  SolarRealtimeClient,
+  observationStateFromSolarRealtime
+} from './frontend/features/solar/solarRealtimeClient';
 import {
   createSunSurfaceMaterial,
   createSunGlow,
@@ -42,7 +47,8 @@ import { createAgnShockwaveEngine } from './frontend/features/superluminal-model
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
-  pickAiaObservationChannel
+  pickAiaObservationChannel,
+  type SolarObservationPhysicsStateLike
 } from './frontend/features/solar/solarObservationTexture';
 
 type GwDisplayer = ReturnType<typeof createGWVisualization>;
@@ -151,12 +157,13 @@ export function createSunController({
 
   const solarPhysicsClient = new SolarPhysicsClient({
     baseUrl: backendBaseUrl,
-    pollIntervalMs: 900,
-    timeoutMs: 2_600,
     maxFeatures: 180,
     fidelity: 'high',
     forcing: 'hybrid',
     liveData: true
+  });
+  const solarRealtimeClient = new SolarRealtimeClient({
+    baseUrl: backendBaseUrl
   });
 
   // ── internal helpers ─────────────────────────────────────────────────────
@@ -189,6 +196,11 @@ export function createSunController({
 
   function applySunObservationTextureToMaterials() {
     setSunObservationTexture({ sunSurfaceMaterial, observationTexture: solarObservationTexture });
+  }
+
+  function getObservationState(): SolarObservationPhysicsStateLike | null {
+    return observationStateFromSolarRealtime(solarRealtimeClient.latestState())
+      ?? solarPhysicsState;
   }
 
   function buildMagneticFieldSignature(activity: number) {
@@ -251,9 +263,15 @@ export function createSunController({
   }
 
   function maybeRefreshObservationTexture(nowMs = Date.now(), force = false) {
-    if (solarObservationTextureLoadInFlight || !solarPhysicsState) return;
+    if (solarObservationTextureLoadInFlight) return;
 
-    const selection = pickAiaObservationChannel(solarPhysicsState, undefined, userAiaChannelOverride);
+    const observationState = getObservationState();
+    if (!observationState) return;
+    const selection = pickAiaObservationChannel(
+      observationState,
+      undefined,
+      userAiaChannelOverride
+    );
     if (!selection) return;
 
     const nextImageId = `${selection.imageId ?? ''}`;
@@ -408,10 +426,15 @@ export function createSunController({
     const activity = Number.isFinite(blendedActivityRaw)
       ? clampUnit(blendedActivityRaw)
       : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
-    const observationSelection = pickAiaObservationChannel(solarPhysicsState, undefined, userAiaChannelOverride);
+    const observationState = getObservationState();
+    const observationSelection = pickAiaObservationChannel(
+      observationState,
+      undefined,
+      userAiaChannelOverride
+    );
     const activeObservationChannel = `${solarObservationTextureChannel ?? observationSelection?.channel ?? userAiaChannelOverride ?? ''}`.toLowerCase() || null;
     const observationControls = deriveSunObservationControls(
-      solarPhysicsState,
+      observationState,
       activity,
       activeObservationChannel,
       {
@@ -495,6 +518,12 @@ export function createSunController({
   }
 
   function maybeRefreshPhysics(nowMs = Date.now(), force = false) {
+    // Realtime observation delivery has its own cadence, deadline, one-flight,
+    // and LKG. Run it before the physics gates so imagery does not depend on a
+    // successful or even idle `/solar/physics` request.
+    maybeRefreshRealtime(nowMs, force);
+    maybeRefreshObservationTexture(nowMs, force);
+
     if (!solarPhysicsClient || solarPhysicsRefreshInFlight) return;
     if (!force && nowMs < solarPhysicsNextRefreshMs) return;
 
@@ -523,14 +552,33 @@ export function createSunController({
               solarPhysicsFeatureSetTarget = normalized;
               solarPhysicsBlendStartMs = Date.now();
               const pollMs = Number(status['pollIntervalMs']);
-              solarPhysicsBlendDurationMs = Math.max(520, Math.min(1_350, (Number.isFinite(pollMs) ? pollMs : 900) * 0.9));
+              solarPhysicsBlendDurationMs = Math.max(
+                520,
+                Math.min(
+                  1_350,
+                  (Number.isFinite(pollMs) ? pollMs : SOLAR_PHYSICS_POLL_INTERVAL_MS) * 0.9
+                )
+              );
             }
           }
           rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
         }
-        solarPhysicsNextRefreshMs = nowMs + (status.lastError ? 6_000 : Number(status['pollIntervalMs']));
+        const clientNextRefreshMs = Number(status['nextRefreshMs']);
+        solarPhysicsNextRefreshMs = Number.isFinite(clientNextRefreshMs)
+          ? clientNextRefreshMs
+          : Date.now() + SOLAR_PHYSICS_POLL_INTERVAL_MS;
       })
       .finally(() => { solarPhysicsRefreshInFlight = false; });
+  }
+
+  function maybeRefreshRealtime(nowMs = Date.now(), force = false) {
+    const status = solarRealtimeClient.status(nowMs);
+    if (status.disposed || status.inFlight) return;
+    if (!force && nowMs < status.nextRefreshMs) return;
+
+    void solarRealtimeClient.maybeRefresh(force).then((updated) => {
+      if (updated) maybeRefreshObservationTexture(Date.now(), force);
+    });
   }
 
   function onScaleChange() {
@@ -565,13 +613,43 @@ export function createSunController({
     maybeRefreshObservationTexture(Date.now(), true);
   }
 
+  function getSolarDeliveryStatus() {
+    const observationState = getObservationState();
+    const selection = pickAiaObservationChannel(
+      observationState,
+      undefined,
+      userAiaChannelOverride
+    );
+    return {
+      physics: solarPhysicsClient.status(),
+      realtime: solarRealtimeClient.status(),
+      observation: {
+        channel: selection?.channel ?? null,
+        imageId: selection?.imageId ?? null,
+        imageDate: selection?.imageDate ?? null,
+        textureLoaded: solarObservationTexture !== null,
+        textureChannel: solarObservationTextureChannel,
+        textureImageId: solarObservationTextureImageId,
+        loadInFlight: solarObservationTextureLoadInFlight
+      }
+    };
+  }
+
+  function disposeSolarDelivery() {
+    solarPhysicsClient.dispose();
+    solarRealtimeClient.dispose();
+  }
+
   return {
     createSunMaterial,
     initSunVisuals,
     update,
     maybeRefreshPhysics,
+    maybeRefreshRealtime,
     onScaleChange,
     setAiaChannelOverride,
+    getSolarDeliveryStatus,
+    disposeSolarDelivery,
     setAgnObserverFrameMode: (enabled: boolean) => {
       if (agnEngine?.setObserverFrameMode) agnEngine.setObserverFrameMode(enabled);
     },

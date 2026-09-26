@@ -1,0 +1,423 @@
+import { clamp } from '../../../constants';
+import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
+
+// `/solar/realtime` is backed by a 120 s server cache. Polling faster only
+// increases admission pressure without producing newer upstream observations.
+// Keep the request deadline above the backend's 12 s heavy-work ceiling while
+// bounding browser-side abandonment at 15 s.
+export const SOLAR_REALTIME_POLL_INTERVAL_MS = 120_000;
+export const SOLAR_REALTIME_REQUEST_TIMEOUT_MS = 15_000;
+export const SOLAR_REALTIME_ERROR_BACKOFF_MS = 30_000;
+
+export interface SolarRealtimeSourceStatus {
+  ok: boolean;
+  updated?: string | null;
+  endpoint?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface SolarRealtimeAiaChannel {
+  source_id?: number;
+  image_id: string | null;
+  image_date: string | null;
+  tile_url: string | null;
+  [key: string]: unknown;
+}
+
+export interface SolarRealtimeAiaSnapshot {
+  request_date_utc?: string;
+  channels: Record<string, SolarRealtimeAiaChannel>;
+  channel_activity_proxy?: Record<string, number> | null;
+  latest_image_date_utc?: string | null;
+  freshness_s?: number | null;
+  freshness_proxy?: number | null;
+  activity_proxy?: number | null;
+  visualization?: {
+    preferred_channel?: string | null;
+    preferred_image_id?: string | null;
+    preferred_tile_url?: string | null;
+    preferred_proxy_path?: string | null;
+  } | null;
+  [key: string]: unknown;
+}
+
+export interface SolarRealtimeSnapshot {
+  schema: {
+    name: 'solar_realtime_context';
+    version: 1;
+  };
+  fetched_at_utc: string;
+  source_status: {
+    swpc: SolarRealtimeSourceStatus;
+    silso: SolarRealtimeSourceStatus;
+    sdo_aia: SolarRealtimeSourceStatus;
+    gong_synoptic: SolarRealtimeSourceStatus;
+  };
+  swpc: Record<string, unknown> | null;
+  silso: Record<string, unknown> | null;
+  sdo_aia: SolarRealtimeAiaSnapshot | null;
+  gong_synoptic: Record<string, unknown> | null;
+  combined_activity_proxy: number | null;
+  [key: string]: unknown;
+}
+
+export interface SolarRealtimePayload {
+  schema: {
+    name: 'solar_realtime_endpoint';
+    version: 1;
+  };
+  source: 'backend';
+  snapshot: SolarRealtimeSnapshot;
+}
+
+export interface SolarRealtimeClientStatus {
+  source: 'backend' | null;
+  freshness: 'unavailable' | 'fresh' | 'stale';
+  snapshotFetchedAtUtc: string | null;
+  snapshotAgeMs: number | null;
+  aiaUpdatedAtUtc: string | null;
+  sourceStatus: SolarRealtimeSnapshot['source_status'] | null;
+  lastError: string | null;
+  lastSuccessMs: number;
+  lastAttemptMs: number;
+  lastLatencyMs: number;
+  nextRefreshMs: number;
+  pollIntervalMs: number;
+  timeoutMs: number;
+  inFlight: boolean;
+  disposed: boolean;
+}
+
+interface SolarRealtimeClientOptions {
+  baseUrl: () => string;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  errorBackoffMs?: number;
+  staleAfterMs?: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasOwn(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function requireSchema(
+  value: unknown,
+  expectedName: string,
+  expectedVersion: number,
+  context: string
+): void {
+  if (
+    !isRecord(value) ||
+    value.name !== expectedName ||
+    value.version !== expectedVersion
+  ) {
+    throw new Error(
+      `${context} schema must be ${expectedName} version ${expectedVersion}`
+    );
+  }
+}
+
+function requireUtcTimestamp(value: unknown, context: string): string {
+  if (typeof value !== 'string' || !value.trim() || !Number.isFinite(Date.parse(value))) {
+    throw new Error(`${context} must be a parseable UTC timestamp`);
+  }
+  return value;
+}
+
+function validateSourceStatus(value: unknown, name: string): SolarRealtimeSourceStatus {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') {
+    throw new Error(`Solar realtime source_status.${name} must include boolean ok`);
+  }
+  if (hasOwn(value, 'updated') && value.updated !== null && typeof value.updated !== 'string') {
+    throw new Error(`Solar realtime source_status.${name}.updated must be a string or null`);
+  }
+  if (hasOwn(value, 'endpoint') && typeof value.endpoint !== 'string') {
+    throw new Error(`Solar realtime source_status.${name}.endpoint must be a string`);
+  }
+  if (hasOwn(value, 'error') && typeof value.error !== 'string') {
+    throw new Error(`Solar realtime source_status.${name}.error must be a string`);
+  }
+  return value as unknown as SolarRealtimeSourceStatus;
+}
+
+function validateOptionalFinite(value: unknown, context: string): void {
+  if (value !== null && value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+    throw new Error(`${context} must be finite or null`);
+  }
+}
+
+function validateNullableFinite(value: unknown, context: string): void {
+  if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) {
+    throw new Error(`${context} must be finite or null`);
+  }
+}
+
+function validateAiaSnapshot(value: unknown): SolarRealtimeAiaSnapshot {
+  if (!isRecord(value) || !isRecord(value.channels)) {
+    throw new Error('Solar realtime snapshot sdo_aia must include a channels object');
+  }
+  for (const [channel, rawEntry] of Object.entries(value.channels)) {
+    if (!/^aia_\d{3}$/.test(channel) || !isRecord(rawEntry)) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} is invalid`);
+    }
+    if (
+      rawEntry.image_id !== null &&
+      (typeof rawEntry.image_id !== 'string' || !rawEntry.image_id.trim())
+    ) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} image_id is invalid`);
+    }
+    if (rawEntry.image_date !== null && typeof rawEntry.image_date !== 'string') {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} image_date is invalid`);
+    }
+    if (
+      rawEntry.tile_url !== null &&
+      (typeof rawEntry.tile_url !== 'string' || !rawEntry.tile_url.trim())
+    ) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} tile_url is invalid`);
+    }
+  }
+  validateOptionalFinite(value.freshness_s, 'Solar realtime sdo_aia freshness_s');
+  validateOptionalFinite(value.freshness_proxy, 'Solar realtime sdo_aia freshness_proxy');
+  validateOptionalFinite(value.activity_proxy, 'Solar realtime sdo_aia activity_proxy');
+  if (value.channel_activity_proxy !== null && value.channel_activity_proxy !== undefined) {
+    if (!isRecord(value.channel_activity_proxy)) {
+      throw new Error('Solar realtime sdo_aia channel_activity_proxy must be an object');
+    }
+    for (const proxy of Object.values(value.channel_activity_proxy)) {
+      validateOptionalFinite(proxy, 'Solar realtime sdo_aia channel activity proxy');
+    }
+  }
+  return value as unknown as SolarRealtimeAiaSnapshot;
+}
+
+export function validateSolarRealtimePayload(rawPayload: unknown): SolarRealtimePayload {
+  if (!isRecord(rawPayload)) {
+    throw new Error('Solar realtime response must be an object');
+  }
+  requireSchema(
+    rawPayload.schema,
+    'solar_realtime_endpoint',
+    1,
+    'Solar realtime response'
+  );
+  if (rawPayload.source !== 'backend') {
+    throw new Error('Solar realtime response source must be backend');
+  }
+  if (!isRecord(rawPayload.snapshot)) {
+    throw new Error('Solar realtime response snapshot must be an object');
+  }
+
+  const snapshot = rawPayload.snapshot;
+  requireSchema(
+    snapshot.schema,
+    'solar_realtime_context',
+    1,
+    'Solar realtime snapshot'
+  );
+  requireUtcTimestamp(snapshot.fetched_at_utc, 'Solar realtime snapshot fetched_at_utc');
+  if (!isRecord(snapshot.source_status)) {
+    throw new Error('Solar realtime snapshot source_status must be an object');
+  }
+  const requiredSources = ['swpc', 'silso', 'sdo_aia', 'gong_synoptic'] as const;
+  for (const source of requiredSources) {
+    if (!hasOwn(snapshot.source_status, source)) {
+      throw new Error(`Solar realtime snapshot source_status must include ${source}`);
+    }
+    validateSourceStatus(snapshot.source_status[source], source);
+  }
+
+  const aiaStatus = snapshot.source_status.sdo_aia as Record<string, unknown>;
+  if (aiaStatus.ok === true && !isRecord(snapshot.sdo_aia)) {
+    throw new Error(
+      'Solar realtime sdo_aia status claims success but snapshot data is unavailable'
+    );
+  }
+  if (snapshot.sdo_aia !== null) {
+    validateAiaSnapshot(snapshot.sdo_aia);
+  }
+  for (const source of ['swpc', 'silso', 'gong_synoptic'] as const) {
+    const sourcePayload = snapshot[source];
+    if (sourcePayload !== null && !isRecord(sourcePayload)) {
+      throw new Error(`Solar realtime snapshot ${source} must be an object or null`);
+    }
+  }
+  validateNullableFinite(
+    snapshot.combined_activity_proxy,
+    'Solar realtime snapshot combined_activity_proxy'
+  );
+  return rawPayload as unknown as SolarRealtimePayload;
+}
+
+/**
+ * Adapt the independently delivered realtime snapshot to the narrow observation
+ * shape consumed by the AIA selection/rendering helpers. `applied` remains
+ * false: imagery availability is not evidence that observed data drove PFSS.
+ */
+export function observationStateFromSolarRealtime(
+  payload: SolarRealtimePayload | null | undefined
+): SolarObservationPhysicsStateLike | null {
+  const sdoAia = payload?.snapshot.sdo_aia;
+  if (!sdoAia) return null;
+  return {
+    data_assimilation: {
+      applied: false,
+      observed_confidence: 0,
+      sources: { sdo_aia: sdoAia }
+    }
+  };
+}
+
+export class SolarRealtimeClient {
+  readonly baseUrl: () => string;
+  readonly pollIntervalMs: number;
+  readonly timeoutMs: number;
+  readonly errorBackoffMs: number;
+  readonly staleAfterMs: number;
+
+  private latest: SolarRealtimePayload | null = null;
+  private abortController: AbortController | null = null;
+  private requestGeneration = 0;
+  private consecutiveFailures = 0;
+  private isDisposed = false;
+
+  lastError: string | null = null;
+  lastSuccessMs = 0;
+  lastAttemptMs = 0;
+  lastLatencyMs = 0;
+  nextRefreshMs = 0;
+  inFlight = false;
+
+  constructor({
+    baseUrl,
+    pollIntervalMs = SOLAR_REALTIME_POLL_INTERVAL_MS,
+    timeoutMs = SOLAR_REALTIME_REQUEST_TIMEOUT_MS,
+    errorBackoffMs = SOLAR_REALTIME_ERROR_BACKOFF_MS,
+    staleAfterMs
+  }: SolarRealtimeClientOptions) {
+    this.baseUrl = baseUrl;
+    this.pollIntervalMs = clamp(Number(pollIntervalMs), 30_000, 600_000);
+    this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
+    this.errorBackoffMs = clamp(Number(errorBackoffMs), 1_000, this.pollIntervalMs);
+    this.staleAfterMs = clamp(
+      Number(staleAfterMs ?? Math.max(300_000, this.pollIntervalMs * 2)),
+      this.pollIntervalMs,
+      3_600_000
+    );
+  }
+
+  latestState(): SolarRealtimePayload | null {
+    return this.latest;
+  }
+
+  status(nowMs = Date.now()): SolarRealtimeClientStatus {
+    const snapshot = this.latest?.snapshot ?? null;
+    const fetchedAtMs = snapshot ? Date.parse(snapshot.fetched_at_utc) : Number.NaN;
+    const snapshotAgeMs = Number.isFinite(fetchedAtMs)
+      ? Math.max(0, nowMs - fetchedAtMs)
+      : null;
+    const stale = snapshot !== null && (
+      this.lastError !== null ||
+      snapshotAgeMs === null ||
+      snapshotAgeMs > this.staleAfterMs
+    );
+    const aiaStatus = snapshot?.source_status.sdo_aia;
+    const aiaUpdatedAtUtc = typeof aiaStatus?.updated === 'string'
+      ? aiaStatus.updated
+      : snapshot?.sdo_aia?.latest_image_date_utc ?? null;
+    return {
+      source: this.latest?.source ?? null,
+      freshness: snapshot === null ? 'unavailable' : (stale ? 'stale' : 'fresh'),
+      snapshotFetchedAtUtc: snapshot?.fetched_at_utc ?? null,
+      snapshotAgeMs,
+      aiaUpdatedAtUtc,
+      sourceStatus: snapshot?.source_status ?? null,
+      lastError: this.lastError,
+      lastSuccessMs: this.lastSuccessMs,
+      lastAttemptMs: this.lastAttemptMs,
+      lastLatencyMs: this.lastLatencyMs,
+      nextRefreshMs: this.nextRefreshMs,
+      pollIntervalMs: this.pollIntervalMs,
+      timeoutMs: this.timeoutMs,
+      inFlight: this.inFlight,
+      disposed: this.isDisposed
+    };
+  }
+
+  dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+    this.requestGeneration += 1;
+    this.abortController?.abort();
+    this.abortController = null;
+    this.inFlight = false;
+  }
+
+  async maybeRefresh(force = false): Promise<boolean> {
+    const attemptStartedMs = Date.now();
+    if (this.isDisposed || this.inFlight) return false;
+    if (!force && attemptStartedMs < this.nextRefreshMs) return false;
+
+    this.inFlight = true;
+    this.lastAttemptMs = attemptStartedMs;
+    const generation = ++this.requestGeneration;
+    const controller = new AbortController();
+    this.abortController = controller;
+    const ownsRequest = (): boolean =>
+      !this.isDisposed &&
+      this.requestGeneration === generation &&
+      this.abortController === controller;
+
+    const base = `${this.baseUrl() ?? ''}`.trim().replace(/\/+$/, '');
+    const url = `${base}/solar/realtime`;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          controller.abort();
+          reject(new Error(`Solar realtime request timed out after ${this.timeoutMs} ms`));
+        }, this.timeoutMs);
+      });
+      const response = await Promise.race([
+        fetch(url, { cache: 'no-store', signal: controller.signal }),
+        timeout
+      ]);
+      if (!ownsRequest()) return false;
+      if (!response.ok) {
+        throw new Error(`Solar realtime request failed (${response.status})`);
+      }
+      const rawPayload = await response.json();
+      if (!ownsRequest()) return false;
+      const payload = validateSolarRealtimePayload(rawPayload);
+      const completedMs = Date.now();
+      this.latest = payload;
+      this.lastLatencyMs = Math.max(0, completedMs - attemptStartedMs);
+      this.lastSuccessMs = completedMs;
+      this.lastError = null;
+      this.consecutiveFailures = 0;
+      this.nextRefreshMs = completedMs + this.pollIntervalMs;
+      return true;
+    } catch (error: unknown) {
+      if (!ownsRequest()) return false;
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this.consecutiveFailures += 1;
+      const multiplier = 2 ** Math.min(3, this.consecutiveFailures - 1);
+      this.nextRefreshMs = Date.now() + Math.min(
+        this.pollIntervalMs,
+        this.errorBackoffMs * multiplier
+      );
+      return false;
+    } finally {
+      if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+      if (ownsRequest()) {
+        this.abortController = null;
+        this.inFlight = false;
+      }
+    }
+  }
+}

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SolarPhysicsClient, type SolarForcingMode } from './solarPhysicsClient';
+import {
+  SOLAR_PHYSICS_POLL_INTERVAL_MS,
+  SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
+  SolarPhysicsClient,
+  type SolarForcingMode
+} from './solarPhysicsClient';
 
 const _forcingModeCompileSentinel: SolarForcingMode = 'hybrid';
 void _forcingModeCompileSentinel;
@@ -72,6 +77,16 @@ afterEach(() => {
 });
 
 describe('SolarPhysicsClient time contract', () => {
+  it('ships a bounded cadence and waits beyond the backend compute ceiling', () => {
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+
+    expect(client.pollIntervalMs).toBe(SOLAR_PHYSICS_POLL_INTERVAL_MS);
+    expect(client.pollIntervalMs).toBeGreaterThanOrEqual(30_000);
+    expect(client.timeoutMs).toBe(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
+    expect(client.timeoutMs).toBeGreaterThan(12_000);
+    expect(client.timeoutMs).toBeLessThanOrEqual(20_000);
+  });
+
   it('sends jd_tdb and accepts a labelled canonical response', async () => {
     let requestUrl = '';
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {

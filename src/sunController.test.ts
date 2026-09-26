@@ -1,0 +1,88 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Camera, Texture, TextureLoader } from 'three';
+
+import { createSunController } from './sunController';
+
+function responseWith(payload: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload
+  } as Response;
+}
+
+function realtimePayload(): Record<string, unknown> {
+  return {
+    schema: { name: 'solar_realtime_endpoint', version: 1 },
+    source: 'backend',
+    snapshot: {
+      schema: { name: 'solar_realtime_context', version: 1 },
+      fetched_at_utc: new Date().toISOString(),
+      source_status: {
+        swpc: { ok: false, error: 'offline' },
+        silso: { ok: false, error: 'offline' },
+        sdo_aia: { ok: true, updated: '2026-09-26T14:59:00Z' },
+        gong_synoptic: { ok: false, status: 'disabled_unvalidated' }
+      },
+      swpc: null,
+      silso: null,
+      sdo_aia: {
+        channels: {
+          aia_193: {
+            image_id: 'realtime-only-image',
+            image_date: '2026-09-26T14:59:00Z',
+            tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42'
+          }
+        },
+        visualization: { preferred_channel: 'aia_193' }
+      },
+      gong_synoptic: null,
+      combined_activity_proxy: 0.5
+    }
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe('sun controller solar delivery', () => {
+  it('loads AIA imagery from realtime LKG when physics is unavailable', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/solar/realtime')) return responseWith(realtimePayload());
+      if (url.includes('/solar/physics?')) return responseWith({}, 503);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const load = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+
+    controller.maybeRefreshPhysics(Date.now(), true);
+
+    await vi.waitFor(() => {
+      expect(load).toHaveBeenCalledWith(
+        'http://backend.test/solar/realtime/aia-tile?channel=aia_193&image_id=realtime-only-image&v=realtime-only-image',
+        expect.any(Function),
+        undefined,
+        expect.any(Function)
+      );
+    });
+    expect(controller.getSolarDeliveryStatus()).toMatchObject({
+      realtime: { source: 'backend', freshness: 'fresh', lastError: null },
+      physics: { lastError: expect.stringContaining('(503)') },
+      observation: { channel: 'aia_193', imageId: 'realtime-only-image' }
+    });
+    controller.disposeSolarDelivery();
+  });
+});

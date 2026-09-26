@@ -1,6 +1,14 @@
 import { clamp } from '../../../constants';
 import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
 
+// The backend admits up to 12 s for a solar-physics computation. Keep the
+// browser deadline above that ceiling, while bounding it tightly enough that a
+// disconnected backend cannot strand the delivery loop. Physics is expensive
+// and evolves slowly relative to a frame, so polling twice a minute is ample.
+export const SOLAR_PHYSICS_POLL_INTERVAL_MS = 30_000;
+export const SOLAR_PHYSICS_REQUEST_TIMEOUT_MS = 15_000;
+export const SOLAR_PHYSICS_ERROR_BACKOFF_MS = 30_000;
+
 export type SolarForcingMode = 'synthetic' | 'hybrid' | 'data_driven';
 
 /** Subset of `GET /solar/physics` JSON used by the frontend sun stack. */
@@ -181,15 +189,15 @@ export class SolarPhysicsClient {
 
   constructor({
     baseUrl,
-    pollIntervalMs = 1_800,
-    timeoutMs = 2_400,
+    pollIntervalMs = SOLAR_PHYSICS_POLL_INTERVAL_MS,
+    timeoutMs = SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
     maxFeatures = 220,
     fidelity = 'high',
     forcing = 'hybrid',
     liveData = true
   }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
-    this.pollIntervalMs = clamp(Number(pollIntervalMs), 300, 30_000);
+    this.pollIntervalMs = clamp(Number(pollIntervalMs), 5_000, 300_000);
     this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
     this.maxFeatures = clamp(Number(maxFeatures), 8, 2_048);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
@@ -290,7 +298,10 @@ export class SolarPhysicsClient {
     } catch (error: unknown) {
       if (!ownsRequest()) return false;
       this.lastError = error instanceof Error ? error.message : String(error);
-      this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs);
+      this.nextRefreshMs = Date.now() + Math.max(
+        SOLAR_PHYSICS_ERROR_BACKOFF_MS,
+        this.pollIntervalMs
+      );
       return false;
     } finally {
       if (timeoutHandle !== null) {
