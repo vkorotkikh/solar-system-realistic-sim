@@ -604,3 +604,50 @@ def test_network_public_route_allowlist_cannot_expand_with_registered_routes() -
     assert registered_http_routes & server.NETWORK_PUBLIC_HTTP_ROUTES == set(
         server.NETWORK_PUBLIC_HTTP_ROUTES
     )
+
+
+@pytest.mark.parametrize(
+    ("path", "rate_enforcer"),
+    [
+        ("/solar/realtime?force_refresh=true", "_enforce_solar_realtime_rate_limit"),
+        (
+            "/solar/realtime/aia-tile?force_refresh=true",
+            "_enforce_solar_aia_tile_rate_limit",
+        ),
+        (
+            "/solar/physics?force_data_refresh=true",
+            "_enforce_solar_request_rate_limit",
+        ),
+    ],
+)
+def test_network_profile_rejects_refresh_get_flags_before_work(
+    monkeypatch,
+    path: str,
+    rate_enforcer: str,
+) -> None:
+    raw_key = "network-refresh-secret"
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS=raw_key,
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+    work_called = False
+
+    def unexpected_work(_request: Request) -> None:
+        nonlocal work_called
+        work_called = True
+        raise AssertionError("network refresh GET reached rate or work admission")
+
+    monkeypatch.setattr(server, rate_enforcer, unexpected_work)
+
+    response = client.get(path, headers={"x-api-key": raw_key})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {
+        "code": "network_refresh_get_forbidden",
+        "message": "Explicit refresh is disabled for GET requests in network profile.",
+        "retryable": False,
+    }
+    assert work_called is False

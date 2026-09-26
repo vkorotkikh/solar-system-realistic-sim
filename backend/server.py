@@ -1511,6 +1511,21 @@ def _require_optional_solar_api_key(
     return authenticated_subject
 
 
+def _reject_network_refresh_get(requested: bool) -> None:
+    """Keep explicit refresh work off legacy GET routes in network mode."""
+
+    if SOLAR_SECURITY_CONFIG.profile != "network" or not requested:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "code": "network_refresh_get_forbidden",
+            "message": "Explicit refresh is disabled for GET requests in network profile.",
+            "retryable": False,
+        },
+    )
+
+
 def _pop_oldest_rate_identity(
     store: MutableMapping[str, deque[float]],
 ) -> None:
@@ -2758,6 +2773,7 @@ def solar_capabilities():
 
 @app.get("/solar/realtime")
 async def solar_realtime_data(request: Request, force_refresh: bool = False):
+    _reject_network_refresh_get(force_refresh)
     _require_optional_solar_api_key(request)
     _enforce_solar_realtime_rate_limit(request)
     if not _acquire_nonblocking(_solar_realtime_concurrent_guard):
@@ -2831,6 +2847,7 @@ async def solar_realtime_aia_tile(
     ] = None,
     force_refresh: bool = False,
 ):
+    _reject_network_refresh_get(force_refresh)
     epoch_jd_tdb = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
     _require_optional_solar_api_key(request)
     _enforce_solar_aia_tile_rate_limit(request)
@@ -2911,6 +2928,7 @@ async def solar_physics_state(
     live_data: bool = False,
     force_data_refresh: bool = False,
 ):
+    _reject_network_refresh_get(force_data_refresh)
     epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
     assert epoch_jd is not None
     _require_optional_solar_api_key(request)
