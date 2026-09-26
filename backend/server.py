@@ -1841,10 +1841,14 @@ def _release_ws_sim_slot() -> None:
 
 
 def _websocket_origin_allowed(websocket: WebSocket) -> bool:
-    origin = websocket.headers.get("origin")
+    origin_valid, origin = _bounded_unique_scope_header(
+        websocket.scope,
+        b"origin",
+        max_bytes=SOLAR_CORS_ORIGIN_MAX_BYTES,
+    )
     # Non-browser scientific clients commonly omit Origin. Browser clients must
     # match the same explicit loopback allowlist as the HTTP application.
-    return origin is None or origin in WS_SIM_ALLOWED_ORIGINS
+    return origin_valid and (origin is None or origin in WS_SIM_ALLOWED_ORIGINS)
 
 
 def _websocket_query_has_safe_shape(websocket: WebSocket) -> bool:

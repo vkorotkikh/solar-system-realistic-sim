@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import math
 import threading
 
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocket
 
 import server
 from sim.rebound_nbody import (
@@ -154,8 +156,112 @@ def test_websocket_admission_is_bounded_and_reusable(monkeypatch) -> None:
 def test_websocket_origin_policy(origin: str | None, expected: bool) -> None:
     class _Socket:
         headers = {} if origin is None else {"origin": origin}
+        scope = {
+            "headers": []
+            if origin is None
+            else [(b"origin", origin.encode("ascii"))]
+        }
 
     assert server._websocket_origin_allowed(_Socket()) is expected
+
+
+def _scope_websocket(headers: list[tuple[bytes, bytes]]) -> tuple[WebSocket, list[dict]]:
+    sent: list[dict] = []
+
+    async def receive():
+        return {"type": "websocket.connect"}
+
+    async def send(message) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "websocket",
+        "asgi": {"spec_version": "2.4", "version": "3.0"},
+        "http_version": "1.1",
+        "scheme": "ws",
+        "path": "/ws/sim",
+        "raw_path": b"/ws/sim",
+        "query_string": b"",
+        "headers": headers,
+        "client": ("198.51.100.10", 43100),
+        "server": ("backend.internal", 8042),
+        "subprotocols": [],
+        "state": {},
+    }
+    return WebSocket(scope, receive, send), sent
+
+
+def test_network_websocket_rejects_duplicate_origin_before_admission(
+    monkeypatch,
+) -> None:
+    raw_key = "duplicate-origin-secret"
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        _network_security_config(raw_key),
+    )
+
+    def unexpected_admission() -> bool:
+        raise AssertionError("duplicate Origin reached WebSocket admission")
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
+    websocket, sent = _scope_websocket(
+        [
+            (b"x-api-key", raw_key.encode("ascii")),
+            (b"origin", b"http://localhost:5173"),
+            (b"origin", b"https://attacker.invalid"),
+        ]
+    )
+
+    asyncio.run(server.simulation_websocket(websocket))
+
+    assert sent == [
+        {
+            "type": "websocket.close",
+            "code": 1008,
+            "reason": "WebSocket origin is not allowed",
+        }
+    ]
+
+
+def test_network_websocket_rejects_oversized_origin_before_admission(
+    monkeypatch,
+) -> None:
+    raw_key = "oversized-origin-secret"
+    oversized_origin = "https://" + (
+        "a" * (server.SOLAR_CORS_ORIGIN_MAX_BYTES - len("https://") + 1)
+    )
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        _network_security_config(raw_key),
+    )
+    monkeypatch.setattr(
+        server,
+        "WS_SIM_ALLOWED_ORIGINS",
+        frozenset({oversized_origin}),
+    )
+
+    def unexpected_admission() -> bool:
+        raise AssertionError("oversized Origin reached WebSocket admission")
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
+    websocket, sent = _scope_websocket(
+        [
+            (b"x-api-key", raw_key.encode("ascii")),
+            (b"origin", oversized_origin.encode("ascii")),
+        ]
+    )
+
+    asyncio.run(server.simulation_websocket(websocket))
+
+    assert sent == [
+        {
+            "type": "websocket.close",
+            "code": 1008,
+            "reason": "WebSocket origin is not allowed",
+        }
+    ]
 
 
 def test_websocket_endpoint_rejects_hostile_origin_before_engine_setup(monkeypatch) -> None:
