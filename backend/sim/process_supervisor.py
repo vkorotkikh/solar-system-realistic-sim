@@ -44,6 +44,14 @@ class ProcessSubmissionFailed(ProcessSupervisorError):
     """The supervisor could not accept or start an admitted job."""
 
 
+class ProcessSupervisorBroken(ProcessSubmissionFailed):
+    """The supervisor is quarantined after losing lifecycle control."""
+
+
+class ProcessReapFailed(ProcessSupervisorBroken):
+    """A child remained alive after terminate/kill/join attempts."""
+
+
 class ProcessTimedOut(ProcessSupervisorError):
     """The child exceeded its absolute execution deadline."""
 
@@ -204,11 +212,17 @@ class SupervisedProcessRunner:
             thread_name_prefix="solar-process-supervisor",
         )
         self._state_lock = threading.Lock()
+        self._shutdown_lock = threading.Lock()
         self._closed = False
+        self._executor_shutdown = False
+        self._broken_reason: str | None = None
         self._next_job_id = 1
         self._in_flight = 0
         self._active_processes: dict[int, Any] = {}
         self._cancel_events: dict[Future[Any], threading.Event] = {}
+        self._future_job_ids: dict[Future[Any], int] = {}
+        self._job_futures: dict[int, Future[Any]] = {}
+        self._quarantined_jobs: set[int] = set()
 
     def snapshot(self) -> dict[str, Any]:
         """Return lock-only diagnostics; never contact or wait for a child."""
@@ -227,6 +241,9 @@ class SupervisedProcessRunner:
                     if process.pid is not None
                 ),
                 "closed": self._closed,
+                "broken": self._broken_reason is not None,
+                "broken_reason": self._broken_reason,
+                "quarantined_jobs": len(self._quarantined_jobs),
             }
 
     def submit(self, payload: Any, *, timeout_seconds: float) -> Future[Any]:
@@ -239,6 +256,8 @@ class SupervisedProcessRunner:
         cancel_event = threading.Event()
         absolute_deadline = time.monotonic() + timeout
         with self._state_lock:
+            if self._broken_reason is not None:
+                raise ProcessSupervisorBroken(self._broken_reason)
             if self._closed:
                 raise ProcessSubmissionFailed("process supervisor is closed")
             if not self._capacity.acquire(blocking=False):
@@ -259,6 +278,8 @@ class SupervisedProcessRunner:
                 self._capacity.release()
                 raise ProcessSubmissionFailed("process supervisor submit failed") from exc
             self._cancel_events[future] = cancel_event
+            self._future_job_ids[future] = job_id
+            self._job_futures[job_id] = future
 
         future.add_done_callback(self._release_admission)
         return future
@@ -276,30 +297,86 @@ class SupervisedProcessRunner:
             raise
 
     def shutdown(self) -> None:
-        """Cancel all owned jobs and wait until every child is reaped."""
+        """Cancel owned jobs, retry quarantined reaps, and report failures."""
 
-        with self._state_lock:
-            if self._closed:
-                return
-            self._closed = True
-            cancel_events = tuple(self._cancel_events.values())
-        for cancel_event in cancel_events:
-            cancel_event.set()
-        self._executor.shutdown(wait=True, cancel_futures=True)
+        with self._shutdown_lock:
+            with self._state_lock:
+                self._closed = True
+                cancel_events = tuple(self._cancel_events.values())
+                executor_shutdown = self._executor_shutdown
+                self._executor_shutdown = True
+            for cancel_event in cancel_events:
+                cancel_event.set()
+            if not executor_shutdown:
+                self._executor.shutdown(wait=True, cancel_futures=True)
+
+            with self._state_lock:
+                retained = tuple(self._active_processes.items())
+            failures: list[ProcessReapFailed] = []
+            for job_id, process in retained:
+                try:
+                    self._terminate_and_reap(process)
+                except ProcessReapFailed as exc:
+                    self._quarantine_job(job_id, exc)
+                    failures.append(exc)
+                    continue
+
+                try:
+                    process.close()
+                except BaseException:
+                    pass
+                release_capacity = False
+                with self._state_lock:
+                    self._active_processes.pop(job_id, None)
+                    self._quarantined_jobs.discard(job_id)
+                    future = self._job_futures.pop(job_id, None)
+                    if future is not None:
+                        self._future_job_ids.pop(future, None)
+                        self._cancel_events.pop(future, None)
+                    if self._in_flight > 0:
+                        self._in_flight -= 1
+                        release_capacity = True
+                if release_capacity:
+                    self._capacity.release()
+
+            if failures:
+                raise ProcessReapFailed(
+                    f"{len(failures)} worker process(es) remain alive after shutdown"
+                ) from failures[0]
 
     def _release_admission(self, future: Future[Any]) -> None:
+        exception: BaseException | None = None
         try:
             if not future.cancelled():
-                future.exception()
-        except BaseException:
-            pass
-        finally:
-            with self._state_lock:
-                self._cancel_events.pop(future, None)
-                if self._in_flight <= 0:
-                    raise RuntimeError("process supervisor admission underflow")
-                self._in_flight -= 1
-            self._capacity.release()
+                exception = future.exception()
+        except BaseException as exc:
+            exception = exc
+
+        release_capacity = False
+        with self._state_lock:
+            job_id = self._future_job_ids.get(future)
+            if isinstance(exception, ProcessReapFailed) or (
+                job_id is not None and job_id in self._quarantined_jobs
+            ):
+                # Ownership is deliberately retained until a later shutdown
+                # retry proves the child has exited and has been joined.
+                return
+
+            self._cancel_events.pop(future, None)
+            self._future_job_ids.pop(future, None)
+            if job_id is not None:
+                self._job_futures.pop(job_id, None)
+            if self._in_flight <= 0:
+                self._broken_reason = "process supervisor admission underflow"
+                return
+            self._in_flight -= 1
+            release_capacity = True
+        if release_capacity:
+            try:
+                self._capacity.release()
+            except ValueError:
+                with self._state_lock:
+                    self._broken_reason = "process supervisor admission over-credit"
 
     def _execute(
         self,
@@ -342,12 +419,12 @@ class SupervisedProcessRunner:
 
             while True:
                 if cancel_event.is_set():
-                    self._terminate_and_reap(process)
+                    self._reap_or_quarantine(job_id, process)
                     raise ProcessCancelled("process job cancelled by its owner")
 
                 remaining = absolute_deadline - time.monotonic()
                 if remaining <= 0:
-                    self._terminate_and_reap(process)
+                    self._reap_or_quarantine(job_id, process)
                     raise ProcessTimedOut("worker process exceeded its hard deadline")
 
                 if receive_connection.poll(min(_POLL_SECONDS, remaining)):
@@ -356,7 +433,7 @@ class SupervisedProcessRunner:
                             maxlength=self._max_result_bytes
                         )
                     except (EOFError, OSError) as exc:
-                        self._terminate_and_reap(process)
+                        self._reap_or_quarantine(job_id, process)
                         if process.exitcode not in (None, 0):
                             raise ProcessCrashed(process.exitcode) from exc
                         raise ProcessResultRejected(
@@ -366,7 +443,7 @@ class SupervisedProcessRunner:
                     exit_remaining = max(0.0, absolute_deadline - time.monotonic())
                     process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
                     if process.is_alive():
-                        self._terminate_and_reap(process)
+                        self._reap_or_quarantine(job_id, process)
                         raise ProcessTimedOut(
                             "worker sent a result but did not exit before its deadline"
                         )
@@ -385,13 +462,13 @@ class SupervisedProcessRunner:
             if not started:
                 send_connection.close()
             if started:
-                if process.is_alive():
-                    self._terminate_and_reap(process)
-                else:
-                    process.join()
                 with self._state_lock:
-                    self._active_processes.pop(job_id, None)
-                process.close()
+                    quarantined = job_id in self._quarantined_jobs
+                if not quarantined:
+                    self._reap_or_quarantine(job_id, process)
+                    with self._state_lock:
+                        self._active_processes.pop(job_id, None)
+                    process.close()
 
     def _decode_result(self, encoded: bytes, submitted_payload: Any) -> Any:
         if len(encoded) > self._max_result_bytes:
@@ -426,14 +503,38 @@ class SupervisedProcessRunner:
                 result = validated
         return result
 
+    def _quarantine_job(self, job_id: int, exc: BaseException) -> None:
+        with self._state_lock:
+            self._quarantined_jobs.add(job_id)
+            if self._broken_reason is None:
+                self._broken_reason = f"worker lifecycle control failed: {exc}"
+
+    def _reap_or_quarantine(self, job_id: int, process: Any) -> None:
+        try:
+            self._terminate_and_reap(process)
+        except ProcessReapFailed as exc:
+            self._quarantine_job(job_id, exc)
+            raise
+
     @staticmethod
     def _terminate_and_reap(process: Any) -> None:
-        if process.is_alive():
-            process.terminate()
-            process.join(_REAP_GRACE_SECONDS)
-        if process.is_alive():
-            process.kill()
-            process.join(_REAP_GRACE_SECONDS)
-        if process.is_alive():
-            raise RuntimeError("worker process could not be reaped")
-        process.join()
+        try:
+            if process.is_alive():
+                try:
+                    process.terminate()
+                except BaseException:
+                    pass
+                process.join(_REAP_GRACE_SECONDS)
+            if process.is_alive():
+                try:
+                    process.kill()
+                except BaseException:
+                    pass
+                process.join(_REAP_GRACE_SECONDS)
+            if process.is_alive():
+                raise ProcessReapFailed("worker process could not be reaped")
+            process.join()
+        except ProcessReapFailed:
+            raise
+        except BaseException as exc:
+            raise ProcessReapFailed("worker process reap operation failed") from exc

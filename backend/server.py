@@ -1166,17 +1166,24 @@ _solar_physics_runner = _new_solar_physics_runner()
 
 
 def _get_solar_physics_runner():
-    """Return the live runner, recreating it after a completed app lifespan."""
+    """Return a live runner without replacing quarantined child ownership."""
 
     global _solar_physics_runner
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
-        if (
-            isinstance(runner, SupervisedProcessRunner)
-            and runner.snapshot()["closed"]
-        ):
-            runner = _new_solar_physics_runner()
-            _solar_physics_runner = runner
+        if isinstance(runner, SupervisedProcessRunner):
+            snapshot = runner.snapshot()
+            if snapshot["closed"]:
+                if (
+                    snapshot["broken"]
+                    or snapshot["active_processes"]
+                    or snapshot["in_flight"]
+                ):
+                    raise ProcessSubmissionFailed(
+                        "solar process supervisor is quarantined with retained ownership"
+                    )
+                runner = _new_solar_physics_runner()
+                _solar_physics_runner = runner
         return runner
 
 

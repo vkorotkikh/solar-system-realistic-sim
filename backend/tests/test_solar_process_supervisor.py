@@ -385,6 +385,95 @@ def test_child_start_failure_releases_capacity_and_next_submit_recovers() -> Non
         runner.shutdown()
 
 
+def test_unreapable_child_quarantines_runner_without_releasing_capacity() -> None:
+    import multiprocessing
+
+    from sim.process_supervisor import (
+        ProcessReapFailed,
+        ProcessSupervisorBroken,
+        SupervisedProcessRunner,
+    )
+
+    spawn_context = multiprocessing.get_context("spawn")
+
+    class UnkillableProcess:
+        daemon = False
+        pid = 424_242
+        exitcode = None
+
+        def __init__(self) -> None:
+            self.terminate_calls = 0
+            self.kill_calls = 0
+            self.join_calls = 0
+            self.close_calls = 0
+
+        def start(self) -> None:
+            return None
+
+        def is_alive(self) -> bool:
+            return True
+
+        def terminate(self) -> None:
+            self.terminate_calls += 1
+
+        def kill(self) -> None:
+            self.kill_calls += 1
+
+        def join(self, _timeout: float | None = None) -> None:
+            self.join_calls += 1
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    process = UnkillableProcess()
+
+    class UnkillableContext:
+        def get_start_method(self) -> str:
+            return "spawn"
+
+        def Pipe(self, *args, **kwargs):
+            return spawn_context.Pipe(*args, **kwargs)
+
+        def Process(self, *args, **kwargs):
+            del args, kwargs
+            return process
+
+    runner = SupervisedProcessRunner(
+        TARGET,
+        max_workers=1,
+        max_queue=0,
+        mp_context=UnkillableContext(),
+    )
+    failed = runner.submit(
+        {"operation": "echo", "result": _result("never-delivered")},
+        timeout_seconds=0.05,
+    )
+
+    with pytest.raises(ProcessReapFailed):
+        failed.result(timeout=3.0)
+
+    snapshot = runner.snapshot()
+    assert snapshot["broken"] is True
+    assert snapshot["in_flight"] == snapshot["capacity"] == 1
+    assert snapshot["active_processes"] == 1
+    assert snapshot["active_pids"] == (424_242,)
+    with pytest.raises(ProcessSupervisorBroken):
+        runner.submit(
+            {"operation": "echo", "result": _result("must-not-run")},
+            timeout_seconds=1.0,
+        )
+
+    first_terminate_calls = process.terminate_calls
+    first_kill_calls = process.kill_calls
+    with pytest.raises(ProcessReapFailed):
+        runner.shutdown()
+    assert process.terminate_calls > first_terminate_calls
+    assert process.kill_calls > first_kill_calls
+    assert process.close_calls == 0
+    assert runner.snapshot()["in_flight"] == 1
+    assert runner.snapshot()["active_processes"] == 1
+
+
 def test_async_cancellation_terminates_child_and_capacity_recovers(tmp_path: Path) -> None:
     from sim.process_supervisor import ProcessSaturated, SupervisedProcessRunner
 

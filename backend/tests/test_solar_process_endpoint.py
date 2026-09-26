@@ -154,6 +154,38 @@ def test_application_lifespan_shuts_down_its_solar_process_runner(monkeypatch) -
     assert runner.shutdown_calls == 1
 
 
+def test_closed_broken_runner_is_not_replaced_with_fresh_capacity(monkeypatch) -> None:
+    from sim.process_supervisor import ProcessSubmissionFailed, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(
+        "sim.solar_process_worker:execute_solar_physics_job",
+        max_workers=1,
+        max_queue=0,
+    )
+    with runner._state_lock:
+        runner._closed = True
+        runner._broken_reason = "injected retained child"
+        runner._in_flight = 1
+    replacement_calls = 0
+
+    def forbidden_replacement():
+        nonlocal replacement_calls
+        replacement_calls += 1
+        raise AssertionError("quarantined ownership was replaced")
+
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
+    monkeypatch.setattr(server, "_new_solar_physics_runner", forbidden_replacement)
+
+    with pytest.raises(ProcessSubmissionFailed, match="quarantined"):
+        server._get_solar_physics_runner()
+    assert replacement_calls == 0
+
+    with runner._state_lock:
+        runner._in_flight = 0
+        runner._broken_reason = None
+    runner.shutdown()
+
+
 def test_request_disconnect_cancels_owned_process_run() -> None:
     class CancelAwareRunner:
         def __init__(self) -> None:
