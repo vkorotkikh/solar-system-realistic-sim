@@ -421,6 +421,10 @@ def _mutation(
     guard_dir: Path,
     artifacts: Path,
 ) -> dict[str, str]:
+    source_hashes = {
+        file_name: _sha256(_relative_path(source_repo, file_name, "mutation production file"))
+        for file_name in mutation["production_files"]
+    }
     temp_root = Path(tempfile.mkdtemp(prefix=f"r3-r4-mutant-{mutation['id']}-"))
     added = False
     try:
@@ -482,8 +486,20 @@ def _mutation(
         if added:
             remove = _git(source_repo, "worktree", "remove", "--force", str(temp_root), timeout=60)
             if remove.returncode != 0:
+                shutil.rmtree(temp_root, ignore_errors=True)
                 _git(source_repo, "worktree", "prune", timeout=30)
-        shutil.rmtree(temp_root, ignore_errors=True)
+            else:
+                shutil.rmtree(temp_root, ignore_errors=True)
+        else:
+            shutil.rmtree(temp_root, ignore_errors=True)
+        drifted = [
+            file_name for file_name, expected in source_hashes.items()
+            if _sha256(_relative_path(source_repo, file_name, "mutation production file")) != expected
+        ]
+        if drifted:
+            raise VerificationError(
+                f"source worktree changed while running mutation {mutation['id']}: {drifted}",
+            )
 
 
 def _arguments(argv: list[str] | None) -> argparse.Namespace:
