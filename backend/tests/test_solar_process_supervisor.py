@@ -4,6 +4,7 @@ import asyncio
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
 import sys
 import time
 from typing import Any
@@ -574,3 +575,61 @@ def test_queued_owner_cancellation_releases_without_waiting_for_running_job(
             runner.shutdown()
 
     asyncio.run(scenario())
+
+
+def test_normal_interpreter_exit_is_bounded_by_job_deadline(tmp_path: Path) -> None:
+    """ThreadPool shutdown may wait, but the owned deadline still kills the child."""
+
+    child_pid_path = tmp_path / "interpreter-exit-child.pid"
+    code = f"""
+import time
+from pathlib import Path
+from sim.process_supervisor import SupervisedProcessRunner
+
+runner = SupervisedProcessRunner(
+    'process_worker_targets:execute',
+    max_workers=1,
+    max_queue=0,
+)
+runner.submit(
+    {{
+        'operation': 'sleep_then_echo',
+        'sleep_seconds': 10.0,
+        'started_path': {str(child_pid_path)!r},
+        'result': {{'value': 'never'}},
+    }},
+    timeout_seconds=0.25,
+)
+deadline = time.monotonic() + 2.0
+while not Path({str(child_pid_path)!r}).exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+if not Path({str(child_pid_path)!r}).exists():
+    raise SystemExit('child did not start')
+# Intentionally omit runner.shutdown(); normal interpreter exit is the case.
+"""
+    environment = dict(os.environ)
+    backend_dir = Path(__file__).parents[1]
+    fixture_dir = Path(__file__).parent / "fixtures"
+    inherited_pythonpath = environment.get("PYTHONPATH", "")
+    environment["PYTHONPATH"] = os.pathsep.join(
+        part
+        for part in (str(backend_dir), str(fixture_dir), inherited_pythonpath)
+        if part
+    )
+
+    started = time.monotonic()
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=backend_dir.parent,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=5.0,
+        check=False,
+    )
+    elapsed = time.monotonic() - started
+
+    assert completed.returncode == 0, completed.stderr
+    assert elapsed < 3.0
+    child_pid = int(child_pid_path.read_text(encoding="ascii"))
+    assert not _pid_exists(child_pid)

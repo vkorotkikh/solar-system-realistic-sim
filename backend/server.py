@@ -29,7 +29,6 @@ Protocol (WebSocket /ws/sim):
 from __future__ import annotations
 
 import asyncio
-import atexit
 import hashlib
 import hmac
 import ipaddress
@@ -162,8 +161,9 @@ except Exception:
 
 @asynccontextmanager
 async def _app_lifespan(_application: FastAPI):
-    # Names resolve after module initialization, when the global supervisor is
-    # available. Each application lifespan owns exactly one live runner.
+    # FastAPI lifespan is the primary ownership boundary. Each application
+    # lifespan owns exactly one live runner and synchronously reaps its children
+    # before shutdown completes.
     _get_solar_physics_runner()
     try:
         yield
@@ -1194,7 +1194,7 @@ def _get_solar_physics_runner():
 
 
 def _shutdown_solar_physics_runner() -> None:
-    """Terminate and reap all solar children during app/interpreter shutdown."""
+    """Terminate and reap all solar children during FastAPI lifespan shutdown."""
 
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
@@ -1203,7 +1203,12 @@ def _shutdown_solar_physics_runner() -> None:
         shutdown()
 
 
-atexit.register(_shutdown_solar_physics_runner)
+# Deliberately do not register a user ``atexit`` callback. Python joins
+# ThreadPoolExecutor workers before running user callbacks, so such a callback
+# cannot provide prompt fallback cleanup. If this module is used outside the
+# ASGI lifespan, each admitted supervisor job still has a hard deadline (at
+# most ``SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS``); its owner thread then
+# terminates and joins the child before normal interpreter exit can finish.
 
 
 def _bounded_unique_request_header(
