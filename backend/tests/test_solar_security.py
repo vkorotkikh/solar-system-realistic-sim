@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from collections import OrderedDict, deque
 from collections.abc import Sequence
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -464,3 +466,141 @@ def test_solar_physics_and_aia_authenticate_before_admission(monkeypatch) -> Non
     assert physics.status_code == 401
     assert aia.status_code == 401
     assert (physics_admissions, aia_admissions) == (0, 0)
+
+
+def test_network_profile_authenticates_every_http_route_family_except_liveness(
+    monkeypatch,
+) -> None:
+    raw_key = "route-wide-network-secret"
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS=raw_key,
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+
+    protected_requests = (
+        ("GET", "/health", None),
+        ("GET", "/info", None),
+        ("GET", "/bodies", None),
+        ("GET", "/solar/capabilities", None),
+        ("GET", "/nearby-systems?limit=1", None),
+        ("GET", "/trajectory/capabilities", None),
+        ("GET", "/mission/capabilities", None),
+        ("GET", "/docs", None),
+        ("GET", "/openapi.json", None),
+        ("GET", "/not-a-real-route", None),
+        ("POST", "/trajectory/plan", b"{"),
+        ("POST", "/mission/plan", b"{"),
+        ("POST", "/benchmark/accuracy/report", b"{"),
+    )
+    for method, path, content in protected_requests:
+        response = client.request(
+            method,
+            path,
+            content=content,
+            headers={"content-type": "application/json"} if content else None,
+        )
+        assert response.status_code == 401, (method, path, response.text)
+        assert response.json() == {
+            "detail": {
+                "code": "authentication_required",
+                "message": "Authentication is required for this network endpoint.",
+                "retryable": False,
+            }
+        }
+
+    liveness = client.get("/health/live")
+    assert liveness.status_code == 200
+    assert liveness.json() == {"status": "ok"}
+
+    authenticated = client.get("/info", headers={"x-api-key": raw_key})
+    assert authenticated.status_code == 200
+
+
+def test_network_authentication_rejects_before_reading_request_body(monkeypatch) -> None:
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS="body-boundary-secret",
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+    downstream_called = False
+    receive_called = False
+    messages: list[dict[str, object]] = []
+
+    async def downstream(_scope, _receive, _send) -> None:
+        nonlocal downstream_called
+        downstream_called = True
+
+    async def receive():
+        nonlocal receive_called
+        receive_called = True
+        raise AssertionError("authentication middleware read an unauthorized body")
+
+    async def send(message) -> None:
+        messages.append(message)
+
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "https",
+        "path": "/trajectory/plan",
+        "raw_path": b"/trajectory/plan",
+        "query_string": b"",
+        "headers": [(b"content-type", b"application/json")],
+        "client": ("198.51.100.10", 43100),
+        "server": ("backend.internal", 8042),
+    }
+
+    asyncio.run(server._NetworkAuthenticationMiddleware(downstream)(scope, receive, send))
+
+    assert downstream_called is False
+    assert receive_called is False
+    assert messages[0]["status"] == 401
+    response_body = json.loads(messages[1]["body"])
+    assert response_body["detail"]["code"] == "authentication_required"
+
+
+def test_network_authentication_is_inside_exact_origin_cors(monkeypatch) -> None:
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS="cors-boundary-secret",
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+    origin = "http://localhost:3000"
+
+    rejected = client.get("/info", headers={"origin": origin})
+    assert rejected.status_code == 401
+    assert rejected.headers["access-control-allow-origin"] == origin
+
+    preflight = client.options(
+        "/trajectory/plan",
+        headers={
+            "origin": origin,
+            "access-control-request-method": "POST",
+            "access-control-request-headers": "content-type",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == origin
+
+
+def test_network_public_route_allowlist_cannot_expand_with_registered_routes() -> None:
+    registered_http_routes = {
+        (method, route.path)
+        for route in server.app.routes
+        for method in getattr(route, "methods", set())
+    }
+
+    assert server.NETWORK_PUBLIC_HTTP_ROUTES == frozenset(
+        {("GET", "/health/live"), ("HEAD", "/health/live")}
+    )
+    assert registered_http_routes & server.NETWORK_PUBLIC_HTTP_ROUTES == set(
+        server.NETWORK_PUBLIC_HTTP_ROUTES
+    )

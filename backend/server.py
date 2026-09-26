@@ -603,6 +603,65 @@ def _load_solar_security_config(
 
 SOLAR_SECURITY_CONFIG = _load_solar_security_config()
 SOLAR_CORS_ALLOWED_ORIGINS = list(SOLAR_SECURITY_CONFIG.cors_allowed_origins)
+NETWORK_PUBLIC_HTTP_ROUTES = frozenset(
+    {
+        ("GET", "/health/live"),
+        ("HEAD", "/health/live"),
+    }
+)
+
+
+class _NetworkAuthenticationMiddleware:
+    """Authenticate every non-liveness HTTP request in network deployments.
+
+    This middleware deliberately runs before body buffering, rate admission,
+    request-model parsing, and endpoint code. CORS remains outside it so an
+    exact-origin browser receives CORS headers on an authentication failure and
+    standards-compliant preflight is answered without entering this boundary.
+    """
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        active_config = SOLAR_SECURITY_CONFIG
+        if scope.get("type") != "http" or active_config.profile != "network":
+            await self.app(scope, receive, send)
+            return
+
+        route = (
+            str(scope.get("method", "")).upper(),
+            str(scope.get("path", "")),
+        )
+        if route in NETWORK_PUBLIC_HTTP_ROUTES:
+            await self.app(scope, receive, send)
+            return
+
+        subject = _authenticated_api_subject_from_scope(
+            scope,
+            config=active_config,
+        )
+        if subject is None:
+            response = JSONResponse(
+                status_code=401,
+                headers={"WWW-Authenticate": 'Bearer realm="solar-system-backend"'},
+                content={
+                    "detail": {
+                        "code": "authentication_required",
+                        "message": "Authentication is required for this network endpoint.",
+                        "retryable": False,
+                    }
+                },
+            )
+            await response(scope, receive, send)
+            return
+
+        state = scope.setdefault("state", {})
+        state["authenticated_subject"] = subject
+        # Compatibility for the solar rate-identity path while callers migrate
+        # to the route-wide name.
+        state["solar_authenticated_subject"] = subject
+        await self.app(scope, receive, send)
 
 
 def _load_env_csv(name: str, default: list[str]) -> list[str]:
@@ -1130,6 +1189,7 @@ app.add_middleware(
     max_identities=TRAJECTORY_RATE_LIMIT_MAX_IDENTITIES,
     paths=TRAJECTORY_INGRESS_PATHS,
 )
+app.add_middleware(_NetworkAuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
@@ -1227,8 +1287,8 @@ def _shutdown_solar_physics_runner() -> None:
 # terminates and joins the child before normal interpreter exit can finish.
 
 
-def _bounded_unique_request_header(
-    request: Request,
+def _bounded_unique_scope_header(
+    scope: Mapping[str, Any],
     name: bytes,
     *,
     max_bytes: int,
@@ -1238,7 +1298,7 @@ def _bounded_unique_request_header(
     value: bytes | None = None
     aggregate_bytes = 0
     matches = 0
-    for raw_name, raw_value in request.scope.get("headers", ()):
+    for raw_name, raw_value in scope.get("headers", ()):
         if bytes(raw_name).lower() != name:
             continue
         matches += 1
@@ -1254,14 +1314,27 @@ def _bounded_unique_request_header(
         return False, None
 
 
-def _extract_solar_api_key(request: Request) -> str | None:
-    api_key_valid, header_key = _bounded_unique_request_header(
-        request,
+def _bounded_unique_request_header(
+    request: Request,
+    name: bytes,
+    *,
+    max_bytes: int,
+) -> tuple[bool, str | None]:
+    return _bounded_unique_scope_header(
+        request.scope,
+        name,
+        max_bytes=max_bytes,
+    )
+
+
+def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
+    api_key_valid, header_key = _bounded_unique_scope_header(
+        scope,
         b"x-api-key",
         max_bytes=SOLAR_API_KEY_MAX_BYTES,
     )
-    auth_valid, auth = _bounded_unique_request_header(
-        request,
+    auth_valid, auth = _bounded_unique_scope_header(
+        scope,
         b"authorization",
         max_bytes=SOLAR_API_KEY_MAX_BYTES + len("Bearer "),
     )
@@ -1278,6 +1351,34 @@ def _extract_solar_api_key(request: Request) -> str | None:
     if token and len(token.encode("utf-8")) <= SOLAR_API_KEY_MAX_BYTES:
         return token
     return None
+
+
+def _extract_solar_api_key(request: Request) -> str | None:
+    """Compatibility wrapper for existing solar endpoint tests and callers."""
+
+    return _extract_api_key_from_scope(request.scope)
+
+
+def _authenticated_api_subject_from_scope(
+    scope: Mapping[str, Any],
+    *,
+    config: SolarSecurityConfig,
+) -> str | None:
+    token = _extract_api_key_from_scope(scope)
+    if token is None:
+        return None
+    token_digest = _api_key_digest(token)
+    authenticated = False
+    for configured_digest in config.api_key_hashes:
+        # Evaluate every configured digest so key ordering does not become a
+        # credential-selection timing oracle.
+        authenticated = (
+            hmac.compare_digest(token_digest, configured_digest)
+            or authenticated
+        )
+    if not authenticated:
+        return None
+    return f"credential:sha256:{token_digest}"
 
 
 def _address_in_trusted_proxy_networks(
@@ -1312,11 +1413,13 @@ def _client_identity(
     fragmenting the store.
     """
 
-    authenticated_subject = getattr(
-        request.state,
-        "solar_authenticated_subject",
-        None,
-    )
+    authenticated_subject = getattr(request.state, "authenticated_subject", None)
+    if not isinstance(authenticated_subject, str) or not authenticated_subject:
+        authenticated_subject = getattr(
+            request.state,
+            "solar_authenticated_subject",
+            None,
+        )
     if isinstance(authenticated_subject, str) and authenticated_subject:
         return authenticated_subject
 
@@ -1369,23 +1472,27 @@ def _require_optional_solar_api_key(
     config: SolarSecurityConfig | None = None,
 ) -> str | None:
     active_config = SOLAR_SECURITY_CONFIG if config is None else config
-    token = _extract_solar_api_key(request)
-    token_digest = _api_key_digest(token) if token is not None else None
-    authenticated = token_digest is not None and any(
-        hmac.compare_digest(token_digest, configured_digest)
-        for configured_digest in active_config.api_key_hashes
+    authenticated_subject = (
+        getattr(request.state, "authenticated_subject", None)
+        if config is None
+        else None
     )
-    if active_config.authentication_required and not authenticated:
+    if not isinstance(authenticated_subject, str) or not authenticated_subject:
+        authenticated_subject = _authenticated_api_subject_from_scope(
+            request.scope,
+            config=active_config,
+        )
+    if active_config.authentication_required and authenticated_subject is None:
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid API key for solar endpoints.",
             headers={"WWW-Authenticate": "X-API-Key"},
         )
-    if not authenticated or token_digest is None:
+    if authenticated_subject is None:
         return None
-    subject = f"credential:sha256:{token_digest}"
-    request.state.solar_authenticated_subject = subject
-    return subject
+    request.state.authenticated_subject = authenticated_subject
+    request.state.solar_authenticated_subject = authenticated_subject
+    return authenticated_subject
 
 
 def _pop_oldest_rate_identity(
@@ -2536,6 +2643,13 @@ class AccuracyReportRequest(StrictRequestModel):
 
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
+
+@app.api_route("/health/live", methods=["GET", "HEAD"], include_in_schema=False)
+def health_liveness():
+    """Constant-cost process liveness without engine construction or I/O."""
+
+    return {"status": "ok"}
+
 
 @app.get("/health")
 def health():
