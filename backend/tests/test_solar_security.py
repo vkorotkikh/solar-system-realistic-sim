@@ -131,6 +131,19 @@ def test_network_security_profile_defaults_cors_to_deny_all() -> None:
     assert config.cors_allowed_origins == ()
 
 
+def test_local_security_profile_allows_vite_dev_and_preview_origins() -> None:
+    config = server._load_solar_security_config(
+        {"SOLAR_SECURITY_PROFILE": "local"}
+    )
+
+    assert {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    }.issubset(config.cors_allowed_origins)
+
+
 @pytest.mark.parametrize(
     ("variable", "value"),
     [

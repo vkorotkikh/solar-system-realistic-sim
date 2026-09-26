@@ -426,6 +426,8 @@ _DEFAULT_SOLAR_CORS_ALLOWED_ORIGINS = (
     "https://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
 )
 SOLAR_FORWARDED_FOR_MAX_HOPS = 16
 SOLAR_FORWARDED_FOR_MAX_BYTES = 2_048
