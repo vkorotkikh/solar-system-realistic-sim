@@ -13,17 +13,23 @@ References:
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import io
+import json
 import math
 import struct
 import threading
 import time
 import urllib.request
 from collections import OrderedDict
-from typing import Any
+from dataclasses import asdict, dataclass
+from typing import Any, Literal
 
 import numpy as np
+from astropy.time import Time, TimeDelta
 
+from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .solar_time import (
@@ -32,6 +38,7 @@ from .solar_time import (
     jd_tdb_to_utc_datetime,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
+    provider_carrington_state_from_crnow,
 )
 from .spherical_harmonics import (
     HARMONIC_CONVENTION_VERSION,
@@ -1101,43 +1108,320 @@ def wsa_velocity_at_source_surface(
 
 # ─── PFSS Cache ────────────────────────────────────────────────────────────────
 
+
+PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
+PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
+SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-equal-area-v1"
+SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
+PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
+PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
+PFSS_TRACER_VERSION = "rk4-three-state-v1"
+PFSS_SEEDING_POLICY_VERSION = "importance-abs-br-exact-area-v1"
+PFSS_DECOMPOSITION_VERSION = "weighted-schmidt-least-squares-v1"
+WSA_BOUNDARY_DISTANCE_VERSION = "adjacent-open-closed-edge-midpoints-v1"
+_SNAPSHOT_TIME_ATOL_DAYS = 5e-10
+_SNAPSHOT_ROTATION_ATOL = 5e-7
+
+
+def _canonical_json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("ascii")
+
+
+def _domain_sha256(domain: bytes, *chunks: bytes) -> str:
+    digest = hashlib.sha256()
+    digest.update(domain)
+    for chunk in chunks:
+        digest.update(len(chunk).to_bytes(8, "big"))
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _canonical_integer(value: object, name: str, *, minimum: int, maximum: int) -> int:
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be an integer")
+    try:
+        converted = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if isinstance(value, (float, np.floating)) and not float(value).is_integer():
+        raise ValueError(f"{name} must be an integer")
+    if converted < minimum:
+        if name == "lmax":
+            raise ValueError("lmax must be a positive integer")
+        converted = minimum
+    return min(converted, maximum)
+
+
+@dataclass(frozen=True, slots=True)
+class PFSSSolutionConfig:
+    """All scientific policy inputs that can affect a cached PFSS solution."""
+
+    line_count: int = 120
+    lmax: int = 15
+    source_surface_radii: float = SOURCE_SURFACE_RADII
+    seeding_policy_version: str = PFSS_SEEDING_POLICY_VERSION
+    wsa_n_lat: int = 36
+    wsa_n_lon: int = 72
+    preprocessing_policy_version: str = PFSS_PREPROCESSING_POLICY_VERSION
+    decomposition_version: str = PFSS_DECOMPOSITION_VERSION
+    solver_version: str = PFSS_SOLVER_VERSION
+    tracer_version: str = PFSS_TRACER_VERSION
+    wsa_version: str = WSA_MODEL_VERSION
+    harmonic_convention_version: str = HARMONIC_CONVENTION_VERSION
+    wsa_boundary_distance_version: str = WSA_BOUNDARY_DISTANCE_VERSION
+    schema_version: str = PFSS_SOLUTION_CONFIG_VERSION
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "line_count",
+            _canonical_integer(self.line_count, "line_count", minimum=8, maximum=500),
+        )
+        object.__setattr__(
+            self,
+            "lmax",
+            _canonical_integer(self.lmax, "lmax", minimum=1, maximum=15),
+        )
+        try:
+            r_ss = float(self.source_surface_radii)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("source_surface_radii must be finite and greater than 1") from exc
+        if not math.isfinite(r_ss) or r_ss <= 1.0:
+            raise ValueError("source_surface_radii must be finite and greater than 1")
+        object.__setattr__(self, "source_surface_radii", r_ss)
+        for name in ("wsa_n_lat", "wsa_n_lon"):
+            raw_value = getattr(self, name)
+            value = _canonical_integer(raw_value, name, minimum=1, maximum=4096)
+            if value != raw_value or value < 1:
+                raise ValueError(f"{name} must be an integer in [1, 4096]")
+            object.__setattr__(self, name, value)
+        implemented_versions = {
+            "seeding_policy_version": PFSS_SEEDING_POLICY_VERSION,
+            "preprocessing_policy_version": PFSS_PREPROCESSING_POLICY_VERSION,
+            "decomposition_version": PFSS_DECOMPOSITION_VERSION,
+            "solver_version": PFSS_SOLVER_VERSION,
+            "tracer_version": PFSS_TRACER_VERSION,
+            "wsa_version": WSA_MODEL_VERSION,
+            "harmonic_convention_version": HARMONIC_CONVENTION_VERSION,
+            "wsa_boundary_distance_version": WSA_BOUNDARY_DISTANCE_VERSION,
+            "schema_version": PFSS_SOLUTION_CONFIG_VERSION,
+        }
+        for name, implemented in implemented_versions.items():
+            if getattr(self, name) != implemented:
+                raise ValueError(f"{name} is not implemented")
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"PFSS_SOLUTION_CONFIG_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "line_count": self.line_count,
+                "lmax": self.lmax,
+                "source_surface_radii": self.source_surface_radii.hex(),
+                "seeding_policy_version": self.seeding_policy_version,
+                "wsa_shape": [self.wsa_n_lat, self.wsa_n_lon],
+                "preprocessing_policy_version": self.preprocessing_policy_version,
+                "decomposition_version": self.decomposition_version,
+                "solver_version": self.solver_version,
+                "tracer_version": self.tracer_version,
+                "wsa_version": self.wsa_version,
+                "harmonic_convention_version": self.harmonic_convention_version,
+                "wsa_boundary_distance_version": self.wsa_boundary_distance_version,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticSnapshotId:
+    schema_version: str
+    jd_tdb: float
+    activity: float
+    normalized_content_sha256: str
+    carrington_rotation: int
+    grid_sha256: str
+    grid_convention: str
+    grid_shape: tuple[int, int]
+    row_order: str
+    transform_version: str = SYNTHETIC_TRANSFORM_VERSION
+    flux_balance_policy_version: str = SYNTHETIC_FLUX_POLICY_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != SYNTHETIC_SNAPSHOT_ID_VERSION:
+            raise ValueError("synthetic snapshot schema_version is not implemented")
+        if self.transform_version != SYNTHETIC_TRANSFORM_VERSION:
+            raise ValueError("synthetic transform_version is not implemented")
+        if self.flux_balance_policy_version != SYNTHETIC_FLUX_POLICY_VERSION:
+            raise ValueError("synthetic flux_balance_policy_version is not implemented")
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"SYNTHETIC_SNAPSHOT_ID_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "jd_tdb": self.jd_tdb.hex(),
+                "activity": self.activity.hex(),
+                "normalized_content_sha256": self.normalized_content_sha256,
+                "carrington_rotation": self.carrington_rotation,
+                "grid_sha256": self.grid_sha256,
+                "grid_convention": self.grid_convention,
+                "grid_shape": list(self.grid_shape),
+                "row_order": self.row_order,
+                "transform_version": self.transform_version,
+                "flux_balance_policy_version": self.flux_balance_policy_version,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class PFSSSolutionKey:
+    source_kind: Literal["observed", "synthetic"]
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId
+    config: PFSSSolutionConfig
+    schema_version: str = PFSS_SOLUTION_KEY_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != PFSS_SOLUTION_KEY_VERSION:
+            raise ValueError("PFSS solution key schema_version is not implemented")
+
+    def _identity(self) -> tuple[str, str, PFSSSolutionConfig, str]:
+        return (
+            self.source_kind,
+            self.snapshot_id.sha256,
+            self.config,
+            self.schema_version,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, PFSSSolutionKey) and self._identity() == other._identity()
+
+    def __hash__(self) -> int:
+        return hash(self._identity())
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"PFSS_SOLUTION_KEY_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "source_kind": self.source_kind,
+                "snapshot_id": self.snapshot_id.sha256,
+                "config": self.config.sha256,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _ResolvedMagnetogram:
+    source_kind: Literal["observed", "synthetic"]
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId
+    field_gauss: np.ndarray
+    grid: MagnetogramGrid
+    provenance: gong.GongProvenance | None = None
+
+    def __post_init__(self) -> None:
+        field = self.grid.validate_map(self.field_gauss)
+        immutable = np.frombuffer(
+            np.asarray(field, dtype="<f8", order="C").tobytes(order="C"), dtype="<f8"
+        ).reshape(field.shape)
+        object.__setattr__(self, "field_gauss", immutable)
+
+
+def _serialize_snapshot_id(
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId,
+) -> dict[str, Any]:
+    payload = asdict(snapshot_id)
+    payload["sha256"] = snapshot_id.sha256
+    return payload
+
+
+def _serialize_solution_config(config: PFSSSolutionConfig) -> dict[str, Any]:
+    payload = asdict(config)
+    payload["sha256"] = config.sha256
+    return payload
+
+
+def _serialize_observed_provenance(
+    provenance: gong.GongProvenance,
+) -> dict[str, Any]:
+    """Return cache-stable scientific provenance, excluding attempt metadata."""
+    return {
+        "provider": provenance.provider,
+        "source_kind": provenance.source_kind,
+        "product": provenance.product,
+        "product_token": provenance.product_token,
+        "product_revision": provenance.product_revision,
+        "reference_utc": provenance.reference_utc,
+        "reference_jd_tdb": provenance.reference_jd_tdb,
+        "time_scale_assumption": provenance.time_scale_assumption,
+        "coverage_start_jd_tdb": provenance.coverage_start_jd_tdb,
+        "coverage_end_jd_tdb": provenance.coverage_end_jd_tdb,
+        "coverage_semantics": provenance.coverage_semantics,
+        "coverage_warning": provenance.coverage_warning,
+        "crnow": provenance.crnow,
+        "current_carrington_rotation": provenance.current_carrington_rotation,
+        "current_central_meridian_deg": provenance.current_central_meridian_deg,
+        "credge": provenance.credge,
+        "car_rot": provenance.car_rot,
+        "long0_deg": provenance.long0_deg,
+        "canonical_bunit": provenance.canonical_bunit,
+        "gauss_conversion_factor": provenance.gauss_conversion_factor,
+        "physical_quantity": provenance.physical_quantity,
+        "radial_assumption": provenance.radial_assumption,
+        "polar_fill_status": provenance.polar_fill_status,
+        "zero_point_status": provenance.zero_point_status,
+        "wcs": {
+            "row_order": provenance.wcs.row_order,
+            "left_edge_longitude_deg": provenance.wcs.left_edge_longitude_deg,
+            "transform_version": provenance.wcs.transform_version,
+        },
+        "flux": asdict(provenance.flux),
+        "normalized_content_sha256": provenance.normalized_content_sha256,
+        "quality_flags": list(provenance.quality_flags),
+    }
+
+
 class PFSSCache:
-    """Thread-safe, bounded cache for fully identified PFSS solutions.
+    """Bounded, two-phase snapshot and PFSS solution cache.
 
-    Carrington rotation alone is not a sufficient cache identity.  A synthetic
-    fallback also depends on the requested epoch and activity, while the public
-    payload depends on the requested trace count and harmonic degree.  The GONG
-    timeout can change whether a request uses observed or synthetic input, so it
-    is part of the identity as well.
-
-    Identical cache misses share one computation.  Computation remains outside
-    the cache lock so unrelated keys can progress independently.
+    Observed identity is the validated provider snapshot, never request or
+    retrieval metadata. Synthetic identity includes the exact requested epoch
+    and activity. Returned payloads are deep copies so callers cannot mutate a
+    cached solution or the value observed by concurrent waiters.
     """
 
     def __init__(self, max_entries: int = 3):
         self._lock = threading.Lock()
-        self._cache: OrderedDict[
-            tuple[int, float, float, int, int, float], dict[str, Any]
+        self._cache: OrderedDict[PFSSSolutionKey, dict[str, Any]] = OrderedDict()
+        self._inflight: dict[PFSSSolutionKey, dict[str, Any]] = {}
+        self._snapshot_cache: OrderedDict[
+            tuple[float, float], _ResolvedMagnetogram
         ] = OrderedDict()
-        self._inflight: dict[
-            tuple[int, float, float, int, int, float], dict[str, Any]
-        ] = {}
+        self._snapshot_inflight: dict[tuple[float, float], dict[str, Any]] = {}
         self._max_entries = max(1, int(max_entries))
 
     @staticmethod
-    def _normalize_key(
+    def _normalize_request(
         jd: float,
         activity: float,
-        n_lines: int,
-        lmax: int,
         gong_timeout_s: float,
-    ) -> tuple[int, float, float, int, int, float]:
+    ) -> tuple[float, float]:
         try:
             normalized_jd = float(jd)
         except (TypeError, ValueError) as exc:
             raise ValueError("jd must be finite") from exc
         if not math.isfinite(normalized_jd):
             raise ValueError("jd must be finite")
+        if normalized_jd == 0.0:
+            normalized_jd = 0.0
 
         try:
             normalized_activity = float(activity)
@@ -1146,24 +1430,8 @@ class PFSSCache:
         if not math.isfinite(normalized_activity):
             raise ValueError("activity must be finite")
         normalized_activity = _clamp(normalized_activity, 0.0, 1.0)
-
-        try:
-            requested_lines = int(n_lines)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise ValueError("n_lines must be an integer") from exc
-        # trace_field_lines applies these same effective bounds.  Canonicalizing
-        # here prevents equivalent requests from occupying distinct cache slots.
-        normalized_lines = max(8, min(500, requested_lines))
-
-        try:
-            requested_lmax = int(lmax)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise ValueError("lmax must be a positive integer") from exc
-        if isinstance(lmax, float) and not lmax.is_integer():
-            raise ValueError("lmax must be a positive integer")
-        if requested_lmax < 1:
-            raise ValueError("lmax must be a positive integer")
-        normalized_lmax = min(requested_lmax, 15)
+        if normalized_activity == 0.0:
+            normalized_activity = 0.0
 
         try:
             normalized_timeout = float(gong_timeout_s)
@@ -1171,16 +1439,7 @@ class PFSSCache:
             raise ValueError("gong_timeout_s must be finite and positive") from exc
         if not math.isfinite(normalized_timeout) or normalized_timeout <= 0.0:
             raise ValueError("gong_timeout_s must be finite and positive")
-
-        cr = carrington_rotation_number(normalized_jd)
-        return (
-            cr,
-            normalized_jd,
-            normalized_activity,
-            normalized_lines,
-            normalized_lmax,
-            normalized_timeout,
-        )
+        return normalized_jd, normalized_activity
 
     def get_or_compute(
         self,
@@ -1189,16 +1448,32 @@ class PFSSCache:
         n_lines: int = 120,
         lmax: int = 15,
         gong_timeout_s: float = 6.0,
+        *,
+        snapshot: gong.MagnetogramSnapshot | None = None,
+        solution_config: PFSSSolutionConfig | None = None,
     ) -> dict[str, Any]:
-        """Get cached PFSS result or compute fresh."""
-        key = self._normalize_key(jd, activity, n_lines, lmax, gong_timeout_s)
-        cr, normalized_jd, normalized_activity, normalized_lines, normalized_lmax, normalized_timeout = key
+        """Resolve a snapshot, then get or compute its keyed PFSS solution."""
+        normalized_jd, normalized_activity = self._normalize_request(
+            jd, activity, gong_timeout_s
+        )
+        if solution_config is None:
+            config = PFSSSolutionConfig(line_count=n_lines, lmax=lmax)
+        elif isinstance(solution_config, PFSSSolutionConfig):
+            config = solution_config
+        else:
+            raise ValueError("solution_config must be a PFSSSolutionConfig")
+
+        if snapshot is None:
+            resolved = self._resolve_synthetic_snapshot(normalized_jd, normalized_activity)
+        else:
+            resolved = self._resolve_observed_snapshot(snapshot)
+        key = PFSSSolutionKey(resolved.source_kind, resolved.snapshot_id, config)
 
         with self._lock:
             cached = self._cache.get(key)
             if cached is not None:
                 self._cache.move_to_end(key)
-                return cached
+                return copy.deepcopy(cached)
 
             state = self._inflight.get(key)
             if state is None:
@@ -1216,17 +1491,11 @@ class PFSSCache:
             state["event"].wait()
             if state["error"] is not None:
                 raise state["error"]
-            return state["value"]
+            return copy.deepcopy(state["value"])
 
         try:
-            result = self._compute(
-                cr,
-                normalized_activity,
-                normalized_jd,
-                normalized_lines,
-                normalized_lmax,
-                normalized_timeout,
-            )
+            result = self._compute_solution(resolved, key)
+            stored = copy.deepcopy(result)
         except BaseException as exc:
             with self._lock:
                 state["error"] = exc
@@ -1235,64 +1504,324 @@ class PFSSCache:
             raise
 
         with self._lock:
-            self._cache[key] = result
+            self._cache[key] = stored
             self._cache.move_to_end(key)
             while len(self._cache) > self._max_entries:
                 self._cache.popitem(last=False)
-            state["value"] = result
+            state["value"] = stored
             self._inflight.pop(key, None)
             state["event"].set()
+        return copy.deepcopy(stored)
 
-        return result
+    def _resolve_synthetic_snapshot(
+        self, jd: float, activity: float
+    ) -> _ResolvedMagnetogram:
+        intent = (jd, activity)
+        with self._lock:
+            cached = self._snapshot_cache.get(intent)
+            if cached is not None:
+                self._snapshot_cache.move_to_end(intent)
+                return cached
+            state = self._snapshot_inflight.get(intent)
+            if state is None:
+                state = {"event": threading.Event(), "value": None, "error": None}
+                self._snapshot_inflight[intent] = state
+                is_leader = True
+            else:
+                is_leader = False
+        if not is_leader:
+            state["event"].wait()
+            if state["error"] is not None:
+                raise state["error"]
+            return state["value"]
+        try:
+            resolved = self._build_synthetic_snapshot(jd, activity)
+        except BaseException as exc:
+            with self._lock:
+                state["error"] = exc
+                self._snapshot_inflight.pop(intent, None)
+                state["event"].set()
+            raise
+        with self._lock:
+            self._snapshot_cache[intent] = resolved
+            self._snapshot_cache.move_to_end(intent)
+            while len(self._snapshot_cache) > self._max_entries:
+                self._snapshot_cache.popitem(last=False)
+            state["value"] = resolved
+            self._snapshot_inflight.pop(intent, None)
+            state["event"].set()
+        return resolved
 
-    def _compute(
-        self,
-        cr: int,
-        activity: float,
-        jd: float,
-        n_lines: int,
-        lmax: int,
-        gong_timeout_s: float,
-    ) -> dict[str, Any]:
-        """Compute PFSS field lines for a given Carrington rotation."""
-        source = "synthetic"
-        # The legacy FITS reader drops WCS and row orientation. Do not infer
-        # orientation from its raw array or advertise it as observed input.
-        # A later validated FITS/WCS provider will re-enable observed ingestion.
-        fallback_reason = "legacy_gong_grid_orientation_unvalidated"
+    @staticmethod
+    def _build_synthetic_snapshot(jd: float, activity: float) -> _ResolvedMagnetogram:
         grid = equal_area_sine_latitude_grid(180, 360)
         br_map = synthetic_magnetogram(activity, jd, grid=grid)
+        grid_hash = gong._grid_sha256(grid)
+        content_hash = _domain_sha256(
+            b"SYNTHETIC_MAGNETOGRAM_CONTENT_V1\0",
+            _canonical_json_bytes({
+                "jd_tdb": jd.hex(),
+                "activity": activity.hex(),
+                "shape": list(br_map.shape),
+                "dtype": "<f8",
+                "grid_sha256": grid_hash,
+                "transform_version": SYNTHETIC_TRANSFORM_VERSION,
+                "flux_balance_policy_version": SYNTHETIC_FLUX_POLICY_VERSION,
+            }),
+            np.asarray(br_map, dtype="<f8", order="C").tobytes(order="C"),
+        )
+        snapshot_id = SyntheticSnapshotId(
+            schema_version=SYNTHETIC_SNAPSHOT_ID_VERSION,
+            jd_tdb=jd,
+            activity=activity,
+            normalized_content_sha256=content_hash,
+            carrington_rotation=carrington_rotation_number(jd),
+            grid_sha256=grid_hash,
+            grid_convention=grid.convention,
+            grid_shape=(grid.mu.size, grid.phi_rad.size),
+            row_order=grid.row_order,
+        )
+        return _ResolvedMagnetogram("synthetic", snapshot_id, br_map, grid)
+
+    @staticmethod
+    def _resolve_observed_snapshot(snapshot: gong.MagnetogramSnapshot) -> _ResolvedMagnetogram:
+        if not isinstance(snapshot, gong.MagnetogramSnapshot):
+            raise ValueError("snapshot must be a validated MagnetogramSnapshot")
+        field = PFSSCache._validate_observed_snapshot_contract(snapshot)
+        return _ResolvedMagnetogram(
+            "observed",
+            snapshot.snapshot_id,
+            field,
+            snapshot.grid,
+            provenance=snapshot.provenance,
+        )
+
+    @staticmethod
+    def _validate_observed_snapshot_contract(
+        snapshot: gong.MagnetogramSnapshot,
+    ) -> np.ndarray:
+        """Re-run the complete frozen scientific snapshot contract."""
+        sid = snapshot.snapshot_id
+        provenance = snapshot.provenance
+        field = snapshot.grid.validate_map(snapshot.field_gauss)
+        if sid.schema_version != gong.SNAPSHOT_ID_VERSION:
+            raise ValueError("snapshot schema version is not implemented")
+        if sid.transform_version != gong.GONG_TRANSFORM_VERSION:
+            raise ValueError("snapshot transform version is not implemented")
+        if sid.coverage_semantics != gong.GONG_COVERAGE_SEMANTICS:
+            raise ValueError("snapshot coverage semantics are not implemented")
+        if sid.flux_balance_policy_version != gong.FLUX_BALANCE_POLICY_VERSION:
+            raise ValueError("snapshot flux-balance policy is not implemented")
+        frozen_provenance = (
+            provenance.provider == "NSO/GONG"
+            and provenance.source_kind == "observed"
+            and provenance.product_token == gong.GONG_PRODUCT_TOKEN
+            and provenance.time_scale_assumption == gong.GONG_TIME_ASSUMPTION
+            and provenance.coverage_warning == gong.GONG_COVERAGE_WARNING
+            and provenance.canonical_bunit == "G"
+            and provenance.physical_quantity == "photospheric magnetic flux density"
+            and provenance.radial_assumption == "provider-approximately-radial-v1"
+            and provenance.polar_fill_status == "provider-polar-filled"
+            and provenance.zero_point_status == "provider-zero-point-corrected"
+            and provenance.quality_flags
+            == ("complete-pixels", "flux-balanced-roundoff-only")
+        )
+        if not frozen_provenance:
+            raise ValueError("snapshot provider provenance is inconsistent")
+        expected_grid_hash = gong._grid_sha256(snapshot.grid)
+        if (
+            sid.grid_sha256 != expected_grid_hash
+            or sid.grid_convention != snapshot.grid.convention
+            or sid.grid_shape != (snapshot.grid.mu.size, snapshot.grid.phi_rad.size)
+            or sid.row_order != snapshot.grid.row_order
+        ):
+            raise ValueError("snapshot grid identity is inconsistent")
+        longitude_step_deg = 360.0 / snapshot.grid.phi_rad.size
+        grid_left_edge_deg = (
+            math.degrees(float(snapshot.grid.phi_rad[0])) - longitude_step_deg / 2.0
+        ) % 360.0
+
+        def same_longitude(left: float, right: float) -> bool:
+            return abs((left - right + 180.0) % 360.0 - 180.0) <= 1e-10
+
+        if (
+            not same_longitude(sid.long0_deg, provenance.long0_deg)
+            or not same_longitude(sid.long0_deg, provenance.wcs.left_edge_longitude_deg)
+            or not same_longitude(sid.long0_deg, grid_left_edge_deg)
+        ):
+            raise ValueError("snapshot longitude provenance is inconsistent")
+        invariant_pairs = (
+            (sid.product, provenance.product),
+            (sid.product_revision, provenance.product_revision),
+            (sid.reference_utc, provenance.reference_utc),
+            (sid.reference_jd_tdb, provenance.reference_jd_tdb),
+            (sid.coverage_start_jd_tdb, provenance.coverage_start_jd_tdb),
+            (sid.coverage_end_jd_tdb, provenance.coverage_end_jd_tdb),
+            (sid.coverage_semantics, provenance.coverage_semantics),
+            (sid.crnow, provenance.crnow),
+            (sid.current_carrington_rotation, provenance.current_carrington_rotation),
+            (sid.current_central_meridian_deg, provenance.current_central_meridian_deg),
+            (sid.credge, provenance.credge),
+            (sid.car_rot, provenance.car_rot),
+            (sid.long0_deg, provenance.long0_deg),
+            (sid.transform_version, provenance.wcs.transform_version),
+            (sid.row_order, provenance.wcs.row_order),
+            (sid.flux_balance_policy_version, provenance.flux.policy_version),
+            (sid.normalized_content_sha256, provenance.normalized_content_sha256),
+        )
+        if any(left != right for left, right in invariant_pairs):
+            raise ValueError("snapshot identifier and provenance are inconsistent")
+
+        try:
+            reference = Time(
+                sid.reference_utc.removesuffix("Z"), format="isot", scale="utc"
+            )
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ValueError("snapshot reference UTC is invalid") from exc
+        expected_reference_jd_tdb = float(reference.tdb.jd)
+        expected_coverage_start_jd_tdb = float(
+            (
+                reference.tt
+                - TimeDelta(
+                    CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS, format="jd", scale="tt"
+                )
+            ).tdb.jd
+        )
+        if (
+            reference.utc.strftime("%Y-%m-%dT%H:%M:%SZ") != sid.reference_utc
+            or abs(sid.reference_jd_tdb - expected_reference_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or abs(sid.coverage_start_jd_tdb - expected_coverage_start_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or abs(sid.coverage_end_jd_tdb - sid.reference_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or sid.coverage_start_jd_tdb >= sid.coverage_end_jd_tdb
+        ):
+            raise ValueError("snapshot reference time or coverage is inconsistent")
+
+        carrington = provider_carrington_state_from_crnow(sid.crnow)
+        expected_credge = sid.car_rot + ((360.0 - sid.long0_deg) % 360.0) / 360.0
+        if (
+            carrington.rotation_number != sid.current_carrington_rotation
+            or sid.car_rot
+            not in (
+                sid.current_carrington_rotation,
+                sid.current_carrington_rotation + 1,
+            )
+            or not same_longitude(
+                carrington.current_longitude_deg,
+                sid.current_central_meridian_deg,
+            )
+            or abs(sid.credge - expected_credge) > _SNAPSHOT_ROTATION_ATOL
+        ):
+            raise ValueError("snapshot Carrington metadata is inconsistent")
+        PFSSCache._validate_observed_flux(field, provenance.flux)
+        expected_content_hash = gong.normalized_content_sha256(
+            field,
+            snapshot.grid,
+            product=sid.product,
+            product_revision=sid.product_revision,
+            transform_version=sid.transform_version,
+            gauss_conversion_factor=provenance.gauss_conversion_factor,
+            flux=provenance.flux,
+        )
+        if sid.normalized_content_sha256 != expected_content_hash:
+            raise ValueError("snapshot normalized content hash is inconsistent")
+        return field
+
+    @staticmethod
+    def _validate_observed_flux(
+        field: np.ndarray, flux: gong.FluxBalanceMetrics
+    ) -> None:
+        """Re-derive the parser's balance metrics from its immutable field."""
+        flat = np.asarray(field, dtype=np.float64, order="C").ravel(order="C")
+        cell_area = 4.0 * math.pi / flat.size
+        post_signed = math.fsum(float(value) for value in flat) * cell_area
+        post_unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
+        pre_flat = flat + flux.removed_mean_g
+        pre_signed = math.fsum(float(value) for value in pre_flat) * cell_area
+        pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
+        acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
+
+        def agrees(actual: float, expected: float) -> bool:
+            return math.isfinite(actual) and math.isclose(
+                actual, expected, rel_tol=2e-13, abs_tol=2e-12
+            )
+
+        if (
+            flux.policy_version != gong.FLUX_BALANCE_POLICY_VERSION
+            or not agrees(flux.removed_g00_g, flux.removed_mean_g)
+            or not agrees(flux.pre_signed_flux_g_sr, pre_signed)
+            or not agrees(flux.pre_unsigned_flux_g_sr, pre_unsigned)
+            or not agrees(flux.acceptance_limit_g_sr, acceptance_limit)
+            or not agrees(flux.post_signed_flux_g_sr, post_signed)
+            or not agrees(flux.post_unsigned_flux_g_sr, post_unsigned)
+            or abs(pre_signed) > acceptance_limit
+            or abs(post_signed) > acceptance_limit
+        ):
+            raise ValueError("snapshot flux-balance provenance is inconsistent")
+
+    def _compute_solution(
+        self, snapshot: _ResolvedMagnetogram, key: PFSSSolutionKey
+    ) -> dict[str, Any]:
+        """Compute one immutable-input PFSS solution outside cache locks."""
+        config = key.config
+        br_map = snapshot.field_gauss
+        grid = snapshot.grid
 
         # Decompose into spherical harmonics
-        effective_lmax = min(lmax, 15)
-        g_lm, h_lm = decompose_spherical_harmonics(br_map, lmax=effective_lmax, grid=grid)
+        g_lm, h_lm = decompose_spherical_harmonics(
+            br_map, lmax=config.lmax, grid=grid
+        )
 
         # Solve PFSS
-        field = pfss_solve(g_lm, h_lm, lmax=effective_lmax)
+        field = pfss_solve(
+            g_lm, h_lm, lmax=config.lmax, r_ss=config.source_surface_radii
+        )
 
         # Trace field lines (for visualization)
-        lines = trace_field_lines(field, n_lines=n_lines, br_map=br_map, grid=grid)
+        lines = trace_field_lines(
+            field, n_lines=config.line_count, br_map=br_map, grid=grid
+        )
 
         # Compute the versioned WSA-inspired visualization velocity map.
-        wsa_grid_lat = 36  # coarser for speed
-        wsa_grid_lon = 72
         wsa_result = compute_wsa_velocity_map(
             field, br_map=br_map,
-            n_lat=wsa_grid_lat, n_lon=wsa_grid_lon,
+            n_lat=config.wsa_n_lat, n_lon=config.wsa_n_lon,
         )
 
         open_count = sum(1 for line in lines if line["state"] == "open")
         closed_count = sum(1 for line in lines if line["state"] == "closed")
         indeterminate_count = sum(1 for line in lines if line["state"] == "indeterminate")
 
+        if snapshot.source_kind == "observed":
+            fallback_reason = None
+            cr = snapshot.snapshot_id.current_carrington_rotation
+            map_left_edge_cr = snapshot.snapshot_id.car_rot
+            map_left_edge_longitude = snapshot.snapshot_id.long0_deg
+            provenance_payload = _serialize_observed_provenance(snapshot.provenance)
+        else:
+            fallback_reason = "legacy_gong_grid_orientation_unvalidated"
+            cr = snapshot.snapshot_id.carrington_rotation
+            map_left_edge_cr = None
+            map_left_edge_longitude = None
+            provenance_payload = None
+
         return {
-            "source": source,
+            "source": snapshot.source_kind,
             "fallback_reason": fallback_reason,
+            "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
+            "snapshot_sha256": snapshot.snapshot_id.sha256,
+            "solution_id": key.sha256,
+            "solution_config": _serialize_solution_config(config),
+            "magnetogram_provenance": provenance_payload,
             "grid_convention": grid.convention,
-            "harmonic_convention": HARMONIC_CONVENTION_VERSION,
+            "harmonic_convention": config.harmonic_convention_version,
             "carrington_rotation": cr,
-            "source_surface_radii": SOURCE_SURFACE_RADII,
-            "lmax": effective_lmax,
+            "map_left_edge_carrington_rotation": map_left_edge_cr,
+            "map_left_edge_longitude_deg": map_left_edge_longitude,
+            "source_surface_radii": config.source_surface_radii,
+            "lmax": config.lmax,
             "line_count": len(lines),
             "open_line_count": open_count,
             "closed_line_count": closed_count,
@@ -1300,7 +1829,7 @@ class PFSSCache:
             "lines": lines,
             "wsa": {
                 "mean_velocity_kms": wsa_result["mean_velocity_kms"],
-                "grid_resolution": f"{wsa_grid_lat}x{wsa_grid_lon}",
+                "grid_resolution": f"{config.wsa_n_lat}x{config.wsa_n_lon}",
                 "model": wsa_result.get("model", WSA_MODEL_VERSION),
                 "calibration_status": wsa_result.get(
                     "calibration_status", WSA_CALIBRATION_STATUS,

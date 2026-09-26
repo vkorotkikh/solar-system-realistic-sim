@@ -188,3 +188,58 @@ def test_legacy_gong_array_is_not_claimed_as_validated_observed_input(monkeypatc
     result = pfss.PFSSCache().get_or_compute(2460000, 0, n_lines=8, lmax=1)
     assert result["source"] == "synthetic"
     assert "orientation" in result["fallback_reason"]
+    assert result["snapshot_id"]["jd_tdb"] == 2460000
+    assert result["snapshot_id"]["activity"] == 0
+    assert result["snapshot_sha256"] == result["snapshot_id"]["sha256"]
+    assert result["solution_config"]["lmax"] == 1
+    assert result["magnetogram_provenance"] is None
+
+
+def test_validated_observed_snapshot_reaches_decomposition_without_reorientation(monkeypatch):
+    import sim.gong_magnetogram as gong
+    import sim.pfss_magnetogram as pfss
+    from gong_fixture_helpers import EXPANDED, context
+
+    snapshot = gong.parse_gong_fits(EXPANDED, context=context())
+    captured = {}
+
+    def decompose(values, lmax, *, grid, **_kwargs):
+        captured["values"] = np.array(values, copy=True)
+        captured["grid"] = grid
+        return np.zeros((lmax + 1, lmax + 1)), np.zeros((lmax + 1, lmax + 1))
+
+    monkeypatch.setattr(pfss, "decompose_spherical_harmonics", decompose)
+    monkeypatch.setattr(pfss, "trace_field_lines", lambda *a, **k: [])
+    monkeypatch.setattr(
+        pfss,
+        "compute_wsa_velocity_map",
+        lambda *a, **k: {"mean_velocity_kms": 400.0},
+    )
+    result = pfss.PFSSCache().get_or_compute(
+        2_460_000,
+        0.0,
+        snapshot=snapshot,
+        solution_config=pfss.PFSSSolutionConfig(line_count=8, lmax=1),
+    )
+    np.testing.assert_array_equal(captured["values"], snapshot.field_gauss)
+    assert captured["grid"] == snapshot.grid
+    assert result["source"] == "observed"
+    assert result["carrington_rotation"] == snapshot.snapshot_id.current_carrington_rotation
+    assert result["map_left_edge_carrington_rotation"] == snapshot.snapshot_id.car_rot
+    assert result["map_left_edge_longitude_deg"] == snapshot.snapshot_id.long0_deg
+    assert result["snapshot_sha256"] == snapshot.snapshot_id.sha256
+    assert result["snapshot_id"]["normalized_content_sha256"] == (
+        snapshot.snapshot_id.normalized_content_sha256
+    )
+    assert result["snapshot_id"]["coverage_start_jd_tdb"] == (
+        snapshot.snapshot_id.coverage_start_jd_tdb
+    )
+    assert result["magnetogram_provenance"]["provider"] == "NSO/GONG"
+    assert result["magnetogram_provenance"]["wcs"]["transform_version"] == (
+        snapshot.provenance.wcs.transform_version
+    )
+    assert result["solution_config"]["lmax"] == 1
+    assert result["solution_config"]["line_count"] == 8
+    assert "request_jd_tdb" not in result["magnetogram_provenance"]
+    assert "retrieved_at_utc" not in result["magnetogram_provenance"]
+    assert "retrieval_timeout_s" not in result["magnetogram_provenance"]
