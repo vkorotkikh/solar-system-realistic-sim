@@ -6,6 +6,7 @@ import urllib.request
 
 import pytest
 
+import sim.solar_realtime_data as solar_realtime_data
 from sim.solar_realtime_data import SolarRealtimeDataProvider
 
 
@@ -298,3 +299,100 @@ def test_fetch_modes_reject_megabyte_url_before_network(
         getattr(provider, fetch_name)(oversized_url)
 
     assert opened == []
+
+
+def test_redirect_chain_shares_one_absolute_acquisition_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    initial_url = provider.HELIOVIEWER_TILE_URL
+    redirected_url = "https://api.helioviewer.org/v2/getTile/?id=123"
+    redirect = _Response(
+        b"",
+        url=initial_url,
+        status=302,
+        headers={"Location": "/v2/getTile/?id=123"},
+    )
+    final = _Response(b"tile", url=redirected_url)
+    pending = deque((redirect, final))
+    open_timeouts: list[float] = []
+
+    def open_request(_request, *, timeout: float):
+        open_timeouts.append(timeout)
+        monotonic_now[0] += 0.6
+        return pending.popleft()
+
+    monkeypatch.setattr(
+        urllib.request,
+        "build_opener",
+        lambda *_handlers: _Opener(open_request),
+    )
+
+    with pytest.raises(RuntimeError, match="acquisition deadline"):
+        provider._fetch_binary(initial_url)
+
+    assert open_timeouts == pytest.approx([1.0, 0.4])
+    assert redirect.closed is True
+    assert final.closed is True
+
+
+def test_slow_drip_reads_receive_remaining_budget_and_stop_at_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monotonic_now = [200.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    url = provider.HELIOVIEWER_TILE_URL
+
+    class RecordingSocket:
+        def __init__(self) -> None:
+            self.timeouts: list[float] = []
+
+        def settimeout(self, timeout: float) -> None:
+            self.timeouts.append(timeout)
+
+    socket = RecordingSocket()
+
+    class SlowResponse(_Response):
+        def __init__(self) -> None:
+            super().__init__(b"abcdefghij", url=url)
+            raw = type("Raw", (), {"_sock": socket})()
+            self.fp = type("Fp", (), {"raw": raw})()
+
+        def read(self, size: int = -1) -> bytes:
+            self.read_sizes.append(size)
+            monotonic_now[0] += 0.3
+            if self._offset >= len(self._body):
+                return b""
+            chunk = self._body[self._offset : self._offset + 1]
+            self._offset += 1
+            return chunk
+
+    response = SlowResponse()
+
+    def open_request(_request, *, timeout: float):
+        assert timeout == pytest.approx(1.0)
+        return response
+
+    monkeypatch.setattr(
+        urllib.request,
+        "build_opener",
+        lambda *_handlers: _Opener(open_request),
+    )
+
+    with pytest.raises(RuntimeError, match="acquisition deadline"):
+        provider._fetch_binary(url)
+
+    assert socket.timeouts == pytest.approx([1.0, 0.7, 0.4, 0.1])
+    assert len(response.read_sizes) == 4
+    assert response.closed is True

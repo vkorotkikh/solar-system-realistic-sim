@@ -438,14 +438,50 @@ class SolarRealtimeDataProvider:
         )
         return canonical, source_hosts
 
-    def _open_response(self, request: urllib.request.Request) -> Any:
+    def _open_response(
+        self,
+        request: urllib.request.Request,
+        *,
+        timeout_s: float,
+    ) -> Any:
         opener = urllib.request.build_opener(_NoRedirectHandler())
         try:
-            return opener.open(request, timeout=self.timeout_s)
+            return opener.open(request, timeout=max(timeout_s, 1e-6))
         except urllib.error.HTTPError as exc:
             # HTTPError is also a readable response. Redirects and non-2xx
             # statuses are handled uniformly below, without automatic hops.
             return exc
+
+    @staticmethod
+    def _remaining_acquisition_time(deadline_monotonic: float) -> float:
+        remaining = deadline_monotonic - time.monotonic()
+        if remaining <= 0.0:
+            raise SolarRealtimeFetchError(
+                "acquisition_deadline",
+                "Solar realtime acquisition deadline expired",
+            )
+        return remaining
+
+    @staticmethod
+    def _set_response_read_timeout(response: Any, timeout_s: float) -> None:
+        """Best-effort socket deadline update before each blocking body read."""
+
+        fp = getattr(response, "fp", None)
+        raw = getattr(fp, "raw", None)
+        candidates = (
+            getattr(raw, "_sock", None),
+            getattr(fp, "_sock", None),
+            getattr(response, "_sock", None),
+        )
+        for sock in candidates:
+            setter = getattr(sock, "settimeout", None)
+            if not callable(setter):
+                continue
+            try:
+                setter(max(timeout_s, 1e-6))
+            except OSError:
+                continue
+            return
 
     def _request_bytes(
         self,
@@ -453,7 +489,9 @@ class SolarRealtimeDataProvider:
         *,
         max_bytes: int,
     ) -> tuple[bytes, str | None]:
+        deadline_monotonic = time.monotonic() + self.timeout_s
         current, allowed_hosts = self._validate_upstream_url(url)
+        self._remaining_acquisition_time(deadline_monotonic)
         visited = {current}
         redirect_count = 0
 
@@ -462,8 +500,12 @@ class SolarRealtimeDataProvider:
                 current,
                 headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
             )
-            response = self._open_response(request)
+            response = self._open_response(
+                request,
+                timeout_s=self._remaining_acquisition_time(deadline_monotonic),
+            )
             try:
+                self._remaining_acquisition_time(deadline_monotonic)
                 reported_url = response.geturl()
                 final_url, _ = self._validate_upstream_url(
                     reported_url,
@@ -535,9 +577,14 @@ class SolarRealtimeDataProvider:
                 chunks: list[bytes] = []
                 total = 0
                 while True:
+                    read_timeout = self._remaining_acquisition_time(
+                        deadline_monotonic
+                    )
+                    self._set_response_read_timeout(response, read_timeout)
                     remaining = max_bytes - total
                     read_size = min(self.RESPONSE_READ_CHUNK_BYTES, remaining + 1)
                     chunk = response.read(read_size)
+                    self._remaining_acquisition_time(deadline_monotonic)
                     if not isinstance(chunk, bytes):
                         raise SolarRealtimeFetchError(
                             "invalid_response_body",
@@ -570,6 +617,7 @@ class SolarRealtimeDataProvider:
                         "response_metadata_limit",
                         "Solar realtime response metadata exceeds its byte limit",
                     )
+                self._remaining_acquisition_time(deadline_monotonic)
                 return b"".join(chunks), content_type
             finally:
                 response.close()
