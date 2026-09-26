@@ -619,6 +619,138 @@ def test_network_public_route_allowlist_cannot_expand_with_registered_routes() -
     )
 
 
+def test_network_protected_responses_are_private_and_vary_by_credentials(
+    monkeypatch,
+) -> None:
+    raw_key = "network-cache-boundary-secret"
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS=raw_key,
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+
+    authenticated = client.get(
+        "/info",
+        headers={"origin": "http://localhost:3000", "x-api-key": raw_key},
+    )
+    rejected = client.get(
+        "/info",
+        headers={"origin": "http://localhost:3000"},
+    )
+
+    for response in (authenticated, rejected):
+        assert response.headers["cache-control"] == "private, no-store"
+        assert {
+            token.strip().lower()
+            for token in response.headers["vary"].split(",")
+        } == {"authorization", "origin", "x-api-key"}
+
+
+def test_network_response_policy_merges_existing_cache_and_vary_headers(
+    monkeypatch,
+) -> None:
+    raw_key = "network-cache-merge-secret"
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS=raw_key,
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+    messages: list[dict[str, object]] = []
+
+    async def downstream(_scope, _receive, send) -> None:
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (
+                        b"cache-control",
+                        b"public, max-age=120, stale-if-error=30",
+                    ),
+                    (b"vary", b"Accept-Encoding"),
+                    (b"vary", b"Origin, accept-encoding"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message) -> None:
+        messages.append(message)
+
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "https",
+        "path": "/info",
+        "raw_path": b"/info",
+        "query_string": b"",
+        "headers": [(b"x-api-key", raw_key.encode("ascii"))],
+        "client": ("198.51.100.10", 43100),
+        "server": ("backend.internal", 8042),
+    }
+
+    asyncio.run(server._NetworkAuthenticationMiddleware(downstream)(scope, receive, send))
+
+    response_headers = [
+        (name.decode("ascii").lower(), value.decode("ascii"))
+        for name, value in messages[0]["headers"]
+    ]
+    cache_directives = {
+        directive.strip().lower()
+        for name, value in response_headers
+        if name == "cache-control"
+        for directive in value.split(",")
+    }
+    vary_fields = {
+        field.strip().lower()
+        for name, value in response_headers
+        if name == "vary"
+        for field in value.split(",")
+    }
+
+    assert cache_directives == {
+        "max-age=120",
+        "no-store",
+        "private",
+        "stale-if-error=30",
+    }
+    assert vary_fields == {
+        "accept-encoding",
+        "authorization",
+        "origin",
+        "x-api-key",
+    }
+
+
+def test_network_public_liveness_keeps_public_cache_contract(monkeypatch) -> None:
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS="network-liveness-secret",
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+
+    response = client.get("/health/live")
+
+    assert response.status_code == 200
+    assert "cache-control" not in response.headers
+    vary_fields = {
+        field.strip().lower()
+        for field in response.headers.get("vary", "").split(",")
+        if field.strip()
+    }
+    assert vary_fields.isdisjoint({"authorization", "x-api-key"})
+
+
 @pytest.mark.parametrize(
     ("path", "rate_enforcer"),
     [

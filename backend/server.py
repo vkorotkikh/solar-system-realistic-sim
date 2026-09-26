@@ -613,6 +613,66 @@ NETWORK_PUBLIC_HTTP_ROUTES = frozenset(
 )
 
 
+def _merge_network_protected_response_headers(message: dict[str, Any]) -> None:
+    """Make an authenticated network response unusable as a shared cache entry."""
+
+    if message.get("type") != "http.response.start":
+        return
+
+    original_headers = list(message.get("headers", ()))
+    retained_headers: list[tuple[bytes, bytes]] = []
+    cache_directives: list[bytes] = []
+    vary_fields: list[bytes] = []
+    seen_cache_directives: set[bytes] = set()
+    seen_vary_fields: set[bytes] = set()
+
+    for raw_name, raw_value in original_headers:
+        name = bytes(raw_name)
+        value = bytes(raw_value)
+        lowered_name = name.lower()
+        if lowered_name == b"cache-control":
+            for raw_directive in value.split(b","):
+                directive = raw_directive.strip()
+                if not directive:
+                    continue
+                directive_name = directive.split(b"=", 1)[0].strip().lower()
+                if directive_name == b"public":
+                    continue
+                lowered_directive = directive.lower()
+                if lowered_directive not in seen_cache_directives:
+                    seen_cache_directives.add(lowered_directive)
+                    cache_directives.append(directive)
+            continue
+        if lowered_name == b"vary":
+            for raw_field in value.split(b","):
+                field = raw_field.strip()
+                if not field:
+                    continue
+                lowered_field = field.lower()
+                if lowered_field not in seen_vary_fields:
+                    seen_vary_fields.add(lowered_field)
+                    vary_fields.append(field)
+            continue
+        retained_headers.append((name, value))
+
+    for directive in (b"private", b"no-store"):
+        if directive not in seen_cache_directives:
+            seen_cache_directives.add(directive)
+            cache_directives.append(directive)
+
+    if b"*" not in seen_vary_fields:
+        for field in (b"Authorization", b"X-API-Key"):
+            lowered_field = field.lower()
+            if lowered_field not in seen_vary_fields:
+                seen_vary_fields.add(lowered_field)
+                vary_fields.append(field)
+
+    retained_headers.append((b"cache-control", b", ".join(cache_directives)))
+    if vary_fields:
+        retained_headers.append((b"vary", b", ".join(vary_fields)))
+    message["headers"] = retained_headers
+
+
 class _NetworkAuthenticationMiddleware:
     """Authenticate every non-liveness HTTP request in network deployments.
 
@@ -639,6 +699,10 @@ class _NetworkAuthenticationMiddleware:
             await self.app(scope, receive, send)
             return
 
+        async def protected_send(message) -> None:
+            _merge_network_protected_response_headers(message)
+            await send(message)
+
         subject = _authenticated_api_subject_from_scope(
             scope,
             config=active_config,
@@ -655,7 +719,7 @@ class _NetworkAuthenticationMiddleware:
                     }
                 },
             )
-            await response(scope, receive, send)
+            await response(scope, receive, protected_send)
             return
 
         state = scope.setdefault("state", {})
@@ -663,7 +727,7 @@ class _NetworkAuthenticationMiddleware:
         # Compatibility for the solar rate-identity path while callers migrate
         # to the route-wide name.
         state["solar_authenticated_subject"] = subject
-        await self.app(scope, receive, send)
+        await self.app(scope, receive, protected_send)
 
 
 def _load_env_csv(name: str, default: list[str]) -> list[str]:
