@@ -10,13 +10,20 @@
   "selection_contract": {
     "active": true,
     "overall_quality": 0,
-    "required_numeric_fields": "finite JSON numbers",
+    "required_numeric_fields": "finite JSON numbers within defensive_operational_envelope_v1",
     "selection": "newest qualifying time_tag",
     "fixture_reference_time_utc": "2026-09-26T23:00:00Z",
     "maximum_sample_age_s": 900.0,
     "maximum_future_offset_s": 120.0,
     "maximum_product_skew_s": 300.0,
-    "combined_time_policy": "oldest_component"
+    "combined_time_policy": "oldest_component",
+    "numeric_bounds": {
+      "proton_density": [1e-06, 1000.0],
+      "proton_speed": [100.0, 3000.0],
+      "proton_temperature": [1.0, 100000000.0],
+      "bt": [0.0, 500.0],
+      "bz_gsm": [-500.0, 500.0]
+    }
   },
   "fixtures": {
     "swpc_rtsw_wind_1m.json": {

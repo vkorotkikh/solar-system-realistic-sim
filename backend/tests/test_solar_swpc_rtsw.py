@@ -61,13 +61,20 @@ def test_fixture_manifest_pins_authority_selection_contract_and_hashes() -> None
     assert manifest["selection_contract"] == {
         "active": True,
         "overall_quality": 0,
-        "required_numeric_fields": "finite JSON numbers",
+        "required_numeric_fields": "finite JSON numbers within defensive_operational_envelope_v1",
         "selection": "newest qualifying time_tag",
         "fixture_reference_time_utc": "2026-09-26T23:00:00Z",
         "maximum_sample_age_s": 900.0,
         "maximum_future_offset_s": 120.0,
         "maximum_product_skew_s": 300.0,
         "combined_time_policy": "oldest_component",
+        "numeric_bounds": {
+            "proton_density": [1e-06, 1000.0],
+            "proton_speed": [100.0, 3000.0],
+            "proton_temperature": [1.0, 100000000.0],
+            "bt": [0.0, 500.0],
+            "bz_gsm": [-500.0, 500.0],
+        },
     }
     expected_endpoints = {
         "swpc_rtsw_wind_1m.json": (
@@ -135,6 +142,16 @@ def test_fetch_swpc_selects_newest_active_quality_zero_finite_rows(
             "maximum_future_offset_s": 120.0,
             "maximum_product_skew_s": 300.0,
             "combined_time_policy": "oldest_component",
+        },
+        "numeric_validation": {
+            "version": "defensive_operational_envelope_v1",
+            "bounds": {
+                "proton_density": [1e-06, 1000.0],
+                "proton_speed": [100.0, 3000.0],
+                "proton_temperature": [1.0, 100000000.0],
+                "bt": [0.0, 500.0],
+                "bz_gsm": [-500.0, 500.0],
+            },
         },
         "wind": {
             "endpoint": provider.NOAA_WIND_URL,
@@ -218,6 +235,55 @@ def test_fetch_swpc_rejects_temporally_incoherent_product_pair(
         provider._fetch_swpc()
 
 
+@pytest.mark.parametrize(
+    ("product", "field", "value"),
+    [
+        ("wind", "proton_density", 0.0),
+        ("wind", "proton_density", 1e308),
+        ("wind", "proton_speed", 99.0),
+        ("wind", "proton_speed", 1e308),
+        ("wind", "proton_temperature", 0.0),
+        ("wind", "proton_temperature", 1e308),
+        ("mag", "bt", -1.0),
+        ("mag", "bt", 1e308),
+        ("mag", "bz_gsm", -9999.0),
+        ("mag", "bz_gsm", 1e308),
+    ],
+)
+def test_fetch_swpc_rejects_values_outside_defensive_operational_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    product: str,
+    field: str,
+    value: float,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = _fixture("swpc_rtsw_wind_1m.json")
+    mag = _fixture("swpc_rtsw_mag_1m.json")
+    target = wind if product == "wind" else mag
+    for row in target:
+        if row.get("active") is True and row.get("overall_quality") == 0:
+            row[field] = value
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    with pytest.raises(RuntimeError, match="missing usable active quality rows"):
+        provider._fetch_swpc()
+
+
+def test_fetch_swpc_rejects_bz_component_larger_than_total_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    mag = _fixture("swpc_rtsw_mag_1m.json")
+    for row in mag:
+        if row.get("active") is True and row.get("overall_quality") == 0:
+            row["bt"] = 4.0
+            row["bz_gsm"] = -5.0
+    _install_fixture_fetcher(monkeypatch, provider, mag=mag)
+
+    with pytest.raises(RuntimeError, match="magnetic vector is physically inconsistent"):
+        provider._fetch_swpc()
+
+
 def test_fetch_swpc_rejects_removed_header_row_schema(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -246,6 +312,16 @@ def test_swpc_capabilities_publish_current_products_and_hard_caps() -> None:
         "maximum_sample_age_s": 900.0,
         "maximum_future_offset_s": 120.0,
         "maximum_product_skew_s": 300.0,
+        "numeric_validation": {
+            "version": "defensive_operational_envelope_v1",
+            "bounds": {
+                "proton_density": [1e-06, 1000.0],
+                "proton_speed": [100.0, 3000.0],
+                "proton_temperature": [1.0, 100000000.0],
+                "bt": [0.0, 500.0],
+                "bz_gsm": [-500.0, 500.0],
+            },
+        },
     }
 
 

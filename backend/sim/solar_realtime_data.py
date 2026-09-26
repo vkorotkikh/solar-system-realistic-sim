@@ -96,6 +96,18 @@ class SolarRealtimeDataProvider:
     SWPC_MAX_SAMPLE_AGE_S = 15.0 * 60.0
     SWPC_MAX_FUTURE_OFFSET_S = 2.0 * 60.0
     SWPC_MAX_PRODUCT_SKEW_S = 5.0 * 60.0
+    SWPC_NUMERIC_VALIDATION_VERSION = "defensive_operational_envelope_v1"
+    # These deliberately broad fail-closed envelopes are an application input
+    # contract, not a claim about instrument calibration uncertainty. They
+    # admit severe solar-wind conditions while excluding provider fill values,
+    # corrupt magnitudes, and arithmetic-overflow payloads.
+    SWPC_NUMERIC_BOUNDS = {
+        "proton_density": (1e-6, 1_000.0),
+        "proton_speed": (100.0, 3_000.0),
+        "proton_temperature": (1.0, 100_000_000.0),
+        "bt": (0.0, 500.0),
+        "bz_gsm": (-500.0, 500.0),
+    }
     MAX_TEXT_RESPONSE_BYTES = 8 * 1024 * 1024
     MAX_BINARY_RESPONSE_BYTES = 4 * 1024 * 1024
     RESPONSE_READ_CHUNK_BYTES = 64 * 1024
@@ -176,6 +188,7 @@ class SolarRealtimeDataProvider:
                     "maximum_sample_age_s": self.SWPC_MAX_SAMPLE_AGE_S,
                     "maximum_future_offset_s": self.SWPC_MAX_FUTURE_OFFSET_S,
                     "maximum_product_skew_s": self.SWPC_MAX_PRODUCT_SKEW_S,
+                    "numeric_validation": self._swpc_numeric_validation_contract(),
                 },
                 "silso": {
                     "daily_url": self.SILSO_DAILY_URL,
@@ -885,12 +898,21 @@ class SolarRealtimeDataProvider:
     def _utc_now() -> datetime:
         return datetime.now(timezone.utc)
 
+    @classmethod
+    def _swpc_numeric_validation_contract(cls) -> dict[str, Any]:
+        return {
+            "version": cls.SWPC_NUMERIC_VALIDATION_VERSION,
+            "bounds": {
+                field: [lower, upper]
+                for field, (lower, upper) in cls.SWPC_NUMERIC_BOUNDS.items()
+            },
+        }
+
     def _newest_usable_swpc_row(
         self,
         payload: Any,
         *,
         required_numeric_fields: tuple[str, ...],
-        nonnegative_fields: frozenset[str],
         reference_time_utc: datetime,
     ) -> tuple[dict[str, Any], datetime] | None:
         """Select the newest active, quality-zero row from the RTSW object schema."""
@@ -939,11 +961,13 @@ class SolarRealtimeDataProvider:
             valid = True
             for field in required_numeric_fields:
                 value = row.get(field)
+                numeric_bounds = self.SWPC_NUMERIC_BOUNDS.get(field)
                 if (
                     isinstance(value, bool)
                     or not isinstance(value, (int, float))
                     or not math.isfinite(float(value))
-                    or (field in nonnegative_fields and float(value) < 0.0)
+                    or numeric_bounds is None
+                    or not numeric_bounds[0] <= float(value) <= numeric_bounds[1]
                 ):
                     valid = False
                     break
@@ -977,15 +1001,11 @@ class SolarRealtimeDataProvider:
                 "proton_speed",
                 "proton_temperature",
             ),
-            nonnegative_fields=frozenset(
-                {"proton_density", "proton_speed", "proton_temperature"}
-            ),
             reference_time_utc=retrieved_at,
         )
         mag_selected = self._newest_usable_swpc_row(
             mag,
             required_numeric_fields=("bt", "bz_gsm"),
-            nonnegative_fields=frozenset({"bt"}),
             reference_time_utc=retrieved_at,
         )
 
@@ -1008,8 +1028,12 @@ class SolarRealtimeDataProvider:
         temperature_k = wind_row["proton_temperature"]
         imf_bt_nt = mag_row["bt"]
         imf_bz_nt = mag_row["bz_gsm"]
+        if abs(imf_bz_nt) > imf_bt_nt + 1e-9:
+            raise RuntimeError("NOAA SWPC RTSW magnetic vector is physically inconsistent")
 
         dynamic_pressure_npa = 1.6726e-6 * density_pcc * speed_kms * speed_kms
+        if not math.isfinite(dynamic_pressure_npa):
+            raise RuntimeError("NOAA SWPC RTSW derived values are non-finite")
 
         proxies = []
         proxies.append(_clamp((speed_kms - 280.0) / 620.0, 0.0, 1.0) * 0.45)
@@ -1056,6 +1080,7 @@ class SolarRealtimeDataProvider:
                     "maximum_product_skew_s": self.SWPC_MAX_PRODUCT_SKEW_S,
                     "combined_time_policy": "oldest_component",
                 },
+                "numeric_validation": self._swpc_numeric_validation_contract(),
                 "wind": {
                     "endpoint": self.NOAA_WIND_URL,
                     "source": wind_row["source"],
