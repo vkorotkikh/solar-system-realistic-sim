@@ -196,6 +196,8 @@ def test_legacy_gong_array_is_not_claimed_as_validated_observed_input(monkeypatc
 
 
 def test_validated_observed_snapshot_reaches_decomposition_without_reorientation(monkeypatch):
+    from dataclasses import fields
+
     import sim.gong_magnetogram as gong
     import sim.pfss_magnetogram as pfss
     from gong_fixture_helpers import EXPANDED, context
@@ -240,6 +242,25 @@ def test_validated_observed_snapshot_reaches_decomposition_without_reorientation
     )
     assert result["solution_config"]["lmax"] == 1
     assert result["solution_config"]["line_count"] == 8
-    assert "request_jd_tdb" not in result["magnetogram_provenance"]
-    assert "retrieved_at_utc" not in result["magnetogram_provenance"]
-    assert "retrieval_timeout_s" not in result["magnetogram_provenance"]
+    assert result["magnetogram_provenance"]["request_jd_tdb"] == (
+        snapshot.provenance.request_jd_tdb
+    )
+    assert result["magnetogram_provenance"]["retrieved_at_utc"] == (
+        snapshot.provenance.retrieved_at_utc
+    )
+    assert result["magnetogram_provenance"]["retrieval_timeout_s"] == (
+        snapshot.provenance.retrieval_timeout_s
+    )
+    assert result["magnetogram_provenance"]["native_header_bytes"]["encoding"] == "base64"
+    assert result["magnetogram_provenance"]["native_header_bytes"]["sha256"] == (
+        snapshot.provenance.native_header_sha256
+    )
+    assert set(result["magnetogram_provenance"]) == {
+        field.name for field in fields(gong.GongProvenance)
+    }
+    assert set(result["magnetogram_provenance"]["wcs"]) == {
+        field.name for field in fields(gong.GongWcsMetadata)
+    }
+    assert set(result["magnetogram_provenance"]["flux"]) == {
+        field.name for field in fields(gong.FluxBalanceMetrics)
+    }

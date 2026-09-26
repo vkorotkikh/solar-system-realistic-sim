@@ -13,6 +13,7 @@ References:
 
 from __future__ import annotations
 
+import base64
 import copy
 import hashlib
 import io
@@ -21,6 +22,7 @@ import math
 import struct
 import threading
 import time
+import urllib.parse
 import urllib.request
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -1352,41 +1354,22 @@ def _serialize_solution_config(config: PFSSSolutionConfig) -> dict[str, Any]:
 def _serialize_observed_provenance(
     provenance: gong.GongProvenance,
 ) -> dict[str, Any]:
-    """Return cache-stable scientific provenance, excluding attempt metadata."""
-    return {
-        "provider": provenance.provider,
-        "source_kind": provenance.source_kind,
-        "product": provenance.product,
-        "product_token": provenance.product_token,
-        "product_revision": provenance.product_revision,
-        "reference_utc": provenance.reference_utc,
-        "reference_jd_tdb": provenance.reference_jd_tdb,
-        "time_scale_assumption": provenance.time_scale_assumption,
-        "coverage_start_jd_tdb": provenance.coverage_start_jd_tdb,
-        "coverage_end_jd_tdb": provenance.coverage_end_jd_tdb,
-        "coverage_semantics": provenance.coverage_semantics,
-        "coverage_warning": provenance.coverage_warning,
-        "crnow": provenance.crnow,
-        "current_carrington_rotation": provenance.current_carrington_rotation,
-        "current_central_meridian_deg": provenance.current_central_meridian_deg,
-        "credge": provenance.credge,
-        "car_rot": provenance.car_rot,
-        "long0_deg": provenance.long0_deg,
-        "canonical_bunit": provenance.canonical_bunit,
-        "gauss_conversion_factor": provenance.gauss_conversion_factor,
-        "physical_quantity": provenance.physical_quantity,
-        "radial_assumption": provenance.radial_assumption,
-        "polar_fill_status": provenance.polar_fill_status,
-        "zero_point_status": provenance.zero_point_status,
-        "wcs": {
-            "row_order": provenance.wcs.row_order,
-            "left_edge_longitude_deg": provenance.wcs.left_edge_longitude_deg,
-            "transform_version": provenance.wcs.transform_version,
-        },
-        "flux": asdict(provenance.flux),
-        "normalized_content_sha256": provenance.normalized_content_sha256,
-        "quality_flags": list(provenance.quality_flags),
-    }
+    """Serialize the complete current snapshot provenance as JSON-safe data."""
+
+    def encoded_bytes(value: bytes) -> dict[str, Any]:
+        return {
+            "encoding": "base64",
+            "length": len(value),
+            "sha256": hashlib.sha256(value).hexdigest(),
+            "data": base64.b64encode(value).decode("ascii"),
+        }
+
+    payload = asdict(provenance)
+    payload["native_header_bytes"] = encoded_bytes(provenance.native_header_bytes)
+    payload["wcs"]["normalized_header_bytes"] = encoded_bytes(
+        provenance.wcs.normalized_header_bytes
+    )
+    return payload
 
 
 class PFSSCache:
@@ -1473,26 +1456,37 @@ class PFSSCache:
             cached = self._cache.get(key)
             if cached is not None:
                 self._cache.move_to_end(key)
-                return copy.deepcopy(cached)
-
-            state = self._inflight.get(key)
-            if state is None:
-                state = {
-                    "event": threading.Event(),
-                    "value": None,
-                    "error": None,
-                }
-                self._inflight[key] = state
-                is_leader = True
+                cache_hit = cached
             else:
+                cache_hit = None
+
+            if cache_hit is not None:
+                state = None
                 is_leader = False
+            else:
+                state = self._inflight.get(key)
+                if state is None:
+                    state = {
+                        "event": threading.Event(),
+                        "value": None,
+                        "error": None,
+                    }
+                    self._inflight[key] = state
+                    is_leader = True
+                else:
+                    is_leader = False
+
+        if cache_hit is not None:
+            return self._attach_snapshot_envelope(cache_hit, resolved, key)
 
         if not is_leader:
+            assert state is not None
             state["event"].wait()
             if state["error"] is not None:
                 raise state["error"]
-            return copy.deepcopy(state["value"])
+            return self._attach_snapshot_envelope(state["value"], resolved, key)
 
+        assert state is not None
         try:
             result = self._compute_solution(resolved, key)
             stored = copy.deepcopy(result)
@@ -1511,7 +1505,48 @@ class PFSSCache:
             state["value"] = stored
             self._inflight.pop(key, None)
             state["event"].set()
-        return copy.deepcopy(stored)
+        return self._attach_snapshot_envelope(stored, resolved, key)
+
+    @staticmethod
+    def _attach_snapshot_envelope(
+        numerical_result: dict[str, Any],
+        snapshot: _ResolvedMagnetogram,
+        key: PFSSSolutionKey,
+    ) -> dict[str, Any]:
+        """Attach current-caller identity and provenance outside the solution cache."""
+        result = copy.deepcopy(numerical_result)
+        config = key.config
+        if snapshot.source_kind == "observed":
+            fallback_reason = None
+            cr = snapshot.snapshot_id.current_carrington_rotation
+            map_left_edge_cr = snapshot.snapshot_id.car_rot
+            map_left_edge_longitude = snapshot.snapshot_id.long0_deg
+            if snapshot.provenance is None:
+                raise ValueError("observed snapshot provenance is required")
+            provenance_payload = _serialize_observed_provenance(snapshot.provenance)
+        else:
+            fallback_reason = "legacy_gong_grid_orientation_unvalidated"
+            cr = snapshot.snapshot_id.carrington_rotation
+            map_left_edge_cr = None
+            map_left_edge_longitude = None
+            provenance_payload = None
+        result.update({
+            "source": snapshot.source_kind,
+            "fallback_reason": fallback_reason,
+            "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
+            "snapshot_sha256": snapshot.snapshot_id.sha256,
+            "solution_id": key.sha256,
+            "solution_config": _serialize_solution_config(config),
+            "magnetogram_provenance": provenance_payload,
+            "grid_convention": snapshot.grid.convention,
+            "harmonic_convention": config.harmonic_convention_version,
+            "carrington_rotation": cr,
+            "map_left_edge_carrington_rotation": map_left_edge_cr,
+            "map_left_edge_longitude_deg": map_left_edge_longitude,
+            "source_surface_radii": config.source_surface_radii,
+            "lmax": config.lmax,
+        })
+        return result
 
     def _resolve_synthetic_snapshot(
         self, jd: float, activity: float
@@ -1615,6 +1650,7 @@ class PFSSCache:
         frozen_provenance = (
             provenance.provider == "NSO/GONG"
             and provenance.source_kind == "observed"
+            and provenance.product == gong.GONG_PRODUCT
             and provenance.product_token == gong.GONG_PRODUCT_TOKEN
             and provenance.time_scale_assumption == gong.GONG_TIME_ASSUMPTION
             and provenance.coverage_warning == gong.GONG_COVERAGE_WARNING
@@ -1628,6 +1664,79 @@ class PFSSCache:
         )
         if not frozen_provenance:
             raise ValueError("snapshot provider provenance is inconsistent")
+        try:
+            gong._validate_context(gong.GongParseContext(
+                request_jd_tdb=provenance.request_jd_tdb,
+                source_url=provenance.source_url,
+                filename=provenance.filename,
+                compressed_sha256=provenance.compressed_sha256,
+                retrieved_at_utc=provenance.retrieved_at_utc,
+                retrieval_timeout_s=provenance.retrieval_timeout_s,
+            ))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("snapshot acquisition provenance is inconsistent") from exc
+        parsed_url = urllib.parse.urlsplit(provenance.source_url)
+        archive_url = urllib.parse.urlsplit(gong.GONG_ARCHIVE_BASE_URL)
+        if (
+            parsed_url.scheme != "https"
+            or parsed_url.hostname != archive_url.hostname
+            or parsed_url.username is not None
+            or parsed_url.password is not None
+            or parsed_url.query
+            or parsed_url.fragment
+            or not parsed_url.path.startswith(archive_url.path)
+            or parsed_url.path.rsplit("/", 1)[-1] != provenance.filename
+        ):
+            raise ValueError("snapshot source URL and filename are inconsistent")
+        if (
+            not isinstance(provenance.native_header_bytes, bytes)
+            or hashlib.sha256(provenance.native_header_bytes).hexdigest()
+            != provenance.native_header_sha256
+            or not gong._HEX_SHA256_RE.fullmatch(provenance.expanded_fits_sha256)
+            or not gong._HEX_SHA256_RE.fullmatch(provenance.compressed_sha256)
+        ):
+            raise ValueError("snapshot artifact hashes are inconsistent")
+        try:
+            native_header = gong.fits.Header.fromstring(
+                provenance.native_header_bytes.decode("ascii"), sep=""
+            )
+            filename_metadata = gong._filename_metadata(provenance.filename)
+            header_metadata = gong._validate_header_metadata(
+                native_header, filename_metadata
+            )
+            native_bunit, gauss_factor = gong._validate_unit(native_header)
+            expected_wcs, header_grid = gong._validate_wcs(
+                native_header, header_metadata.long0_deg
+            )
+            expanded_hash = PFSSCache._reconstructed_expanded_fits_sha256(
+                native_header,
+                provenance.native_header_bytes,
+                field,
+                provenance.flux.removed_mean_g,
+                provenance.gauss_conversion_factor,
+            )
+        except (UnicodeDecodeError, TypeError, ValueError) as exc:
+            raise ValueError("snapshot native header provenance is inconsistent") from exc
+        if (
+            header_metadata.reference_native_ut != provenance.reference_native_ut
+            or header_metadata.reference_utc != provenance.reference_utc
+            or header_metadata.revision != provenance.product_revision
+            or header_metadata.car_rot != provenance.car_rot
+            or header_metadata.long0_deg != provenance.long0_deg
+            or header_metadata.credge != provenance.credge
+            or header_metadata.crnow != provenance.crnow
+            or native_bunit != provenance.native_bunit
+            or not math.isclose(
+                gauss_factor,
+                provenance.gauss_conversion_factor,
+                rel_tol=0.0,
+                abs_tol=1e-15,
+            )
+            or expected_wcs != provenance.wcs
+            or gong._grid_sha256(header_grid) != gong._grid_sha256(snapshot.grid)
+            or expanded_hash != provenance.expanded_fits_sha256
+        ):
+            raise ValueError("snapshot native header fields are inconsistent")
         expected_grid_hash = gong._grid_sha256(snapshot.grid)
         if (
             sid.grid_sha256 != expected_grid_hash
@@ -1730,6 +1839,56 @@ class PFSSCache:
         return field
 
     @staticmethod
+    def _reconstructed_expanded_fits_sha256(
+        header: Any,
+        native_header_bytes: bytes,
+        field: np.ndarray,
+        removed_mean_g: float,
+        gauss_conversion_factor: float,
+    ) -> str:
+        """Reconstruct the frozen single-HDU FITS artifact from parsed science."""
+        bitpix = int(header["BITPIX"])
+        dtype_by_bitpix = {
+            8: np.dtype(">u1"),
+            16: np.dtype(">i2"),
+            32: np.dtype(">i4"),
+            64: np.dtype(">i8"),
+            -32: np.dtype(">f4"),
+            -64: np.dtype(">f8"),
+        }
+        if bitpix not in dtype_by_bitpix:
+            raise ValueError("snapshot FITS BITPIX is unsupported")
+        bscale = float(header.get("BSCALE", 1.0))
+        bzero = float(header.get("BZERO", 0.0))
+        if (
+            not math.isfinite(bscale)
+            or bscale == 0.0
+            or not math.isfinite(bzero)
+            or not math.isfinite(gauss_conversion_factor)
+            or gauss_conversion_factor == 0.0
+        ):
+            raise ValueError("snapshot FITS scaling is invalid")
+        scaled = (np.asarray(field, dtype=np.float64) + removed_mean_g) / (
+            gauss_conversion_factor
+        )
+        raw = (scaled - bzero) / bscale
+        dtype = dtype_by_bitpix[bitpix]
+        if bitpix > 0:
+            rounded = np.rint(raw)
+            limits = np.iinfo(dtype)
+            if (
+                not np.all(np.isfinite(raw))
+                or np.any(rounded < limits.min)
+                or np.any(rounded > limits.max)
+                or not np.allclose(raw, rounded, rtol=0.0, atol=1e-9)
+            ):
+                raise ValueError("snapshot pixels disagree with integer FITS storage")
+            raw = rounded
+        data_bytes = np.asarray(raw, dtype=dtype, order="C").tobytes(order="C")
+        data_bytes += b"\0" * ((-len(data_bytes)) % 2880)
+        return hashlib.sha256(native_header_bytes + data_bytes).hexdigest()
+
+    @staticmethod
     def _validate_observed_flux(
         field: np.ndarray, flux: gong.FluxBalanceMetrics
     ) -> None:
@@ -1794,34 +1953,7 @@ class PFSSCache:
         closed_count = sum(1 for line in lines if line["state"] == "closed")
         indeterminate_count = sum(1 for line in lines if line["state"] == "indeterminate")
 
-        if snapshot.source_kind == "observed":
-            fallback_reason = None
-            cr = snapshot.snapshot_id.current_carrington_rotation
-            map_left_edge_cr = snapshot.snapshot_id.car_rot
-            map_left_edge_longitude = snapshot.snapshot_id.long0_deg
-            provenance_payload = _serialize_observed_provenance(snapshot.provenance)
-        else:
-            fallback_reason = "legacy_gong_grid_orientation_unvalidated"
-            cr = snapshot.snapshot_id.carrington_rotation
-            map_left_edge_cr = None
-            map_left_edge_longitude = None
-            provenance_payload = None
-
         return {
-            "source": snapshot.source_kind,
-            "fallback_reason": fallback_reason,
-            "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
-            "snapshot_sha256": snapshot.snapshot_id.sha256,
-            "solution_id": key.sha256,
-            "solution_config": _serialize_solution_config(config),
-            "magnetogram_provenance": provenance_payload,
-            "grid_convention": grid.convention,
-            "harmonic_convention": config.harmonic_convention_version,
-            "carrington_rotation": cr,
-            "map_left_edge_carrington_rotation": map_left_edge_cr,
-            "map_left_edge_longitude_deg": map_left_edge_longitude,
-            "source_surface_radii": config.source_surface_radii,
-            "lmax": config.lmax,
             "line_count": len(lines),
             "open_line_count": open_count,
             "closed_line_count": closed_count,

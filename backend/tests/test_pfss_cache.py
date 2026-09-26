@@ -10,8 +10,7 @@ import pytest
 
 import sim.gong_magnetogram as gong
 import sim.pfss_magnetogram as pfss
-from gong_fixture_helpers import EXPANDED, context
-from sim.magnetogram_grid import MagnetogramGrid
+from gong_fixture_helpers import EXPANDED, context, rewrite_fits
 
 
 BASE_REQUEST = {
@@ -51,98 +50,76 @@ def _recording_cache(
 def _observed_variant(
     snapshot: gong.MagnetogramSnapshot,
     *,
-    field: np.ndarray | None = None,
-    grid: MagnetogramGrid | None = None,
-    product: str | None = None,
-    product_revision: str | None = None,
-    transform_version: str | None = None,
-    reference_offset_days: float = 0.0,
-    crnow_offset: float = 0.0,
+    transform_version: str,
 ) -> gong.MagnetogramSnapshot:
-    values = snapshot.field_gauss if field is None else np.asarray(field, dtype=float)
-    actual_grid = snapshot.grid if grid is None else grid
-    actual_product = snapshot.snapshot_id.product if product is None else product
-    actual_revision = (
-        snapshot.snapshot_id.product_revision if product_revision is None else product_revision
-    )
-    actual_transform = (
-        snapshot.snapshot_id.transform_version if transform_version is None else transform_version
-    )
-    left_edge = (
-        np.degrees(float(actual_grid.phi_rad[0])) - 180.0 / actual_grid.phi_rad.size
-    ) % 360.0
-    reference = gong.Time(
-        snapshot.snapshot_id.reference_utc.removesuffix("Z"), format="isot", scale="utc"
-    ) + gong.TimeDelta(reference_offset_days, format="jd")
-    reference_utc = reference.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-    reference_jd_tdb = float(reference.tdb.jd)
-    coverage_start_jd_tdb = float(
-        (
-            reference.tt
-            - gong.TimeDelta(
-                gong.CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS, format="jd", scale="tt"
-            )
-        ).tdb.jd
-    )
-    crnow = snapshot.snapshot_id.crnow + crnow_offset
-    carrington = gong.provider_carrington_state_from_crnow(crnow)
-    credge = snapshot.snapshot_id.car_rot + ((360.0 - left_edge) % 360.0) / 360.0
-    if field is None:
-        flux = snapshot.provenance.flux
-    else:
-        values, flux = gong._balance_flux(values)
     content_hash = gong.normalized_content_sha256(
-        values,
-        actual_grid,
-        product=actual_product,
-        product_revision=actual_revision,
-        transform_version=actual_transform,
+        snapshot.field_gauss,
+        snapshot.grid,
+        product=snapshot.snapshot_id.product,
+        product_revision=snapshot.snapshot_id.product_revision,
+        transform_version=transform_version,
         gauss_conversion_factor=snapshot.provenance.gauss_conversion_factor,
-        flux=flux,
+        flux=snapshot.provenance.flux,
     )
     sid = replace(
         snapshot.snapshot_id,
-        product=actual_product,
-        product_revision=actual_revision,
         normalized_content_sha256=content_hash,
-        reference_utc=reference_utc,
-        reference_jd_tdb=reference_jd_tdb,
-        coverage_start_jd_tdb=coverage_start_jd_tdb,
-        coverage_end_jd_tdb=reference_jd_tdb,
-        crnow=crnow,
-        current_carrington_rotation=carrington.rotation_number,
-        current_central_meridian_deg=carrington.current_longitude_deg,
-        credge=credge,
-        grid_sha256=gong._grid_sha256(actual_grid),
-        grid_convention=actual_grid.convention,
-        grid_shape=(actual_grid.mu.size, actual_grid.phi_rad.size),
-        row_order=actual_grid.row_order,
-        long0_deg=left_edge,
-        transform_version=actual_transform,
-        flux_balance_policy_version=flux.policy_version,
+        transform_version=transform_version,
     )
     provenance = replace(
         snapshot.provenance,
-        product=actual_product,
-        product_revision=actual_revision,
-        reference_utc=reference_utc,
-        reference_jd_tdb=sid.reference_jd_tdb,
-        coverage_start_jd_tdb=sid.coverage_start_jd_tdb,
-        coverage_end_jd_tdb=sid.coverage_end_jd_tdb,
-        crnow=crnow,
-        current_carrington_rotation=carrington.rotation_number,
-        current_central_meridian_deg=carrington.current_longitude_deg,
-        credge=credge,
-        long0_deg=left_edge,
         wcs=replace(
             snapshot.provenance.wcs,
-            transform_version=actual_transform,
-            left_edge_longitude_deg=left_edge,
+            transform_version=transform_version,
         ),
-        flux=flux,
         normalized_content_sha256=content_hash,
     )
-    return gong.MagnetogramSnapshot(sid, values, actual_grid, provenance)
+    return gong.MagnetogramSnapshot(
+        sid, snapshot.field_gauss, snapshot.grid, provenance
+    )
+
+
+def _parsed_observed_variant(
+    *,
+    minute: str = "2304",
+    car_rot: int = 2316,
+    long0_deg: int = 301,
+    product_revision: str = "v3.3",
+) -> gong.MagnetogramSnapshot:
+    credge = car_rot + ((360.0 - long0_deg) % 360.0) / 360.0
+    mapl0 = (long0_deg + 60.0) % 360.0
+    cr60 = credge - 60.0 / 360.0
+    longadj = -0.3788347
+    crnow = cr60 - longadj / 360.0
+    filename = f"mrzqs260925t{minute}c{car_rot:04d}_{long0_deg:03d}.fits.gz"
+    expanded = rewrite_fits(header_updates={
+        "DATE": f"2026-09-25T{minute[:2]}:{minute[2:]}:00",
+        "DATE-OBS": "2026-09-25",
+        "TIME-OBS": f"{minute[:2]}:{minute[2:]}",
+        "MAPDATE": "2026-09-25",
+        "MAPTIME": f"{minute[:2]}:{minute[2:]}",
+        "MMREL": product_revision,
+        "CAR_ROT": car_rot,
+        "CARROT": car_rot,
+        "LONG0": float(long0_deg),
+        "MAPEDGE": float(long0_deg),
+        "MAPNAME": f"{car_rot:04d}_{long0_deg:03d}",
+        "CREDGE": credge,
+        "MAPL0": mapl0,
+        "CR60": cr60,
+        "CRNOW": crnow,
+        "CRVAL1": (long0_deg + 180.0) % 360.0,
+        "CRCENTER": credge - 0.5,
+        "CRVAL1A": credge - 0.5,
+    })
+    source_url = (
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/"
+        f"mrzqs260925/{filename}"
+    )
+    return gong.parse_gong_fits(
+        expanded,
+        context=context(filename=filename, source_url=source_url),
+    )
 
 
 @pytest.mark.parametrize(
@@ -249,7 +226,7 @@ def test_provider_time_is_part_of_observed_identity(
     cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
     cache.get_or_compute(
         **BASE_REQUEST,
-        snapshot=_observed_variant(observed_snapshot, reference_offset_days=1 / 1440),
+        snapshot=_parsed_observed_variant(minute="2305"),
     )
     assert len(calls) == 2
 
@@ -261,9 +238,9 @@ def test_provider_coverage_and_rotation_are_part_of_observed_identity(
     metadata: str,
 ) -> None:
     if metadata == "time_and_coverage":
-        variant = _observed_variant(observed_snapshot, reference_offset_days=1 / 1440)
+        variant = _parsed_observed_variant(minute="2305")
     else:
-        variant = _observed_variant(observed_snapshot, crnow_offset=1.0)
+        variant = _parsed_observed_variant(car_rot=2317)
     cache, calls = _recording_cache(monkeypatch)
     cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
     cache.get_or_compute(**BASE_REQUEST, snapshot=variant)
@@ -291,32 +268,203 @@ def test_observed_identity_excludes_retrieval_metadata(
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize("change", ["content", "product", "revision", "grid"])
+def test_each_cache_hit_attaches_current_attempt_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+) -> None:
+    cache, calls = _recording_cache(monkeypatch)
+    first = cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
+    second_snapshot = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(
+            observed_snapshot.provenance,
+            request_jd_tdb=observed_snapshot.provenance.request_jd_tdb + 10,
+            retrieved_at_utc="2030-01-01T00:00:00Z",
+            retrieval_timeout_s=99.0,
+        ),
+    )
+    second = cache.get_or_compute(**BASE_REQUEST, snapshot=second_snapshot)
+
+    assert len(calls) == 1
+    assert first["solution_id"] == second["solution_id"]
+    assert first["magnetogram_provenance"]["request_jd_tdb"] != (
+        second["magnetogram_provenance"]["request_jd_tdb"]
+    )
+    assert second["magnetogram_provenance"]["retrieved_at_utc"] == "2030-01-01T00:00:00Z"
+    assert second["magnetogram_provenance"]["retrieval_timeout_s"] == 99.0
+    stored = next(iter(cache._cache.values()))
+    assert "magnetogram_provenance" not in stored
+    assert "snapshot_id" not in stored
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("provider", "fake"),
+        ("source_kind", "synthetic"),
+        ("product", "fake"),
+        ("product_revision", "fake"),
+        ("product_token", "fake"),
+        ("source_url", "https://example.invalid/fake.fits.gz"),
+        ("filename", "fake.fits.gz"),
+        ("request_jd_tdb", float("nan")),
+        ("reference_native_ut", "not-native-time"),
+        ("time_scale_assumption", "fake"),
+        ("coverage_warning", "fake"),
+        ("native_bunit", "m"),
+        ("canonical_bunit", "T"),
+        ("gauss_conversion_factor", 2.0),
+        ("physical_quantity", "fake"),
+        ("radial_assumption", "fake"),
+        ("polar_fill_status", "fake"),
+        ("zero_point_status", "fake"),
+        ("native_header_bytes", b"fake-header"),
+        ("native_header_sha256", "0" * 64),
+        ("expanded_fits_sha256", "0" * 64),
+        ("compressed_sha256", "not-a-sha256"),
+        ("retrieved_at_utc", "not-a-time"),
+        ("retrieval_timeout_s", -1.0),
+        ("quality_flags", ("fake",)),
+    ],
+)
+def test_every_published_provider_field_is_validated_before_caching(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    field: str,
+    value: Any,
+) -> None:
+    cache, calls = _recording_cache(monkeypatch)
+    invalid = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(observed_snapshot.provenance, **{field: value}),
+    )
+    with pytest.raises(ValueError):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "native_ctype",
+        "native_cunit",
+        "native_crpix",
+        "native_crval",
+        "native_cdelt",
+        "native_pv2_1",
+        "native_lonpole_deg",
+        "normalized_cunit",
+        "normalized_cdelt",
+        "normalized_lonpole_deg",
+        "row_order",
+        "left_edge_longitude_deg",
+        "transform_version",
+        "normalized_header_bytes",
+        "coordinate_sentinels",
+        "edge_sentinels",
+    ],
+)
+def test_every_published_wcs_field_is_validated_before_caching(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    field: str,
+) -> None:
+    wcs = observed_snapshot.provenance.wcs
+    if field == "native_ctype":
+        value: Any = ("FAKE", wcs.native_ctype[1])
+    elif field == "native_cunit":
+        value = ("rad", wcs.native_cunit[1])
+    elif field in {"native_crpix", "native_crval", "native_cdelt", "normalized_cdelt"}:
+        original = getattr(wcs, field)
+        value = (original[0] + 1.0, original[1])
+    elif field in {"native_pv2_1", "normalized_lonpole_deg", "left_edge_longitude_deg"}:
+        value = float(getattr(wcs, field)) + 1.0
+    elif field == "native_lonpole_deg":
+        value = 1.0 if wcs.native_lonpole_deg is None else wcs.native_lonpole_deg + 1.0
+    elif field == "normalized_cunit":
+        value = ("rad", "deg")
+    elif field == "row_order":
+        value = "north_to_south"
+    elif field == "transform_version":
+        value = "fake-transform"
+    elif field == "normalized_header_bytes":
+        value = wcs.normalized_header_bytes + b" "
+    else:
+        sentinels = list(getattr(wcs, field))
+        sentinels[0] = replace(sentinels[0], longitude_deg=sentinels[0].longitude_deg + 1)
+        value = tuple(sentinels)
+    invalid_wcs = replace(wcs, **{field: value})
+    invalid = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(observed_snapshot.provenance, wcs=invalid_wcs),
+    )
+    cache, calls = _recording_cache(monkeypatch)
+    with pytest.raises(ValueError):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "pre_signed_flux_g_sr",
+        "pre_unsigned_flux_g_sr",
+        "acceptance_limit_g_sr",
+        "removed_mean_g",
+        "removed_g00_g",
+        "post_signed_flux_g_sr",
+        "post_unsigned_flux_g_sr",
+        "policy_version",
+    ],
+)
+def test_every_published_flux_field_is_validated_before_caching(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    field: str,
+) -> None:
+    flux = observed_snapshot.provenance.flux
+    value: Any = "fake-policy" if field == "policy_version" else getattr(flux, field) + 1.0
+    invalid = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(observed_snapshot.provenance, flux=replace(flux, **{field: value})),
+    )
+    cache, calls = _recording_cache(monkeypatch)
+    with pytest.raises(ValueError):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize("change", ["content", "revision", "grid"])
 def test_changed_observed_contract_recomputes(
     monkeypatch: pytest.MonkeyPatch,
     observed_snapshot: gong.MagnetogramSnapshot,
     change: str,
 ) -> None:
-    kwargs: dict[str, Any] = {}
     if change == "content":
-        field = np.array(observed_snapshot.field_gauss, copy=True)
-        field[0, 0] += 1.0
-        field -= np.mean(field)
-        kwargs["field"] = field
-    elif change == "product":
-        kwargs["product"] = observed_snapshot.snapshot_id.product + " revised"
+        def mutate_raw(values: np.ndarray) -> None:
+            values.flat[0] += 4
+            values.flat[1] -= 4
+
+        expanded = rewrite_fits(mutate_raw=mutate_raw)
+        variant = gong.parse_gong_fits(expanded, context=context())
     elif change == "revision":
-        kwargs["product_revision"] = "revision-2"
+        variant = _parsed_observed_variant(product_revision="revision-2")
     else:
-        kwargs["grid"] = MagnetogramGrid(
-            mu=observed_snapshot.grid.mu,
-            phi_rad=observed_snapshot.grid.phi_rad + 0.01,
-            row_order=observed_snapshot.grid.row_order,
-            convention=observed_snapshot.grid.convention,
-        )
+        variant = _parsed_observed_variant(long0_deg=302)
     cache, calls = _recording_cache(monkeypatch)
     cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
-    cache.get_or_compute(**BASE_REQUEST, snapshot=_observed_variant(observed_snapshot, **kwargs))
+    cache.get_or_compute(**BASE_REQUEST, snapshot=variant)
     assert len(calls) == 2
 
 
@@ -544,6 +692,13 @@ def test_solution_flight_propagates_leader_error_cleans_up_and_retries(
     started = threading.Event()
     release = threading.Event()
     attempts = 0
+    resolution_barrier = threading.Barrier(16)
+    original_resolve = cache._resolve_observed_snapshot
+
+    def resolve(snapshot: gong.MagnetogramSnapshot) -> Any:
+        resolved = original_resolve(snapshot)
+        resolution_barrier.wait(timeout=3)
+        return resolved
 
     def compute(*_args: Any) -> dict[str, Any]:
         nonlocal attempts
@@ -554,6 +709,7 @@ def test_solution_flight_propagates_leader_error_cleans_up_and_retries(
             raise RuntimeError("solver failed")
         return {"ok": True}
 
+    monkeypatch.setattr(cache, "_resolve_observed_snapshot", resolve)
     monkeypatch.setattr(cache, "_compute_solution", compute)
     with ThreadPoolExecutor(max_workers=16) as pool:
         futures = [
@@ -569,7 +725,8 @@ def test_solution_flight_propagates_leader_error_cleans_up_and_retries(
     assert attempts == 1
     assert cache._cache == {}
     assert cache._inflight == {}
-    assert cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot) == {"ok": True}
+    monkeypatch.setattr(cache, "_resolve_observed_snapshot", original_resolve)
+    assert cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)["ok"] is True
     assert attempts == 2
 
 
@@ -604,7 +761,7 @@ def test_snapshot_flight_propagates_leader_error_cleans_up_and_retries(
     assert attempts == 1
     assert cache._snapshot_cache == {}
     assert cache._snapshot_inflight == {}
-    assert cache.get_or_compute(**BASE_REQUEST) == {"ok": True}
+    assert cache.get_or_compute(**BASE_REQUEST)["ok"] is True
     assert attempts == 2
 
 
@@ -637,6 +794,56 @@ def test_solution_singleflights_32_identical_observed_misses(
         results = [future.result(3) for future in futures]
     assert count == 1
     assert all(result == results[0] and result is not results[0] for result in results[1:])
+
+
+def test_solution_waiters_receive_their_own_attempt_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+) -> None:
+    cache = pfss.PFSSCache()
+    started = threading.Event()
+    release = threading.Event()
+    attempts = 0
+    second_snapshot = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(
+            observed_snapshot.provenance,
+            request_jd_tdb=observed_snapshot.provenance.request_jd_tdb + 1,
+            retrieved_at_utc="2031-01-01T00:00:00Z",
+            retrieval_timeout_s=12.0,
+        ),
+    )
+
+    def compute(*_args: Any) -> dict[str, Any]:
+        nonlocal attempts
+        attempts += 1
+        started.set()
+        assert release.wait(3)
+        return {"ok": True}
+
+    monkeypatch.setattr(cache, "_compute_solution", compute)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        leader = pool.submit(
+            cache.get_or_compute, **BASE_REQUEST, snapshot=observed_snapshot
+        )
+        assert started.wait(2)
+        waiter = pool.submit(
+            cache.get_or_compute, **BASE_REQUEST, snapshot=second_snapshot
+        )
+        threading.Event().wait(0.05)
+        release.set()
+        first_result = leader.result(3)
+        second_result = waiter.result(3)
+    assert attempts == 1
+    assert first_result["solution_id"] == second_result["solution_id"]
+    assert first_result["magnetogram_provenance"]["request_jd_tdb"] != (
+        second_result["magnetogram_provenance"]["request_jd_tdb"]
+    )
+    assert second_result["magnetogram_provenance"]["retrieved_at_utc"] == (
+        "2031-01-01T00:00:00Z"
+    )
 
 
 def test_synthetic_snapshot_resolution_singleflights(
