@@ -230,7 +230,7 @@ def test_pfss_open_lines_reach_source_surface() -> None:
 
 
 def test_wsa_velocity_bounds() -> None:
-    """WSA formula must produce physically plausible velocities."""
+    """The versioned WSA-inspired relation stays within its declared bounds."""
     from sim.pfss_magnetogram import _wsa_velocity
 
     # Deep coronal hole: low expansion, far from boundary → fast wind
@@ -247,7 +247,7 @@ def test_wsa_velocity_bounds() -> None:
 
 
 def test_wsa_velocity_map_produces_speeds() -> None:
-    """WSA velocity map must produce valid speeds for open flux regions."""
+    """Valid WSA-inspired samples stay within the declared speed bounds."""
     from sim.pfss_magnetogram import (
         synthetic_magnetogram, decompose_spherical_harmonics,
         pfss_solve, compute_wsa_velocity_map,
@@ -283,16 +283,22 @@ def test_wsa_velocity_map_produces_speeds() -> None:
 
 
 def test_parker_spiral_uses_wsa_model() -> None:
-    """Parker spiral lines should report WSA as wind speed source when available."""
+    """Parker lines disclose WSA-inspired use only where a sample is available."""
     model = SolarCoronaPhysicsModel(seed=42, base_tube_count=100)
     state = model.sample_state(jd=2460000.5, fidelity="preview", max_features=8)
 
     spiral = state.get("heliosphere", {}).get("parker_spiral", {})
     assert "wind_speed_model" in spiral
-    assert spiral["wind_speed_model"] in ("wsa_arge_2003", "empirical_ch_bimodal")
+    assert spiral["wind_speed_model"] in (
+        "wsa_inspired_v1", "empirical_ch_bimodal",
+        "mixed_wsa_inspired_v1_empirical_ch_bimodal",
+    )
 
     # All lines should have wind_speed_source
     for line in spiral.get("lines", []):
         assert "wind_speed_source" in line
+        assert line["wind_speed_source"] == (
+            "wsa_inspired_v1" if line["wsa_available"] else "empirical_ch_bimodal"
+        )
         v = line["wind_speed_kms"]
         assert 265.0 <= v <= 860.0, f"Spiral wind speed {v} out of range"

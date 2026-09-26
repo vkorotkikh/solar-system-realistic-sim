@@ -252,7 +252,10 @@ def test_wsa_masks_exclude_unknown_from_closed_and_match_scalar():
         assert np.all(result['open_mask'].astype(int) + result['closed_mask'] + result['indeterminate_mask'] == 1)
         for i, theta in enumerate(result['grid_theta']):
             for j, phi in enumerate(result['grid_phi']):
-                start = 1.005 * np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
+                # The WSA mapper now traces and evaluates expansion from the
+                # exact photospheric boundary; scalar parity must use the same
+                # physical start rather than the retired 1.005 R_sun offset.
+                start = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
                 scalar = trace_field(RadialField(), start, max_steps=budget)
                 assert result['trace_states'][i, j] == scalar.termination.state
                 np.testing.assert_allclose(result['trace_endpoints'][i, j], scalar.endpoint, atol=1e-14)

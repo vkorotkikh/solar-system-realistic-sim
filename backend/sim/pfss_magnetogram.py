@@ -40,6 +40,11 @@ CARRINGTON_EPOCH_JD = 2398167.4   # JD of Carrington rotation 1 start (1853-11-0
 CARRINGTON_PERIOD_DAYS = 27.2753  # Sidereal Carrington rotation period
 GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))  # For Fibonacci spiral seeding
 
+WSA_MODEL_VERSION = "wsa_inspired_v1"
+WSA_CALIBRATION_STATUS = "unvalidated"
+WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
+WSA_RADIAL_FIELD_FLOOR = 1e-15
+
 # GONG synoptic magnetogram archive URL pattern
 # bqs = "quick synoptic" maps (updated daily, sine-latitude grid)
 GONG_SYNOPTIC_BASE = "https://gong.nso.edu/data/magmap/QR/bqs/"
@@ -659,33 +664,176 @@ def _importance_sample_footpoints(
     return seeds
 
 
-# ─── Wang-Sheeley-Arge (WSA) Solar Wind Speed Model ───────────────────────────
+# ─── Versioned WSA-inspired solar-wind mapping ────────────────────────────────
 
 def _wsa_velocity(fs: float, theta_b: float) -> float:
-    """Arge et al. (2000, 2003) empirical solar wind speed formula.
+    """Evaluate the repository's unvalidated ``wsa_inspired_v1`` relation.
 
-    Parameters
-    ----------
-    fs : float
-        Flux tube expansion factor (dimensionless, ≥ 1).
-    theta_b : float
-        Angular distance (radians) from the open footpoint to the nearest
-        coronal hole boundary (closed-field region).
-
-    Returns
-    -------
-    float
-        Predicted solar wind speed in km/s, clamped to [265, 850].
+    This is deliberately not labelled as the operational WSA model.  It is a
+    bounded visualization relation using an expansion factor and a coronal-hole
+    boundary distance.  The exact constants and limitations are recorded in
+    ``docs/adr/0004-wsa-inspired-semantics.md``.
     """
-    fs_safe = max(1.0, float(fs))
-    tb_safe = max(0.0, float(theta_b))
+    try:
+        fs_value = float(fs)
+        theta_value = float(theta_b)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("WSA-inspired inputs must be numeric") from exc
+    if not math.isfinite(fs_value) or fs_value <= 0:
+        raise ValueError("expansion factor must be finite and positive")
+    if not math.isfinite(theta_value) or not 0 <= theta_value <= math.pi:
+        raise ValueError("boundary distance must be finite and in [0, pi]")
 
-    # Arge+ (2003) refined calibration:
-    #   V = 267.5 + 410 / fs^(2/5) * [1 - 0.8 * exp(-(θ_b / 0.045)^3)]
-    boundary_term = 1.0 - 0.8 * math.exp(-(tb_safe / 0.045) ** 3)
-    v_sw = 267.5 + 410.0 / (fs_safe ** 0.4) * boundary_term
-
+    # Versioned repository relation (angles in radians, output in km/s):
+    #   V = 267.5 + 410 / max(1, fs)^0.4
+    #                  * [1 - 0.8 exp(-(theta_b / 0.045)^3)]
+    fs_for_relation = max(1.0, fs_value)
+    boundary_term = 1.0 - 0.8 * math.exp(-(theta_value / 0.045) ** 3)
+    v_sw = 267.5 + 410.0 / (fs_for_relation ** 0.4) * boundary_term
     return _clamp(v_sw, 265.0, 850.0)
+
+
+def _unit_vectors(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    sin_theta = np.sin(theta)
+    return np.column_stack((
+        sin_theta * np.cos(phi),
+        sin_theta * np.sin(phi),
+        np.cos(theta),
+    ))
+
+
+def _great_circle_distances(target: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """Stable angular distances from one unit vector to many unit vectors."""
+    dots = np.clip(candidates @ target, -1.0, 1.0)
+    cross_norms = safe_norm(np.cross(candidates, target))
+    return np.arctan2(cross_norms, dots)
+
+
+def _open_closed_boundary_midpoints(
+    states: np.ndarray,
+    theta_arr: np.ndarray,
+    phi_arr: np.ndarray,
+) -> np.ndarray:
+    """Return edge midpoints that separate confirmed open and closed cells."""
+    n_lat, n_lon = states.shape
+    points: list[tuple[float, float]] = []
+
+    def is_boundary(left: object, right: object) -> bool:
+        return {str(left), str(right)} == {"open", "closed"}
+
+    # Latitude edges lie at the exact equal-area mu boundaries.
+    for i_lat in range(n_lat - 1):
+        theta_edge = math.acos(_clamp(1.0 - 2.0 * (i_lat + 1) / n_lat, -1.0, 1.0))
+        for i_lon in range(n_lon):
+            if is_boundary(states[i_lat, i_lon], states[i_lat + 1, i_lon]):
+                points.append((theta_edge, float(phi_arr[i_lon])))
+
+    # Longitude is periodic.  The midpoint after the final cell wraps to zero.
+    delta_phi = 2.0 * math.pi / n_lon
+    for i_lat in range(n_lat):
+        for i_lon in range(n_lon):
+            next_lon = (i_lon + 1) % n_lon
+            if is_boundary(states[i_lat, i_lon], states[i_lat, next_lon]):
+                points.append((float(theta_arr[i_lat]), (float(phi_arr[i_lon]) + 0.5 * delta_phi) % (2.0 * math.pi)))
+
+    if not points:
+        return np.empty((0, 3), dtype=float)
+    coordinates = np.asarray(points, dtype=float)
+    return _unit_vectors(coordinates[:, 0], coordinates[:, 1])
+
+
+def _local_equal_area_cell_diagonal(theta: float, n_lat: int, n_lon: int) -> float:
+    """Great-circle diagonal of the equal-area row containing ``theta``."""
+    mu = math.cos(theta)
+    row = min(n_lat - 1, max(0, int(math.floor((1.0 - mu) * n_lat / 2.0))))
+    theta_north = math.acos(_clamp(1.0 - 2.0 * row / n_lat, -1.0, 1.0))
+    theta_south = math.acos(_clamp(1.0 - 2.0 * (row + 1) / n_lat, -1.0, 1.0))
+    delta_phi = 2.0 * math.pi / n_lon
+    cosine = (
+        math.cos(theta_north) * math.cos(theta_south)
+        + math.sin(theta_north) * math.sin(theta_south) * math.cos(delta_phi)
+    )
+    return math.acos(_clamp(cosine, -1.0, 1.0))
+
+
+def _validated_wsa_samples(
+    wsa_result: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, int, int] | None:
+    """Extract finite, shape-consistent source-surface samples and grid size."""
+    try:
+        ss_theta = np.asarray(wsa_result.get("ss_theta"), dtype=float)
+        ss_phi = np.asarray(wsa_result.get("ss_phi"), dtype=float)
+        velocity = np.asarray(wsa_result.get("velocity_map"), dtype=float)
+        open_mask = np.asarray(wsa_result.get("open_mask"), dtype=bool)
+        grid_theta = np.asarray(wsa_result.get("grid_theta"), dtype=float)
+        grid_phi = np.asarray(wsa_result.get("grid_phi"), dtype=float)
+    except (TypeError, ValueError):
+        return None
+    if (
+        ss_theta.ndim != 2
+        or not ss_theta.size
+        or ss_phi.shape != ss_theta.shape
+        or velocity.shape != ss_theta.shape
+        or open_mask.shape != ss_theta.shape
+        or grid_theta.ndim != 1
+        or grid_phi.ndim != 1
+        or not grid_theta.size
+        or not grid_phi.size
+        or not np.isfinite(grid_theta).all()
+        or not np.isfinite(grid_phi).all()
+    ):
+        return None
+    valid = (
+        open_mask
+        & np.isfinite(ss_theta)
+        & np.isfinite(ss_phi)
+        & np.isfinite(velocity)
+        & (ss_theta >= 0)
+        & (ss_theta <= math.pi)
+    )
+    if not valid.any():
+        return None
+    vectors = _unit_vectors(ss_theta[valid], np.mod(ss_phi[valid], 2.0 * math.pi))
+    return vectors, velocity[valid], int(grid_theta.size), int(grid_phi.size)
+
+
+def _source_surface_coverage_fraction(
+    ss_theta: np.ndarray,
+    ss_phi: np.ndarray,
+    velocity_map: np.ndarray,
+    open_mask: np.ndarray,
+    theta_arr: np.ndarray,
+    phi_arr: np.ndarray,
+) -> float:
+    sample_result = {
+        "ss_theta": ss_theta,
+        "ss_phi": ss_phi,
+        "velocity_map": velocity_map,
+        "open_mask": open_mask,
+        "grid_theta": theta_arr,
+        "grid_phi": phi_arr,
+    }
+    prepared = _validated_wsa_samples(sample_result)
+    if prepared is None:
+        return 0.0
+    candidates, _, n_lat, n_lon = prepared
+    target_theta, target_phi = np.meshgrid(theta_arr, phi_arr, indexing="ij")
+    flat_theta = target_theta.ravel()
+    targets = _unit_vectors(flat_theta, target_phi.ravel())
+    caps = np.asarray([
+        WSA_LOOKUP_MAX_CELL_DIAGONALS * _local_equal_area_cell_diagonal(float(theta), n_lat, n_lon)
+        for theta in flat_theta
+    ])
+    covered = np.zeros(len(targets), dtype=bool)
+    # Bound peak temporary memory while retaining stable atan2 distances.
+    for start in range(0, len(targets), 128):
+        stop = min(start + 128, len(targets))
+        batch = targets[start:stop]
+        dots = np.clip(batch @ candidates.T, -1.0, 1.0)
+        cross_norms = safe_norm(np.cross(batch[:, None, :], candidates[None, :, :]))
+        distances = np.arctan2(cross_norms, dots)
+        covered[start:stop] = np.min(distances, axis=1) <= caps[start:stop] + 1e-14
+    return float(np.count_nonzero(covered) / covered.size)
 
 
 def compute_wsa_velocity_map(
@@ -696,11 +844,12 @@ def compute_wsa_velocity_map(
     max_steps: int = 300,
     step_size: float = 0.02,
 ) -> dict[str, Any]:
-    """Compute a 2D WSA solar wind velocity map at the source surface.
+    """Compute a versioned WSA-inspired velocity map at the source surface.
 
     Traces a global grid of field lines from the photosphere, classifies them
-    as open or closed, computes the flux tube expansion factor and coronal
-    hole boundary distance, then applies the Arge (2003) velocity formula.
+    as open, closed, or indeterminate; evaluates radial expansion at exact
+    shell boundaries; and applies ``wsa_inspired_v1`` only where all required
+    quantities are available.
 
     Returns
     -------
@@ -710,7 +859,7 @@ def compute_wsa_velocity_map(
         - 'open_mask': boolean 2D array, True for open flux footpoints.
         - 'closed_mask', 'indeterminate_mask': independently classified masks.
         - 'trace_states', 'trace_endpoints': topology and full-precision endpoints.
-        - 'mean_velocity_kms': mean open-flux velocity.
+        - 'mean_velocity_kms': nullable mean of valid mapped velocities.
         - 'fs_map': expansion factor map.
         - 'theta_b_map': boundary distance map (radians).
     """
@@ -727,32 +876,51 @@ def compute_wsa_velocity_map(
     theta_flat = theta_grid.ravel()
     phi_flat = phi_grid.ravel()
 
-    # Initial footpoints at r=1.005
-    r_foot = 1.005
-    x0 = r_foot * np.sin(theta_flat) * np.cos(phi_flat)
-    y0 = r_foot * np.sin(theta_flat) * np.sin(phi_flat)
-    z0 = r_foot * np.cos(theta_flat)
+    # Trace from the exact photospheric boundary.  The tracing engine rejects
+    # the inward r=1 self-hit and records only physical shell crossings.
+    photosphere_vectors = _unit_vectors(theta_flat, phi_flat)
 
     traces = trace_field_batch(
-        field, np.column_stack((x0, y0, z0)),
+        field, photosphere_vectors,
         max_steps=max_steps, step_size=step_size,
     )
-    b_foot = safe_norm(traces.initial_fields)
     px, py, pz = traces.endpoints.T
     trace_states = traces.states.reshape(n_lat, n_lon)
     open_mask_flat = traces.states == "open"
     open_mask = open_mask_flat.reshape(n_lat, n_lon)
     closed_mask = trace_states == "closed"
     indeterminate_mask = trace_states == "indeterminate"
-    b_ss = safe_norm(traces.endpoint_fields)
-
-    # Expansion factor
-    fs_val = np.full(n_points, 100.0)
-    valid_b = b_ss > 1e-15
-    fs_val[valid_b] = ((1.0 / r_ss) ** 2) * (b_foot[valid_b] / b_ss[valid_b])
-    
-    # Only confirmed open flux supplies expansion factors.
-    fs_val[~open_mask_flat] = np.nan
+    # Expansion uses signed radial components at exact boundaries.  Tangential
+    # magnitude is intentionally irrelevant; absolute values enter only in the
+    # positive ratio after finite/nonzero validation.
+    fs_val = np.full(n_points, np.nan)
+    photosphere_fields = np.asarray(
+        field.evaluate_cartesian_batch(*photosphere_vectors.T), dtype=float,
+    ).T
+    br_photosphere = np.sum(photosphere_fields * photosphere_vectors, axis=1)
+    br_source_surface = np.full(n_points, np.nan)
+    if open_mask_flat.any():
+        open_endpoints = traces.endpoints[open_mask_flat]
+        open_radii = safe_norm(open_endpoints)
+        open_unit = np.full_like(open_endpoints, np.nan)
+        np.divide(open_endpoints, open_radii[:, None], out=open_unit, where=(open_radii > 0)[:, None])
+        open_fields = np.asarray(
+            field.evaluate_cartesian_batch(*open_endpoints.T), dtype=float,
+        ).T
+        br_source_surface[open_mask_flat] = np.sum(open_fields * open_unit, axis=1)
+    valid_radial = (
+        open_mask_flat
+        & np.isfinite(br_photosphere)
+        & np.isfinite(br_source_surface)
+        & (np.abs(br_photosphere) > WSA_RADIAL_FIELD_FLOOR)
+        & (np.abs(br_source_surface) > WSA_RADIAL_FIELD_FLOOR)
+    )
+    fs_val[valid_radial] = (
+        (1.0 / r_ss) ** 2
+        * np.abs(br_photosphere[valid_radial])
+        / np.abs(br_source_surface[valid_radial])
+    )
+    fs_val[~np.isfinite(fs_val) | (fs_val <= 0)] = np.nan
     fs_map = fs_val.reshape(n_lat, n_lon)
 
     # Source surface coordinates
@@ -769,37 +937,19 @@ def compute_wsa_velocity_map(
     ss_phi = ss_phi_flat.reshape(n_lat, n_lon)
 
     # ── Compute boundary distance θ_b ────────────────────────────────────
-    # For each open footpoint, find the minimum great-circle distance to
-    # any closed footpoint on the grid.
+    # For each open footpoint, find the minimum great-circle distance to an
+    # edge midpoint separating adjacent confirmed-open/confirmed-closed cells.
+    # Indeterminate cells cannot create either side of a boundary.
     theta_b_map = np.full((n_lat, n_lon), np.nan)
-
-    # Precompute Cartesian unit vectors for all grid points
-    grid_x = np.sin(theta_arr[:, None]) * np.cos(phi_arr[None, :])  # (n_lat, n_lon)
-    grid_y = np.sin(theta_arr[:, None]) * np.sin(phi_arr[None, :])
-    grid_z = np.cos(theta_arr[:, None]) * np.ones((1, n_lon))
-
-    # Extract closed-field points as flat arrays
-    closed_indices = np.argwhere(closed_mask)
-    if closed_indices.shape[0] > 0:
-        cx = grid_x[closed_mask]  # (N_closed,)
-        cy = grid_y[closed_mask]
-        cz = grid_z[closed_mask]
-
-        # For each open footpoint, compute minimum angular distance
-        open_indices = np.argwhere(open_mask)
-        for oi in range(open_indices.shape[0]):
-            i_lat_o, i_lon_o = open_indices[oi]
-            ox = grid_x[i_lat_o, i_lon_o]
-            oy = grid_y[i_lat_o, i_lon_o]
-            oz = grid_z[i_lat_o, i_lon_o]
-
-            # Great-circle distance via dot product: cos(d) = dot(open, closed)
-            dots = np.clip(ox * cx + oy * cy + oz * cz, -1.0, 1.0)
-            min_dist = float(np.min(np.arccos(dots)))
-            theta_b_map[i_lat_o, i_lon_o] = min_dist
-    else:
-        # Retain the existing no-closed-neighbour default (Task 5 owns WSA policy).
-        theta_b_map[open_mask] = math.pi / 2  # Maximum distance
+    boundary_vectors = _open_closed_boundary_midpoints(trace_states, theta_arr, phi_arr)
+    if boundary_vectors.size:
+        for i_lat_o, i_lon_o in np.argwhere(open_mask):
+            target = _unit_vectors(
+                np.asarray([theta_arr[i_lat_o]]), np.asarray([phi_arr[i_lon_o]]),
+            )[0]
+            theta_b_map[i_lat_o, i_lon_o] = float(
+                np.min(_great_circle_distances(target, boundary_vectors)),
+            )
 
     # ── Apply WSA velocity formula ────────────────────────────────────────
     velocity_map = np.full((n_lat, n_lon), np.nan)
@@ -810,13 +960,42 @@ def compute_wsa_velocity_map(
             fs_v = fs_map[i_lat_v, i_lon_v]
             tb_v = theta_b_map[i_lat_v, i_lon_v]
             if np.isfinite(fs_v) and np.isfinite(tb_v):
-                velocity_map[i_lat_v, i_lon_v] = _wsa_velocity(fs_v, tb_v)
+                velocity_map[i_lat_v, i_lon_v] = _wsa_velocity(float(fs_v), float(tb_v))
 
-    # Mean velocity for diagnostics
+    # Availability and quality are part of the result contract; absence never
+    # turns into the historic 380/400 km/s defaults.
     valid_v = velocity_map[np.isfinite(velocity_map)]
-    mean_v = float(np.mean(valid_v)) if valid_v.size > 0 else 400.0
+    mean_v = round(float(np.mean(valid_v)), 1) if valid_v.size else None
+    quality_reasons: list[str] = []
+    if not boundary_vectors.size:
+        quality_reasons.append("no_open_closed_boundary")
+    if np.any(open_mask_flat & ~valid_radial):
+        quality_reasons.append("invalid_radial_field")
+    if indeterminate_mask.any():
+        quality_reasons.append("indeterminate_traces")
+    valid_fraction = float(valid_v.size / n_points)
+    indeterminate_fraction = float(np.count_nonzero(indeterminate_mask) / n_points)
+    coverage_fraction = _source_surface_coverage_fraction(
+        ss_theta, ss_phi, velocity_map, open_mask, theta_arr, phi_arr,
+    )
+    if valid_v.size == 0:
+        quality_reasons.append("no_valid_wsa_speed")
+    elif coverage_fraction < 1.0:
+        quality_reasons.append("incomplete_source_surface_coverage")
 
     return {
+        "model": WSA_MODEL_VERSION,
+        "calibration_status": WSA_CALIBRATION_STATUS,
+        "formula": "267.5 + 410/max(1,fs)^0.4*(1-0.8*exp(-(theta_b/0.045)^3))",
+        "angle_units": "radian",
+        "velocity_units": "km/s",
+        "source_surface_radii": float(r_ss),
+        "boundary_distance_method": "adjacent_open_closed_edge_midpoints_v1",
+        "lookup_max_cell_diagonals": WSA_LOOKUP_MAX_CELL_DIAGONALS,
+        "valid_fraction": valid_fraction,
+        "indeterminate_fraction": indeterminate_fraction,
+        "coverage_fraction": coverage_fraction,
+        "quality_reasons": quality_reasons,
         "velocity_map": velocity_map,
         "open_mask": open_mask,
         "closed_mask": closed_mask,
@@ -830,7 +1009,7 @@ def compute_wsa_velocity_map(
         "theta_b_map": theta_b_map,
         "ss_theta": ss_theta,
         "ss_phi": ss_phi,
-        "mean_velocity_kms": round(mean_v, 1),
+        "mean_velocity_kms": mean_v,
         "grid_theta": theta_arr,
         "grid_phi": phi_arr,
     }
@@ -840,52 +1019,37 @@ def wsa_velocity_at_source_surface(
     wsa_result: dict[str, Any],
     ss_lat_rad: float,
     ss_lon_rad: float,
-) -> float:
-    """Look up the WSA wind speed at a given source-surface coordinate.
-
-    Uses nearest-neighbour lookup on the traced WSA grid.
-    If no open flux is nearby, returns a slow-wind fallback (380 km/s).
-    """
-    ss_theta_target = math.pi / 2.0 - ss_lat_rad  # colatitude
-    ss_phi_target = ss_lon_rad % (2.0 * math.pi)
-
-    ss_theta_arr = wsa_result.get("ss_theta")
-    ss_phi_arr = wsa_result.get("ss_phi")
-    velocity_map = wsa_result.get("velocity_map")
-    open_mask = wsa_result.get("open_mask")
-
-    if ss_theta_arr is None or velocity_map is None or open_mask is None:
-        return 380.0
-
-    # Convert source surface trace endpoints to Cartesian for distance calc
-    target_x = math.sin(ss_theta_target) * math.cos(ss_phi_target)
-    target_y = math.sin(ss_theta_target) * math.sin(ss_phi_target)
-    target_z = math.cos(ss_theta_target)
-
-    # Gather all open footpoints that have valid source surface coordinates
-    n_lat, n_lon = open_mask.shape
-    best_dist = 999.0
-    best_v = 380.0
-
-    for il in range(n_lat):
-        for jl in range(n_lon):
-            if not open_mask[il, jl]:
-                continue
-            s_t = ss_theta_arr[il, jl]
-            s_p = ss_phi_arr[il, jl]
-            v_val = velocity_map[il, jl]
-            if not (np.isfinite(s_t) and np.isfinite(s_p) and np.isfinite(v_val)):
-                continue
-            sx = math.sin(s_t) * math.cos(s_p)
-            sy = math.sin(s_t) * math.sin(s_p)
-            sz = math.cos(s_t)
-            dot = _clamp(target_x * sx + target_y * sy + target_z * sz, -1.0, 1.0)
-            dist = math.acos(dot)
-            if dist < best_dist:
-                best_dist = dist
-                best_v = float(v_val)
-
-    return best_v
+) -> float | None:
+    """Return a nearby finite WSA-inspired sample, or ``None`` if uncovered."""
+    if not isinstance(wsa_result, dict):
+        return None
+    try:
+        latitude = float(ss_lat_rad)
+        longitude = float(ss_lon_rad)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not math.isfinite(latitude)
+        or not math.isfinite(longitude)
+        or not -math.pi / 2.0 <= latitude <= math.pi / 2.0
+    ):
+        return None
+    prepared = _validated_wsa_samples(wsa_result)
+    if prepared is None:
+        return None
+    candidates, velocities, n_lat, n_lon = prepared
+    theta_target = math.pi / 2.0 - latitude
+    phi_target = longitude % (2.0 * math.pi)
+    target = _unit_vectors(np.asarray([theta_target]), np.asarray([phi_target]))[0]
+    distances = _great_circle_distances(target, candidates)
+    nearest = int(np.argmin(distances))
+    max_distance = (
+        WSA_LOOKUP_MAX_CELL_DIAGONALS
+        * _local_equal_area_cell_diagonal(theta_target, n_lat, n_lon)
+    )
+    if float(distances[nearest]) > max_distance + 1e-14:
+        return None
+    return float(velocities[nearest])
 
 
 # ─── PFSS Cache ────────────────────────────────────────────────────────────────
@@ -1062,7 +1226,7 @@ class PFSSCache:
         # Trace field lines (for visualization)
         lines = trace_field_lines(field, n_lines=n_lines, br_map=br_map, grid=grid)
 
-        # Compute WSA solar wind velocity map
+        # Compute the versioned WSA-inspired visualization velocity map.
         wsa_grid_lat = 36  # coarser for speed
         wsa_grid_lon = 72
         wsa_result = compute_wsa_velocity_map(
@@ -1090,7 +1254,27 @@ class PFSSCache:
             "wsa": {
                 "mean_velocity_kms": wsa_result["mean_velocity_kms"],
                 "grid_resolution": f"{wsa_grid_lat}x{wsa_grid_lon}",
-                "model": "arge_2003",
+                "model": wsa_result.get("model", WSA_MODEL_VERSION),
+                "calibration_status": wsa_result.get(
+                    "calibration_status", WSA_CALIBRATION_STATUS,
+                ),
+                "valid_fraction": wsa_result.get("valid_fraction", 0.0),
+                "indeterminate_fraction": wsa_result.get(
+                    "indeterminate_fraction", 1.0,
+                ),
+                "coverage_fraction": wsa_result.get("coverage_fraction", 0.0),
+                "quality_reasons": list(wsa_result.get(
+                    "quality_reasons", ["wsa_result_metadata_incomplete"],
+                )),
+                "source_surface_radii": wsa_result.get(
+                    "source_surface_radii", float(field.r_ss),
+                ),
+                "boundary_distance_method": wsa_result.get(
+                    "boundary_distance_method", "unavailable",
+                ),
+                "lookup_max_cell_diagonals": wsa_result.get(
+                    "lookup_max_cell_diagonals", WSA_LOOKUP_MAX_CELL_DIAGONALS,
+                ),
             },
             "_wsa_result": wsa_result,  # internal, not serialized to JSON
         }

@@ -894,6 +894,14 @@ class SolarCoronaPhysicsModel:
     ) -> dict[str, Any]:
         omega_sun_rad_day = 2.0 * math.pi / 25.38
         source_surface_radii = 2.5
+        if isinstance(wsa_result, dict):
+            candidate_radius = wsa_result.get("source_surface_radii")
+            if (
+                isinstance(candidate_radius, (float, int))
+                and math.isfinite(float(candidate_radius))
+                and 1.0 < float(candidate_radius) <= 10.0
+            ):
+                source_surface_radii = float(candidate_radius)
         source_surface_au = source_surface_radii * SOLAR_RADIUS_AU
         max_radius_au = max(source_surface_au * 1.5, float(max_extent_au))
         lines: list[dict[str, Any]] = []
@@ -905,9 +913,6 @@ class SolarCoronaPhysicsModel:
             if isinstance(wind_speed_kms_override, (float, int)) and math.isfinite(float(wind_speed_kms_override))
             else None
         )
-
-        # Import WSA lookup if available
-        has_wsa = wsa_result is not None and isinstance(wsa_result, dict) and wsa_result.get("open_mask") is not None
 
         # Extract coronal hole boundaries for fallback fast/slow wind assignment
         ch_holes = []
@@ -934,23 +939,34 @@ class SolarCoronaPhysicsModel:
 
             # ── Determine wind speed ──────────────────────────────────
             in_coronal_hole = False
-            wind_speed_source = "empirical"
+            wind_speed_source = "empirical_ch_bimodal"
+            wind_speed_quality_reasons: list[str] = []
+            wsa_available = False
+            wsa_v = None
 
-            if has_wsa:
-                # Use WSA model: look up velocity at source surface coordinates
+            if isinstance(wsa_result, dict):
                 from sim.pfss_magnetogram import wsa_velocity_at_source_surface
                 wsa_v = wsa_velocity_at_source_surface(
                     wsa_result,
                     ss_lat_rad=source_lat,
                     ss_lon_rad=arm_phase % (2.0 * math.pi),
                 )
+
+            if wsa_v is not None:
                 intrinsic_wind = wsa_v
-                in_coronal_hole = wsa_v > 550.0  # WSA fast wind threshold
-                wind_speed_source = "wsa_arge_2003"
+                # Compatibility field only: this is an explicitly identified
+                # speed-threshold heuristic, not a traced topology label.
+                in_coronal_hole = wsa_v > 550.0
+                wind_speed_source = "wsa_inspired_v1"
+                wsa_available = True
             else:
-                # Fallback: coronal hole heuristic
+                # Independently named visualization fallback.  It is never
+                # reported as a PFSS/WSA-derived value.
+                wind_speed_quality_reasons.extend((
+                    "wsa_unavailable_at_source_surface",
+                    "empirical_visualization_fallback",
+                ))
                 if ch_holes:
-                    hcs_tilt_rad_check = hcs_tilt_rad
                     for ch_center_lat, ch_extent_lat in ch_holes:
                         is_polar = abs(ch_center_lat) > math.radians(50)
                         if is_polar:
@@ -973,6 +989,9 @@ class SolarCoronaPhysicsModel:
                 if override_wind is not None
                 else _clamp(intrinsic_wind, 265.0, 860.0)
             )
+            if override_wind is not None:
+                wind_speed_source += "_realtime_blend"
+                wind_speed_quality_reasons.append("realtime_speed_blend")
             wind_speed_au_day = wind_speed_kms / (AU_KM / 86_400.0)
             polarity_sign = 1.0 if i % 2 == 0 else -1.0
             arc: list[list[float]] = []
@@ -994,12 +1013,27 @@ class SolarCoronaPhysicsModel:
                     "source_lat_deg": round(math.degrees(source_lat), 1),
                     "wind_speed_kms": round(wind_speed_kms, 1),
                     "wind_speed_source": wind_speed_source,
+                    "wind_speed_quality_reasons": wind_speed_quality_reasons,
+                    "wsa_available": wsa_available,
                     "in_coronal_hole": in_coronal_hole,
+                    "in_coronal_hole_basis": (
+                        "speed_threshold_heuristic_v1"
+                        if wsa_available
+                        else "empirical_coronal_hole_geometry_v1"
+                    ),
                     "arc": arc,
                 }
             )
 
         mean_wind = sum(float(line["wind_speed_kms"]) for line in lines) / max(1, len(lines))
+        source_models = {str(line["wind_speed_source"]) for line in lines}
+        if source_models == {"wsa_inspired_v1", "empirical_ch_bimodal"}:
+            wind_speed_model = "mixed_wsa_inspired_v1_empirical_ch_bimodal"
+        elif len(source_models) == 1:
+            wind_speed_model = next(iter(source_models))
+        else:
+            wind_speed_model = "mixed"
+        wsa_available_count = sum(bool(line["wsa_available"]) for line in lines)
         return {
             "line_count": len(lines),
             "point_count": safe_point_count,
@@ -1007,7 +1041,10 @@ class SolarCoronaPhysicsModel:
             "max_extent_au": max_radius_au,
             "max_extent_solar_radii": max_radius_au / SOLAR_RADIUS_AU,
             "wind_speed_kms": mean_wind,
-            "wind_speed_model": "wsa_arge_2003" if has_wsa else "empirical_ch_bimodal",
+            "wind_speed_model": wind_speed_model,
+            "wind_speed_sources": sorted(source_models),
+            "wsa_available_fraction": wsa_available_count / max(1, len(lines)),
+            "propagation_model": "constant_speed_parker_visualization",
             "omega_sun_rad_day": omega_sun_rad_day,
             "lines": lines,
         }

@@ -309,3 +309,12 @@ def test_solar_physics_returns_pfss_field_lines() -> None:
     assert len(pfss["lines"]) > 0
     assert "arc" in pfss["lines"][0]
     assert "is_open" in pfss["lines"][0]
+    import json
+    json.dumps(payload, allow_nan=False)
+    wsa = pfss['wsa']
+    assert wsa['model'] == 'wsa_inspired_v1'
+    assert wsa['calibration_status'] == 'unvalidated'
+    for key in ('valid_fraction', 'indeterminate_fraction', 'coverage_fraction'):
+        assert 0 <= wsa[key] <= 1
+    assert isinstance(wsa['quality_reasons'], list)
+    assert wsa['mean_velocity_kms'] is None or 265 <= wsa['mean_velocity_kms'] <= 850
