@@ -10,6 +10,7 @@ import urllib.request
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
 from .solar_time import jd_tdb_to_utc_datetime
@@ -64,6 +65,29 @@ class _FetchFailureDescriptor:
     detail: str
 
 
+@dataclass(frozen=True, slots=True)
+class _BoundedHttpPayload:
+    """A response body plus the small, validated metadata used by SILSO."""
+
+    status: int
+    payload: bytes
+    content_type: str | None
+    etag: str | None
+    last_modified: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class _SilsoCacheEntry:
+    """One bounded parsed SILSO value; the multi-megabyte source is not retained."""
+
+    value: dict[str, Any]
+    etag: str | None
+    last_modified: str | None
+    validated_monotonic: float
+    validated_at_utc: str
+    expires_monotonic: float
+
+
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Expose redirects to the provider so every target is validated."""
 
@@ -114,6 +138,10 @@ class SolarRealtimeDataProvider:
     MAX_REDIRECTS = 3
     MAX_UPSTREAM_URL_BYTES = 2 * 1024
     MAX_CONTENT_TYPE_BYTES = 256
+    MAX_RESPONSE_VALIDATOR_BYTES = 256
+    SILSO_REVALIDATE_INTERVAL_S = 6.0 * 60.0 * 60.0
+    SILSO_LKG_MAX_AGE_S = 48.0 * 60.0 * 60.0
+    SILSO_FAILURE_BACKOFF_S = 5.0 * 60.0
     # Conservative reserve for the OrderedDict node, tuple, expiry float,
     # accounting integer, and Python object headers beyond encoded data bytes.
     BINARY_CACHE_ENTRY_OVERHEAD_BYTES = 512
@@ -175,6 +203,8 @@ class SolarRealtimeDataProvider:
         self._inflight_failures: OrderedDict[Any, _FetchFailureDescriptor] = (
             OrderedDict()
         )
+        self._silso_cache: _SilsoCacheEntry | None = None
+        self._silso_failure: _FetchFailureDescriptor | None = None
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -518,16 +548,103 @@ class SolarRealtimeDataProvider:
         *,
         max_bytes: int,
     ) -> tuple[bytes, str | None]:
+        response = self._request_bounded_http_payload(
+            url,
+            max_bytes=max_bytes,
+        )
+        return response.payload, response.content_type
+
+    @classmethod
+    def _validated_response_validator(
+        cls,
+        response: Any,
+        name: str,
+    ) -> str | None:
+        values = cls._header_values(response, name)
+        if not values:
+            return None
+        if len(values) != 1:
+            raise SolarRealtimeFetchError(
+                "invalid_response_validator",
+                "Solar realtime response validator is not unique",
+            )
+        value = values[0]
+        try:
+            encoded = value.encode("ascii")
+        except UnicodeEncodeError as exc:
+            raise SolarRealtimeFetchError(
+                "invalid_response_validator",
+                "Solar realtime response validator is malformed",
+            ) from exc
+        if len(encoded) > cls.MAX_RESPONSE_VALIDATOR_BYTES:
+            raise SolarRealtimeFetchError(
+                "response_validator_limit",
+                "Solar realtime response validator exceeds its byte limit",
+            )
+        if (
+            value != value.strip()
+            or any(ord(character) < 32 or ord(character) == 127 for character in value)
+        ):
+            raise SolarRealtimeFetchError(
+                "invalid_response_validator",
+                "Solar realtime response validator is malformed",
+            )
+
+        if name.lower() == "etag":
+            opaque_tag = value[2:] if value.startswith("W/") else value
+            if (
+                len(opaque_tag) < 2
+                or not opaque_tag.startswith('"')
+                or not opaque_tag.endswith('"')
+                or '"' in opaque_tag[1:-1]
+            ):
+                raise SolarRealtimeFetchError(
+                    "invalid_response_validator",
+                    "Solar realtime ETag response validator is malformed",
+                )
+        elif name.lower() == "last-modified":
+            try:
+                parsed = parsedate_to_datetime(value)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise SolarRealtimeFetchError(
+                    "invalid_response_validator",
+                    "Solar realtime Last-Modified response validator is malformed",
+                ) from exc
+            if parsed.tzinfo is None:
+                raise SolarRealtimeFetchError(
+                    "invalid_response_validator",
+                    "Solar realtime Last-Modified response validator is malformed",
+                )
+        return value
+
+    def _request_bounded_http_payload(
+        self,
+        url: str,
+        *,
+        max_bytes: int,
+        conditional_etag: str | None = None,
+        conditional_last_modified: str | None = None,
+        allow_not_modified: bool = False,
+        capture_validators: bool = False,
+    ) -> _BoundedHttpPayload:
         deadline_monotonic = time.monotonic() + self.timeout_s
         current, allowed_hosts = self._validate_upstream_url(url)
         self._remaining_acquisition_time(deadline_monotonic)
         visited = {current}
         redirect_count = 0
 
+        request_headers = {
+            "User-Agent": "solar-system-realistic-sim/solar-realtime-data"
+        }
+        if conditional_etag is not None:
+            request_headers["If-None-Match"] = conditional_etag
+        if conditional_last_modified is not None:
+            request_headers["If-Modified-Since"] = conditional_last_modified
+
         while True:
             request = urllib.request.Request(
                 current,
-                headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
+                headers=request_headers,
             )
             response = self._open_response(
                 request,
@@ -582,6 +699,25 @@ class SolarRealtimeDataProvider:
                     visited.add(target)
                     current = target
                     continue
+                etag = (
+                    self._validated_response_validator(response, "ETag")
+                    if capture_validators
+                    else None
+                )
+                last_modified = (
+                    self._validated_response_validator(response, "Last-Modified")
+                    if capture_validators
+                    else None
+                )
+                if status == 304 and allow_not_modified:
+                    self._remaining_acquisition_time(deadline_monotonic)
+                    return _BoundedHttpPayload(
+                        status=status,
+                        payload=b"",
+                        content_type=None,
+                        etag=etag,
+                        last_modified=last_modified,
+                    )
                 if not 200 <= status < 300:
                     raise SolarRealtimeFetchError(
                         "http_status",
@@ -656,7 +792,13 @@ class SolarRealtimeDataProvider:
                         "Solar realtime response metadata exceeds its byte limit",
                     )
                 self._remaining_acquisition_time(deadline_monotonic)
-                return b"".join(chunks), content_type
+                return _BoundedHttpPayload(
+                    status=status,
+                    payload=b"".join(chunks),
+                    content_type=content_type,
+                    etag=etag,
+                    last_modified=last_modified,
+                )
             finally:
                 response.close()
 
@@ -835,6 +977,8 @@ class SolarRealtimeDataProvider:
             "invalid_response_body": "Solar realtime upstream response body was invalid",
             "content_length_mismatch": "Solar realtime response length was inconsistent",
             "response_metadata_limit": "Solar realtime response metadata exceeds its byte limit",
+            "response_validator_limit": "Solar realtime response validator exceeds its byte limit",
+            "invalid_response_validator": "Solar realtime response validator was invalid",
             "invalid_image_id": "Solar realtime Helioviewer image identity was rejected",
             "acquisition_deadline": "Solar realtime acquisition deadline expired",
         }
@@ -1096,8 +1240,8 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _fetch_silso(self) -> dict[str, Any]:
-        text = self._fetch_text(self.SILSO_DAILY_URL)
+    @staticmethod
+    def _parse_silso_document(text: str) -> dict[str, Any]:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
 
         for line in reversed(lines):
@@ -1124,6 +1268,155 @@ class SolarRealtimeDataProvider:
             }
 
         raise RuntimeError("SILSO payload had no valid sunspot rows")
+
+    def _silso_cache_value(
+        self,
+        entry: _SilsoCacheEntry,
+        *,
+        cache_status: str,
+        failure: _FetchFailureDescriptor | None = None,
+    ) -> dict[str, Any]:
+        value = dict(entry.value)
+        acquisition: dict[str, Any] = {
+            "cache_status": cache_status,
+            "last_validated_at_utc": entry.validated_at_utc,
+            "revalidation_interval_s": self.SILSO_REVALIDATE_INTERVAL_S,
+            "last_known_good_max_age_s": self.SILSO_LKG_MAX_AGE_S,
+        }
+        if failure is not None:
+            acquisition["failure_code"] = failure.code
+            acquisition["failure_detail"] = failure.detail
+        value["acquisition"] = acquisition
+        return value
+
+    def _silso_lkg_or_unavailable(
+        self,
+        *,
+        now_monotonic: float,
+        failure: _FetchFailureDescriptor | None,
+    ) -> dict[str, Any]:
+        with self._lock:
+            entry = self._silso_cache
+        if (
+            entry is not None
+            and now_monotonic - entry.validated_monotonic
+            <= self.SILSO_LKG_MAX_AGE_S
+        ):
+            return self._silso_cache_value(
+                entry,
+                cache_status="stale_lkg",
+                failure=failure,
+            )
+        raise RuntimeError("SILSO acquisition unavailable") from None
+
+    def _fetch_silso(self) -> dict[str, Any]:
+        now_monotonic = time.monotonic()
+        with self._lock:
+            cached = self._silso_cache
+            recent_failure = self._silso_failure
+
+        if cached is not None and now_monotonic < cached.expires_monotonic:
+            return self._silso_cache_value(cached, cache_status="fresh")
+        if (
+            recent_failure is not None
+            and now_monotonic < recent_failure.expires_monotonic
+        ):
+            return self._silso_lkg_or_unavailable(
+                now_monotonic=now_monotonic,
+                failure=recent_failure,
+            )
+
+        def refresh() -> dict[str, Any]:
+            with self._lock:
+                prior = self._silso_cache
+
+            try:
+                response = self._request_bounded_http_payload(
+                    self.SILSO_DAILY_URL,
+                    max_bytes=self.MAX_TEXT_RESPONSE_BYTES,
+                    conditional_etag=prior.etag if prior is not None else None,
+                    conditional_last_modified=(
+                        prior.last_modified if prior is not None else None
+                    ),
+                    allow_not_modified=prior is not None,
+                    capture_validators=True,
+                )
+                completed_monotonic = time.monotonic()
+                validated_at_utc = _utc_iso_now()
+                if response.status == 304:
+                    if prior is None:
+                        raise SolarRealtimeFetchError(
+                            "http_status",
+                            "Solar realtime upstream returned an unsolicited HTTP 304",
+                        )
+                    entry = _SilsoCacheEntry(
+                        value=prior.value,
+                        etag=response.etag or prior.etag,
+                        last_modified=(
+                            response.last_modified or prior.last_modified
+                        ),
+                        validated_monotonic=completed_monotonic,
+                        validated_at_utc=validated_at_utc,
+                        expires_monotonic=(
+                            completed_monotonic
+                            + self.SILSO_REVALIDATE_INTERVAL_S
+                        ),
+                    )
+                    cache_status = "revalidated"
+                else:
+                    parsed = self._parse_silso_document(
+                        response.payload.decode("utf-8", errors="replace")
+                    )
+                    entry = _SilsoCacheEntry(
+                        value=parsed,
+                        etag=response.etag,
+                        last_modified=response.last_modified,
+                        validated_monotonic=completed_monotonic,
+                        validated_at_utc=validated_at_utc,
+                        expires_monotonic=(
+                            completed_monotonic
+                            + self.SILSO_REVALIDATE_INTERVAL_S
+                        ),
+                    )
+                    cache_status = "refreshed"
+            except Exception as exc:
+                failure = self._describe_failure(
+                    exc,
+                    expires_monotonic=(
+                        time.monotonic() + self.SILSO_FAILURE_BACKOFF_S
+                    ),
+                )
+                with self._lock:
+                    self._silso_failure = failure
+                raise
+
+            with self._lock:
+                self._silso_cache = entry
+                self._silso_failure = None
+            return self._silso_cache_value(entry, cache_status=cache_status)
+
+        try:
+            return self._singleflight_fetch(
+                key=("silso_source",),
+                fetch_fn=refresh,
+                wait_timeout_s=self.timeout_s + 0.5,
+                allow_cached_failure=False,
+            )
+        except Exception as exc:
+            failure = self._describe_failure(
+                exc,
+                expires_monotonic=(
+                    time.monotonic() + self.SILSO_FAILURE_BACKOFF_S
+                ),
+            )
+            with self._lock:
+                cached_after_failure = self._silso_cache
+            if cached_after_failure is not None:
+                return self._silso_lkg_or_unavailable(
+                    now_monotonic=time.monotonic(),
+                    failure=failure,
+                )
+            raise
 
     @staticmethod
     def _parse_helioviewer_image_date(value: Any) -> datetime | None:
