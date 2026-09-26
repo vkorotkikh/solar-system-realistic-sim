@@ -21,7 +21,7 @@ import urllib.request
 import warnings
 import zlib
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from typing import Callable, Literal, Mapping, Protocol
@@ -253,6 +253,16 @@ class MagnetogramSnapshot:
             raise ValueError("snapshot field must be finite with shape (180, 360)")
         immutable = np.frombuffer(field.tobytes(order="C"), dtype="<f8").reshape(field.shape)
         object.__setattr__(self, "field_gauss", immutable)
+
+    def _with_attempt_provenance(self, provenance: GongProvenance) -> MagnetogramSnapshot:
+        """Reuse already-validated immutable science with new attempt metadata."""
+
+        snapshot = object.__new__(MagnetogramSnapshot)
+        object.__setattr__(snapshot, "snapshot_id", self.snapshot_id)
+        object.__setattr__(snapshot, "field_gauss", self.field_gauss)
+        object.__setattr__(snapshot, "grid", self.grid)
+        object.__setattr__(snapshot, "provenance", provenance)
+        return snapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -878,7 +888,9 @@ class GongArchiveLimits:
     max_redirects: int = 3
     max_lookback_hours: int = 36
     read_chunk_bytes: int = 64 * 1024
+    dns_timeout_s: float = 5.0
     connect_timeout_s: float = 5.0
+    read_timeout_s: float = 10.0
     stall_timeout_s: float = 5.0
 
     def __post_init__(self) -> None:
@@ -898,7 +910,13 @@ class GongArchiveLimits:
             minimum = 0 if name == "max_redirects" else 1
             if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
                 raise ValueError(f"{name} must be an integer >= {minimum}")
-        for name in ("max_gzip_ratio", "connect_timeout_s", "stall_timeout_s"):
+        for name in (
+            "max_gzip_ratio",
+            "dns_timeout_s",
+            "connect_timeout_s",
+            "read_timeout_s",
+            "stall_timeout_s",
+        ):
             value = float(getattr(self, name))
             if not math.isfinite(value) or value <= 0.0:
                 raise ValueError(f"{name} must be finite and positive")
@@ -927,7 +945,10 @@ class GongTransport(Protocol):
         self,
         url: str,
         *,
+        total_timeout_s: float,
+        dns_timeout_s: float,
         connect_timeout_s: float,
+        read_timeout_s: float,
         stall_timeout_s: float,
     ) -> GongStreamResponse: ...
 
@@ -938,19 +959,46 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class _UrllibResponse:
-    def __init__(self, response):
+    def __init__(
+        self,
+        response,
+        *,
+        clock: Callable[[], float],
+        read_timeout_s: float,
+        stall_timeout_s: float,
+    ):
         self._response = response
+        self._clock = clock
+        self._read_started = clock()
+        self._read_timeout_s = read_timeout_s
+        self._stall_timeout_s = stall_timeout_s
         self.status = int(response.status)
         self.headers = dict(response.headers.items())
         self.url = response.geturl()
 
     def read(self, size: int) -> bytes:
+        remaining = self._read_timeout_s - (self._clock() - self._read_started)
+        if remaining < 0.0:
+            raise GongTransportError("read_timeout", "response read deadline expired")
+        read_deadline_is_first = remaining <= self._stall_timeout_s
+        socket_timeout = max(min(remaining, self._stall_timeout_s), 1e-6)
         try:
-            return self._response.read(size)
+            self._response.fp.raw._sock.settimeout(socket_timeout)
+        except (AttributeError, OSError):
+            # HTTPResponse implementations do not expose a public socket API.
+            # The elapsed-time check still gives a cooperative read deadline.
+            pass
+        try:
+            chunk = self._response.read(size)
         except (TimeoutError, socket.timeout) as exc:
-            raise GongTransportError("socket_stall_timeout", "response read stalled") from exc
+            code = "read_timeout" if read_deadline_is_first else "socket_stall_timeout"
+            detail = "response read deadline expired" if read_deadline_is_first else "response socket stalled"
+            raise GongTransportError(code, detail) from exc
         except OSError as exc:
             raise GongTransportError("read_error", "response read failed") from exc
+        if self._clock() - self._read_started > self._read_timeout_s:
+            raise GongTransportError("read_timeout", "response read deadline expired")
+        return chunk
 
     def close(self) -> None:
         self._response.close()
@@ -959,24 +1007,47 @@ class _UrllibResponse:
 class UrllibGongTransport:
     """Synchronous transport with automatic redirects disabled.
 
-    This adapter is intended for an offline/supervised tool. Python's in-process
-    resolver cannot provide a hard DNS kill/reap guarantee; callers needing that
-    guarantee must run acquisition in the planned supervised-worker tranche.
+    DNS, connection, total-read, and per-read socket-stall budgets are distinct.
+    This adapter is still intended for an offline/supervised tool: Python's
+    in-process resolver cannot be forcibly killed, and urllib exposes the socket
+    only through implementation details. Callers needing hard kill/reap/restart
+    guarantees must use the planned supervised-worker tranche.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
         self._opener = urllib.request.build_opener(_NoRedirect())
+        self._clock = clock
 
     def open(
         self,
         url: str,
         *,
+        total_timeout_s: float,
+        dns_timeout_s: float,
         connect_timeout_s: float,
+        read_timeout_s: float,
         stall_timeout_s: float,
     ) -> GongStreamResponse:
-        request = urllib.request.Request(url, headers={"User-Agent": "solar-pfss-gong/1"})
+        host = urllib.parse.urlsplit(url).hostname
+        if host is None:
+            raise GongTransportError("dns_error", "URL has no DNS host")
+        transport_started = self._clock()
+        dns_started = transport_started
+        dns_budget = min(dns_timeout_s, total_timeout_s)
         try:
-            response = self._opener.open(request, timeout=min(connect_timeout_s, stall_timeout_s))
+            socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+        except (socket.gaierror, TimeoutError, socket.timeout) as exc:
+            raise GongTransportError("dns_timeout", "DNS resolution failed or expired") from exc
+        except OSError as exc:
+            raise GongTransportError("dns_error", "DNS resolution failed") from exc
+        if self._clock() - dns_started > dns_budget:
+            raise GongTransportError("dns_timeout", "DNS resolution exceeded its deadline")
+        request = urllib.request.Request(url, headers={"User-Agent": "solar-pfss-gong/1"})
+        connect_started = self._clock()
+        total_remaining = total_timeout_s - (connect_started - transport_started)
+        connect_budget = min(connect_timeout_s, max(total_remaining, 0.0))
+        try:
+            response = self._opener.open(request, timeout=max(connect_budget, 1e-6))
         except urllib.error.HTTPError as exc:
             response = exc
         except urllib.error.URLError as exc:
@@ -988,7 +1059,16 @@ class UrllibGongTransport:
             raise GongTransportError("connect_error", "connection attempt failed") from exc
         except (TimeoutError, socket.timeout) as exc:
             raise GongTransportError("connect_timeout", "connection attempt expired") from exc
-        return _UrllibResponse(response)
+        if self._clock() - connect_started > connect_budget:
+            response.close()
+            raise GongTransportError("connect_timeout", "connection attempt exceeded its deadline")
+        total_remaining = total_timeout_s - (self._clock() - transport_started)
+        return _UrllibResponse(
+            response,
+            clock=self._clock,
+            read_timeout_s=min(read_timeout_s, max(total_remaining, 0.0)),
+            stall_timeout_s=min(stall_timeout_s, max(total_remaining, 0.0)),
+        )
 
 
 @dataclass(slots=True)
@@ -1001,6 +1081,12 @@ class _AttemptBudget:
     def check_deadline(self) -> None:
         if self.clock() - self.started > self.timeout_s:
             raise GongArchiveError("total_deadline", "aggregate acquisition deadline expired")
+
+    def remaining(self) -> float:
+        remaining = self.timeout_s - (self.clock() - self.started)
+        if remaining < 0.0:
+            raise GongArchiveError("total_deadline", "aggregate acquisition deadline expired")
+        return remaining
 
 
 @dataclass(frozen=True, slots=True)
@@ -1044,6 +1130,17 @@ def _validate_archive_url(url: str) -> str:
     if any(segment in (".", "..") for segment in segments) or "//" in parsed.path:
         raise GongArchiveError("unsafe_url", "archive URL contains an unsafe path")
     return urllib.parse.urlunsplit(parsed)
+
+
+def _resolve_redirect_url(current: str, location: str) -> str:
+    if any(ord(character) < 32 or ord(character) == 127 for character in location) or any(
+        character in location for character in ("\\", "%")
+    ):
+        raise GongArchiveError("unsafe_url", "redirect contains forbidden encoding or characters")
+    raw = urllib.parse.urlsplit(location)
+    if any(segment in (".", "..") for segment in raw.path.split("/")):
+        raise GongArchiveError("unsafe_url", "redirect contains a raw dot path segment")
+    return _validate_archive_url(urllib.parse.urljoin(current, location))
 
 
 def _header(headers: Mapping[str, str], name: str) -> str | None:
@@ -1103,17 +1200,23 @@ class GongArchiveProvider:
             if cached is not None:
                 budget.check_deadline()
                 self._cache.move_to_end(prior[1])
+                if isinstance(cached, MagnetogramSnapshot):
+                    return cached._with_attempt_provenance(
+                        replace(
+                            cached.provenance,
+                            request_jd_tdb=float(request_jd_tdb),
+                            retrieved_at_utc=self._retrieved_at_utc(),
+                            retrieval_timeout_s=float(total_timeout_s),
+                        )
+                    )
                 return cached
         expanded = self._expand_gzip(compressed, budget)
-        retrieved_at = self._utc_now()
-        if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
-            raise ValueError("utc_now must return a timezone-aware datetime")
         context = GongParseContext(
             request_jd_tdb=float(request_jd_tdb),
             source_url=candidate.url,
             filename=candidate.filename,
             compressed_sha256=compressed_sha256,
-            retrieved_at_utc=retrieved_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            retrieved_at_utc=self._retrieved_at_utc(),
             retrieval_timeout_s=float(total_timeout_s),
         )
         snapshot = self._parser(expanded, context=context, limits=self._limits.parse_limits)
@@ -1133,6 +1236,12 @@ class GongArchiveProvider:
                 url: entry for url, entry in self._url_cache.items() if entry[1] != evicted_identity
             }
         return snapshot
+
+    def _retrieved_at_utc(self) -> str:
+        retrieved_at = self._utc_now()
+        if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
+            raise ValueError("utc_now must return a timezone-aware datetime")
+        return retrieved_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
     def _discover(self, request_utc: datetime, budget: _AttemptBudget) -> _ArchiveCandidate:
         earliest = request_utc - timedelta(hours=self._limits.max_lookback_hours)
@@ -1235,11 +1344,15 @@ class GongArchiveProvider:
         redirect_count = 0
         while True:
             budget.check_deadline()
+            remaining = budget.remaining()
             try:
                 response = self._transport.open(
                     current,
-                    connect_timeout_s=min(self._limits.connect_timeout_s, budget.timeout_s),
-                    stall_timeout_s=min(self._limits.stall_timeout_s, budget.timeout_s),
+                    total_timeout_s=remaining,
+                    dns_timeout_s=min(self._limits.dns_timeout_s, remaining),
+                    connect_timeout_s=min(self._limits.connect_timeout_s, remaining),
+                    read_timeout_s=min(self._limits.read_timeout_s, remaining),
+                    stall_timeout_s=min(self._limits.stall_timeout_s, remaining),
                 )
             except GongTransportError:
                 budget.check_deadline()
@@ -1255,7 +1368,7 @@ class GongArchiveProvider:
                         raise GongArchiveError("malformed_redirect", "redirect has no Location header")
                     if redirect_count >= self._limits.max_redirects:
                         raise GongArchiveError("redirect_overflow", "archive redirect limit exceeded")
-                    target = _validate_archive_url(urllib.parse.urljoin(current, location))
+                    target = _resolve_redirect_url(current, location)
                     if target in visited:
                         raise GongArchiveError("redirect_loop", "archive redirect loop detected")
                     redirect_count += 1

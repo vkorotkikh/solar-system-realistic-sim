@@ -83,10 +83,25 @@ class Transport:
     def __init__(self, routes: dict[str, object], *, clock: Clock | None = None) -> None:
         self.routes = {key: deque(value if isinstance(value, list) else [value]) for key, value in routes.items()}
         self.calls: list[str] = []
+        self.timeout_calls: list[dict[str, float]] = []
         self.clock = clock
 
-    def open(self, url: str, *, connect_timeout_s: float, stall_timeout_s: float):
+    def open(
+        self,
+        url: str,
+        *,
+        connect_timeout_s: float,
+        stall_timeout_s: float,
+        **stage_timeouts: float,
+    ):
         self.calls.append(url)
+        self.timeout_calls.append(
+            {
+                "connect_timeout_s": connect_timeout_s,
+                "stall_timeout_s": stall_timeout_s,
+                **stage_timeouts,
+            }
+        )
         if url not in self.routes or not self.routes[url]:
             raise AssertionError(f"unexpected transport request: {url}")
         item = self.routes[url].popleft()
@@ -528,9 +543,52 @@ def test_redirect_chain_consumes_the_same_deadline():
     assert redirect not in transport.calls
 
 
+def test_each_transport_stage_receives_only_the_remaining_total_budget():
+    gong = gong_module()
+    clock = Clock()
+    filename = "mrzqs260925t2304c2316_301.fits.gz"
+    directory = day_url("20260925")
+    transport = Transport(
+        {
+            directory: Response(listing(filename), clock=clock, read_seconds=3.0),
+            file_url(filename): Response(gzip.compress(b"fits")),
+        }
+    )
+    limits = gong.GongArchiveLimits(
+        dns_timeout_s=20.0,
+        connect_timeout_s=20.0,
+        read_timeout_s=20.0,
+        stall_timeout_s=20.0,
+    )
+    provider = gong.GongArchiveProvider(
+        transport,
+        clock=clock,
+        limits=limits,
+        parser=lambda expanded, *, context, limits: expanded,
+    )
+    assert provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=10.0) == b"fits"
+    assert transport.timeout_calls[0] == {
+        "total_timeout_s": 10.0,
+        "dns_timeout_s": 10.0,
+        "connect_timeout_s": 10.0,
+        "read_timeout_s": 10.0,
+        "stall_timeout_s": 10.0,
+    }
+    assert transport.timeout_calls[1] == {
+        "total_timeout_s": pytest.approx(7.0),
+        "dns_timeout_s": pytest.approx(7.0),
+        "connect_timeout_s": pytest.approx(7.0),
+        "read_timeout_s": pytest.approx(7.0),
+        "stall_timeout_s": pytest.approx(7.0),
+    }
+
+
 @pytest.mark.parametrize(
     "location",
     [
+        "../escaped.fits.gz",
+        "./escaped.fits.gz",
+        "sub/../escaped.fits.gz",
         "http://gong.nso.edu/data/magmap/QR/zqs/x",
         "https://evil.example/data/magmap/QR/zqs/x",
         "https://gong.nso.edu/outside/x",
@@ -672,7 +730,7 @@ def test_same_url_changed_content_is_revalidated_instead_of_returning_stale_cach
     assert provider.cache_size == 2
 
 
-def test_identical_validated_fits_reuses_the_snapshot_id_cache_after_redownload():
+def test_identical_validated_fits_reuses_science_with_current_attempt_provenance():
     gong = gong_module()
     filename = MANIFEST["filename"]
     directory = day_url("20260925")
@@ -682,18 +740,198 @@ def test_identical_validated_fits_reuses_the_snapshot_id_cache_after_redownload(
             file_url(filename): [Response(COMPRESSED), Response(COMPRESSED)],
         }
     )
+    retrieved_times = iter(
+        [
+            datetime(2026, 9, 26, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 9, 26, 0, 1, tzinfo=timezone.utc),
+        ]
+    )
     provider = gong.GongArchiveProvider(
         transport,
         parser=gong.parse_gong_fits,
-        utc_now=lambda: datetime(2026, 9, 26, tzinfo=timezone.utc),
+        utc_now=lambda: next(retrieved_times),
     )
-    request = jd_tdb("2026-09-25T23:05:00")
-    first = provider.acquire(request)
-    second = provider.acquire(request)
-    assert second is first
+    first_request = jd_tdb("2026-09-25T23:05:00")
+    second_request = jd_tdb("2026-09-25T23:06:00")
+    first = provider.acquire(first_request, total_timeout_s=5.0)
+    second = provider.acquire(second_request, total_timeout_s=9.0)
+    assert second is not first
+    assert second.snapshot_id is first.snapshot_id
+    assert second.field_gauss is first.field_gauss
+    assert second.grid is first.grid
+    assert first.provenance.request_jd_tdb == first_request
+    assert first.provenance.retrieved_at_utc == "2026-09-26T00:00:00Z"
+    assert first.provenance.retrieval_timeout_s == 5.0
+    assert second.provenance.request_jd_tdb == second_request
+    assert second.provenance.retrieved_at_utc == "2026-09-26T00:01:00Z"
+    assert second.provenance.retrieval_timeout_s == 9.0
     assert provider.cache_size == 1
     assert transport.calls.count(directory) == 2
     assert transport.calls.count(file_url(filename)) == 2
+
+
+class AdapterRawResponse:
+    def __init__(self, *, clock: Clock, elapsed: float) -> None:
+        self.status = 200
+        self.headers = {}
+        self._clock = clock
+        self._elapsed = elapsed
+
+    def geturl(self) -> str:
+        return BASE
+
+    def read(self, size: int) -> bytes:
+        self._clock.advance(self._elapsed)
+        raise TimeoutError("injected socket timeout")
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.mark.parametrize(
+    ("read_timeout", "stall_timeout", "expected"),
+    [(1.0, 5.0, "read_timeout"), (5.0, 1.0, "socket_stall_timeout")],
+)
+def test_production_transport_distinguishes_read_deadline_from_socket_stall(
+    monkeypatch, read_timeout, stall_timeout, expected
+):
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=1.1)
+    transport = gong.UrllibGongTransport(clock=clock)
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: [(None,)])
+    monkeypatch.setattr(transport._opener, "open", lambda *args, **kwargs: raw)
+    response = transport.open(
+        BASE,
+        total_timeout_s=10.0,
+        dns_timeout_s=2.0,
+        connect_timeout_s=2.0,
+        read_timeout_s=read_timeout,
+        stall_timeout_s=stall_timeout,
+    )
+    with pytest.raises(gong.GongTransportError) as caught:
+        response.read(1)
+    assert caught.value.code == expected
+
+
+def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
+    gong = gong_module()
+    transport = gong.UrllibGongTransport()
+    monkeypatch.setattr(
+        gong.socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: (_ for _ in ()).throw(gong.socket.gaierror("injected")),
+    )
+    with pytest.raises(gong.GongTransportError) as dns:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=1.0,
+            connect_timeout_s=2.0,
+            read_timeout_s=3.0,
+            stall_timeout_s=4.0,
+        )
+    assert dns.value.code == "dns_timeout"
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: [(None,)])
+    monkeypatch.setattr(
+        transport._opener,
+        "open",
+        lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError("injected")),
+    )
+    with pytest.raises(gong.GongTransportError) as connect:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=1.0,
+            connect_timeout_s=2.0,
+            read_timeout_s=3.0,
+            stall_timeout_s=4.0,
+        )
+    assert connect.value.code == "connect_timeout"
+
+
+@pytest.mark.parametrize(
+    ("stage", "elapsed", "expected"),
+    [
+        ("dns", 1.0, None),
+        ("dns", 1.000001, "dns_timeout"),
+        ("connect", 1.0, None),
+        ("connect", 1.000001, "connect_timeout"),
+    ],
+)
+def test_production_dns_and_connect_budgets_pass_exactly_and_fail_after(
+    monkeypatch, stage, elapsed, expected
+):
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    transport = gong.UrllibGongTransport(clock=clock)
+
+    def resolve(*args, **kwargs):
+        if stage == "dns":
+            clock.advance(elapsed)
+        return [(None,)]
+
+    def connect(*args, **kwargs):
+        if stage == "connect":
+            clock.advance(elapsed)
+        return raw
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(transport._opener, "open", connect)
+    if expected is None:
+        response = transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=1.0,
+            connect_timeout_s=1.0,
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+        )
+        response.close()
+    else:
+        with pytest.raises(gong.GongTransportError) as caught:
+            transport.open(
+                BASE,
+                total_timeout_s=10.0,
+                dns_timeout_s=1.0,
+                connect_timeout_s=1.0,
+                read_timeout_s=2.0,
+                stall_timeout_s=2.0,
+            )
+        assert caught.value.code == expected
+
+
+def test_production_transport_reduces_later_stages_by_time_already_spent(monkeypatch):
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    observed_connect_timeout = []
+    transport = gong.UrllibGongTransport(clock=clock)
+
+    def resolve(*args, **kwargs):
+        clock.advance(2.0)
+        return [(None,)]
+
+    def connect(*args, timeout, **kwargs):
+        observed_connect_timeout.append(timeout)
+        clock.advance(1.1)
+        return raw
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(transport._opener, "open", connect)
+    with pytest.raises(gong.GongTransportError) as caught:
+        transport.open(
+            BASE,
+            total_timeout_s=3.0,
+            dns_timeout_s=5.0,
+            connect_timeout_s=5.0,
+            read_timeout_s=5.0,
+            stall_timeout_s=5.0,
+        )
+    assert caught.value.code == "connect_timeout"
+    assert observed_connect_timeout == [pytest.approx(1.0)]
 
 
 def test_deadline_after_parser_does_not_commit_cache():
