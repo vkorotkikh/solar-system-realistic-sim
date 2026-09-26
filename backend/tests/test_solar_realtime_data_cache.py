@@ -154,6 +154,75 @@ def test_singleflight_failure_backoff_prunes_expired_entries(
     assert list(provider._inflight_failures) == ["current"]
 
 
+def test_binary_cache_enforces_byte_budget_with_lru_eviction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=6)
+    fetches: list[str] = []
+
+    def fetch_binary(url: str) -> tuple[bytes, str]:
+        fetches.append(url)
+        return url.encode("ascii") * 3, "image/png"
+
+    monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
+
+    assert provider._fetch_binary_cached("a")[0] == b"aaa"
+    assert provider._fetch_binary_cached("b")[0] == b"bbb"
+    assert provider._fetch_binary_cached("a")[0] == b"aaa"  # LRU touch.
+    assert provider._fetch_binary_cached("c")[0] == b"ccc"  # Evicts b.
+    assert provider._fetch_binary_cached("b")[0] == b"bbb"
+
+    assert fetches == ["a", "b", "c", "b"]
+    assert provider._binary_cache_bytes <= 6
+    assert sum(len(entry[1]) for entry in provider._binary_cache.values()) <= 6
+
+
+def test_binary_payload_larger_than_cache_budget_is_never_retained(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=3)
+    fetch_count = 0
+
+    def fetch_binary(_url: str) -> tuple[bytes, str]:
+        nonlocal fetch_count
+        fetch_count += 1
+        return b"four", "image/png"
+
+    monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
+
+    assert provider._fetch_binary_cached("oversized")[0] == b"four"
+    assert provider._fetch_binary_cached("oversized")[0] == b"four"
+
+    assert fetch_count == 2
+    assert provider._binary_cache_bytes == 0
+    assert len(provider._binary_cache) == 0
+
+
+def test_binary_cache_replacement_subtracts_expired_payload_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=5)
+    monotonic_now = [100.0]
+    payloads = iter((b"aa", b"bbbb"))
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_binary",
+        lambda _url: (next(payloads), "image/png"),
+    )
+
+    assert provider._fetch_binary_cached("same", ttl_s=5.0)[0] == b"aa"
+    monotonic_now[0] = 106.0
+    assert provider._fetch_binary_cached("same", ttl_s=5.0)[0] == b"bbbb"
+
+    assert provider._binary_cache_bytes == 4
+    assert len(provider._binary_cache) == 1
+
+
 @pytest.mark.parametrize("jd", [float("nan"), float("inf"), float("-inf")])
 def test_nonfinite_julian_date_is_rejected_before_fetch(jd: float) -> None:
     provider, requests = _recording_provider()

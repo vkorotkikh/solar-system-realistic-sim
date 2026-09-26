@@ -121,11 +121,15 @@ class SolarRealtimeDataProvider:
         timeout_s: float = 3.8,
         cache_ttl_s: float = 300.0,
         snapshot_cache_max_entries: int = 16,
+        binary_cache_max_entries: int = 48,
+        binary_cache_max_bytes: int = 16 * 1024 * 1024,
         singleflight_failure_max_entries: int = 64,
     ):
         self.timeout_s = max(0.8, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
         self.snapshot_cache_max_entries = max(1, int(snapshot_cache_max_entries))
+        self.binary_cache_max_entries = max(1, int(binary_cache_max_entries))
+        self.binary_cache_max_bytes = max(1, int(binary_cache_max_bytes))
         self.singleflight_failure_max_entries = max(
             1,
             int(singleflight_failure_max_entries),
@@ -135,7 +139,10 @@ class SolarRealtimeDataProvider:
         self._snapshot_cache: OrderedDict[
             tuple[str, str, float | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
-        self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
+        self._binary_cache: OrderedDict[
+            str, tuple[float, bytes, str | None]
+        ] = OrderedDict()
+        self._binary_cache_bytes = 0
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
         self._inflight_failures: OrderedDict[
             Any, tuple[float, BaseException]
@@ -162,6 +169,8 @@ class SolarRealtimeDataProvider:
             },
             "cache_ttl_s": self.cache_ttl_s,
             "snapshot_cache_max_entries": self.snapshot_cache_max_entries,
+            "binary_cache_max_entries": self.binary_cache_max_entries,
+            "binary_cache_max_bytes": self.binary_cache_max_bytes,
             "singleflight_failure_max_entries": self.singleflight_failure_max_entries,
             "timeout_s": self.timeout_s,
         }
@@ -519,7 +528,10 @@ class SolarRealtimeDataProvider:
             if cached is not None:
                 expiry, payload, content_type = cached
                 if now_monotonic < expiry:
+                    self._binary_cache.move_to_end(url)
                     return payload, content_type
+                self._binary_cache.pop(url, None)
+                self._binary_cache_bytes -= len(payload)
 
         def fetch_and_cache_binary() -> tuple[bytes, str | None]:
             payload, content_type = self._fetch_binary(url)
@@ -527,25 +539,34 @@ class SolarRealtimeDataProvider:
             with self._lock:
                 # Publish before releasing the single-flight entry and measure the
                 # full TTL from completion, not from the beginning of a slow fetch.
-                self._binary_cache[url] = (
-                    completed_monotonic + cache_ttl,
-                    payload,
-                    content_type,
-                )
-                # Keep binary cache bounded.
-                if len(self._binary_cache) > 48:
-                    stale_keys = [
-                        key
-                        for key, value in self._binary_cache.items()
-                        if value[0] <= completed_monotonic
-                    ]
-                    for stale_key in stale_keys:
-                        self._binary_cache.pop(stale_key, None)
-                    if len(self._binary_cache) > 48:
-                        # Remove oldest expiries first.
-                        ordered = sorted(self._binary_cache.items(), key=lambda item: item[1][0])
-                        for key, _ in ordered[: len(self._binary_cache) - 48]:
-                            self._binary_cache.pop(key, None)
+                previous = self._binary_cache.pop(url, None)
+                if previous is not None:
+                    self._binary_cache_bytes -= len(previous[1])
+
+                stale_keys = [
+                    cache_key
+                    for cache_key, value in self._binary_cache.items()
+                    if value[0] <= completed_monotonic
+                ]
+                for stale_key in stale_keys:
+                    _, stale_payload, _ = self._binary_cache.pop(stale_key)
+                    self._binary_cache_bytes -= len(stale_payload)
+
+                if len(payload) <= self.binary_cache_max_bytes:
+                    self._binary_cache[url] = (
+                        completed_monotonic + cache_ttl,
+                        payload,
+                        content_type,
+                    )
+                    self._binary_cache.move_to_end(url)
+                    self._binary_cache_bytes += len(payload)
+
+                while (
+                    len(self._binary_cache) > self.binary_cache_max_entries
+                    or self._binary_cache_bytes > self.binary_cache_max_bytes
+                ):
+                    _, (_, evicted_payload, _) = self._binary_cache.popitem(last=False)
+                    self._binary_cache_bytes -= len(evicted_payload)
             return payload, content_type
 
         return self._singleflight_fetch(
