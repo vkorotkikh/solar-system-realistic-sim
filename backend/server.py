@@ -64,6 +64,7 @@ from benchmark import (
 from http_ingress import (
     NetworkRequestLimits,
     NetworkRequestShapeMiddleware,
+    NetworkSafeMethodBodyMiddleware,
     scope_route_path,
 )
 from data.bodies import ALL_BODIES
@@ -1308,6 +1309,11 @@ app.add_middleware(
     window_seconds=TRAJECTORY_RATE_LIMIT_WINDOW_SECONDS,
     max_identities=TRAJECTORY_RATE_LIMIT_MAX_IDENTITIES,
     paths=TRAJECTORY_INGRESS_PATHS,
+)
+app.add_middleware(
+    NetworkSafeMethodBodyMiddleware,
+    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
+    body_idle_timeout_s=2.0,
 )
 app.add_middleware(_NetworkAuthenticationMiddleware)
 app.add_middleware(

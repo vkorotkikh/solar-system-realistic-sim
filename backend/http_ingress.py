@@ -8,6 +8,7 @@ ambiguous framing before request bodies or application models are consumed.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -356,3 +357,106 @@ class NetworkRequestShapeMiddleware:
             return
 
         await self.app(scope, receive, send)
+
+
+class NetworkSafeMethodBodyMiddleware:
+    """Reject every network-profile GET/HEAD body after authentication.
+
+    Metadata-only checks cannot detect HTTP/2 bodies that omit both framing
+    headers. This boundary consumes exactly the first ASGI request event under
+    a short idle deadline, rejects any bytes or continued stream, and replays a
+    valid empty event for downstream compatibility.
+    """
+
+    def __init__(
+        self,
+        app,
+        *,
+        enabled: Callable[[], bool],
+        body_idle_timeout_s: float,
+    ) -> None:
+        self.app = app
+        self.enabled = enabled
+        self.body_idle_timeout_s = max(0.001, float(body_idle_timeout_s))
+
+    async def _error(
+        self,
+        scope,
+        receive,
+        send,
+        *,
+        status_code: int,
+        code: str,
+        message: str,
+    ) -> None:
+        response = JSONResponse(
+            status_code=status_code,
+            headers={"Cache-Control": "private, no-store"},
+            content={
+                "detail": {
+                    "code": code,
+                    "message": message,
+                    "retryable": False,
+                }
+            },
+        )
+        await response(scope, receive, send)
+
+    async def __call__(self, scope, receive, send) -> None:
+        if (
+            scope.get("type") != "http"
+            or not self.enabled()
+            or str(scope.get("method", "")).upper() not in {"GET", "HEAD"}
+        ):
+            await self.app(scope, receive, send)
+            return
+
+        try:
+            first_message = await asyncio.wait_for(
+                receive(),
+                timeout=self.body_idle_timeout_s,
+            )
+        except TimeoutError:
+            await self._error(
+                scope,
+                receive,
+                send,
+                status_code=408,
+                code="request_body_idle_timeout",
+                message="Request body event did not arrive before the idle deadline.",
+            )
+            return
+
+        if first_message.get("type") == "http.request":
+            body = first_message.get("body", b"")
+            if not isinstance(body, bytes):
+                await self._error(
+                    scope,
+                    receive,
+                    send,
+                    status_code=400,
+                    code="invalid_request_body",
+                    message="Request body event is malformed.",
+                )
+                return
+            if body or first_message.get("more_body", False) is not False:
+                await self._error(
+                    scope,
+                    receive,
+                    send,
+                    status_code=400,
+                    code="safe_method_body_forbidden",
+                    message="Request bodies are not accepted for GET or HEAD.",
+                )
+                return
+
+        replayed = False
+
+        async def replay_receive():
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return first_message
+            return await receive()
+
+        await self.app(scope, replay_receive, send)
