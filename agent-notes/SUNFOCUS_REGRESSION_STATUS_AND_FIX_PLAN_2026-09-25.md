@@ -1,8 +1,10 @@
 # Sun-Focus Regression Status and Reconciliation Plan — 2026-09-25
 
-**Status:** active replacement plan
+**Status:** active implementation; scientific-core tranche complete, R3/R4 still open
 
-**Working checkout audited:** `fix/trajectory-amplification-defense-in-depth @ 7cab690`
+**Working implementation:** `fix/r3-r4-pfss-remediation @ 3747521`
+
+**Implementation base:** `fix/trajectory-amplification-defense-in-depth @ d175e4b`
 
 **Current local main:** `main @ d834dbe`
 
@@ -11,6 +13,9 @@
 **Merge base:** `ec7ad33a503da3a4c6bfd87e4c498e8a53be6984`
 
 **Remote parity:** not asserted; every revision above is a local ref.
+
+The older branch pins below remain useful comparison provenance. They do not supersede the working
+implementation tip above, and no merge or push is implied by this status update.
 
 This file supersedes:
 
@@ -28,27 +33,30 @@ their branch pins and headline counts are not current.
 Do **not** merge `sun-focus @ 13ca9ec` into `main` as-is and do **not** replay the four old topic
 branches wholesale.
 
-The two branches diverged after `ec7ad33`: the working/main-derived side has 30 unique commits and
-`sun-focus` has 17. `sun-focus` contains the R1–R4 topic history, but it is missing newer mainline
-fixes and in two important areas contains weaker implementations:
+The refs diverged after `ec7ad33`: remediation `3747521` has 45 unique commits, its implementation
+base `d175e4b` has 35, current `main` has 29, and `sun-focus` has 17. `sun-focus` contains the R1–R4
+topic history, but it is missing newer mainline/remediation fixes and in two important areas contains
+weaker implementations:
 
 - its PFSS cache aliases scientifically distinct inputs;
 - its moon path lacks the fitted ephemerides, native-frame propagation, fail-closed coverage
   contract, and UTC/TDB correction now on mainline.
 
-Reconcile **mainline into `sun-focus` on a dedicated integration branch**, resolve sensitive files
-semantically, and then finish the remaining R3/R4 work. A clean textual merge is not evidence of a
-correct scientific merge.
+The original plan called for convergence first. Execution instead isolated and corrected the
+scientific core on a main-derived remediation branch before integration. The eventual integration
+must now reconcile **remediation/mainline into `sun-focus` on a dedicated integration branch** and
+resolve sensitive files semantically. A clean textual merge is not evidence of a correct scientific
+merge.
 
 ### Current headline
 
-| Original track | Current/main-derived checkout | `sun-focus` | Canonical status |
+| Original track | Remediation branch at `3747521` | Unmodified `sun-focus @ 13ca9ec` | Canonical status |
 |---|---|---|---|
 | R1 — Kuiper velocity units | fixed and physically gated | same fixed code | **CLOSED** |
-| R2 — planetary mean-anomaly advance | fixed; strong multi-epoch oracle | same production behavior; redundant old test remains | **CLOSED for position; velocity follow-up OPEN** |
-| R3 — PFSS denial/correctness/delivery | partially hardened; exact cache; still unsafe and numerically wrong | partially hardened; cache regression; still unsafe and numerically wrong | **OPEN / release-blocking** |
-| R4 — numerical regression gates | materially stronger, but incomplete | conventions document and some useful tests, but weaker overall | **PARTIAL / blocks R3 release** |
-| Branch convergence | mainline fixes absent from `sun-focus` | sun-only bounds/policy absent from mainline | **OPEN / first dependency** |
+| R2 — planetary mean-anomaly advance | fixed; strong multi-epoch position oracle | same production behavior; redundant old test remains | **CLOSED for position; velocity follow-up OPEN** |
+| R3 — PFSS denial/correctness/delivery | harmonic/grid/field/tracing/WSA-inspired core corrected; observed provider, isolation, API, security, and browser delivery remain | partial hardening with weaker cache/scientific path | **OPEN / release-blocking** |
+| R4 — numerical regression gates | analytic and property gates materially stronger; independent real-map/provider/mutation/CI/browser/load lanes remain | conventions document and some useful tests, but weaker overall | **PARTIAL / blocks R3 release** |
+| Branch convergence | isolated main-derived remediation branch; no integration performed | newer mainline/remediation fixes absent | **OPEN / integration dependency** |
 
 Status meanings in this document:
 
@@ -78,11 +86,58 @@ Do not reuse these stale numbers or claims:
   about 3.894 million km at that date and is now governed by the six-epoch drift and aggregate gate.
 - “R2 commits are absent, therefore R2 is unfixed” is false for mainline. Mainline independently
   landed the equivalent and newer production behavior in `68aff6b`.
-- “R3 Layers 1–2 are done” is false as an objective-level statement. The semaphore works, but the
-  anonymous CPU denial, cache-hit lockout, numerical PFSS defect, and client/server mismatch remain.
+- “R3 Layers 1–2 are done” remains false as an objective-level statement. The scientific-core
+  numerical defects are now corrected on the remediation branch, but anonymous CPU denial,
+  cache-hit lockout, provider provenance, independent real-map validation, and client/server
+  mismatch remain.
 - The September 24 audit/evidence tree is currently untracked and pinned to `9418652`; it is evidence,
   not branch content. Its manual absolute imports and two filename references must be cleaned before
   any future commit, without rewriting the measured results.
+
+### 2.1 Scientific-core execution evidence — `d175e4b..3747521`
+
+| Commit(s) | Demonstrated change |
+|---|---|
+| `1a6fcaa`, `2379c10` | One versioned Schmidt basis, independent immutable values, orthogonality, derivatives, poles, and scalar/batch identity. |
+| `70af7c8` | Explicit equal-area grids, correct weights/normalization, every real mode through `l=15`, and ambiguous observed ingestion contained. |
+| `99b3231` | Correct `Btheta=Bphi=0`, generally nonzero `Br` source-surface contract plus analytic field/divergence/curl gates. |
+| `487a0ef`, `cca44bc`, `ea41dda` | Shared three-state scalar/batch tracing, exact shell crossings, and reviewed roundoff/tangent behavior. |
+| `8fd45d5`, `3747521` | Exact radial expansion, explicit unavailable state, spherical boundary distance, bounded lookup, strict geometry/domain validation, and honest WSA-inspired/Parker provenance. |
+
+Final integrated commands/evidence:
+
+```text
+PYTHONPATH=backend .../python -m pytest -q \
+  backend/tests/test_pfss_harmonics.py \
+  backend/tests/test_pfss_decomposition.py \
+  backend/tests/test_pfss_analytic_fields.py \
+  backend/tests/test_pfss_tracing.py \
+  backend/tests/test_wsa_semantics.py
+# 976 passed in 11.04s
+
+PYTHONPATH=backend .../python -m pytest -q backend/tests
+# 1405 passed, 4 skipped in 83.63s
+
+npm test
+# 164 passed
+
+npm run build
+# passed; pre-existing >500 kB chunk warning remains
+
+npm run typecheck
+# red: 240 strict TypeScript errors
+```
+
+Harmonic fixture SHA-256:
+`f969b908369b259370a34663e86fec55ee03b6773a781e452bb9764166f8d504`.
+Recorded fixture payload SHA-256:
+`662247d28f75e3795743c21c744c53c6de826132e83d744b65853814b5a344c3`.
+Independent generator SHA-256:
+`1dfced4438d610a87bbbffd282d904ffba662fc2e20d263cff46a07f3af6d787`.
+
+Red-before-green output and reviewer reports are retained in the local SDD evidence directory rather
+than committed as large run logs. No provider, cache/executor, security, browser, or complete-CI
+claim is inferred from these scientific-core results.
 
 ## 3. Branch convergence matrix
 
@@ -179,48 +234,47 @@ and contains a disproved budget claim.
 
 ## 6. R3 — PFSS correctness, availability, and abuse resistance
 
-**Status: OPEN and release-blocking on both branches.** The two tips have complementary partial
-fixes; neither meets the objective.
+**Status: OPEN and release-blocking.** The remediation branch closes the local scientific-core
+mechanisms described below, but neither historical branch nor the remediation tip meets the full
+provider, independent-oracle, isolation, security, delivery, and release objective.
 
 ### R3.1 PFSS harmonic, input-grid, and WSA mathematics — P0
 
-The same `_associated_legendre` recurrence is wrong on both branches for `l >= 2`. Fresh execution
-at `x = 0.5` produced:
+**Status: scientific-core mechanisms fixed; observed-provider and independent-corpus gates remain
+open.** The initial scalar, batch, and decomposition routines duplicated the same incorrect
+mixed-normalization recurrence. At `x=0.5` they produced `-0.63391 / -1.13422 / -0.48746` for
+`P2/P3/P4`; those values are retained as red-before-green evidence, not current output.
 
-| term | implementation | analytic value |
-|---|---:|---:|
-| `P2` | -0.63391 | -0.12500 |
-| `P3` | -1.13422 | -0.43750 |
-| `P4` | -0.48746 | -0.28906 |
+Completed on `fix/r3-r4-pfss-remediation`:
 
-The resulting basis is not orthogonal, a pure dipole leaks strongly into higher degrees, and the
-photospheric reconstruction and source-surface ratios are wrong. This makes current PFSS payloads
-scientifically invalid even when delivery succeeds.
+1. `1a6fcaa` and `2379c10` establish one
+   `schmidt-quasi-normalized-no-cs-v1` implementation used by all legacy delegates, with immutable
+   independent values, orthogonality, derivatives, poles, and scalar/batch identity gates.
+2. `70af7c8` adds explicit immutable spherical grids, correct equal-area weighting, stable
+   least-squares decomposition, every real mode through `l=15`, and removes the duplicated `m>0`
+   factor. Ambiguous legacy GONG arrays fail closed to a labelled synthetic result rather than being
+   silently mirrored or treated as observed.
+3. `99b3231` records and independently gates the actual source-surface contract:
+   `Btheta=Bphi=0` while `Br` is generally nonzero. Photospheric reconstruction, radial attenuation,
+   divergence, and curl convergence pass without changing already-correct radial production factors.
+4. `487a0ef`, `cca44bc`, and `ea41dda` make scalar and batch tracing share explicit
+   `open/closed/indeterminate` states, exact shell intersections, finite-stage checks, and
+   scale-aware tangent handling. Exhaustion, weak/non-finite fields, and stalls cannot become closed.
+5. `8fd45d5` and `3747521` use exact-boundary radial components for expansion, spherical
+   open/closed edge midpoints, explicit missing-data quality, two-local-cell-diagonal lookup bounds,
+   strict map geometry/domain validation, and honest `wsa_inspired_v1` plus per-arm Parker source
+   provenance. Missing data no longer manufactures 380/400 km/s WSA values.
 
-Fix requirements:
+Still required before R3/R4 closure:
 
-1. Select and document one associated-Legendre normalization and Condon–Shortley convention.
-2. Implement the standard stable recurrences for `P_m^m`, `P_(m+1)^m`, and `P_l^m` through the
-   supported `lmax`.
-3. Make `_associated_legendre`, scalar `_legendre_at_point`, vectorized `_legendre_batch`,
-   decomposition, reconstruction, and field evaluation use that same convention. Gate scalar/batch
-   agreement, `dP/dθ`, normalization, and pole behavior.
-4. Add closed-form checks, Gauss–Legendre orthogonality checks, pure dipole/quadrupole isolation,
-   photospheric reconstruction, and analytic source-surface radial-ratio checks.
-5. Correct the documentation: 27.2753 days is the **synodic** Carrington period, and the source-
-   surface boundary is `Bθ = Bφ = 0`, not `Br = 0`. Gate the tangential boundary condition.
-6. Preserve and interpret GONG FITS metadata. `bqs` data are sine-latitude, south-first maps with a
-   longitude origin; they cannot be treated as north-first uniform-colatitude arrays with `LONG0`
-   discarded.
-7. Require an exact requested Carrington rotation or label a substitute as such. A monthly fallback
-   file must never be relabelled as the requested rotation.
-8. Bound directory/FITS reads, gzip expansion, image dimensions, and coefficient allocation. Commit
-   a small checksummed FITS fixture for WCS/orientation/longitude and round-trip tests.
-9. Gate WSA expansion against an analytic/reference case. The current path uses footpoint `|B|`
-   where the claimed Arge-style expansion requires radial-field semantics; fix it or label it as an
-   explicit approximation.
-10. Cross-check at least one committed map against an independent implementation before claiming
-    scientific fidelity.
+1. Replace the hand-written FITS/archive path with a bounded, pinned Astropy FITS/WCS provider and
+   immutable exact-product provenance. No arbitrary monthly substitution is acceptable.
+2. Correct Carrington terminology/time-scale/coverage/unit provenance and validate it against an
+   independent ephemeris/coordinate source.
+3. Commit a legally usable stratified real-map corpus and independent PFSS/tracer convergence gates;
+   analytic correctness alone does not validate real GONG ingestion or general solar fidelity.
+4. Complete scientific artifact identity/cache invalidation for provider, solver, tracing, and WSA
+   versions before persistent reuse.
 
 ### R3.2 Cache identity and single-flight — branch regression, P0
 
@@ -258,7 +312,8 @@ The owned-permit helper is fixed on both branches: submit failure releases the p
 does not release it while the worker still runs. That closes the over-admission bug, not the denial
 objective.
 
-Fresh measurements on the current checkout:
+Historical measurements from the `7cab690` audit (not remeasured after the scientific changes
+through `3747521`):
 
 | request | cold synthetic compute |
 |---|---:|
@@ -268,10 +323,12 @@ Fresh measurements on the current checkout:
 | ultra | 7.100 s |
 | warm cache hit | about 7–9 µs |
 
-Two distinct concurrent high computations took 17.210 and 18.135 seconds. Both HTTP requests timed
-out at about 12 seconds with 503 while the work continued; `/health` reached 73.2 ms p95 and 366.2 ms
-maximum. The GIL-bound worker shares a process and executor with other heavy endpoints. The semaphore
-therefore turns a compute storm into permit lockout and cross-endpoint contention.
+Two distinct concurrent high computations at that audited tip took 17.210 and 18.135 seconds. Both
+HTTP requests timed out at about 12 seconds with 503 while the work continued; `/health` reached
+73.2 ms p95 and 366.2 ms maximum. The GIL-bound worker shares a process and executor with other heavy
+endpoints. The semaphore therefore remains architecturally capable of turning a compute storm into
+permit lockout and cross-endpoint contention. Rerun the pinned load benchmark at the implementation
+tip before using the historical timings for capacity sizing or release evidence.
 
 Required design:
 
@@ -291,10 +348,12 @@ Required design:
 
 ### R3.4 First-party delivery contract — P0
 
-The shipped client polls high fidelity every 900 ms with a 2.6-second timeout. A cold high solve takes
-about 5.3 seconds, the default backend rate is 36/minute while a fast client can request 66.7/minute,
-and preview origin `:4173` is not in the default CORS set. The September browser audit observed zero
-successful physics deliveries. Cache-safe science alone does not fix that product path.
+Although `SolarPhysicsClient` has slower class defaults, the shipped sun controller overrides them
+and polls high fidelity every 900 ms with a 2.6-second timeout. The default backend rate is 36/minute
+while that cadence can request about 66.7/minute, and preview origin `:4173` is not in the default
+CORS set. The historical `7cab690` high-fidelity cold solve took about 5.3 seconds, but that timing
+must be remeasured at the implementation tip. The September browser audit observed zero successful
+physics deliveries. Cache-safe science alone does not fix that product path.
 
 Required contract:
 
@@ -336,6 +395,15 @@ policy file and one useful invariant that must be preserved.
 - Current moon tests exercise fitted position/velocity/plane/drift behavior across seven epochs.
 - Current PFSS cache tests distinguish dates in one Carrington rotation and exercise true
   single-flight behavior.
+- The shared harmonic suite independently gates all modes through `l=15`, low-degree closed forms,
+  Gauss-Legendre orthogonality, derivatives, poles, and scalar/batch identity.
+- Explicit-grid decomposition gates both row orders, every cosine/sine mode through `l=15`, mixed
+  reconstruction, and condition-number failure without reusing production expected values.
+- Analytic PFSS gates cover photospheric reconstruction, source-surface radiality/nonzero `Br`,
+  radial attenuation, divergence, and curl convergence.
+- Tracing/WSA-inspired gates cover three-state termination, exact intersections, invalid stages,
+  radial expansion, spherical boundary geometry, unavailable data, bounded lookup, strict map
+  validation, and downstream source labelling.
 - The compute-budget test calls the production owned-worker helper rather than a copied local pattern.
 - Lambert bracket and MGA flyby invariants now fail invalid physical solutions.
 
@@ -345,12 +413,13 @@ policy file and one useful invariant that must be preserved.
    standards-derived invariants as independent oracles. Label captured rate-free output honestly as
    a compatibility golden, not a scientific oracle.
 2. Preserve the rate-free orbit invariant in the current test suite.
-3. Add analytic and independent-oracle PFSS tests described in R3.1.
+3. Add the remaining independent real-map PFSS/tracer convergence corpus described in R3.1; the
+   analytic scientific-core tests are now present.
 4. Add public-route saturation tests for health latency, cached availability, proxy spoofing, JD
    rejection, timeout ownership, submit failure, and cross-endpoint isolation.
 5. Run R1 in a REBOUND-enabled CI lane; a skip is not a pass.
 6. Add CI that runs strict type checking, frontend tests, backend tests, numerical verifiers, and a
-   production build. The current fresh strict check reports 246 errors, so this needs an explicit
+   production build. The fresh strict check at `3747521` reports 240 errors, so this needs an explicit
    burn-down rather than a pretend-green gate.
 7. Require red-before-green evidence for each numerical defect and mutation-test controls where a
    copied formula could pass by construction.
@@ -370,7 +439,7 @@ evidence remains in the source reports; this table is the planning authority.
 | ID | Priority | Epic | Current/main-derived | `sun-focus` | Next decision or gate |
 |---|---|---|---|---|---|
 | S0 | P0 | Semantic branch convergence | open | open | execute Section 9 Phase 0 |
-| S1 | P0 | PFSS mathematics and solar delivery | open | open/worse cache | satisfy every R3 acceptance gate |
+| S1 | P0 | PFSS mathematics and solar delivery | scientific core fixed; provider/delivery/security open | open/worse cache | satisfy remaining R3 acceptance gates without regressing `3747521` |
 | S2 | P0 | Trajectory request amplification/starvation | plan only | open | implement the separate defense-in-depth plan; bound total work before provider calls |
 | S3 | P0 | Accuracy benchmark truth coverage | open: zero comparable scenarios | same | install reproducible external references or report “not validated,” never `passRate: 0.0` as coverage |
 | S4 | P0 | Licence and asset provenance | open | open | owner/licensing decision before redistribution; add root licence and complete manifest |
@@ -384,7 +453,7 @@ evidence remains in the source reports; this table is the planning authority.
 | S11 | P1 | WebSocket lifecycle/time delivery | resource cap fixed; global lockout and time-step issues open | resource cap also missing | preserve mainline ownership; add auth/isolation and wall-clock accumulator gates |
 | S12 | P1 | Solar semantics/upstreams | open | open | beyond promoted PFSS/WSA gates: axes, rotation, Hathaway, AIA/SWPC, provider validation, bounded reads |
 | S13 | P1 | Mission mass ledger/risk/verifier | open | open | one conserved mass/economic ledger; deterministic infeasibility before Monte Carlo |
-| S14 | P1 | Release/type/CI gate | open: 246 strict errors, no CI | open | burn down and make gates mandatory |
+| S14 | P1 | Release/type/CI gate | open: 240 strict errors at `3747521`, no CI | open | burn down and make gates mandatory |
 | S15 | P1 | Reproducibility/toolchain/scripts | open | open | immutable inputs, locks/dev deps, repaired validators and maintenance scripts |
 | S16 | P2 | Frontend scientific isolation/degraded modes | partial | partial | separate hypothetical state, stop paused uploads, add WebGL fallback and keyboard operation, and make reduced-motion affect simulation motion |
 | S17 | P2 | Capability/latent physics backlog | partial | partial/worse | multi-rev Lambert, hyperbolic bounds, worker watchdog, binaries, scale, SMBH; revalidate before prioritizing |
@@ -419,13 +488,16 @@ Exit: one reconciled branch contains the union of valid behavior, no known mainl
 
 ### Phase 1 — make the remaining R3 defects red
 
-Land tests/evidence first:
+The completed scientific tranche already landed red-before-green evidence for:
 
 - analytic Legendre values and orthogonality;
 - scalar/batch/derivative/pole consistency;
 - pure harmonic decomposition/reconstruction and PFSS radial/tangential boundary ratios;
-- committed GONG FITS orientation/WCS/LONG0/exact-rotation and bounded-decompression cases;
 - analytic/reference WSA expansion behavior;
+
+Land tests/evidence next for the still-open mechanisms:
+
+- committed GONG FITS orientation/WCS/LONG0/exact-rotation and bounded-decompression cases;
 - same-rotation/different-synthetic-epoch cache identity;
 - recorded UI polling trace and cache-hit ratio;
 - 40-request load barrier with health/cross-endpoint probes;
@@ -437,12 +509,16 @@ Exit: every active R3 mechanism has a failing behavioral test against the reconc
 
 ### Phase 2 — correct PFSS before optimizing it
 
-1. Fix the harmonics convention and decomposition/reconstruction chain.
-2. Fix the input-grid/WCS path and exact source provenance.
-3. Fix or accurately relabel WSA expansion semantics.
-4. Cross-check the solver against analytic fields and an independent reference.
-5. Define observed and synthetic snapshot identities explicitly.
-6. Change cache canonicalization only after the scientific-equivalence tests exist.
+1. **DONE (`1a6fcaa..70af7c8`):** fix the harmonics convention and explicit-grid
+   decomposition/reconstruction chain.
+2. **PARTIAL:** explicit grid semantics are fixed; bounded FITS/WCS ingestion and exact source
+   provenance remain open.
+3. **DONE (`8fd45d5`, `3747521`):** use radial expansion, explicit availability, bounded lookup,
+   and accurately label `wsa_inspired_v1` plus downstream fallbacks/blends.
+4. **PARTIAL:** analytic fields and invariants are gated; the independent real-map PFSS/tracer
+   corpus remains open.
+5. **OPEN:** define observed and synthetic snapshot identities explicitly.
+6. **OPEN:** change cache canonicalization only after the scientific-equivalence tests exist.
 
 Exit: numerical gates pass; no distinct computed state aliases silently.
 
@@ -527,10 +603,17 @@ is operationally or scientifically complete.
 
 ## 12. Immediate next action
 
-Start Phase 0. The first implementation PR should contain only semantic branch convergence and
-preservation tests. If any deployment is non-loopback, land the containment commit immediately next.
-The first new scientific fix after that should be R3.1, because optimizing or exposing a PFSS solver
-whose basis functions are wrong only makes invalid output faster and more available.
+Continue R3.1 with the bounded GONG provider and provenance tranche: replace the hand-written
+FITS/archive path with pinned Astropy FITS/WCS handling, strict byte/decompression/dimension/time
+budgets, exact-product selection, immutable fixtures, and explicit Carrington/time-scale/unit/source
+metadata. This must preserve the scientific-core gates at `3747521` and must not advertise an
+observed product until its metadata and coordinate contract pass.
+
+After the provider tranche, land the independent real-map PFSS/tracer convergence corpus and
+artifact-level cache identity. Then proceed to process isolation/cached-read availability, exposure
+controls, browser delivery, and the remaining R4 CI/load/mutation gates. Branch reconciliation and
+non-loopback containment remain prerequisites before integration or deployment; no merge/push is
+implied by the remediation branch.
 
 The implementation-ready work order, scientific budgets, test matrix, operational architecture, and
 definition of done are in

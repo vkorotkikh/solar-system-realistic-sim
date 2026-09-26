@@ -11,8 +11,9 @@ You are the staff-level owner for closing R3 and the R4 gates required to releas
 
 Make the PFSS/solar pipeline scientifically defensible, operationally isolated, secure against
 caller-triggered resource exhaustion, and reliably consumable by the first-party UI. Build numerical
-and behavioral gates that independently prove those properties. Do not optimize or expose the current
-solver while its basis functions and input-grid interpretation remain wrong.
+and behavioral gates that independently prove those properties. The historical starting solver had
+wrong basis functions and input-grid interpretation; preserve their corrected implementation and
+gates, and do not optimize or expose the remaining unvalidated provider/oracle path.
 
 Do not stop after analysis. Implement the work, keep the repository reviewable with bounded commits,
 run the required verification, update the status document with evidence, and leave the integration
@@ -31,6 +32,16 @@ At prompt creation:
   `agent-notes/SUNFOCUS_REGRESSION_STATUS_AND_FIX_PLAN_2026-09-25.md`;
 - the untracked September 24 audit and evidence directory are user-owned evidence. Preserve them.
 
+Execution update (2026-09-26):
+
+- isolated implementation branch: `fix/r3-r4-pfss-remediation`;
+- implementation base: `fix/trajectory-amplification-defense-in-depth @ d175e4b`;
+- task decomposition: `d13b633`;
+- scientific-core implementation through review round 1: `3747521`;
+- the prompt-creation refs above remain historical audit pins; they are not a claim that the
+  implementation branch is still at `7cab690`;
+- the user-owned September 24 audit/evidence files in the primary checkout remain untouched.
+
 Before changing branch state, verify these refs still mean what this prompt says. If any moved, stop
 and re-audit the delta rather than silently using a mutable tip. Work from a clean worktree, create
 safety refs, and stage only intentional files.
@@ -43,36 +54,64 @@ Evidence precedence:
 4. the consolidated status plan above;
 5. older reports as historical provenance only.
 
-#### 1.1 Baseline defects this prompt must close
+#### 1.1 Baseline defects and current disposition
 
-Reconfirm these against the exact implementation tip before coding; they are the mechanisms, not
-just symptoms, that define the initial red state:
+The original red mechanisms were re-executed before coding. The recurrence wording in the initial
+prompt was imprecise: the three paths were duplicated implementations of the same incorrect
+mixed-normalization recurrence, not three numerically divergent recurrences.
 
-- the scalar, batch, and decomposition paths implement divergent associated-Legendre recurrences;
-  current probes at `x=0.5` produce approximately `-0.63391`, `-1.13422`, and `-0.48746` for
-  `P2`, `P3`, and `P4`, instead of `-0.125`, `-0.4375`, and `-0.2890625`;
-- GONG sine-latitude pixels are treated as a uniform-theta grid with inappropriate `sin(theta)`
-  weights, and `m>0` normalization is effectively applied twice;
-- the partial FITS reader discards WCS semantics, archive selection can substitute an arbitrary
-  monthly file, and listing/read/decompression work lacks complete bounds;
-- the code calls `27.2753 d` sidereal, assigns a single epoch to a longitudinally accumulated
-  synoptic map, and does not make the source product’s units/radial-field assumptions explicit;
-- the PFSS source-surface contract is misstated, field-line/WSA results lack an independent
-  convergence oracle, and the current empirical velocity label overclaims modeled WSA stages;
-- mainline’s exact PFSS cache identity is worth preserving, but request handling still admits before
-  checking a ready artifact, CPU solar work shares an in-process executor with unrelated work, and
-  cancellation/timeouts do not prove capacity recovery;
-- the browser requests high/hybrid results roughly every 900 ms with a 2.6 s timeout, so caller
-  cancellation can amplify server work and AIA availability is coupled to PFSS behavior;
-- proxy trust, optional authentication, anonymous cold work, and unbounded rate-identity state leave
-  network deployment fail-open or resource-amplifiable;
-- R4 has useful convention/property tests but no committed independent real-map oracle, executable
-  red-before-green proof, mutation sensitivity matrix, hermetic provider fixture, or pinned load/
-  browser release lane; the repository also lacks a complete CI workflow and has a separately
-  tracked global strict-TypeScript backlog.
+| Mechanism | Status at `3747521` | Evidence / remaining boundary |
+|---|---|---|
+| Associated-Legendre recurrence | **FIXED in scientific tranche** | `1a6fcaa`, `2379c10`; one shared `schmidt-quasi-normalized-no-cs-v1` basis, immutable SciPy-generated fixture, value/orthogonality/derivative/pole/scalar-batch gates. |
+| Grid and real-mode normalization | **FIXED for explicit/synthetic grids; observed ingestion contained** | `70af7c8`; explicit equal-area geometry, area weighting, stable least squares, and no second `m>0` multiplier. The ambiguous legacy observed array is rejected in favor of an explicitly reasoned synthetic fallback until the provider tranche. |
+| FITS/WCS and acquisition | **OPEN / release-blocking** | The partial reader, archive selection, resource bounds, immutable provider fixture, and source metadata have not yet been replaced. No observed GONG payload is currently advertised as validated. |
+| Carrington/time/unit semantics | **PARTIAL** | Rotation arithmetic remains usable, but `27.2753 d` is still mislabeled sidereal and provider coverage/time-scale/unit provenance remains absent. |
+| PFSS boundary and analytic field | **FIXED for the implemented mathematical core** | The numerical source-surface code already enforced `Btheta=Bphi=0`; the false `Br=0` documentation was corrected in `99b3231`. Analytic radial-factor, reconstruction, divergence, and curl gates now pass. |
+| Tracing and WSA-inspired mapping | **FIXED for local semantics; independent corpus/convergence still OPEN** | `487a0ef`, `cca44bc`, `ea41dda`, `8fd45d5`, `3747521`; exact three-state intersections, radial expansion, bounded lookup, nullable availability, and honest `wsa_inspired_v1`/fallback provenance. A stratified independent real-map/tracer-convergence corpus remains R4 work. |
+| Cache and execution | **PARTIAL, unchanged by this tranche** | Exact request identity, bounded LRU, single-flight, and permit ownership until thread completion remain preserved. Ready hits are still behind admission; solar still shares a non-killable in-process executor. |
+| Browser delivery | **PARTIAL, unchanged by this tranche** | One-flight, last-known-good, and error backoff remain. The shipped 900 ms cadence, short timeout, cancellation waste, and AIA/PFSS coupling remain open. |
+| Security/admission | **OPEN, unchanged by this tranche** | Unconditional XFF trust, fail-open unconfigured auth, anonymous cold GET work, and unbounded identity maps remain. |
+| R4 release gates | **PARTIAL** | Analytic/oracle/property coverage and retained red-before-green evidence are materially stronger. The independent GONG/PFSS corpus, hermetic provider fixture, mutation runner, pinned CI, Playwright, load, and global TypeScript work remain open. |
 
 If re-audit disproves a mechanism, record the exact commit/test evidence and remove only that item;
 do not weaken the remaining work because a symptom has moved.
+
+#### 1.2 Scientific-core execution evidence — 2026-09-26
+
+Commits, in dependency order:
+
+```text
+d13b633  decompose scientific remediation work
+1a6fcaa  shared normalized harmonic basis and independent fixture
+2379c10  absolute derivative and identity gates
+70af7c8  explicit sine-latitude grid and decomposition
+99b3231  analytic PFSS boundary certification
+487a0ef  three-state exact tracing
+cca44bc  outer-boundary tangent termination
+ea41dda  scale-aware boundary roundoff handling
+8fd45d5  radial WSA-inspired availability and honest Parker provenance
+3747521  spherical boundary geometry and strict WSA-map validation
+```
+
+The harmonic fixture file SHA-256 is
+`f969b908369b259370a34663e86fec55ee03b6773a781e452bb9764166f8d504`; its
+recorded payload SHA-256 is
+`662247d28f75e3795743c21c744c53c6de826132e83d744b65853814b5a344c3`.
+The independent generator SHA-256 is
+`1dfced4438d610a87bbbffd282d904ffba662fc2e20d263cff46a07f3af6d787`.
+
+Fresh integrated evidence at `3747521`:
+
+- five scientific PFSS/WSA files together: `976 passed in 11.04s`;
+- full backend: `1405 passed, 4` pre-existing optional-dependency skips;
+- frontend Vitest: `164 passed`;
+- production build: passed, with the pre-existing large-chunk warning;
+- global strict TypeScript: still red with `240` errors;
+- Task 5 independent re-review: clean after three Important findings were fixed; `99` focused tests
+  plus independent polar-edge and malformed-input probes passed.
+
+This evidence closes only the implemented scientific-core mechanisms. It is not evidence for live
+GONG ingestion, real-map fidelity, process isolation, security, browser delivery, or R3/R4 release.
 
 ### 2. Scope
 
@@ -504,10 +543,12 @@ P0 reconcile/contain
 ```
 
 After P1, fixture licensing/provenance research, deterministic worker test-harness construction, and
-frontend V2 type design may proceed in parallel because they own disjoint files. Production worker
-promotion waits for P3–P5: operationally isolating a scientifically invalid solver does not make it
-releasable. Land each phase as one or more reviewable commits; never squash away red-before-green
-evidence before review.
+frontend V2 type design may proceed in parallel because they own disjoint files. At `3747521`, the
+analytic/explicit-grid subset of P3 and the local tracing/WSA-semantics portion of P5 are complete;
+P3 remains partial until its separate oracle-regeneration lane and observed-ingestion proof exist.
+P4 plus the independent P5 corpus, convergence, and scientific-cache work also block production-
+worker promotion. Operational isolation does not substitute for those scientific gates. Land each
+phase as one or more reviewable commits; never squash away red-before-green evidence before review.
 
 #### Phase 0 — pin, reconcile, preserve, contain
 
@@ -609,6 +650,11 @@ a copied local algorithm do not count.
 
 #### Phase 3 — shared harmonics, decomposition, and PFSS field
 
+Execution status (2026-09-26): **analytic/explicit-grid subset complete; phase partial** on the
+remediation branch in `1a6fcaa..99b3231`. The separate oracle-regeneration lane and observed-map
+ingestion proof remain open and cross into Phases 4–5. The implemented requirements below remain the
+preservation contract; later provider, oracle, or performance work must continue to pass them.
+
 Required blocking gates:
 
 1. At `x=0.5`, `P2=-0.125`, `P3=-0.4375`, `P4=-0.2890625`; absolute error `<=1e-14`.
@@ -628,7 +674,7 @@ Required blocking gates:
 7. Mixed band-limited field through `l=15`: reconstruction RMS `<=1e-9`.
 8. Source surface: the area-weighted tangential RMS and maximum each satisfy their declared relative
    and absolute budgets using the §5.1 reference scale/floor; initial relative target `<=1e-11`.
-   Correct the current false `Br=0` docstring.
+   Preserve the corrected boundary statement: `Btheta=Bphi=0` while `Br` is generally nonzero.
 9. For every supported `l=1..15` and representative `m`, analytic `Br`, `Btheta`, and `Bphi` plus
    radial attenuation agree to relative error `<=1e-8` at the photosphere, source surface, and at
    least three interior radii. Exercise both sine/cosine branches and both boundary limits.
@@ -711,6 +757,11 @@ rotation plus month/year boundaries.
 Exit: every artifact is source-reproducible; invalid observations fail closed and never cache.
 
 #### Phase 5 — independent reference, WSA, and scientific cache
+
+Execution status (2026-09-26): **partial**. Commits `487a0ef..3747521` close the local tracing,
+exact-boundary expansion, unavailable-state, bounded-map, validation, and honest
+`wsa_inspired_v1` semantics. The independent real-map corpus, tracer/grid convergence, published
+calibration validation, and artifact-level cache identity in this phase remain release-blocking.
 
 Use the exact `sunkit-magex`, SunPy, Astropy, SciPy, NumPy, and Python versions selected and
 hash-locked in Phase 1; record package versions, source commit where available, and generator hash in
@@ -925,8 +976,8 @@ Vitest, and Playwright, and fail when any required R3/R4 node is skipped, xfaile
 has a count mismatch. Missing dependencies are failures. Every blocking lane attests its immutable
 container digest; none relies on the ambient developer shell.
 
-The repository currently has 246 global strict TypeScript errors. Do not hide them or call a failing
-job green. For R3/R4:
+The prompt baseline recorded 246 global strict TypeScript errors. A fresh strict run at `3747521`
+reports 240; the gate is still red. Do not hide it or call a failing job green. For R3/R4:
 
 - add a zero-error strict project covering every touched solar/R3 frontend file;
 - add a reproducible no-new-global-errors ratchet while separate S14 remains open;
