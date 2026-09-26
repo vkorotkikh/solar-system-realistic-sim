@@ -9,7 +9,12 @@ import mission.ephemeris_service as ephemeris_module
 from mission.ephemeris_service import EphemerisService
 from mission.orbital import AU_KM
 from trajectory import plan_interplanetary_route
-from trajectory.budget import PlanningBudgetExceeded, PlanningContext, PlanningLimits
+from trajectory.budget import (
+    PlanningBudgetExceeded,
+    PlanningCancelled,
+    PlanningContext,
+    PlanningLimits,
+)
 from trajectory.contracts import TrajectoryRequestRejected
 import trajectory.mga as mga
 
@@ -129,6 +134,63 @@ def _matches_for_residual(
     return matches, runtime
 
 
+def _install_deterministic_search_fixture(monkeypatch) -> None:
+    monkeypatch.setattr(mga, "_leg_tof_candidates", lambda *_args, **_kwargs: [100.0])
+
+    def fake_leg(_ephemeris, from_id, to_id, departure_jd, tof_days, **_kwargs):
+        leg = _outgoing_leg(departure_jd, tof_days, 10.0)
+        leg.update(fromId=from_id, toId=to_id)
+        return leg
+
+    def one_match(runtime, partial, to_id, _assist_body):
+        leg = runtime.leg(
+            partial.body_route[-1],
+            to_id,
+            partial.current_jd,
+            100.0,
+            refinement=True,
+        )
+        if leg is not None:
+            runtime.stats.flyby_checks += 1
+            yield 100.0, leg, {
+                "feasible": True,
+                "reason": "ok",
+                "assistGainKmS": 0.1,
+            }
+
+    monkeypatch.setattr(mga, "compute_lambert_leg", fake_leg)
+    monkeypatch.setattr(mga, "_matched_outgoing_legs", one_match)
+
+
+def _deterministic_result_signature(result: dict) -> dict:
+    search = dict(result["search"])
+    search.pop("elapsedMs", None)
+    planning = dict(search["planningContext"])
+    planning.pop("elapsedMs", None)
+    planning.pop("remainingMs", None)
+    search["planningContext"] = planning
+    return {
+        "best": result["best"],
+        "alternatives": result["alternatives"],
+        "search": search,
+    }
+
+
+def _run_deterministic_search(assist_pool: list[str]) -> dict:
+    context = PlanningContext.with_timeout(2.0)
+    return mga.optimize_mga_route(
+        ALL_BODIES,
+        ephemeris=_owned_session(context),
+        from_id="earth",
+        to_id="jupiter",
+        departure_jd=2_460_500.5,
+        objective="min_distance",
+        max_assists=2,
+        assist_pool=assist_pool,
+        planning_context=context,
+    )
+
+
 def test_exact_seed_vinf_roots_are_capped_at_two(monkeypatch) -> None:
     matches, runtime = _matches_for_residual(
         monkeypatch,
@@ -176,6 +238,52 @@ def test_same_sign_residual_without_near_minimum_has_no_root(monkeypatch) -> Non
     assert matches == []
     assert runtime.stats.vinf_root_brackets == 0
     assert runtime.stats.vinf_tangential_searches == 0
+
+
+def test_vinf_root_outside_sampled_domain_is_not_extrapolated(monkeypatch) -> None:
+    matches, runtime = _matches_for_residual(
+        monkeypatch,
+        seeds=[100.0, 150.0],
+        residual_speed=lambda tof: (tof - 200.0) * 0.02,
+    )
+
+    assert matches == []
+    assert runtime.stats.vinf_root_brackets == 0
+    assert runtime.stats.vinf_root_attempts == 0
+
+
+def test_flyby_vinf_continuity_accepts_inside_and_rejects_outside_tolerance() -> None:
+    incoming = _incoming_leg()
+    inside = mga._evaluate_flyby(
+        EARTH_LIKE_ASSIST,
+        incoming,
+        _outgoing_leg(1_100.0, 100.0, 10.0009),
+    )
+    outside = mga._evaluate_flyby(
+        EARTH_LIKE_ASSIST,
+        incoming,
+        _outgoing_leg(1_100.0, 100.0, 10.0012),
+    )
+
+    assert inside["vInfMismatchKmS"] < inside["vInfToleranceKmS"]
+    assert inside["vInfMagnitudeConserved"] is True
+    assert inside["feasible"] is True
+    assert outside["vInfMismatchKmS"] > outside["vInfToleranceKmS"]
+    assert outside["vInfMagnitudeConserved"] is False
+    assert outside["feasible"] is False
+    assert outside["reason"] == "vinf_magnitude_mismatch"
+
+
+def test_flyby_rejects_turn_limit_after_vinf_magnitude_match() -> None:
+    outgoing = _outgoing_leg(1_100.0, 100.0, 10.0)
+    outgoing["departureVelocityApprox"] = _velocity_au_day(10.0, 90.0)
+
+    result = mga._evaluate_flyby(EARTH_LIKE_ASSIST, _incoming_leg(), outgoing)
+
+    assert result["vInfMagnitudeConserved"] is True
+    assert result["requiredTurnDeg"] > result["maxTurnDeg"]
+    assert result["feasible"] is False
+    assert result["reason"] == "turn_limit"
 
 
 def test_near_tangential_vinf_root_is_bounded_and_certified(monkeypatch) -> None:
@@ -478,6 +586,103 @@ def test_small_unpruned_search_matches_exhaustive_topology_oracle(monkeypatch) -
     assert first_routes == expected
     assert second_routes == expected
     assert first["best"]["bodyRoute"] == second["best"]["bodyRoute"]
+
+
+def test_shuffled_assist_pool_has_identical_output_and_counters(monkeypatch) -> None:
+    _install_deterministic_search_fixture(monkeypatch)
+
+    ordered = _deterministic_result_signature(
+        _run_deterministic_search(["mars", "saturn", "venus"])
+    )
+    shuffled = _deterministic_result_signature(
+        _run_deterministic_search(["venus", "mars", "saturn"])
+    )
+
+    assert shuffled == ordered
+
+
+def test_ten_repeated_searches_have_identical_output_and_counters(monkeypatch) -> None:
+    _install_deterministic_search_fixture(monkeypatch)
+
+    signatures = [
+        _deterministic_result_signature(
+            _run_deterministic_search(["venus", "mars", "saturn"])
+        )
+        for _ in range(10)
+    ]
+
+    assert all(signature == signatures[0] for signature in signatures[1:])
+
+
+def test_pre_cancelled_search_makes_zero_lambert_calls(monkeypatch) -> None:
+    calls = 0
+
+    def forbidden_lambert(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise AssertionError("pre-cancelled search reached Lambert")
+
+    monkeypatch.setattr(mga, "compute_lambert_leg", forbidden_lambert)
+    context = PlanningContext.with_timeout(2.0)
+    context.cancel("fixture_pre_cancel")
+
+    with pytest.raises(PlanningCancelled):
+        mga.optimize_mga_route(
+            ALL_BODIES,
+            ephemeris=_owned_session(context),
+            from_id="earth",
+            to_id="mars",
+            departure_jd=2_460_500.5,
+            objective="min_distance",
+            max_assists=1,
+            assist_pool=["venus"],
+            planning_context=context,
+        )
+
+    assert calls == 0
+
+
+def test_mid_root_cancellation_stops_before_next_refinement_iteration(monkeypatch) -> None:
+    calls = 0
+    context = PlanningContext.with_timeout(2.0)
+
+    def cancel_during_first_probe(
+        _ephemeris,
+        _from_id,
+        _to_id,
+        _departure_jd,
+        _tof_days,
+        **_kwargs,
+    ):
+        nonlocal calls
+        calls += 1
+        context.cancel("fixture_mid_root_cancel")
+        return {"residual": 1.0}
+
+    monkeypatch.setattr(mga, "compute_lambert_leg", cancel_during_first_probe)
+    monkeypatch.setattr(
+        mga,
+        "_vinf_residual_kms",
+        lambda _incoming, outgoing: (float(outgoing["residual"]), 0.0),
+    )
+    runtime = mga._SearchRuntime(
+        ephemeris=_owned_session(context),
+        planning_context=context,
+        prograde=True,
+    )
+    runtime.begin_stage(0, 0)
+
+    with pytest.raises(PlanningCancelled):
+        mga._refine_vinf_root(
+            runtime,
+            _partial(),
+            "target",
+            (100.0, {"residual": -1.0}, -1.0),
+            (150.0, {"residual": 2.0}, 2.0),
+        )
+
+    assert calls == 1
+    assert runtime.stats.root_refinement_evaluations == 1
 
 
 def test_route_generator_rejects_non_sequences_without_consuming_them() -> None:
