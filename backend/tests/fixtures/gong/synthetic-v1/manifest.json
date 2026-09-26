@@ -1,0 +1,146 @@
+{
+  "compressed_fits_sha256": "db5868995ad41071259787fced98cde1083046682e0800cc697acf04ec7d7020",
+  "coordinate_sentinels": [
+    {
+      "latitude_deg": -83.95715371535164,
+      "longitude_deg": 301.5,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "latitude_deg": -83.95715371535164,
+      "longitude_deg": 359.5,
+      "x": 58,
+      "y": 0
+    },
+    {
+      "latitude_deg": -83.95715371535164,
+      "longitude_deg": 0.5,
+      "x": 59,
+      "y": 0
+    },
+    {
+      "latitude_deg": -83.95715371535164,
+      "longitude_deg": 300.5,
+      "x": 359,
+      "y": 0
+    },
+    {
+      "latitude_deg": -0.3183112052882681,
+      "longitude_deg": 120.5,
+      "x": 179,
+      "y": 89
+    },
+    {
+      "latitude_deg": 0.3183112052882681,
+      "longitude_deg": 121.5,
+      "x": 180,
+      "y": 90
+    },
+    {
+      "latitude_deg": 83.95715371535164,
+      "longitude_deg": 301.5,
+      "x": 0,
+      "y": 179
+    },
+    {
+      "latitude_deg": 83.95715371535164,
+      "longitude_deg": 300.5,
+      "x": 359,
+      "y": 179
+    }
+  ],
+  "edge_sentinels": [
+    {
+      "latitude_deg": 0.0,
+      "longitude_deg": 301.0,
+      "x": -0.5,
+      "y": 89.5
+    },
+    {
+      "latitude_deg": 0.0,
+      "longitude_deg": 301.0,
+      "x": 359.5,
+      "y": 89.5
+    },
+    {
+      "latitude_deg": -89.918971524797,
+      "longitude_deg": 301.0,
+      "x": -0.5,
+      "y": -0.5
+    },
+    {
+      "latitude_deg": 89.918971524797,
+      "longitude_deg": 301.0,
+      "x": -0.5,
+      "y": 179.5
+    }
+  ],
+  "expanded_fits_sha256": "aeb39566e5c739717e65a7505a1eee203bfaca8165568a603fe7a74f38c2b9f8",
+  "filename": "mrzqs260925t2304c2316_301.fits.gz",
+  "generator_sha256": "3324837b034a8ba6d67448bbed226c70c30ab3157b7dc92383ebbf7edb9f2447",
+  "header": {
+    "BLANK": -32768,
+    "BSCALE": 0.25,
+    "BUNIT": "Gauss",
+    "BZERO": -2.5,
+    "CARROT": 2316,
+    "CAR_ROT": 2316,
+    "CDELT1": 1.0,
+    "CDELT1A": -0.002777777777777778,
+    "CDELT2": 0.0111111,
+    "CDELT2A": 0.0111111,
+    "CR60": 2315.9972222,
+    "CRCENTER": 2315.6638889,
+    "CREDGE": 2316.163889,
+    "CRNOW": 2315.9982745,
+    "CRPIX1": 180.5,
+    "CRPIX1A": 180.5,
+    "CRPIX2": 90.5,
+    "CRPIX2A": 90.5,
+    "CRVAL1": 121.0,
+    "CRVAL1A": 2315.663889,
+    "CRVAL2": 0.0,
+    "CRVAL2A": 0.0,
+    "CTYPE1": "CRLN-CEA",
+    "CTYPE1A": "CRN-CEA",
+    "CTYPE2": "CRLT-CEA",
+    "CTYPE2A": "CRLT-CEA",
+    "DATE": "2026-09-25T23:04:00",
+    "DATE-OBS": "2026-09-25",
+    "FILELIST": "synthetic-no-provider-pixels",
+    "IMTYPE": "MAGNETIC",
+    "LONG0": 301.0,
+    "LONGADJ": -0.3788347,
+    "MAPDATE": "2026-09-25",
+    "MAPEDGE": 301.0,
+    "MAPL0": 1.0,
+    "MAPNAME": "2316_301",
+    "MAPTIME": "23:04",
+    "MMREL": "v3.3",
+    "OBS-SITE": "NSO/GONG NETWORK",
+    "ORIGIN": "National Solar Observatory -- GONG",
+    "PV2_1": 1.0,
+    "PV2_1A": 1.0,
+    "TELESCOP": "NSO-GONG",
+    "TIME-OBS": "23:04",
+    "WCSNAME": "Carrington Cylin-equal-area",
+    "WCSNAMEA": "Carrington-rotation Cylin-equal-area"
+  },
+  "omitted_header_keys": [
+    "CUNIT1",
+    "CUNIT2",
+    "LONPOLE",
+    "TIMESYS"
+  ],
+  "raw_pixel_rule": "paired int16 values 10+d and 10-d, d=1+(flat_index mod 100)",
+  "schema": "synthetic-gong-zqs-v1",
+  "shape": [
+    180,
+    360
+  ],
+  "versions": {
+    "astropy": "8.0.1"
+  },
+  "warning": "Synthetic parser fixture; contains no GONG science pixels."
+}
