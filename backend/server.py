@@ -831,6 +831,17 @@ WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS = frozenset(
     }
 )
 WS_SIM_CONNECTION_LIMIT = _load_env_int("WS_SIM_CONNECTION_LIMIT", 4, min_value=1)
+WS_SIM_PER_SUBJECT_CONNECTION_HARD_MAX = 8
+_WS_SIM_CONFIGURED_PER_SUBJECT_CONNECTION_LIMIT = _load_bounded_env_int(
+    "WS_SIM_PER_SUBJECT_CONNECTION_LIMIT",
+    2,
+    min_value=1,
+    max_value=WS_SIM_PER_SUBJECT_CONNECTION_HARD_MAX,
+)
+WS_SIM_PER_SUBJECT_CONNECTION_LIMIT = min(
+    _WS_SIM_CONFIGURED_PER_SUBJECT_CONNECTION_LIMIT,
+    max(1, WS_SIM_CONNECTION_LIMIT - 1),
+)
 WS_SIM_ALLOWED_ORIGINS = frozenset(
     _load_env_csv("WS_SIM_ALLOWED_ORIGINS", SOLAR_CORS_ALLOWED_ORIGINS)
 )
@@ -1326,6 +1337,17 @@ _benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_RE
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
 _ws_sim_active_connections = 0
+_ws_sim_active_connections_by_subject: dict[str, int] = {}
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _WebSocketAdmissionLease:
+    """One exact, single-release ownership token for a WebSocket slot."""
+
+    authenticated_subject: str | None
+
+
+_ws_sim_active_leases: set[_WebSocketAdmissionLease] = set()
 # Trajectory and mission work never enters Starlette/AnyIO's shared request
 # pool. Solar/PFSS work is deliberately absent: it runs in killable, reaped
 # spawn children owned by the dedicated supervisor below.
@@ -1837,20 +1859,53 @@ def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
     return sem.acquire(blocking=False)
 
 
-def _try_acquire_ws_sim_slot() -> bool:
+def _try_acquire_ws_sim_slot(
+    authenticated_subject: str | None = None,
+) -> _WebSocketAdmissionLease | None:
     global _ws_sim_active_connections
     if not _acquire_nonblocking(_ws_sim_connection_guard):
-        return False
+        return None
     with _ws_sim_connection_lock:
+        if authenticated_subject is not None:
+            subject_connections = _ws_sim_active_connections_by_subject.get(
+                authenticated_subject,
+                0,
+            )
+            if subject_connections >= WS_SIM_PER_SUBJECT_CONNECTION_LIMIT:
+                _ws_sim_connection_guard.release()
+                return None
+        lease = _WebSocketAdmissionLease(authenticated_subject)
+        _ws_sim_active_leases.add(lease)
         _ws_sim_active_connections += 1
-    return True
+        if authenticated_subject is not None:
+            _ws_sim_active_connections_by_subject[authenticated_subject] = (
+                subject_connections + 1
+            )
+    return lease
 
 
-def _release_ws_sim_slot() -> None:
+def _release_ws_sim_slot(lease: _WebSocketAdmissionLease) -> None:
     global _ws_sim_active_connections
     with _ws_sim_connection_lock:
+        if lease not in _ws_sim_active_leases:
+            raise RuntimeError("WebSocket admission lease is not active")
         if _ws_sim_active_connections <= 0:
             raise RuntimeError("WebSocket simulation admission counter underflow")
+        authenticated_subject = lease.authenticated_subject
+        if authenticated_subject is not None:
+            subject_connections = _ws_sim_active_connections_by_subject.get(
+                authenticated_subject,
+                0,
+            )
+            if subject_connections <= 0:
+                raise RuntimeError("WebSocket subject admission counter underflow")
+            if subject_connections == 1:
+                del _ws_sim_active_connections_by_subject[authenticated_subject]
+            else:
+                _ws_sim_active_connections_by_subject[authenticated_subject] = (
+                    subject_connections - 1
+                )
+        _ws_sim_active_leases.remove(lease)
         _ws_sim_active_connections -= 1
     _ws_sim_connection_guard.release()
 
@@ -4551,6 +4606,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/sim")
 async def simulation_websocket(websocket: WebSocket):
+    authenticated_subject: str | None = None
     if not _websocket_query_has_safe_shape(websocket):
         await websocket.close(
             code=1008,
@@ -4570,7 +4626,8 @@ async def simulation_websocket(websocket: WebSocket):
     if not _websocket_origin_allowed(websocket):
         await websocket.close(code=1008, reason="WebSocket origin is not allowed")
         return
-    if not _try_acquire_ws_sim_slot():
+    admission_lease = _try_acquire_ws_sim_slot(authenticated_subject)
+    if admission_lease is None:
         await websocket.close(code=1013, reason="Simulation capacity is exhausted")
         return
 
@@ -4578,7 +4635,7 @@ async def simulation_websocket(websocket: WebSocket):
         await websocket.accept()
         await _serve_simulation_websocket(websocket)
     finally:
-        _release_ws_sim_slot()
+        _release_ws_sim_slot(admission_lease)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

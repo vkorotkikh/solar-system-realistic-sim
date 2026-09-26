@@ -134,15 +134,85 @@ def test_runner_rejects_out_of_range_epoch_without_latching_runtime_error() -> N
 def test_websocket_admission_is_bounded_and_reusable(monkeypatch) -> None:
     monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(1))
     monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
 
-    assert server._try_acquire_ws_sim_slot() is True
+    first_lease = server._try_acquire_ws_sim_slot()
+    assert first_lease is not None
     assert server._ws_sim_active_connections == 1
-    assert server._try_acquire_ws_sim_slot() is False
+    assert server._try_acquire_ws_sim_slot() is None
 
-    server._release_ws_sim_slot()
+    server._release_ws_sim_slot(first_lease)
     assert server._ws_sim_active_connections == 0
-    assert server._try_acquire_ws_sim_slot() is True
-    server._release_ws_sim_slot()
+    second_lease = server._try_acquire_ws_sim_slot()
+    assert second_lease is not None
+    server._release_ws_sim_slot(second_lease)
+
+
+def test_websocket_admission_preserves_global_cap_with_per_subject_fairness(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(4))
+    monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+    monkeypatch.setattr(server, "WS_SIM_PER_SUBJECT_CONNECTION_LIMIT", 2)
+    subject_a = f"credential:sha256:{'a' * 64}"
+    subject_b = f"credential:sha256:{'b' * 64}"
+
+    a_leases = [
+        server._try_acquire_ws_sim_slot(subject_a),
+        server._try_acquire_ws_sim_slot(subject_a),
+    ]
+    assert all(lease is not None for lease in a_leases)
+    assert server._try_acquire_ws_sim_slot(subject_a) is None
+
+    b_leases = [
+        server._try_acquire_ws_sim_slot(subject_b),
+        server._try_acquire_ws_sim_slot(subject_b),
+    ]
+    assert all(lease is not None for lease in b_leases)
+    assert server._try_acquire_ws_sim_slot(f"credential:sha256:{'c' * 64}") is None
+    assert server._ws_sim_active_connections == 4
+    assert server._ws_sim_active_connections_by_subject == {
+        subject_a: 2,
+        subject_b: 2,
+    }
+    assert len(server._ws_sim_active_leases) == 4
+
+    server._release_ws_sim_slot(a_leases[0])
+    replacement = server._try_acquire_ws_sim_slot(subject_a)
+    assert replacement is not None
+
+    for lease in [a_leases[1], replacement, *b_leases]:
+        server._release_ws_sim_slot(lease)
+    assert server._ws_sim_active_connections == 0
+    assert server._ws_sim_active_connections_by_subject == {}
+    assert server._ws_sim_active_leases == set()
+
+
+def test_websocket_admission_lease_cannot_release_another_connection(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(2))
+    monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+    monkeypatch.setattr(server, "WS_SIM_PER_SUBJECT_CONNECTION_LIMIT", 2)
+    subject = f"credential:sha256:{'a' * 64}"
+    first = server._try_acquire_ws_sim_slot(subject)
+    second = server._try_acquire_ws_sim_slot(subject)
+    assert first is not None
+    assert second is not None
+
+    server._release_ws_sim_slot(first)
+    with pytest.raises(RuntimeError, match="lease"):
+        server._release_ws_sim_slot(first)
+
+    assert server._ws_sim_active_connections == 1
+    assert server._ws_sim_active_connections_by_subject == {subject: 1}
+    assert server._ws_sim_active_leases == {second}
+    server._release_ws_sim_slot(second)
 
 
 @pytest.mark.parametrize(
@@ -201,7 +271,7 @@ def test_network_websocket_rejects_duplicate_origin_before_admission(
         _network_security_config(raw_key),
     )
 
-    def unexpected_admission() -> bool:
+    def unexpected_admission(*_args):
         raise AssertionError("duplicate Origin reached WebSocket admission")
 
     monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
@@ -242,7 +312,7 @@ def test_network_websocket_rejects_oversized_origin_before_admission(
         frozenset({oversized_origin}),
     )
 
-    def unexpected_admission() -> bool:
+    def unexpected_admission(*_args):
         raise AssertionError("oversized Origin reached WebSocket admission")
 
     monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
@@ -288,7 +358,10 @@ def test_websocket_endpoint_rejects_hostile_origin_before_engine_setup(monkeypat
 def test_websocket_endpoint_rejects_capacity_before_engine_setup(monkeypatch) -> None:
     monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(1))
     monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
-    assert server._try_acquire_ws_sim_slot() is True
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+    held_lease = server._try_acquire_ws_sim_slot()
+    assert held_lease is not None
 
     readiness_called = False
 
@@ -305,7 +378,7 @@ def test_websocket_endpoint_rejects_capacity_before_engine_setup(monkeypatch) ->
         assert exc_info.value.code == 1013
         assert readiness_called is False
     finally:
-        server._release_ws_sim_slot()
+        server._release_ws_sim_slot(held_lease)
 
 
 def test_network_websocket_rejects_missing_header_auth_before_admission(
@@ -315,7 +388,7 @@ def test_network_websocket_rejects_missing_header_auth_before_admission(
     admission_called = False
     readiness_called = False
 
-    def unexpected_admission() -> bool:
+    def unexpected_admission(*_args):
         nonlocal admission_called
         admission_called = True
         raise AssertionError("WebSocket admission ran before authentication")
@@ -349,12 +422,11 @@ def test_network_websocket_accepts_gateway_header_before_capacity_check(
         "SOLAR_SECURITY_CONFIG",
         _network_security_config(raw_key),
     )
-    admission_calls = 0
+    admission_subjects: list[str | None] = []
 
-    def saturated_admission() -> bool:
-        nonlocal admission_calls
-        admission_calls += 1
-        return False
+    def saturated_admission(subject: str | None = None):
+        admission_subjects.append(subject)
+        return None
 
     monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", saturated_admission)
 
@@ -369,7 +441,45 @@ def test_network_websocket_accepts_gateway_header_before_capacity_check(
             pass
 
     assert exc_info.value.code == 1013
-    assert admission_calls == 1
+    assert len(admission_subjects) == 1
+    assert admission_subjects[0] is not None
+    assert admission_subjects[0].startswith("credential:sha256:")
+    assert raw_key not in admission_subjects[0]
+
+
+def test_network_websocket_releases_the_exact_subject_lease_on_failure(
+    monkeypatch,
+) -> None:
+    raw_key = "exact-release-websocket-secret"
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        _network_security_config(raw_key),
+    )
+    monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(2))
+    monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+    monkeypatch.setattr(server, "WS_SIM_PER_SUBJECT_CONNECTION_LIMIT", 1)
+
+    async def failed_connection(_websocket: WebSocket) -> None:
+        raise RuntimeError("synthetic connection failure")
+
+    monkeypatch.setattr(server, "_serve_simulation_websocket", failed_connection)
+    websocket, sent = _scope_websocket(
+        [
+            (b"x-api-key", raw_key.encode("ascii")),
+            (b"origin", b"http://localhost:5173"),
+        ]
+    )
+
+    with pytest.raises(RuntimeError, match="synthetic connection failure"):
+        asyncio.run(server.simulation_websocket(websocket))
+
+    assert sent == [{"type": "websocket.accept", "subprotocol": None, "headers": []}]
+    assert server._ws_sim_active_connections == 0
+    assert server._ws_sim_active_connections_by_subject == {}
+    assert server._ws_sim_active_leases == set()
 
 
 @pytest.mark.parametrize(
@@ -395,7 +505,7 @@ def test_websocket_rejects_query_credentials_before_admission(
     )
     admission_called = False
 
-    def unexpected_admission() -> bool:
+    def unexpected_admission(*_args):
         nonlocal admission_called
         admission_called = True
         raise AssertionError("query credentials reached WebSocket admission")
@@ -424,12 +534,11 @@ def test_local_websocket_remains_header_optional(monkeypatch) -> None:
         }
     )
     monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", local_config)
-    admission_calls = 0
+    admission_subjects: list[str | None] = []
 
-    def saturated_admission() -> bool:
-        nonlocal admission_calls
-        admission_calls += 1
-        return False
+    def saturated_admission(subject: str | None = None):
+        admission_subjects.append(subject)
+        return None
 
     monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", saturated_admission)
 
@@ -441,4 +550,4 @@ def test_local_websocket_remains_header_optional(monkeypatch) -> None:
             pass
 
     assert exc_info.value.code == 1013
-    assert admission_calls == 1
+    assert admission_subjects == [None]
