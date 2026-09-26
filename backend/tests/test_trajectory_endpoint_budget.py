@@ -221,6 +221,136 @@ def test_trajectory_rate_limiter_rejects_before_body_read_and_recovers_determini
     assert len(middleware._requests) <= 2
 
 
+def test_network_trajectory_rate_limit_uses_bounded_authenticated_subjects(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "network",
+                "SOLAR_PHYSICS_API_KEYS": "rate-limit-network-secret",
+            }
+        ),
+    )
+    inner_calls = 0
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+        clock=lambda: 100.0,
+    )
+
+    async def invoke(subject: str, host: str):
+        sent = []
+
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/trajectory/plan",
+                "headers": [],
+                "client": (host, 1234),
+                "state": {"authenticated_subject": subject},
+            },
+            receive,
+            send,
+        )
+        return sent
+
+    subject_a = f"credential:sha256:{'a' * 64}"
+    subject_b = f"credential:sha256:{'b' * 64}"
+    subject_c = f"credential:sha256:{'c' * 64}"
+
+    assert asyncio.run(invoke(subject_a, "10.0.0.9")) == []
+    assert asyncio.run(invoke(subject_b, "10.0.0.9")) == []
+    repeated_subject = asyncio.run(invoke(subject_a, "10.0.0.10"))
+    assert repeated_subject[0]["status"] == 429
+
+    assert asyncio.run(invoke(subject_c, "10.0.0.11")) == []
+    assert len(middleware._requests) == 2
+    assert set(middleware._requests) == {subject_a, subject_c}
+    assert inner_calls == 3
+
+
+def test_local_trajectory_rate_limit_retains_peer_identity(monkeypatch) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config({"SOLAR_SECURITY_PROFILE": "local"}),
+    )
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        lambda *_args: None,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+        clock=lambda: 100.0,
+    )
+    scope_a = {
+        "client": ("192.0.2.10", 1234),
+        "state": {"authenticated_subject": f"credential:sha256:{'a' * 64}"},
+    }
+    scope_b = {
+        "client": ("192.0.2.10", 1234),
+        "state": {"authenticated_subject": f"credential:sha256:{'b' * 64}"},
+    }
+
+    identity_a = middleware._identity(scope_a)
+    identity_b = middleware._identity(scope_b)
+
+    assert identity_a == "192.0.2.10"
+    assert identity_b == identity_a
+    assert middleware._retry_after(identity_a) is None
+    assert middleware._retry_after(identity_b) == 60
+
+
+def test_network_trajectory_rate_identity_rejects_oversized_subject(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "network",
+                "SOLAR_PHYSICS_API_KEYS": "bounded-rate-identity-secret",
+            }
+        ),
+    )
+    middleware = server._TrajectoryRateLimitMiddleware(
+        lambda *_args: None,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+    )
+    scope = {
+        "client": ("192.0.2.44", 1234),
+        "state": {"authenticated_subject": "x" * 10_000},
+    }
+
+    identity = middleware._identity(scope)
+
+    assert identity == "192.0.2.44"
+    assert len(identity.encode("utf-8")) <= 255
+
+
 def test_plan_rejects_duplicate_assists_before_worker_submission(monkeypatch) -> None:
     invoked = False
 

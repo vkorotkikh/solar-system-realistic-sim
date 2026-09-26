@@ -334,7 +334,9 @@ class _RequestBodyLimitMiddleware:
 
 
 class _TrajectoryRateLimitMiddleware:
-    """Bound trajectory ingress per peer before reading or parsing its body."""
+    """Bound trajectory ingress by authenticated subject or local peer."""
+
+    IDENTITY_MAX_BYTES = 255
 
     def __init__(
         self,
@@ -357,6 +359,17 @@ class _TrajectoryRateLimitMiddleware:
 
     @staticmethod
     def _identity(scope: dict[str, Any]) -> str:
+        state = scope.get("state")
+        if SOLAR_SECURITY_CONFIG.profile == "network" and isinstance(state, Mapping):
+            authenticated_subject = state.get("authenticated_subject")
+            if isinstance(authenticated_subject, str) and authenticated_subject:
+                try:
+                    subject_bytes = authenticated_subject.encode("utf-8")
+                except UnicodeEncodeError:
+                    subject_bytes = b""
+                if len(subject_bytes) <= _TrajectoryRateLimitMiddleware.IDENTITY_MAX_BYTES:
+                    return authenticated_subject
+
         client = scope.get("client")
         if isinstance(client, (tuple, list)) and client:
             host = str(client[0]).strip()
