@@ -93,6 +93,9 @@ class SolarRealtimeDataProvider:
     MAX_JSON_RESPONSE_BYTES = 1 * 1024 * 1024
     SWPC_WIND_MAX_RESPONSE_BYTES = 4 * 1024 * 1024
     SWPC_MAG_MAX_RESPONSE_BYTES = 3 * 1024 * 1024
+    SWPC_MAX_SAMPLE_AGE_S = 15.0 * 60.0
+    SWPC_MAX_FUTURE_OFFSET_S = 2.0 * 60.0
+    SWPC_MAX_PRODUCT_SKEW_S = 5.0 * 60.0
     MAX_TEXT_RESPONSE_BYTES = 8 * 1024 * 1024
     MAX_BINARY_RESPONSE_BYTES = 4 * 1024 * 1024
     RESPONSE_READ_CHUNK_BYTES = 64 * 1024
@@ -170,6 +173,9 @@ class SolarRealtimeDataProvider:
                     "wind_max_response_bytes": self.SWPC_WIND_MAX_RESPONSE_BYTES,
                     "mag_max_response_bytes": self.SWPC_MAG_MAX_RESPONSE_BYTES,
                     "product_notice": "NWS SCN 26-21",
+                    "maximum_sample_age_s": self.SWPC_MAX_SAMPLE_AGE_S,
+                    "maximum_future_offset_s": self.SWPC_MAX_FUTURE_OFFSET_S,
+                    "maximum_product_skew_s": self.SWPC_MAX_PRODUCT_SKEW_S,
                 },
                 "silso": {
                     "daily_url": self.SILSO_DAILY_URL,
@@ -875,12 +881,17 @@ class SolarRealtimeDataProvider:
     def _canonical_utc_time_tag(value: datetime) -> str:
         return value.isoformat().replace("+00:00", "Z")
 
+    @staticmethod
+    def _utc_now() -> datetime:
+        return datetime.now(timezone.utc)
+
     def _newest_usable_swpc_row(
         self,
         payload: Any,
         *,
         required_numeric_fields: tuple[str, ...],
         nonnegative_fields: frozenset[str],
+        reference_time_utc: datetime,
     ) -> tuple[dict[str, Any], datetime] | None:
         """Select the newest active, quality-zero row from the RTSW object schema."""
 
@@ -911,6 +922,12 @@ class SolarRealtimeDataProvider:
 
             time_tag = self._parse_swpc_time_tag(row.get("time_tag"))
             if time_tag is None:
+                continue
+            age_s = (reference_time_utc - time_tag).total_seconds()
+            if (
+                age_s > self.SWPC_MAX_SAMPLE_AGE_S
+                or age_s < -self.SWPC_MAX_FUTURE_OFFSET_S
+            ):
                 continue
 
             sanitized: dict[str, Any] = {
@@ -951,6 +968,7 @@ class SolarRealtimeDataProvider:
             self.NOAA_MAG_URL,
             max_bytes=self.SWPC_MAG_MAX_RESPONSE_BYTES,
         )
+        retrieved_at = self._utc_now().astimezone(timezone.utc)
 
         wind_selected = self._newest_usable_swpc_row(
             wind,
@@ -962,11 +980,13 @@ class SolarRealtimeDataProvider:
             nonnegative_fields=frozenset(
                 {"proton_density", "proton_speed", "proton_temperature"}
             ),
+            reference_time_utc=retrieved_at,
         )
         mag_selected = self._newest_usable_swpc_row(
             mag,
             required_numeric_fields=("bt", "bz_gsm"),
             nonnegative_fields=frozenset({"bt"}),
+            reference_time_utc=retrieved_at,
         )
 
         if wind_selected is None or mag_selected is None:
@@ -976,6 +996,12 @@ class SolarRealtimeDataProvider:
 
         wind_row, wind_time = wind_selected
         mag_row, mag_time = mag_selected
+        product_skew_s = abs((wind_time - mag_time).total_seconds())
+        if product_skew_s > self.SWPC_MAX_PRODUCT_SKEW_S:
+            raise RuntimeError("NOAA SWPC RTSW product timestamps exceed temporal skew")
+        wind_age_s = (retrieved_at - wind_time).total_seconds()
+        mag_age_s = (retrieved_at - mag_time).total_seconds()
+        oldest_component_time = min(wind_time, mag_time)
 
         speed_kms = wind_row["proton_speed"]
         density_pcc = wind_row["proton_density"]
@@ -993,10 +1019,17 @@ class SolarRealtimeDataProvider:
         activity_proxy = _clamp(sum(proxies), 0.0, 1.0)
 
         return {
-            "schema": {"name": "noaa_swpc_rtsw_context", "version": 1},
-            "time_tag": self._canonical_utc_time_tag(max(wind_time, mag_time)),
+            "schema": {"name": "noaa_swpc_rtsw_context", "version": 2},
+            # Compatibility field with an explicit conservative policy: a
+            # combined product is only as current as its oldest component.
+            "time_tag": self._canonical_utc_time_tag(oldest_component_time),
             "wind_time_tag": wind_row["time_tag"],
             "mag_time_tag": mag_row["time_tag"],
+            "retrieved_at_utc": self._canonical_utc_time_tag(retrieved_at),
+            "age_s": max(wind_age_s, mag_age_s),
+            "wind_age_s": wind_age_s,
+            "mag_age_s": mag_age_s,
+            "product_skew_s": product_skew_s,
             "solar_wind_speed_kms": speed_kms,
             "proton_density_pcc": density_pcc,
             "temperature_k": temperature_k,
@@ -1017,6 +1050,12 @@ class SolarRealtimeDataProvider:
                 "provider": "NOAA SWPC",
                 "product_notice": "NWS SCN 26-21",
                 "cadence": "PT1M",
+                "temporal_contract": {
+                    "maximum_sample_age_s": self.SWPC_MAX_SAMPLE_AGE_S,
+                    "maximum_future_offset_s": self.SWPC_MAX_FUTURE_OFFSET_S,
+                    "maximum_product_skew_s": self.SWPC_MAX_PRODUCT_SKEW_S,
+                    "combined_time_policy": "oldest_component",
+                },
                 "wind": {
                     "endpoint": self.NOAA_WIND_URL,
                     "source": wind_row["source"],

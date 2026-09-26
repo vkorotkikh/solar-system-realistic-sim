@@ -11,7 +11,12 @@
     "active": true,
     "overall_quality": 0,
     "required_numeric_fields": "finite JSON numbers",
-    "selection": "newest qualifying time_tag"
+    "selection": "newest qualifying time_tag",
+    "fixture_reference_time_utc": "2026-09-26T23:00:00Z",
+    "maximum_sample_age_s": 900.0,
+    "maximum_future_offset_s": 120.0,
+    "maximum_product_skew_s": 300.0,
+    "combined_time_policy": "oldest_component"
   },
   "fixtures": {
     "swpc_rtsw_wind_1m.json": {

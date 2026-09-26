@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,11 @@ def _install_fixture_fetcher(
     wind: Any | None = None,
     mag: Any | None = None,
 ) -> list[tuple[str, int | None]]:
+    monkeypatch.setattr(
+        provider,
+        "_utc_now",
+        lambda: datetime(2026, 9, 26, 23, 0, tzinfo=timezone.utc),
+    )
     payloads = {
         provider.NOAA_WIND_URL: (
             _fixture("swpc_rtsw_wind_1m.json") if wind is None else wind
@@ -57,6 +63,11 @@ def test_fixture_manifest_pins_authority_selection_contract_and_hashes() -> None
         "overall_quality": 0,
         "required_numeric_fields": "finite JSON numbers",
         "selection": "newest qualifying time_tag",
+        "fixture_reference_time_utc": "2026-09-26T23:00:00Z",
+        "maximum_sample_age_s": 900.0,
+        "maximum_future_offset_s": 120.0,
+        "maximum_product_skew_s": 300.0,
+        "combined_time_policy": "oldest_component",
     }
     expected_endpoints = {
         "swpc_rtsw_wind_1m.json": (
@@ -89,11 +100,16 @@ def test_fetch_swpc_selects_newest_active_quality_zero_finite_rows(
     ]
     assert result["schema"] == {
         "name": "noaa_swpc_rtsw_context",
-        "version": 1,
+        "version": 2,
     }
-    assert result["time_tag"] == "2026-09-26T22:58:00Z"
+    assert result["time_tag"] == "2026-09-26T22:55:00Z"
     assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
     assert result["mag_time_tag"] == "2026-09-26T22:58:00Z"
+    assert result["retrieved_at_utc"] == "2026-09-26T23:00:00Z"
+    assert result["age_s"] == 300.0
+    assert result["wind_age_s"] == 300.0
+    assert result["mag_age_s"] == 120.0
+    assert result["product_skew_s"] == 180.0
     assert result["solar_wind_speed_kms"] == 451.7
     assert result["proton_density_pcc"] == 4.02
     assert result["temperature_k"] == 156212.0
@@ -114,6 +130,12 @@ def test_fetch_swpc_selects_newest_active_quality_zero_finite_rows(
         "provider": "NOAA SWPC",
         "product_notice": "NWS SCN 26-21",
         "cadence": "PT1M",
+        "temporal_contract": {
+            "maximum_sample_age_s": 900.0,
+            "maximum_future_offset_s": 120.0,
+            "maximum_product_skew_s": 300.0,
+            "combined_time_policy": "oldest_component",
+        },
         "wind": {
             "endpoint": provider.NOAA_WIND_URL,
             "source": "SOLAR1",
@@ -154,6 +176,48 @@ def test_fetch_swpc_fails_closed_without_both_usable_products(
         provider._fetch_swpc()
 
 
+@pytest.mark.parametrize(
+    ("product", "time_tag"),
+    [
+        ("wind", "1970-01-01T00:00:00Z"),
+        ("mag", "1970-01-01T00:00:00Z"),
+        ("wind", "2099-01-01T00:00:00Z"),
+        ("mag", "2099-01-01T00:00:00Z"),
+    ],
+)
+def test_fetch_swpc_rejects_stale_or_future_component_rows(
+    monkeypatch: pytest.MonkeyPatch,
+    product: str,
+    time_tag: str,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = _fixture("swpc_rtsw_wind_1m.json")
+    mag = _fixture("swpc_rtsw_mag_1m.json")
+    target = wind if product == "wind" else mag
+    for row in target:
+        if row.get("active") is True and row.get("overall_quality") == 0:
+            row["time_tag"] = time_tag
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    with pytest.raises(RuntimeError, match="missing usable active quality rows"):
+        provider._fetch_swpc()
+
+
+def test_fetch_swpc_rejects_temporally_incoherent_product_pair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = _fixture("swpc_rtsw_wind_1m.json")
+    mag = _fixture("swpc_rtsw_mag_1m.json")
+    for row in wind:
+        if row.get("active") is True and row.get("overall_quality") == 0:
+            row["time_tag"] = "2026-09-26T22:50:00Z"
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    with pytest.raises(RuntimeError, match="exceed temporal skew"):
+        provider._fetch_swpc()
+
+
 def test_fetch_swpc_rejects_removed_header_row_schema(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -179,6 +243,9 @@ def test_swpc_capabilities_publish_current_products_and_hard_caps() -> None:
         "wind_max_response_bytes": 4 * 1024 * 1024,
         "mag_max_response_bytes": 3 * 1024 * 1024,
         "product_notice": "NWS SCN 26-21",
+        "maximum_sample_age_s": 900.0,
+        "maximum_future_offset_s": 120.0,
+        "maximum_product_skew_s": 300.0,
     }
 
 
