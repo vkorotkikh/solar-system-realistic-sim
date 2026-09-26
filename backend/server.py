@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any, Optional
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -725,6 +725,22 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_QUERY_MAX_BYTES = 4_096
+WS_SIM_QUERY_MAX_FIELDS = 32
+WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS = frozenset(
+    {
+        "access_token",
+        "api-key",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "bearer",
+        "token",
+        "x-api-key",
+        "x_api_key",
+    }
+)
 WS_SIM_CONNECTION_LIMIT = _load_env_int("WS_SIM_CONNECTION_LIMIT", 4, min_value=1)
 WS_SIM_ALLOWED_ORIGINS = frozenset(
     _load_env_csv("WS_SIM_ALLOWED_ORIGINS", SOLAR_CORS_ALLOWED_ORIGINS)
@@ -1735,6 +1751,39 @@ def _websocket_origin_allowed(websocket: WebSocket) -> bool:
     # Non-browser scientific clients commonly omit Origin. Browser clients must
     # match the same explicit loopback allowlist as the HTTP application.
     return origin is None or origin in WS_SIM_ALLOWED_ORIGINS
+
+
+def _websocket_query_has_safe_shape(websocket: WebSocket) -> bool:
+    """Reject credential transport and unbounded parsing in WebSocket URLs."""
+
+    raw_query = websocket.scope.get("query_string", b"")
+    if not isinstance(raw_query, (bytes, bytearray)):
+        return False
+    query_bytes = bytes(raw_query)
+    if len(query_bytes) > WS_SIM_QUERY_MAX_BYTES:
+        return False
+    try:
+        decoded_query = query_bytes.decode("ascii")
+        fields = parse_qsl(
+            decoded_query,
+            keep_blank_values=True,
+            max_num_fields=WS_SIM_QUERY_MAX_FIELDS,
+        )
+    except (UnicodeDecodeError, ValueError):
+        return False
+    return all(
+        key.strip().lower() not in WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS
+        for key, _value in fields
+    )
+
+
+def _network_websocket_subject(websocket: WebSocket) -> str | None:
+    if SOLAR_SECURITY_CONFIG.profile != "network":
+        return None
+    return _authenticated_api_subject_from_scope(
+        websocket.scope,
+        config=SOLAR_SECURITY_CONFIG,
+    )
 
 
 def _release_guard_when_work_finishes(
@@ -4318,6 +4367,22 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/sim")
 async def simulation_websocket(websocket: WebSocket):
+    if not _websocket_query_has_safe_shape(websocket):
+        await websocket.close(
+            code=1008,
+            reason="WebSocket query credentials are not allowed",
+        )
+        return
+    if SOLAR_SECURITY_CONFIG.profile == "network":
+        authenticated_subject = _network_websocket_subject(websocket)
+        if authenticated_subject is None:
+            await websocket.close(
+                code=1008,
+                reason="WebSocket authentication is required",
+            )
+            return
+        state = websocket.scope.setdefault("state", {})
+        state["authenticated_subject"] = authenticated_subject
     if not _websocket_origin_allowed(websocket):
         await websocket.close(code=1008, reason="WebSocket origin is not allowed")
         return

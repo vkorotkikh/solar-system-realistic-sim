@@ -21,6 +21,16 @@ from sim.rebound_nbody import (
 client = TestClient(server.app)
 
 
+def _network_security_config(raw_key: str = "websocket-network-secret"):
+    return server._load_solar_security_config(
+        {
+            "SOLAR_SECURITY_PROFILE": "network",
+            "SOLAR_PHYSICS_API_KEYS": raw_key,
+            "SOLAR_CORS_ALLOWED_ORIGINS": "http://localhost:5173",
+        }
+    )
+
+
 class _CopyableSimulation:
     def __init__(self, engine: REBOUNDEngine | None = None) -> None:
         self.t = 0.0
@@ -190,3 +200,139 @@ def test_websocket_endpoint_rejects_capacity_before_engine_setup(monkeypatch) ->
         assert readiness_called is False
     finally:
         server._release_ws_sim_slot()
+
+
+def test_network_websocket_rejects_missing_header_auth_before_admission(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", _network_security_config())
+    admission_called = False
+    readiness_called = False
+
+    def unexpected_admission() -> bool:
+        nonlocal admission_called
+        admission_called = True
+        raise AssertionError("WebSocket admission ran before authentication")
+
+    def unexpected_readiness():
+        nonlocal readiness_called
+        readiness_called = True
+        raise AssertionError("engine readiness ran before authentication")
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
+    monkeypatch.setattr(server, "_rebound_readiness", unexpected_readiness)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(
+            "/ws/sim",
+            headers={"origin": "http://localhost:5173"},
+        ):
+            pass
+
+    assert exc_info.value.code == 1008
+    assert admission_called is False
+    assert readiness_called is False
+
+
+def test_network_websocket_accepts_gateway_header_before_capacity_check(
+    monkeypatch,
+) -> None:
+    raw_key = "gateway-injected-websocket-secret"
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        _network_security_config(raw_key),
+    )
+    admission_calls = 0
+
+    def saturated_admission() -> bool:
+        nonlocal admission_calls
+        admission_calls += 1
+        return False
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", saturated_admission)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(
+            "/ws/sim",
+            headers={
+                "origin": "http://localhost:5173",
+                "x-api-key": raw_key,
+            },
+        ):
+            pass
+
+    assert exc_info.value.code == 1013
+    assert admission_calls == 1
+
+
+@pytest.mark.parametrize(
+    "credential_query",
+    [
+        "api_key=secret",
+        "access_token=secret",
+        "token=secret",
+        "authorization=Bearer%20secret",
+        "x-api-key=secret",
+        "%61pi_key=secret",
+    ],
+)
+def test_websocket_rejects_query_credentials_before_admission(
+    monkeypatch,
+    credential_query: str,
+) -> None:
+    raw_key = "header-secret"
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        _network_security_config(raw_key),
+    )
+    admission_called = False
+
+    def unexpected_admission() -> bool:
+        nonlocal admission_called
+        admission_called = True
+        raise AssertionError("query credentials reached WebSocket admission")
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", unexpected_admission)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(
+            f"/ws/sim?{credential_query}",
+            headers={
+                "origin": "http://localhost:5173",
+                "x-api-key": raw_key,
+            },
+        ):
+            pass
+
+    assert exc_info.value.code == 1008
+    assert admission_called is False
+
+
+def test_local_websocket_remains_header_optional(monkeypatch) -> None:
+    local_config = server._load_solar_security_config(
+        {
+            "SOLAR_SECURITY_PROFILE": "local",
+            "SOLAR_CORS_ALLOWED_ORIGINS": "http://localhost:5173",
+        }
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", local_config)
+    admission_calls = 0
+
+    def saturated_admission() -> bool:
+        nonlocal admission_calls
+        admission_calls += 1
+        return False
+
+    monkeypatch.setattr(server, "_try_acquire_ws_sim_slot", saturated_admission)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(
+            "/ws/sim",
+            headers={"origin": "http://localhost:5173"},
+        ):
+            pass
+
+    assert exc_info.value.code == 1013
+    assert admission_calls == 1
