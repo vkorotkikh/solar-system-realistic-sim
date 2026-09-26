@@ -332,8 +332,61 @@ def test_executor_submit_failure_releases_exactly_one_capacity_slot(monkeypatch)
         runner.shutdown()
 
 
+def test_child_start_failure_releases_capacity_and_next_submit_recovers() -> None:
+    import multiprocessing
+
+    from sim.process_supervisor import ProcessSubmissionFailed, SupervisedProcessRunner
+
+    spawn_context = multiprocessing.get_context("spawn")
+
+    class StartFailure:
+        daemon = False
+
+        def start(self) -> None:
+            raise OSError("injected child start failure")
+
+    class FailFirstStartContext:
+        def __init__(self) -> None:
+            self.process_calls = 0
+
+        def get_start_method(self) -> str:
+            return "spawn"
+
+        def Pipe(self, *args, **kwargs):
+            return spawn_context.Pipe(*args, **kwargs)
+
+        def Process(self, *args, **kwargs):
+            self.process_calls += 1
+            if self.process_calls == 1:
+                return StartFailure()
+            return spawn_context.Process(*args, **kwargs)
+
+    runner = SupervisedProcessRunner(
+        TARGET,
+        max_workers=1,
+        max_queue=0,
+        mp_context=FailFirstStartContext(),
+    )
+    try:
+        failed = runner.submit(
+            {"operation": "echo", "result": _result("first")},
+            timeout_seconds=2.0,
+        )
+        with pytest.raises(ProcessSubmissionFailed):
+            failed.result(timeout=3.0)
+        assert runner.snapshot()["in_flight"] == 0
+
+        recovered = runner.submit(
+            {"operation": "echo", "result": _result("second")},
+            timeout_seconds=2.0,
+        )
+        assert recovered.result(timeout=3.0)["value"] == "second"
+    finally:
+        runner.shutdown()
+
+
 def test_async_cancellation_terminates_child_and_capacity_recovers(tmp_path: Path) -> None:
-    from sim.process_supervisor import SupervisedProcessRunner
+    from sim.process_supervisor import ProcessSaturated, SupervisedProcessRunner
 
     async def scenario() -> None:
         runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
@@ -354,6 +407,12 @@ def test_async_cancellation_terminates_child_and_capacity_recovers(tmp_path: Pat
             task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await task
+
+            with pytest.raises(ProcessSaturated):
+                runner.submit(
+                    {"operation": "echo", "result": _result("too-early")},
+                    timeout_seconds=2.0,
+                )
 
             deadline = time.monotonic() + 3.0
             while runner.snapshot()["in_flight"] and time.monotonic() < deadline:

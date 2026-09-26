@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -151,6 +152,84 @@ def test_application_lifespan_shuts_down_its_solar_process_runner(monkeypatch) -
         assert runner.shutdown_calls == 0
 
     assert runner.shutdown_calls == 1
+
+
+def test_request_disconnect_cancels_owned_process_run() -> None:
+    class CancelAwareRunner:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.cancelled = asyncio.Event()
+
+        async def run(self, _payload, *, timeout_seconds):
+            del timeout_seconds
+            self.started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancelled.set()
+                raise
+
+    class DisconnectAfterStart:
+        def __init__(self, runner: CancelAwareRunner) -> None:
+            self.runner = runner
+
+        async def is_disconnected(self) -> bool:
+            await self.runner.started.wait()
+            return True
+
+    async def scenario() -> None:
+        runner = CancelAwareRunner()
+        request = DisconnectAfterStart(runner)
+        with pytest.raises(server._RequestOwnerDisconnected):
+            await server._run_request_owned_process(
+                request,
+                runner,
+                {"work": "solar"},
+                timeout_seconds=2.0,
+                disconnect_poll_seconds=0.0,
+            )
+        assert runner.cancelled.is_set()
+
+    asyncio.run(scenario())
+
+
+def test_handler_cancellation_cancels_owned_process_run() -> None:
+    class CancelAwareRunner:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.cancelled = asyncio.Event()
+
+        async def run(self, _payload, *, timeout_seconds):
+            del timeout_seconds
+            self.started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancelled.set()
+                raise
+
+    class ConnectedRequest:
+        async def is_disconnected(self) -> bool:
+            return False
+
+    async def scenario() -> None:
+        runner = CancelAwareRunner()
+        task = asyncio.create_task(
+            server._run_request_owned_process(
+                ConnectedRequest(),
+                runner,
+                {"work": "solar"},
+                timeout_seconds=2.0,
+                disconnect_poll_seconds=0.01,
+            )
+        )
+        await runner.started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert runner.cancelled.is_set()
+
+    asyncio.run(scenario())
 
 
 def test_server_process_limits_do_not_exceed_supervisor_hard_caps() -> None:

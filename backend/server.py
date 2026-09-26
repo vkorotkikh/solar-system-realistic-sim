@@ -1663,6 +1663,64 @@ async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float 
         await asyncio.sleep(poll_seconds)
 
 
+async def _run_request_owned_process(
+    request: Request,
+    runner,
+    payload: Mapping[str, Any],
+    *,
+    timeout_seconds: float,
+    disconnect_poll_seconds: float = 0.05,
+):
+    """Cancel a supervised child when its HTTP owner disconnects.
+
+    Some ASGI servers do not cancel a route coroutine when the peer leaves.
+    Polling closes that ownership gap. Cancelling ``runner.run`` signals its
+    supervisor thread, which retains admission until the real child is killed
+    and joined.
+    """
+
+    worker_task = asyncio.create_task(
+        runner.run(payload, timeout_seconds=timeout_seconds)
+    )
+    disconnect_task = asyncio.create_task(
+        _wait_for_request_disconnect(
+            request,
+            poll_seconds=disconnect_poll_seconds,
+        )
+    )
+    try:
+        done, _pending = await asyncio.wait(
+            (worker_task, disconnect_task),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if worker_task in done:
+            return await worker_task
+
+        await disconnect_task
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise _RequestOwnerDisconnected()
+    except _RequestOwnerDisconnected:
+        raise
+    except asyncio.CancelledError:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise
+    finally:
+        if not disconnect_task.done():
+            disconnect_task.cancel()
+            try:
+                await disconnect_task
+            except asyncio.CancelledError:
+                pass
+
+
 async def _run_request_owned_thread(
     request: Request,
     function,
@@ -2697,7 +2755,9 @@ async def solar_physics_state(
         )
 
     try:
-        state = await _get_solar_physics_runner().run(
+        state = await _run_request_owned_process(
+            request,
+            _get_solar_physics_runner(),
             {
                 "epoch_jd_tdb": epoch_jd,
                 "fidelity": fidelity_key,
