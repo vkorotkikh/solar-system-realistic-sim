@@ -386,6 +386,69 @@ def test_child_start_failure_releases_capacity_and_next_submit_recovers() -> Non
         runner.shutdown()
 
 
+@pytest.mark.parametrize("failure_stage", ["pipe", "process"])
+def test_child_construction_failure_is_stable_and_leaks_no_pipe_fds(
+    failure_stage: str,
+) -> None:
+    import multiprocessing
+
+    from sim.process_supervisor import ProcessSubmissionFailed, SupervisedProcessRunner
+
+    fd_directory = Path("/proc/self/fd")
+
+    spawn_context = multiprocessing.get_context("spawn")
+
+    class ConstructionFailureContext:
+        def get_start_method(self) -> str:
+            return "spawn"
+
+        def Pipe(self, *args, **kwargs):
+            if failure_stage == "pipe":
+                raise OSError("injected pipe construction failure")
+            return spawn_context.Pipe(*args, **kwargs)
+
+        def Process(self, *args, **kwargs):
+            del args, kwargs
+            raise OSError("injected process construction failure")
+
+    runner = SupervisedProcessRunner(
+        TARGET,
+        max_workers=1,
+        max_queue=0,
+        mp_context=ConstructionFailureContext(),
+    )
+    retained_futures = []
+    errors: list[BaseException] = []
+    baseline_fds = len(os.listdir(fd_directory)) if fd_directory.is_dir() else None
+    try:
+        for _ in range(12):
+            future = runner.submit(
+                {"operation": "echo", "result": _result("never-started")},
+                timeout_seconds=2.0,
+            )
+            retained_futures.append(future)
+            error = future.exception(timeout=3.0)
+            assert error is not None
+            errors.append(error)
+
+            release_deadline = time.monotonic() + 1.0
+            while runner.snapshot()["in_flight"] and time.monotonic() < release_deadline:
+                time.sleep(0.005)
+            assert runner.snapshot()["in_flight"] == 0
+
+        contract_failures = [
+            (type(error).__name__, str(error))
+            for error in errors
+            if not isinstance(error, ProcessSubmissionFailed)
+            or str(error) != "worker process construction failed"
+        ]
+        assert contract_failures == []
+        if baseline_fds is not None:
+            assert len(os.listdir(fd_directory)) - baseline_fds == 0
+    finally:
+        runner.shutdown()
+
+
 def test_unreapable_child_quarantines_runner_without_releasing_capacity() -> None:
     import multiprocessing
 

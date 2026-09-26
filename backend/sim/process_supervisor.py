@@ -398,20 +398,29 @@ class SupervisedProcessRunner:
         if time.monotonic() >= absolute_deadline:
             raise ProcessTimedOut("worker deadline expired while queued")
 
-        receive_connection, send_connection = self._context.Pipe(duplex=False)
-        process = self._context.Process(
-            target=_child_entry,
-            args=(
-                self._target_spec,
-                payload,
-                send_connection,
-                self._max_result_bytes,
-            ),
-            name=f"solar-physics-{job_id}",
-            daemon=True,
-        )
+        receive_connection: Connection | None = None
+        send_connection: Connection | None = None
+        process: Any | None = None
         started = False
         try:
+            try:
+                receive_connection, send_connection = self._context.Pipe(duplex=False)
+                process = self._context.Process(
+                    target=_child_entry,
+                    args=(
+                        self._target_spec,
+                        payload,
+                        send_connection,
+                        self._max_result_bytes,
+                    ),
+                    name=f"solar-physics-{job_id}",
+                    daemon=True,
+                )
+            except BaseException as exc:
+                raise ProcessSubmissionFailed(
+                    "worker process construction failed"
+                ) from exc
+
             with self._state_lock:
                 if self._closed or cancel_event.is_set():
                     raise ProcessCancelled("process job cancelled before start")
@@ -466,10 +475,13 @@ class SupervisedProcessRunner:
                         continue
                     raise ProcessCrashed(process.exitcode)
         finally:
-            receive_connection.close()
-            if not started:
-                send_connection.close()
-            if started:
+            for connection in (receive_connection, send_connection):
+                if connection is not None:
+                    try:
+                        connection.close()
+                    except BaseException:
+                        pass
+            if started and process is not None:
                 with self._state_lock:
                     quarantined = job_id in self._quarantined_jobs
                 if not quarantined:
