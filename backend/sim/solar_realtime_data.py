@@ -76,18 +76,23 @@ class SolarRealtimeDataProvider:
     Cached live-data ingestion for high-fidelity solar forcing.
 
     Sources:
-      - NOAA SWPC solar-wind plasma + IMF feeds
+      - NOAA SWPC Real Time Solar Wind plasma + IMF feeds
       - SILSO daily total sunspot numbers
       - SDO/AIA latest-image metadata via Helioviewer API
     """
 
-    NOAA_PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
-    NOAA_MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json"
+    NOAA_WIND_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json"
+    NOAA_MAG_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json"
+    # Compatibility alias for callers that used the former product name. The
+    # target is the current SCN 26-21 RTSW wind product, not the removed feed.
+    NOAA_PLASMA_URL = NOAA_WIND_URL
     SILSO_DAILY_URL = "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
     HELIOVIEWER_CLOSEST_URL = "https://api.helioviewer.org/v2/getClosestImage/"
     HELIOVIEWER_JP2_URL = "https://api.helioviewer.org/v2/getJP2Image/"
     HELIOVIEWER_TILE_URL = "https://api.helioviewer.org/v2/getTile/"
     MAX_JSON_RESPONSE_BYTES = 1 * 1024 * 1024
+    SWPC_WIND_MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+    SWPC_MAG_MAX_RESPONSE_BYTES = 3 * 1024 * 1024
     MAX_TEXT_RESPONSE_BYTES = 8 * 1024 * 1024
     MAX_BINARY_RESPONSE_BYTES = 4 * 1024 * 1024
     RESPONSE_READ_CHUNK_BYTES = 64 * 1024
@@ -160,8 +165,11 @@ class SolarRealtimeDataProvider:
         return {
             "sources": {
                 "swpc": {
-                    "plasma_url": self.NOAA_PLASMA_URL,
+                    "wind_url": self.NOAA_WIND_URL,
                     "mag_url": self.NOAA_MAG_URL,
+                    "wind_max_response_bytes": self.SWPC_WIND_MAX_RESPONSE_BYTES,
+                    "mag_max_response_bytes": self.SWPC_MAG_MAX_RESPONSE_BYTES,
+                    "product_notice": "NWS SCN 26-21",
                 },
                 "silso": {
                     "daily_url": self.SILSO_DAILY_URL,
@@ -332,10 +340,12 @@ class SolarRealtimeDataProvider:
             "spatial_use": channel_entry.get("spatial_use"),
         }
 
-    def _fetch_json(self, url: str) -> Any:
+    def _fetch_json(self, url: str, *, max_bytes: int | None = None) -> Any:
         payload, _ = self._request_bytes(
             url,
-            max_bytes=self.MAX_JSON_RESPONSE_BYTES,
+            max_bytes=(
+                self.MAX_JSON_RESPONSE_BYTES if max_bytes is None else max_bytes
+            ),
         )
         return json.loads(payload.decode("utf-8"))
 
@@ -838,72 +848,146 @@ class SolarRealtimeDataProvider:
         )
         return payload.decode("utf-8", errors="replace")
 
-    def _latest_noaa_row(self, payload: Any, required_columns: list[str]) -> dict[str, Any] | None:
-        if not isinstance(payload, list) or len(payload) < 2:
+    @staticmethod
+    def _parse_swpc_time_tag(value: Any) -> datetime | None:
+        if not isinstance(value, str) or not value or len(value) > 64:
             return None
-        header = payload[0]
-        if not isinstance(header, list):
+        try:
+            parsed = datetime.fromisoformat(
+                value[:-1] + "+00:00" if value.endswith("Z") else value
+            )
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    @staticmethod
+    def _canonical_utc_time_tag(value: datetime) -> str:
+        return value.isoformat().replace("+00:00", "Z")
+
+    def _newest_usable_swpc_row(
+        self,
+        payload: Any,
+        *,
+        required_numeric_fields: tuple[str, ...],
+        nonnegative_fields: frozenset[str],
+    ) -> tuple[dict[str, Any], datetime] | None:
+        """Select the newest active, quality-zero row from the RTSW object schema."""
+
+        if not isinstance(payload, list):
             return None
 
-        indices: dict[str, int] = {}
-        for column in required_columns:
-            try:
-                indices[column] = header.index(column)
-            except ValueError:
-                return None
-
-        for row in reversed(payload[1:]):
-            if not isinstance(row, list):
+        candidates: list[tuple[datetime, dict[str, Any]]] = []
+        for row in payload:
+            if not isinstance(row, dict) or row.get("active") is not True:
                 continue
-            parsed: dict[str, Any] = {}
+
+            quality = row.get("overall_quality")
+            if (
+                isinstance(quality, bool)
+                or not isinstance(quality, (int, float))
+                or not math.isfinite(float(quality))
+                or float(quality) != 0.0
+            ):
+                continue
+
+            source = row.get("source")
+            if (
+                not isinstance(source, str)
+                or not source
+                or len(source.encode("utf-8")) > 64
+            ):
+                continue
+
+            time_tag = self._parse_swpc_time_tag(row.get("time_tag"))
+            if time_tag is None:
+                continue
+
+            sanitized: dict[str, Any] = {
+                "active": True,
+                "overall_quality": 0,
+                "source": source,
+                "time_tag": self._canonical_utc_time_tag(time_tag),
+            }
             valid = True
-            for column, idx in indices.items():
-                if idx >= len(row):
+            for field in required_numeric_fields:
+                value = row.get(field)
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(float(value))
+                    or (field in nonnegative_fields and float(value) < 0.0)
+                ):
                     valid = False
                     break
-                parsed[column] = row[idx]
+                sanitized[field] = float(value)
             if valid:
-                return parsed
-        return None
+                candidates.append((time_tag, sanitized))
+
+        if not candidates:
+            return None
+        selected_time, selected_row = max(
+            candidates,
+            key=lambda candidate: candidate[0],
+        )
+        return selected_row, selected_time
 
     def _fetch_swpc(self) -> dict[str, Any]:
-        plasma = self._fetch_json(self.NOAA_PLASMA_URL)
-        mag = self._fetch_json(self.NOAA_MAG_URL)
-
-        plasma_row = self._latest_noaa_row(
-            plasma,
-            ["time_tag", "density", "speed", "temperature"],
+        wind = self._fetch_json(
+            self.NOAA_WIND_URL,
+            max_bytes=self.SWPC_WIND_MAX_RESPONSE_BYTES,
         )
-        mag_row = self._latest_noaa_row(
+        mag = self._fetch_json(
+            self.NOAA_MAG_URL,
+            max_bytes=self.SWPC_MAG_MAX_RESPONSE_BYTES,
+        )
+
+        wind_selected = self._newest_usable_swpc_row(
+            wind,
+            required_numeric_fields=(
+                "proton_density",
+                "proton_speed",
+                "proton_temperature",
+            ),
+            nonnegative_fields=frozenset(
+                {"proton_density", "proton_speed", "proton_temperature"}
+            ),
+        )
+        mag_selected = self._newest_usable_swpc_row(
             mag,
-            ["time_tag", "bt", "bz_gsm"],
+            required_numeric_fields=("bt", "bz_gsm"),
+            nonnegative_fields=frozenset({"bt"}),
         )
 
-        if plasma_row is None and mag_row is None:
-            raise RuntimeError("NOAA SWPC payloads missing usable rows")
+        if wind_selected is None or mag_selected is None:
+            raise RuntimeError(
+                "NOAA SWPC RTSW payloads missing usable active quality rows"
+            )
 
-        speed_kms = _safe_float(plasma_row.get("speed") if plasma_row else None)
-        density_pcc = _safe_float(plasma_row.get("density") if plasma_row else None)
-        temperature_k = _safe_float(plasma_row.get("temperature") if plasma_row else None)
-        imf_bt_nt = _safe_float(mag_row.get("bt") if mag_row else None)
-        imf_bz_nt = _safe_float(mag_row.get("bz_gsm") if mag_row else None)
+        wind_row, wind_time = wind_selected
+        mag_row, mag_time = mag_selected
 
-        dynamic_pressure_npa: float | None = None
-        if density_pcc is not None and speed_kms is not None:
-            dynamic_pressure_npa = 1.6726e-6 * density_pcc * speed_kms * speed_kms
+        speed_kms = wind_row["proton_speed"]
+        density_pcc = wind_row["proton_density"]
+        temperature_k = wind_row["proton_temperature"]
+        imf_bt_nt = mag_row["bt"]
+        imf_bz_nt = mag_row["bz_gsm"]
+
+        dynamic_pressure_npa = 1.6726e-6 * density_pcc * speed_kms * speed_kms
 
         proxies = []
-        if speed_kms is not None:
-            proxies.append(_clamp((speed_kms - 280.0) / 620.0, 0.0, 1.0) * 0.45)
-        if imf_bt_nt is not None:
-            proxies.append(_clamp(imf_bt_nt / 18.0, 0.0, 1.0) * 0.2)
-        if imf_bz_nt is not None:
-            southward = _clamp((-imf_bz_nt) / 12.0, 0.0, 1.0)
-            proxies.append(southward * 0.35)
-        activity_proxy = _clamp(sum(proxies), 0.0, 1.0) if proxies else None
+        proxies.append(_clamp((speed_kms - 280.0) / 620.0, 0.0, 1.0) * 0.45)
+        proxies.append(_clamp(imf_bt_nt / 18.0, 0.0, 1.0) * 0.2)
+        southward = _clamp((-imf_bz_nt) / 12.0, 0.0, 1.0)
+        proxies.append(southward * 0.35)
+        activity_proxy = _clamp(sum(proxies), 0.0, 1.0)
 
         return {
-            "time_tag": (plasma_row or mag_row).get("time_tag"),
+            "schema": {"name": "noaa_swpc_rtsw_context", "version": 1},
+            "time_tag": self._canonical_utc_time_tag(max(wind_time, mag_time)),
+            "wind_time_tag": wind_row["time_tag"],
+            "mag_time_tag": mag_row["time_tag"],
             "solar_wind_speed_kms": speed_kms,
             "proton_density_pcc": density_pcc,
             "temperature_k": temperature_k,
@@ -911,6 +995,32 @@ class SolarRealtimeDataProvider:
             "imf_bz_nt": imf_bz_nt,
             "dynamic_pressure_npa": dynamic_pressure_npa,
             "activity_proxy": activity_proxy,
+            "units": {
+                "solar_wind_speed_kms": "km/s",
+                "proton_density_pcc": "protons/cm^3",
+                "temperature_k": "K",
+                "imf_bt_nt": "nT",
+                "imf_bz_nt": "nT",
+                "dynamic_pressure_npa": "nPa",
+                "activity_proxy": "1",
+            },
+            "provenance": {
+                "provider": "NOAA SWPC",
+                "product_notice": "NWS SCN 26-21",
+                "cadence": "PT1M",
+                "wind": {
+                    "endpoint": self.NOAA_WIND_URL,
+                    "source": wind_row["source"],
+                    "active": wind_row["active"],
+                    "overall_quality": wind_row["overall_quality"],
+                },
+                "mag": {
+                    "endpoint": self.NOAA_MAG_URL,
+                    "source": mag_row["source"],
+                    "active": mag_row["active"],
+                    "overall_quality": mag_row["overall_quality"],
+                },
+            },
         }
 
     def _fetch_silso(self) -> dict[str, Any]:
@@ -1157,7 +1267,7 @@ class SolarRealtimeDataProvider:
             snapshot["source_status"]["swpc"] = {
                 "ok": True,
                 "updated": swpc.get("time_tag"),
-                "endpoint": self.NOAA_PLASMA_URL,
+                "endpoint": self.NOAA_WIND_URL,
             }
             if isinstance(swpc.get("activity_proxy"), (float, int)):
                 proxy = float(swpc["activity_proxy"])
@@ -1168,7 +1278,7 @@ class SolarRealtimeDataProvider:
             snapshot["source_status"]["swpc"] = {
                 "ok": False,
                 "error": str(exc),
-                "endpoint": self.NOAA_PLASMA_URL,
+                "endpoint": self.NOAA_WIND_URL,
             }
 
         try:

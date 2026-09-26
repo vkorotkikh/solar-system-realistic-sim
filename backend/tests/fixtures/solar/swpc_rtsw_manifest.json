@@ -1,0 +1,40 @@
+{
+  "schema": {
+    "name": "solar_realtime_fixture_manifest",
+    "version": 1
+  },
+  "authority": {
+    "notice": "NWS SCN 26-21",
+    "notice_url": "https://www.weather.gov/media/notification/pdf_2026/scn26-21_Data_Format_Changes_Impacting_SWPC_Products.pdf"
+  },
+  "selection_contract": {
+    "active": true,
+    "overall_quality": 0,
+    "required_numeric_fields": "finite JSON numbers",
+    "selection": "newest qualifying time_tag"
+  },
+  "fixtures": {
+    "swpc_rtsw_wind_1m.json": {
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+      "retrieved_on_utc": "2026-09-26",
+      "sha256": "d37c75ea202a31df826c9e969eb666d9d5c7c3cb29ae79920c080698fc6146c1",
+      "content_status": "minimized_and_edited",
+      "transformations": [
+        "retained representative complete rows from the official object schema",
+        "added inactive, nonzero-quality, and wrong-type adversarial rows",
+        "formatted with stable indentation"
+      ]
+    },
+    "swpc_rtsw_mag_1m.json": {
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+      "retrieved_on_utc": "2026-09-26",
+      "sha256": "eb1ca9f766d92928b2fb97a1f38610e8d6a09f52146f0042e191fed252cac71a",
+      "content_status": "minimized_and_edited",
+      "transformations": [
+        "retained representative complete rows from the official object schema",
+        "added inactive, nonzero-quality, and wrong-type adversarial rows",
+        "formatted with stable indentation"
+      ]
+    }
+  }
+}
