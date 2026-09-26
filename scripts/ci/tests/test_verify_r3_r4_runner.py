@@ -61,6 +61,22 @@ def _fixture(
     patch_dir.mkdir()
     patch_path = patch_dir / "change-value.patch"
     patch_path.write_text(_patch("VALUE = 2", mutation_after))
+    _git(repo, "init", "-q")
+    _git(repo, "add", ".")
+    _git(
+        repo,
+        "-c",
+        "user.name=R4 Test",
+        "-c",
+        "user.email=r4@example.invalid",
+        "commit",
+        "-qm",
+        "fixture inputs",
+    )
+    fixed_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, text=True,
+        capture_output=True, check=True,
+    ).stdout.strip()
     manifest = {
         "schema_version": 1,
         "environment": {
@@ -91,15 +107,14 @@ def _fixture(
                 "production_files": ["science.py"],
                 "node": required_node,
                 "expected_assertion_regex": expected_regex,
-                "fixed_commit": "deadbeef",
+                "fixed_commit": fixed_commit,
                 "oracle_class": "analytic",
             }
         ],
     }
     manifest_path = repo / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    _git(repo, "init", "-q")
-    _git(repo, "add", ".")
+    _git(repo, "add", "manifest.json")
     _git(
         repo,
         "-c",
@@ -108,7 +123,7 @@ def _fixture(
         "user.email=r4@example.invalid",
         "commit",
         "-qm",
-        "fixture",
+        "fixture manifest",
     )
     return repo, manifest_path
 
@@ -160,6 +175,21 @@ def test_skip_or_xfail_is_not_a_green_baseline(tmp_path):
     assert "skip/xfail" in result.stderr
 
 
+def test_non_strict_xpass_is_not_a_green_baseline(tmp_path):
+    body = (
+        "import pytest\n"
+        "@pytest.mark.xfail(reason='stale expected failure')\n"
+        "def test_invariant():\n"
+        "    assert science.VALUE == 2\n"
+    )
+    repo, manifest = _fixture(tmp_path, test_body=body)
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest), "baseline")
+
+    assert result.returncode != 0
+    assert "skip/xfail marker forbidden" in result.stderr
+
+
 def test_missing_or_wrong_dependency_version_fails_before_collection(tmp_path):
     repo, manifest = _fixture(
         tmp_path, package_versions={"pytest": "0.0-not-installed-version"},
@@ -200,3 +230,15 @@ def test_manifest_or_patch_hash_drift_fails_closed(tmp_path):
 
     assert result.returncode != 0
     assert "patch SHA-256 mismatch" in result.stderr
+
+
+def test_fixed_commit_must_resolve_to_an_ancestor(tmp_path):
+    repo, manifest_path = _fixture(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["mutations"][0]["fixed_commit"] = "f" * 40
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest_path), "mutations")
+
+    assert result.returncode != 0
+    assert "fixed_commit does not resolve" in result.stderr

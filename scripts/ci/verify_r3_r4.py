@@ -154,9 +154,11 @@ def _load_manifest(repo: Path, path: Path) -> dict[str, Any]:
             re.compile(regex)
         except re.error as exc:
             raise VerificationError(f"mutation {mutation_id} assertion regex is invalid: {exc}") from exc
-        for label in ("fixed_commit", "oracle_class"):
-            if not isinstance(mutation.get(label), str) or not mutation[label]:
-                raise VerificationError(f"mutation {mutation_id} lacks {label}")
+        fixed_commit = mutation.get("fixed_commit")
+        if not isinstance(fixed_commit, str) or not re.fullmatch(r"[0-9a-f]{7,64}", fixed_commit):
+            raise VerificationError(f"mutation {mutation_id} fixed_commit must be a hexadecimal object ID")
+        if not isinstance(mutation.get("oracle_class"), str) or not mutation["oracle_class"]:
+            raise VerificationError(f"mutation {mutation_id} lacks oracle_class")
     return manifest
 
 
@@ -218,6 +220,17 @@ def _verify_repository(repo: Path, manifest: dict[str, Any]) -> str:
                 f"patch SHA-256 mismatch for {mutation['id']}: expected "
                 f"{mutation['patch_sha256']}, got {actual}",
             )
+        commit = _git(repo, "rev-parse", "--verify", f"{mutation['fixed_commit']}^{{commit}}")
+        if commit.returncode != 0:
+            raise VerificationError(
+                f"mutation {mutation['id']} fixed_commit does not resolve: {mutation['fixed_commit']}",
+            )
+        ancestor = _git(repo, "merge-base", "--is-ancestor", commit.stdout.strip(), head.stdout.strip())
+        if ancestor.returncode != 0:
+            raise VerificationError(
+                f"mutation {mutation['id']} fixed_commit is not an ancestor of HEAD: "
+                f"{mutation['fixed_commit']}",
+            )
     return head.stdout.strip()
 
 
@@ -253,6 +266,21 @@ socket.socket.connect = _connect
 socket.socket.connect_ex = _connect_ex
 socket.socket.sendto = _sendto
 socket.create_connection = _create_connection
+'''
+
+
+_PYTEST_GUARD = '''"""Reject non-evidence outcomes on required R3/R4 nodes."""
+import pytest
+
+def pytest_collection_modifyitems(items):
+    forbidden = {"skip", "skipif", "xfail"}
+    for item in items:
+        markers = sorted({marker.name for marker in item.iter_markers()} & forbidden)
+        if markers:
+            joined = ",".join(markers)
+            raise pytest.UsageError(
+                f"R3/R4 skip/xfail marker forbidden on required node {item.nodeid}: {joined}"
+            )
 '''
 
 
@@ -308,7 +336,10 @@ def _collect_exact(
     label: str,
 ) -> None:
     result = _run_process(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", *nodes],
+        [
+            sys.executable, "-m", "pytest", "-p", "r3_r4_pytest_guard",
+            "--collect-only", "-q", *nodes,
+        ],
         cwd=repo,
         env=env,
         timeout=manifest["pytest"]["timeout_seconds"],
@@ -351,7 +382,11 @@ def _run_pytest(
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, int]]:
     junit_path.parent.mkdir(parents=True, exist_ok=True)
     result = _run_process(
-        [sys.executable, "-m", "pytest", "-q", f"--junitxml={junit_path}", *nodes],
+        [
+            sys.executable, "-m", "pytest", "-p", "r3_r4_pytest_guard",
+            "-q", "-o", "xfail_strict=True",
+            f"--junitxml={junit_path}", *nodes,
+        ],
         cwd=repo,
         env=env,
         timeout=manifest["pytest"]["timeout_seconds"],
@@ -469,6 +504,7 @@ def run(argv: list[str] | None = None) -> int:
     guard_dir = artifacts / "offline-python"
     guard_dir.mkdir(parents=True, exist_ok=True)
     (guard_dir / "sitecustomize.py").write_text(_OFFLINE_GUARD)
+    (guard_dir / "r3_r4_pytest_guard.py").write_text(_PYTEST_GUARD)
 
     manifest = _load_manifest(repo, manifest_path)
     _verify_environment(manifest)
@@ -478,14 +514,14 @@ def run(argv: list[str] | None = None) -> int:
         "schema_version": 1,
         "base_commit": base_commit,
         "manifest_sha256": _sha256(manifest_path),
-        "offline_socket_guard": True,
+        "python_socket_guard": True,
         "baseline": _baseline(repo, manifest, env, artifacts),
         "mutations": [],
         "scope_gaps": [
             "independent-real-GONG-PFSS-corpus",
             "playwright-and-load-lanes",
             "global-typescript-zero-error-gate",
-            "supervised-process-isolation",
+            "multi-worker-global-coordinator-and-process-release-integration",
             "immutable-container-attestation",
         ],
     }
