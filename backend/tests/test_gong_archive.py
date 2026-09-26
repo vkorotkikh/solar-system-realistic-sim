@@ -44,6 +44,17 @@ class Clock:
         self.value += seconds
 
 
+class SequenceClock:
+    def __init__(self, *values: float) -> None:
+        self.values = deque(values)
+        self.last = values[-1]
+
+    def __call__(self) -> float:
+        if self.values:
+            self.last = self.values.popleft()
+        return self.last
+
+
 class Response:
     def __init__(
         self,
@@ -447,7 +458,9 @@ def test_declared_content_length_rejects_truncated_listing_and_file(truncated_pa
 @pytest.mark.parametrize(
     ("header_items", "code"),
     [
-        ((("Content-Length", "1"), ("Content-Length", "2")), "conflicting_content_length"),
+        ((("Content-Length", "1"), ("Content-Length", "2")), "duplicate_content_length"),
+        ((("Content-Length", "1"), ("Content-Length", "1")), "duplicate_content_length"),
+        ((("Content-Length", "1"), ("content-length", "1")), "duplicate_content_length"),
         ((("Content-Length", "+1"),), "invalid_content_length"),
         ((("Content-Length", "01"),), "invalid_content_length"),
         ((("Content-Length", "١"),), "invalid_content_length"),
@@ -632,6 +645,35 @@ def test_total_deadline_takes_precedence_over_transport_stage_error():
     with pytest.raises(gong.GongArchiveError) as caught:
         provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=2.0)
     assert caught.value.code == "total_deadline"
+
+
+def test_zero_remaining_budget_never_calls_transport():
+    gong = gong_module()
+    clock = SequenceClock(100.0, 101.0, 101.0)
+    transport = Transport({})
+    provider = gong.GongArchiveProvider(transport, clock=clock, parser=lambda *a, **k: None)
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=1.0)
+    assert caught.value.code == "total_deadline"
+    assert transport.calls == []
+
+
+def test_delayed_successful_open_is_closed_before_total_deadline_escapes():
+    gong = gong_module()
+    clock = Clock()
+    directory = day_url("20260925")
+    response = Response(listing("mrzqs260925t2304c2316_301.fits.gz"))
+
+    def delayed_success():
+        clock.advance(1.1)
+        return response
+
+    transport = Transport({directory: delayed_success})
+    provider = gong.GongArchiveProvider(transport, clock=clock, parser=lambda *a, **k: None)
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=1.0)
+    assert caught.value.code == "total_deadline"
+    assert response.closed is True
 
 
 def test_redirect_chain_consumes_the_same_deadline():

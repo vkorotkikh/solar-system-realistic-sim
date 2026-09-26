@@ -1274,12 +1274,11 @@ def _validate_http_framing(response: GongStreamResponse) -> int | None:
         raise GongArchiveError("unsupported_content_encoding", "encoded HTTP response bodies are forbidden")
     if not content_lengths:
         return None
+    if len(content_lengths) != 1:
+        raise GongArchiveError("duplicate_content_length", "duplicate Content-Length fields are forbidden")
     if any(re.fullmatch(r"(?:0|[1-9][0-9]*)", value) is None for value in content_lengths):
         raise GongArchiveError("invalid_content_length", "Content-Length is not canonical ASCII decimal")
-    sizes = {int(value) for value in content_lengths}
-    if len(sizes) != 1:
-        raise GongArchiveError("conflicting_content_length", "duplicate Content-Length values conflict")
-    return next(iter(sizes))
+    return int(content_lengths[0])
 
 
 class GongArchiveProvider:
@@ -1476,22 +1475,25 @@ class GongArchiveProvider:
         while True:
             budget.check_deadline()
             remaining = budget.remaining()
+            if remaining <= 0.0:
+                raise GongArchiveError("total_deadline", "no aggregate deadline remains for transport")
+            response: GongStreamResponse | None = None
             try:
-                response = self._transport.open(
-                    current,
-                    total_timeout_s=remaining,
-                    dns_timeout_s=min(self._limits.dns_timeout_s, remaining),
-                    connect_timeout_s=min(self._limits.connect_timeout_s, remaining),
-                    tls_timeout_s=min(self._limits.tls_timeout_s, remaining),
-                    header_timeout_s=min(self._limits.header_timeout_s, remaining),
-                    read_timeout_s=min(self._limits.read_timeout_s, remaining),
-                    stall_timeout_s=min(self._limits.stall_timeout_s, remaining),
-                )
-            except GongTransportError:
+                try:
+                    response = self._transport.open(
+                        current,
+                        total_timeout_s=remaining,
+                        dns_timeout_s=min(self._limits.dns_timeout_s, remaining),
+                        connect_timeout_s=min(self._limits.connect_timeout_s, remaining),
+                        tls_timeout_s=min(self._limits.tls_timeout_s, remaining),
+                        header_timeout_s=min(self._limits.header_timeout_s, remaining),
+                        read_timeout_s=min(self._limits.read_timeout_s, remaining),
+                        stall_timeout_s=min(self._limits.stall_timeout_s, remaining),
+                    )
+                except GongTransportError:
+                    budget.check_deadline()
+                    raise
                 budget.check_deadline()
-                raise
-            budget.check_deadline()
-            try:
                 final_url = _validate_archive_url(response.url or current)
                 if final_url != current:
                     raise GongArchiveError("unsafe_url", "transport returned an unexpected final URL")
@@ -1555,7 +1557,8 @@ class GongArchiveProvider:
                     )
                 return b"".join(chunks)
             finally:
-                response.close()
+                if response is not None:
+                    response.close()
 
     def _expand_gzip(self, compressed: bytes, budget: _AttemptBudget) -> bytes:
         ratio_limit = int(math.floor(len(compressed) * self._limits.max_gzip_ratio))
