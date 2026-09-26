@@ -516,3 +516,61 @@ def test_async_cancellation_terminates_child_and_capacity_recovers(tmp_path: Pat
             runner.shutdown()
 
     asyncio.run(scenario())
+
+
+def test_queued_owner_cancellation_releases_without_waiting_for_running_job(
+    tmp_path: Path,
+) -> None:
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    async def scenario() -> None:
+        runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=1)
+        running_started = tmp_path / "running.pid"
+        cancelled_started = tmp_path / "cancelled-queued.pid"
+        try:
+            running = runner.submit(
+                {
+                    "operation": "sleep_then_echo",
+                    "sleep_seconds": 0.5,
+                    "started_path": str(running_started),
+                    "result": _result("running"),
+                },
+                timeout_seconds=2.0,
+            )
+            await asyncio.to_thread(_wait_for_pid, running_started)
+            queued_task = asyncio.create_task(
+                runner.run(
+                    {
+                        "operation": "sleep_then_echo",
+                        "sleep_seconds": 0.05,
+                        "started_path": str(cancelled_started),
+                        "result": _result("cancelled"),
+                    },
+                    timeout_seconds=2.0,
+                )
+            )
+            deadline = time.monotonic() + 1.0
+            while runner.snapshot()["in_flight"] != 2 and time.monotonic() < deadline:
+                await asyncio.sleep(0.005)
+            assert runner.snapshot()["in_flight"] == 2
+
+            queued_task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await queued_task
+
+            release_deadline = time.monotonic() + 0.2
+            while runner.snapshot()["in_flight"] != 1 and time.monotonic() < release_deadline:
+                await asyncio.sleep(0.005)
+            assert runner.snapshot()["in_flight"] == 1
+            assert not cancelled_started.exists()
+
+            replacement = runner.submit(
+                {"operation": "echo", "result": _result("replacement")},
+                timeout_seconds=2.0,
+            )
+            assert running.result(timeout=3.0)["value"] == "running"
+            assert replacement.result(timeout=3.0)["value"] == "replacement"
+        finally:
+            runner.shutdown()
+
+    asyncio.run(scenario())

@@ -292,6 +292,10 @@ class SupervisedProcessRunner:
         except asyncio.CancelledError:
             with self._state_lock:
                 cancel_event = self._cancel_events.get(future)
+            # A queued concurrent Future can be cancelled before any
+            # supervisor thread owns it, returning its admission immediately.
+            # If it raced into RUNNING, the event is the process-aware fallback.
+            future.cancel()
             if cancel_event is not None:
                 cancel_event.set()
             raise
