@@ -43,6 +43,19 @@ interface MissionRecommendation {
     propellantUsedKg?: number;
   } | null;
   missionScore?: number;
+  trajectorySearch?: {
+    outbound?: PlannerSearchStatus | null;
+    return?: PlannerSearchStatus | null;
+  } | null;
+}
+
+interface PlannerSearchStatus {
+  truncated?: boolean;
+  terminationReason?: string;
+  configuredFrontierCompleted?: boolean;
+  topologySpaceExhaustive?: boolean;
+  searchSpaceExhaustive?: boolean;
+  optimalityGuaranteed?: boolean;
 }
 
 interface LambertResult {
@@ -60,15 +73,26 @@ interface PorkchopWindowResult {
   best?: PorkchopBestPoint | null;
   count: number;
   ephemerisProvider?: string | null;
+  configuredGridCompleted?: boolean;
+  truncated?: boolean;
+  terminationReason?: string;
 }
 
 interface PlannerResult {
   best?: RouteLike | null;
   source?: string;
+  degraded?: boolean;
+  fallbackReason?: string;
+  search?: PlannerSearchStatus | null;
 }
 
 interface MissionPlannerResult {
   recommendation?: MissionRecommendation | null;
+  missionSearch?: {
+    truncated?: boolean;
+    terminationReason?: string;
+    configuredCandidatesCompleted?: boolean;
+  } | null;
 }
 
 interface PlannerDomBindings {
@@ -167,6 +191,83 @@ interface CreatePlannerControllerArgs {
   dateUtils: DateUtils;
 }
 
+interface StructuredPlannerError extends Error {
+  status?: number;
+  code?: string;
+  retryable?: boolean;
+  retryAfter?: string | null;
+}
+
+export function formatPlannerFailure(error: unknown, operation: string): string {
+  if (!(error instanceof Error)) return `${operation} request failed.`;
+
+  const structured = error as StructuredPlannerError;
+  const code = structured.code ?? '';
+  const status = structured.status;
+  const retryHint = structured.retryAfter ? ` Retry after ${structured.retryAfter}.` : '';
+
+  if (
+    code.includes('no_feasible_route') ||
+    code.includes('no_feasible_recommendation') ||
+    code.includes('no_lambert_solution')
+  ) {
+    return `No feasible route was found in the configured search domain. ${error.message}`.trim();
+  }
+  if (code.includes('saturated')) {
+    return `Trajectory capacity is currently occupied.${retryHint}`;
+  }
+  if (code.includes('rate_limit') || status === 429) {
+    return `Trajectory request rate limit reached.${retryHint}`;
+  }
+  if (code.includes('deadline') || code.includes('timeout') || status === 504) {
+    return `${operation} reached its execution deadline. Narrow the search or try again.`;
+  }
+  if (
+    code.includes('provider') ||
+    code.includes('ephemeris') ||
+    code.includes('upstream') ||
+    code.includes('circuit')
+  ) {
+    return `The selected ephemeris provider is unavailable. ${error.message}${retryHint}`.trim();
+  }
+  if (code.includes('budget_exhausted')) {
+    return `${operation} exhausted its bounded compute budget before finding a verified result.`;
+  }
+  if (status === 413) {
+    return `${operation} request is too large. Reduce the assist pool or search range.`;
+  }
+  if (status === 400 || status === 404 || status === 422) {
+    return `${operation} request is invalid: ${error.message}`;
+  }
+  if (status === 503) {
+    return `${operation} is temporarily unavailable.${retryHint}`;
+  }
+  if (error.name === 'AbortError') {
+    return `${operation} was cancelled after reaching the browser deadline.`;
+  }
+  return `${operation} request failed: ${error.message}`;
+}
+
+function describeSearchStatus(result: PlannerResult): string[] {
+  const lines: string[] = [];
+  if (result.degraded) {
+    lines.push('Mode: bounded offline fallback (backend unreachable; local ephemerides only)');
+  }
+
+  const search = result.search;
+  if (!search) return lines;
+  if (search.truncated) {
+    lines.push(`Search status: partial (${search.terminationReason ?? 'bounded limit reached'})`);
+  } else if (search.configuredFrontierCompleted) {
+    const scope = search.searchSpaceExhaustive ? 'configured domain exhausted' : 'configured frontier completed';
+    lines.push(`Search status: ${scope}`);
+  }
+  if (search.optimalityGuaranteed === false) {
+    lines.push('Optimality: heuristic; not guaranteed');
+  }
+  return lines;
+}
+
 export function createPlannerController({
   dom,
   simState,
@@ -241,13 +342,31 @@ export function createPlannerController({
     return { fromId, toId, departureJd, ephemerisProvider, prograde };
   }
 
-  function formatMissionSummary(recommendation: MissionRecommendation): string {
+  function formatMissionSummary(
+    recommendation: MissionRecommendation,
+    missionSearch?: MissionPlannerResult['missionSearch']
+  ): string {
     const outbound = recommendation?.outbound;
     const inbound = recommendation?.return;
     const closure = recommendation?.payloadClosure ?? {};
     const risk = recommendation?.risk ?? {};
     const verify = recommendation?.verification ?? {};
     const objective = recommendation?.objectiveBreakdown ?? {};
+    const trajectorySearches = [
+      recommendation?.trajectorySearch?.outbound,
+      recommendation?.trajectorySearch?.return
+    ].filter((search): search is PlannerSearchStatus => search != null);
+    const truncatedSearches = trajectorySearches.filter((search) => search.truncated);
+    const trajectoryStatus = truncatedSearches.length
+      ? `Trajectory search: partial (${truncatedSearches
+          .map((search) => search.terminationReason ?? 'bounded limit reached')
+          .join(', ')})`
+      : trajectorySearches.length
+        ? 'Trajectory search: configured frontiers completed; heuristic optimality only'
+        : null;
+    const missionCandidateStatus = missionSearch?.truncated
+      ? `Mission candidate search: partial (${missionSearch.terminationReason ?? 'bounded limit reached'})`
+      : null;
 
     return [
       'Mission recommendation ready.',
@@ -257,8 +376,10 @@ export function createPlannerController({
       `Propellant used: ${(objective.propellantUsedKg ?? 0).toFixed(1)} kg`,
       `Risk failure probability: ${((risk.failureProbability ?? 0) * 100).toFixed(2)}%`,
       `Verifier: ${verify.valid ? 'PASS' : `FAIL (${(verify.reasons ?? []).join(', ') || 'unknown'})`}`,
-      `Mission score: ${(recommendation.missionScore ?? 0).toFixed(2)}`
-    ].join('\n');
+      `Mission score: ${(recommendation.missionScore ?? 0).toFixed(2)}`,
+      trajectoryStatus,
+      missionCandidateStatus
+    ].filter((line): line is string => line != null).join('\n');
   }
 
   async function runPlanner({ directOnly }: { directOnly: boolean }): Promise<void> {
@@ -291,8 +412,8 @@ export function createPlannerController({
         ephemerisProvider,
         prograde
       });
-    } catch {
-      dom.plannerOutput.textContent = 'Planner request failed.';
+    } catch (error) {
+      dom.plannerOutput.textContent = formatPlannerFailure(error, 'Planner');
       clearRouteVisualization();
       return;
     }
@@ -305,7 +426,11 @@ export function createPlannerController({
 
     plotRoute(result.best);
     const solver = result.source === 'backend' ? 'Backend trajectory solver' : 'Local fallback solver';
-    dom.plannerOutput.textContent = `${describeRoute(result.best, bodyById)}\nSolver: ${solver}`;
+    dom.plannerOutput.textContent = [
+      describeRoute(result.best, bodyById),
+      `Solver: ${solver}`,
+      ...describeSearchStatus(result)
+    ].join('\n');
   }
 
   async function runLambertPlanner(): Promise<void> {
@@ -348,8 +473,8 @@ export function createPlannerController({
       plotRoute(route);
       dom.plannerOutput.textContent =
         `${describeRoute(route, bodyById)}\nSolver: Lambert (${result.ephemerisProvider ?? ephemerisProvider})`;
-    } catch {
-      dom.plannerOutput.textContent = 'Lambert request failed.';
+    } catch (error) {
+      dom.plannerOutput.textContent = formatPlannerFailure(error, 'Lambert');
       clearRouteVisualization();
     }
   }
@@ -409,12 +534,17 @@ export function createPlannerController({
       dom.plannerArrivalDate.value = formatJulianAsDate(window.best.arrivalJd);
       dom.plannerOutput.textContent = [
         describeRoute(route, bodyById),
+        window.truncated
+          ? `Porkchop search: partial (${window.terminationReason ?? 'bounded limit reached'})`
+          : window.configuredGridCompleted
+            ? 'Porkchop search: configured grid completed'
+            : null,
         `Porkchop points scanned: ${window.count}`,
         `Best total delta-v: ${window.best.totalDeltaVKmS.toFixed(2)} km/s`,
         `Solver: Porkchop + Lambert (${window.ephemerisProvider ?? ephemerisProvider})`
-      ].join('\n');
-    } catch {
-      dom.plannerOutput.textContent = 'Porkchop request failed.';
+      ].filter((line): line is string => line != null).join('\n');
+    } catch (error) {
+      dom.plannerOutput.textContent = formatPlannerFailure(error, 'Porkchop scan');
       clearRouteVisualization();
     }
   }
@@ -458,9 +588,9 @@ export function createPlannerController({
       }
 
       plotRoute(recommendation.outbound);
-      dom.plannerOutput.textContent = `${formatMissionSummary(recommendation)}\nSolver: MissionPlannerAgent`;
-    } catch {
-      dom.plannerOutput.textContent = 'Mission planner request failed.';
+      dom.plannerOutput.textContent = `${formatMissionSummary(recommendation, result?.missionSearch)}\nSolver: MissionPlannerAgent`;
+    } catch (error) {
+      dom.plannerOutput.textContent = formatPlannerFailure(error, 'Mission planner');
       clearRouteVisualization();
     }
   }
