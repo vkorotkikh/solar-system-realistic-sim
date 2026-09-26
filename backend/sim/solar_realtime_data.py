@@ -8,6 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -51,6 +52,16 @@ class SolarRealtimeFetchError(RuntimeError):
         self.code = code
         self.detail = detail
         super().__init__(f"{code}: {detail}")
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchFailureDescriptor:
+    """Traceback-free failure state retained for short single-flight backoff."""
+
+    expires_monotonic: float
+    kind: str
+    code: str
+    detail: str
 
 
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -135,9 +146,9 @@ class SolarRealtimeDataProvider:
         ] = OrderedDict()
         self._binary_cache_bytes = 0
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
-        self._inflight_failures: OrderedDict[
-            Any, tuple[float, BaseException]
-        ] = OrderedDict()
+        self._inflight_failures: OrderedDict[Any, _FetchFailureDescriptor] = (
+            OrderedDict()
+        )
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -586,8 +597,8 @@ class SolarRealtimeDataProvider:
             now_monotonic = time.monotonic()
             expired_failures = [
                 failure_key
-                for failure_key, (fail_until, _) in self._inflight_failures.items()
-                if fail_until <= now_monotonic
+                for failure_key, failure in self._inflight_failures.items()
+                if failure.expires_monotonic <= now_monotonic
             ]
             for failure_key in expired_failures:
                 self._inflight_failures.pop(failure_key, None)
@@ -595,9 +606,8 @@ class SolarRealtimeDataProvider:
             if allow_cached_failure:
                 failure = self._inflight_failures.get(key)
                 if failure is not None:
-                    _, stored_exception = failure
                     self._inflight_failures.move_to_end(key)
-                    raise stored_exception
+                    raise self._new_failure_exception(failure) from None
 
             state = self._inflight_fetches.get(key)
             if state is None:
@@ -614,28 +624,95 @@ class SolarRealtimeDataProvider:
                     "Upstream request is blocked by an ongoing fetch for this resource; "
                     "try again shortly"
                 )
-            if state.get("error") is not None:
-                raise state["error"]
+            failure = state.get("error")
+            if failure is not None:
+                raise self._new_failure_exception(failure) from None
             return state["value"]
 
+        failure: _FetchFailureDescriptor | None = None
+        value: Any = None
         try:
-            value = fetch_fn()
-            with self._lock:
-                state["value"] = value
-                self._inflight_failures.pop(key, None)
-            return value
-        except Exception as exc:
-            with self._lock:
-                state["error"] = exc
-                self._inflight_failures[key] = (time.monotonic() + self.singleflight_error_backoff_s, exc)
-                self._inflight_failures.move_to_end(key)
-                while len(self._inflight_failures) > self.singleflight_failure_max_entries:
-                    self._inflight_failures.popitem(last=False)
-            raise
+            try:
+                value = fetch_fn()
+            except Exception as exc:
+                failure = self._describe_failure(
+                    exc,
+                    expires_monotonic=(
+                        time.monotonic() + self.singleflight_error_backoff_s
+                    ),
+                )
+                with self._lock:
+                    state["error"] = failure
+                    self._inflight_failures[key] = failure
+                    self._inflight_failures.move_to_end(key)
+                    while (
+                        len(self._inflight_failures)
+                        > self.singleflight_failure_max_entries
+                    ):
+                        self._inflight_failures.popitem(last=False)
+            else:
+                with self._lock:
+                    state["value"] = value
+                    self._inflight_failures.pop(key, None)
         finally:
             state["event"].set()
             with self._lock:
                 self._inflight_fetches.pop(key, None)
+        if failure is not None:
+            # Raise outside the handling block so the fresh public exception
+            # does not retain the original exception via ``__context__``.
+            raise self._new_failure_exception(failure) from None
+        return value
+
+    @staticmethod
+    def _describe_failure(
+        error: Exception,
+        *,
+        expires_monotonic: float,
+    ) -> _FetchFailureDescriptor:
+        safe_fetch_details = {
+            "unsafe_url": "Solar realtime upstream URL was rejected",
+            "unexpected_final_url": "Solar realtime upstream final URL was rejected",
+            "malformed_redirect": "Solar realtime upstream redirect was malformed",
+            "redirect_overflow": "Solar realtime upstream redirect limit exceeded",
+            "redirect_loop": "Solar realtime upstream redirect loop detected",
+            "http_status": "Solar realtime upstream returned an unsuccessful HTTP status",
+            "invalid_content_length": "Solar realtime upstream Content-Length was invalid",
+            "response_byte_limit": "Solar realtime response exceeds its byte limit",
+            "invalid_response_body": "Solar realtime upstream response body was invalid",
+            "content_length_mismatch": "Solar realtime response length was inconsistent",
+            "acquisition_deadline": "Solar realtime acquisition deadline expired",
+        }
+        if isinstance(error, SolarRealtimeFetchError):
+            detail = safe_fetch_details.get(error.code)
+            if detail is not None:
+                return _FetchFailureDescriptor(
+                    expires_monotonic=expires_monotonic,
+                    kind="fetch",
+                    code=error.code,
+                    detail=detail,
+                )
+        if isinstance(error, TimeoutError):
+            return _FetchFailureDescriptor(
+                expires_monotonic=expires_monotonic,
+                kind="timeout",
+                code="upstream_timeout",
+                detail="Solar realtime upstream acquisition timed out",
+            )
+        return _FetchFailureDescriptor(
+            expires_monotonic=expires_monotonic,
+            kind="runtime",
+            code="upstream_failure",
+            detail="Solar realtime upstream acquisition failed",
+        )
+
+    @staticmethod
+    def _new_failure_exception(failure: _FetchFailureDescriptor) -> Exception:
+        if failure.kind == "fetch":
+            return SolarRealtimeFetchError(failure.code, failure.detail)
+        if failure.kind == "timeout":
+            return TimeoutError(failure.detail)
+        return RuntimeError(failure.detail)
 
     def _fetch_text(self, url: str) -> str:
         payload, _ = self._request_bytes(

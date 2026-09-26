@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import gc
 from typing import Any
+import weakref
 
 import pytest
 
 import sim.solar_realtime_data as solar_realtime_data
-from sim.solar_realtime_data import SolarRealtimeDataProvider
+from sim.solar_realtime_data import SolarRealtimeDataProvider, SolarRealtimeFetchError
 
 
 def _recording_provider(
@@ -101,22 +103,22 @@ def test_singleflight_failure_backoff_is_bounded_and_uses_lru_eviction() -> None
         raise RuntimeError(f"failed-{name}")
 
     for name in ("a", "b"):
-        with pytest.raises(RuntimeError, match=f"failed-{name}"):
+        with pytest.raises(RuntimeError, match="upstream acquisition failed"):
             provider._singleflight_fetch(name, lambda name=name: fail(name))
 
     # A cached read makes ``a`` the most-recently used failure without
     # executing the replacement callable.
-    with pytest.raises(RuntimeError, match="failed-a"):
+    with pytest.raises(RuntimeError, match="upstream acquisition failed"):
         provider._singleflight_fetch(
             "a",
             lambda: pytest.fail("cached failure unexpectedly refetched"),
         )
 
-    with pytest.raises(RuntimeError, match="failed-c"):
+    with pytest.raises(RuntimeError, match="upstream acquisition failed"):
         provider._singleflight_fetch("c", lambda: fail("c"))
 
     assert provider._singleflight_fetch("b", lambda: "recovered-b") == "recovered-b"
-    with pytest.raises(RuntimeError, match="failed-a"):
+    with pytest.raises(RuntimeError, match="upstream acquisition failed"):
         provider._singleflight_fetch(
             "a",
             lambda: pytest.fail("LRU failure unexpectedly evicted"),
@@ -138,20 +140,86 @@ def test_singleflight_failure_backoff_prunes_expired_entries(
     )
 
     for name in ("expired-a", "expired-b"):
-        with pytest.raises(RuntimeError, match=name):
+        with pytest.raises(RuntimeError, match="upstream acquisition failed"):
             provider._singleflight_fetch(
                 name,
                 lambda name=name: (_ for _ in ()).throw(RuntimeError(name)),
             )
 
     monotonic_now[0] = 105.0
-    with pytest.raises(RuntimeError, match="current"):
+    with pytest.raises(RuntimeError, match="upstream acquisition failed"):
         provider._singleflight_fetch(
             "current",
             lambda: (_ for _ in ()).throw(RuntimeError("current")),
         )
 
     assert list(provider._inflight_failures) == ["current"]
+
+
+def test_singleflight_failure_backoff_drops_exception_graph_and_raises_fresh_error() -> None:
+    class RetainedBody:
+        pass
+
+    provider = SolarRealtimeDataProvider()
+    provider.singleflight_error_backoff_s = 60.0
+    retained_body = RetainedBody()
+    retained_body_ref = weakref.ref(retained_body)
+
+    def fail_with_body() -> None:
+        error = RuntimeError("secret upstream body must not be cached")
+        error.retained_body = retained_body  # type: ignore[attr-defined]
+        raise error
+
+    with pytest.raises(
+        RuntimeError,
+        match="^Solar realtime upstream acquisition failed$",
+    ) as first_failure:
+        provider._singleflight_fetch("sensitive", fail_with_body)
+
+    del retained_body
+    gc.collect()
+
+    assert retained_body_ref() is None
+    cached = provider._inflight_failures["sensitive"]
+    assert not isinstance(cached, BaseException)
+
+    with pytest.raises(
+        RuntimeError,
+        match="^Solar realtime upstream acquisition failed$",
+    ) as second_failure:
+        provider._singleflight_fetch(
+            "sensitive",
+            lambda: pytest.fail("cached failure unexpectedly refetched"),
+        )
+
+    assert second_failure.value is not first_failure.value
+    assert "secret upstream body" not in str(second_failure.value)
+
+
+def test_singleflight_known_fetch_failure_keeps_only_sanitized_code() -> None:
+    provider = SolarRealtimeDataProvider()
+    provider.singleflight_error_backoff_s = 60.0
+
+    def fail() -> None:
+        raise SolarRealtimeFetchError(
+            "response_byte_limit",
+            "Solar realtime response exceeds its byte limit: secret-body",
+        )
+
+    with pytest.raises(SolarRealtimeFetchError) as first_failure:
+        provider._singleflight_fetch("known", fail)
+    with pytest.raises(SolarRealtimeFetchError) as second_failure:
+        provider._singleflight_fetch(
+            "known",
+            lambda: pytest.fail("cached failure unexpectedly refetched"),
+        )
+
+    assert first_failure.value is not second_failure.value
+    assert first_failure.value.code == second_failure.value.code == "response_byte_limit"
+    assert first_failure.value.detail == second_failure.value.detail == (
+        "Solar realtime response exceeds its byte limit"
+    )
+    assert "secret-body" not in str(first_failure.value)
 
 
 def test_binary_cache_enforces_byte_budget_with_lru_eviction(
