@@ -106,15 +106,34 @@ def test_trajectory_capabilities_publish_runtime_limits_and_provider_policy() ->
     }
 
 
-def test_trajectory_ingress_middleware_order_is_cors_rate_then_body_limit() -> None:
+def test_network_ingress_order_is_cors_shape_auth_rate_then_body_limit() -> None:
     middleware_classes = [entry.cls for entry in server.app.user_middleware]
 
     assert middleware_classes.index(server.CORSMiddleware) < middleware_classes.index(
+        server.NetworkRequestShapeMiddleware
+    )
+    assert middleware_classes.index(
+        server.NetworkRequestShapeMiddleware
+    ) < middleware_classes.index(server._NetworkAuthenticationMiddleware)
+    assert middleware_classes.index(
+        server._NetworkAuthenticationMiddleware
+    ) < middleware_classes.index(
         server._TrajectoryRateLimitMiddleware
     )
     assert middleware_classes.index(
         server._TrajectoryRateLimitMiddleware
     ) < middleware_classes.index(server._RequestBodyLimitMiddleware)
+
+
+def test_every_registered_post_route_has_streaming_body_limit() -> None:
+    registered_post_paths = {
+        route.path
+        for route in server.app.routes
+        if "POST" in getattr(route, "methods", set())
+    }
+
+    assert registered_post_paths
+    assert registered_post_paths <= server.TRAJECTORY_INGRESS_PATHS
 
 
 def test_server_side_resource_knobs_have_compile_time_ceiling() -> None:

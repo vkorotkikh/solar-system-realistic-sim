@@ -61,6 +61,7 @@ from benchmark import (
     benchmark_against_references,
     generate_accuracy_report,
 )
+from http_ingress import NetworkRequestLimits, NetworkRequestShapeMiddleware
 from data.bodies import ALL_BODIES
 from data.nearby_systems import (
     CATALOG_NAME,
@@ -450,6 +451,15 @@ SOLAR_TRUSTED_PROXY_MAX_CIDRS = 32
 SOLAR_TRUSTED_PROXY_CONFIG_MAX_BYTES = 4_096
 SOLAR_CORS_MAX_ORIGINS = 32
 SOLAR_CORS_ORIGIN_MAX_BYTES = 512
+NETWORK_REQUEST_LIMITS = NetworkRequestLimits(
+    max_path_bytes=2_048,
+    max_query_bytes=8_192,
+    max_header_count=64,
+    max_header_name_bytes=128,
+    max_header_value_bytes=8_192,
+    max_header_bytes=32 * 1_024,
+    max_body_bytes=64 * 1_024,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1285,6 +1295,11 @@ app.add_middleware(
     paths=TRAJECTORY_INGRESS_PATHS,
 )
 app.add_middleware(_NetworkAuthenticationMiddleware)
+app.add_middleware(
+    NetworkRequestShapeMiddleware,
+    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
+    limits=NETWORK_REQUEST_LIMITS,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
