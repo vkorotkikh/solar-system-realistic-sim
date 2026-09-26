@@ -7,7 +7,11 @@ import astropy.units as u
 import pytest
 from astropy.time import Time, TimeDelta
 
+import sim.pfss_magnetogram as pfss_magnetogram
+import sim.solar_physics as solar_physics
+import sim.solar_realtime_data as solar_realtime_data
 from sim.pfss_magnetogram import CARRINGTON_EPOCH_JD, carrington_rotation_number
+from sim.solar_realtime_data import SolarRealtimeDataProvider
 from sim.solar_time import (
     CARRINGTON_APPROXIMATE_SIDEREAL_PERIOD_DAYS,
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
@@ -15,10 +19,64 @@ from sim.solar_time import (
     CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY,
     CURRENT_JD_TIME_SCALE,
     current_jd_tdb,
+    jd_tdb_to_utc_datetime,
     mean_carrington_rotation_estimate,
     mean_carrington_rotation_number,
     mean_carrington_rotation_start,
     provider_carrington_state_from_crnow,
+)
+
+
+# Literal offline oracle corpus generated with SunPy 7.1.2 and Astropy 8.0.1
+# (IERS network download disabled) on 2026-09-26. These values are deliberately
+# not derived with production helpers. Rows cover an ordinary instant and the
+# two sides of leap-month and year boundaries.
+_APPARENT_CARRINGTON_SENTINELS = (
+    (
+        "ordinary",
+        2_460_477.0242592595,
+        2_460_477.02506,
+        2_460_477.0250600064,
+        2285.4707504592102,
+        2285.4713339867685,
+        190.31976476341248,
+    ),
+    (
+        "month_before",
+        2_460_370.499988426,
+        2_460_370.500789167,
+        2_460_370.5007891823,
+        2281.565228949517,
+        2281.5629907441953,
+        157.32333208973472,
+    ),
+    (
+        "month_after",
+        2_460_370.5,
+        2_460_370.500800741,
+        2_460_370.5008007563,
+        2281.5652293738594,
+        2281.5629911677042,
+        157.32317962641724,
+    ),
+    (
+        "year_before",
+        2_460_676.499988426,
+        2_460_676.500789167,
+        2_460_676.5007891655,
+        2292.7841706293516,
+        2292.7870148712686,
+        76.67464634326613,
+    ),
+    (
+        "year_after",
+        2_460_676.5,
+        2_460_676.500800741,
+        2_460_676.5008007395,
+        2292.784171053694,
+        2292.787015294692,
+        76.67449391083257,
+    ),
 )
 
 
@@ -159,6 +217,129 @@ def test_current_time_helper_converts_aware_utc_to_labelled_jdtdb() -> None:
     assert CURRENT_JD_TIME_SCALE == "TDB"
     with pytest.raises(ValueError, match="timezone-aware"):
         current_jd_tdb(datetime(2024, 1, 1))
+
+
+def test_active_wall_clock_delegate_returns_jdtdb(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Catch the server's active wall-clock helper returning a raw UTC-like JD."""
+
+    expected_jd_tdb = 2_460_327.808711578
+    monkeypatch.setattr(
+        solar_physics,
+        "current_jd_tdb",
+        lambda: expected_jd_tdb,
+        raising=False,
+    )
+
+    assert solar_physics.utc_now_to_julian_date() == expected_jd_tdb
+
+
+def test_realtime_gong_default_uses_jdtdb_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Catch the no-JD realtime path sending UTC JD to the JDTDB delegate."""
+
+    # One second after the mean CR 2280 boundary. Treating the corresponding
+    # raw UTC JD as TDB moves the instant ~69 seconds backward into CR 2279.
+    monkeypatch.setattr(
+        solar_realtime_data,
+        "current_jd_tdb",
+        lambda: 2_460_327.808711578,
+        raising=False,
+    )
+
+    result = SolarRealtimeDataProvider()._fetch_gong_synoptic(None)
+
+    assert result["carrington_rotation"] == 2280
+
+
+def test_jdtdb_to_utc_datetime_matches_literal_cr2242_instant() -> None:
+    """Catch Unix-UTC arithmetic being applied directly to a JDTDB value."""
+
+    converted = jd_tdb_to_utc_datetime(2_459_291.4394237916)
+    expected = datetime(2021, 3, 17, 22, 31, 37, 30_000, tzinfo=timezone.utc)
+
+    assert converted.tzinfo == timezone.utc
+    # A scalar contemporary JD carries roughly 40 microseconds of precision.
+    assert abs((converted - expected).total_seconds()) < 50e-6
+
+
+def test_legacy_gong_month_hint_converts_jdtdb_to_utc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Catch the dormant fetcher deriving an archive month from raw JDTDB."""
+
+    requested_urls: list[str] = []
+
+    class _EmptyListing:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b""
+
+    def urlopen(request, *, timeout: float):
+        requested_urls.append(request.full_url)
+        assert timeout == 2.0
+        return _EmptyListing()
+
+    monkeypatch.setattr(
+        pfss_magnetogram,
+        "jd_tdb_to_utc_datetime",
+        lambda _jd_tdb: datetime(2037, 2, 1, tzinfo=timezone.utc),
+        raising=False,
+    )
+    monkeypatch.setattr(pfss_magnetogram.urllib.request, "urlopen", urlopen)
+
+    assert pfss_magnetogram.fetch_gong_synoptic_map(2242, timeout_s=2.0) is None
+    assert requested_urls == [f"{pfss_magnetogram.GONG_SYNOPTIC_BASE}203702/"]
+
+
+@pytest.mark.parametrize(
+    (
+        "_case",
+        "utc_jd",
+        "tt_jd",
+        "tdb_jd",
+        "mean_fraction",
+        "apparent_fraction",
+        "current_longitude_deg",
+    ),
+    _APPARENT_CARRINGTON_SENTINELS,
+)
+def test_literal_date_and_calendar_boundary_carrington_sentinels(
+    _case: str,
+    utc_jd: float,
+    tt_jd: float,
+    tdb_jd: float,
+    mean_fraction: float,
+    apparent_fraction: float,
+    current_longitude_deg: float,
+) -> None:
+    """Gate scale conversion and apparent longitude with independent literals."""
+
+    scale_representations = (
+        Time(utc_jd, format="jd", scale="utc"),
+        Time(tt_jd, format="jd", scale="tt"),
+        Time(tdb_jd, format="jd", scale="tdb"),
+    )
+    estimates = [mean_carrington_rotation_estimate(value) for value in scale_representations]
+    provider_state = provider_carrington_state_from_crnow(apparent_fraction)
+
+    for estimate in estimates:
+        assert estimate.fractional_rotation == pytest.approx(
+            mean_fraction,
+            rel=0.0,
+            abs=2e-11,
+        )
+        assert estimate.authoritative is False
+    assert provider_state.current_longitude_deg == pytest.approx(
+        current_longitude_deg,
+        rel=0.0,
+        abs=1e-9,
+    )
+    assert provider_state.rotation_number == math.floor(apparent_fraction)
+    assert provider_state.authoritative is True
 
 
 def test_legacy_range_delegate_returns_jdtdb_for_tt_boundaries() -> None:

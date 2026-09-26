@@ -13,6 +13,8 @@ from typing import Any, Callable
 
 import numpy as np
 
+from .solar_time import current_jd_tdb
+
 try:
     from PIL import Image
 except Exception:  # pragma: no cover - optional dependency guard
@@ -809,8 +811,8 @@ class SolarRealtimeDataProvider:
     def _fetch_gong_synoptic(self, jd: float | None = None) -> dict[str, Any]:
         from sim.pfss_magnetogram import carrington_rotation_number, fetch_gong_synoptic_map
 
-        # Use current wall clock JD if None provided
-        eval_jd = (time.time() / 86400.0) + 2440587.5 if jd is None else float(jd)
+        # Explicit request epochs and the wall-clock fallback are both JDTDB.
+        eval_jd = current_jd_tdb() if jd is None else float(jd)
         cr = carrington_rotation_number(eval_jd)
 
         # Check cache (in-proc) — this is a heavy array so we don't serialize it fully here,

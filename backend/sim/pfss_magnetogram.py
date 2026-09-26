@@ -29,6 +29,7 @@ from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    jd_tdb_to_utc_datetime,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
 )
@@ -158,11 +159,8 @@ def fetch_gong_synoptic_map(cr: int, timeout_s: float = 6.0) -> np.ndarray | Non
     or None if the data is unavailable.
     """
     # Compute approximate date for this CR to build the archive path
-    cr_start_jd = CARRINGTON_EPOCH_JD + (cr - 1) * CARRINGTON_PERIOD_DAYS
-    # Convert JD to calendar date for path construction
-    unix_s = (cr_start_jd - 2_440_587.5) * 86_400.0
-    import datetime as dt
-    date = dt.datetime.fromtimestamp(unix_s, tz=dt.timezone.utc)
+    cr_start_jd_tdb, _ = carrington_rotation_jd_range(cr)
+    date = jd_tdb_to_utc_datetime(cr_start_jd_tdb)
     yyyymm = date.strftime("%Y%m")
 
     # GONG bqs directory contains files named like:

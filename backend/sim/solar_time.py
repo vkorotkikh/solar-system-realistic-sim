@@ -134,3 +134,12 @@ def current_jd_tdb(now_utc: datetime | None = None) -> float:
         raise ValueError("now_utc must be timezone-aware")
     normalized_utc = instant.astimezone(timezone.utc)
     return float(Time(normalized_utc, scale="utc").tdb.jd)
+
+
+def jd_tdb_to_utc_datetime(jd_tdb: float) -> datetime:
+    """Convert an explicit scalar JDTDB value to an aware UTC datetime."""
+
+    value = float(jd_tdb)
+    if not math.isfinite(value):
+        raise ValueError("jd_tdb must be finite")
+    return Time(value, format="jd", scale="tdb").utc.to_datetime(timezone=timezone.utc)

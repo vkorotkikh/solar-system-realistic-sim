@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from random import Random
 from typing import Any
 
+from .solar_time import current_jd_tdb
+
 AU_KM = 149_597_870.7
 SOLAR_RADIUS_KM = 695_700.0
 SOLAR_RADIUS_AU = SOLAR_RADIUS_KM / AU_KM
@@ -27,8 +29,9 @@ PROTON_MASS_KG = 1.67262192369e-27
 
 
 def utc_now_to_julian_date() -> float:
-    unix_seconds = datetime.now(timezone.utc).timestamp()
-    return unix_seconds / 86_400.0 + 2_440_587.5
+    """Return the current UTC instant converted to the simulation's JDTDB."""
+
+    return current_jd_tdb()
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
