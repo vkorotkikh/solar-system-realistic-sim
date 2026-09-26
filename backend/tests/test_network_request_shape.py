@@ -227,6 +227,19 @@ def test_network_ingress_accepts_canonical_bounded_chunked_post() -> None:
     assert _error(messages)[0] == 204
 
 
+def test_network_ingress_rejects_unencodable_path_when_raw_path_is_absent() -> None:
+    scope = _scope()
+    scope.pop("raw_path")
+    scope["path"] = "\ud800" * 3_000
+
+    called, messages = _exercise(scope)
+
+    status, body = _error(messages)
+    assert called is False
+    assert status == 400
+    assert b'"invalid_request_path"' in body
+
+
 def test_local_profile_bypasses_network_specific_shape_policy() -> None:
     called, messages = _exercise(
         _scope(

@@ -129,7 +129,7 @@ class NetworkRequestShapeMiddleware:
             try:
                 raw_path = str(scope.get("path", "")).encode("utf-8")
             except UnicodeEncodeError:
-                raw_path = b""
+                raw_path = None
         if not isinstance(raw_path, bytes):
             await self._reject(
                 scope,
