@@ -24,7 +24,9 @@ from typing import Any
 
 import numpy as np
 
+from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .spherical_harmonics import (
+    HARMONIC_CONVENTION_VERSION,
     schmidt_azimuthal_factor,
     schmidt_legendre,
     schmidt_legendre_with_theta_derivative,
@@ -209,16 +211,21 @@ def synthetic_magnetogram(
     jd: float,
     n_lat: int = 180,
     n_lon: int = 360,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> np.ndarray:
     """Generate a synthetic photospheric Br map from activity index.
 
     Produces a dipole + quadrupole + octupole field with activity-dependent
     amplitudes, plus noise-seeded active regions at butterfly-law latitudes.
-    Returns Br on a uniform θ (colatitude) × φ (longitude) grid.
+    Defaults to equal-area sine-latitude centers. An explicit grid supplies
+    both coordinates and dimensions, overriding n_lat and n_lon.
     """
     activity = _clamp(float(activity), 0.0, 1.0)
-    theta = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    phi = np.linspace(0, 2 * np.pi, n_lon, endpoint=False)
+    if grid is None:
+        grid = equal_area_sine_latitude_grid(n_lat, n_lon)
+    theta = np.arccos(grid.mu)
+    phi = grid.phi_rad
     theta_grid, phi_grid = np.meshgrid(theta, phi, indexing="ij")
     cos_theta = np.cos(theta_grid)
     sin_theta = np.sin(theta_grid)
@@ -292,58 +299,42 @@ def _associated_legendre(lmax: int, cos_theta: np.ndarray) -> dict[tuple[int, in
 def decompose_spherical_harmonics(
     br_map: np.ndarray,
     lmax: int = 15,
+    *,
+    grid: MagnetogramGrid,
+    condition_limit: float = 1e6,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Decompose a Br(θ, φ) map into spherical harmonic coefficients.
+    """Fit real Schmidt harmonics on explicitly supplied pixel centers.
 
-    Parameters
-    ----------
-    br_map : ndarray, shape (n_lat, n_lon)
-        Radial magnetic field on a uniform colatitude × longitude grid.
-    lmax : int
-        Maximum spherical harmonic degree.
-
-    Returns
-    -------
-    g_lm : ndarray, shape (lmax+1, lmax+1)
-        Cosine (g) coefficients.
-    h_lm : ndarray, shape (lmax+1, lmax+1)
-        Sine (h) coefficients.
+    Uniform-longitude Fourier amplitudes are fitted in latitude by area-
+    weighted least squares (NumPy SVD, no normal equations). Each design's
+    2-norm condition number must be finite and <= condition_limit. The m=0
+    fit includes the monopole; flux-balance policy is outside this projection.
     """
+    br_map = grid.validate_map(br_map)
+    plm = schmidt_legendre(lmax, grid.mu)
     n_lat, n_lon = br_map.shape
-    theta = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
-    d_theta = np.pi / n_lat
-    d_phi = 2.0 * np.pi / n_lon
-
-    # Compute Legendre functions
-    plm = _associated_legendre(lmax, cos_theta)
-
+    if n_lat < lmax + 1 or n_lon < 2 * lmax + 1:
+        raise ValueError("grid undersamples the requested harmonic degree")
+    if not np.isfinite(condition_limit) or condition_limit < 1:
+        raise ValueError("condition_limit must be finite and >= 1")
     g_lm = np.zeros((lmax + 1, lmax + 1))
     h_lm = np.zeros((lmax + 1, lmax + 1))
-
-    phi = np.linspace(0, 2 * np.pi, n_lon, endpoint=False)
-
-    for l in range(lmax + 1):
-        for m in range(l + 1):
-            p = plm[(l, m)]  # shape (n_lat,)
-
-            # Integrate over longitude: cos(m*phi) and sin(m*phi)
-            cos_m_phi = np.cos(m * phi)  # (n_lon,)
-            sin_m_phi = np.sin(m * phi)  # (n_lon,)
-
-            # br_map[i, j] * cos(m*phi_j) summed over j → (n_lat,)
-            br_cos = br_map @ cos_m_phi * d_phi  # (n_lat,)
-            br_sin = br_map @ sin_m_phi * d_phi  # (n_lat,)
-
-            # Integrate over colatitude with sin(theta) weight
-            weight = p * sin_theta * d_theta  # (n_lat,)
-
-            # The Schmidt basis already includes the real-mode normalization.
-            norm = (2 * l + 1) / (4.0 * np.pi)
-
-            g_lm[l, m] = norm * np.sum(br_cos * weight)
-            h_lm[l, m] = norm * np.sum(br_sin * weight)
+    sqrt_weight = np.sqrt(grid.area_weights)
+    for m in range(lmax + 1):
+        design = np.column_stack([plm[(l, m)] for l in range(m, lmax + 1)])
+        weighted = design * sqrt_weight[:, None]
+        condition = np.linalg.cond(weighted, p=2)
+        if not np.isfinite(condition) or condition > condition_limit:
+            raise ValueError(f"latitude design for m={m} has condition {condition:g} above limit {condition_limit:g}")
+        # Factor 2 extracts real Fourier amplitudes for m>0; it is not an
+        # extra Schmidt normalization applied to the recovered coefficients.
+        factor = (1 if m == 0 else 2) / n_lon
+        rhs = np.column_stack((br_map @ np.cos(m * grid.phi_rad),
+                               br_map @ np.sin(m * grid.phi_rad))) * factor
+        coefficients, _, rank, _ = np.linalg.lstsq(weighted, rhs * sqrt_weight[:, None], rcond=None)
+        if rank != design.shape[1]:
+            raise ValueError(f"latitude design for m={m} is rank deficient")
+        g_lm[m:, m], h_lm[m:, m] = coefficients.T
 
     return g_lm, h_lm
 
@@ -558,6 +549,8 @@ def trace_field_lines(
     max_steps: int = 300,
     step_size: float = 0.02,
     br_map: np.ndarray | None = None,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> list[dict[str, Any]]:
     """Trace magnetic field lines from the photosphere through the PFSS domain.
 
@@ -570,7 +563,7 @@ def trace_field_lines(
     safe_n = max(8, min(500, int(n_lines)))
 
     # Generate seed footpoints
-    seeds = _generate_seed_footpoints(safe_n, br_map)
+    seeds = _generate_seed_footpoints(safe_n, br_map, grid=grid)
 
     for idx, (theta_0, phi_0) in enumerate(seeds):
         # Start slightly above photosphere
@@ -663,14 +656,18 @@ def _normalized_field(
 def _generate_seed_footpoints(
     n: int,
     br_map: np.ndarray | None = None,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> list[tuple[float, float]]:
     """Generate n footpoint seeds on the photosphere.
 
     Uses a Fibonacci spiral for uniform coverage, then biases toward
     high-|Br| regions if a magnetogram is provided.
     """
-    if br_map is not None and br_map.size > 0:
-        return _importance_sample_footpoints(n, br_map)
+    if br_map is not None:
+        if grid is None:
+            raise ValueError("magnetogram seeding requires an explicit grid")
+        return _importance_sample_footpoints(n, br_map, grid=grid)
 
     # Uniform Fibonacci spiral
     seeds: list[tuple[float, float]] = []
@@ -686,15 +683,16 @@ def _generate_seed_footpoints(
 
 def _importance_sample_footpoints(
     n: int, br_map: np.ndarray,
+    *,
+    grid: MagnetogramGrid,
 ) -> list[tuple[float, float]]:
     """Sample footpoints biased toward high |Br| regions."""
+    br_map = grid.validate_map(br_map)
     n_lat, n_lon = br_map.shape
     abs_br = np.abs(br_map)
 
-    # Weight by sin(theta) for area correction + |Br| for importance
-    theta_vals = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    sin_weight = np.sin(theta_vals)[:, np.newaxis]
-    weight_map = abs_br * sin_weight + 0.1 * sin_weight  # small uniform floor
+    # Exact cell areas; equal-area maps need no extra sin(theta) factor.
+    weight_map = (abs_br + 0.1) * grid.area_weights[:, None]
     weight_map = weight_map / weight_map.sum()
 
     flat_weights = weight_map.ravel()
@@ -702,12 +700,13 @@ def _importance_sample_footpoints(
     indices = rng.choice(len(flat_weights), size=n, replace=True, p=flat_weights)
 
     seeds: list[tuple[float, float]] = []
+    edges = grid.mu_edges
     for idx in indices:
         i_lat = idx // n_lon
         i_lon = idx % n_lon
-        theta = theta_vals[i_lat] + rng.uniform(-0.5, 0.5) * np.pi / n_lat
-        phi = (i_lon + rng.uniform(-0.5, 0.5)) * 2 * np.pi / n_lon
-        theta = _clamp(theta, 0.01, np.pi - 0.01)
+        mu = edges[i_lat] + rng.uniform() * (edges[i_lat + 1] - edges[i_lat])
+        theta = math.acos(mu)
+        phi = grid.phi_rad[i_lon] + rng.uniform(-0.5, 0.5) * 2 * np.pi / n_lon
         phi = phi % (2 * np.pi)
         seeds.append((float(theta), float(phi)))
 
@@ -1152,31 +1151,22 @@ class PFSSCache:
     ) -> dict[str, Any]:
         """Compute PFSS field lines for a given Carrington rotation."""
         source = "synthetic"
-        br_map = None
-
-        # Try to fetch GONG synoptic magnetogram
-        try:
-            gong_map = fetch_gong_synoptic_map(cr, timeout_s=gong_timeout_s)
-            if gong_map is not None and gong_map.size > 100:
-                br_map = gong_map
-                source = f"gong_cr{cr}"
-        except Exception:
-            pass
-
-        # Fall back to synthetic magnetogram
-        if br_map is None:
-            br_map = synthetic_magnetogram(activity, jd)
-            source = "synthetic"
+        # The legacy FITS reader drops WCS and row orientation. Do not infer
+        # orientation from its raw array or advertise it as observed input.
+        # A later validated FITS/WCS provider will re-enable observed ingestion.
+        fallback_reason = "legacy_gong_grid_orientation_unvalidated"
+        grid = equal_area_sine_latitude_grid(180, 360)
+        br_map = synthetic_magnetogram(activity, jd, grid=grid)
 
         # Decompose into spherical harmonics
         effective_lmax = min(lmax, 15)
-        g_lm, h_lm = decompose_spherical_harmonics(br_map, lmax=effective_lmax)
+        g_lm, h_lm = decompose_spherical_harmonics(br_map, lmax=effective_lmax, grid=grid)
 
         # Solve PFSS
         field = pfss_solve(g_lm, h_lm, lmax=effective_lmax)
 
         # Trace field lines (for visualization)
-        lines = trace_field_lines(field, n_lines=n_lines, br_map=br_map)
+        lines = trace_field_lines(field, n_lines=n_lines, br_map=br_map, grid=grid)
 
         # Compute WSA solar wind velocity map
         wsa_grid_lat = 36  # coarser for speed
@@ -1192,6 +1182,9 @@ class PFSSCache:
 
         return {
             "source": source,
+            "fallback_reason": fallback_reason,
+            "grid_convention": grid.convention,
+            "harmonic_convention": HARMONIC_CONVENTION_VERSION,
             "carrington_rotation": cr,
             "source_surface_radii": SOURCE_SURFACE_RADII,
             "lmax": effective_lmax,

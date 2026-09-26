@@ -184,13 +184,15 @@ def test_carrington_rotation_number() -> None:
 
 
 def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
     from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
     br = synthetic_magnetogram(activity=0.8, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=10)
+    grid = equal_area_sine_latitude_grid(*br.shape)
+    g, h = decompose_spherical_harmonics(br, lmax=10, grid=grid)
     field = pfss_solve(g, h, lmax=10)
     
     # 60 lines should be enough to capture both types
-    lines = trace_field_lines(field, n_lines=60, br_map=br)
+    lines = trace_field_lines(field, n_lines=60, br_map=br, grid=grid)
     
     assert len(lines) > 20
     open_count = sum(1 for line in lines if line["is_open"])
@@ -202,11 +204,13 @@ def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
 
 
 def test_pfss_open_lines_reach_source_surface() -> None:
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
     from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
     br = synthetic_magnetogram(activity=0.5, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=8)
+    grid = equal_area_sine_latitude_grid(*br.shape)
+    g, h = decompose_spherical_harmonics(br, lmax=8, grid=grid)
     field = pfss_solve(g, h, lmax=8)
-    lines = trace_field_lines(field, n_lines=40, br_map=br)
+    lines = trace_field_lines(field, n_lines=40, br_map=br, grid=grid)
     
     for line in lines:
         if line["is_open"]:
@@ -240,9 +244,10 @@ def test_wsa_velocity_map_produces_speeds() -> None:
         pfss_solve, compute_wsa_velocity_map,
     )
     import numpy as np
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
 
     br = synthetic_magnetogram(activity=0.3, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=8)
+    g, h = decompose_spherical_harmonics(br, lmax=8, grid=equal_area_sine_latitude_grid(*br.shape))
     field = pfss_solve(g, h, lmax=8)
 
     wsa = compute_wsa_velocity_map(field, br_map=br, n_lat=18, n_lon=36)

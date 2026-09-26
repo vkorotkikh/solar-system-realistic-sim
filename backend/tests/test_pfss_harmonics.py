@@ -138,15 +138,15 @@ def test_shared_api_degree_zero():
 
 @pytest.mark.parametrize("longitude_mode", ["cosine", "sine"])
 def test_schmidt_normalization_is_applied_once_in_projection(longitude_mode):
+    from sim.magnetogram_grid import uniform_colatitude_grid
     theta = (np.arange(720) + 0.5) * np.pi / 720
     phi = np.arange(360) * 2 * np.pi / 360
     longitude = np.cos(phi) if longitude_mode == "cosine" else np.sin(phi)
     br = np.sin(theta)[:, None] * longitude[None, :]
-    g, h = decompose_spherical_harmonics(br, lmax=1)
+    g, h = decompose_spherical_harmonics(br, lmax=1, grid=uniform_colatitude_grid(720, 360))
     expected_g = np.zeros((2, 2))
     expected_h = np.zeros((2, 2))
     (expected_g if longitude_mode == "cosine" else expected_h)[1, 1] = 1.0
-    # The legacy midpoint quadrature has finite resolution; Task 2 replaces it.
     np.testing.assert_allclose(g, expected_g, rtol=0, atol=1e-10)
     np.testing.assert_allclose(h, expected_h, rtol=0, atol=1e-10)
 
