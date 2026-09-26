@@ -32,8 +32,24 @@ jobs:
           cache: pip
           cache-dependency-path: ci/r3-r4-requirements.txt
 
+      - name: Select the pinned Node.js interpreter
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
       - name: Install the isolated R3/R4 test environment
         run: python -m pip install -r ci/r3-r4-requirements.txt
+
+      - name: Install the locked browser dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run browser unit and integration tests
+        run: npm test
+
+      - name: Build the production browser bundle
+        run: npm run build
 
       - name: Exercise runner and workflow fail-closed contracts
         run: >-
