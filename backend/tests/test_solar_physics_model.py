@@ -91,6 +91,17 @@ def test_parker_spiral_extends_to_multi_au_domain() -> None:
     assert spiral["point_count"] >= 80
     assert len(spiral["lines"]) == 6
     assert len(spiral["lines"][0]["arc"]) >= 80
+    pfss = state["pfss_field_lines"]
+    assert "_wsa_result" not in pfss
+    assert pfss["line_count"] == sum(pfss[f"{kind}_line_count"] for kind in ("open", "closed", "indeterminate"))
+    for kind in ("open", "closed", "indeterminate"):
+        assert pfss[f"{kind}_line_count"] == sum(line["state"] == kind for line in pfss["lines"])
+    import json
+    json.dumps(pfss, allow_nan=False)
+    for line in pfss["lines"]:
+        assert type(line["state"]) is str
+        assert line["is_open"] is {"open": True, "closed": False, "indeterminate": None}[line["state"]]
+        assert all(type(value) is float and math.isfinite(value) for value in line["endpoint"])
 
 
 def test_synthetic_coronal_holes_present_at_solar_minimum() -> None:
@@ -196,7 +207,7 @@ def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
     
     assert len(lines) > 20
     open_count = sum(1 for line in lines if line["is_open"])
-    closed_count = sum(1 for line in lines if not line["is_open"])
+    closed_count = sum(1 for line in lines if line["state"] == "closed")
     
     # Needs to be a mix
     assert open_count > 0, "No open lines traced"
@@ -214,10 +225,8 @@ def test_pfss_open_lines_reach_source_surface() -> None:
     
     for line in lines:
         if line["is_open"]:
-            # Last point should be >= 2.4 R_sun
-            last_pt = line["arc"][-1]
-            r = (last_pt[0]**2 + last_pt[1]**2 + last_pt[2]**2)**0.5
-            assert r >= 2.4, f"Open line terminated too early at r={r}"
+            r = math.hypot(*line["endpoint"])
+            assert abs(r - field.r_ss) <= 1e-6
 
 
 def test_wsa_velocity_bounds() -> None:

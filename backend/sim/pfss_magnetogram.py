@@ -25,6 +25,7 @@ from typing import Any
 import numpy as np
 
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
+from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .spherical_harmonics import (
     HARMONIC_CONVENTION_VERSION,
     schmidt_azimuthal_factor,
@@ -555,10 +556,10 @@ def trace_field_lines(
 
     Seeds footpoints using a Fibonacci spiral biased toward high-|Br| regions
     (active regions). Each line is traced outward via RK4 and classified as
-    open (reaches source surface) or closed (returns to photosphere).
+    open (reaches source surface), closed (returns to photosphere), or
+    indeterminate (no validated boundary crossing).
     """
     lines: list[dict[str, Any]] = []
-    r_ss = field.r_ss
     safe_n = max(8, min(500, int(n_lines)))
 
     # Generate seed footpoints
@@ -571,56 +572,10 @@ def trace_field_lines(
         y = r_start * math.sin(theta_0) * math.sin(phi_0)
         z = r_start * math.cos(theta_0)
 
-        # Determine initial field direction for polarity
-        bx, by, bz = field.evaluate_cartesian(x, y, z)
-        b_mag = math.sqrt(bx * bx + by * by + bz * bz)
-        if b_mag < 1e-12:
-            continue
-
-        # Radial component at footpoint determines polarity
-        r_hat = (x / r_start, y / r_start, z / r_start)
-        br_dot = bx * r_hat[0] + by * r_hat[1] + bz * r_hat[2]
-        polarity = 1 if br_dot > 0 else -1
-
-        # Trace direction: follow field outward
-        trace_sign = float(polarity)
-
-        arc: list[list[float]] = [[x, y, z]]
-        is_open = False
-
-        px, py, pz = x, y, z
-
-        for step in range(max_steps):
-            # RK4 integration
-            k1x, k1y, k1z = _normalized_field(field, px, py, pz, trace_sign)
-
-            mx, my, mz = px + k1x * step_size * 0.5, py + k1y * step_size * 0.5, pz + k1z * step_size * 0.5
-            k2x, k2y, k2z = _normalized_field(field, mx, my, mz, trace_sign)
-
-            mx2, my2, mz2 = px + k2x * step_size * 0.5, py + k2y * step_size * 0.5, pz + k2z * step_size * 0.5
-            k3x, k3y, k3z = _normalized_field(field, mx2, my2, mz2, trace_sign)
-
-            ex, ey, ez = px + k3x * step_size, py + k3y * step_size, pz + k3z * step_size
-            k4x, k4y, k4z = _normalized_field(field, ex, ey, ez, trace_sign)
-
-            px += step_size * (k1x + 2 * k2x + 2 * k3x + k4x) / 6
-            py += step_size * (k1y + 2 * k2y + 2 * k3y + k4y) / 6
-            pz += step_size * (k1z + 2 * k2z + 2 * k3z + k4z) / 6
-
-            r = math.sqrt(px * px + py * py + pz * pz)
-            arc.append([round(px, 4), round(py, 4), round(pz, 4)])
-
-            if r >= r_ss:
-                is_open = True
-                break
-            elif r <= 1.0 and step > 5:
-                # Returned to photosphere — closed loop
-                is_open = False
-                break
-
-        # Only keep lines with enough points
-        if len(arc) < 5:
-            continue
+        result = trace_field(field, [x, y, z], max_steps=max_steps, step_size=step_size)
+        termination = result.termination
+        is_open = {"open": True, "closed": False, "indeterminate": None}[termination.state]
+        arc = np.round(result.arc, 4).tolist()
 
         # Convert footpoint to lat/lon
         fp_lat_deg = round(90.0 - math.degrees(theta_0), 1)
@@ -628,28 +583,20 @@ def trace_field_lines(
 
         lines.append({
             "id": f"pfss-{idx:03d}",
+            "state": termination.state,
             "is_open": is_open,
-            "polarity": polarity,
+            "termination_reason": termination.reason,
+            "steps": termination.steps,
+            "endpoint": result.endpoint.tolist(),
+            "endpoint_field": result.endpoint_field.tolist() if result.endpoint_field is not None else None,
+            "endpoint_radius_residual": termination.endpoint_radius_residual,
+            "polarity": result.polarity,
             "footpoint_lat_deg": fp_lat_deg,
             "footpoint_lon_deg": fp_lon_deg,
             "arc": arc,
         })
 
     return lines
-
-
-def _normalized_field(
-    field: PFSSField,
-    x: float, y: float, z: float,
-    sign: float,
-) -> tuple[float, float, float]:
-    """Evaluate normalized magnetic field direction at Cartesian point."""
-    bx, by, bz = field.evaluate_cartesian(x, y, z)
-    mag = math.sqrt(bx * bx + by * by + bz * bz)
-    if mag < 1e-15:
-        return (0.0, 0.0, 0.0)
-    inv = sign / mag
-    return (bx * inv, by * inv, bz * inv)
 
 
 def _generate_seed_footpoints(
@@ -761,6 +708,8 @@ def compute_wsa_velocity_map(
         - 'velocity_map': 2D array (n_lat, n_lon) of V_sw in km/s at the
           source surface (NaN for closed footpoints).
         - 'open_mask': boolean 2D array, True for open flux footpoints.
+        - 'closed_mask', 'indeterminate_mask': independently classified masks.
+        - 'trace_states', 'trace_endpoints': topology and full-precision endpoints.
         - 'mean_velocity_kms': mean open-flux velocity.
         - 'fs_map': expansion factor map.
         - 'theta_b_map': boundary distance map (radians).
@@ -784,85 +733,25 @@ def compute_wsa_velocity_map(
     y0 = r_foot * np.sin(theta_flat) * np.sin(phi_flat)
     z0 = r_foot * np.cos(theta_flat)
 
-    # Evaluate |B| at footpoint
-    bx0, by0, bz0 = field.evaluate_cartesian_batch(x0, y0, z0)
-    b_foot = np.sqrt(bx0**2 + by0**2 + bz0**2)
-    
-    # Polarity for trace direction
-    r_hat_x, r_hat_y, r_hat_z = x0 / r_foot, y0 / r_foot, z0 / r_foot
-    br_dot = bx0 * r_hat_x + by0 * r_hat_y + bz0 * r_hat_z
-    trace_sign = np.where(br_dot > 0, 1.0, -1.0)
-
-    # Active mask for RK4 (only trace lines with non-zero B)
-    active = b_foot > 1e-12
-    reached_ss = np.zeros(n_points, dtype=bool)
-    
-    px, py, pz = x0.copy(), y0.copy(), z0.copy()
-
-    def _norm_batch(fx: np.ndarray, fy: np.ndarray, fz: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        tx, ty, tz = fx[mask], fy[mask], fz[mask]
-        ts = trace_sign[mask]
-        bx, by, bz = field.evaluate_cartesian_batch(tx, ty, tz)
-        mag = np.sqrt(bx*bx + by*by + bz*bz)
-        inv = np.where(mag > 1e-15, ts / mag, 0.0)
-        return bx * inv, by * inv, bz * inv
-
-    # Pre-allocate k arrays to avoid reassignment noise
-    k1x = np.zeros(n_points); k1y = np.zeros(n_points); k1z = np.zeros(n_points)
-    k2x = np.zeros(n_points); k2y = np.zeros(n_points); k2z = np.zeros(n_points)
-    k3x = np.zeros(n_points); k3y = np.zeros(n_points); k3z = np.zeros(n_points)
-    k4x = np.zeros(n_points); k4y = np.zeros(n_points); k4z = np.zeros(n_points)
-
-    for step in range(max_steps):
-        if not np.any(active):
-            break
-            
-        k1x[active], k1y[active], k1z[active] = _norm_batch(px, py, pz, active)
-        
-        mx = px + k1x * step_size * 0.5
-        my = py + k1y * step_size * 0.5
-        mz = pz + k1z * step_size * 0.5
-        k2x[active], k2y[active], k2z[active] = _norm_batch(mx, my, mz, active)
-        
-        mx2 = px + k2x * step_size * 0.5
-        my2 = py + k2y * step_size * 0.5
-        mz2 = pz + k2z * step_size * 0.5
-        k3x[active], k3y[active], k3z[active] = _norm_batch(mx2, my2, mz2, active)
-        
-        ex = px + k3x * step_size
-        ey = py + k3y * step_size
-        ez = pz + k3z * step_size
-        k4x[active], k4y[active], k4z[active] = _norm_batch(ex, ey, ez, active)
-
-        px[active] += step_size * (k1x[active] + 2*k2x[active] + 2*k3x[active] + k4x[active]) / 6.0
-        py[active] += step_size * (k1y[active] + 2*k2y[active] + 2*k3y[active] + k4y[active]) / 6.0
-        pz[active] += step_size * (k1z[active] + 2*k2z[active] + 2*k3z[active] + k4z[active]) / 6.0
-
-        r_current = np.sqrt(px*px + py*py + pz*pz)
-        
-        # Check termination condition
-        hit_ss = (r_current >= r_ss) & active
-        reached_ss[hit_ss] = True
-        active[hit_ss] = False
-        
-        if step > 5:
-            hit_surface = (r_current <= 1.0) & active
-            active[hit_surface] = False
-
-    # This footpoint is open flux
-    open_mask_flat = reached_ss
+    traces = trace_field_batch(
+        field, np.column_stack((x0, y0, z0)),
+        max_steps=max_steps, step_size=step_size,
+    )
+    b_foot = safe_norm(traces.initial_fields)
+    px, py, pz = traces.endpoints.T
+    trace_states = traces.states.reshape(n_lat, n_lon)
+    open_mask_flat = traces.states == "open"
     open_mask = open_mask_flat.reshape(n_lat, n_lon)
-
-    # Evaluate |B| at source surface endpoint
-    bx_ss, by_ss, bz_ss = field.evaluate_cartesian_batch(px, py, pz)
-    b_ss = np.sqrt(bx_ss**2 + by_ss**2 + bz_ss**2)
+    closed_mask = trace_states == "closed"
+    indeterminate_mask = trace_states == "indeterminate"
+    b_ss = safe_norm(traces.endpoint_fields)
 
     # Expansion factor
     fs_val = np.full(n_points, 100.0)
     valid_b = b_ss > 1e-15
     fs_val[valid_b] = ((1.0 / r_ss) ** 2) * (b_foot[valid_b] / b_ss[valid_b])
     
-    # Mask out closed flux
+    # Only confirmed open flux supplies expansion factors.
     fs_val[~open_mask_flat] = np.nan
     fs_map = fs_val.reshape(n_lat, n_lon)
 
@@ -882,7 +771,6 @@ def compute_wsa_velocity_map(
     # ── Compute boundary distance θ_b ────────────────────────────────────
     # For each open footpoint, find the minimum great-circle distance to
     # any closed footpoint on the grid.
-    closed_mask = ~open_mask
     theta_b_map = np.full((n_lat, n_lon), np.nan)
 
     # Precompute Cartesian unit vectors for all grid points
@@ -910,7 +798,7 @@ def compute_wsa_velocity_map(
             min_dist = float(np.min(np.arccos(dots)))
             theta_b_map[i_lat_o, i_lon_o] = min_dist
     else:
-        # All open (pure coronal hole, unlikely but handle)
+        # Retain the existing no-closed-neighbour default (Task 5 owns WSA policy).
         theta_b_map[open_mask] = math.pi / 2  # Maximum distance
 
     # ── Apply WSA velocity formula ────────────────────────────────────────
@@ -931,6 +819,13 @@ def compute_wsa_velocity_map(
     return {
         "velocity_map": velocity_map,
         "open_mask": open_mask,
+        "closed_mask": closed_mask,
+        "indeterminate_mask": indeterminate_mask,
+        "trace_states": trace_states,
+        "trace_endpoints": traces.endpoints.reshape(n_lat, n_lon, 3),
+        "trace_termination_reasons": traces.reasons.reshape(n_lat, n_lon),
+        "trace_steps": traces.steps.reshape(n_lat, n_lon),
+        "trace_endpoint_radius_residuals": traces.endpoint_radius_residuals.reshape(n_lat, n_lon),
         "fs_map": fs_map,
         "theta_b_map": theta_b_map,
         "ss_theta": ss_theta,
@@ -1175,9 +1070,9 @@ class PFSSCache:
             n_lat=wsa_grid_lat, n_lon=wsa_grid_lon,
         )
 
-        # Count open vs closed
-        open_count = sum(1 for l in lines if l.get("is_open"))
-        closed_count = len(lines) - open_count
+        open_count = sum(1 for line in lines if line["state"] == "open")
+        closed_count = sum(1 for line in lines if line["state"] == "closed")
+        indeterminate_count = sum(1 for line in lines if line["state"] == "indeterminate")
 
         return {
             "source": source,
@@ -1190,6 +1085,7 @@ class PFSSCache:
             "line_count": len(lines),
             "open_line_count": open_count,
             "closed_line_count": closed_count,
+            "indeterminate_line_count": indeterminate_count,
             "lines": lines,
             "wsa": {
                 "mean_velocity_kms": wsa_result["mean_velocity_kms"],
