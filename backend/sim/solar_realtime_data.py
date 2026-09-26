@@ -108,6 +108,12 @@ class SolarRealtimeDataProvider:
         "aia_211": 12,
         "aia_304": 13,
     }
+    AIA_VIEWPORT_TILE_X = -1
+    AIA_VIEWPORT_TILE_Y = -1
+    AIA_VIEWPORT_TILE_SIZE_PX = 512
+    AIA_SPATIAL_USE_DISABLED_REASON = (
+        "viewport_tile_has_no_validated_solar_surface_projection"
+    )
     AIA_ACTIVITY_WEIGHTS = {
         "aia_094": 0.10,
         "aia_171": 0.22,
@@ -164,6 +170,12 @@ class SolarRealtimeDataProvider:
                     "tile_url": self.HELIOVIEWER_TILE_URL,
                     "source_ids": self.AIA_SOURCE_IDS,
                     "supports_imagery_activity_proxy": Image is not None,
+                    "artifacts": {
+                        "raw_viewport_tile": True,
+                        "spatial_surface_texture": False,
+                        "scientific_pixel_inference": False,
+                        "reason": self.AIA_SPATIAL_USE_DISABLED_REASON,
+                    },
                 },
                 "gong_synoptic": self._gong_runtime_status(),
             },
@@ -308,6 +320,8 @@ class SolarRealtimeDataProvider:
             "tile_url": tile_url,
             "content": tile_content,
             "content_type": content_type or "image/png",
+            "artifact": channel_entry.get("artifact"),
+            "spatial_use": channel_entry.get("spatial_use"),
         }
 
     def _fetch_json(self, url: str) -> Any:
@@ -765,8 +779,8 @@ class SolarRealtimeDataProvider:
         query = urllib.parse.urlencode(
             {
                 "id": image_id,
-                "x": -1,
-                "y": -1,
+                "x": self.AIA_VIEWPORT_TILE_X,
+                "y": self.AIA_VIEWPORT_TILE_Y,
                 "imageScale": f"{scale:.6f}",
             }
         )
@@ -1010,6 +1024,26 @@ class SolarRealtimeDataProvider:
                 else None
             ),
             "tile_url": tile_url,
+            "artifact": {
+                "schema": {
+                    "name": "helioviewer_viewport_tile",
+                    "version": 1,
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                    "tile_x": self.AIA_VIEWPORT_TILE_X,
+                    "tile_y": self.AIA_VIEWPORT_TILE_Y,
+                    "width_px": self.AIA_VIEWPORT_TILE_SIZE_PX,
+                    "height_px": self.AIA_VIEWPORT_TILE_SIZE_PX,
+                    "image_scale_arcsec_per_pixel": image_scale,
+                },
+            },
+            "spatial_use": {
+                "eligible": False,
+                "reason": self.AIA_SPATIAL_USE_DISABLED_REASON,
+                "contract": None,
+            },
         }
 
     def _fetch_sdo_aia(self, jd_tdb: float | None) -> dict[str, Any]:

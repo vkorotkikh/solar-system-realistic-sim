@@ -299,6 +299,51 @@ def test_aia_provider_converts_jdtdb_to_utc_before_query(
     assert abs((encoded_request_date - expected_utc).total_seconds()) < 50e-6
 
 
+def test_aia_channel_declares_viewport_artifact_as_nonspatial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_fetch_json",
+        lambda _url: {
+            "id": 184733789,
+            "date": "2026-09-26 14:59:00",
+            "scale": 0.6,
+            "width": 4096,
+            "height": 4096,
+            "rsun": 1585.0,
+            "rotation": 0.0,
+        },
+    )
+
+    channel = provider._fetch_helioviewer_closest(11, datetime.now(timezone.utc))
+
+    assert channel["artifact"] == {
+        "schema": {"name": "helioviewer_viewport_tile", "version": 1},
+        "delivery": "raw_on_demand",
+        "media_type": "image/png",
+        "viewport": {
+            "tile_x": -1,
+            "tile_y": -1,
+            "width_px": 512,
+            "height_px": 512,
+            "image_scale_arcsec_per_pixel": 0.6,
+        },
+    }
+    assert channel["spatial_use"] == {
+        "eligible": False,
+        "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+        "contract": None,
+    }
+    assert provider.capabilities()["sources"]["sdo_aia"]["artifacts"] == {
+        "raw_viewport_tile": True,
+        "spatial_surface_texture": False,
+        "scientific_pixel_inference": False,
+        "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+    }
+
+
 def test_aia_provider_accepts_equal_legacy_epoch_alias(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -385,6 +430,20 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
                         "tile_url": tile_url,
                         "image_id": "image-a",
                         "image_date": "2026-01-01T00:00:00Z",
+                        "artifact": {
+                            "schema": {
+                                "name": "helioviewer_viewport_tile",
+                                "version": 1,
+                            },
+                            "delivery": "raw_on_demand",
+                        },
+                        "spatial_use": {
+                            "eligible": False,
+                            "reason": (
+                                "viewport_tile_has_no_validated_solar_surface_projection"
+                            ),
+                            "contract": None,
+                        },
                     }
                 }
             }
@@ -403,3 +462,5 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
     assert fetched_urls == [tile_url]
     assert tile["image_id"] == "image-a"
     assert tile["content"] == b"exact-image-a"
+    assert tile["artifact"]["delivery"] == "raw_on_demand"
+    assert tile["spatial_use"]["eligible"] is False
