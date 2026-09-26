@@ -351,7 +351,10 @@ def pfss_solve(
 
     The Altschuler-Newkirk solution gives the potential field between
     r = 1 R☉ (photosphere) and r = r_ss (source surface, default 2.5 R☉),
-    with the boundary condition Br = 0 at r_ss.
+    with the source-surface boundary condition Btheta = Bphi = 0 at r_ss.
+    The radial field remains nonzero in general, allowing radial magnetic
+    flux through the source surface. At r=1, Br reconstructs the supplied
+    coefficients for degrees 1..lmax (the monopole is excluded).
     """
     return PFSSField(g_lm, h_lm, min(lmax, g_lm.shape[0] - 1), r_ss)
 
@@ -383,18 +386,13 @@ class PFSSField:
         bp_val = 0.0
 
         for l in range(1, self.lmax + 1):
-            # Radial basis functions (Altschuler-Newkirk):
-            # c_l(r) = (r)^l + ((l+1)/l) * r^{-(l+1)} * (1/r_ss)^{2l+1}
-            # But for the standard PFSS: B_r has the form:
-            #   B_r(r,θ,φ) = sum_l sum_m [c_l(r)] * P_l^m(cosθ) * (g*cos(mφ)+h*sin(mφ))
-            # where c_l(r) = (l+1) * [(r_ss/r)^{l+2} - 1] / [(l+1) + l*(r_ss)^{-(2l+1)}]
-            # ... simplified:
-            # f_l(r) = (r)^{-(l+2)} * [1 - (r/r_ss)^{2l+1}] / [1 + (l+1)/l * (1/r_ss)^{2l+1}]
+            # B=-grad(Psi), with each unit-coefficient potential mode
+            # Psi_l = [r^(-l-1) - r^l/rss^(2l+1)] / D_l * Y_lm,
+            # D_l = l+1 + l/rss^(2l+1). Thus Psi_l(rss)=0,
+            # Br(1)=Y_lm, and Btheta(rss)=Bphi(rss)=0.
+            # Br(rss)=(2l+1)*rss^(-l-2)/D_l * Y_lm is generally nonzero.
             rss = self.r_ss
 
-            # More standard form from Wang & Sheeley (1992):
-            # R_l(r) for Br:  (l+1) * [1 - (r/rss)^(2l+1)] / [l + (l+1)*(r/rss)^(2l+1)] * r^{-(l+2)}
-            # But simplified using ratio to photosphere (r=1):
             r_ratio = r  # r in solar radii, photosphere = 1
             rss_pow = (1.0 / rss) ** (2 * l + 1)
 
@@ -503,6 +501,7 @@ class PFSSField:
         bp_val = np.zeros(n_points)
         
         for l in range(1, self.lmax + 1):
+            # Same -grad(Psi_l) factors and normalization as evaluate().
             rss_pow = (1.0 / self.r_ss) ** (2 * l + 1)
             denominator = (l + 1) + l * rss_pow
             if abs(denominator) < 1e-30:
