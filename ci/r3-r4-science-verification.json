@@ -2,6 +2,10 @@
   "schema_version": 1,
   "environment": {
     "python": "3.12.13",
+    "requirements": {
+      "path": "ci/r3-r4-requirements.txt",
+      "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+    },
     "packages": {
       "astropy": "8.0.1",
       "astropy-iers-data": "0.2026.9.21.0.56.25",
@@ -28,6 +32,10 @@
     }
   },
   "inputs": [
+    {
+      "path": "ci/r3-r4-requirements.txt",
+      "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+    },
     {
       "path": "backend/sim/spherical_harmonics.py",
       "sha256": "d166e005fa5a460e062ba9f0139729719eb8d9281b55ffd39722ee2122a20fad"
@@ -74,6 +82,7 @@
     }
   ],
   "pytest": {
+    "conftest_policy": "disabled",
     "pythonpath": [
       "backend"
     ],
@@ -97,7 +106,7 @@
       ],
       "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
       "expected_assertion_regex": "R4-LEGENDRE-RECURRENCE",
-      "fixed_commit": "1a6fcaa",
+      "fixed_commit": "1a6fcaaaf37e2be711a2a81533f8d28b4f171787",
       "oracle_class": "immutable-independent-scipy-fixture"
     },
     {
@@ -109,7 +118,7 @@
       ],
       "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
       "expected_assertion_regex": "R4-THETA-AREA-WEIGHTS",
-      "fixed_commit": "70af7c8",
+      "fixed_commit": "70af7c81ea40d0fd090423922d767949fb30c3e3",
       "oracle_class": "analytic-area-integral"
     },
     {
@@ -121,7 +130,7 @@
       ],
       "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
       "expected_assertion_regex": "R4-M-NORMALIZATION",
-      "fixed_commit": "70af7c8",
+      "fixed_commit": "70af7c81ea40d0fd090423922d767949fb30c3e3",
       "oracle_class": "analytic-isolated-real-harmonic"
     },
     {
@@ -133,7 +142,7 @@
       ],
       "node": "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
       "expected_assertion_regex": "R4-PFSS-SOURCE-SURFACE",
-      "fixed_commit": "99b3231",
+      "fixed_commit": "99b323166f2b51c3f44e8e9adf01b2fe36fefdc7",
       "oracle_class": "analytic-potential-solution"
     },
     {
@@ -145,7 +154,7 @@
       ],
       "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
       "expected_assertion_regex": "R4-TRACE-EXACT-CROSSING",
-      "fixed_commit": "487a0ef",
+      "fixed_commit": "487a0efc13ceab74d769dd03f9a456f3772298ac",
       "oracle_class": "analytic-shell-intersection"
     },
     {
@@ -157,7 +166,7 @@
       ],
       "node": "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
       "expected_assertion_regex": "R4-WSA-RADIAL-COMPONENT",
-      "fixed_commit": "8fd45d5",
+      "fixed_commit": "8fd45d5fd20588edb7bcc7fcb585ce3ac3777799",
       "oracle_class": "analytic-radial-flux-tube"
     }
   ]
