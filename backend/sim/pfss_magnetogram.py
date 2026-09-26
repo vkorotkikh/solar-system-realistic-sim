@@ -22,7 +22,6 @@ import math
 import struct
 import threading
 import time
-import urllib.parse
 import urllib.request
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -1675,21 +1674,20 @@ class PFSSCache:
             ))
         except (TypeError, ValueError) as exc:
             raise ValueError("snapshot acquisition provenance is inconsistent") from exc
-        parsed_url = urllib.parse.urlsplit(provenance.source_url)
-        archive_url = urllib.parse.urlsplit(gong.GONG_ARCHIVE_BASE_URL)
-        if (
-            parsed_url.scheme != "https"
-            or parsed_url.hostname != archive_url.hostname
-            or parsed_url.username is not None
-            or parsed_url.password is not None
-            or parsed_url.query
-            or parsed_url.fragment
-            or not parsed_url.path.startswith(archive_url.path)
-            or parsed_url.path.rsplit("/", 1)[-1] != provenance.filename
-        ):
+        filename_match = gong._FILENAME_RE.fullmatch(provenance.filename)
+        if filename_match is None:
+            raise ValueError("snapshot filename is inconsistent")
+        filename_date = filename_match.group("date")
+        expected_source_url = (
+            f"{gong.GONG_ARCHIVE_BASE_URL}20{filename_date[:4]}/"
+            f"mrzqs{filename_date}/{provenance.filename}"
+        )
+        if provenance.source_url != expected_source_url:
             raise ValueError("snapshot source URL and filename are inconsistent")
+        limits = gong.GongParseLimits()
         if (
             not isinstance(provenance.native_header_bytes, bytes)
+            or len(provenance.native_header_bytes) > limits.max_header_bytes
             or hashlib.sha256(provenance.native_header_bytes).hexdigest()
             != provenance.native_header_sha256
             or not gong._HEX_SHA256_RE.fullmatch(provenance.expanded_fits_sha256)
@@ -1697,6 +1695,11 @@ class PFSSCache:
         ):
             raise ValueError("snapshot artifact hashes are inconsistent")
         try:
+            extracted_header = gong._native_header_bytes(
+                provenance.native_header_bytes, limits.max_header_bytes
+            )
+            if extracted_header != provenance.native_header_bytes:
+                raise ValueError("native header contains non-header bytes")
             native_header = gong.fits.Header.fromstring(
                 provenance.native_header_bytes.decode("ascii"), sep=""
             )
@@ -1708,7 +1711,7 @@ class PFSSCache:
             expected_wcs, header_grid = gong._validate_wcs(
                 native_header, header_metadata.long0_deg
             )
-            expanded_hash = PFSSCache._reconstructed_expanded_fits_sha256(
+            reconstructed_fits = PFSSCache._reconstructed_expanded_fits(
                 native_header,
                 provenance.native_header_bytes,
                 field,
@@ -1734,9 +1737,30 @@ class PFSSCache:
             )
             or expected_wcs != provenance.wcs
             or gong._grid_sha256(header_grid) != gong._grid_sha256(snapshot.grid)
-            or expanded_hash != provenance.expanded_fits_sha256
+            or hashlib.sha256(reconstructed_fits).hexdigest()
+            != provenance.expanded_fits_sha256
         ):
             raise ValueError("snapshot native header fields are inconsistent")
+        try:
+            reparsed = gong.parse_gong_fits(
+                reconstructed_fits,
+                context=gong.GongParseContext(
+                    request_jd_tdb=provenance.request_jd_tdb,
+                    source_url=provenance.source_url,
+                    filename=provenance.filename,
+                    compressed_sha256=provenance.compressed_sha256,
+                    retrieved_at_utc=provenance.retrieved_at_utc,
+                    retrieval_timeout_s=provenance.retrieval_timeout_s,
+                ),
+                limits=limits,
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("snapshot reconstructed FITS is invalid") from exc
+        if (
+            gong._grid_sha256(reparsed.grid) != gong._grid_sha256(snapshot.grid)
+            or not np.array_equal(reparsed.field_gauss, field)
+        ):
+            raise ValueError("snapshot disagrees with reconstructed FITS")
         expected_grid_hash = gong._grid_sha256(snapshot.grid)
         if (
             sid.grid_sha256 != expected_grid_hash
@@ -1836,17 +1860,24 @@ class PFSSCache:
         )
         if sid.normalized_content_sha256 != expected_content_hash:
             raise ValueError("snapshot normalized content hash is inconsistent")
+        if reparsed.snapshot_id != sid or reparsed.provenance != provenance:
+            raise ValueError("snapshot disagrees with reconstructed FITS")
         return field
 
     @staticmethod
-    def _reconstructed_expanded_fits_sha256(
+    def _reconstructed_expanded_fits(
         header: Any,
         native_header_bytes: bytes,
         field: np.ndarray,
         removed_mean_g: float,
         gauss_conversion_factor: float,
-    ) -> str:
+    ) -> bytes:
         """Reconstruct the frozen single-HDU FITS artifact from parsed science."""
+        if int(header.get("NAXIS", -1)) != 2:
+            raise ValueError("snapshot FITS must contain a two-dimensional image")
+        shape = (int(header.get("NAXIS2", -1)), int(header.get("NAXIS1", -1)))
+        if shape != field.shape or shape != (180, 360):
+            raise ValueError("snapshot FITS dimensions disagree with science pixels")
         bitpix = int(header["BITPIX"])
         dtype_by_bitpix = {
             8: np.dtype(">u1"),
@@ -1885,8 +1916,14 @@ class PFSSCache:
                 raise ValueError("snapshot pixels disagree with integer FITS storage")
             raw = rounded
         data_bytes = np.asarray(raw, dtype=dtype, order="C").tobytes(order="C")
+        expected_data_bytes = shape[0] * shape[1] * (abs(bitpix) // 8)
+        if len(data_bytes) != expected_data_bytes:
+            raise ValueError("snapshot FITS data size is inconsistent")
         data_bytes += b"\0" * ((-len(data_bytes)) % 2880)
-        return hashlib.sha256(native_header_bytes + data_bytes).hexdigest()
+        expanded = native_header_bytes + data_bytes
+        if len(expanded) > gong.GongParseLimits().max_expanded_fits_bytes:
+            raise ValueError("snapshot FITS exceeds the expanded byte limit")
+        return expanded
 
     @staticmethod
     def _validate_observed_flux(

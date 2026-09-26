@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -120,6 +121,51 @@ def _parsed_observed_variant(
         expanded,
         context=context(filename=filename, source_url=source_url),
     )
+
+
+def _native_header_with_updates(
+    snapshot: gong.MagnetogramSnapshot,
+    *,
+    updates: dict[str, Any] | None = None,
+    comments: int = 0,
+) -> bytes:
+    header = gong.fits.Header.fromstring(
+        snapshot.provenance.native_header_bytes.decode("ascii"), sep=""
+    )
+    for key, value in (updates or {}).items():
+        header[key] = value
+    for index in range(comments):
+        header.add_comment(f"untrusted-padding-{index:06d}")
+    return header.tostring(sep="", endcard=True, padding=True).encode("ascii")
+
+
+def _snapshot_with_native_artifact(
+    snapshot: gong.MagnetogramSnapshot,
+    native_header_bytes: bytes,
+    *,
+    trailing_bytes: bytes = b"",
+) -> gong.MagnetogramSnapshot:
+    original_data = EXPANDED[len(snapshot.provenance.native_header_bytes):]
+    expanded = native_header_bytes + original_data + trailing_bytes
+    provenance = replace(
+        snapshot.provenance,
+        native_header_bytes=native_header_bytes,
+        native_header_sha256=hashlib.sha256(native_header_bytes).hexdigest(),
+        expanded_fits_sha256=hashlib.sha256(expanded).hexdigest(),
+    )
+    return gong.MagnetogramSnapshot(
+        snapshot.snapshot_id,
+        snapshot.field_gauss,
+        snapshot.grid,
+        provenance,
+    )
+
+
+def _trailing_image_hdu_bytes() -> bytes:
+    hdu = gong.fits.ImageHDU(np.zeros((1, 1), dtype=np.int16))
+    header = hdu.header.tostring(sep="", endcard=True, padding=True).encode("ascii")
+    data = np.zeros((1, 1), dtype=">i2").tobytes()
+    return header + data + b"\0" * ((-len(data)) % 2880)
 
 
 @pytest.mark.parametrize(
@@ -343,6 +389,88 @@ def test_every_published_provider_field_is_validated_before_caching(
         replace(observed_snapshot.provenance, **{field: value}),
     )
     with pytest.raises(ValueError):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "http://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu:443/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu:444/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://GONG.NSO.EDU/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202608/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/wrong-day/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/./mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/../mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/%2e/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609\\mrzqs260925/mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925//mrzqs260925t2304c2316_301.fits.gz",
+        "https://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz\n",
+    ],
+)
+def test_observed_source_url_must_be_the_exact_filename_derived_archive_url(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    source_url: str,
+) -> None:
+    invalid = gong.MagnetogramSnapshot(
+        observed_snapshot.snapshot_id,
+        observed_snapshot.field_gauss,
+        observed_snapshot.grid,
+        replace(observed_snapshot.provenance, source_url=source_url),
+    )
+    cache, calls = _recording_cache(monkeypatch)
+    with pytest.raises(ValueError, match="URL|acquisition"):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize("mutation", ["naxis", "stale_checksum", "oversized_header"])
+def test_reconstructed_fits_replays_bounded_parser_gates(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    mutation: str,
+) -> None:
+    if mutation == "naxis":
+        native_header = _native_header_with_updates(
+            observed_snapshot, updates={"NAXIS1": 359}
+        )
+    elif mutation == "stale_checksum":
+        native_header = _native_header_with_updates(
+            observed_snapshot, updates={"COMMENT": "checksum must now be stale"}
+        )
+    else:
+        native_header = _native_header_with_updates(observed_snapshot, comments=4000)
+        assert len(native_header) > gong.GongParseLimits().max_header_bytes
+    invalid = _snapshot_with_native_artifact(observed_snapshot, native_header)
+    cache, calls = _recording_cache(monkeypatch)
+    with pytest.raises(ValueError, match="snapshot"):
+        cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
+    assert calls == []
+    assert cache._cache == {}
+
+
+@pytest.mark.parametrize(
+    "trailing_bytes",
+    [b"\0" * 2880, pytest.param(_trailing_image_hdu_bytes(), id="image-hdu")],
+    ids=["padding-block", "image-hdu"],
+)
+def test_reconstructed_fits_rejects_trailing_blocks_and_hdus(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    trailing_bytes: bytes,
+) -> None:
+    invalid = _snapshot_with_native_artifact(
+        observed_snapshot,
+        observed_snapshot.provenance.native_header_bytes,
+        trailing_bytes=trailing_bytes,
+    )
+    cache, calls = _recording_cache(monkeypatch)
+    with pytest.raises(ValueError, match="snapshot"):
         cache.get_or_compute(**BASE_REQUEST, snapshot=invalid)
     assert calls == []
     assert cache._cache == {}
