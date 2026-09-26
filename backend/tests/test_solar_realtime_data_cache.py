@@ -200,3 +200,73 @@ def test_aia_provider_accepts_equal_legacy_epoch_alias(
 
     assert tile["content"] == b"png"
     assert latest_calls == [{"jd_tdb": 2_460_000.5, "force_refresh": False}]
+
+
+def test_aia_tile_rejects_changed_snapshot_identity_before_binary_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "latest",
+        lambda **_kwargs: {
+            "sdo_aia": {
+                "channels": {
+                    "aia_193": {
+                        "tile_url": "https://example.invalid/image-b.png",
+                        "image_id": "image-b",
+                        "image_date": "2026-01-01T00:00:00Z",
+                    }
+                }
+            }
+        },
+    )
+    binary_fetches: list[str] = []
+    monkeypatch.setattr(
+        provider,
+        "_fetch_binary_cached",
+        lambda url, **_kwargs: (binary_fetches.append(url), (b"wrong", "image/png"))[1],
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"requested image-a.*available image-b",
+    ):
+        provider.latest_aia_tile(channel="aia_193", image_id="image-a")
+
+    assert binary_fetches == []
+
+
+def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    tile_url = "https://example.invalid/image-a.png"
+    monkeypatch.setattr(
+        provider,
+        "latest",
+        lambda **_kwargs: {
+            "sdo_aia": {
+                "channels": {
+                    "aia_193": {
+                        "tile_url": tile_url,
+                        "image_id": "image-a",
+                        "image_date": "2026-01-01T00:00:00Z",
+                    }
+                }
+            }
+        },
+    )
+    fetched_urls: list[str] = []
+
+    def fetch_binary(url: str, **_kwargs: Any) -> tuple[bytes, str]:
+        fetched_urls.append(url)
+        return b"exact-image-a", "image/png"
+
+    monkeypatch.setattr(provider, "_fetch_binary_cached", fetch_binary)
+
+    tile = provider.latest_aia_tile(channel="aia_193", image_id="image-a")
+
+    assert fetched_urls == [tile_url]
+    assert tile["image_id"] == "image-a"
+    assert tile["content"] == b"exact-image-a"

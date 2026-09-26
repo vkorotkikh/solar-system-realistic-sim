@@ -438,6 +438,93 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
 
 
+def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image(
+    monkeypatch,
+) -> None:
+    requested_ids: list[str | None] = []
+
+    def fake_latest_aia_tile(
+        channel: str,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+        *,
+        image_id: str | None = None,
+    ):
+        requested_ids.append(image_id)
+        return {
+            "channel": channel,
+            "image_id": "image-b",
+            "image_date": "2026-02-17 03:20:41",
+            "tile_url": "https://example.invalid/image-b.png",
+            "content": b"image-b",
+            "content_type": "image/png",
+        }
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", fake_latest_aia_tile)
+
+    response = client.get(
+        "/solar/realtime/aia-tile",
+        params={"channel": "aia_193", "image_id": "image-a"},
+    )
+
+    assert requested_ids == ["image-a"]
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "aia_image_identity_mismatch",
+        "message": "Requested AIA image is no longer the retained channel snapshot.",
+        "requested_image_id": "image-a",
+        "available_image_id": "image-b",
+        "retryable": True,
+    }
+
+
+def test_aia_tile_rejects_oversized_image_identity_before_provider(
+    monkeypatch,
+) -> None:
+    provider_calls = 0
+
+    def record_provider(*_args, **_kwargs):
+        nonlocal provider_calls
+        provider_calls += 1
+        return {}
+
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest_aia_tile", record_provider)
+
+    response = client.get(
+        "/solar/realtime/aia-tile",
+        params={"channel": "aia_193", "image_id": "x" * 129},
+    )
+
+    assert response.status_code == 422
+    assert provider_calls == 0
+
+
+def test_solar_realtime_has_typed_aggregate_timeout_below_browser_deadline(
+    monkeypatch,
+) -> None:
+    assert 0 < server.SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS < 15.0
+
+    async def timeout_owned_thread(_function, *args, **kwargs):
+        kwargs["guard"].release()
+        raise TimeoutError
+
+    monkeypatch.setattr(server, "_solar_realtime_rate_locks", {})
+    monkeypatch.setattr(server, "_run_owned_thread", timeout_owned_thread)
+    monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest", lambda **_kwargs: {})
+
+    response = client.get("/solar/realtime")
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "2"
+    assert response.json()["detail"] == {
+        "code": "solar_realtime_timeout",
+        "message": "Solar realtime acquisition exceeded its aggregate deadline.",
+        "retryable": True,
+        "timeout_seconds": server.SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS,
+    }
+
+
 def test_aia_tile_uses_canonical_jdtdb_query(monkeypatch) -> None:
     requested_epochs: list[float | None] = []
     payload = {

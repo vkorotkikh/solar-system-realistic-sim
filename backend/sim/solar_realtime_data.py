@@ -39,6 +39,18 @@ def _utc_iso_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+class AiaImageIdentityMismatch(RuntimeError):
+    """The requested retained AIA artifact is no longer the channel snapshot."""
+
+    def __init__(self, *, requested_image_id: str, available_image_id: Any):
+        self.requested_image_id = requested_image_id
+        self.available_image_id = available_image_id
+        super().__init__(
+            "AIA snapshot identity mismatch: "
+            f"requested {requested_image_id}, available {available_image_id}"
+        )
+
+
 class SolarRealtimeDataProvider:
     """
     Cached live-data ingestion for high-fidelity solar forcing.
@@ -207,6 +219,7 @@ class SolarRealtimeDataProvider:
         jd_tdb: float | None = None,
         force_refresh: bool = False,
         *,
+        image_id: str | None = None,
         jd: float | None = None,
     ) -> dict[str, Any]:
         requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
@@ -226,6 +239,13 @@ class SolarRealtimeDataProvider:
         channel_entry = channels.get(channel_key)
         if not isinstance(channel_entry, dict):
             raise KeyError(f"Unsupported AIA channel `{channel_key}`")
+
+        available_image_id = channel_entry.get("image_id")
+        if image_id is not None and available_image_id != image_id:
+            raise AiaImageIdentityMismatch(
+                requested_image_id=image_id,
+                available_image_id=available_image_id,
+            )
 
         tile_url = channel_entry.get("tile_url")
         if not isinstance(tile_url, str) or not tile_url:

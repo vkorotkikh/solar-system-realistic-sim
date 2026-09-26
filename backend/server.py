@@ -114,7 +114,7 @@ from sim.solar_process_worker import (
     validate_solar_physics_result,
 )
 from sim.solar_physics import ObservedSolarInputUnavailable, SolarCoronaPhysicsModel
-from sim.solar_realtime_data import SolarRealtimeDataProvider
+from sim.solar_realtime_data import AiaImageIdentityMismatch, SolarRealtimeDataProvider
 from sim.solar_time import current_jd_tdb
 from trajectory import (
     DEFAULT_ASSIST_POOL,
@@ -703,7 +703,7 @@ SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_bounded_env_float(
 )
 SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
     "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
-    12.0,
+    18.0,
     min_value=0.5,
     max_value=HARD_MAX_TIMEOUT_SECONDS,
 )
@@ -752,6 +752,21 @@ SOLAR_REALTIME_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     60.0,
     min_value=1.0,
     max_value=300.0,
+)
+SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+    "SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+    max_value=8,
+)
+# This is an aggregate HTTP response deadline. Timed-out threads retain their
+# permit until the finite upstream acquisition exits, so detached work cannot
+# accumulate. The compile-time ceiling stays below the browser's 15 s timeout.
+SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS",
+    12.0,
+    min_value=0.5,
+    max_value=14.0,
 )
 
 SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
@@ -1105,6 +1120,9 @@ _solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_physics_rate_lock = threading.Lock()
 _solar_realtime_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_realtime_rate_lock = threading.Lock()
+_solar_realtime_concurrent_guard = threading.BoundedSemaphore(
+    SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT
+)
 _solar_aia_tile_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
@@ -1126,6 +1144,10 @@ _heavy_compute_executor = ThreadPoolExecutor(
 _aia_tile_executor = ThreadPoolExecutor(
     max_workers=SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT,
     thread_name_prefix="solar-aia-io",
+)
+_solar_realtime_executor = ThreadPoolExecutor(
+    max_workers=SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT,
+    thread_name_prefix="solar-realtime-io",
 )
 _solar_physics_runner_lifecycle_lock = threading.Lock()
 
@@ -1935,11 +1957,37 @@ def _build_aia_tile_payload(
     channel: str,
     jd_tdb: float | None = None,
     force_refresh: bool = False,
+    image_id: str | None = None,
 ) -> dict[str, Any]:
-    return SOLAR_REALTIME_DATA.latest_aia_tile(
-        channel=channel,
-        jd_tdb=jd_tdb,
-        force_refresh=bool(force_refresh),
+    kwargs: dict[str, Any] = {
+        "channel": channel,
+        "jd_tdb": jd_tdb,
+        "force_refresh": bool(force_refresh),
+    }
+    # Preserve compatibility for internal/provider doubles while making an
+    # explicit browser identity an end-to-end invariant.
+    if image_id is not None:
+        kwargs["image_id"] = image_id
+    return SOLAR_REALTIME_DATA.latest_aia_tile(**kwargs)
+
+
+def _build_solar_realtime_snapshot(force_refresh: bool = False) -> dict[str, Any]:
+    return SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
+
+
+def _aia_identity_conflict(
+    requested_image_id: str,
+    available_image_id: Any,
+) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail={
+            "code": "aia_image_identity_mismatch",
+            "message": "Requested AIA image is no longer the retained channel snapshot.",
+            "requested_image_id": requested_image_id,
+            "available_image_id": available_image_id,
+            "retryable": True,
+        },
     )
 
 
@@ -2454,10 +2502,48 @@ def solar_capabilities():
 
 
 @app.get("/solar/realtime")
-def solar_realtime_data(request: Request, force_refresh: bool = False):
+async def solar_realtime_data(request: Request, force_refresh: bool = False):
     _require_optional_solar_api_key(request)
     _enforce_solar_realtime_rate_limit(request)
-    snapshot = SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
+    if not _acquire_nonblocking(_solar_realtime_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_saturated",
+                "message": "Solar realtime acquisition capacity is busy.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
+        )
+    try:
+        snapshot = await _run_owned_thread(
+            _build_solar_realtime_snapshot,
+            guard=_solar_realtime_concurrent_guard,
+            executor=_solar_realtime_executor,
+            timeout_seconds=SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS,
+            force_refresh=bool(force_refresh),
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_timeout",
+                "message": "Solar realtime acquisition exceeded its aggregate deadline.",
+                "retryable": True,
+                "timeout_seconds": SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS,
+            },
+            headers={"Retry-After": "2"},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_unavailable",
+                "message": "Solar realtime acquisition is unavailable.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
+        ) from exc
     return {
         "schema": {"name": "solar_realtime_endpoint", "version": 1},
         "source": "backend",
@@ -2469,6 +2555,14 @@ def solar_realtime_data(request: Request, force_refresh: bool = False):
 async def solar_realtime_aia_tile(
     request: Request,
     channel: str = "aia_193",
+    image_id: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            max_length=128,
+            description="Exact Helioviewer image identity retained by /solar/realtime.",
+        ),
+    ] = None,
     jd_tdb: Annotated[
         str | None,
         Query(description="Julian Date in Barycentric Dynamical Time (TDB)."),
@@ -2509,16 +2603,26 @@ async def solar_realtime_aia_tile(
             channel=channel_key,
             jd_tdb=epoch_jd_tdb,
             force_refresh=bool(force_refresh),
+            image_id=image_id,
         )
     except asyncio.TimeoutError as exc:
         raise HTTPException(
             status_code=503,
             detail="AIA tile generation timed out. Try again later.",
         ) from exc
+    except AiaImageIdentityMismatch as exc:
+        raise _aia_identity_conflict(
+            exc.requested_image_id,
+            exc.available_image_id,
+        ) from exc
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
+    available_image_id = tile.get("image_id")
+    if image_id is not None and available_image_id != image_id:
+        raise _aia_identity_conflict(image_id, available_image_id)
+
     response = Response(
         content=tile["content"],
         media_type=str(tile.get("content_type") or "image/png"),
