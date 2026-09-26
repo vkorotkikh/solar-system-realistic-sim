@@ -89,10 +89,15 @@ class SolarRealtimeDataProvider:
         timeout_s: float = 3.8,
         cache_ttl_s: float = 300.0,
         snapshot_cache_max_entries: int = 16,
+        singleflight_failure_max_entries: int = 64,
     ):
         self.timeout_s = max(0.8, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
         self.snapshot_cache_max_entries = max(1, int(snapshot_cache_max_entries))
+        self.singleflight_failure_max_entries = max(
+            1,
+            int(singleflight_failure_max_entries),
+        )
         self.singleflight_error_backoff_s = 4.5
         self._lock = threading.Lock()
         self._snapshot_cache: OrderedDict[
@@ -100,7 +105,9 @@ class SolarRealtimeDataProvider:
         ] = OrderedDict()
         self._binary_cache: dict[str, tuple[float, bytes, str | None]] = {}
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
-        self._inflight_failures: dict[Any, tuple[float, BaseException]] = {}
+        self._inflight_failures: OrderedDict[
+            Any, tuple[float, BaseException]
+        ] = OrderedDict()
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -123,6 +130,7 @@ class SolarRealtimeDataProvider:
             },
             "cache_ttl_s": self.cache_ttl_s,
             "snapshot_cache_max_entries": self.snapshot_cache_max_entries,
+            "singleflight_failure_max_entries": self.singleflight_failure_max_entries,
             "timeout_s": self.timeout_s,
         }
 
@@ -333,13 +341,21 @@ class SolarRealtimeDataProvider:
         allow_cached_failure: bool = True,
     ) -> Any:
         with self._lock:
+            now_monotonic = time.monotonic()
+            expired_failures = [
+                failure_key
+                for failure_key, (fail_until, _) in self._inflight_failures.items()
+                if fail_until <= now_monotonic
+            ]
+            for failure_key in expired_failures:
+                self._inflight_failures.pop(failure_key, None)
+
             if allow_cached_failure:
                 failure = self._inflight_failures.get(key)
                 if failure is not None:
-                    fail_until, stored_exception = failure
-                    if time.monotonic() < fail_until:
-                        raise stored_exception
-                    self._inflight_failures.pop(key, None)
+                    _, stored_exception = failure
+                    self._inflight_failures.move_to_end(key)
+                    raise stored_exception
 
             state = self._inflight_fetches.get(key)
             if state is None:
@@ -370,6 +386,9 @@ class SolarRealtimeDataProvider:
             with self._lock:
                 state["error"] = exc
                 self._inflight_failures[key] = (time.monotonic() + self.singleflight_error_backoff_s, exc)
+                self._inflight_failures.move_to_end(key)
+                while len(self._inflight_failures) > self.singleflight_failure_max_entries:
+                    self._inflight_failures.popitem(last=False)
             raise
         finally:
             state["event"].set()

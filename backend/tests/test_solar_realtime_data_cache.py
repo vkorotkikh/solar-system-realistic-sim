@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+import sim.solar_realtime_data as solar_realtime_data
 from sim.solar_realtime_data import SolarRealtimeDataProvider
 
 
@@ -88,6 +89,69 @@ def test_snapshot_cache_is_bounded_and_uses_lru_eviction() -> None:
 
     assert requests == [1.0, 2.0, 3.0, 2.0]
     assert len(provider._snapshot_cache) == 2
+
+
+def test_singleflight_failure_backoff_is_bounded_and_uses_lru_eviction() -> None:
+    provider = SolarRealtimeDataProvider(singleflight_failure_max_entries=2)
+    provider.singleflight_error_backoff_s = 60.0
+    attempts: list[str] = []
+
+    def fail(name: str) -> None:
+        attempts.append(name)
+        raise RuntimeError(f"failed-{name}")
+
+    for name in ("a", "b"):
+        with pytest.raises(RuntimeError, match=f"failed-{name}"):
+            provider._singleflight_fetch(name, lambda name=name: fail(name))
+
+    # A cached read makes ``a`` the most-recently used failure without
+    # executing the replacement callable.
+    with pytest.raises(RuntimeError, match="failed-a"):
+        provider._singleflight_fetch(
+            "a",
+            lambda: pytest.fail("cached failure unexpectedly refetched"),
+        )
+
+    with pytest.raises(RuntimeError, match="failed-c"):
+        provider._singleflight_fetch("c", lambda: fail("c"))
+
+    assert provider._singleflight_fetch("b", lambda: "recovered-b") == "recovered-b"
+    with pytest.raises(RuntimeError, match="failed-a"):
+        provider._singleflight_fetch(
+            "a",
+            lambda: pytest.fail("LRU failure unexpectedly evicted"),
+        )
+    assert attempts == ["a", "b", "c"]
+    assert len(provider._inflight_failures) == 2
+
+
+def test_singleflight_failure_backoff_prunes_expired_entries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(singleflight_failure_max_entries=8)
+    provider.singleflight_error_backoff_s = 4.5
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+
+    for name in ("expired-a", "expired-b"):
+        with pytest.raises(RuntimeError, match=name):
+            provider._singleflight_fetch(
+                name,
+                lambda name=name: (_ for _ in ()).throw(RuntimeError(name)),
+            )
+
+    monotonic_now[0] = 105.0
+    with pytest.raises(RuntimeError, match="current"):
+        provider._singleflight_fetch(
+            "current",
+            lambda: (_ for _ in ()).throw(RuntimeError("current")),
+        )
+
+    assert list(provider._inflight_failures) == ["current"]
 
 
 @pytest.mark.parametrize("jd", [float("nan"), float("inf"), float("-inf")])
