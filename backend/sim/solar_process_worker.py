@@ -89,19 +89,34 @@ def execute_solar_physics_job(payload: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("solar worker live_data must be boolean")
 
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
-    return build_solar_physics_state(
+    normalized_request = {
+        "epoch_jd_tdb": float(epoch),
+        "fidelity": str(fidelity),
+        "max_features": max_features,
+        "forcing": str(forcing),
+        "live_data": live_data,
+    }
+    state = build_solar_physics_state(
         model,
-        epoch_jd_tdb=float(epoch),
+        epoch_jd_tdb=normalized_request["epoch_jd_tdb"],
         wall_epoch_jd_tdb=current_jd_tdb(),
-        fidelity=str(fidelity),
+        fidelity=normalized_request["fidelity"],
         max_features=max_features,
-        forcing=str(forcing),
+        forcing=normalized_request["forcing"],
         live_data=live_data,
     )
+    # This internal discriminator is verified and removed by the API process.
+    # It prevents a stale or cross-request result from satisfying another
+    # request merely because both share the same public schema version.
+    state["_solar_worker_request"] = normalized_request
+    return state
 
 
-def validate_solar_physics_result(value: Any) -> dict[str, Any]:
-    """Validate the stable public result discriminator in the API process."""
+def validate_solar_physics_result(
+    value: Any,
+    submitted_payload: Any,
+) -> dict[str, Any]:
+    """Bind a child result to the exact request before exposing it."""
 
     if not isinstance(value, dict):
         raise ProcessResultRejected("solar physics result must be an object")
@@ -109,4 +124,39 @@ def validate_solar_physics_result(value: Any) -> dict[str, Any]:
         raise ProcessResultRejected("solar physics result schema is invalid")
     if value.get("source") != "backend":
         raise ProcessResultRejected("solar physics result source is invalid")
-    return value
+    if not isinstance(submitted_payload, Mapping):
+        raise ProcessResultRejected("solar physics submitted payload is invalid")
+    expected = {
+        "epoch_jd_tdb": float(submitted_payload.get("epoch_jd_tdb")),
+        "fidelity": submitted_payload.get("fidelity"),
+        "max_features": submitted_payload.get("max_features"),
+        "forcing": submitted_payload.get("forcing"),
+        "live_data": submitted_payload.get("live_data"),
+    }
+    if value.get("_solar_worker_request") != expected:
+        raise ProcessResultRejected("solar physics result request discriminator is invalid")
+    if value.get("epoch_jd_tdb") != expected["epoch_jd_tdb"]:
+        raise ProcessResultRejected("solar physics result epoch is invalid")
+    if value.get("epoch_jd") != expected["epoch_jd_tdb"]:
+        raise ProcessResultRejected("solar physics legacy epoch alias is invalid")
+    if value.get("fidelity") != expected["fidelity"]:
+        raise ProcessResultRejected("solar physics result fidelity is invalid")
+    if value.get("forcing") != expected["forcing"]:
+        raise ProcessResultRejected("solar physics result forcing is invalid")
+    if value.get("live_data_requested") is not expected["live_data"]:
+        raise ProcessResultRejected("solar physics live-data discriminator is invalid")
+    corona = value.get("corona")
+    feature_count = corona.get("feature_count") if isinstance(corona, dict) else None
+    max_features = expected["max_features"]
+    if (
+        isinstance(feature_count, bool)
+        or not isinstance(feature_count, int)
+        or isinstance(max_features, bool)
+        or not isinstance(max_features, int)
+        or not 0 <= feature_count <= max_features
+    ):
+        raise ProcessResultRejected("solar physics result feature count is invalid")
+
+    validated = dict(value)
+    validated.pop("_solar_worker_request", None)
+    return validated

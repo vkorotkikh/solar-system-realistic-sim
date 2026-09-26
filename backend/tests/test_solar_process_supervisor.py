@@ -93,6 +93,44 @@ def test_admission_is_bounded_by_running_plus_queued_work(tmp_path: Path) -> Non
         runner.shutdown()
 
 
+def test_queued_deadline_starts_at_admission_and_expiry_spawns_no_child(
+    tmp_path: Path,
+) -> None:
+    from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=1)
+    first_started = tmp_path / "first.pid"
+    expired_started = tmp_path / "expired.pid"
+    try:
+        first = runner.submit(
+            {
+                "operation": "sleep_then_echo",
+                "sleep_seconds": 0.35,
+                "started_path": str(first_started),
+                "result": _result("first"),
+            },
+            timeout_seconds=2.0,
+        )
+        _wait_for_pid(first_started)
+        expired = runner.submit(
+            {
+                "operation": "sleep_then_echo",
+                "sleep_seconds": 0.05,
+                "started_path": str(expired_started),
+                "result": _result("expired"),
+            },
+            timeout_seconds=0.1,
+        )
+
+        assert first.result(timeout=3.0)["value"] == "first"
+        with pytest.raises(ProcessTimedOut):
+            expired.result(timeout=3.0)
+        assert not expired_started.exists()
+        assert runner.snapshot()["in_flight"] == 0
+    finally:
+        runner.shutdown()
+
+
 def test_hard_timeout_kills_reaps_and_recovers_capacity(tmp_path: Path) -> None:
     from sim.process_supervisor import ProcessTimedOut, SupervisedProcessRunner
 
@@ -190,6 +228,80 @@ def test_wrong_result_schema_is_rejected_before_return() -> None:
             future.result(timeout=3.0)
     finally:
         runner.shutdown()
+
+
+def test_solar_result_validator_binds_result_to_exact_submitted_generation() -> None:
+    from sim.solar_process_worker import validate_solar_physics_result
+
+    request = {
+        "epoch_jd_tdb": 2_460_000.5,
+        "fidelity": "high",
+        "max_features": 180,
+        "forcing": "synthetic",
+        "live_data": False,
+    }
+    result = {
+        "schema": {"name": "solar_physics_state", "version": 2},
+        "source": "backend",
+        "epoch_jd_tdb": 2_460_000.5,
+        "epoch_jd": 2_460_000.5,
+        "fidelity": "high",
+        "forcing": "synthetic",
+        "live_data_requested": False,
+        "corona": {"feature_count": 180},
+        "_solar_worker_request": dict(request),
+    }
+
+    validated = validate_solar_physics_result(result, request)
+
+    assert validated["epoch_jd_tdb"] == request["epoch_jd_tdb"]
+    assert "_solar_worker_request" not in validated
+
+
+@pytest.mark.parametrize(
+    ("path", "wrong_value"),
+    [
+        (("epoch_jd_tdb",), 2_460_001.5),
+        (("epoch_jd",), 2_460_001.5),
+        (("fidelity",), "preview"),
+        (("forcing",), "hybrid"),
+        (("live_data_requested",), True),
+        (("corona", "feature_count"), 181),
+        (("_solar_worker_request", "max_features"), 179),
+    ],
+)
+def test_solar_result_validator_rejects_wrong_generation(
+    path: tuple[str, ...],
+    wrong_value: object,
+) -> None:
+    from sim.process_supervisor import ProcessResultRejected
+    from sim.solar_process_worker import validate_solar_physics_result
+
+    request = {
+        "epoch_jd_tdb": 2_460_000.5,
+        "fidelity": "high",
+        "max_features": 180,
+        "forcing": "synthetic",
+        "live_data": False,
+    }
+    result = {
+        "schema": {"name": "solar_physics_state", "version": 2},
+        "source": "backend",
+        "epoch_jd_tdb": 2_460_000.5,
+        "epoch_jd": 2_460_000.5,
+        "fidelity": "high",
+        "forcing": "synthetic",
+        "live_data_requested": False,
+        "corona": {"feature_count": 180},
+        "_solar_worker_request": dict(request),
+    }
+    target: dict[str, Any] = result
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = wrong_value
+
+    with pytest.raises(ProcessResultRejected):
+        validate_solar_physics_result(result, request)
 
 
 def test_executor_submit_failure_releases_exactly_one_capacity_slot(monkeypatch) -> None:

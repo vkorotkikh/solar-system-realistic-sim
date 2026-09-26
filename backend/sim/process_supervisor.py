@@ -171,7 +171,7 @@ class SupervisedProcessRunner:
         max_workers: int,
         max_queue: int,
         max_result_bytes: int = DEFAULT_MAX_RESULT_BYTES,
-        result_validator: Callable[[Any], Any] | None = None,
+        result_validator: Callable[[Any, Any], Any] | None = None,
         mp_context: Any | None = None,
     ) -> None:
         if not 1 <= int(max_workers) <= HARD_MAX_PROCESS_WORKERS:
@@ -237,6 +237,7 @@ class SupervisedProcessRunner:
             )
 
         cancel_event = threading.Event()
+        absolute_deadline = time.monotonic() + timeout
         with self._state_lock:
             if self._closed:
                 raise ProcessSubmissionFailed("process supervisor is closed")
@@ -250,7 +251,7 @@ class SupervisedProcessRunner:
                     self._execute,
                     job_id,
                     payload,
-                    timeout,
+                    absolute_deadline,
                     cancel_event,
                 )
             except BaseException as exc:
@@ -304,11 +305,13 @@ class SupervisedProcessRunner:
         self,
         job_id: int,
         payload: Any,
-        timeout_seconds: float,
+        absolute_deadline: float,
         cancel_event: threading.Event,
     ) -> Any:
         if cancel_event.is_set():
             raise ProcessCancelled("process job cancelled before start")
+        if time.monotonic() >= absolute_deadline:
+            raise ProcessTimedOut("worker deadline expired while queued")
 
         receive_connection, send_connection = self._context.Pipe(duplex=False)
         process = self._context.Process(
@@ -327,6 +330,8 @@ class SupervisedProcessRunner:
             with self._state_lock:
                 if self._closed or cancel_event.is_set():
                     raise ProcessCancelled("process job cancelled before start")
+                if time.monotonic() >= absolute_deadline:
+                    raise ProcessTimedOut("worker deadline expired while queued")
                 try:
                     process.start()
                 except BaseException as exc:
@@ -335,13 +340,12 @@ class SupervisedProcessRunner:
                 self._active_processes[job_id] = process
             send_connection.close()
 
-            deadline = time.monotonic() + timeout_seconds
             while True:
                 if cancel_event.is_set():
                     self._terminate_and_reap(process)
                     raise ProcessCancelled("process job cancelled by its owner")
 
-                remaining = deadline - time.monotonic()
+                remaining = absolute_deadline - time.monotonic()
                 if remaining <= 0:
                     self._terminate_and_reap(process)
                     raise ProcessTimedOut("worker process exceeded its hard deadline")
@@ -359,7 +363,7 @@ class SupervisedProcessRunner:
                             "worker result exceeded or broke the wire contract"
                         ) from exc
 
-                    exit_remaining = max(0.0, deadline - time.monotonic())
+                    exit_remaining = max(0.0, absolute_deadline - time.monotonic())
                     process.join(min(_REAP_GRACE_SECONDS, exit_remaining))
                     if process.is_alive():
                         self._terminate_and_reap(process)
@@ -368,7 +372,7 @@ class SupervisedProcessRunner:
                         )
                     if process.exitcode != 0:
                         raise ProcessCrashed(process.exitcode)
-                    return self._decode_result(encoded)
+                    return self._decode_result(encoded, payload)
 
                 if not process.is_alive():
                     process.join()
@@ -389,7 +393,7 @@ class SupervisedProcessRunner:
                     self._active_processes.pop(job_id, None)
                 process.close()
 
-    def _decode_result(self, encoded: bytes) -> Any:
+    def _decode_result(self, encoded: bytes, submitted_payload: Any) -> Any:
         if len(encoded) > self._max_result_bytes:
             raise ProcessResultRejected("worker result exceeds the byte limit")
         try:
@@ -413,7 +417,7 @@ class SupervisedProcessRunner:
         result = envelope["result"]
         if self._result_validator is not None:
             try:
-                validated = self._result_validator(result)
+                validated = self._result_validator(result, submitted_payload)
             except ProcessResultRejected:
                 raise
             except (TypeError, ValueError, KeyError) as exc:
