@@ -52,6 +52,7 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
     assert "npm ci --ignore-scripts" in commands
     assert "npm test" in commands
     assert "npm run build" in commands
+    assert "npm run typecheck:ratchet" in commands
     assert all(not step.get("continue-on-error", False) for step in steps)
 
 

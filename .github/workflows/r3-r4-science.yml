@@ -51,6 +51,9 @@ jobs:
       - name: Build the production browser bundle
         run: npm run build
 
+      - name: Prevent growth of the strict TypeScript backlog
+        run: npm run typecheck:ratchet
+
       - name: Exercise runner and workflow fail-closed contracts
         run: >-
           python -m pytest --noconftest -q
