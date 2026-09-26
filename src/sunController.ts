@@ -47,6 +47,7 @@ import { createAgnShockwaveEngine } from './frontend/features/superluminal-model
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
+  inspectAiaObservationChannel,
   pickAiaObservationChannel,
   type SolarObservationPhysicsStateLike
 } from './frontend/features/solar/solarObservationTexture';
@@ -446,7 +447,10 @@ export function createSunController({
       {
         selectedChannel: observationSelection?.channel ?? activeObservationChannel,
         selectedImageDate: observationSelection?.imageDate ?? null,
-        hasObservationTexture: !!solarObservationTexture
+        hasObservationTexture: !!solarObservationTexture,
+        spatialUseEligible: observationSelection?.spatialUse === 'eligible'
+          && observationSelection.imageId === solarObservationTextureImageId
+          && observationSelection.channel === solarObservationTextureChannel
       }
     );
     const effectiveActivity = clampUnit(activity);
@@ -624,7 +628,7 @@ export function createSunController({
 
   function getSolarDeliveryStatus() {
     const observationState = getObservationState();
-    const selection = pickAiaObservationChannel(
+    const selection = inspectAiaObservationChannel(
       observationState,
       undefined,
       userAiaChannelOverride
@@ -637,6 +641,8 @@ export function createSunController({
         channel: selection?.channel ?? null,
         imageId: selection?.imageId ?? null,
         imageDate: selection?.imageDate ?? null,
+        spatialUse: selection?.spatialUse ?? 'unavailable',
+        reason: selection?.reason ?? 'no_aia_artifact_available',
         textureLoaded: solarObservationTexture !== null,
         textureChannel: solarObservationTextureChannel,
         textureImageId: solarObservationTextureImageId,

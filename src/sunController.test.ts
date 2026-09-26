@@ -11,7 +11,7 @@ function responseWith(payload: unknown, status = 200): Response {
   } as Response;
 }
 
-function realtimePayload(): Record<string, unknown> {
+function realtimePayload(spatiallyEligible = false): Record<string, unknown> {
   return {
     schema: { name: 'solar_realtime_endpoint', version: 1 },
     source: 'backend',
@@ -31,8 +31,43 @@ function realtimePayload(): Record<string, unknown> {
           aia_193: {
             image_id: 'realtime-only-image',
             image_date: '2026-09-26T14:59:00Z',
-            tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42'
+            tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42',
+            artifact: {
+              schema: {
+                name: spatiallyEligible
+                  ? 'solar_surface_texture'
+                  : 'helioviewer_viewport_tile',
+                version: 1
+              },
+              delivery: 'raw_on_demand'
+            },
+            spatial_use: spatiallyEligible
+              ? {
+                  eligible: true,
+                  reason: null,
+                  contract: {
+                    schema: { name: 'solar_surface_texture_projection', version: 1 },
+                    projection: 'equirectangular',
+                    coordinate_frame: 'iau_sun_body_fixed',
+                    coverage: 'full_surface',
+                    uv_mapping: 'sun_surface_uv_v1'
+                  }
+                }
+              : {
+                  eligible: false,
+                  reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+                  contract: null
+                }
           }
+        },
+        channel_activity_proxy: null,
+        activity_proxy: null,
+        coronal_holes: null,
+        scientific_inference: {
+          status: 'disabled',
+          reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+          activity_proxy: null,
+          coronal_holes: null
         },
         visualization: { preferred_channel: 'aia_193' }
       },
@@ -48,7 +83,7 @@ afterEach(() => {
 });
 
 describe('sun controller solar delivery', () => {
-  it('loads AIA imagery from realtime LKG when physics is unavailable', async () => {
+  it('does not load a nonspatial AIA viewport tile and exposes the reason', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.endsWith('/solar/realtime')) return responseWith(realtimePayload());
@@ -71,17 +106,24 @@ describe('sun controller solar delivery', () => {
     controller.maybeRefreshPhysics(Date.now(), true);
 
     await vi.waitFor(() => {
-      expect(load).toHaveBeenCalledWith(
-        'http://backend.test/solar/realtime/aia-tile?channel=aia_193&image_id=realtime-only-image&v=realtime-only-image',
-        expect.any(Function),
-        undefined,
-        expect.any(Function)
-      );
+      expect(controller.getSolarDeliveryStatus().realtime).toMatchObject({
+        source: 'backend',
+        freshness: 'fresh',
+        lastError: null
+      });
     });
+    expect(load).not.toHaveBeenCalled();
     expect(controller.getSolarDeliveryStatus()).toMatchObject({
       realtime: { source: 'backend', freshness: 'fresh', lastError: null },
       physics: { lastError: expect.stringContaining('(503)') },
-      observation: { channel: 'aia_193', imageId: 'realtime-only-image' }
+      observation: {
+        channel: 'aia_193',
+        imageId: 'realtime-only-image',
+        spatialUse: 'disabled',
+        reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+        textureLoaded: false,
+        loadInFlight: false
+      }
     });
     controller.disposeSolarDelivery();
   });
@@ -89,7 +131,7 @@ describe('sun controller solar delivery', () => {
   it('rejects late texture success and all refreshes after terminal disposal', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
-      if (url.endsWith('/solar/realtime')) return responseWith(realtimePayload());
+      if (url.endsWith('/solar/realtime')) return responseWith(realtimePayload(true));
       if (url.includes('/solar/physics?')) return responseWith({}, 503);
       throw new Error(`Unexpected request: ${url}`);
     });

@@ -25,6 +25,8 @@ interface AiaChannelEntryLike {
   image_id?: unknown;
   image_date?: unknown;
   tile_url?: unknown;
+  artifact?: unknown;
+  spatial_use?: unknown;
 }
 
 interface AiaSourceLike {
@@ -47,11 +49,20 @@ export interface SolarObservationPhysicsStateLike {
   } | null;
 }
 
-interface PickedAiaChannel {
+export type AiaSpatialUseStatus = 'eligible' | 'disabled' | 'unsupported';
+
+export interface InspectedAiaChannel {
   channel: string;
   imageId: string;
   imageDate: string | null;
   tileUrl: string;
+  spatialUse: AiaSpatialUseStatus;
+  reason: string | null;
+}
+
+interface PickedAiaChannel extends InspectedAiaChannel {
+  spatialUse: 'eligible';
+  reason: null;
 }
 
 function isKnownAiaChannel(value: string): value is AiaChannelKey {
@@ -71,11 +82,55 @@ function asFreshnessProxy(imageDate: unknown): number | null {
   return clampUnit(1 - ageMs / (6 * 3_600_000));
 }
 
-export function pickAiaObservationChannel(
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasSupportedSpatialProjectionContract(
+  entry: AiaChannelEntryLike,
+  value: unknown
+): boolean {
+  if (
+    !isRecord(entry.artifact) ||
+    !isRecord(entry.artifact.schema) ||
+    entry.artifact.schema.name !== 'solar_surface_texture' ||
+    entry.artifact.schema.version !== 1 ||
+    entry.artifact.delivery !== 'raw_on_demand'
+  ) return false;
+  if (!isRecord(value) || !isRecord(value.schema)) return false;
+  return value.schema.name === 'solar_surface_texture_projection'
+    && value.schema.version === 1
+    && value.projection === 'equirectangular'
+    && value.coordinate_frame === 'iau_sun_body_fixed'
+    && value.coverage === 'full_surface'
+    && value.uv_mapping === 'sun_surface_uv_v1';
+}
+
+function inspectSpatialUse(entry: AiaChannelEntryLike): Pick<InspectedAiaChannel, 'spatialUse' | 'reason'> {
+  const raw = entry.spatial_use;
+  if (!isRecord(raw) || raw.eligible !== true) {
+    return {
+      spatialUse: 'disabled',
+      reason: isRecord(raw) && typeof raw.reason === 'string' && raw.reason.trim()
+        ? raw.reason
+        : 'missing_validated_spatial_projection_contract'
+    };
+  }
+  if (!hasSupportedSpatialProjectionContract(entry, raw.contract)) {
+    return {
+      spatialUse: 'unsupported',
+      reason: 'unsupported_spatial_projection_contract'
+    };
+  }
+  return { spatialUse: 'eligible', reason: null };
+}
+
+function findAiaObservationChannel(
   physicsState: SolarObservationPhysicsStateLike | null | undefined,
   preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY,
-  overrideChannel: string | null = null
-): PickedAiaChannel | null {
+  overrideChannel: string | null = null,
+  eligibleOnly = false
+): InspectedAiaChannel | null {
   const sdoAia = physicsState?.data_assimilation?.sources?.sdo_aia;
   if (!sdoAia || typeof sdoAia !== 'object') return null;
 
@@ -106,15 +161,52 @@ export function pickAiaObservationChannel(
     const tileUrl = entry?.tile_url;
     if (typeof imageId !== 'string' || !imageId) continue;
     if (typeof tileUrl !== 'string' || !tileUrl) continue;
+    const spatialUse = inspectSpatialUse(entry);
+    if (eligibleOnly && spatialUse.spatialUse !== 'eligible') continue;
     return {
       channel,
       imageId,
       imageDate: typeof entry?.image_date === 'string' ? entry.image_date : null,
-      tileUrl
+      tileUrl,
+      ...spatialUse
     };
   }
 
   return null;
+}
+
+export function inspectAiaObservationChannel(
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
+  preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY,
+  overrideChannel: string | null = null
+): InspectedAiaChannel | null {
+  return findAiaObservationChannel(
+    physicsState,
+    preferredOrder,
+    overrideChannel,
+    true
+  ) ?? findAiaObservationChannel(
+    physicsState,
+    preferredOrder,
+    overrideChannel,
+    false
+  );
+}
+
+export function pickAiaObservationChannel(
+  physicsState: SolarObservationPhysicsStateLike | null | undefined,
+  preferredOrder = DEFAULT_AIA_CHANNEL_PRIORITY,
+  overrideChannel: string | null = null
+): PickedAiaChannel | null {
+  const inspected = findAiaObservationChannel(
+    physicsState,
+    preferredOrder,
+    overrideChannel,
+    true
+  );
+  return inspected?.spatialUse === 'eligible'
+    ? inspected as PickedAiaChannel
+    : null;
 }
 
 export function buildAiaProxyTextureUrl(
@@ -140,6 +232,7 @@ export function deriveSunObservationControls(
   activeChannel = null as string | null,
   {
     hasObservationTexture = false,
+    spatialUseEligible = false,
     selectedChannel = undefined as string | null | undefined,
     selectedImageDate = undefined as string | null | undefined
   } = {}
@@ -199,8 +292,9 @@ export function deriveSunObservationControls(
   );
   let observationEmission = clampUnit(0.12 + sdoSignal * 0.60 + channelActivity * 0.18 + observedFreshness * 0.10);
 
-  if (!hasObservationTexture) {
-    observationBlend *= 0.42;
+  const hasUsableObservationTexture = hasObservationTexture && spatialUseEligible;
+  if (!hasUsableObservationTexture) {
+    observationBlend = 0;
     observationEmission *= 0.78;
   }
 
@@ -214,7 +308,7 @@ export function deriveSunObservationControls(
 
   if (weights) {
     const channelInfluence = clampUnit(
-      (hasObservationTexture ? 0.24 : 0.02)
+      (hasUsableObservationTexture ? 0.24 : 0.02)
       + imageryQuality * 0.76
     );
     observationBlend = clampUnit(observationBlend + weights.blendBoost * channelInfluence);
@@ -222,6 +316,11 @@ export function deriveSunObservationControls(
     activityBoost = (weights.activityBoost ?? 0) * channelInfluence;
     coronaHue = channelInfluence > 0.08 ? (weights.coronaHue ?? null) : null;
   }
+
+  // A channel label or activity scalar cannot authorize sampling a spatial map.
+  // Keep the shader-side spatial blend dark unless the loaded texture passed the
+  // explicit projection contract and still matches the selected observation.
+  if (!hasUsableObservationTexture) observationBlend = 0;
 
   return {
     observationBlend,

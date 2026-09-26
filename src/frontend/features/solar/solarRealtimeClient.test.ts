@@ -9,6 +9,8 @@ import {
 } from './solarRealtimeClient';
 import {
   buildAiaProxyTextureUrl,
+  deriveSunObservationControls,
+  inspectAiaObservationChannel,
   pickAiaObservationChannel
 } from './solarObservationTexture';
 
@@ -61,15 +63,31 @@ function validPayload(imageId = 'hv-193-42'): SolarRealtimePayload {
             source_id: 11,
             image_id: imageId,
             image_date: '2026-09-26T14:59:00Z',
-            tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42'
+            tile_url: 'https://api.helioviewer.org/v2/getTile/?id=42',
+            artifact: {
+              schema: { name: 'helioviewer_viewport_tile', version: 1 },
+              delivery: 'raw_on_demand',
+              media_type: 'image/png'
+            },
+            spatial_use: {
+              eligible: false,
+              reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+              contract: null
+            }
           }
         },
-        channel_activity_proxy: { aia_193: 0.63 },
+        channel_activity_proxy: null,
         latest_image_date_utc: '2026-09-26T14:59:00Z',
         freshness_s: 60,
         freshness_proxy: 0.99,
-        activity_proxy: 0.63,
+        activity_proxy: null,
         coronal_holes: null,
+        scientific_inference: {
+          status: 'disabled',
+          reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+          activity_proxy: null,
+          coronal_holes: null
+        },
         visualization: {
           preferred_channel: 'aia_193',
           preferred_image_id: imageId,
@@ -78,7 +96,7 @@ function validPayload(imageId = 'hv-193-42'): SolarRealtimePayload {
         }
       },
       gong_synoptic: null,
-      combined_activity_proxy: 0.63
+      combined_activity_proxy: null
     }
   };
 }
@@ -123,6 +141,8 @@ describe('SolarRealtimeClient delivery contract', () => {
       source: 'backend',
       snapshotFetchedAtUtc: '2026-09-26T15:00:00Z',
       aiaUpdatedAtUtc: '2026-09-26T14:59:00Z',
+      aiaSpatialUse: 'disabled',
+      aiaSpatialReason: 'viewport_tile_has_no_validated_solar_surface_projection',
       lastError: null,
       inFlight: false
     });
@@ -142,7 +162,16 @@ describe('SolarRealtimeClient delivery contract', () => {
       source_id: 8,
       image_id: null,
       image_date: null,
-      tile_url: null
+      tile_url: null,
+      artifact: {
+        schema: { name: 'helioviewer_viewport_tile', version: 1 },
+        delivery: 'raw_on_demand'
+      },
+      spatial_use: {
+        eligible: false,
+        reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+        contract: null
+      }
     };
     vi.stubGlobal('fetch', vi.fn(async () => responseWith(payload)));
     const client = new SolarRealtimeClient({ baseUrl: () => 'http://backend.test' });
@@ -150,7 +179,8 @@ describe('SolarRealtimeClient delivery contract', () => {
     await expect(client.maybeRefresh()).resolves.toBe(true);
 
     const observationState = observationStateFromSolarRealtime(client.latestState());
-    expect(pickAiaObservationChannel(observationState)?.channel).toBe('aia_193');
+    expect(inspectAiaObservationChannel(observationState)?.channel).toBe('aia_193');
+    expect(pickAiaObservationChannel(observationState)).toBeNull();
   });
 
   it.each([
@@ -259,19 +289,116 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(client.status()).toMatchObject({ freshness: 'unavailable', disposed: true });
   });
 
-  it('selects an AIA proxy texture from realtime data without physics state', () => {
+  it('retains the raw AIA artifact but refuses it as a spatial texture', () => {
     const observationState = observationStateFromSolarRealtime(validPayload('standalone-image'));
+    const status = inspectAiaObservationChannel(observationState);
     const selection = pickAiaObservationChannel(observationState);
 
-    expect(selection).toMatchObject({
+    expect(status).toMatchObject({
       channel: 'aia_193',
       imageId: 'standalone-image',
-      imageDate: '2026-09-26T14:59:00Z'
+      imageDate: '2026-09-26T14:59:00Z',
+      spatialUse: 'disabled',
+      reason: 'viewport_tile_has_no_validated_solar_surface_projection'
     });
+    expect(selection).toBeNull();
     expect(
-      buildAiaProxyTextureUrl('http://backend.test/', selection?.channel, selection?.imageId)
+      buildAiaProxyTextureUrl('http://backend.test/', status?.channel, status?.imageId)
     ).toBe(
       'http://backend.test/solar/realtime/aia-tile?channel=aia_193&image_id=standalone-image&v=standalone-image'
     );
+  });
+
+  it('rejects an eligibility flag without a supported spatial projection contract', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+    if (!channel) throw new Error('fixture channel missing');
+    channel.spatial_use = {
+      eligible: true,
+      reason: null,
+      contract: { schema: { name: 'unknown_projection', version: 1 } }
+    };
+
+    const state = observationStateFromSolarRealtime(payload);
+
+    expect(inspectAiaObservationChannel(state)).toMatchObject({
+      spatialUse: 'unsupported',
+      reason: 'unsupported_spatial_projection_contract'
+    });
+    expect(pickAiaObservationChannel(state)).toBeNull();
+  });
+
+  it('does not let a viewport artifact masquerade as a projected surface', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channel = payload.snapshot.sdo_aia?.channels.aia_193;
+    if (!channel) throw new Error('fixture channel missing');
+    channel.spatial_use = {
+      eligible: true,
+      reason: null,
+      contract: {
+        schema: { name: 'solar_surface_texture_projection', version: 1 },
+        projection: 'equirectangular',
+        coordinate_frame: 'iau_sun_body_fixed',
+        coverage: 'full_surface',
+        uv_mapping: 'sun_surface_uv_v1'
+      }
+    };
+
+    const state = observationStateFromSolarRealtime(payload);
+
+    expect(inspectAiaObservationChannel(state)).toMatchObject({
+      spatialUse: 'unsupported',
+      reason: 'unsupported_spatial_projection_contract'
+    });
+    expect(pickAiaObservationChannel(state)).toBeNull();
+  });
+
+  it('can select a validated projected channel after a nonspatial preferred channel', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    const channels = payload.snapshot.sdo_aia?.channels;
+    if (!channels) throw new Error('fixture channels missing');
+    channels.aia_171 = {
+      source_id: 10,
+      image_id: 'projected-171',
+      image_date: '2026-09-26T14:59:00Z',
+      tile_url: 'https://example.invalid/projected-171.png',
+      artifact: {
+        schema: { name: 'solar_surface_texture', version: 1 },
+        delivery: 'raw_on_demand'
+      },
+      spatial_use: {
+        eligible: true,
+        reason: null,
+        contract: {
+          schema: { name: 'solar_surface_texture_projection', version: 1 },
+          projection: 'equirectangular',
+          coordinate_frame: 'iau_sun_body_fixed',
+          coverage: 'full_surface',
+          uv_mapping: 'sun_surface_uv_v1'
+        }
+      }
+    };
+
+    const state = observationStateFromSolarRealtime(payload);
+
+    expect(pickAiaObservationChannel(state)).toMatchObject({
+      channel: 'aia_171',
+      imageId: 'projected-171',
+      spatialUse: 'eligible',
+      reason: null
+    });
+  });
+
+  it('forces spatial observation blend to zero without an eligible texture', () => {
+    const state = observationStateFromSolarRealtime(validPayload());
+
+    const controls = deriveSunObservationControls(state, 0.8, 'aia_193', {
+      hasObservationTexture: true,
+      spatialUseEligible: false,
+      selectedChannel: 'aia_193',
+      selectedImageDate: '2026-09-26T14:59:00Z'
+    });
+
+    expect(controls.observationBlend).toBe(0);
   });
 });

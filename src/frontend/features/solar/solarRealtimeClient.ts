@@ -1,5 +1,9 @@
 import { clamp } from '../../../constants';
-import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
+import {
+  inspectAiaObservationChannel,
+  type AiaSpatialUseStatus,
+  type SolarObservationPhysicsStateLike
+} from './solarObservationTexture';
 
 // `/solar/realtime` is backed by a 120 s server cache. Polling faster only
 // increases admission pressure without producing newer upstream observations.
@@ -22,6 +26,12 @@ export interface SolarRealtimeAiaChannel {
   image_id: string | null;
   image_date: string | null;
   tile_url: string | null;
+  artifact: Record<string, unknown>;
+  spatial_use: {
+    eligible: boolean;
+    reason: string | null;
+    contract: Record<string, unknown> | null;
+  };
   [key: string]: unknown;
 }
 
@@ -77,6 +87,8 @@ export interface SolarRealtimeClientStatus {
   snapshotFetchedAtUtc: string | null;
   snapshotAgeMs: number | null;
   aiaUpdatedAtUtc: string | null;
+  aiaSpatialUse: AiaSpatialUseStatus | 'unavailable';
+  aiaSpatialReason: string | null;
   sourceStatus: SolarRealtimeSnapshot['source_status'] | null;
   lastError: string | null;
   lastSuccessMs: number;
@@ -179,6 +191,34 @@ function validateAiaSnapshot(value: unknown): SolarRealtimeAiaSnapshot {
       (typeof rawEntry.tile_url !== 'string' || !rawEntry.tile_url.trim())
     ) {
       throw new Error(`Solar realtime sdo_aia channel ${channel} tile_url is invalid`);
+    }
+    if (!isRecord(rawEntry.artifact)) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} artifact is invalid`);
+    }
+    const artifactSchema = rawEntry.artifact.schema;
+    if (
+      !isRecord(artifactSchema) ||
+      !['helioviewer_viewport_tile', 'solar_surface_texture'].includes(
+        `${artifactSchema.name ?? ''}`
+      ) ||
+      artifactSchema.version !== 1 ||
+      rawEntry.artifact.delivery !== 'raw_on_demand'
+    ) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} artifact contract is invalid`);
+    }
+    if (!isRecord(rawEntry.spatial_use) || typeof rawEntry.spatial_use.eligible !== 'boolean') {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} spatial_use is invalid`);
+    }
+    if (rawEntry.spatial_use.eligible) {
+      if (rawEntry.spatial_use.reason !== null || !isRecord(rawEntry.spatial_use.contract)) {
+        throw new Error(`Solar realtime sdo_aia channel ${channel} eligible spatial_use is invalid`);
+      }
+    } else if (
+      typeof rawEntry.spatial_use.reason !== 'string' ||
+      !rawEntry.spatial_use.reason.trim() ||
+      rawEntry.spatial_use.contract !== null
+    ) {
+      throw new Error(`Solar realtime sdo_aia channel ${channel} disabled spatial_use is invalid`);
     }
   }
   validateOptionalFinite(value.freshness_s, 'Solar realtime sdo_aia freshness_s');
@@ -329,12 +369,17 @@ export class SolarRealtimeClient {
     const aiaUpdatedAtUtc = typeof aiaStatus?.updated === 'string'
       ? aiaStatus.updated
       : snapshot?.sdo_aia?.latest_image_date_utc ?? null;
+    const aiaObservation = inspectAiaObservationChannel(
+      observationStateFromSolarRealtime(this.latest)
+    );
     return {
       source: this.latest?.source ?? null,
       freshness: snapshot === null ? 'unavailable' : (stale ? 'stale' : 'fresh'),
       snapshotFetchedAtUtc: snapshot?.fetched_at_utc ?? null,
       snapshotAgeMs,
       aiaUpdatedAtUtc,
+      aiaSpatialUse: aiaObservation?.spatialUse ?? 'unavailable',
+      aiaSpatialReason: aiaObservation?.reason ?? 'no_aia_artifact_available',
       sourceStatus: snapshot?.source_status ?? null,
       lastError: this.lastError,
       lastSuccessMs: this.lastSuccessMs,
