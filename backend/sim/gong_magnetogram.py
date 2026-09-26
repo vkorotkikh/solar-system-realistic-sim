@@ -13,10 +13,18 @@ import io
 import json
 import math
 import re
+import socket
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import warnings
+import zlib
+from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
+from typing import Callable, Literal, Mapping, Protocol
 
 import astropy.units as u
 import numpy as np
@@ -28,6 +36,7 @@ from astropy.wcs import WCS
 from .magnetogram_grid import EQUAL_AREA, MagnetogramGrid
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
+    jd_tdb_to_utc_datetime,
     provider_carrington_state_from_crnow,
 )
 
@@ -43,6 +52,7 @@ GONG_COVERAGE_WARNING = "per-longitude observation and weight ages are unavailab
 FLUX_BALANCE_POLICY_VERSION = "reject-then-remove-roundoff-monopole-v1"
 CONTENT_HASH_VERSION = "gong-normalized-content-v1"
 SNAPSHOT_ID_VERSION = "gong-snapshot-id-v1"
+GONG_ARCHIVE_BASE_URL = "https://gong.nso.edu/data/magmap/QR/zqs/"
 
 _DEGREE_ATOL = 5e-4
 _ROTATION_ATOL = 5e-7
@@ -56,6 +66,7 @@ _FILENAME_RE = re.compile(
     r"^mrzqs(?P<date>\d{6})t(?P<time>\d{4})c(?P<cr>\d{4})_(?P<lon>\d{3})\.fits\.gz$"
 )
 _HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_JD_ROUNDTRIP_TOLERANCE = timedelta(milliseconds=1)
 
 
 class GongFitsError(ValueError):
@@ -840,3 +851,498 @@ def parse_gong_fits(
         quality_flags=("complete-pixels", "flux-balanced-roundoff-only"),
     )
     return MagnetogramSnapshot(snapshot_id, balanced, grid, provenance)
+
+
+class GongArchiveError(RuntimeError):
+    """Stable archive/acquisition failure with a machine-readable code."""
+
+    def __init__(self, code: str, detail: str):
+        self.code = code
+        self.detail = detail
+        super().__init__(f"{code}: {detail}")
+
+
+class GongTransportError(GongArchiveError):
+    """A transport-stage timeout or network failure."""
+
+
+@dataclass(frozen=True, slots=True)
+class GongArchiveLimits:
+    max_listing_bytes: int = 1 * 1024 * 1024
+    max_aggregate_bytes: int = 16 * 1024 * 1024
+    max_compressed_bytes: int = 8 * 1024 * 1024
+    max_expanded_fits_bytes: int = 32 * 1024 * 1024
+    max_header_bytes: int = 256 * 1024
+    max_pixels: int = 2_000_000
+    max_gzip_ratio: float = 100.0
+    max_redirects: int = 3
+    max_lookback_hours: int = 36
+    read_chunk_bytes: int = 64 * 1024
+    connect_timeout_s: float = 5.0
+    stall_timeout_s: float = 5.0
+
+    def __post_init__(self) -> None:
+        integer_names = (
+            "max_listing_bytes",
+            "max_aggregate_bytes",
+            "max_compressed_bytes",
+            "max_expanded_fits_bytes",
+            "max_header_bytes",
+            "max_pixels",
+            "max_redirects",
+            "max_lookback_hours",
+            "read_chunk_bytes",
+        )
+        for name in integer_names:
+            value = getattr(self, name)
+            minimum = 0 if name == "max_redirects" else 1
+            if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+                raise ValueError(f"{name} must be an integer >= {minimum}")
+        for name in ("max_gzip_ratio", "connect_timeout_s", "stall_timeout_s"):
+            value = float(getattr(self, name))
+            if not math.isfinite(value) or value <= 0.0:
+                raise ValueError(f"{name} must be finite and positive")
+
+    @property
+    def parse_limits(self) -> GongParseLimits:
+        return GongParseLimits(
+            max_expanded_fits_bytes=self.max_expanded_fits_bytes,
+            max_header_bytes=self.max_header_bytes,
+            max_pixels=self.max_pixels,
+        )
+
+
+class GongStreamResponse(Protocol):
+    status: int
+    headers: Mapping[str, str]
+    url: str | None
+
+    def read(self, size: int) -> bytes: ...
+
+    def close(self) -> None: ...
+
+
+class GongTransport(Protocol):
+    def open(
+        self,
+        url: str,
+        *,
+        connect_timeout_s: float,
+        stall_timeout_s: float,
+    ) -> GongStreamResponse: ...
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class _UrllibResponse:
+    def __init__(self, response):
+        self._response = response
+        self.status = int(response.status)
+        self.headers = dict(response.headers.items())
+        self.url = response.geturl()
+
+    def read(self, size: int) -> bytes:
+        try:
+            return self._response.read(size)
+        except (TimeoutError, socket.timeout) as exc:
+            raise GongTransportError("socket_stall_timeout", "response read stalled") from exc
+        except OSError as exc:
+            raise GongTransportError("read_error", "response read failed") from exc
+
+    def close(self) -> None:
+        self._response.close()
+
+
+class UrllibGongTransport:
+    """Synchronous transport with automatic redirects disabled.
+
+    This adapter is intended for an offline/supervised tool. Python's in-process
+    resolver cannot provide a hard DNS kill/reap guarantee; callers needing that
+    guarantee must run acquisition in the planned supervised-worker tranche.
+    """
+
+    def __init__(self) -> None:
+        self._opener = urllib.request.build_opener(_NoRedirect())
+
+    def open(
+        self,
+        url: str,
+        *,
+        connect_timeout_s: float,
+        stall_timeout_s: float,
+    ) -> GongStreamResponse:
+        request = urllib.request.Request(url, headers={"User-Agent": "solar-pfss-gong/1"})
+        try:
+            response = self._opener.open(request, timeout=min(connect_timeout_s, stall_timeout_s))
+        except urllib.error.HTTPError as exc:
+            response = exc
+        except urllib.error.URLError as exc:
+            reason = exc.reason
+            if isinstance(reason, socket.gaierror):
+                raise GongTransportError("dns_timeout", "DNS resolution failed or expired") from exc
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                raise GongTransportError("connect_timeout", "connection attempt expired") from exc
+            raise GongTransportError("connect_error", "connection attempt failed") from exc
+        except (TimeoutError, socket.timeout) as exc:
+            raise GongTransportError("connect_timeout", "connection attempt expired") from exc
+        return _UrllibResponse(response)
+
+
+@dataclass(slots=True)
+class _AttemptBudget:
+    clock: Callable[[], float]
+    started: float
+    timeout_s: float
+    aggregate_bytes: int = 0
+
+    def check_deadline(self) -> None:
+        if self.clock() - self.started > self.timeout_s:
+            raise GongArchiveError("total_deadline", "aggregate acquisition deadline expired")
+
+
+@dataclass(frozen=True, slots=True)
+class _ArchiveCandidate:
+    filename: str
+    reference_utc: datetime
+    url: str
+
+
+class _HrefParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag.lower() != "a":
+            return
+        for name, value in attrs:
+            if name.lower() == "href" and value is not None:
+                self.hrefs.append(value)
+
+
+def _validate_archive_url(url: str) -> str:
+    if any(ord(character) < 32 or ord(character) == 127 for character in url) or any(
+        character in url for character in ("\\", "%")
+    ):
+        raise GongArchiveError("unsafe_url", "URL contains forbidden encoding or characters")
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https":
+        raise GongArchiveError("unsafe_url", "archive URL must use HTTPS")
+    if parsed.username is not None or parsed.password is not None or parsed.port is not None:
+        raise GongArchiveError("unsafe_url", "archive URL must not contain credentials or a port")
+    if parsed.hostname != "gong.nso.edu" or parsed.netloc != "gong.nso.edu":
+        raise GongArchiveError("unsafe_url", "archive URL host is not canonical")
+    if parsed.query or parsed.fragment:
+        raise GongArchiveError("unsafe_url", "archive URL must not contain query or fragment")
+    prefix = urllib.parse.urlsplit(GONG_ARCHIVE_BASE_URL).path
+    if not parsed.path.startswith(prefix):
+        raise GongArchiveError("unsafe_url", "archive URL escapes the canonical prefix")
+    segments = parsed.path.split("/")
+    if any(segment in (".", "..") for segment in segments) or "//" in parsed.path:
+        raise GongArchiveError("unsafe_url", "archive URL contains an unsafe path")
+    return urllib.parse.urlunsplit(parsed)
+
+
+def _header(headers: Mapping[str, str], name: str) -> str | None:
+    lowered = name.lower()
+    for key, value in headers.items():
+        if key.lower() == lowered:
+            return str(value)
+    return None
+
+
+class GongArchiveProvider:
+    """Bounded offline discovery and acquisition for validated GONG zqs maps."""
+
+    def __init__(
+        self,
+        transport: GongTransport,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        utc_now: Callable[[], datetime] | None = None,
+        limits: GongArchiveLimits | None = None,
+        parser: Callable[..., MagnetogramSnapshot] = parse_gong_fits,
+        cache_max_entries: int = 16,
+    ) -> None:
+        if isinstance(cache_max_entries, bool) or not isinstance(cache_max_entries, int) or cache_max_entries < 1:
+            raise ValueError("cache_max_entries must be a positive integer")
+        self._transport = transport
+        self._clock = clock
+        self._utc_now = utc_now or (lambda: datetime.now(timezone.utc))
+        self._limits = limits or GongArchiveLimits()
+        self._parser = parser
+        self._cache_max_entries = cache_max_entries
+        self._cache: OrderedDict[str, MagnetogramSnapshot] = OrderedDict()
+        self._url_cache: dict[str, tuple[str, str]] = {}
+
+    @property
+    def cache_size(self) -> int:
+        return len(self._cache)
+
+    def acquire(self, request_jd_tdb: float, *, total_timeout_s: float = 20.0) -> MagnetogramSnapshot:
+        if not math.isfinite(float(request_jd_tdb)):
+            raise ValueError("request_jd_tdb must be finite")
+        if not math.isfinite(float(total_timeout_s)) or total_timeout_s <= 0.0:
+            raise ValueError("total_timeout_s must be finite and positive")
+        request_utc = jd_tdb_to_utc_datetime(float(request_jd_tdb))
+        budget = _AttemptBudget(self._clock, self._clock(), float(total_timeout_s))
+        candidate = self._discover(request_utc, budget)
+        compressed = self._request_bytes(
+            candidate.url,
+            per_response_limit=self._limits.max_compressed_bytes,
+            limit_code="compressed_limit",
+            budget=budget,
+        )
+        compressed_sha256 = hashlib.sha256(compressed).hexdigest()
+        prior = self._url_cache.get(candidate.url)
+        if prior is not None and prior[0] == compressed_sha256:
+            cached = self._cache.get(prior[1])
+            if cached is not None:
+                budget.check_deadline()
+                self._cache.move_to_end(prior[1])
+                return cached
+        expanded = self._expand_gzip(compressed, budget)
+        retrieved_at = self._utc_now()
+        if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
+            raise ValueError("utc_now must return a timezone-aware datetime")
+        context = GongParseContext(
+            request_jd_tdb=float(request_jd_tdb),
+            source_url=candidate.url,
+            filename=candidate.filename,
+            compressed_sha256=compressed_sha256,
+            retrieved_at_utc=retrieved_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            retrieval_timeout_s=float(total_timeout_s),
+        )
+        snapshot = self._parser(expanded, context=context, limits=self._limits.parse_limits)
+        budget.check_deadline()
+        snapshot_id = getattr(snapshot, "snapshot_id", None)
+        identity = getattr(snapshot_id, "sha256", None)
+        if not isinstance(identity, str) or not identity:
+            identity = hashlib.sha256(
+                b"GONG_ARCHIVE_VALIDATED_V1\0" + candidate.url.encode("ascii") + compressed
+            ).hexdigest()
+        self._cache[identity] = snapshot
+        self._cache.move_to_end(identity)
+        self._url_cache[candidate.url] = (compressed_sha256, identity)
+        while len(self._cache) > self._cache_max_entries:
+            evicted_identity, _ = self._cache.popitem(last=False)
+            self._url_cache = {
+                url: entry for url, entry in self._url_cache.items() if entry[1] != evicted_identity
+            }
+        return snapshot
+
+    def _discover(self, request_utc: datetime, budget: _AttemptBudget) -> _ArchiveCandidate:
+        earliest = request_utc - timedelta(hours=self._limits.max_lookback_hours)
+        day = request_utc.date()
+        candidates: list[_ArchiveCandidate] = []
+        saw_future = False
+        saw_old = False
+        saw_wrong_product = False
+        saw_malformed = False
+        while day >= earliest.date():
+            day_token = day.strftime("%Y%m%d")
+            directory = f"{GONG_ARCHIVE_BASE_URL}{day_token[:6]}/mrzqs{day_token[2:]}/"
+            try:
+                body = self._request_bytes(
+                    directory,
+                    per_response_limit=self._limits.max_listing_bytes,
+                    limit_code="listing_limit",
+                    budget=budget,
+                    allow_not_found=True,
+                )
+            except _ArchiveNotFound:
+                day -= timedelta(days=1)
+                continue
+            parsed = _HrefParser()
+            try:
+                parsed.feed(body.decode("utf-8", errors="strict"))
+                parsed.close()
+            except (UnicodeDecodeError, ValueError) as exc:
+                raise GongArchiveError("malformed_listing", "archive listing is not valid HTML text") from exc
+            for href in parsed.hrefs:
+                if href in ("../", "./", "/"):
+                    continue
+                if not re.fullmatch(r"[A-Za-z0-9_.-]+", href):
+                    lowered = href.lower()
+                    if "mrzq" in lowered or ".fits" in lowered:
+                        raise GongArchiveError("unsafe_url", "listing observation target is not an exact relative basename")
+                    continue
+                match = _FILENAME_RE.fullmatch(href)
+                if match is None:
+                    if href.startswith("mrzqs") and href.endswith(".fits.gz"):
+                        saw_malformed = True
+                    elif href.startswith("mr") and href.endswith(".fits.gz"):
+                        saw_wrong_product = True
+                    continue
+                if match.group("date") != day_token[2:]:
+                    saw_malformed = True
+                    continue
+                try:
+                    date_token = match.group("date")
+                    time_token = match.group("time")
+                    reference = datetime(
+                        2000 + int(date_token[:2]),
+                        int(date_token[2:4]),
+                        int(date_token[4:6]),
+                        int(time_token[:2]),
+                        int(time_token[2:4]),
+                        tzinfo=timezone.utc,
+                    )
+                except ValueError:
+                    saw_malformed = True
+                    continue
+                url = _validate_archive_url(directory + href)
+                candidate = _ArchiveCandidate(href, reference, url)
+                if reference > request_utc + _JD_ROUNDTRIP_TOLERANCE:
+                    saw_future = True
+                elif reference < earliest - _JD_ROUNDTRIP_TOLERANCE:
+                    saw_old = True
+                else:
+                    candidates.append(candidate)
+            if candidates:
+                break
+            day -= timedelta(days=1)
+        if candidates:
+            rank = max(candidate.reference_utc for candidate in candidates)
+            winners = {candidate.url: candidate for candidate in candidates if candidate.reference_utc == rank}
+            if len(winners) != 1:
+                raise GongArchiveError("ambiguous_candidate", "multiple archive files share the latest timestamp")
+            return next(iter(winners.values()))
+        if saw_malformed:
+            raise GongArchiveError("malformed_filename", "zqs listing entry does not match the exact filename grammar")
+        if saw_wrong_product:
+            raise GongArchiveError("wrong_product", "listing contains no exact zqs product")
+        if saw_old:
+            raise GongArchiveError("too_old", "newest available zqs map exceeds the lookback window")
+        if saw_future:
+            raise GongArchiveError("future_only", "archive contains only maps newer than the request")
+        raise GongArchiveError("archive_miss", "no exact zqs map exists in the bounded search window")
+
+    def _request_bytes(
+        self,
+        url: str,
+        *,
+        per_response_limit: int,
+        limit_code: str,
+        budget: _AttemptBudget,
+        allow_not_found: bool = False,
+    ) -> bytes:
+        current = _validate_archive_url(url)
+        visited = {current}
+        redirect_count = 0
+        while True:
+            budget.check_deadline()
+            try:
+                response = self._transport.open(
+                    current,
+                    connect_timeout_s=min(self._limits.connect_timeout_s, budget.timeout_s),
+                    stall_timeout_s=min(self._limits.stall_timeout_s, budget.timeout_s),
+                )
+            except GongTransportError:
+                budget.check_deadline()
+                raise
+            budget.check_deadline()
+            try:
+                final_url = _validate_archive_url(response.url or current)
+                if final_url != current:
+                    raise GongArchiveError("unsafe_url", "transport returned an unexpected final URL")
+                if response.status in (301, 302, 303, 307, 308):
+                    location = _header(response.headers, "Location")
+                    if not location:
+                        raise GongArchiveError("malformed_redirect", "redirect has no Location header")
+                    if redirect_count >= self._limits.max_redirects:
+                        raise GongArchiveError("redirect_overflow", "archive redirect limit exceeded")
+                    target = _validate_archive_url(urllib.parse.urljoin(current, location))
+                    if target in visited:
+                        raise GongArchiveError("redirect_loop", "archive redirect loop detected")
+                    redirect_count += 1
+                    visited.add(target)
+                    current = target
+                    continue
+                if response.status == 404 and allow_not_found:
+                    raise _ArchiveNotFound()
+                if response.status != 200:
+                    raise GongArchiveError("http_status", f"archive returned HTTP {response.status}")
+                declared = _header(response.headers, "Content-Length")
+                if declared is not None:
+                    try:
+                        declared_size = int(declared)
+                    except ValueError as exc:
+                        raise GongArchiveError("malformed_response", "invalid Content-Length") from exc
+                    if declared_size < 0:
+                        raise GongArchiveError("malformed_response", "negative Content-Length")
+                    if declared_size > per_response_limit:
+                        raise GongArchiveError(limit_code, "declared response exceeds its byte limit")
+                    if budget.aggregate_bytes + declared_size > self._limits.max_aggregate_bytes:
+                        raise GongArchiveError("aggregate_limit", "declared responses exceed aggregate byte limit")
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    budget.check_deadline()
+                    remaining = min(
+                        per_response_limit - total,
+                        self._limits.max_aggregate_bytes - budget.aggregate_bytes,
+                    )
+                    read_size = min(self._limits.read_chunk_bytes, remaining + 1)
+                    try:
+                        chunk = response.read(read_size)
+                    except GongTransportError:
+                        budget.check_deadline()
+                        raise
+                    budget.check_deadline()
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    budget.aggregate_bytes += len(chunk)
+                    if total > per_response_limit:
+                        raise GongArchiveError(limit_code, "response exceeds its byte limit")
+                    if budget.aggregate_bytes > self._limits.max_aggregate_bytes:
+                        raise GongArchiveError("aggregate_limit", "responses exceed aggregate byte limit")
+                    chunks.append(chunk)
+                return b"".join(chunks)
+            finally:
+                response.close()
+
+    def _expand_gzip(self, compressed: bytes, budget: _AttemptBudget) -> bytes:
+        ratio_limit = int(math.floor(len(compressed) * self._limits.max_gzip_ratio))
+        output_limit = min(self._limits.max_expanded_fits_bytes, ratio_limit)
+        decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        output: list[bytes] = []
+        output_size = 0
+        try:
+            for offset in range(0, len(compressed), self._limits.read_chunk_bytes):
+                budget.check_deadline()
+                pending = compressed[offset : offset + self._limits.read_chunk_bytes]
+                while pending:
+                    piece = decompressor.decompress(pending, output_limit + 1 - output_size)
+                    output.append(piece)
+                    output_size += len(piece)
+                    if output_size > output_limit:
+                        code = "expanded_limit" if output_limit == self._limits.max_expanded_fits_bytes else "gzip_ratio_limit"
+                        raise GongArchiveError(code, "gzip expansion exceeds its bound")
+                    remainder = decompressor.unconsumed_tail
+                    if remainder == pending:
+                        raise GongArchiveError("gzip_integrity", "gzip decompressor made no progress")
+                    pending = remainder
+                    budget.check_deadline()
+            piece = decompressor.flush(output_limit + 1 - output_size)
+            output.append(piece)
+            output_size += len(piece)
+        except zlib.error as exc:
+            raise GongArchiveError("gzip_integrity", "gzip CRC or stream validation failed") from exc
+        budget.check_deadline()
+        if output_size > output_limit:
+            code = "expanded_limit" if output_limit == self._limits.max_expanded_fits_bytes else "gzip_ratio_limit"
+            raise GongArchiveError(code, "gzip expansion exceeds its bound")
+        if not decompressor.eof:
+            raise GongArchiveError("gzip_truncated", "gzip member ended before its trailer")
+        if decompressor.unused_data:
+            raise GongArchiveError("gzip_concatenated", "concatenated gzip members are forbidden")
+        return b"".join(output)
+
+
+class _ArchiveNotFound(Exception):
+    pass
