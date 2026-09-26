@@ -2901,7 +2901,10 @@ async def solar_realtime_aia_tile(
         content=tile["content"],
         media_type=str(tile.get("content_type") or "image/png"),
     )
-    response.headers["Cache-Control"] = f"public, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"
+    response.headers["Cache-Control"] = (
+        f"private, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"
+    )
+    response.headers["Vary"] = "Authorization, X-API-Key"
     response.headers["X-Solar-AIA-Channel"] = str(tile.get("channel") or channel_key)
     if tile.get("image_id") is not None:
         response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])

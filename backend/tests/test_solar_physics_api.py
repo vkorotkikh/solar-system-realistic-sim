@@ -436,6 +436,10 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("content-type", "").startswith("image/png")
     assert response.headers.get("x-solar-aia-channel") == "aia_193"
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
+    assert response.headers["cache-control"].startswith("private,")
+    assert {
+        item.strip().lower() for item in response.headers["vary"].split(",")
+    } == {"authorization", "x-api-key"}
 
 
 def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image(
