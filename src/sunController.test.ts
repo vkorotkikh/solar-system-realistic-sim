@@ -121,9 +121,107 @@ describe('sun controller solar delivery', () => {
         imageId: 'realtime-only-image',
         spatialUse: 'disabled',
         reason: 'viewport_tile_has_no_validated_solar_surface_projection',
+        activeRenderChannel: null,
         textureLoaded: false,
         loadInFlight: false
       }
+    });
+    controller.setAiaChannelOverride('aia_304');
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      channel: 'aia_193',
+      spatialUse: 'disabled',
+      activeRenderChannel: null
+    });
+    controller.disposeSolarDelivery();
+  });
+
+  it('revokes a loaded observation texture when its spatial contract is withdrawn', async () => {
+    let spatiallyEligible = true;
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(realtimePayload(spatiallyEligible))));
+
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    const disposeLoadedTexture = vi.fn();
+    if (!settleTexture) throw new Error('texture callback was not captured');
+    (settleTexture as (texture: Texture) => void)({
+      dispose: disposeLoadedTexture,
+      needsUpdate: false
+    } as unknown as Texture);
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      activeRenderChannel: 'aia_193',
+      textureLoaded: true
+    });
+
+    spatiallyEligible = false;
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().observation.spatialUse).toBe('disabled');
+    });
+
+    expect(disposeLoadedTexture).toHaveBeenCalledTimes(1);
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      activeRenderChannel: null,
+      textureLoaded: false,
+      textureChannel: null,
+      textureImageId: null
+    });
+    controller.disposeSolarDelivery();
+  });
+
+  it('rejects an async texture result after the selected projection is revoked', async () => {
+    let spatiallyEligible = true;
+    vi.stubGlobal('fetch', vi.fn(async () => responseWith(realtimePayload(spatiallyEligible))));
+
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const configureLoadedTexture = vi.fn((_texture: Texture) => undefined);
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture,
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    spatiallyEligible = false;
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().observation.spatialUse).toBe('disabled');
+    });
+
+    const disposeIncomingTexture = vi.fn();
+    if (!settleTexture) throw new Error('texture callback was not captured');
+    (settleTexture as (texture: Texture) => void)({
+      dispose: disposeIncomingTexture,
+      needsUpdate: false
+    } as unknown as Texture);
+
+    expect(disposeIncomingTexture).toHaveBeenCalledTimes(1);
+    expect(configureLoadedTexture).not.toHaveBeenCalled();
+    expect(controller.getSolarDeliveryStatus().observation).toMatchObject({
+      activeRenderChannel: null,
+      textureLoaded: false,
+      loadInFlight: false
     });
     controller.disposeSolarDelivery();
   });

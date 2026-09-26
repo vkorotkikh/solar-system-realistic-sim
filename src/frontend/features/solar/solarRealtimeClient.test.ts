@@ -391,6 +391,8 @@ describe('SolarRealtimeClient delivery contract', () => {
 
   it('forces spatial observation blend to zero without an eligible texture', () => {
     const state = observationStateFromSolarRealtime(validPayload());
+    if (!state?.data_assimilation) throw new Error('observation fixture missing');
+    state.data_assimilation.observed_confidence = 0.9;
 
     const controls = deriveSunObservationControls(state, 0.8, 'aia_193', {
       hasObservationTexture: true,
@@ -403,5 +405,8 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(controls.observationEmission).toBe(0);
     expect(controls.activityBoost).toBe(0);
     expect(controls.coronaHue).toBeNull();
+    expect(controls.observedSignal).toBe(0);
+    expect(controls.observedConfidence).toBe(0);
+    expect(controls.observedFreshness).toBe(0);
   });
 });

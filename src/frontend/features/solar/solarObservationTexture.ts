@@ -330,9 +330,9 @@ export function deriveSunObservationControls(
   return {
     observationBlend,
     observationEmission,
-    observedSignal: sdoSignal,
-    observedConfidence: confidence,
-    observedFreshness,
+    observedSignal: hasUsableObservationTexture ? sdoSignal : 0,
+    observedConfidence: hasUsableObservationTexture ? confidence : 0,
+    observedFreshness: hasUsableObservationTexture ? observedFreshness : 0,
     coronaHue,
     activityBoost
   };

@@ -200,6 +200,29 @@ export function createSunController({
     setSunObservationTexture({ sunSurfaceMaterial, observationTexture: solarObservationTexture });
   }
 
+  function revokeSolarObservationTexture() {
+    const revokedTexture = solarObservationTexture;
+    const hadObservationBinding = revokedTexture !== null
+      || solarObservationTextureImageId !== null
+      || solarObservationTextureChannel !== null;
+    solarObservationTexture = null;
+    solarObservationTextureImageId = null;
+    solarObservationTextureChannel = null;
+    if (hadObservationBinding) applySunObservationTextureToMaterials();
+    if (revokedTexture && typeof revokedTexture.dispose === 'function') {
+      revokedTexture.dispose();
+    }
+  }
+
+  function loadedObservationMatches(
+    selection: ReturnType<typeof pickAiaObservationChannel>
+  ): boolean {
+    return !!selection
+      && !!solarObservationTexture
+      && selection.imageId === solarObservationTextureImageId
+      && selection.channel === solarObservationTextureChannel;
+  }
+
   function getObservationState(): SolarObservationPhysicsStateLike | null {
     return observationStateFromSolarRealtime(solarRealtimeClient.latestState())
       ?? solarPhysicsState;
@@ -265,20 +288,32 @@ export function createSunController({
   }
 
   function maybeRefreshObservationTexture(nowMs = Date.now(), force = false) {
-    if (solarDeliveryDisposed || solarObservationTextureLoadInFlight) return;
+    if (solarDeliveryDisposed) return;
 
     const observationState = getObservationState();
-    if (!observationState) return;
     const selection = pickAiaObservationChannel(
       observationState,
       undefined,
       userAiaChannelOverride
     );
-    if (!selection) return;
+    if (!selection) {
+      revokeSolarObservationTexture();
+      return;
+    }
 
     const nextImageId = `${selection.imageId ?? ''}`;
     const nextChannel = `${selection.channel ?? ''}`.toLowerCase();
     if (!nextImageId || !nextChannel) return;
+    if (
+      solarObservationTexture
+      && (
+        nextImageId !== solarObservationTextureImageId
+        || nextChannel !== solarObservationTextureChannel
+      )
+    ) {
+      revokeSolarObservationTexture();
+    }
+    if (solarObservationTextureLoadInFlight) return;
     if (!force && nextImageId === solarObservationTextureImageId && nextChannel === solarObservationTextureChannel) return;
     if (!force && nowMs - solarObservationTextureLastLoadMs < 12_000) return;
 
@@ -290,9 +325,21 @@ export function createSunController({
     observationTextureLoader.load(
       proxyUrl,
       (loaded: Texture) => {
-        if (solarDeliveryDisposed) {
+        const currentSelection = pickAiaObservationChannel(
+          getObservationState(),
+          undefined,
+          userAiaChannelOverride
+        );
+        if (
+          solarDeliveryDisposed
+          || currentSelection?.imageId !== nextImageId
+          || currentSelection?.channel !== nextChannel
+        ) {
           if (typeof loaded.dispose === 'function') loaded.dispose();
           solarObservationTextureLoadInFlight = false;
+          if (!solarDeliveryDisposed) {
+            maybeRefreshObservationTexture(Date.now(), true);
+          }
           return;
         }
         configureLoadedTexture(loaded);
@@ -439,7 +486,13 @@ export function createSunController({
       undefined,
       userAiaChannelOverride
     );
-    const activeObservationChannel = `${solarObservationTextureChannel ?? observationSelection?.channel ?? userAiaChannelOverride ?? ''}`.toLowerCase() || null;
+    if (!loadedObservationMatches(observationSelection)) {
+      revokeSolarObservationTexture();
+    }
+    const observationTextureUsable = loadedObservationMatches(observationSelection);
+    const activeObservationChannel = observationTextureUsable
+      ? observationSelection?.channel ?? null
+      : null;
     const observationControls = deriveSunObservationControls(
       observationState,
       activity,
@@ -447,10 +500,8 @@ export function createSunController({
       {
         selectedChannel: observationSelection?.channel ?? activeObservationChannel,
         selectedImageDate: observationSelection?.imageDate ?? null,
-        hasObservationTexture: !!solarObservationTexture,
-        spatialUseEligible: observationSelection?.spatialUse === 'eligible'
-          && observationSelection.imageId === solarObservationTextureImageId
-          && observationSelection.channel === solarObservationTextureChannel
+        hasObservationTexture: observationTextureUsable,
+        spatialUseEligible: observationTextureUsable
       }
     );
     const effectiveActivity = clampUnit(activity);
@@ -633,6 +684,11 @@ export function createSunController({
       undefined,
       userAiaChannelOverride
     );
+    const eligibleSelection = pickAiaObservationChannel(
+      observationState,
+      undefined,
+      userAiaChannelOverride
+    );
     return {
       disposed: solarDeliveryDisposed,
       physics: solarPhysicsClient.status(),
@@ -643,6 +699,9 @@ export function createSunController({
         imageDate: selection?.imageDate ?? null,
         spatialUse: selection?.spatialUse ?? 'unavailable',
         reason: selection?.reason ?? 'no_aia_artifact_available',
+        activeRenderChannel: loadedObservationMatches(eligibleSelection)
+          ? eligibleSelection?.channel ?? null
+          : null,
         textureLoaded: solarObservationTexture !== null,
         textureChannel: solarObservationTextureChannel,
         textureImageId: solarObservationTextureImageId,
@@ -656,12 +715,7 @@ export function createSunController({
     solarDeliveryDisposed = true;
     solarPhysicsClient.dispose();
     solarRealtimeClient.dispose();
-    if (solarObservationTexture && typeof solarObservationTexture.dispose === 'function') {
-      solarObservationTexture.dispose();
-    }
-    solarObservationTexture = null;
-    solarObservationTextureImageId = null;
-    solarObservationTextureChannel = null;
+    revokeSolarObservationTexture();
     solarObservationTextureLoadInFlight = false;
   }
 
