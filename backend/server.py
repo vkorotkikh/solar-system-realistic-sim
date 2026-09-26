@@ -787,16 +787,32 @@ SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     min_value=1.0,
     max_value=300.0,
 )
-SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = _load_env_int(
-    "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
-    2,
-    min_value=1,
+SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX = 8
+SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS = 14.0
+
+
+def _load_solar_aia_tile_concurrent_request_limit() -> int:
+    return _load_bounded_env_int(
+        "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
+        2,
+        min_value=1,
+        max_value=SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX,
+    )
+
+
+def _load_solar_aia_tile_request_timeout() -> float:
+    return _load_bounded_env_float(
+        "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS",
+        4.0,
+        min_value=0.5,
+        max_value=SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS,
+    )
+
+
+SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = (
+    _load_solar_aia_tile_concurrent_request_limit()
 )
-SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_env_float(
-    "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS",
-    4.0,
-    min_value=0.5,
-)
+SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_solar_aia_tile_request_timeout()
 TRAJECTORY_REQUEST_MAX_BODY_BYTES = _load_bounded_env_int(
     "TRAJECTORY_REQUEST_MAX_BODY_BYTES",
     32 * 1_024,

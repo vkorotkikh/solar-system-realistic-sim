@@ -683,6 +683,33 @@ def test_aia_tile_times_out_with_short_budget(monkeypatch) -> None:
     assert response.status_code == 503
 
 
+def test_aia_tile_environment_knobs_cannot_exceed_compile_time_hard_caps(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT", "1000000")
+    monkeypatch.setenv("SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS", "1000000")
+
+    assert (
+        server._load_solar_aia_tile_concurrent_request_limit()
+        == server.SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX
+    )
+    assert (
+        server._load_solar_aia_tile_request_timeout()
+        == server.SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS
+    )
+    assert (
+        1
+        <= server.SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT
+        <= server.SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX
+    )
+    assert (
+        0.5
+        <= server.SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS
+        <= server.SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS
+        < 15.0
+    )
+
+
 def test_solar_physics_rejects_excessive_feature_requests() -> None:
     response = client.get(
         "/solar/physics",
