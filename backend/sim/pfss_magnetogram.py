@@ -26,6 +26,12 @@ import numpy as np
 
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
+from .solar_time import (
+    CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
+    CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    mean_carrington_rotation_range_jd_tdb,
+    mean_carrington_rotation_number_from_jd_tdb,
+)
 from .spherical_harmonics import (
     HARMONIC_CONVENTION_VERSION,
     schmidt_azimuthal_factor,
@@ -36,8 +42,10 @@ from .spherical_harmonics import (
 # ─── Physical Constants ────────────────────────────────────────────────────────
 
 SOURCE_SURFACE_RADII = 2.5        # Standard PFSS source surface
-CARRINGTON_EPOCH_JD = 2398167.4   # JD of Carrington rotation 1 start (1853-11-09)
-CARRINGTON_PERIOD_DAYS = 27.2753  # Sidereal Carrington rotation period
+# Compatibility aliases. New code should import the scale/period-explicit names
+# from ``solar_time``.
+CARRINGTON_EPOCH_JD = CARRINGTON_ROTATION_1_EPOCH_JD_TT
+CARRINGTON_PERIOD_DAYS = CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS
 GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))  # For Fibonacci spiral seeding
 
 WSA_MODEL_VERSION = "wsa_inspired_v1"
@@ -57,14 +65,15 @@ def _clamp(value: float, lower: float, upper: float) -> float:
 # ─── Carrington Rotation ───────────────────────────────────────────────────────
 
 def carrington_rotation_number(jd: float) -> int:
-    """Compute the Carrington rotation number for a given Julian Date."""
-    return int((float(jd) - CARRINGTON_EPOCH_JD) / CARRINGTON_PERIOD_DAYS) + 1
+    """Return a mean Carrington rotation search hint for an explicit JDTDB."""
+
+    return mean_carrington_rotation_number_from_jd_tdb(jd)
 
 
 def carrington_rotation_jd_range(cr: int) -> tuple[float, float]:
-    """Return (start_jd, end_jd) for a given Carrington rotation number."""
-    start = CARRINGTON_EPOCH_JD + (cr - 1) * CARRINGTON_PERIOD_DAYS
-    return start, start + CARRINGTON_PERIOD_DAYS
+    """Return mean ``(start_jd_tdb, end_jd_tdb)`` compatibility boundaries."""
+
+    return mean_carrington_rotation_range_jd_tdb(cr)
 
 
 # ─── Minimal FITS Reader (numpy-only) ─────────────────────────────────────────
