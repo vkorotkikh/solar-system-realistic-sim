@@ -10,7 +10,7 @@
     "--pretty",
     "false"
   ],
-  "total_error_budget": 240,
+  "total_error_budget": 226,
   "buckets": {
     "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339": 9,
     "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005": 14,
@@ -35,8 +35,6 @@
     "src/main.ts|TS7005": 1,
     "src/main.ts|TS7006": 8,
     "src/main.ts|TS7034": 1,
-    "src/main.ts|TS7053": 1,
-    "src/sunController.ts|TS2322": 5,
-    "src/sunController.ts|TS2345": 9
+    "src/main.ts|TS7053": 1
   }
 }
