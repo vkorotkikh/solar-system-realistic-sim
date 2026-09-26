@@ -593,7 +593,16 @@ class SolarRealtimeDataProvider:
                     self._set_response_read_timeout(response, read_timeout)
                     remaining = max_bytes - total
                     read_size = min(self.RESPONSE_READ_CHUNK_BYTES, remaining + 1)
-                    chunk = response.read(read_size)
+                    # ``HTTPResponse.read(n)`` may keep filling ``n`` bytes and
+                    # restart the socket inactivity timeout after every small
+                    # arrival. A peer that drips bytes can therefore hold the
+                    # permit well past the aggregate deadline. ``read1`` is
+                    # bounded to one underlying buffered/raw read, allowing us
+                    # to recompute and apply the remaining absolute budget.
+                    read_once = getattr(response, "read1", None)
+                    if not callable(read_once):
+                        read_once = response.read
+                    chunk = read_once(read_size)
                     self._remaining_acquisition_time(deadline_monotonic)
                     if not isinstance(chunk, bytes):
                         raise SolarRealtimeFetchError(

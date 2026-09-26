@@ -370,6 +370,11 @@ def test_slow_drip_reads_receive_remaining_budget_and_stop_at_deadline(
             self.fp = type("Fp", (), {"raw": raw})()
 
         def read(self, size: int = -1) -> bytes:
+            raise AssertionError(
+                "buffer-filling read permits a slow peer to reset the socket timeout"
+            )
+
+        def read1(self, size: int = -1) -> bytes:
             self.read_sizes.append(size)
             monotonic_now[0] += 0.3
             if self._offset >= len(self._body):
