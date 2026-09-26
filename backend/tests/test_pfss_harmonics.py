@@ -42,7 +42,7 @@ def test_all_modes_against_immutable_oracle():
         reference = np.array(mode["values"])
         assert np.all(abs(values[key] - reference) <= 5e-13 * np.maximum(1, abs(reference))), key
         reference = np.array(mode["theta_derivatives"])
-        assert np.all(abs(derivatives[key] - reference) <= 1e-8 * np.maximum(1, abs(reference))), key
+        assert np.all(abs(derivatives[key] - reference) <= 1e-8), key
 
 
 def test_gauss_legendre_orthogonality():
@@ -67,8 +67,8 @@ def test_scalar_batch_and_decomposition_basis_identity():
         scalar, dscalar = {}, {}
         solver._legendre_at_point(float(x), float(sin_theta[i]), scalar, dscalar)
         for key in batch:
-            assert abs(scalar[key] - batch[key][i]) <= 1e-13 * max(1, abs(batch[key][i]))
-            assert abs(dscalar[key] - dbatch[key][i]) <= 1e-13 * max(1, abs(dbatch[key][i]))
+            assert abs(scalar[key] - batch[key][i]) <= 1e-13
+            assert abs(dscalar[key] - dbatch[key][i]) <= 1e-13
             assert abs(decomposition[key][i] - batch[key][i]) <= 1e-13
 
 
