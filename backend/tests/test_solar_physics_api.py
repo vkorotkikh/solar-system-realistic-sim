@@ -416,6 +416,15 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
         "tile_url": "https://api.helioviewer.org/v2/getTile/?id=184733789&x=-1&y=-1&imageScale=0.6",
         "content": b"\x89PNG\r\n\x1a\nfake",
         "content_type": "image/png",
+        "artifact": {
+            "schema": {"name": "helioviewer_viewport_tile", "version": 1},
+            "delivery": "raw_on_demand",
+        },
+        "spatial_use": {
+            "eligible": False,
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "contract": None,
+        },
     }
 
     def fake_latest_aia_tile(
@@ -436,10 +445,43 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     assert response.headers.get("content-type", "").startswith("image/png")
     assert response.headers.get("x-solar-aia-channel") == "aia_193"
     assert response.headers.get("x-solar-aia-image-id") == "184733789"
+    assert response.headers["x-solar-aia-artifact"] == "helioviewer_viewport_tile/v1"
+    assert response.headers["x-solar-aia-spatial-use"] == "disabled"
+    assert response.headers["x-solar-aia-spatial-reason"] == (
+        "viewport_tile_has_no_validated_solar_surface_projection"
+    )
     assert response.headers["cache-control"].startswith("private,")
     assert {
         item.strip().lower() for item in response.headers["vary"].split(",")
     } == {"authorization", "x-api-key"}
+
+
+def test_aia_tile_response_rejects_unvalidated_spatial_eligibility_claim(
+    monkeypatch,
+) -> None:
+    payload = {
+        "channel": "aia_193",
+        "content": b"png",
+        "content_type": "image/png",
+        "spatial_use": {
+            "eligible": True,
+            "reason": None,
+            "contract": {"projection": "equirectangular"},
+        },
+    }
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: payload,
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 200
+    assert response.headers["x-solar-aia-spatial-use"] == "disabled"
+    assert response.headers["x-solar-aia-spatial-reason"] == (
+        "missing_validated_spatial_projection_contract"
+    )
 
 
 def test_aia_tile_rejects_provider_identity_drift_instead_of_serving_wrong_image(

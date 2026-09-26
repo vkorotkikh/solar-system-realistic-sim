@@ -2906,6 +2906,49 @@ async def solar_realtime_aia_tile(
     )
     response.headers["Vary"] = "Authorization, X-API-Key"
     response.headers["X-Solar-AIA-Channel"] = str(tile.get("channel") or channel_key)
+    artifact = tile.get("artifact")
+    artifact_schema = artifact.get("schema") if isinstance(artifact, dict) else None
+    if (
+        isinstance(artifact_schema, dict)
+        and artifact_schema.get("name") == "helioviewer_viewport_tile"
+        and artifact_schema.get("version") == 1
+    ):
+        response.headers["X-Solar-AIA-Artifact"] = "helioviewer_viewport_tile/v1"
+
+    spatial_use = tile.get("spatial_use")
+    spatial_contract = (
+        spatial_use.get("contract") if isinstance(spatial_use, dict) else None
+    )
+    spatial_contract_schema = (
+        spatial_contract.get("schema") if isinstance(spatial_contract, dict) else None
+    )
+    spatial_eligible = bool(
+        isinstance(spatial_use, dict)
+        and spatial_use.get("eligible") is True
+        and isinstance(spatial_contract_schema, dict)
+        and spatial_contract_schema.get("name") == "solar_surface_texture_projection"
+        and spatial_contract_schema.get("version") == 1
+        and spatial_contract.get("projection") == "equirectangular"
+        and spatial_contract.get("coordinate_frame") == "iau_sun_body_fixed"
+        and spatial_contract.get("coverage") == "full_surface"
+        and spatial_contract.get("uv_mapping") == "sun_surface_uv_v1"
+    )
+    response.headers["X-Solar-AIA-Spatial-Use"] = (
+        "eligible" if spatial_eligible else "disabled"
+    )
+    if not spatial_eligible:
+        reason = (
+            spatial_use.get("reason") if isinstance(spatial_use, dict) else None
+        )
+        safe_reason = (
+            reason
+            if isinstance(reason, str)
+            and 0 < len(reason) <= 128
+            and reason.isascii()
+            and reason.replace("_", "").isalnum()
+            else "missing_validated_spatial_projection_contract"
+        )
+        response.headers["X-Solar-AIA-Spatial-Reason"] = safe_reason
     if tile.get("image_id") is not None:
         response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])
     if tile.get("image_date") is not None:
