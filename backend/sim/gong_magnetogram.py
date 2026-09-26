@@ -890,6 +890,7 @@ class GongArchiveLimits:
     read_chunk_bytes: int = 64 * 1024
     dns_timeout_s: float = 5.0
     connect_timeout_s: float = 5.0
+    tls_timeout_s: float = 5.0
     header_timeout_s: float = 5.0
     read_timeout_s: float = 10.0
     stall_timeout_s: float = 5.0
@@ -915,6 +916,7 @@ class GongArchiveLimits:
             "max_gzip_ratio",
             "dns_timeout_s",
             "connect_timeout_s",
+            "tls_timeout_s",
             "header_timeout_s",
             "read_timeout_s",
             "stall_timeout_s",
@@ -935,6 +937,7 @@ class GongArchiveLimits:
 class GongStreamResponse(Protocol):
     status: int
     headers: Mapping[str, str]
+    header_items: tuple[tuple[str, str], ...]
     url: str | None
 
     def read(self, size: int) -> bytes: ...
@@ -950,6 +953,7 @@ class GongTransport(Protocol):
         total_timeout_s: float,
         dns_timeout_s: float,
         connect_timeout_s: float,
+        tls_timeout_s: float,
         header_timeout_s: float,
         read_timeout_s: float,
         stall_timeout_s: float,
@@ -974,7 +978,9 @@ class _BoundedHttpResponse:
         self._stall_timeout_s = stall_timeout_s
         self._sock = sock
         self.status = int(response.status)
-        self.headers = dict(response.headers.items())
+        raw_items = getattr(response.headers, "raw_items", response.headers.items)
+        self.header_items = tuple((str(name), str(value)) for name, value in raw_items())
+        self.headers = dict(self.header_items)
         self.url = url if url is not None else response.geturl()
 
     def read(self, size: int) -> bytes:
@@ -999,6 +1005,10 @@ class _BoundedHttpResponse:
             code = "read_timeout" if read_deadline_is_first else "socket_stall_timeout"
             detail = "response read deadline expired" if read_deadline_is_first else "response socket stalled"
             raise GongTransportError(code, detail) from exc
+        except http.client.IncompleteRead as exc:
+            raise GongTransportError("truncated_body", "HTTP body ended before framing completed") from exc
+        except http.client.HTTPException as exc:
+            raise GongTransportError("read_error", "HTTP body framing failed") from exc
         except OSError as exc:
             raise GongTransportError("read_error", "response read failed") from exc
         read_finished = self._clock()
@@ -1021,7 +1031,7 @@ class _BoundedHttpResponse:
 class StdlibGongTransport:
     """Direct HTTPS transport with automatic redirects disabled.
 
-    DNS, TCP/TLS connection, response-header, total-body-read, and per-read
+    DNS, TCP connection, TLS handshake, response-header, total-body-read, and per-read
     socket-stall budgets are separate phases. The adapter uses the resolved
     address directly, so the connection phase cannot silently repeat DNS.
     Python's in-process resolver still cannot be forcibly killed; callers needing
@@ -1041,10 +1051,12 @@ class StdlibGongTransport:
         total_timeout_s: float,
         dns_timeout_s: float,
         connect_timeout_s: float,
+        tls_timeout_s: float,
         header_timeout_s: float,
         read_timeout_s: float,
         stall_timeout_s: float,
     ) -> GongStreamResponse:
+        url = _validate_archive_url(url)
         host = urllib.parse.urlsplit(url).hostname
         if host is None:
             raise GongTransportError("dns_error", "URL has no DNS host")
@@ -1054,19 +1066,40 @@ class StdlibGongTransport:
         try:
             addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
         except socket.gaierror as exc:
-            code = "dns_timeout" if exc.errno == socket.EAI_AGAIN else "dns_error"
+            expired = self._clock() - dns_started > dns_budget
+            code = "dns_timeout" if expired or exc.errno == socket.EAI_AGAIN else "dns_error"
             detail = "DNS resolution expired" if code == "dns_timeout" else "DNS name resolution failed"
             raise GongTransportError(code, detail) from exc
         except (TimeoutError, socket.timeout) as exc:
             raise GongTransportError("dns_timeout", "DNS resolution expired") from exc
         except OSError as exc:
+            if self._clock() - dns_started > dns_budget:
+                raise GongTransportError("dns_timeout", "DNS resolution exceeded its deadline") from exc
             raise GongTransportError("dns_error", "DNS resolution failed") from exc
         if self._clock() - dns_started > dns_budget:
             raise GongTransportError("dns_timeout", "DNS resolution exceeded its deadline")
         connect_started = self._clock()
         total_remaining = total_timeout_s - (connect_started - transport_started)
         connect_budget = min(connect_timeout_s, max(total_remaining, 0.0))
-        tls_socket = self._connect(host, addresses, connect_started, connect_budget)
+        raw_socket = self._connect(addresses, connect_started, connect_budget)
+        tls_started = self._clock()
+        total_remaining = total_timeout_s - (tls_started - transport_started)
+        tls_budget = min(tls_timeout_s, max(total_remaining, 0.0))
+        try:
+            context = self._ssl_context_factory()
+            raw_socket.settimeout(max(tls_budget, 1e-6))
+            tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
+        except (TimeoutError, socket.timeout) as exc:
+            raw_socket.close()
+            raise GongTransportError("tls_timeout", "TLS handshake expired") from exc
+        except (OSError, ssl.SSLError) as exc:
+            raw_socket.close()
+            if self._clock() - tls_started > tls_budget:
+                raise GongTransportError("tls_timeout", "TLS handshake exceeded its deadline") from exc
+            raise GongTransportError("tls_error", "TLS handshake failed") from exc
+        if self._clock() - tls_started > tls_budget:
+            tls_socket.close()
+            raise GongTransportError("tls_timeout", "TLS handshake exceeded its deadline")
         header_started = self._clock()
         total_remaining = total_timeout_s - (header_started - transport_started)
         header_budget = min(header_timeout_s, max(total_remaining, 0.0))
@@ -1087,54 +1120,64 @@ class StdlibGongTransport:
         except (TimeoutError, socket.timeout) as exc:
             tls_socket.close()
             raise GongTransportError("header_timeout", "response header wait expired") from exc
-        except (OSError, http.client.HTTPException) as exc:
+        except (OSError, ValueError, UnicodeError, http.client.HTTPException) as exc:
             tls_socket.close()
+            if self._clock() - header_started > header_budget:
+                raise GongTransportError("header_timeout", "response header wait exceeded its deadline") from exc
             raise GongTransportError("header_error", "response header exchange failed") from exc
         if self._clock() - header_started > header_budget:
             response.close()
             tls_socket.close()
             raise GongTransportError("header_timeout", "response header wait exceeded its deadline")
         total_remaining = total_timeout_s - (self._clock() - transport_started)
-        return _BoundedHttpResponse(
-            response,
-            clock=self._clock,
-            read_timeout_s=min(read_timeout_s, max(total_remaining, 0.0)),
-            stall_timeout_s=min(stall_timeout_s, max(total_remaining, 0.0)),
-            sock=tls_socket,
-            url=url,
-        )
+        try:
+            return _BoundedHttpResponse(
+                response,
+                clock=self._clock,
+                read_timeout_s=min(read_timeout_s, max(total_remaining, 0.0)),
+                stall_timeout_s=min(stall_timeout_s, max(total_remaining, 0.0)),
+                sock=tls_socket,
+                url=url,
+            )
+        except (ValueError, TypeError, AttributeError, http.client.HTTPException) as exc:
+            response.close()
+            tls_socket.close()
+            raise GongTransportError("header_error", "response metadata is invalid") from exc
 
-    def _connect(self, host: str, addresses, started: float, budget: float):
+    def _connect(self, addresses, started: float, budget: float):
         last_error: OSError | None = None
         saw_timeout = False
-        context = self._ssl_context_factory()
         for family, socktype, proto, _, sockaddr in addresses:
             remaining = budget - (self._clock() - started)
             if remaining < 0.0:
                 saw_timeout = True
                 break
-            raw_socket = self._socket_factory(family, socktype, proto)
+            raw_socket = None
             try:
+                raw_socket = self._socket_factory(family, socktype, proto)
                 raw_socket.settimeout(max(remaining, 1e-6))
                 raw_socket.connect(sockaddr)
-                tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
                 if self._clock() - started > budget:
-                    tls_socket.close()
+                    raw_socket.close()
                     raise GongTransportError(
-                        "connect_timeout", "TCP/TLS connection exceeded its deadline"
+                        "connect_timeout", "TCP connection exceeded its deadline"
                     )
-                return tls_socket
+                return raw_socket
             except GongTransportError:
                 raise
             except (TimeoutError, socket.timeout):
                 saw_timeout = True
-                raw_socket.close()
+                if raw_socket is not None:
+                    raw_socket.close()
             except OSError as exc:
                 last_error = exc
-                raw_socket.close()
+                if self._clock() - started > budget:
+                    saw_timeout = True
+                if raw_socket is not None:
+                    raw_socket.close()
         if saw_timeout or self._clock() - started > budget:
-            raise GongTransportError("connect_timeout", "TCP/TLS connection expired")
-        raise GongTransportError("connect_error", "TCP/TLS connection failed") from last_error
+            raise GongTransportError("connect_timeout", "TCP connection expired")
+        raise GongTransportError("connect_error", "TCP connection failed") from last_error
 
 
 # Compatibility name for the original offline adapter API.
@@ -1180,7 +1223,7 @@ class _HrefParser(HTMLParser):
 
 
 def _validate_archive_url(url: str) -> str:
-    if any(ord(character) < 32 or ord(character) == 127 for character in url) or any(
+    if any(ord(character) <= 32 or ord(character) >= 127 for character in url) or any(
         character in url for character in ("\\", "%")
     ):
         raise GongArchiveError("unsafe_url", "URL contains forbidden encoding or characters")
@@ -1203,7 +1246,7 @@ def _validate_archive_url(url: str) -> str:
 
 
 def _resolve_redirect_url(current: str, location: str) -> str:
-    if any(ord(character) < 32 or ord(character) == 127 for character in location) or any(
+    if any(ord(character) <= 32 or ord(character) >= 127 for character in location) or any(
         character in location for character in ("\\", "%")
     ):
         raise GongArchiveError("unsafe_url", "redirect contains forbidden encoding or characters")
@@ -1213,12 +1256,30 @@ def _resolve_redirect_url(current: str, location: str) -> str:
     return _validate_archive_url(urllib.parse.urljoin(current, location))
 
 
-def _header(headers: Mapping[str, str], name: str) -> str | None:
+def _header_values(response: GongStreamResponse, name: str) -> list[str]:
     lowered = name.lower()
-    for key, value in headers.items():
-        if key.lower() == lowered:
-            return str(value)
-    return None
+    items = getattr(response, "header_items", tuple(response.headers.items()))
+    return [str(value) for key, value in items if str(key).lower() == lowered]
+
+
+def _validate_http_framing(response: GongStreamResponse) -> int | None:
+    content_lengths = _header_values(response, "Content-Length")
+    transfer_encodings = _header_values(response, "Transfer-Encoding")
+    content_encodings = _header_values(response, "Content-Encoding")
+    if content_lengths and transfer_encodings:
+        raise GongArchiveError("ambiguous_framing", "response combines Transfer-Encoding and Content-Length")
+    if transfer_encodings and [value.lower() for value in transfer_encodings] != ["chunked"]:
+        raise GongArchiveError("unsupported_transfer_encoding", "response transfer encoding is not exactly chunked")
+    if any(value.lower() != "identity" for value in content_encodings):
+        raise GongArchiveError("unsupported_content_encoding", "encoded HTTP response bodies are forbidden")
+    if not content_lengths:
+        return None
+    if any(re.fullmatch(r"(?:0|[1-9][0-9]*)", value) is None for value in content_lengths):
+        raise GongArchiveError("invalid_content_length", "Content-Length is not canonical ASCII decimal")
+    sizes = {int(value) for value in content_lengths}
+    if len(sizes) != 1:
+        raise GongArchiveError("conflicting_content_length", "duplicate Content-Length values conflict")
+    return next(iter(sizes))
 
 
 class GongArchiveProvider:
@@ -1421,6 +1482,7 @@ class GongArchiveProvider:
                     total_timeout_s=remaining,
                     dns_timeout_s=min(self._limits.dns_timeout_s, remaining),
                     connect_timeout_s=min(self._limits.connect_timeout_s, remaining),
+                    tls_timeout_s=min(self._limits.tls_timeout_s, remaining),
                     header_timeout_s=min(self._limits.header_timeout_s, remaining),
                     read_timeout_s=min(self._limits.read_timeout_s, remaining),
                     stall_timeout_s=min(self._limits.stall_timeout_s, remaining),
@@ -1434,12 +1496,12 @@ class GongArchiveProvider:
                 if final_url != current:
                     raise GongArchiveError("unsafe_url", "transport returned an unexpected final URL")
                 if response.status in (301, 302, 303, 307, 308):
-                    location = _header(response.headers, "Location")
-                    if not location:
+                    locations = _header_values(response, "Location")
+                    if len(locations) != 1 or not locations[0]:
                         raise GongArchiveError("malformed_redirect", "redirect has no Location header")
                     if redirect_count >= self._limits.max_redirects:
                         raise GongArchiveError("redirect_overflow", "archive redirect limit exceeded")
-                    target = _resolve_redirect_url(current, location)
+                    target = _resolve_redirect_url(current, locations[0])
                     if target in visited:
                         raise GongArchiveError("redirect_loop", "archive redirect loop detected")
                     redirect_count += 1
@@ -1450,15 +1512,8 @@ class GongArchiveProvider:
                     raise _ArchiveNotFound()
                 if response.status != 200:
                     raise GongArchiveError("http_status", f"archive returned HTTP {response.status}")
-                declared = _header(response.headers, "Content-Length")
-                declared_size: int | None = None
-                if declared is not None:
-                    try:
-                        declared_size = int(declared)
-                    except ValueError as exc:
-                        raise GongArchiveError("malformed_response", "invalid Content-Length") from exc
-                    if declared_size < 0:
-                        raise GongArchiveError("malformed_response", "negative Content-Length")
+                declared_size = _validate_http_framing(response)
+                if declared_size is not None:
                     if declared_size > per_response_limit:
                         raise GongArchiveError(limit_code, "declared response exceeds its byte limit")
                     if budget.aggregate_bytes + declared_size > self._limits.max_aggregate_bytes:
@@ -1477,6 +1532,12 @@ class GongArchiveProvider:
                     except GongTransportError:
                         budget.check_deadline()
                         raise
+                    except http.client.IncompleteRead as exc:
+                        budget.check_deadline()
+                        raise GongArchiveError("truncated_body", "HTTP body framing was truncated") from exc
+                    except http.client.HTTPException as exc:
+                        budget.check_deadline()
+                        raise GongArchiveError("read_error", "HTTP body framing failed") from exc
                     budget.check_deadline()
                     if not chunk:
                         break

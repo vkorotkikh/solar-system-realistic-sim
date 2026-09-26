@@ -55,10 +55,12 @@ class Response:
         clock: Clock | None = None,
         read_seconds: float = 0.0,
         read_error: Exception | None = None,
+        header_items: tuple[tuple[str, str], ...] | None = None,
     ) -> None:
         self.body = body
         self.status = status
         self.headers = headers or {}
+        self.header_items = header_items or tuple(self.headers.items())
         self.url = url
         self.clock = clock
         self.read_seconds = read_seconds
@@ -110,7 +112,7 @@ class Transport:
             item = item()
         if isinstance(item, Exception):
             raise item
-        assert isinstance(item, Response)
+        assert all(hasattr(item, name) for name in ("status", "headers", "read", "close"))
         if item.url is None:
             item.url = url
         return item
@@ -442,6 +444,87 @@ def test_declared_content_length_rejects_truncated_listing_and_file(truncated_pa
     assert provider.cache_size == 0
 
 
+@pytest.mark.parametrize(
+    ("header_items", "code"),
+    [
+        ((("Content-Length", "1"), ("Content-Length", "2")), "conflicting_content_length"),
+        ((("Content-Length", "+1"),), "invalid_content_length"),
+        ((("Content-Length", "01"),), "invalid_content_length"),
+        ((("Content-Length", "١"),), "invalid_content_length"),
+        ((("Transfer-Encoding", "chunked"), ("Content-Length", "1")), "ambiguous_framing"),
+        ((("Transfer-Encoding", "gzip"),), "unsupported_transfer_encoding"),
+        ((("Content-Encoding", "gzip"),), "unsupported_content_encoding"),
+    ],
+)
+def test_http_framing_rejects_ambiguous_or_noncanonical_headers(header_items, code):
+    gong = gong_module()
+    directory = day_url("20260925")
+    transport = Transport(
+        {
+            directory: Response(
+                b"x",
+                header_items=header_items,
+                headers=dict(header_items),
+            )
+        }
+    )
+    with pytest.raises(gong.GongArchiveError) as caught:
+        gong.GongArchiveProvider(transport, parser=lambda *a, **k: None).acquire(
+            jd_tdb("2026-09-25T23:05:00")
+        )
+    assert caught.value.code == code
+
+
+@pytest.mark.parametrize("truncated_part", ["listing", "file"])
+@pytest.mark.parametrize("wrapped_response", [False, True])
+def test_truncated_chunked_listing_and_file_fail_closed(truncated_part, wrapped_response):
+    gong = gong_module()
+    filename = "mrzqs260925t2304c2316_301.fits.gz"
+    directory = day_url("20260925")
+    archive = listing(filename)
+    compressed = gzip.compress(b"fits")
+    truncated = gong.http.client.IncompleteRead(b"partial", 10)
+    listing_response = (
+        Response(
+            headers={"Transfer-Encoding": "chunked"},
+            read_error=truncated,
+        )
+        if truncated_part == "listing"
+        else Response(archive)
+    )
+    file_response = (
+        Response(
+            headers={"Transfer-Encoding": "chunked"},
+            read_error=truncated,
+        )
+        if truncated_part == "file"
+        else Response(compressed)
+    )
+    if wrapped_response:
+        listing_response = gong._BoundedHttpResponse(
+            listing_response,
+            clock=Clock(),
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+            url=directory,
+        )
+        file_response = gong._BoundedHttpResponse(
+            file_response,
+            clock=Clock(),
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+            url=file_url(filename),
+        )
+    transport = Transport(
+        {directory: listing_response, file_url(filename): file_response}
+    )
+    provider = gong.GongArchiveProvider(transport, parser=lambda *a, **k: None)
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"))
+    assert caught.value.code == "truncated_body"
+    assert provider.cache_size == 0
+
+
 def test_gzip_ratio_passes_at_exact_output_budget_and_rejects_one_more_byte():
     gong = gong_module()
     match = None
@@ -498,6 +581,7 @@ def test_gzip_integrity_attacks_fail_closed(mutate, code):
     [
         "dns_timeout",
         "connect_timeout",
+        "tls_timeout",
         "header_timeout",
         "read_timeout",
         "socket_stall_timeout",
@@ -589,6 +673,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
     limits = gong.GongArchiveLimits(
         dns_timeout_s=20.0,
         connect_timeout_s=20.0,
+        tls_timeout_s=20.0,
         header_timeout_s=20.0,
         read_timeout_s=20.0,
         stall_timeout_s=20.0,
@@ -604,6 +689,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
         "total_timeout_s": 10.0,
         "dns_timeout_s": 10.0,
         "connect_timeout_s": 10.0,
+        "tls_timeout_s": 10.0,
         "header_timeout_s": 10.0,
         "read_timeout_s": 10.0,
         "stall_timeout_s": 10.0,
@@ -612,6 +698,7 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
         "total_timeout_s": pytest.approx(7.0),
         "dns_timeout_s": pytest.approx(7.0),
         "connect_timeout_s": pytest.approx(7.0),
+        "tls_timeout_s": pytest.approx(7.0),
         "header_timeout_s": pytest.approx(7.0),
         "read_timeout_s": pytest.approx(7.0),
         "stall_timeout_s": pytest.approx(7.0),
@@ -624,6 +711,8 @@ def test_each_transport_stage_receives_only_the_remaining_total_budget():
         "../escaped.fits.gz",
         "./escaped.fits.gz",
         "sub/../escaped.fits.gz",
+        "space name.fits.gz",
+        "unicodé.fits.gz",
         "http://gong.nso.edu/data/magmap/QR/zqs/x",
         "https://evil.example/data/magmap/QR/zqs/x",
         "https://gong.nso.edu/outside/x",
@@ -871,16 +960,37 @@ class AdapterSocket:
 
 
 class AdapterTlsContext:
+    def __init__(
+        self,
+        *,
+        clock: Clock | None = None,
+        elapsed: float = 0.0,
+        error: Exception | None = None,
+    ) -> None:
+        self.clock = clock
+        self.elapsed = elapsed
+        self.error = error
+
     def wrap_socket(self, sock, *, server_hostname: str):
+        if self.clock is not None:
+            self.clock.advance(self.elapsed)
+        if self.error is not None:
+            raise self.error
         return sock
 
 
 ADDRESSES = [(2, 1, 6, "", ("127.0.0.1", 443))]
 
 
-def configure_adapter(transport, sock: AdapterSocket, raw: AdapterRawResponse) -> None:
+def configure_adapter(
+    transport,
+    sock: AdapterSocket,
+    raw: AdapterRawResponse,
+    *,
+    tls_context: AdapterTlsContext | None = None,
+) -> None:
     transport._socket_factory = lambda *args: sock
-    transport._ssl_context_factory = AdapterTlsContext
+    transport._ssl_context_factory = lambda: tls_context or AdapterTlsContext()
     transport._response_factory = lambda *args, **kwargs: raw
 
 
@@ -902,6 +1012,7 @@ def test_production_transport_distinguishes_read_deadline_from_socket_stall(
         total_timeout_s=10.0,
         dns_timeout_s=2.0,
         connect_timeout_s=2.0,
+        tls_timeout_s=2.0,
         header_timeout_s=2.0,
         read_timeout_s=read_timeout,
         stall_timeout_s=stall_timeout,
@@ -943,6 +1054,7 @@ def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
             header_timeout_s=2.0,
             read_timeout_s=3.0,
             stall_timeout_s=4.0,
@@ -962,6 +1074,7 @@ def test_production_transport_classifies_dns_and_connect_expiry(monkeypatch):
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
             header_timeout_s=2.0,
             read_timeout_s=3.0,
             stall_timeout_s=4.0,
@@ -1003,6 +1116,7 @@ def test_production_dns_and_connect_budgets_pass_exactly_and_fail_after(
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=1.0,
+            tls_timeout_s=1.0,
             header_timeout_s=1.0,
             read_timeout_s=2.0,
             stall_timeout_s=2.0,
@@ -1015,6 +1129,7 @@ def test_production_dns_and_connect_budgets_pass_exactly_and_fail_after(
                 total_timeout_s=10.0,
                 dns_timeout_s=1.0,
                 connect_timeout_s=1.0,
+                tls_timeout_s=1.0,
                 header_timeout_s=1.0,
                 read_timeout_s=2.0,
                 stall_timeout_s=2.0,
@@ -1041,6 +1156,7 @@ def test_production_transport_reduces_later_stages_by_time_already_spent(monkeyp
             total_timeout_s=3.0,
             dns_timeout_s=5.0,
             connect_timeout_s=5.0,
+            tls_timeout_s=5.0,
             header_timeout_s=5.0,
             read_timeout_s=5.0,
             stall_timeout_s=5.0,
@@ -1075,6 +1191,7 @@ def test_production_header_budget_is_distinct_from_connect(
         total_timeout_s=10.0,
         dns_timeout_s=2.0,
         connect_timeout_s=2.0,
+        tls_timeout_s=2.0,
         header_timeout_s=1.0,
         read_timeout_s=2.0,
         stall_timeout_s=2.0,
@@ -1109,11 +1226,230 @@ def test_production_dns_temporary_and_permanent_failures_are_distinct(
             total_timeout_s=10.0,
             dns_timeout_s=1.0,
             connect_timeout_s=1.0,
+            tls_timeout_s=1.0,
             header_timeout_s=1.0,
             read_timeout_s=1.0,
             stall_timeout_s=1.0,
         )
     assert caught.value.code == expected
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "error", "expected"),
+    [
+        (1.0, None, None),
+        (1.000001, None, "tls_timeout"),
+        (0.0, OSError("injected TLS failure"), "tls_error"),
+    ],
+)
+def test_production_tls_budget_is_distinct_from_tcp(
+    monkeypatch, elapsed, error, expected
+):
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    sock = AdapterSocket(clock=clock)
+    tls = AdapterTlsContext(clock=clock, elapsed=elapsed, error=error)
+    transport = gong.UrllibGongTransport(clock=clock)
+    configure_adapter(transport, sock, raw, tls_context=tls)
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
+    arguments = dict(
+        total_timeout_s=10.0,
+        dns_timeout_s=2.0,
+        connect_timeout_s=2.0,
+        tls_timeout_s=1.0,
+        header_timeout_s=2.0,
+        read_timeout_s=2.0,
+        stall_timeout_s=2.0,
+    )
+    if expected is None:
+        transport.open(BASE, **arguments).close()
+    else:
+        with pytest.raises(gong.GongTransportError) as caught:
+            transport.open(BASE, **arguments)
+        assert caught.value.code == expected
+        assert sock.closed is True
+
+
+def test_delayed_permanent_dns_and_bad_status_line_use_elapsed_timeout(monkeypatch):
+    gong = gong_module()
+    clock = Clock()
+    transport = gong.UrllibGongTransport(clock=clock)
+
+    def delayed_dns(*args, **kwargs):
+        clock.advance(1.1)
+        raise gong.socket.gaierror(gong.socket.EAI_NONAME, "delayed permanent failure")
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", delayed_dns)
+    with pytest.raises(gong.GongTransportError) as dns:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=1.0,
+            connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
+            header_timeout_s=2.0,
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+        )
+    assert dns.value.code == "dns_timeout"
+
+    clock = Clock()
+    sock = AdapterSocket(clock=clock)
+    raw = AdapterRawResponse(
+        clock=clock,
+        elapsed=0.0,
+        header_elapsed=1.1,
+        header_error=gong.http.client.BadStatusLine("bad"),
+    )
+    transport = gong.UrllibGongTransport(clock=clock)
+    configure_adapter(transport, sock, raw)
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
+    with pytest.raises(gong.GongTransportError) as header:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=2.0,
+            connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
+            header_timeout_s=1.0,
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+        )
+    assert header.value.code == "header_timeout"
+    assert sock.closed is True
+
+
+def test_request_construction_failure_is_typed_and_closes_tls_socket(monkeypatch):
+    gong = gong_module()
+    clock = Clock()
+    sock = AdapterSocket(clock=clock)
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    transport = gong.UrllibGongTransport(clock=clock)
+    configure_adapter(transport, sock, raw)
+    transport._response_factory = lambda *args, **kwargs: (_ for _ in ()).throw(
+        ValueError("injected request construction failure")
+    )
+    monkeypatch.setattr(gong.socket, "getaddrinfo", lambda *args, **kwargs: ADDRESSES)
+    with pytest.raises(gong.GongTransportError) as caught:
+        transport.open(
+            BASE,
+            total_timeout_s=10.0,
+            dns_timeout_s=2.0,
+            connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
+            header_timeout_s=2.0,
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+        )
+    assert caught.value.code == "header_error"
+    assert sock.closed is True
+
+
+@pytest.mark.parametrize("unsafe_path", ["space name", "unicodé", "control\x00name"])
+def test_production_transport_rejects_unsafe_path_before_dns(monkeypatch, unsafe_path):
+    gong = gong_module()
+    transport = gong.UrllibGongTransport()
+    dns_called = False
+
+    def resolve(*args, **kwargs):
+        nonlocal dns_called
+        dns_called = True
+        return ADDRESSES
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
+    with pytest.raises(gong.GongArchiveError) as caught:
+        transport.open(
+            BASE + unsafe_path,
+            total_timeout_s=10.0,
+            dns_timeout_s=2.0,
+            connect_timeout_s=2.0,
+            tls_timeout_s=2.0,
+            header_timeout_s=2.0,
+            read_timeout_s=2.0,
+            stall_timeout_s=2.0,
+        )
+    assert caught.value.code == "unsafe_url"
+    assert dns_called is False
+
+
+@pytest.mark.parametrize("stage", ["dns", "connect", "tls", "header"])
+def test_total_deadline_overrides_delayed_production_stage_exception(monkeypatch, stage):
+    gong = gong_module()
+    clock = Clock()
+    sock = AdapterSocket(
+        clock=clock,
+        connect_elapsed=1.1 if stage == "connect" else 0.0,
+        connect_error=OSError("delayed connect failure") if stage == "connect" else None,
+    )
+    tls = AdapterTlsContext(
+        clock=clock,
+        elapsed=1.1 if stage == "tls" else 0.0,
+        error=OSError("delayed TLS failure") if stage == "tls" else None,
+    )
+    raw = AdapterRawResponse(
+        clock=clock,
+        elapsed=0.0,
+        header_elapsed=1.1 if stage == "header" else 0.0,
+        header_error=(
+            gong.http.client.BadStatusLine("delayed bad status")
+            if stage == "header"
+            else None
+        ),
+    )
+    transport = gong.UrllibGongTransport(clock=clock)
+    configure_adapter(transport, sock, raw, tls_context=tls)
+
+    def resolve(*args, **kwargs):
+        if stage == "dns":
+            clock.advance(1.1)
+            raise gong.socket.gaierror(gong.socket.EAI_NONAME, "delayed DNS failure")
+        return ADDRESSES
+
+    monkeypatch.setattr(gong.socket, "getaddrinfo", resolve)
+    provider = gong.GongArchiveProvider(transport, clock=clock, parser=lambda *a, **k: None)
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=1.0)
+    assert caught.value.code == "total_deadline"
+
+
+def test_total_deadline_overrides_delayed_http_framing_error():
+    gong = gong_module()
+    clock = Clock()
+    directory = day_url("20260925")
+    response = Response(
+        headers={"Transfer-Encoding": "chunked"},
+        clock=clock,
+        read_seconds=1.1,
+        read_error=gong.http.client.IncompleteRead(b"partial", 1),
+    )
+    provider = gong.GongArchiveProvider(
+        Transport({directory: response}),
+        clock=clock,
+        parser=lambda *a, **k: None,
+    )
+    with pytest.raises(gong.GongArchiveError) as caught:
+        provider.acquire(jd_tdb("2026-09-25T23:05:00"), total_timeout_s=1.0)
+    assert caught.value.code == "total_deadline"
+
+
+def test_bounded_response_classifies_real_http_incomplete_read():
+    gong = gong_module()
+    clock = Clock()
+    raw = AdapterRawResponse(clock=clock, elapsed=0.0)
+    raw._body = None
+    raw.read = lambda size: (_ for _ in ()).throw(
+        gong.http.client.IncompleteRead(b"partial", 1)
+    )
+    response = gong._BoundedHttpResponse(
+        raw,
+        clock=clock,
+        read_timeout_s=2.0,
+        stall_timeout_s=2.0,
+    )
+    with pytest.raises(gong.GongTransportError) as caught:
+        response.read(10)
+    assert caught.value.code == "truncated_body"
 
 
 def test_deadline_after_parser_does_not_commit_cache():
