@@ -92,6 +92,12 @@ class SolarRealtimeDataProvider:
     MAX_BINARY_RESPONSE_BYTES = 4 * 1024 * 1024
     RESPONSE_READ_CHUNK_BYTES = 64 * 1024
     MAX_REDIRECTS = 3
+    MAX_UPSTREAM_URL_BYTES = 2 * 1024
+    MAX_CONTENT_TYPE_BYTES = 256
+    # Conservative reserve for the OrderedDict node, tuple, expiry float,
+    # accounting integer, and Python object headers beyond encoded data bytes.
+    BINARY_CACHE_ENTRY_OVERHEAD_BYTES = 512
+    AIA_IMAGE_ID_MAX_DIGITS = 20
 
     # Redirects may move only within the source's explicitly trusted host set.
     # In particular, an upstream response cannot turn this server into an SSRF
@@ -142,7 +148,7 @@ class SolarRealtimeDataProvider:
             tuple[str, str, float | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
         self._binary_cache: OrderedDict[
-            str, tuple[float, bytes, str | None]
+            str, tuple[float, bytes, str | None, int]
         ] = OrderedDict()
         self._binary_cache_bytes = 0
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
@@ -279,6 +285,7 @@ class SolarRealtimeDataProvider:
         image_id: str | None = None,
         jd: float | None = None,
     ) -> dict[str, Any]:
+        requested_image_id = self._normalize_aia_image_id(image_id)
         requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
         snapshot = self.latest(
             jd_tdb=requested_jd_tdb,
@@ -297,10 +304,15 @@ class SolarRealtimeDataProvider:
         if not isinstance(channel_entry, dict):
             raise KeyError(f"Unsupported AIA channel `{channel_key}`")
 
-        available_image_id = channel_entry.get("image_id")
-        if image_id is not None and available_image_id != image_id:
+        available_image_id = self._normalize_aia_image_id(
+            channel_entry.get("image_id")
+        )
+        if (
+            requested_image_id is not None
+            and available_image_id != requested_image_id
+        ):
             raise AiaImageIdentityMismatch(
-                requested_image_id=image_id,
+                requested_image_id=requested_image_id,
                 available_image_id=available_image_id,
             )
 
@@ -311,7 +323,7 @@ class SolarRealtimeDataProvider:
         tile_content, content_type = self._fetch_binary_cached(tile_url, ttl_s=self.cache_ttl_s)
         return {
             "channel": channel_key,
-            "image_id": channel_entry.get("image_id"),
+            "image_id": available_image_id,
             "image_date": channel_entry.get("image_date"),
             "tile_url": tile_url,
             "content": tile_content,
@@ -347,6 +359,26 @@ class SolarRealtimeDataProvider:
         ]
 
     @classmethod
+    def _enforce_url_byte_limit(cls, url: str, *, context: str) -> None:
+        if not isinstance(url, str) or len(url) > cls.MAX_UPSTREAM_URL_BYTES:
+            raise SolarRealtimeFetchError(
+                "url_byte_limit",
+                f"Solar realtime {context} URL exceeds its byte limit",
+            )
+        try:
+            encoded = url.encode("ascii")
+        except UnicodeEncodeError as exc:
+            raise SolarRealtimeFetchError(
+                "unsafe_url",
+                f"Solar realtime {context} URL is malformed",
+            ) from exc
+        if len(encoded) > cls.MAX_UPSTREAM_URL_BYTES:
+            raise SolarRealtimeFetchError(
+                "url_byte_limit",
+                f"Solar realtime {context} URL exceeds its byte limit",
+            )
+
+    @classmethod
     def _validate_upstream_url(
         cls,
         url: str,
@@ -354,7 +386,8 @@ class SolarRealtimeDataProvider:
         allowed_hosts: frozenset[str] | None = None,
         context: str = "upstream",
     ) -> tuple[str, frozenset[str]]:
-        if not isinstance(url, str) or any(
+        cls._enforce_url_byte_limit(url, context=context)
+        if any(
             ord(character) <= 32 or ord(character) >= 127 or character == "\\"
             for character in url
         ):
@@ -459,6 +492,10 @@ class SolarRealtimeDataProvider:
                             "redirect_overflow",
                             "Solar realtime redirect limit exceeded",
                         )
+                    self._enforce_url_byte_limit(
+                        locations[0],
+                        context="redirect",
+                    )
                     target = urllib.parse.urljoin(current, locations[0])
                     target, _ = self._validate_upstream_url(
                         target,
@@ -525,33 +562,47 @@ class SolarRealtimeDataProvider:
                 content_type = content_types[0] if len(content_types) == 1 else None
                 if content_type is not None and ";" in content_type:
                     content_type = content_type.split(";", 1)[0].strip()
+                if (
+                    content_type is not None
+                    and len(content_type.encode("utf-8")) > self.MAX_CONTENT_TYPE_BYTES
+                ):
+                    raise SolarRealtimeFetchError(
+                        "response_metadata_limit",
+                        "Solar realtime response metadata exceeds its byte limit",
+                    )
                 return b"".join(chunks), content_type
             finally:
                 response.close()
 
     def _fetch_binary_cached(self, url: str, ttl_s: float | None = None) -> tuple[bytes, str | None]:
+        canonical_url, _ = self._validate_upstream_url(url)
         cache_ttl = max(5.0, float(ttl_s if ttl_s is not None else self.cache_ttl_s))
         now_monotonic = time.monotonic()
 
         with self._lock:
-            cached = self._binary_cache.get(url)
+            cached = self._binary_cache.get(canonical_url)
             if cached is not None:
-                expiry, payload, content_type = cached
+                expiry, payload, content_type, entry_size = cached
                 if now_monotonic < expiry:
-                    self._binary_cache.move_to_end(url)
+                    self._binary_cache.move_to_end(canonical_url)
                     return payload, content_type
-                self._binary_cache.pop(url, None)
-                self._binary_cache_bytes -= len(payload)
+                self._binary_cache.pop(canonical_url, None)
+                self._binary_cache_bytes -= entry_size
 
         def fetch_and_cache_binary() -> tuple[bytes, str | None]:
-            payload, content_type = self._fetch_binary(url)
+            payload, content_type = self._fetch_binary(canonical_url)
             completed_monotonic = time.monotonic()
+            entry_size = self._binary_cache_entry_size(
+                canonical_url,
+                payload,
+                content_type,
+            )
             with self._lock:
                 # Publish before releasing the single-flight entry and measure the
                 # full TTL from completion, not from the beginning of a slow fetch.
-                previous = self._binary_cache.pop(url, None)
+                previous = self._binary_cache.pop(canonical_url, None)
                 if previous is not None:
-                    self._binary_cache_bytes -= len(previous[1])
+                    self._binary_cache_bytes -= previous[3]
 
                 stale_keys = [
                     cache_key
@@ -559,30 +610,45 @@ class SolarRealtimeDataProvider:
                     if value[0] <= completed_monotonic
                 ]
                 for stale_key in stale_keys:
-                    _, stale_payload, _ = self._binary_cache.pop(stale_key)
-                    self._binary_cache_bytes -= len(stale_payload)
+                    _, _, _, stale_size = self._binary_cache.pop(stale_key)
+                    self._binary_cache_bytes -= stale_size
 
-                if len(payload) <= self.binary_cache_max_bytes:
-                    self._binary_cache[url] = (
+                if entry_size <= self.binary_cache_max_bytes:
+                    self._binary_cache[canonical_url] = (
                         completed_monotonic + cache_ttl,
                         payload,
                         content_type,
+                        entry_size,
                     )
-                    self._binary_cache.move_to_end(url)
-                    self._binary_cache_bytes += len(payload)
+                    self._binary_cache.move_to_end(canonical_url)
+                    self._binary_cache_bytes += entry_size
 
                 while (
                     len(self._binary_cache) > self.binary_cache_max_entries
                     or self._binary_cache_bytes > self.binary_cache_max_bytes
                 ):
-                    _, (_, evicted_payload, _) = self._binary_cache.popitem(last=False)
-                    self._binary_cache_bytes -= len(evicted_payload)
+                    _, (_, _, _, evicted_size) = self._binary_cache.popitem(last=False)
+                    self._binary_cache_bytes -= evicted_size
             return payload, content_type
 
         return self._singleflight_fetch(
-            key=("binary", url),
+            key=("binary", canonical_url),
             fetch_fn=fetch_and_cache_binary,
             wait_timeout_s=self.timeout_s + 0.5,
+        )
+
+    @classmethod
+    def _binary_cache_entry_size(
+        cls,
+        url: str,
+        payload: bytes,
+        content_type: str | None,
+    ) -> int:
+        return (
+            cls.BINARY_CACHE_ENTRY_OVERHEAD_BYTES
+            + len(url.encode("ascii"))
+            + len(payload)
+            + len((content_type or "").encode("utf-8"))
         )
 
     def _singleflight_fetch(
@@ -672,6 +738,7 @@ class SolarRealtimeDataProvider:
     ) -> _FetchFailureDescriptor:
         safe_fetch_details = {
             "unsafe_url": "Solar realtime upstream URL was rejected",
+            "url_byte_limit": "Solar realtime upstream URL exceeds its byte limit",
             "unexpected_final_url": "Solar realtime upstream final URL was rejected",
             "malformed_redirect": "Solar realtime upstream redirect was malformed",
             "redirect_overflow": "Solar realtime upstream redirect limit exceeded",
@@ -681,6 +748,8 @@ class SolarRealtimeDataProvider:
             "response_byte_limit": "Solar realtime response exceeds its byte limit",
             "invalid_response_body": "Solar realtime upstream response body was invalid",
             "content_length_mismatch": "Solar realtime response length was inconsistent",
+            "response_metadata_limit": "Solar realtime response metadata exceeds its byte limit",
+            "invalid_image_id": "Solar realtime Helioviewer image identity was rejected",
             "acquisition_deadline": "Solar realtime acquisition deadline expired",
         }
         if isinstance(error, SolarRealtimeFetchError):
@@ -834,13 +903,56 @@ class SolarRealtimeDataProvider:
         except Exception:
             return None
 
+    @classmethod
+    def _normalize_aia_image_id(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            raise SolarRealtimeFetchError(
+                "invalid_image_id",
+                "Solar realtime Helioviewer image identity must be a positive decimal integer",
+            )
+        if isinstance(value, int):
+            if value <= 0:
+                raise SolarRealtimeFetchError(
+                    "invalid_image_id",
+                    "Solar realtime Helioviewer image identity must be a positive decimal integer",
+                )
+            try:
+                text = str(value)
+            except ValueError as exc:
+                raise SolarRealtimeFetchError(
+                    "invalid_image_id",
+                    "Solar realtime Helioviewer image identity exceeds its digit limit",
+                ) from exc
+        elif isinstance(value, str):
+            text = value
+        else:
+            raise SolarRealtimeFetchError(
+                "invalid_image_id",
+                "Solar realtime Helioviewer image identity must be a positive decimal integer",
+            )
+        if (
+            not text
+            or len(text) > cls.AIA_IMAGE_ID_MAX_DIGITS
+            or not text.isascii()
+            or not text.isdigit()
+            or text[0] == "0"
+        ):
+            raise SolarRealtimeFetchError(
+                "invalid_image_id",
+                "Solar realtime Helioviewer image identity is not a bounded positive decimal integer",
+            )
+        return text
+
     def _build_aia_tile_url(self, image_id: str | None, image_scale: float | None) -> str | None:
-        if not image_id:
+        normalized_image_id = self._normalize_aia_image_id(image_id)
+        if normalized_image_id is None:
             return None
         scale = image_scale if image_scale is not None and image_scale > 0 else 0.6
         query = urllib.parse.urlencode(
             {
-                "id": image_id,
+                "id": normalized_image_id,
                 "x": self.AIA_VIEWPORT_TILE_X,
                 "y": self.AIA_VIEWPORT_TILE_Y,
                 "imageScale": f"{scale:.6f}",
@@ -860,8 +972,7 @@ class SolarRealtimeDataProvider:
         payload = self._fetch_json(f"{self.HELIOVIEWER_CLOSEST_URL}?{query}")
         if not isinstance(payload, dict):
             raise RuntimeError("Helioviewer closest-image response is not an object")
-        image_id = payload.get("id")
-        image_id_text = str(image_id) if image_id is not None else None
+        image_id_text = self._normalize_aia_image_id(payload.get("id"))
         image_scale = _safe_float(payload.get("scale"))
         tile_url = self._build_aia_tile_url(image_id_text, image_scale)
         return {

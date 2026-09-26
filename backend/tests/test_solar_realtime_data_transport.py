@@ -263,3 +263,38 @@ def test_fetch_modes_reject_unapproved_initial_origin_before_network(
         getattr(provider, fetch_name)(unsafe_url)
 
     assert opened == []
+
+
+@pytest.mark.parametrize(
+    ("fetch_name", "base_url", "body"),
+    (
+        ("_fetch_json", SolarRealtimeDataProvider.NOAA_PLASMA_URL, b"{}"),
+        ("_fetch_text", SolarRealtimeDataProvider.SILSO_DAILY_URL, b"text"),
+        ("_fetch_binary", SolarRealtimeDataProvider.HELIOVIEWER_TILE_URL, b"binary"),
+    ),
+)
+def test_fetch_modes_reject_megabyte_url_before_network(
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_name: str,
+    base_url: str,
+    body: bytes,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    oversized_url = base_url + "?padding=" + ("1" * 1_000_000)
+    opened: list[str] = []
+
+    def open_request(request, *, timeout: float):
+        assert timeout > 0.0
+        opened.append(request.full_url)
+        return _Response(body, url=request.full_url)
+
+    monkeypatch.setattr(
+        urllib.request,
+        "build_opener",
+        lambda *_handlers: _Opener(open_request),
+    )
+
+    with pytest.raises(RuntimeError, match="URL.*byte limit"):
+        getattr(provider, fetch_name)(oversized_url)
+
+    assert opened == []

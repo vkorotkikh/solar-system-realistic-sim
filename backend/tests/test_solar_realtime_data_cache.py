@@ -225,31 +225,42 @@ def test_singleflight_known_fetch_failure_keeps_only_sanitized_code() -> None:
 def test_binary_cache_enforces_byte_budget_with_lru_eviction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=6)
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=1_150)
     fetches: list[str] = []
+    urls = [
+        f"{provider.HELIOVIEWER_TILE_URL}?id={image_id}"
+        for image_id in (1, 2, 3)
+    ]
 
     def fetch_binary(url: str) -> tuple[bytes, str]:
         fetches.append(url)
-        return url.encode("ascii") * 3, "image/png"
+        return b"png", "image/png"
 
     monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
 
-    assert provider._fetch_binary_cached("a")[0] == b"aaa"
-    assert provider._fetch_binary_cached("b")[0] == b"bbb"
-    assert provider._fetch_binary_cached("a")[0] == b"aaa"  # LRU touch.
-    assert provider._fetch_binary_cached("c")[0] == b"ccc"  # Evicts b.
-    assert provider._fetch_binary_cached("b")[0] == b"bbb"
+    assert provider._fetch_binary_cached(urls[0])[0] == b"png"
+    assert provider._fetch_binary_cached(urls[1])[0] == b"png"
+    assert provider._fetch_binary_cached(urls[0])[0] == b"png"  # LRU touch.
+    assert provider._fetch_binary_cached(urls[2])[0] == b"png"  # Evicts id=2.
+    assert provider._fetch_binary_cached(urls[1])[0] == b"png"
 
-    assert fetches == ["a", "b", "c", "b"]
-    assert provider._binary_cache_bytes <= 6
-    assert sum(len(entry[1]) for entry in provider._binary_cache.values()) <= 6
+    assert fetches == [urls[0], urls[1], urls[2], urls[1]]
+    assert provider._binary_cache_bytes <= 1_150
+    assert provider._binary_cache_bytes == sum(
+        512
+        + len(url.encode("ascii"))
+        + len(entry[1])
+        + len((entry[2] or "").encode("ascii"))
+        for url, entry in provider._binary_cache.items()
+    )
 
 
-def test_binary_payload_larger_than_cache_budget_is_never_retained(
+def test_binary_entry_larger_than_cache_budget_is_never_retained(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=3)
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=550)
     fetch_count = 0
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id=1"
 
     def fetch_binary(_url: str) -> tuple[bytes, str]:
         nonlocal fetch_count
@@ -258,8 +269,8 @@ def test_binary_payload_larger_than_cache_budget_is_never_retained(
 
     monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
 
-    assert provider._fetch_binary_cached("oversized")[0] == b"four"
-    assert provider._fetch_binary_cached("oversized")[0] == b"four"
+    assert provider._fetch_binary_cached(url)[0] == b"four"
+    assert provider._fetch_binary_cached(url)[0] == b"four"
 
     assert fetch_count == 2
     assert provider._binary_cache_bytes == 0
@@ -269,9 +280,10 @@ def test_binary_payload_larger_than_cache_budget_is_never_retained(
 def test_binary_cache_replacement_subtracts_expired_payload_bytes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=5)
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=700)
     monotonic_now = [100.0]
     payloads = iter((b"aa", b"bbbb"))
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id=1"
     monkeypatch.setattr(
         solar_realtime_data.time,
         "monotonic",
@@ -283,12 +295,38 @@ def test_binary_cache_replacement_subtracts_expired_payload_bytes(
         lambda _url: (next(payloads), "image/png"),
     )
 
-    assert provider._fetch_binary_cached("same", ttl_s=5.0)[0] == b"aa"
+    assert provider._fetch_binary_cached(url, ttl_s=5.0)[0] == b"aa"
     monotonic_now[0] = 106.0
-    assert provider._fetch_binary_cached("same", ttl_s=5.0)[0] == b"bbbb"
+    assert provider._fetch_binary_cached(url, ttl_s=5.0)[0] == b"bbbb"
 
-    assert provider._binary_cache_bytes == 4
+    assert provider._binary_cache_bytes == (
+        512 + len(url.encode("ascii")) + len(b"bbbb") + len(b"image/png")
+    )
     assert len(provider._binary_cache) == 1
+
+
+def test_binary_cache_rejects_megabyte_url_before_cache_or_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    fetches = 0
+
+    def forbidden_fetch(_url: str) -> tuple[bytes, str]:
+        nonlocal fetches
+        fetches += 1
+        return b"png", "image/png"
+
+    monkeypatch.setattr(provider, "_fetch_binary", forbidden_fetch)
+    oversized_url = provider.HELIOVIEWER_TILE_URL + "?id=" + ("1" * 1_000_000)
+
+    with pytest.raises(SolarRealtimeFetchError, match="URL.*byte limit"):
+        provider._fetch_binary_cached(oversized_url)
+
+    assert fetches == 0
+    assert provider._binary_cache == {}
+    assert provider._binary_cache_bytes == 0
+    assert provider._inflight_fetches == {}
+    assert provider._inflight_failures == {}
 
 
 @pytest.mark.parametrize("jd", [float("nan"), float("inf"), float("-inf")])
@@ -412,6 +450,60 @@ def test_aia_channel_declares_viewport_artifact_as_nonspatial(
     }
 
 
+@pytest.mark.parametrize(
+    "image_id",
+    (
+        "1" * 1_000_000,
+        "not-numeric",
+        True,
+        0,
+        -1,
+        1.5,
+    ),
+    ids=("megabyte", "nonnumeric", "boolean", "zero", "negative", "float"),
+)
+def test_aia_rejects_unbounded_or_nonnumeric_upstream_image_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    image_id: object,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_fetch_json",
+        lambda _url: {
+            "id": image_id,
+            "date": "2026-09-26 14:59:00",
+            "scale": 0.6,
+            "width": 4096,
+            "height": 4096,
+            "rsun": 1585.0,
+            "rotation": 0.0,
+        },
+    )
+
+    with pytest.raises(SolarRealtimeFetchError, match="image identity"):
+        provider._fetch_helioviewer_closest(11, datetime.now(timezone.utc))
+
+
+def test_aia_rejects_megabyte_requested_image_identity_before_snapshot_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    latest_calls = 0
+
+    def forbidden_latest(**_kwargs: Any) -> dict[str, Any]:
+        nonlocal latest_calls
+        latest_calls += 1
+        return {}
+
+    monkeypatch.setattr(provider, "latest", forbidden_latest)
+
+    with pytest.raises(SolarRealtimeFetchError, match="image identity"):
+        provider.latest_aia_tile(image_id="1" * 1_000_000)
+
+    assert latest_calls == 0
+
+
 def test_aia_snapshot_never_reads_viewport_pixels_or_derives_science(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -513,7 +605,7 @@ def test_aia_tile_rejects_changed_snapshot_identity_before_binary_fetch(
                 "channels": {
                     "aia_193": {
                         "tile_url": "https://example.invalid/image-b.png",
-                        "image_id": "image-b",
+                        "image_id": "200",
                         "image_date": "2026-01-01T00:00:00Z",
                     }
                 }
@@ -529,9 +621,9 @@ def test_aia_tile_rejects_changed_snapshot_identity_before_binary_fetch(
 
     with pytest.raises(
         RuntimeError,
-        match=r"requested image-a.*available image-b",
+        match=r"requested 100.*available 200",
     ):
-        provider.latest_aia_tile(channel="aia_193", image_id="image-a")
+        provider.latest_aia_tile(channel="aia_193", image_id="100")
 
     assert binary_fetches == []
 
@@ -549,7 +641,7 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
                 "channels": {
                     "aia_193": {
                         "tile_url": tile_url,
-                        "image_id": "image-a",
+                        "image_id": "100",
                         "image_date": "2026-01-01T00:00:00Z",
                         "artifact": {
                             "schema": {
@@ -578,10 +670,10 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
 
     monkeypatch.setattr(provider, "_fetch_binary_cached", fetch_binary)
 
-    tile = provider.latest_aia_tile(channel="aia_193", image_id="image-a")
+    tile = provider.latest_aia_tile(channel="aia_193", image_id="100")
 
     assert fetched_urls == [tile_url]
-    assert tile["image_id"] == "image-a"
+    assert tile["image_id"] == "100"
     assert tile["content"] == b"exact-image-a"
     assert tile["artifact"]["delivery"] == "raw_on_demand"
     assert tile["spatial_use"]["eligible"] is False
