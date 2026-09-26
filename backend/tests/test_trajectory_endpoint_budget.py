@@ -106,15 +106,15 @@ def test_trajectory_capabilities_publish_runtime_limits_and_provider_policy() ->
     }
 
 
-def test_network_ingress_order_is_cors_shape_auth_safe_body_rate_then_body_limit() -> None:
+def test_network_ingress_order_is_shape_cors_auth_safe_body_rate_then_body_limit() -> None:
     middleware_classes = [entry.cls for entry in server.app.user_middleware]
 
-    assert middleware_classes.index(server.CORSMiddleware) < middleware_classes.index(
-        server.NetworkRequestShapeMiddleware
-    )
     assert middleware_classes.index(
         server.NetworkRequestShapeMiddleware
-    ) < middleware_classes.index(server._NetworkAuthenticationMiddleware)
+    ) < middleware_classes.index(server.CORSMiddleware)
+    assert middleware_classes.index(server.CORSMiddleware) < middleware_classes.index(
+        server._NetworkAuthenticationMiddleware
+    )
     assert middleware_classes.index(
         server._NetworkAuthenticationMiddleware
     ) < middleware_classes.index(

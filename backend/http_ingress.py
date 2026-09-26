@@ -17,6 +17,7 @@ from starlette.responses import JSONResponse
 
 
 _CANONICAL_CONTENT_LENGTH = re.compile(rb"(?:0|[1-9][0-9]*)\Z")
+_MAX_ORIGIN_BYTES = 512
 
 
 def scope_route_path(scope: Mapping[str, object]) -> str:
@@ -83,20 +84,52 @@ class NetworkRequestShapeMiddleware:
         *,
         enabled: Callable[[], bool],
         limits: NetworkRequestLimits,
+        cors_allowed_origins: frozenset[str] = frozenset(),
     ) -> None:
         self.app = app
         self.enabled = enabled
         self.limits = limits
+        self.cors_allowed_origins = cors_allowed_origins
+
+    def _cors_error_headers(self, scope) -> dict[str, str]:
+        headers = scope.get("headers", ())
+        if not isinstance(headers, (list, tuple)):
+            return {}
+        origins = [
+            item[1]
+            for item in headers
+            if isinstance(item, (list, tuple))
+            and len(item) == 2
+            and isinstance(item[0], bytes)
+            and isinstance(item[1], bytes)
+            and item[0].lower() == b"origin"
+        ]
+        if len(origins) != 1 or len(origins[0]) > _MAX_ORIGIN_BYTES:
+            return {}
+        try:
+            origin = origins[0].decode("ascii")
+        except UnicodeDecodeError:
+            return {}
+        if origin not in self.cors_allowed_origins:
+            return {}
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
 
     def _error(
         self,
+        scope,
         status_code: int,
         code: str,
         message: str,
     ) -> JSONResponse:
+        headers = {"Cache-Control": "private, no-store"}
+        headers.update(self._cors_error_headers(scope))
         return JSONResponse(
             status_code=status_code,
-            headers={"Cache-Control": "private, no-store"},
+            headers=headers,
             content={
                 "detail": {
                     "code": code,
@@ -116,7 +149,7 @@ class NetworkRequestShapeMiddleware:
         code: str,
         message: str,
     ) -> None:
-        response = self._error(status_code, code, message)
+        response = self._error(scope, status_code, code, message)
         await response(scope, receive, send)
 
     async def __call__(self, scope, receive, send) -> None:
@@ -200,6 +233,7 @@ class NetworkRequestShapeMiddleware:
             b"content-length": [],
             b"transfer-encoding": [],
             b"content-encoding": [],
+            b"origin": [],
         }
         for item in headers:
             if (
@@ -256,6 +290,35 @@ class NetworkRequestShapeMiddleware:
         content_lengths = values[b"content-length"]
         transfer_encodings = values[b"transfer-encoding"]
         content_encodings = values[b"content-encoding"]
+        origins = values[b"origin"]
+
+        if len(origins) > 1:
+            await self._reject(
+                scope,
+                receive,
+                send,
+                status_code=400,
+                code="ambiguous_origin",
+                message="Request must contain at most one Origin header.",
+            )
+            return
+        if origins:
+            try:
+                origins[0].decode("ascii")
+            except UnicodeDecodeError:
+                origin_valid = False
+            else:
+                origin_valid = 0 < len(origins[0]) <= _MAX_ORIGIN_BYTES
+            if not origin_valid:
+                await self._reject(
+                    scope,
+                    receive,
+                    send,
+                    status_code=400,
+                    code="invalid_origin",
+                    message="Origin header is malformed or exceeds its byte limit.",
+                )
+                return
 
         if len(content_lengths) > 1:
             await self._reject(

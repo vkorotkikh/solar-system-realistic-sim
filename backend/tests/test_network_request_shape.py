@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from starlette.middleware.cors import CORSMiddleware
 
 from http_ingress import (
     NetworkRequestLimits,
@@ -88,6 +89,11 @@ def _error(messages: list[dict[str, Any]]) -> tuple[int, bytes]:
     return int(start["status"]), body
 
 
+def _response_headers(messages: list[dict[str, Any]]) -> dict[bytes, bytes]:
+    start = next(message for message in messages if message["type"] == "http.response.start")
+    return {bytes(name).lower(): bytes(value) for name, value in start["headers"]}
+
+
 @pytest.mark.parametrize(
     ("headers", "expected_code"),
     [
@@ -114,6 +120,110 @@ def test_network_ingress_rejects_ambiguous_or_noncanonical_framing(
     assert called is False
     assert status == 400
     assert expected_code in body
+
+
+def test_network_ingress_rejects_duplicate_origin() -> None:
+    called, messages = _exercise(
+        _scope(
+            method="OPTIONS",
+            headers=[
+                (b"origin", b"http://localhost:3000"),
+                (b"origin", b"https://hostile.invalid"),
+            ],
+        )
+    )
+
+    status, body = _error(messages)
+    assert called is False
+    assert status == 400
+    assert b'"ambiguous_origin"' in body
+
+
+@pytest.mark.parametrize(
+    ("scope", "expected_status", "expected_code"),
+    [
+        (
+            _scope(
+                method="OPTIONS",
+                query=b"x" * (DEFAULT_LIMITS.max_query_bytes + 1),
+                headers=[
+                    (b"origin", b"http://localhost:3000"),
+                    (b"access-control-request-method", b"GET"),
+                ],
+            ),
+            414,
+            b'"query_too_large"',
+        ),
+        (
+            _scope(
+                method="OPTIONS",
+                headers=[
+                    (b"origin", b"http://localhost:3000"),
+                    (b"access-control-request-method", b"GET"),
+                    (b"content-length", b"1"),
+                    (b"transfer-encoding", b"chunked"),
+                ],
+            ),
+            400,
+            b'"ambiguous_request_framing"',
+        ),
+        (
+            _scope(
+                method="OPTIONS",
+                headers=[
+                    (b"origin", b"http://localhost:3000"),
+                    (b"access-control-request-method", b"GET"),
+                    (b"access-control-request-headers", b"x" * 9_000),
+                ],
+            ),
+            431,
+            b'"header_value_too_large"',
+        ),
+    ],
+)
+def test_network_shape_gate_runs_before_cors_preflight(
+    scope: dict[str, Any],
+    expected_status: int,
+    expected_code: bytes,
+) -> None:
+    downstream_called = False
+    sent: list[dict[str, Any]] = []
+
+    async def downstream(_scope, _receive, _send) -> None:
+        nonlocal downstream_called
+        downstream_called = True
+
+    cors = CORSMiddleware(
+        downstream,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    )
+    middleware = NetworkRequestShapeMiddleware(
+        cors,
+        enabled=lambda: True,
+        limits=DEFAULT_LIMITS,
+        cors_allowed_origins=frozenset({"http://localhost:3000"}),
+    )
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    asyncio.run(middleware(scope, receive, send))
+
+    status, body = _error(sent)
+    headers = _response_headers(sent)
+    assert downstream_called is False
+    assert status == expected_status
+    assert expected_code in body
+    assert headers[b"cache-control"] == b"private, no-store"
+    assert headers[b"access-control-allow-origin"] == b"http://localhost:3000"
+    assert headers[b"access-control-allow-credentials"] == b"true"
+    assert b"origin" in headers[b"vary"].lower()
 
 
 @pytest.mark.parametrize(

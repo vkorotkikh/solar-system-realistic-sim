@@ -1317,16 +1317,17 @@ app.add_middleware(
 )
 app.add_middleware(_NetworkAuthenticationMiddleware)
 app.add_middleware(
-    NetworkRequestShapeMiddleware,
-    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
-    limits=NETWORK_REQUEST_LIMITS,
-)
-app.add_middleware(
     CORSMiddleware,
     allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+)
+app.add_middleware(
+    NetworkRequestShapeMiddleware,
+    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
+    limits=NETWORK_REQUEST_LIMITS,
+    cors_allowed_origins=frozenset(SOLAR_CORS_ALLOWED_ORIGINS),
 )
 
 _solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
