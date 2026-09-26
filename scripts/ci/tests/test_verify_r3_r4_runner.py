@@ -152,6 +152,10 @@ def test_all_mode_proves_baseline_and_mutant_without_touching_source(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     summary = json.loads((repo / "artifacts/summary.json").read_text())
     assert summary["baseline"] == {"collected": 1, "passed": 1}
+    assert summary["baseline_worktree"] == "detached-head"
+    assert summary["resolved_fixed_commits"]["wrong-calibration"] == (
+        json.loads(manifest.read_text())["mutations"][0]["fixed_commit"]
+    )
     assert summary["mutations"] == [
         {
             "id": "wrong-calibration",
@@ -160,6 +164,7 @@ def test_all_mode_proves_baseline_and_mutant_without_touching_source(tmp_path):
         }
     ]
     assert (repo / "science.py").read_bytes() == before
+    assert not (repo / "artifacts/offline-python").exists()
     assert not list(repo.parent.glob("r3-r4-mutant-*"))
 
 
@@ -259,6 +264,34 @@ def test_fixed_commit_must_resolve_to_an_ancestor(tmp_path):
 
     assert result.returncode != 0
     assert "fixed_commit does not resolve" in result.stderr
+
+
+def test_resolved_fixed_commit_must_be_an_ancestor_of_head(tmp_path):
+    repo, manifest_path = _fixture(tmp_path)
+    tree = subprocess.run(
+        ["git", "rev-parse", "HEAD^{tree}"], cwd=repo, text=True,
+        capture_output=True, check=True,
+    ).stdout.strip()
+    unrelated = subprocess.run(
+        [
+            "git", "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+            "commit-tree", tree, "-m", "unrelated root",
+        ],
+        cwd=repo, text=True, capture_output=True, check=True,
+    ).stdout.strip()
+    manifest = json.loads(manifest_path.read_text())
+    manifest["mutations"][0]["fixed_commit"] = unrelated
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    _git(repo, "add", "manifest.json")
+    _git(
+        repo, "-c", "user.name=R4 Test", "-c", "user.email=r4@example.invalid",
+        "commit", "-qm", "set unrelated fix id",
+    )
+
+    result = _run("--repo", str(repo), "--manifest", str(manifest_path), "baseline")
+
+    assert result.returncode != 0
+    assert "fixed_commit is not an ancestor of HEAD" in result.stderr
 
 
 def test_external_manifest_is_rejected_even_when_contents_are_identical(tmp_path):
