@@ -40,8 +40,12 @@ def test_literal_independent_pixel_center_sentinels() -> None:
         MANIFEST["coordinate_sentinels"],
     ):
         assert actual.x == expected["x"] and actual.y == expected["y"]
-        assert actual.longitude_deg == pytest.approx(expected["longitude_deg"], abs=6e-8)
-        assert actual.latitude_deg == pytest.approx(expected["latitude_deg"], abs=6e-8)
+        assert actual.longitude_deg == pytest.approx(
+            expected["longitude_deg"], rel=0, abs=6e-8
+        )
+        assert actual.latitude_deg == pytest.approx(
+            expected["latitude_deg"], rel=0, abs=6e-8
+        )
 
 
 def test_native_row_order_left_edge_and_seam_are_explicit() -> None:
@@ -53,12 +57,23 @@ def test_native_row_order_left_edge_and_seam_are_explicit() -> None:
         rtol=0,
         atol=1e-12,
     )
-    assert np.rad2deg(snapshot.grid.phi_rad[0]) == pytest.approx(301.5)
-    assert np.rad2deg(snapshot.grid.phi_rad[-1]) == pytest.approx(660.5)
+    assert np.rad2deg(snapshot.grid.phi_rad[0]) == pytest.approx(301.5, rel=0, abs=1e-12)
+    assert np.rad2deg(snapshot.grid.phi_rad[-1]) == pytest.approx(660.5, rel=0, abs=1e-12)
     assert snapshot.provenance.wcs.left_edge_longitude_deg == 301.0
-    first, second = snapshot.provenance.wcs.edge_sentinels[:2]
-    assert first.longitude_deg == pytest.approx(second.longitude_deg, abs=6e-8)
-    assert first.longitude_deg == pytest.approx(301.0, abs=6e-8)
+    edge_sentinels = snapshot.provenance.wcs.edge_sentinels
+    assert len(edge_sentinels) == len(MANIFEST["edge_sentinels"])
+    for actual, expected in zip(edge_sentinels, MANIFEST["edge_sentinels"]):
+        assert actual.x == expected["x"] and actual.y == expected["y"]
+        assert actual.longitude_deg == pytest.approx(
+            expected["longitude_deg"], rel=0, abs=6e-8
+        )
+        assert actual.latitude_deg == pytest.approx(
+            expected["latitude_deg"], rel=0, abs=6e-8
+        )
+
+    first, second = edge_sentinels[:2]
+    assert first.longitude_deg == pytest.approx(second.longitude_deg, rel=0, abs=6e-8)
+    assert first.longitude_deg == pytest.approx(301.0, rel=0, abs=6e-8)
 
 
 @pytest.mark.parametrize(
