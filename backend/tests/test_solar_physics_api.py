@@ -23,32 +23,33 @@ def _fallback_reasons(value: object) -> list[str]:
     return reasons
 
 
-def _install_fast_solar_response(monkeypatch, calls: list[tuple[object, ...]]) -> None:
-    async def fake_owned_thread(_function, *args, **_kwargs):
-        calls.append(args)
-        _kwargs["guard"].release()
-        epoch_jd_tdb = float(args[0])
-        return {
-            "source": "backend",
-            "forcing": str(args[3]),
-            "live_data_enabled": False,
-            "epoch_jd_tdb": epoch_jd_tdb,
-            "wall_epoch_jd_tdb": epoch_jd_tdb,
-            "jd_time_scale": "TDB",
-            "epoch_jd": epoch_jd_tdb,
-            "wall_epoch_jd": epoch_jd_tdb,
-            "effective_forcing": "synthetic",
-            "live_data_requested": False,
-            "forcing_status": {
-                "requested": str(args[3]),
-                "effective": "synthetic",
-                "observed_input_status": "not_requested",
-                "runtime_eligible": False,
-            },
-        }
+def _install_fast_solar_response(monkeypatch, calls: list[dict[str, object]]) -> None:
+    class FastRunner:
+        async def run(self, payload, *, timeout_seconds):
+            del timeout_seconds
+            calls.append(dict(payload))
+            epoch_jd_tdb = float(payload["epoch_jd_tdb"])
+            return {
+                "source": "backend",
+                "forcing": str(payload["forcing"]),
+                "live_data_enabled": False,
+                "epoch_jd_tdb": epoch_jd_tdb,
+                "wall_epoch_jd_tdb": epoch_jd_tdb,
+                "jd_time_scale": "TDB",
+                "epoch_jd": epoch_jd_tdb,
+                "wall_epoch_jd": epoch_jd_tdb,
+                "effective_forcing": "synthetic",
+                "live_data_requested": False,
+                "forcing_status": {
+                    "requested": str(payload["forcing"]),
+                    "effective": "synthetic",
+                    "observed_input_status": "not_requested",
+                    "runtime_eligible": False,
+                },
+            }
 
     monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
-    monkeypatch.setattr(server, "_run_owned_thread", fake_owned_thread)
+    monkeypatch.setattr(server, "_solar_physics_runner", FastRunner())
 
 
 def test_solar_capabilities_exposes_fidelity_levels() -> None:
@@ -105,14 +106,14 @@ def test_solar_physics_returns_3d_coronal_features() -> None:
 
 
 def test_solar_physics_uses_canonical_jdtdb_and_returns_labelled_aliases(monkeypatch) -> None:
-    calls: list[tuple[object, ...]] = []
+    calls: list[dict[str, object]] = []
     _install_fast_solar_response(monkeypatch, calls)
 
     response = client.get("/solar/physics", params={"jd_tdb": 2_460_000.5})
 
     assert response.status_code == 200
     payload = response.json()
-    assert calls and calls[0][0] == 2_460_000.5
+    assert calls and calls[0]["epoch_jd_tdb"] == 2_460_000.5
     assert payload["epoch_jd_tdb"] == payload["epoch_jd"] == 2_460_000.5
     assert payload["wall_epoch_jd_tdb"] == payload["wall_epoch_jd"] == 2_460_000.5
     assert payload["jd_time_scale"] == "TDB"
@@ -120,19 +121,19 @@ def test_solar_physics_uses_canonical_jdtdb_and_returns_labelled_aliases(monkeyp
 
 def test_solar_physics_defaults_to_current_jdtdb(monkeypatch) -> None:
     expected_jd_tdb = 2_460_500.7508007
-    calls: list[tuple[object, ...]] = []
+    calls: list[dict[str, object]] = []
     monkeypatch.setattr(server, "current_jd_tdb", lambda: expected_jd_tdb)
     _install_fast_solar_response(monkeypatch, calls)
 
     response = client.get("/solar/physics")
 
     assert response.status_code == 200
-    assert calls and calls[0][0] == expected_jd_tdb
+    assert calls and calls[0]["epoch_jd_tdb"] == expected_jd_tdb
     assert response.json()["epoch_jd_tdb"] == expected_jd_tdb
 
 
 def test_solar_physics_accepts_equal_legacy_epoch_alias(monkeypatch) -> None:
-    calls: list[tuple[object, ...]] = []
+    calls: list[dict[str, object]] = []
     _install_fast_solar_response(monkeypatch, calls)
 
     response = client.get(
@@ -141,7 +142,7 @@ def test_solar_physics_accepts_equal_legacy_epoch_alias(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert calls and calls[0][0] == 2_460_000.5
+    assert calls and calls[0]["epoch_jd_tdb"] == 2_460_000.5
 
 
 def test_solar_epoch_query_openapi_contract_is_labelled_and_deprecated() -> None:
@@ -177,17 +178,18 @@ def test_historical_response_uses_separate_current_wall_epoch(monkeypatch) -> No
             "data_assimilation": {"mode": kwargs["forcing"]},
         }
 
-    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
     monkeypatch.setattr(server, "current_jd_tdb", lambda: wall_epoch, raising=False)
     monkeypatch.setattr(server.SOLAR_PHYSICS_MODEL, "sample_state", fake_sample_state)
 
-    response = client.get(
-        "/solar/physics",
-        params={"jd_tdb": requested_epoch, "fidelity": "preview", "max_features": 8},
+    payload = server._build_solar_physics_state(
+        requested_epoch,
+        "preview",
+        8,
+        "synthetic",
+        False,
+        False,
     )
 
-    assert response.status_code == 200
-    payload = response.json()
     assert payload["epoch_jd_tdb"] == payload["epoch_jd"] == requested_epoch
     assert payload["wall_epoch_jd_tdb"] == payload["wall_epoch_jd"] == wall_epoch
     assert payload["wall_epoch_jd_tdb"] != payload["epoch_jd_tdb"]

@@ -29,6 +29,7 @@ Protocol (WebSocket /ws/sim):
 from __future__ import annotations
 
 import asyncio
+import atexit
 import hashlib
 import hmac
 import ipaddress
@@ -41,6 +42,7 @@ import time
 from collections import Counter, OrderedDict, deque
 from collections.abc import Mapping, MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -92,6 +94,25 @@ from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
+from sim.process_supervisor import (
+    DEFAULT_MAX_RESULT_BYTES,
+    HARD_MAX_PROCESS_QUEUE,
+    HARD_MAX_PROCESS_WORKERS,
+    HARD_MAX_RESULT_BYTES,
+    HARD_MAX_TIMEOUT_SECONDS,
+    ProcessCancelled,
+    ProcessCrashed,
+    ProcessResultRejected,
+    ProcessSaturated,
+    ProcessSubmissionFailed,
+    ProcessTimedOut,
+    ProcessWorkerFailed,
+    SupervisedProcessRunner,
+)
+from sim.solar_process_worker import (
+    build_solar_physics_state,
+    validate_solar_physics_result,
+)
 from sim.solar_physics import ObservedSolarInputUnavailable, SolarCoronaPhysicsModel
 from sim.solar_realtime_data import SolarRealtimeDataProvider
 from sim.solar_time import current_jd_tdb
@@ -139,10 +160,22 @@ except Exception:
     TudatPyEngine = None  # type: ignore
     _TUDATPY_AVAILABLE = False
 
+@asynccontextmanager
+async def _app_lifespan(_application: FastAPI):
+    # Names resolve after module initialization, when the global supervisor is
+    # available. Each application lifespan owns exactly one live runner.
+    _get_solar_physics_runner()
+    try:
+        yield
+    finally:
+        _shutdown_solar_physics_runner()
+
+
 app = FastAPI(
     title="Solar System Simulation Backend",
     description="N-body gravitational simulation server for the Solar System Mission Lab.",
     version="0.1.0",
+    lifespan=_app_lifespan,
 )
 
 
@@ -649,7 +682,12 @@ SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
 SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
 
 
-SOLAR_PHYSICS_MAX_FEATURES = _load_env_int("SOLAR_PHYSICS_MAX_FEATURES", 256, min_value=64)
+SOLAR_PHYSICS_MAX_FEATURES = _load_bounded_env_int(
+    "SOLAR_PHYSICS_MAX_FEATURES",
+    256,
+    min_value=64,
+    max_value=256,
+)
 SOLAR_PHYSICS_MIN_FEATURES = 8
 SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW",
@@ -663,17 +701,39 @@ SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     min_value=1.0,
     max_value=300.0,
 )
-SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
+SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_bounded_env_float(
     "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
     12.0,
     min_value=0.5,
+    max_value=HARD_MAX_TIMEOUT_SECONDS,
 )
-SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+_SOLAR_PHYSICS_LEGACY_WORKER_LIMIT = _load_bounded_env_int(
     "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT",
     2,
     min_value=1,
-    max_value=2,
+    max_value=HARD_MAX_PROCESS_WORKERS,
 )
+SOLAR_PHYSICS_PROCESS_WORKERS = _load_bounded_env_int(
+    "SOLAR_PHYSICS_PROCESS_WORKERS",
+    _SOLAR_PHYSICS_LEGACY_WORKER_LIMIT,
+    min_value=1,
+    max_value=HARD_MAX_PROCESS_WORKERS,
+)
+SOLAR_PHYSICS_PROCESS_QUEUE = _load_bounded_env_int(
+    "SOLAR_PHYSICS_PROCESS_QUEUE",
+    2,
+    min_value=0,
+    max_value=HARD_MAX_PROCESS_QUEUE,
+)
+SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES = _load_bounded_env_int(
+    "SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES",
+    DEFAULT_MAX_RESULT_BYTES,
+    min_value=64 * 1_024,
+    max_value=HARD_MAX_RESULT_BYTES,
+)
+# Compatibility metric for operators that consumed the prior limit. It now
+# means concurrently running solar worker processes, not in-process threads.
+SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = SOLAR_PHYSICS_PROCESS_WORKERS
 SOLAR_RATE_LIMIT_MAX_IDENTITIES = _load_bounded_env_int(
     "SOLAR_RATE_LIMIT_MAX_IDENTITIES",
     1_024,
@@ -1045,7 +1105,6 @@ _solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_physics_rate_lock = threading.Lock()
 _solar_realtime_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_realtime_rate_lock = threading.Lock()
-_solar_physics_concurrent_guard = threading.BoundedSemaphore(SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT)
 _solar_aia_tile_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
@@ -1057,11 +1116,9 @@ _benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_RE
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
 _ws_sim_active_connections = 0
-# Heavy endpoint work never enters Starlette/AnyIO's shared request pool. This
-# preserves health/control-plane capacity even while a scientific calculation
-# is at its budget. One shared pool also bounds aggregate CPU work across solar,
-# trajectory, and mission endpoints instead of enforcing independent limits
-# that can add up to host-wide oversubscription.
+# Trajectory and mission work never enters Starlette/AnyIO's shared request
+# pool. Solar/PFSS work is deliberately absent: it runs in killable, reaped
+# spawn children owned by the dedicated supervisor below.
 _heavy_compute_executor = ThreadPoolExecutor(
     max_workers=HEAVY_COMPUTE_THREAD_LIMIT,
     thread_name_prefix="solar-sim-compute",
@@ -1070,6 +1127,48 @@ _aia_tile_executor = ThreadPoolExecutor(
     max_workers=SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT,
     thread_name_prefix="solar-aia-io",
 )
+_solar_physics_runner_lifecycle_lock = threading.Lock()
+
+
+def _new_solar_physics_runner() -> SupervisedProcessRunner:
+    return SupervisedProcessRunner(
+        "sim.solar_process_worker:execute_solar_physics_job",
+        max_workers=SOLAR_PHYSICS_PROCESS_WORKERS,
+        max_queue=SOLAR_PHYSICS_PROCESS_QUEUE,
+        max_result_bytes=SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES,
+        result_validator=validate_solar_physics_result,
+    )
+
+
+_solar_physics_runner = _new_solar_physics_runner()
+
+
+def _get_solar_physics_runner():
+    """Return the live runner, recreating it after a completed app lifespan."""
+
+    global _solar_physics_runner
+    with _solar_physics_runner_lifecycle_lock:
+        runner = _solar_physics_runner
+        if (
+            isinstance(runner, SupervisedProcessRunner)
+            and runner.snapshot()["closed"]
+        ):
+            runner = _new_solar_physics_runner()
+            _solar_physics_runner = runner
+        return runner
+
+
+def _shutdown_solar_physics_runner() -> None:
+    """Terminate and reap all solar children during app/interpreter shutdown."""
+
+    with _solar_physics_runner_lifecycle_lock:
+        runner = _solar_physics_runner
+    shutdown = getattr(runner, "shutdown", None)
+    if callable(shutdown):
+        shutdown()
+
+
+atexit.register(_shutdown_solar_physics_runner)
 
 
 def _bounded_unique_request_header(
@@ -1432,41 +1531,18 @@ def _build_solar_physics_state(
     live_data: bool,
     force_data_refresh: bool,
 ) -> dict[str, Any]:
-    if forcing_key == "data_driven":
-        raise ObservedSolarInputUnavailable()
-
-    # No observed provider is promoted. Synthetic and hybrid must therefore be
-    # deterministic and must never enter a realtime/provider code path.
-    wall_epoch_jd_tdb = current_jd_tdb()
-
-    state = SOLAR_PHYSICS_MODEL.sample_state(
-        epoch_jd,
+    # Retained as a direct, testable construction seam. HTTP requests use the
+    # import-safe child entry point instead of this in-process wrapper.
+    del force_data_refresh
+    return build_solar_physics_state(
+        SOLAR_PHYSICS_MODEL,
+        epoch_jd_tdb=epoch_jd,
+        wall_epoch_jd_tdb=current_jd_tdb(),
         fidelity=fidelity_key,
         max_features=safe_max_features,
         forcing=forcing_key,
-        realtime_data=None,
-        wall_jd=wall_epoch_jd_tdb,
+        live_data=bool(live_data),
     )
-    state["forcing"] = forcing_key
-    state["effective_forcing"] = "synthetic"
-    state["live_data_requested"] = bool(live_data)
-    state["live_data_enabled"] = False
-    forcing_status = {
-        "requested": forcing_key,
-        "effective": "synthetic",
-        "observed_input_status": (
-            "not_requested" if forcing_key == "synthetic" else "disabled_unvalidated"
-        ),
-        "runtime_eligible": False,
-    }
-    if forcing_key == "hybrid":
-        forcing_status["fallback_reason"] = "disabled_unvalidated"
-        state["fallback_reason"] = "disabled_unvalidated"
-    else:
-        state.pop("fallback_reason", None)
-    state["forcing_status"] = forcing_status
-    state["source"] = "backend"
-    return state
 
 
 def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
@@ -2516,30 +2592,80 @@ async def solar_physics_state(
             ),
         )
 
-    if not _acquire_nonblocking(_solar_physics_concurrent_guard):
-        raise HTTPException(
-            status_code=503,
-            detail="Solar physics requests are temporarily saturated. Retry shortly.",
-            headers={"Retry-After": "2"},
-        )
-
     try:
-        state = await _run_owned_thread(
-            _build_solar_physics_state,
-            epoch_jd,
-            fidelity_key,
-            safe_max_features,
-            forcing_key,
-            bool(live_data),
-            bool(force_data_refresh),
-            guard=_solar_physics_concurrent_guard,
-            executor=_heavy_compute_executor,
+        state = await _get_solar_physics_runner().run(
+            {
+                "epoch_jd_tdb": epoch_jd,
+                "fidelity": fidelity_key,
+                "max_features": safe_max_features,
+                "forcing": forcing_key,
+                "live_data": bool(live_data),
+            },
             timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
         )
-    except asyncio.TimeoutError as exc:
+    except ProcessSaturated as exc:
         raise HTTPException(
             status_code=503,
-            detail="Solar physics generation timed out. Try again later.",
+            detail={
+                "code": "solar_compute_saturated",
+                "message": "Solar physics capacity is saturated. Retry shortly.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
+        ) from exc
+    except ProcessTimedOut as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_timeout",
+                "message": "Solar physics generation exceeded its hard deadline.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessCrashed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_worker_crashed",
+                "message": "Solar physics generation ended unexpectedly.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessSubmissionFailed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_unavailable",
+                "message": "Solar physics execution is temporarily unavailable.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessWorkerFailed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_worker_failed",
+                "message": "Solar physics generation failed.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessResultRejected as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_invalid_result",
+                "message": "Solar physics generation returned an invalid result.",
+                "retryable": False,
+            },
+        ) from exc
+    except ProcessCancelled as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_unavailable",
+                "message": "Solar physics execution is temporarily unavailable.",
+                "retryable": True,
+            },
         ) from exc
     except ObservedSolarInputUnavailable as exc:
         raise _observed_solar_input_http_error(exc) from exc
