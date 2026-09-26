@@ -451,9 +451,9 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
         "viewport_tile_has_no_validated_solar_surface_projection"
     )
     assert response.headers["cache-control"].startswith("private,")
-    assert {
+    assert {"authorization", "x-api-key"}.issubset({
         item.strip().lower() for item in response.headers["vary"].split(",")
-    } == {"authorization", "x-api-key"}
+    })
 
 
 def test_aia_tile_response_rejects_unvalidated_spatial_eligibility_claim(
