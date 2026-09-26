@@ -1,4 +1,5 @@
 import { clamp } from '../../../constants';
+import type { SolarPhysicsStateLike } from './solarFeatureBlending';
 import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
 
 // The backend admits at most 19 s for a solar-physics computation. Keep the
@@ -46,8 +47,15 @@ export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLi
     source?: string;
     carrington_rotation?: number;
   };
-  coronal_holes?: unknown;
-  heliosphere?: unknown;
+  coronal_holes?: {
+    holes?: Array<{
+      center_lon_rad?: unknown;
+      center_lat_rad?: unknown;
+      extent_lon_rad?: unknown;
+      extent_lat_rad?: unknown;
+    }> | null;
+  } | null;
+  heliosphere?: SolarPhysicsStateLike['heliosphere'];
   [key: string]: unknown;
 }
 

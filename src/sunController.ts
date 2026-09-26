@@ -1,5 +1,16 @@
 import { Group } from 'three';
-import type { BufferGeometry, Camera, Material, Mesh, Object3D, Sprite, Texture, TextureLoader } from 'three';
+import type {
+  BufferGeometry,
+  Camera,
+  Material,
+  Mesh,
+  Object3D,
+  Points,
+  ShaderMaterial,
+  Sprite,
+  Texture,
+  TextureLoader
+} from 'three';
 import { J2000_JD } from './constants';
 import {
   SOLAR_PHYSICS_POLL_INTERVAL_MS,
@@ -121,20 +132,20 @@ export function createSunController({
   getSunRadiusAu,
   isMagneticFieldEnabled
 }: CreateSunControllerOptions) {
-  let sunSurfaceMaterial: Material | null = null;
-  let sunCoronaMaterial: Material | null = null;
+  let sunSurfaceMaterial: ShaderMaterial | null = null;
+  let sunCoronaMaterial: ShaderMaterial | null = null;
   let sunVisualNode: Object3D | null = null;
   let sunGlowSprite: Sprite | null = null;
-  let sunEruptionLayer: Object3D | null = null;
-  let sunChromosphereLayer: Object3D | null = null;
-  let sunCoronaMesh: Mesh | null = null;
+  let sunEruptionLayer: Points | null = null;
+  let sunChromosphereLayer: Points | null = null;
+  let sunCoronaMesh: Mesh<BufferGeometry, ShaderMaterial> | null = null;
   let sunFlareGroup: Group | null = null;
   let solarFlareManager: SolarFlareManager | null = null;
   let sunMagneticFieldGroup: Group | null = null;
   let sunMagneticFieldSignature: string | null = null;
   let sunCoronalLoopGroup: Group | null = null;
   let sunParkerSpiralGroup: Group | null = null;
-  let sunTransitionRegionMesh: Mesh | null = null;
+  let sunTransitionRegionMesh: Mesh<BufferGeometry, ShaderMaterial> | null = null;
 
   let gwDisplayer: GwDisplayer | null = null;
   let warpDisplayer: WarpDisplayer | null = null;

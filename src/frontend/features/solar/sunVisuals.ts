@@ -697,7 +697,10 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
   }
 }
 
-export function updateSunFlaresUniforms(sunSurfaceMaterial: ShaderMaterial | null | undefined, flareParamsArray: Vector4[]): void {
+export function updateSunFlaresUniforms(
+  sunSurfaceMaterial: ShaderMaterial | null | undefined,
+  flareParamsArray: readonly number[]
+): void {
   if (!sunSurfaceMaterial?.uniforms?.flarePoints) return;
   const fp = sunSurfaceMaterial.uniforms.flarePoints.value;
   for (let i = 0; i < 3; i++) {
@@ -931,7 +934,9 @@ export function createSunGlow(sunDisplayRadius: number): Sprite {
   return glow;
 }
 
-export function createSunCoronaShell(geometry: BufferGeometry): Mesh {
+export function createSunCoronaShell(
+  geometry: BufferGeometry
+): Mesh<BufferGeometry, ShaderMaterial> {
   const material = new ShaderMaterial({
     vertexShader: SUN_CORONA_VERTEX_SHADER,
     fragmentShader: SUN_CORONA_FRAGMENT_SHADER,
@@ -1079,7 +1084,10 @@ void main() {
  * @param geometry - A SphereGeometry to use (shared with other shells or dedicated)
  * @param sunDisplayRadius - The Sun's display radius in scene units
  */
-export function createTransitionRegionShell(geometry: BufferGeometry, sunDisplayRadius: number): Mesh {
+export function createTransitionRegionShell(
+  geometry: BufferGeometry,
+  sunDisplayRadius: number
+): Mesh<BufferGeometry, ShaderMaterial> {
   const material = new ShaderMaterial({
     vertexShader: TR_VERTEX_SHADER,
     fragmentShader: TR_FRAGMENT_SHADER,
