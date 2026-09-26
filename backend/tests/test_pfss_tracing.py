@@ -181,6 +181,11 @@ def test_wsa_batch_isolates_weak_lane_without_manufacturing_closed_flux():
     ([1.5, 0, 0], [1.5, 0, 0], None, None),
     ([1.5, 0, 0], [-3, 0, 0], 'closed', [1, 0, 0]),
     ([1.5, 0, 0], [1e200, 0, 0], 'open', [2.5, 0, 0]),
+    ([2.5, 0, 0], [2.5, 1, 0], 'open', [2.5, 0, 0]),
+    ([1.5, 2, 0], [-0.5, 3.5, 0], 'open', [1.5, 2, 0]),
+    ([2.5, 0, 0], [2.5, 0, 0], None, None),
+    ([1, -1, 0], [1, 1, 0], None, None),
+    ([1, 0, 0], [1, 1, 0], None, None),
 ])
 def test_first_segment_crossing(start, end, state, endpoint):
     from sim.pfss_tracing import first_boundary_intersection
@@ -190,6 +195,22 @@ def test_first_segment_crossing(start, end, state, endpoint):
     else:
         assert hit.state == state
         np.testing.assert_allclose(hit.endpoint, endpoint, atol=1e-14)
+
+
+def test_outer_boundary_tangent_departure_is_open_in_scalar_and_batch():
+    from sim.pfss_tracing import trace_field, trace_field_batch
+
+    field = ConstantField([0, 1, 0])
+    scalar = trace_field(field, [2.5, 0, 0], max_steps=1)
+    batch = trace_field_batch(field, [[2.5, 0, 0], [1.5, 0, 0]], max_steps=1)
+    assert scalar.termination.state == batch.states[0] == 'open'
+    assert scalar.termination.reason == batch.reasons[0] == 'source_surface'
+    assert scalar.termination.endpoint_radius_residual == batch.endpoint_radius_residuals[0] == 0
+    np.testing.assert_array_equal(scalar.endpoint, [2.5, 0, 0])
+    np.testing.assert_array_equal(batch.endpoints[0], [2.5, 0, 0])
+    assert np.all(np.hypot.reduce(scalar.arc, axis=1) <= 2.5)
+    assert batch.states[1] == 'indeterminate'
+    assert batch.reasons[1] == 'max_steps'
 
 
 def test_wsa_masks_exclude_unknown_from_closed_and_match_scalar():

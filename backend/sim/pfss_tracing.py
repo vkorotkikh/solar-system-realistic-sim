@@ -95,6 +95,11 @@ def _boundary_intersections(starts, ends, r_ss):
     b = 2 * np.sum(p * d, axis=1)
     best = np.full(len(starts), np.inf)
     states = np.full(len(starts), '', dtype=object)
+    # A nonzero tangent at the outer boundary leaves the shell immediately,
+    # despite its zero radial derivative. Inward self-hits still do not count.
+    outer_departure = (a > 0) & (safe_norm(starts) == r_ss) & (b >= 0)
+    best[outer_departure] = 0.0
+    states[outer_departure] = 'open'
     for radius, state, orientation in [(1.0, 'closed', -1), (r_ss, 'open', 1)]:
         c = np.sum(p * p, axis=1) - (radius / scale)**2
         disc = b*b - 4*a*c
@@ -108,7 +113,8 @@ def _boundary_intersections(starts, ends, r_ss):
         for t in (t1, t2):
             # The derivative selects entry into the inner sphere or exit from
             # the outer sphere. Inward-shell t=0 self-hits are thus rejected;
-            # tangencies do not establish either topology.
+            # interior tangencies do not establish either topology. Immediate
+            # outer-boundary departures were handled above.
             with np.errstate(invalid='ignore'):
                 crossing = orientation * (b + 2*a*t) > 0
             accept = valid & (t >= -1e-14) & (t <= length + 1e-14) & crossing & (t < best)
