@@ -5,6 +5,7 @@ import json
 import math
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
@@ -51,6 +52,22 @@ class AiaImageIdentityMismatch(RuntimeError):
         )
 
 
+class SolarRealtimeFetchError(RuntimeError):
+    """A bounded upstream acquisition rejected an unsafe or invalid response."""
+
+    def __init__(self, code: str, detail: str):
+        self.code = code
+        self.detail = detail
+        super().__init__(f"{code}: {detail}")
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Expose redirects to the provider so every target is validated."""
+
+    def redirect_request(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
 class SolarRealtimeDataProvider:
     """
     Cached live-data ingestion for high-fidelity solar forcing.
@@ -67,6 +84,21 @@ class SolarRealtimeDataProvider:
     HELIOVIEWER_CLOSEST_URL = "https://api.helioviewer.org/v2/getClosestImage/"
     HELIOVIEWER_JP2_URL = "https://api.helioviewer.org/v2/getJP2Image/"
     HELIOVIEWER_TILE_URL = "https://api.helioviewer.org/v2/getTile/"
+    MAX_JSON_RESPONSE_BYTES = 1 * 1024 * 1024
+    MAX_TEXT_RESPONSE_BYTES = 8 * 1024 * 1024
+    MAX_BINARY_RESPONSE_BYTES = 4 * 1024 * 1024
+    RESPONSE_READ_CHUNK_BYTES = 64 * 1024
+    MAX_REDIRECTS = 3
+
+    # Redirects may move only within the source's explicitly trusted host set.
+    # In particular, an upstream response cannot turn this server into an SSRF
+    # client for link-local or private-network resources.
+    UPSTREAM_REDIRECT_HOSTS = {
+        "services.swpc.noaa.gov": frozenset({"services.swpc.noaa.gov"}),
+        "www.sidc.be": frozenset({"www.sidc.be", "sidc.be"}),
+        "sidc.be": frozenset({"www.sidc.be", "sidc.be"}),
+        "api.helioviewer.org": frozenset({"api.helioviewer.org"}),
+    }
 
     # SDO/AIA source IDs from Helioviewer data-source catalog.
     AIA_SOURCE_IDS = {
@@ -270,23 +302,213 @@ class SolarRealtimeDataProvider:
         }
 
     def _fetch_json(self, url: str) -> Any:
-        request = urllib.request.Request(
+        payload, _ = self._request_bytes(
             url,
-            headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
+            max_bytes=self.MAX_JSON_RESPONSE_BYTES,
         )
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
-            return json.loads(response.read().decode("utf-8"))
+        return json.loads(payload.decode("utf-8"))
 
     def _fetch_binary(self, url: str) -> tuple[bytes, str | None]:
-        request = urllib.request.Request(
+        return self._request_bytes(
             url,
-            headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
+            max_bytes=self.MAX_BINARY_RESPONSE_BYTES,
         )
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
-            content_type = response.headers.get("content-type")
-            if isinstance(content_type, str) and ";" in content_type:
-                content_type = content_type.split(";", 1)[0].strip()
-            return response.read(), content_type
+
+    @staticmethod
+    def _header_values(response: Any, name: str) -> list[str]:
+        headers = response.headers
+        get_all = getattr(headers, "get_all", None)
+        if callable(get_all):
+            return [str(value) for value in (get_all(name) or [])]
+        lowered = name.lower()
+        return [
+            str(value)
+            for key, value in headers.items()
+            if str(key).lower() == lowered
+        ]
+
+    @classmethod
+    def _validate_upstream_url(
+        cls,
+        url: str,
+        *,
+        allowed_hosts: frozenset[str] | None = None,
+        context: str = "upstream",
+    ) -> tuple[str, frozenset[str]]:
+        if not isinstance(url, str) or any(
+            ord(character) <= 32 or ord(character) >= 127 or character == "\\"
+            for character in url
+        ):
+            raise SolarRealtimeFetchError(
+                "unsafe_url",
+                f"Solar realtime {context} URL is malformed",
+            )
+        try:
+            parsed = urllib.parse.urlsplit(url)
+            port = parsed.port
+        except ValueError as exc:
+            raise SolarRealtimeFetchError(
+                "unsafe_url",
+                f"Solar realtime {context} URL is malformed",
+            ) from exc
+        hostname = parsed.hostname.lower() if parsed.hostname is not None else None
+        if (
+            parsed.scheme != "https"
+            or hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or parsed.fragment
+            or parsed.netloc.lower() != hostname
+        ):
+            raise SolarRealtimeFetchError(
+                "unsafe_url",
+                f"Solar realtime {context} URL is outside the explicit upstream allowlist",
+            )
+
+        if allowed_hosts is None:
+            source_hosts = cls.UPSTREAM_REDIRECT_HOSTS.get(hostname)
+            if source_hosts is None:
+                raise SolarRealtimeFetchError(
+                    "unsafe_url",
+                    "Solar realtime upstream allowlist rejected URL",
+                )
+        else:
+            source_hosts = allowed_hosts
+            if hostname not in source_hosts:
+                raise SolarRealtimeFetchError(
+                    "unsafe_url",
+                    f"Solar realtime {context} URL is outside the explicit upstream allowlist",
+                )
+
+        canonical = urllib.parse.urlunsplit(
+            ("https", hostname, parsed.path, parsed.query, "")
+        )
+        return canonical, source_hosts
+
+    def _open_response(self, request: urllib.request.Request) -> Any:
+        opener = urllib.request.build_opener(_NoRedirectHandler())
+        try:
+            return opener.open(request, timeout=self.timeout_s)
+        except urllib.error.HTTPError as exc:
+            # HTTPError is also a readable response. Redirects and non-2xx
+            # statuses are handled uniformly below, without automatic hops.
+            return exc
+
+    def _request_bytes(
+        self,
+        url: str,
+        *,
+        max_bytes: int,
+    ) -> tuple[bytes, str | None]:
+        current, allowed_hosts = self._validate_upstream_url(url)
+        visited = {current}
+        redirect_count = 0
+
+        while True:
+            request = urllib.request.Request(
+                current,
+                headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
+            )
+            response = self._open_response(request)
+            try:
+                reported_url = response.geturl()
+                final_url, _ = self._validate_upstream_url(
+                    reported_url,
+                    allowed_hosts=allowed_hosts,
+                    context="final URL",
+                )
+                if final_url != current:
+                    raise SolarRealtimeFetchError(
+                        "unexpected_final_url",
+                        "Solar realtime final URL does not match the validated request target",
+                    )
+
+                status = getattr(response, "status", None)
+                if status is None:
+                    status = response.getcode()
+                status = int(status)
+                if status in (301, 302, 303, 307, 308):
+                    locations = self._header_values(response, "Location")
+                    if len(locations) != 1 or not locations[0]:
+                        raise SolarRealtimeFetchError(
+                            "malformed_redirect",
+                            "Solar realtime redirect has no unique Location header",
+                        )
+                    if redirect_count >= self.MAX_REDIRECTS:
+                        raise SolarRealtimeFetchError(
+                            "redirect_overflow",
+                            "Solar realtime redirect limit exceeded",
+                        )
+                    target = urllib.parse.urljoin(current, locations[0])
+                    target, _ = self._validate_upstream_url(
+                        target,
+                        allowed_hosts=allowed_hosts,
+                        context="redirect",
+                    )
+                    if target in visited:
+                        raise SolarRealtimeFetchError(
+                            "redirect_loop",
+                            "Solar realtime redirect loop detected",
+                        )
+                    redirect_count += 1
+                    visited.add(target)
+                    current = target
+                    continue
+                if not 200 <= status < 300:
+                    raise SolarRealtimeFetchError(
+                        "http_status",
+                        f"Solar realtime upstream returned HTTP {status}",
+                    )
+
+                content_lengths = self._header_values(response, "Content-Length")
+                declared_size: int | None = None
+                if content_lengths:
+                    if len(content_lengths) != 1 or not content_lengths[0].isdigit():
+                        raise SolarRealtimeFetchError(
+                            "invalid_content_length",
+                            "Solar realtime upstream returned an invalid Content-Length",
+                        )
+                    declared_size = int(content_lengths[0])
+                    if declared_size > max_bytes:
+                        raise SolarRealtimeFetchError(
+                            "response_byte_limit",
+                            "Solar realtime response exceeds its byte limit",
+                        )
+
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    remaining = max_bytes - total
+                    read_size = min(self.RESPONSE_READ_CHUNK_BYTES, remaining + 1)
+                    chunk = response.read(read_size)
+                    if not isinstance(chunk, bytes):
+                        raise SolarRealtimeFetchError(
+                            "invalid_response_body",
+                            "Solar realtime upstream returned a non-binary body",
+                        )
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise SolarRealtimeFetchError(
+                            "response_byte_limit",
+                            "Solar realtime response exceeds its byte limit",
+                        )
+                    chunks.append(chunk)
+                if declared_size is not None and total != declared_size:
+                    raise SolarRealtimeFetchError(
+                        "content_length_mismatch",
+                        "Solar realtime response did not match its Content-Length",
+                    )
+
+                content_types = self._header_values(response, "Content-Type")
+                content_type = content_types[0] if len(content_types) == 1 else None
+                if content_type is not None and ";" in content_type:
+                    content_type = content_type.split(";", 1)[0].strip()
+                return b"".join(chunks), content_type
+            finally:
+                response.close()
 
     def _fetch_binary_cached(self, url: str, ttl_s: float | None = None) -> tuple[bytes, str | None]:
         cache_ttl = max(5.0, float(ttl_s if ttl_s is not None else self.cache_ttl_s))
@@ -396,12 +618,11 @@ class SolarRealtimeDataProvider:
                 self._inflight_fetches.pop(key, None)
 
     def _fetch_text(self, url: str) -> str:
-        request = urllib.request.Request(
+        payload, _ = self._request_bytes(
             url,
-            headers={"User-Agent": "solar-system-realistic-sim/solar-realtime-data"},
+            max_bytes=self.MAX_TEXT_RESPONSE_BYTES,
         )
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
-            return response.read().decode("utf-8", errors="replace")
+        return payload.decode("utf-8", errors="replace")
 
     def _latest_noaa_row(self, payload: Any, required_columns: list[str]) -> dict[str, Any] | None:
         if not isinstance(payload, list) or len(payload) < 2:
