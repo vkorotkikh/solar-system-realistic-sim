@@ -371,6 +371,7 @@ class SolarRealtimeDataProvider:
     ) -> dict[str, Any]:
         """Return a delivery-time view whose SWPC ages cannot be frozen by cache."""
 
+        snapshot = copy.deepcopy(snapshot)
         swpc = snapshot.get("swpc")
         if not isinstance(swpc, dict):
             return snapshot

@@ -43,7 +43,8 @@ def test_latest_and_explicit_epoch_have_distinct_cache_identities() -> None:
     historical = provider.latest(jd_tdb=2_460_000.5)
     current_again = provider.latest()
 
-    assert current is current_again
+    assert current == current_again
+    assert current is not current_again
     assert current["requested_jd"] is None
     assert historical["requested_jd"] == 2_460_000.5
     assert requests == [None, 2_460_000.5]
@@ -55,7 +56,8 @@ def test_provider_accepts_equal_legacy_jd_alias_and_reuses_canonical_cache() -> 
     legacy = provider.latest(jd=2_460_000.5)
     both = provider.latest(jd_tdb=2_460_000.5, jd=2_460_000.5)
 
-    assert legacy is both
+    assert legacy == both
+    assert legacy is not both
     assert requests == [2_460_000.5]
 
 
@@ -75,9 +77,64 @@ def test_same_epoch_reuses_snapshot_until_refresh() -> None:
     cached = provider.latest(jd_tdb=2_460_000.5)
     refreshed = provider.latest(jd_tdb=2_460_000.5, force_refresh=True)
 
-    assert cached is first
+    assert cached == first
+    assert cached is not first
     assert refreshed["fetch_number"] == 2
     assert requests == [2_460_000.5, 2_460_000.5]
+
+
+def test_snapshot_cache_deliveries_are_deeply_detached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    fetches = 0
+
+    def fetch_snapshot(_jd: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        return {
+            "schema": {"name": "solar_realtime_snapshot", "version": 1},
+            "source_status": {
+                "silso": {"ok": True, "coverage": {"status": "current"}},
+            },
+            "silso": {
+                "units": {"source_age_days": "d"},
+                "provenance": {
+                    "license": {"name": "CC BY-NC 4.0"},
+                },
+            },
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    first = provider.latest()
+    retained = provider._snapshot_cache[("snapshot", "latest", None)][1]
+
+    assert first is not retained
+    assert first["silso"] is not retained["silso"]
+    assert first["silso"]["provenance"] is not retained["silso"]["provenance"]
+
+    first["schema"]["version"] = 999
+    first["source_status"]["silso"]["coverage"]["status"] = "corrupt"
+    first["silso"]["units"]["source_age_days"] = "corrupt"
+    first["silso"]["provenance"]["license"]["name"] = "corrupt"
+    first["silso"]["provenance"]["license"]["large_marker"] = "x" * 1_000_000
+
+    second = provider.latest()
+
+    assert fetches == 1
+    assert second["schema"]["version"] == 1
+    assert second["source_status"]["silso"]["coverage"]["status"] == "current"
+    assert second["silso"]["units"]["source_age_days"] == "d"
+    assert second["silso"]["provenance"]["license"] == {
+        "name": "CC BY-NC 4.0",
+    }
+    assert retained["schema"]["version"] == 1
+    assert retained["source_status"]["silso"]["coverage"]["status"] == "current"
+    assert retained["silso"]["units"]["source_age_days"] == "d"
+    assert retained["silso"]["provenance"]["license"] == {
+        "name": "CC BY-NC 4.0",
+    }
 
 
 def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(
