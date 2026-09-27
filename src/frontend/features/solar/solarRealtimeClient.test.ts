@@ -243,6 +243,118 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
   });
 
+  it.each([
+    ['null payload with successful status', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso = null;
+    }],
+    ['delivered age beyond 62 days', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.source_age_days = 63;
+      payload.snapshot.source_status.silso.source_age_days = 63;
+    }],
+    ['delivered outside coverage', (payload: SolarRealtimePayload) => {
+      const outside = {
+        policy: 'through_last_elapsed_month' as const,
+        latest_expected_date: '2026-08-31',
+        status: 'outside_age_bound' as const
+      };
+      payload.snapshot.silso!.coverage = outside;
+      payload.snapshot.source_status.silso.coverage = { ...outside };
+    }],
+    ['successful status with failure reason', (payload: SolarRealtimePayload) => {
+      payload.snapshot.source_status.silso.reason = 'outside_source_age_bound';
+    }],
+    ['outside-age reason with current coverage', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso = null;
+      payload.snapshot.source_status.silso = {
+        ok: false,
+        updated: '2026-08-31',
+        reason: 'outside_source_age_bound',
+        source_age_days: 63,
+        coverage: {
+          policy: 'through_last_elapsed_month',
+          latest_expected_date: '2026-10-31',
+          status: 'current_for_published_coverage'
+        },
+        delivered_at_utc: '2026-11-02T12:00:00Z'
+      };
+    }],
+    ['outside-published reason with current coverage', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso = null;
+      payload.snapshot.source_status.silso = {
+        ok: false,
+        updated: '2026-09-01',
+        reason: 'outside_published_coverage',
+        source_age_days: 25,
+        coverage: {
+          policy: 'through_last_elapsed_month',
+          latest_expected_date: '2026-08-31',
+          status: 'current_for_published_coverage'
+        },
+        delivered_at_utc: '2026-09-26T12:00:00Z'
+      };
+    }],
+    ['null payload with malformed updated date', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso = null;
+      payload.snapshot.source_status.silso = {
+        ok: false,
+        updated: '31 August 2026',
+        reason: 'outside_source_age_bound',
+        source_age_days: 63,
+        coverage: {
+          policy: 'through_last_elapsed_month',
+          latest_expected_date: '2026-10-31',
+          status: 'outside_age_bound'
+        },
+        delivered_at_utc: '2026-11-02T12:00:00Z'
+      };
+    }]
+  ])('rejects contradictory SILSO delivery state (%s)', (_label, mutate) => {
+    const payload = payloadWithSilso();
+    mutate(payload);
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
+  it.each([
+    {
+      ok: false,
+      updated: '2026-08-31',
+      reason: 'outside_source_age_bound',
+      source_age_days: 63,
+      coverage: {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-10-31',
+        status: 'outside_age_bound'
+      },
+      delivered_at_utc: '2026-11-02T12:00:00Z'
+    },
+    {
+      ok: false,
+      updated: '2026-09-01',
+      reason: 'outside_published_coverage',
+      source_age_days: 25,
+      coverage: {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-08-31',
+        status: 'outside_published_coverage'
+      },
+      delivered_at_utc: '2026-09-26T12:00:00.125Z'
+    },
+    {
+      ok: false,
+      updated: null,
+      reason: 'invalid_delivery_date',
+      delivered_at_utc: '2026-09-26T12:00:00Z'
+    }
+  ])('accepts coherent unavailable SILSO diagnostic state', (silsoStatus) => {
+    const payload = validPayload();
+    payload.snapshot.source_status.silso = silsoStatus as SolarRealtimePayload[
+      'snapshot'
+    ]['source_status']['silso'];
+
+    expect(validateSolarRealtimePayload(payload).snapshot.silso).toBeNull();
+  });
+
   it('accepts a legacy v1 snapshot with unavailable SILSO metadata', () => {
     expect(validateSolarRealtimePayload(validPayload()).snapshot.silso).toBeNull();
   });

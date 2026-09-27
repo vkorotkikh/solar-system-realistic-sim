@@ -263,7 +263,44 @@ function validateSilsoDelivery(
     }
   }
 
-  if (payload === null) return null;
+  if (hasOwn(rawStatus, 'updated') && rawStatus.updated !== null) {
+    requireIsoDate(rawStatus.updated, 'Solar realtime SILSO source status updated');
+  }
+  if (rawStatus.ok === true && hasOwn(rawStatus, 'reason')) {
+    throw new Error('Solar realtime SILSO successful status cannot carry a failure reason');
+  }
+
+  if (payload === null) {
+    if (rawStatus.ok === true) {
+      throw new Error('Solar realtime SILSO null payload cannot claim success');
+    }
+    if (rawStatus.reason === 'outside_source_age_bound') {
+      if (
+        typeof rawStatus.source_age_days !== 'number'
+        || rawStatus.source_age_days <= 62
+        || !isRecord(rawStatus.coverage)
+        || rawStatus.coverage.status !== 'outside_age_bound'
+      ) {
+        throw new Error('Solar realtime SILSO outside-age diagnostic is inconsistent');
+      }
+    } else if (rawStatus.reason === 'outside_published_coverage') {
+      if (
+        !isRecord(rawStatus.coverage)
+        || rawStatus.coverage.status !== 'outside_published_coverage'
+      ) {
+        throw new Error('Solar realtime SILSO published-coverage diagnostic is inconsistent');
+      }
+    } else if (rawStatus.reason === 'invalid_delivery_date') {
+      if (
+        rawStatus.updated !== null
+        || hasOwn(rawStatus, 'source_age_days')
+        || hasOwn(rawStatus, 'coverage')
+      ) {
+        throw new Error('Solar realtime SILSO invalid-date diagnostic is inconsistent');
+      }
+    }
+    return null;
+  }
   if (!isRecord(payload)) {
     throw new Error('Solar realtime SILSO payload must be an object or null');
   }
@@ -305,6 +342,9 @@ function validateSilsoDelivery(
     if (statusAge !== sourceAgeDays) {
       throw new Error('Solar realtime SILSO payload and source status metadata must match');
     }
+    if (sourceAgeDays > 62) {
+      throw new Error('Solar realtime SILSO delivered source_age_days exceeds 62');
+    }
   }
 
   const payloadHasCoverage = hasOwn(payload, 'coverage');
@@ -327,6 +367,12 @@ function validateSilsoDelivery(
       || statusCoverage.status !== coverage.status
     ) {
       throw new Error('Solar realtime SILSO payload and source status metadata must match');
+    }
+    if (
+      coverage.status === 'outside_age_bound'
+      || coverage.status === 'outside_published_coverage'
+    ) {
+      throw new Error('Solar realtime SILSO delivered coverage is outside bounds');
     }
   }
   return payload as unknown as SolarRealtimeSilsoSnapshot;
