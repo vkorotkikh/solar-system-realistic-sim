@@ -130,6 +130,32 @@ function projectedPayload({
   return payload;
 }
 
+function payloadWithSilso(): SolarRealtimePayload {
+  const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+  payload.snapshot.silso = {
+    schema: { name: 'wdc_silso_daily_total_sunspot_number', version: 2 },
+    date: '2026-08-31',
+    source_age_days: 26,
+    coverage: {
+      policy: 'through_last_elapsed_month',
+      latest_expected_date: '2026-08-31',
+      status: 'current_for_published_coverage'
+    }
+  };
+  payload.snapshot.source_status.silso = {
+    ok: true,
+    updated: '2026-08-31',
+    source_age_days: 26,
+    coverage: {
+      policy: 'through_last_elapsed_month',
+      latest_expected_date: '2026-08-31',
+      status: 'current_for_published_coverage'
+    },
+    delivered_at_utc: '2026-09-26T15:00:00Z'
+  };
+  return payload;
+}
+
 function deferred<T>(): {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -151,6 +177,76 @@ afterEach(() => {
 });
 
 describe('SolarRealtimeClient delivery contract', () => {
+  it('accepts SILSO delivery metadata with exact payload and status parity', () => {
+    const payload = validateSolarRealtimePayload(payloadWithSilso());
+
+    expect(payload.snapshot.silso).toMatchObject({
+      date: '2026-08-31',
+      source_age_days: 26,
+      coverage: {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-08-31',
+        status: 'current_for_published_coverage'
+      }
+    });
+    expect(payload.snapshot.source_status.silso).toMatchObject({
+      ok: true,
+      updated: '2026-08-31',
+      source_age_days: 26,
+      delivered_at_utc: '2026-09-26T15:00:00Z'
+    });
+  });
+
+  it.each([
+    ['negative age', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.source_age_days = -1;
+    }],
+    ['fractional age', (payload: SolarRealtimePayload) => {
+      payload.snapshot.source_status.silso.source_age_days = 1.5;
+    }],
+    ['coverage policy', (payload: SolarRealtimePayload) => {
+      (payload.snapshot.silso!.coverage as unknown as Record<string, unknown>).policy =
+        'calendar_month';
+    }],
+    ['coverage status', (payload: SolarRealtimePayload) => {
+      (
+        payload.snapshot.source_status.silso.coverage as unknown as Record<string, unknown>
+      ).status = 'current';
+    }],
+    ['observation date', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.date = 'August 31, 2026';
+    }],
+    ['coverage date', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.coverage = {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-08-31T00:00:00Z',
+        status: 'current_for_published_coverage'
+      };
+    }],
+    ['delivery timestamp', (payload: SolarRealtimePayload) => {
+      payload.snapshot.source_status.silso.delivered_at_utc = 'not-a-time';
+    }],
+    ['payload/status age parity', (payload: SolarRealtimePayload) => {
+      payload.snapshot.source_status.silso.source_age_days = 27;
+    }],
+    ['payload/status coverage parity', (payload: SolarRealtimePayload) => {
+      payload.snapshot.source_status.silso.coverage = {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-07-31',
+        status: 'lagging_within_age_bound'
+      };
+    }]
+  ])('rejects invalid SILSO temporal metadata (%s)', (_label, mutate) => {
+    const payload = payloadWithSilso();
+    mutate(payload);
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
+  it('accepts a legacy v1 snapshot with unavailable SILSO metadata', () => {
+    expect(validateSolarRealtimePayload(validPayload()).snapshot.silso).toBeNull();
+  });
+
   it('accepts a labelled backend snapshot and reports its provenance', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-26T15:00:30Z'));

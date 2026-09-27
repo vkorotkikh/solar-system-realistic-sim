@@ -15,11 +15,38 @@ export const SOLAR_REALTIME_ERROR_BACKOFF_MS = 30_000;
 export const SOLAR_AIA_MAX_RENDER_AGE_MS = 6 * 60 * 60 * 1_000;
 const SOLAR_REALTIME_MAX_FUTURE_SKEW_MS = 5 * 60 * 1_000;
 
+export type SolarRealtimeSilsoCoverageStatus =
+  | 'current_for_published_coverage'
+  | 'lagging_within_age_bound'
+  | 'outside_age_bound'
+  | 'outside_published_coverage';
+
+export interface SolarRealtimeSilsoCoverage {
+  policy: 'through_last_elapsed_month';
+  latest_expected_date: string;
+  status: SolarRealtimeSilsoCoverageStatus;
+}
+
 export interface SolarRealtimeSourceStatus {
   ok: boolean;
   updated?: string | null;
   endpoint?: string;
   error?: string;
+  reason?: string;
+  source_age_days?: number;
+  coverage?: SolarRealtimeSilsoCoverage;
+  delivered_at_utc?: string;
+  [key: string]: unknown;
+}
+
+export interface SolarRealtimeSilsoSnapshot {
+  schema: {
+    name: 'wdc_silso_daily_total_sunspot_number';
+    version: 2;
+  };
+  date: string;
+  source_age_days: number;
+  coverage: SolarRealtimeSilsoCoverage;
   [key: string]: unknown;
 }
 
@@ -67,7 +94,7 @@ export interface SolarRealtimeSnapshot {
     gong_synoptic: SolarRealtimeSourceStatus;
   };
   swpc: Record<string, unknown> | null;
-  silso: Record<string, unknown> | null;
+  silso: SolarRealtimeSilsoSnapshot | null;
   sdo_aia: SolarRealtimeAiaSnapshot | null;
   gong_synoptic: Record<string, unknown> | null;
   combined_activity_proxy: number | null;
@@ -152,6 +179,130 @@ function requireUtcTimestamp(value: unknown, context: string): string {
     throw new Error(`${context} must be a parseable UTC timestamp`);
   }
   return value;
+}
+
+function requireIsoDate(value: unknown, context: string): string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`${context} must be an ISO calendar date`);
+  }
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error(`${context} must be an ISO calendar date`);
+  }
+  return value;
+}
+
+function requireNonnegativeInteger(value: unknown, context: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${context} must be a finite nonnegative integer`);
+  }
+  return value;
+}
+
+const SILSO_COVERAGE_STATUSES = new Set<SolarRealtimeSilsoCoverageStatus>([
+  'current_for_published_coverage',
+  'lagging_within_age_bound',
+  'outside_age_bound',
+  'outside_published_coverage'
+]);
+
+function validateSilsoCoverage(value: unknown, context: string): SolarRealtimeSilsoCoverage {
+  if (
+    !isRecord(value)
+    || value.policy !== 'through_last_elapsed_month'
+    || typeof value.status !== 'string'
+    || !SILSO_COVERAGE_STATUSES.has(value.status as SolarRealtimeSilsoCoverageStatus)
+  ) {
+    throw new Error(`${context} has an invalid SILSO coverage policy or status`);
+  }
+  requireIsoDate(value.latest_expected_date, `${context}.latest_expected_date`);
+  return value as unknown as SolarRealtimeSilsoCoverage;
+}
+
+function validateSilsoDelivery(
+  payload: unknown,
+  rawStatus: unknown
+): SolarRealtimeSilsoSnapshot | null {
+  if (!isRecord(rawStatus)) {
+    throw new Error('Solar realtime SILSO source status must be an object');
+  }
+  if (hasOwn(rawStatus, 'source_age_days')) {
+    requireNonnegativeInteger(
+      rawStatus.source_age_days,
+      'Solar realtime SILSO source status source_age_days'
+    );
+  }
+  if (hasOwn(rawStatus, 'coverage')) {
+    validateSilsoCoverage(rawStatus.coverage, 'Solar realtime SILSO source status coverage');
+  }
+  if (hasOwn(rawStatus, 'delivered_at_utc')) {
+    requireUtcTimestamp(
+      rawStatus.delivered_at_utc,
+      'Solar realtime SILSO source status delivered_at_utc'
+    );
+  }
+  if (hasOwn(rawStatus, 'reason')) {
+    const reasons = new Set([
+      'invalid_delivery_date',
+      'outside_published_coverage',
+      'outside_source_age_bound'
+    ]);
+    if (typeof rawStatus.reason !== 'string' || !reasons.has(rawStatus.reason)) {
+      throw new Error('Solar realtime SILSO source status reason is invalid');
+    }
+  }
+
+  if (payload === null) return null;
+  if (!isRecord(payload)) {
+    throw new Error('Solar realtime SILSO payload must be an object or null');
+  }
+  requireSchema(
+    payload.schema,
+    'wdc_silso_daily_total_sunspot_number',
+    2,
+    'Solar realtime SILSO payload'
+  );
+  const observationDate = requireIsoDate(
+    payload.date,
+    'Solar realtime SILSO payload date'
+  );
+  const sourceAgeDays = requireNonnegativeInteger(
+    payload.source_age_days,
+    'Solar realtime SILSO payload source_age_days'
+  );
+  const coverage = validateSilsoCoverage(
+    payload.coverage,
+    'Solar realtime SILSO payload coverage'
+  );
+  if (rawStatus.ok !== true) {
+    throw new Error('Solar realtime SILSO payload requires a successful source status');
+  }
+  const statusDate = requireIsoDate(
+    rawStatus.updated,
+    'Solar realtime SILSO source status updated'
+  );
+  const statusAge = requireNonnegativeInteger(
+    rawStatus.source_age_days,
+    'Solar realtime SILSO source status source_age_days'
+  );
+  const statusCoverage = validateSilsoCoverage(
+    rawStatus.coverage,
+    'Solar realtime SILSO source status coverage'
+  );
+  requireUtcTimestamp(
+    rawStatus.delivered_at_utc,
+    'Solar realtime SILSO source status delivered_at_utc'
+  );
+  if (
+    statusDate !== observationDate
+    || statusAge !== sourceAgeDays
+    || statusCoverage.policy !== coverage.policy
+    || statusCoverage.latest_expected_date !== coverage.latest_expected_date
+    || statusCoverage.status !== coverage.status
+  ) {
+    throw new Error('Solar realtime SILSO payload and source status metadata must match');
+  }
+  return payload as unknown as SolarRealtimeSilsoSnapshot;
 }
 
 function validateSourceStatus(value: unknown, name: string): SolarRealtimeSourceStatus {
@@ -313,7 +464,8 @@ export function validateSolarRealtimePayload(rawPayload: unknown): SolarRealtime
   if (snapshot.sdo_aia !== null) {
     validateAiaSnapshot(snapshot.sdo_aia);
   }
-  for (const source of ['swpc', 'silso', 'gong_synoptic'] as const) {
+  validateSilsoDelivery(snapshot.silso, snapshot.source_status.silso);
+  for (const source of ['swpc', 'gong_synoptic'] as const) {
     const sourcePayload = snapshot[source];
     if (sourcePayload !== null && !isRecord(sourcePayload)) {
       throw new Error(`Solar realtime snapshot ${source} must be an object or null`);
