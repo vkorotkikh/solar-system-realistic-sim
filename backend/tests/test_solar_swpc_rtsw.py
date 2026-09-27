@@ -394,6 +394,24 @@ def test_fetch_swpc_raw_json_skips_overlong_integer_and_selects_later_row(
     assert result["solar_wind_speed_kms"] == 440.0
 
 
+def test_fetch_swpc_skips_non_ascii_and_lone_surrogate_time_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = [
+        _wind_row("2026-09-26\u202822:59:00Z", proton_speed=700.0),
+        _wind_row("\ud800", proton_speed=600.0),
+        _wind_row("2026-09-26T22:55:00Z", proton_speed=440.0),
+    ]
+    mag = [_mag_row("2026-09-26T22:58:00Z")]
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
+    assert result["solar_wind_speed_kms"] == 440.0
+
+
 @pytest.mark.parametrize(
     ("product", "field", "value"),
     [
