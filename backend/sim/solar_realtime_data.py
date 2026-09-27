@@ -24,7 +24,7 @@ def _clamp(value: float, lower: float, upper: float) -> float:
 def _safe_float(value: Any) -> float | None:
     try:
         out = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if not math.isfinite(out):
         return None
@@ -1206,11 +1206,11 @@ class SolarRealtimeDataProvider:
             parsed = datetime.fromisoformat(
                 value[:-1] + "+00:00" if value.endswith("Z") else value
             )
-        except ValueError:
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except (ValueError, OverflowError, OSError):
             return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
 
     @staticmethod
     def _canonical_utc_time_tag(value: datetime) -> str:
@@ -1230,17 +1230,17 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _newest_usable_swpc_row(
+    def _usable_swpc_rows(
         self,
         payload: Any,
         *,
         required_numeric_fields: tuple[str, ...],
         reference_time_utc: datetime,
-    ) -> tuple[dict[str, Any], datetime] | None:
-        """Select the newest active, quality-zero row from the RTSW object schema."""
+    ) -> list[tuple[datetime, dict[str, Any]]]:
+        """Return newest-first, row-locally valid RTSW observations."""
 
         if not isinstance(payload, list):
-            return None
+            return []
 
         candidates: list[tuple[datetime, dict[str, Any]]] = []
         for row in payload:
@@ -1248,19 +1248,20 @@ class SolarRealtimeDataProvider:
                 continue
 
             quality = row.get("overall_quality")
-            if (
-                isinstance(quality, bool)
-                or not isinstance(quality, (int, float))
-                or not math.isfinite(float(quality))
-                or float(quality) != 0.0
-            ):
+            if isinstance(quality, bool) or not isinstance(quality, (int, float)):
+                continue
+            quality_number = _safe_float(quality)
+            if quality_number != 0.0:
                 continue
 
             source = row.get("source")
             if (
                 not isinstance(source, str)
                 or not source
-                or len(source.encode("utf-8")) > 64
+                or source != source.strip()
+                or not source.isascii()
+                or len(source) > 64
+                or any(ord(character) < 32 or ord(character) == 127 for character in source)
             ):
                 continue
 
@@ -1284,26 +1285,60 @@ class SolarRealtimeDataProvider:
             for field in required_numeric_fields:
                 value = row.get(field)
                 numeric_bounds = self.SWPC_NUMERIC_BOUNDS.get(field)
+                numeric_value = (
+                    _safe_float(value)
+                    if not isinstance(value, bool) and isinstance(value, (int, float))
+                    else None
+                )
                 if (
-                    isinstance(value, bool)
-                    or not isinstance(value, (int, float))
-                    or not math.isfinite(float(value))
+                    numeric_value is None
                     or numeric_bounds is None
-                    or not numeric_bounds[0] <= float(value) <= numeric_bounds[1]
+                    or not numeric_bounds[0] <= numeric_value <= numeric_bounds[1]
                 ):
                     valid = False
                     break
-                sanitized[field] = float(value)
-            if valid:
-                candidates.append((time_tag, sanitized))
+                sanitized[field] = numeric_value
+            if not valid:
+                continue
+            if (
+                "bt" in sanitized
+                and "bz_gsm" in sanitized
+                and abs(sanitized["bz_gsm"]) > sanitized["bt"] + 1e-9
+            ):
+                continue
+            candidates.append((time_tag, sanitized))
 
-        if not candidates:
-            return None
-        selected_time, selected_row = max(
-            candidates,
-            key=lambda candidate: candidate[0],
-        )
-        return selected_row, selected_time
+        candidates.sort(key=lambda candidate: candidate[0], reverse=True)
+        return candidates
+
+    def _newest_coherent_swpc_pair(
+        self,
+        wind_candidates: list[tuple[datetime, dict[str, Any]]],
+        mag_candidates: list[tuple[datetime, dict[str, Any]]],
+    ) -> tuple[
+        tuple[datetime, dict[str, Any]],
+        tuple[datetime, dict[str, Any]],
+    ] | None:
+        """Select the freshest pair whose component timestamps satisfy skew."""
+
+        wind_index = 0
+        mag_index = 0
+        while (
+            wind_index < len(wind_candidates)
+            and mag_index < len(mag_candidates)
+        ):
+            wind_candidate = wind_candidates[wind_index]
+            mag_candidate = mag_candidates[mag_index]
+            wind_time = wind_candidate[0]
+            mag_time = mag_candidate[0]
+            skew_s = (wind_time - mag_time).total_seconds()
+            if abs(skew_s) <= self.SWPC_MAX_PRODUCT_SKEW_S:
+                return wind_candidate, mag_candidate
+            if skew_s > 0:
+                wind_index += 1
+            else:
+                mag_index += 1
+        return None
 
     def _fetch_swpc(self) -> dict[str, Any]:
         wind = self._fetch_json(
@@ -1316,7 +1351,7 @@ class SolarRealtimeDataProvider:
         )
         retrieved_at = self._utc_now().astimezone(timezone.utc)
 
-        wind_selected = self._newest_usable_swpc_row(
+        wind_candidates = self._usable_swpc_rows(
             wind,
             required_numeric_fields=(
                 "proton_density",
@@ -1325,22 +1360,25 @@ class SolarRealtimeDataProvider:
             ),
             reference_time_utc=retrieved_at,
         )
-        mag_selected = self._newest_usable_swpc_row(
+        mag_candidates = self._usable_swpc_rows(
             mag,
             required_numeric_fields=("bt", "bz_gsm"),
             reference_time_utc=retrieved_at,
         )
 
-        if wind_selected is None or mag_selected is None:
+        if not wind_candidates or not mag_candidates:
             raise RuntimeError(
                 "NOAA SWPC RTSW payloads missing usable active quality rows"
             )
 
-        wind_row, wind_time = wind_selected
-        mag_row, mag_time = mag_selected
-        product_skew_s = abs((wind_time - mag_time).total_seconds())
-        if product_skew_s > self.SWPC_MAX_PRODUCT_SKEW_S:
+        selected_pair = self._newest_coherent_swpc_pair(
+            wind_candidates,
+            mag_candidates,
+        )
+        if selected_pair is None:
             raise RuntimeError("NOAA SWPC RTSW product timestamps exceed temporal skew")
+        (wind_time, wind_row), (mag_time, mag_row) = selected_pair
+        product_skew_s = abs((wind_time - mag_time).total_seconds())
         wind_age_s = (retrieved_at - wind_time).total_seconds()
         mag_age_s = (retrieved_at - mag_time).total_seconds()
         oldest_component_time = min(wind_time, mag_time)
@@ -1350,9 +1388,6 @@ class SolarRealtimeDataProvider:
         temperature_k = wind_row["proton_temperature"]
         imf_bt_nt = mag_row["bt"]
         imf_bz_nt = mag_row["bz_gsm"]
-        if abs(imf_bz_nt) > imf_bt_nt + 1e-9:
-            raise RuntimeError("NOAA SWPC RTSW magnetic vector is physically inconsistent")
-
         dynamic_pressure_npa = 1.6726e-6 * density_pcc * speed_kms * speed_kms
         if not math.isfinite(dynamic_pressure_npa):
             raise RuntimeError("NOAA SWPC RTSW derived values are non-finite")

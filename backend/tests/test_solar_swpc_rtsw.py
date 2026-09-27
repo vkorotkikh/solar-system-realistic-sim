@@ -18,6 +18,33 @@ def _fixture(name: str) -> Any:
     return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
 
 
+def _wind_row(time_tag: str, **overrides: Any) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "active": True,
+        "overall_quality": 0,
+        "source": "SOLAR1",
+        "time_tag": time_tag,
+        "proton_density": 4.0,
+        "proton_speed": 450.0,
+        "proton_temperature": 150_000.0,
+    }
+    row.update(overrides)
+    return row
+
+
+def _mag_row(time_tag: str, **overrides: Any) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "active": True,
+        "overall_quality": 0,
+        "source": "SOLAR1",
+        "time_tag": time_tag,
+        "bt": 4.0,
+        "bz_gsm": -1.0,
+    }
+    row.update(overrides)
+    return row
+
+
 def _install_fixture_fetcher(
     monkeypatch: pytest.MonkeyPatch,
     provider: SolarRealtimeDataProvider,
@@ -228,11 +255,71 @@ def test_fetch_swpc_rejects_temporally_incoherent_product_pair(
     mag = _fixture("swpc_rtsw_mag_1m.json")
     for row in wind:
         if row.get("active") is True and row.get("overall_quality") == 0:
-            row["time_tag"] = "2026-09-26T22:50:00Z"
+            row["time_tag"] = "2026-09-26T22:45:00Z"
     _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
 
     with pytest.raises(RuntimeError, match="exceed temporal skew"):
         provider._fetch_swpc()
+
+
+def test_fetch_swpc_selects_newest_coherent_pair_instead_of_failing_on_newest_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = [
+        _wind_row("2026-09-26T22:59:00Z", proton_speed=700.0),
+        _wind_row("2026-09-26T22:54:00Z", proton_speed=440.0),
+    ]
+    mag = [_mag_row("2026-09-26T22:50:00Z")]
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["wind_time_tag"] == "2026-09-26T22:54:00Z"
+    assert result["mag_time_tag"] == "2026-09-26T22:50:00Z"
+    assert result["product_skew_s"] == 240.0
+    assert result["solar_wind_speed_kms"] == 440.0
+
+
+def test_fetch_swpc_skips_newest_magnetometer_row_with_impossible_vector(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    mag = [
+        _mag_row("2026-09-26T22:59:00Z", bt=4.0, bz_gsm=-5.0),
+        _mag_row("2026-09-26T22:58:00Z", bt=4.2, bz_gsm=-1.1),
+    ]
+    _install_fixture_fetcher(monkeypatch, provider, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["mag_time_tag"] == "2026-09-26T22:58:00Z"
+    assert result["imf_bt_nt"] == 4.2
+    assert result["imf_bz_nt"] == -1.1
+
+
+@pytest.mark.parametrize(
+    "malformed_row",
+    [
+        _wind_row("2026-09-26T22:59:00Z", overall_quality=10**400),
+        _wind_row("2026-09-26T22:59:00Z", proton_speed=10**400),
+        _wind_row("2026-09-26T22:59:00Z", source="\ud800"),
+        _wind_row("9999-12-31T23:59:59-23:59"),
+    ],
+)
+def test_fetch_swpc_skips_adversarial_row_without_suppressing_later_valid_data(
+    monkeypatch: pytest.MonkeyPatch,
+    malformed_row: dict[str, Any],
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = [malformed_row, _wind_row("2026-09-26T22:55:00Z")]
+    mag = [_mag_row("2026-09-26T22:58:00Z")]
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
+    assert result["mag_time_tag"] == "2026-09-26T22:58:00Z"
 
 
 @pytest.mark.parametrize(
@@ -280,7 +367,7 @@ def test_fetch_swpc_rejects_bz_component_larger_than_total_field(
             row["bz_gsm"] = -5.0
     _install_fixture_fetcher(monkeypatch, provider, mag=mag)
 
-    with pytest.raises(RuntimeError, match="magnetic vector is physically inconsistent"):
+    with pytest.raises(RuntimeError, match="missing usable active quality rows"):
         provider._fetch_swpc()
 
 
