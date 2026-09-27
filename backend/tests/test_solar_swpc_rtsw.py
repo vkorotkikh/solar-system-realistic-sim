@@ -124,7 +124,7 @@ def test_fixture_manifest_pins_authority_selection_contract_and_hashes() -> None
         "active": True,
         "overall_quality": 0,
         "required_numeric_fields": "finite JSON numbers within defensive_operational_envelope_v1",
-        "selection": "newest qualifying time_tag",
+        "selection": "freshest coherent pair from newest-first qualifying rows",
         "fixture_reference_time_utc": "2026-09-26T23:00:00Z",
         "maximum_sample_age_s": 900.0,
         "maximum_future_offset_s": 120.0,
