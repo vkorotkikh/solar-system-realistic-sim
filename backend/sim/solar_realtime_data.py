@@ -707,10 +707,16 @@ class SolarRealtimeDataProvider:
     @classmethod
     def _canonical_aia_media_type(
         cls,
-        _status: int,
+        status: int,
         raw_content_type_values: list[str],
     ) -> str:
         """Validate one physical RFC 9110 Content-Type field for an AIA PNG."""
+
+        if status != 200:
+            raise SolarRealtimeFetchError(
+                "http_status",
+                "AIA upstream did not return exact HTTP 200",
+            )
 
         def invalid() -> SolarRealtimeFetchError:
             return SolarRealtimeFetchError(
