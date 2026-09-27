@@ -182,23 +182,7 @@ def test_importance_seeding_uses_cell_area_and_explicit_coordinates(factory):
     assert np.all(np.cos(seeds[:, 0]) > 0.95)
 
 
-def test_legacy_gong_array_is_not_claimed_as_validated_observed_input(monkeypatch):
-    import sim.pfss_magnetogram as pfss
-    # Isolate network and expensive tracing; real ingestion and projection run.
-    monkeypatch.setattr(pfss, "fetch_gong_synoptic_map", lambda *a, **k: np.ones((180, 360)))
-    monkeypatch.setattr(pfss, "trace_field_lines", lambda *a, **k: [])
-    monkeypatch.setattr(pfss, "compute_wsa_velocity_map", lambda *a, **k: {"mean_velocity_kms": 400})
-    result = pfss.PFSSCache().get_or_compute(2460000, 0, n_lines=8, lmax=1)
-    assert result["source"] == "synthetic"
-    assert "orientation" in result["fallback_reason"]
-    assert result["snapshot_id"]["jd_tdb"] == 2460000
-    assert result["snapshot_id"]["activity"] == 0
-    assert result["snapshot_sha256"] == result["snapshot_id"]["sha256"]
-    assert result["solution_config"]["lmax"] == 1
-    assert result["magnetogram_provenance"] is None
-
-
-def test_validated_observed_snapshot_reaches_decomposition_without_reorientation(monkeypatch):
+def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation(monkeypatch):
     from dataclasses import fields
 
     import sim.gong_magnetogram as gong
@@ -220,8 +204,12 @@ def test_validated_observed_snapshot_reaches_decomposition_without_reorientation
         "compute_wsa_velocity_map",
         lambda *a, **k: {"mean_velocity_kms": 400.0},
     )
+    request_jd_tdb = (
+        snapshot.snapshot_id.reference_jd_tdb
+        + gong.GongFetchLimits().max_lookback_hours / 48.0
+    )
     result = pfss.PFSSCache().get_or_compute(
-        2_460_000,
+        request_jd_tdb,
         0.0,
         snapshot=snapshot,
         solution_config=pfss.PFSSSolutionConfig(line_count=8, lmax=1),

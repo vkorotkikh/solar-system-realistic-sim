@@ -16,14 +16,10 @@ from __future__ import annotations
 import base64
 import copy
 import hashlib
-import io
 import json
 import math
-import struct
 import threading
-from collections import OrderedDict
 import time
-import urllib.request
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
@@ -37,7 +33,6 @@ from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
-    jd_tdb_to_utc_datetime,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
     provider_carrington_state_from_crnow,
@@ -63,11 +58,6 @@ WSA_CALIBRATION_STATUS = "unvalidated"
 WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
 WSA_RADIAL_FIELD_FLOOR = 1e-15
 
-# GONG synoptic magnetogram archive URL pattern
-# bqs = "quick synoptic" maps (updated daily, sine-latitude grid)
-GONG_SYNOPTIC_BASE = "https://gong.nso.edu/data/magmap/QR/bqs/"
-
-
 def _clamp(value: float, lower: float, upper: float) -> float:
     return min(upper, max(lower, value))
 
@@ -84,146 +74,6 @@ def carrington_rotation_jd_range(cr: int) -> tuple[float, float]:
     """Return mean ``(start_jd_tdb, end_jd_tdb)`` compatibility boundaries."""
 
     return mean_carrington_rotation_range_jd_tdb(cr)
-
-
-# ─── Minimal FITS Reader (numpy-only) ─────────────────────────────────────────
-
-def _parse_fits_primary_image(data: bytes) -> np.ndarray | None:
-    """Parse a simple FITS file and extract the primary HDU 2D image.
-
-    Only handles the minimal subset needed for GONG synoptic maps:
-    single-extension, 2D float/int images.  No astropy needed.
-    """
-    if len(data) < 2880 or data[:6] != b"SIMPLE":
-        return None
-
-    # Parse header blocks (2880-byte records)
-    header: dict[str, str] = {}
-    offset = 0
-    while offset < len(data):
-        block = data[offset:offset + 2880]
-        if len(block) < 2880:
-            break
-        offset += 2880
-        for i in range(0, 2880, 80):
-            card = block[i:i + 80].decode("ascii", errors="replace")
-            key = card[:8].strip()
-            if key == "END":
-                # Header is complete
-                break
-            if "=" in card[8:10]:
-                val = card[10:].split("/")[0].strip().strip("'").strip()
-                header[key] = val
-        if "END" in [block[i:i + 80].decode("ascii", errors="replace")[:8].strip()
-                     for i in range(0, 2880, 80)]:
-            break
-
-    try:
-        naxis = int(header.get("NAXIS", "0"))
-        bitpix = int(header.get("BITPIX", "0"))
-        if naxis < 2:
-            return None
-        naxis1 = int(header.get("NAXIS1", "0"))  # columns (longitude)
-        naxis2 = int(header.get("NAXIS2", "0"))  # rows (latitude)
-        if naxis1 < 10 or naxis2 < 10:
-            return None
-    except (ValueError, KeyError):
-        return None
-
-    # Determine numpy dtype from BITPIX
-    dtype_map = {
-        8: np.uint8,
-        16: np.int16,
-        32: np.int32,
-        -32: np.float32,
-        -64: np.float64,
-    }
-    dtype = dtype_map.get(bitpix)
-    if dtype is None:
-        return None
-
-    nbytes = naxis1 * naxis2 * abs(bitpix) // 8
-    if offset + nbytes > len(data):
-        return None
-
-    # FITS is big-endian
-    arr = np.frombuffer(data[offset:offset + nbytes], dtype=dtype.newbyteorder(">"))
-    arr = arr.reshape((naxis2, naxis1)).astype(np.float64)
-
-    # Apply BSCALE and BZERO if present
-    bscale = float(header.get("BSCALE", "1.0"))
-    bzero = float(header.get("BZERO", "0.0"))
-    if bscale != 1.0 or bzero != 0.0:
-        arr = arr * bscale + bzero
-
-    return arr
-
-
-# ─── GONG Data Fetching ───────────────────────────────────────────────────────
-
-def fetch_gong_synoptic_map(cr: int, timeout_s: float = 6.0) -> np.ndarray | None:
-    """Fetch a GONG quick-reduce synoptic magnetogram for a Carrington rotation.
-
-    Returns a 2D numpy array of Br (Gauss) on a sine-latitude × longitude grid,
-    or None if the data is unavailable.
-    """
-    # Compute approximate date for this CR to build the archive path
-    cr_start_jd_tdb, _ = carrington_rotation_jd_range(cr)
-    date = jd_tdb_to_utc_datetime(cr_start_jd_tdb)
-    yyyymm = date.strftime("%Y%m")
-
-    # GONG bqs directory contains files named like:
-    # mrbqs260321t2354c2291_000.fits.gz (or similar patterns)
-    # We need to list the directory to find the right file for this CR.
-    # Simpler approach: try the GONG magnetogram synoptic fits URL patterns.
-    # These are available at:
-    # https://gong.nso.edu/data/magmap/QR/bqs/YYYYMM/
-    dir_url = f"{GONG_SYNOPTIC_BASE}{yyyymm}/"
-
-    try:
-        req = urllib.request.Request(dir_url, method="GET")
-        req.add_header("User-Agent", "SolarSim/1.0")
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            listing = resp.read().decode("utf-8", errors="replace")
-    except Exception:
-        return None
-
-    # Parse directory listing for FITS files matching this CR
-    import re
-    # Look for files with the CR number in the filename
-    cr_str = str(cr)
-    fits_pattern = re.compile(rf'href="([^"]*c{cr_str}[^"]*\.fits(?:\.gz)?)"', re.IGNORECASE)
-    matches = fits_pattern.findall(listing)
-
-    if not matches:
-        # Try any FITS file in the directory (latest available)
-        fits_any = re.compile(r'href="([^"]*mrbqs[^"]*\.fits(?:\.gz)?)"', re.IGNORECASE)
-        matches = fits_any.findall(listing)
-
-    if not matches:
-        return None
-
-    # Take the last (most recent) file
-    fits_filename = matches[-1]
-    fits_url = f"{dir_url}{fits_filename}"
-
-    try:
-        req = urllib.request.Request(fits_url, method="GET")
-        req.add_header("User-Agent", "SolarSim/1.0")
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            fits_data = resp.read()
-    except Exception:
-        return None
-
-    # Decompress if gzipped
-    if fits_filename.endswith(".gz"):
-        import gzip
-        try:
-            fits_data = gzip.decompress(fits_data)
-        except Exception:
-            return None
-
-    return _parse_fits_primary_image(fits_data)
 
 
 # ─── Synthetic Magnetogram ────────────────────────────────────────────────────
@@ -1124,6 +974,9 @@ PFSS_DECOMPOSITION_VERSION = "weighted-schmidt-least-squares-v1"
 WSA_BOUNDARY_DISTANCE_VERSION = "adjacent-open-closed-edge-midpoints-v1"
 _SNAPSHOT_TIME_ATOL_DAYS = 5e-10
 _SNAPSHOT_ROTATION_ATOL = 5e-7
+# One second admits only representation-scale boundary noise at the PFSS attempt
+# boundary; the same tolerance applies to future and lookback comparisons.
+_OBSERVED_ATTEMPT_TIME_ATOL_DAYS = 1.0 / 86_400.0
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -1285,6 +1138,8 @@ class SyntheticSnapshotId:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class PFSSSolutionKey:
+    """Content-addressed snapshot plus complete scientific configuration."""
+
     source_kind: Literal["observed", "synthetic"]
     snapshot_id: gong.SnapshotId | SyntheticSnapshotId
     config: PFSSSolutionConfig
@@ -1372,35 +1227,24 @@ def _serialize_observed_provenance(
     return payload
 
 
-DEFAULT_INFLIGHT_WAIT_S = 30.0
-
-class PFSSCache:
-    """Bounded, two-phase snapshot and PFSS solution cache.
-
-    Observed identity is the validated provider snapshot, never request or
-    retrieval metadata. Synthetic identity includes the exact requested epoch
-    and activity. Returned payloads are deep copies so callers cannot mutate a
-    cached solution or the value observed by concurrent waiters.
-    """
-
 # A follower waiting on a leader's in-flight computation gives up after this long
 # rather than blocking a request thread indefinitely.
 DEFAULT_INFLIGHT_WAIT_S = 30.0
 
 
-DEFAULT_INFLIGHT_WAIT_S = 30.0
-
 class PFSSCache:
-    """Thread-safe cache for PFSS solutions.
+    """Bounded, thread-safe snapshot and PFSS solution cache.
 
-    Two properties beyond a plain dict cache:
-      * the key includes fidelity and activity, so a cached entry is only reused
-        for a genuinely identical request (fixes SF-4);
-      * concurrent misses for the same key coalesce onto a single computation
-        (single-flight), so N simultaneous requests cost one compute, not N.
+    Solution identity is the source kind, the content-addressed snapshot
+    identity, and the complete scientific configuration. For observed maps,
+    acquisition request/retrieval metadata is validated and returned with each
+    attempt but is neither solution identity nor cached numerical state.
+    Synthetic snapshot identity includes the exact requested epoch and activity.
+    Returned payloads are deep copies so callers cannot mutate cached solutions
+    or values observed by concurrent waiters.
     """
 
-    def __init__(self, max_entries: int = 12, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
+    def __init__(self, max_entries: int = 3, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
         self._lock = threading.Lock()
         self._cache: OrderedDict[PFSSSolutionKey, dict[str, Any]] = OrderedDict()
         self._inflight: dict[PFSSSolutionKey, dict[str, Any]] = {}
@@ -1475,7 +1319,7 @@ class PFSSCache:
         if snapshot is None:
             resolved = self._resolve_synthetic_snapshot(normalized_jd, normalized_activity)
         else:
-            resolved = self._resolve_observed_snapshot(snapshot)
+            resolved = self._resolve_observed_snapshot(snapshot, normalized_jd)
         key = PFSSSolutionKey(resolved.source_kind, resolved.snapshot_id, config)
 
         with self._lock:
@@ -1651,10 +1495,14 @@ class PFSSCache:
         return _ResolvedMagnetogram("synthetic", snapshot_id, br_map, grid)
 
     @staticmethod
-    def _resolve_observed_snapshot(snapshot: gong.MagnetogramSnapshot) -> _ResolvedMagnetogram:
+    def _resolve_observed_snapshot(
+        snapshot: gong.MagnetogramSnapshot,
+        request_jd_tdb: float,
+    ) -> _ResolvedMagnetogram:
         if not isinstance(snapshot, gong.MagnetogramSnapshot):
             raise ValueError("snapshot must be a validated MagnetogramSnapshot")
         field = PFSSCache._validate_observed_snapshot_contract(snapshot)
+        PFSSCache._validate_observed_snapshot_attempt(snapshot, request_jd_tdb)
         return _ResolvedMagnetogram(
             "observed",
             snapshot.snapshot_id,
@@ -1662,6 +1510,29 @@ class PFSSCache:
             snapshot.grid,
             provenance=snapshot.provenance,
         )
+
+    @staticmethod
+    def _validate_observed_snapshot_attempt(
+        snapshot: gong.MagnetogramSnapshot,
+        request_jd_tdb: float,
+    ) -> None:
+        """Require the provider map to be eligible for this PFSS attempt."""
+        map_age_days = request_jd_tdb - snapshot.snapshot_id.reference_jd_tdb
+        if map_age_days < -_OBSERVED_ATTEMPT_TIME_ATOL_DAYS:
+            raise ValueError(
+                "observed snapshot reference time is in the future relative to "
+                "the requested JDTDB"
+            )
+        provider_lookback_days = (
+            gong.GongFetchLimits().max_lookback_hours / 24.0
+        )
+        if (
+            map_age_days
+            > provider_lookback_days + _OBSERVED_ATTEMPT_TIME_ATOL_DAYS
+        ):
+            raise ValueError(
+                "observed snapshot reference time exceeds the provider lookback"
+            )
 
     @staticmethod
     def _validate_observed_snapshot_contract(

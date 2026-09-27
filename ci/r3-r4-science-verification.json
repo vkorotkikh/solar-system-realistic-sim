@@ -50,7 +50,7 @@
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "3ec14c8e6fb039912c7167c62a21c61a645747e7c40e6e7de25ddb773ada4d51"
+      "sha256": "ab334b325b81f9d385803b5d4d87f4875df048f8bdcf057514af39a81824f48d"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -62,7 +62,7 @@
     },
     {
       "path": "backend/tests/test_pfss_decomposition.py",
-      "sha256": "22f5903720edacfe5d69a6399a27ca2faa96c1882544fb371200042340e73af7"
+      "sha256": "bb27dea4effd59ca609de95edc925bd074e69c49c9f9efe5de9436ebf7e9d485"
     },
     {
       "path": "backend/tests/test_pfss_analytic_fields.py",
@@ -116,7 +116,7 @@
     {
       "id": "uniform-theta-area-weights",
       "patch": "scripts/ci/mutations/uniform-theta-area-weights.patch",
-      "patch_sha256": "5a27e5d4fb91b9a4954f42dea76c039ac5f8e37108bad5aed8e3ddd2630708ea",
+      "patch_sha256": "d50024f06e41d87019ee49759aea924bc0b0d940982cee96f2b1482775685959",
       "production_files": [
         "backend/sim/magnetogram_grid.py"
       ],
@@ -140,7 +140,7 @@
     {
       "id": "corrupt-source-surface-factor",
       "patch": "scripts/ci/mutations/corrupt-source-surface-factor.patch",
-      "patch_sha256": "d5471345ad6a7a5b185bafdc89f2bb9f6384dccbbaed82e764f503b18a3378bd",
+      "patch_sha256": "de68651d9bd1d80ab20c929bbbc8ca3d82905b20164b1a6f3cf218ba50948213",
       "production_files": [
         "backend/sim/pfss_magnetogram.py"
       ],

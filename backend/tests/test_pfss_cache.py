@@ -15,7 +15,7 @@ from gong_fixture_helpers import EXPANDED, context, rewrite_fits
 
 
 BASE_REQUEST = {
-    "jd": 2_460_010.0,
+    "jd": 2_461_309.5,
     "activity": 0.25,
     "n_lines": 40,
     "lmax": 9,
@@ -26,6 +26,34 @@ BASE_REQUEST = {
 @pytest.fixture(scope="module")
 def observed_snapshot() -> gong.MagnetogramSnapshot:
     return gong.parse_gong_fits(EXPANDED, context=context())
+
+
+class _WaiterTrackingEvent:
+    """Event double that exposes when every intended follower is blocked."""
+
+    def __init__(self, expected_waiters: int):
+        self._condition = threading.Condition()
+        self._expected_waiters = expected_waiters
+        self._waiters = 0
+        self._is_set = False
+
+    def wait(self, timeout: float | None = None) -> bool:
+        with self._condition:
+            self._waiters += 1
+            self._condition.notify_all()
+            return self._condition.wait_for(lambda: self._is_set, timeout)
+
+    def set(self) -> None:
+        with self._condition:
+            self._is_set = True
+            self._condition.notify_all()
+
+    def wait_until_all_waiting(self, timeout: float) -> bool:
+        with self._condition:
+            return self._condition.wait_for(
+                lambda: self._waiters >= self._expected_waiters,
+                timeout,
+            )
 
 
 def _recording_cache(
@@ -258,14 +286,21 @@ def test_invalid_request_commits_nothing(
     assert cache._snapshot_cache == {}
 
 
-def test_observed_identity_excludes_request_epoch_activity_and_timeout(
+def test_observed_solution_reuses_within_provider_lookback_independent_of_attempt_metadata(
     monkeypatch: pytest.MonkeyPatch,
     observed_snapshot: gong.MagnetogramSnapshot,
 ) -> None:
     cache, calls = _recording_cache(monkeypatch)
-    cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)
-    cache.get_or_compute(
-        jd=2_499_999.0,
+    reference_jd_tdb = observed_snapshot.snapshot_id.reference_jd_tdb
+    first = cache.get_or_compute(
+        **({**BASE_REQUEST, "jd": reference_jd_tdb + 1.0 / 24.0}),
+        snapshot=observed_snapshot,
+    )
+    second = cache.get_or_compute(
+        jd=(
+            reference_jd_tdb
+            + (gong.GongFetchLimits().max_lookback_hours - 1.0) / 24.0
+        ),
         activity=0.99,
         n_lines=40,
         lmax=9,
@@ -273,6 +308,38 @@ def test_observed_identity_excludes_request_epoch_activity_and_timeout(
         snapshot=observed_snapshot,
     )
     assert len(calls) == 1
+    assert second == first
+    assert second is not first
+
+
+@pytest.mark.parametrize(
+    ("offset_hours", "message"),
+    [
+        pytest.param(-1.0 / 60.0, "future", id="future"),
+        pytest.param(
+            gong.GongFetchLimits().max_lookback_hours + 1.0 / 60.0,
+            "lookback",
+            id="stale",
+        ),
+    ],
+)
+def test_observed_snapshot_rejects_ineligible_attempt_before_cache_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+    offset_hours: float,
+    message: str,
+) -> None:
+    cache, calls = _recording_cache(monkeypatch)
+    request = {
+        **BASE_REQUEST,
+        "jd": observed_snapshot.snapshot_id.reference_jd_tdb
+        + offset_hours / 24.0,
+    }
+    with pytest.raises(ValueError, match=message):
+        cache.get_or_compute(**request, snapshot=observed_snapshot)
+    assert calls == []
+    assert cache._cache == {}
+    assert cache._inflight == {}
 
 
 def test_provider_time_is_part_of_observed_identity(
@@ -921,13 +988,6 @@ def test_solution_flight_propagates_leader_error_cleans_up_and_retries(
     started = threading.Event()
     release = threading.Event()
     attempts = 0
-    resolution_barrier = threading.Barrier(16)
-    original_resolve = cache._resolve_observed_snapshot
-
-    def resolve(snapshot: gong.MagnetogramSnapshot) -> Any:
-        resolved = original_resolve(snapshot)
-        resolution_barrier.wait(timeout=3)
-        return resolved
 
     def compute(*_args: Any) -> dict[str, Any]:
         nonlocal attempts
@@ -938,23 +998,32 @@ def test_solution_flight_propagates_leader_error_cleans_up_and_retries(
             raise RuntimeError("solver failed")
         return {"ok": True}
 
-    monkeypatch.setattr(cache, "_resolve_observed_snapshot", resolve)
     monkeypatch.setattr(cache, "_compute_solution", compute)
     with ThreadPoolExecutor(max_workers=16) as pool:
-        futures = [
-            pool.submit(cache.get_or_compute, **BASE_REQUEST, snapshot=observed_snapshot)
-            for _ in range(16)
-        ]
+        leader = pool.submit(
+            cache.get_or_compute, **BASE_REQUEST, snapshot=observed_snapshot
+        )
         assert started.wait(2)
-        threading.Event().wait(0.05)
+        with cache._lock:
+            state = next(iter(cache._inflight.values()))
+            waiting = _WaiterTrackingEvent(expected_waiters=15)
+            state["event"] = waiting
+        followers = [
+            pool.submit(
+                cache.get_or_compute,
+                **BASE_REQUEST,
+                snapshot=observed_snapshot,
+            )
+            for _ in range(15)
+        ]
+        assert waiting.wait_until_all_waiting(3)
         release.set()
-        for future in futures:
+        for future in [leader, *followers]:
             with pytest.raises(RuntimeError, match="solver failed"):
                 future.result(3)
     assert attempts == 1
     assert cache._cache == {}
     assert cache._inflight == {}
-    monkeypatch.setattr(cache, "_resolve_observed_snapshot", original_resolve)
     assert cache.get_or_compute(**BASE_REQUEST, snapshot=observed_snapshot)["ok"] is True
     assert attempts == 2
 
@@ -980,11 +1049,19 @@ def test_snapshot_flight_propagates_leader_error_cleans_up_and_retries(
     monkeypatch.setattr(cache, "_build_synthetic_snapshot", build)
     monkeypatch.setattr(cache, "_compute_solution", lambda *_: {"ok": True})
     with ThreadPoolExecutor(max_workers=16) as pool:
-        futures = [pool.submit(cache.get_or_compute, **BASE_REQUEST) for _ in range(16)]
+        leader = pool.submit(cache.get_or_compute, **BASE_REQUEST)
         assert started.wait(2)
-        threading.Event().wait(0.05)
+        with cache._lock:
+            state = next(iter(cache._snapshot_inflight.values()))
+            waiting = _WaiterTrackingEvent(expected_waiters=15)
+            state["event"] = waiting
+        followers = [
+            pool.submit(cache.get_or_compute, **BASE_REQUEST)
+            for _ in range(15)
+        ]
+        assert waiting.wait_until_all_waiting(3)
         release.set()
-        for future in futures:
+        for future in [leader, *followers]:
             with pytest.raises(RuntimeError, match="snapshot failed"):
                 future.result(3)
     assert attempts == 1
@@ -1058,10 +1135,14 @@ def test_solution_waiters_receive_their_own_attempt_envelope(
             cache.get_or_compute, **BASE_REQUEST, snapshot=observed_snapshot
         )
         assert started.wait(2)
+        with cache._lock:
+            state = next(iter(cache._inflight.values()))
+            waiting = _WaiterTrackingEvent(expected_waiters=1)
+            state["event"] = waiting
         waiter = pool.submit(
             cache.get_or_compute, **BASE_REQUEST, snapshot=second_snapshot
         )
-        threading.Event().wait(0.05)
+        assert waiting.wait_until_all_waiting(3)
         release.set()
         first_result = leader.result(3)
         second_result = waiter.result(3)
