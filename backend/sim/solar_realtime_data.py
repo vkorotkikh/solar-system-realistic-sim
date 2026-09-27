@@ -1781,6 +1781,10 @@ class SolarRealtimeDataProvider:
                         ),
                     )
                     cache_status = "refreshed"
+                if not self._silso_entry_is_scientifically_admissible(entry):
+                    raise RuntimeError(
+                        "SILSO candidate observation is outside its scientific coverage window"
+                    )
             except Exception as exc:
                 failure = self._describe_failure(
                     exc,
