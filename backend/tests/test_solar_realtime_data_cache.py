@@ -88,6 +88,11 @@ def test_snapshot_cache_deliveries_are_deeply_detached(
 ) -> None:
     provider = SolarRealtimeDataProvider()
     fetches = 0
+    monkeypatch.setattr(
+        provider,
+        "_utc_now",
+        lambda: datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc),
+    )
 
     def fetch_snapshot(_jd: float | None) -> dict[str, Any]:
         nonlocal fetches
@@ -95,9 +100,13 @@ def test_snapshot_cache_deliveries_are_deeply_detached(
         return {
             "schema": {"name": "solar_realtime_snapshot", "version": 1},
             "source_status": {
-                "silso": {"ok": True, "coverage": {"status": "current"}},
+                "silso": {
+                    "ok": True,
+                    "coverage": {"status": "current_for_published_coverage"},
+                },
             },
             "silso": {
+                "date": "2026-08-31",
                 "units": {"source_age_days": "d"},
                 "provenance": {
                     "license": {"name": "CC BY-NC 4.0"},
@@ -124,13 +133,19 @@ def test_snapshot_cache_deliveries_are_deeply_detached(
 
     assert fetches == 1
     assert second["schema"]["version"] == 1
-    assert second["source_status"]["silso"]["coverage"]["status"] == "current"
+    assert (
+        second["source_status"]["silso"]["coverage"]["status"]
+        == "current_for_published_coverage"
+    )
     assert second["silso"]["units"]["source_age_days"] == "d"
     assert second["silso"]["provenance"]["license"] == {
         "name": "CC BY-NC 4.0",
     }
     assert retained["schema"]["version"] == 1
-    assert retained["source_status"]["silso"]["coverage"]["status"] == "current"
+    assert (
+        retained["source_status"]["silso"]["coverage"]["status"]
+        == "current_for_published_coverage"
+    )
     assert retained["silso"]["units"]["source_age_days"] == "d"
     assert retained["silso"]["provenance"]["license"] == {
         "name": "CC BY-NC 4.0",
@@ -282,6 +297,64 @@ def test_silso_delivery_fails_closed_after_62_days_without_refetch(
         "ok": True,
         "updated": "2026-08-31",
     }
+
+
+@pytest.mark.parametrize(
+    ("silso", "reason", "expected_age"),
+    (
+        ({}, "invalid_delivery_date", None),
+        ({"date": 20260831}, "invalid_delivery_date", None),
+        ({"date": "not-a-date"}, "invalid_delivery_date", None),
+        ({"date": "2026-09-01"}, "outside_published_coverage", 25),
+        ({"date": "2026-10-01"}, "outside_published_coverage", None),
+    ),
+)
+def test_silso_delivery_fails_closed_for_invalid_or_unpublished_dates(
+    monkeypatch: pytest.MonkeyPatch,
+    silso: dict[str, Any],
+    reason: str,
+    expected_age: int | None,
+) -> None:
+    provider = SolarRealtimeDataProvider(cache_ttl_s=300.0)
+    delivered_at = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    fetches = 0
+    monkeypatch.setattr(provider, "_utc_now", lambda: delivered_at)
+
+    def fetch_snapshot(_jd_tdb: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        return {
+            "source_status": {
+                "swpc": {"ok": False, "error": "offline"},
+                "silso": {"ok": True, "updated": silso.get("date")},
+            },
+            "swpc": None,
+            "silso": silso,
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    delivered = provider.latest()
+    retained = provider._snapshot_cache[("snapshot", "latest", None)][1]
+
+    assert delivered["silso"] is None
+    assert delivered["source_status"]["silso"]["ok"] is False
+    assert delivered["source_status"]["silso"]["reason"] == reason
+    assert (
+        delivered["source_status"]["silso"]["delivered_at_utc"]
+        == "2026-09-26T12:00:00Z"
+    )
+    if expected_age is None:
+        assert "source_age_days" not in delivered["source_status"]["silso"]
+    else:
+        assert delivered["source_status"]["silso"]["source_age_days"] == expected_age
+        assert delivered["source_status"]["silso"]["coverage"] == {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-08-31",
+            "status": "outside_published_coverage",
+        }
+    assert fetches == 1
+    assert retained["silso"] == silso
 
 
 def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(

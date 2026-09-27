@@ -375,6 +375,7 @@ class SolarRealtimeDataProvider:
         silso = snapshot.get("silso")
         if isinstance(silso, dict):
             observation_date_text = silso.get("date")
+            silso_state: dict[str, Any] | None = None
             if isinstance(observation_date_text, str):
                 try:
                     observation_date = date.fromisoformat(observation_date_text)
@@ -383,59 +384,61 @@ class SolarRealtimeDataProvider:
                         now_utc.date(),
                     )
                 except (TypeError, ValueError, OverflowError):
-                    pass
-                else:
-                    if silso_state["ok"] is True:
-                        silso["source_age_days"] = silso_state["source_age_days"]
-                        silso["coverage"] = silso_state["coverage"]
-                        statuses = snapshot.get("source_status")
-                        delivered_statuses = (
-                            dict(statuses) if isinstance(statuses, Mapping) else {}
-                        )
-                        prior_status = delivered_statuses.get("silso")
-                        silso_status = (
-                            dict(prior_status)
-                            if isinstance(prior_status, Mapping)
-                            else {}
-                        )
-                        silso_status.update(
-                            {
-                                "updated": observation_date_text,
-                                "source_age_days": silso_state["source_age_days"],
-                                "coverage": silso_state["coverage"],
-                                "delivered_at_utc": self._canonical_utc_time_tag(
-                                    now_utc
-                                ),
-                            }
-                        )
-                        delivered_statuses["silso"] = silso_status
-                        snapshot["source_status"] = delivered_statuses
-                    elif silso_state["reason"] == "outside_source_age_bound":
-                        statuses = snapshot.get("source_status")
-                        delivered_statuses = (
-                            dict(statuses) if isinstance(statuses, Mapping) else {}
-                        )
-                        prior_status = delivered_statuses.get("silso")
-                        silso_status = (
-                            dict(prior_status)
-                            if isinstance(prior_status, Mapping)
-                            else {}
-                        )
-                        silso_status.update(
-                            {
-                                "ok": False,
-                                "updated": observation_date_text,
-                                "reason": silso_state["reason"],
-                                "source_age_days": silso_state["source_age_days"],
-                                "coverage": silso_state["coverage"],
-                                "delivered_at_utc": self._canonical_utc_time_tag(
-                                    now_utc
-                                ),
-                            }
-                        )
-                        delivered_statuses["silso"] = silso_status
-                        snapshot["source_status"] = delivered_statuses
-                        snapshot["silso"] = None
+                    silso_state = None
+
+            statuses = snapshot.get("source_status")
+            delivered_statuses = (
+                dict(statuses) if isinstance(statuses, Mapping) else {}
+            )
+            prior_status = delivered_statuses.get("silso")
+            silso_status = (
+                dict(prior_status) if isinstance(prior_status, Mapping) else {}
+            )
+            delivered_at_utc = self._canonical_utc_time_tag(now_utc)
+
+            if silso_state is not None and silso_state["ok"] is True:
+                silso["source_age_days"] = silso_state["source_age_days"]
+                silso["coverage"] = silso_state["coverage"]
+                silso_status.pop("reason", None)
+                silso_status.update(
+                    {
+                        "ok": True,
+                        "updated": observation_date_text,
+                        "source_age_days": silso_state["source_age_days"],
+                        "coverage": silso_state["coverage"],
+                        "delivered_at_utc": delivered_at_utc,
+                    }
+                )
+            else:
+                reason = (
+                    silso_state["reason"]
+                    if silso_state is not None
+                    else "invalid_delivery_date"
+                )
+                silso_status.pop("source_age_days", None)
+                silso_status.pop("coverage", None)
+                silso_status.update(
+                    {
+                        "ok": False,
+                        "updated": (
+                            observation_date_text
+                            if silso_state is not None
+                            else None
+                        ),
+                        "reason": reason,
+                        "delivered_at_utc": delivered_at_utc,
+                    }
+                )
+                if silso_state is not None:
+                    if silso_state["source_age_days"] >= 0:
+                        silso_status["source_age_days"] = silso_state[
+                            "source_age_days"
+                        ]
+                    silso_status["coverage"] = silso_state["coverage"]
+                snapshot["silso"] = None
+
+            delivered_statuses["silso"] = silso_status
+            snapshot["source_status"] = delivered_statuses
 
         swpc = snapshot.get("swpc")
         if not isinstance(swpc, dict):
