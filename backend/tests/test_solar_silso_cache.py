@@ -588,6 +588,34 @@ def test_transport_fresh_silso_refreshes_after_scientific_age_boundary(
     assert len(opened) == 2
 
 
+def test_transport_fresh_silso_uses_one_reference_date_at_midnight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    before_midnight = datetime(2026, 11, 1, 23, 59, 59, tzinfo=timezone.utc)
+    after_midnight = datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(provider, "_utc_now", lambda: before_midnight)
+    opened = _install_responses(monkeypatch, provider, [_ok_response(provider)])
+
+    provider._fetch_silso()
+    clock_values = deque((before_midnight, after_midnight))
+    clock_reads: list[datetime] = []
+
+    def crossing_midnight() -> datetime:
+        value = clock_values.popleft()
+        clock_reads.append(value)
+        return value
+
+    monkeypatch.setattr(provider, "_utc_now", crossing_midnight)
+
+    cached = provider._fetch_silso()
+
+    assert cached["source_age_days"] == 62
+    assert cached["acquisition"]["cache_status"] == "fresh"
+    assert len(opened) == 1
+    assert clock_reads == [before_midnight]
+
+
 def test_scientifically_expired_silso_is_not_lkg_after_refresh_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

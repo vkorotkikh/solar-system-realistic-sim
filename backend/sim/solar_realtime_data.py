@@ -1649,6 +1649,7 @@ class SolarRealtimeDataProvider:
         *,
         cache_status: str,
         failure: _FetchFailureDescriptor | None = None,
+        reference_date: date | None = None,
     ) -> dict[str, Any]:
         value = copy.deepcopy(entry.value)
         observation_date_text = value.get("date")
@@ -1656,7 +1657,12 @@ class SolarRealtimeDataProvider:
             raise RuntimeError("SILSO cached observation date is invalid")
         try:
             observation_date = date.fromisoformat(observation_date_text)
-            value.update(self._silso_temporal_metadata(observation_date))
+            value.update(
+                self._silso_temporal_metadata(
+                    observation_date,
+                    reference_date=reference_date,
+                )
+            )
         except (TypeError, ValueError) as exc:
             raise RuntimeError("SILSO cached observation date is invalid") from exc
         acquisition: dict[str, Any] = {
@@ -1674,13 +1680,18 @@ class SolarRealtimeDataProvider:
     def _silso_entry_is_scientifically_admissible(
         self,
         entry: _SilsoCacheEntry,
+        *,
+        reference_date: date | None = None,
     ) -> bool:
         observation_date_text = entry.value.get("date")
         if not isinstance(observation_date_text, str):
             return False
         try:
             observation_date = date.fromisoformat(observation_date_text)
-            self._silso_temporal_metadata(observation_date)
+            self._silso_temporal_metadata(
+                observation_date,
+                reference_date=reference_date,
+            )
         except (TypeError, ValueError, OverflowError):
             return False
         return True
@@ -1690,6 +1701,7 @@ class SolarRealtimeDataProvider:
         *,
         now_monotonic: float,
         failure: _FetchFailureDescriptor | None,
+        reference_date: date | None = None,
     ) -> dict[str, Any]:
         with self._lock:
             entry = self._silso_cache
@@ -1697,16 +1709,21 @@ class SolarRealtimeDataProvider:
             entry is not None
             and now_monotonic - entry.validated_monotonic
             <= self.SILSO_LKG_MAX_AGE_S
-            and self._silso_entry_is_scientifically_admissible(entry)
+            and self._silso_entry_is_scientifically_admissible(
+                entry,
+                reference_date=reference_date,
+            )
         ):
             return self._silso_cache_value(
                 entry,
                 cache_status="stale_lkg",
                 failure=failure,
+                reference_date=reference_date,
             )
         raise RuntimeError("SILSO acquisition unavailable") from None
 
     def _fetch_silso(self) -> dict[str, Any]:
+        call_reference_date = self._utc_now().astimezone(timezone.utc).date()
         now_monotonic = time.monotonic()
         with self._lock:
             cached = self._silso_cache
@@ -1715,9 +1732,16 @@ class SolarRealtimeDataProvider:
         if (
             cached is not None
             and now_monotonic < cached.expires_monotonic
-            and self._silso_entry_is_scientifically_admissible(cached)
+            and self._silso_entry_is_scientifically_admissible(
+                cached,
+                reference_date=call_reference_date,
+            )
         ):
-            return self._silso_cache_value(cached, cache_status="fresh")
+            return self._silso_cache_value(
+                cached,
+                cache_status="fresh",
+                reference_date=call_reference_date,
+            )
         if (
             recent_failure is not None
             and now_monotonic < recent_failure.expires_monotonic
@@ -1725,6 +1749,7 @@ class SolarRealtimeDataProvider:
             return self._silso_lkg_or_unavailable(
                 now_monotonic=now_monotonic,
                 failure=recent_failure,
+                reference_date=call_reference_date,
             )
 
         def refresh() -> tuple[_SilsoCacheEntry, str]:
@@ -1822,6 +1847,7 @@ class SolarRealtimeDataProvider:
                 return self._silso_lkg_or_unavailable(
                     now_monotonic=time.monotonic(),
                     failure=failure,
+                    reference_date=call_reference_date,
                 )
             raise
 
