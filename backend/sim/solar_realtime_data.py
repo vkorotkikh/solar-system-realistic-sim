@@ -179,6 +179,7 @@ class SolarRealtimeDataProvider:
     AIA_VIEWPORT_TILE_X = -1
     AIA_VIEWPORT_TILE_Y = -1
     AIA_VIEWPORT_TILE_SIZE_PX = 512
+    AIA_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
     AIA_SPATIAL_USE_DISABLED_REASON = (
         "viewport_tile_has_no_validated_solar_surface_projection"
     )
@@ -799,6 +800,11 @@ class SolarRealtimeDataProvider:
             max_bytes=self.MAX_BINARY_RESPONSE_BYTES,
             pre_body_validator=self._canonical_aia_media_type,
         )
+        if response.payload[:8] != self.AIA_PNG_SIGNATURE:
+            raise SolarRealtimeFetchError(
+                "invalid_aia_png_signature",
+                "AIA upstream body did not have a PNG signature",
+            )
         assert response.content_type == "image/png"
         return response.payload, response.content_type
 
