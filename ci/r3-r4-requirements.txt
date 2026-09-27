@@ -1,13 +1,21 @@
-# Exact interpreter packages for the bounded R3/R4 scientific verification lane.
+# Exact interpreter packages for the R3/R4 science and full backend lanes.
 astropy==8.0.1
 astropy-iers-data==0.2026.9.21.0.56.25
+fastapi==0.141.1
+httpx==0.28.1
 iniconfig==2.3.0
 numpy==2.5.2
 packaging==26.3
+Pillow==12.3.0
 pluggy==1.6.0
+pydantic==2.13.4
 Pygments==2.20.0
 pyerfa==2.0.1.5
 pytest==9.1.1
 PyYAML==6.0.3
+rebound==5.1.1
 scipy==1.18.0
+starlette==1.6.0
 typing_extensions==4.16.0
+uvicorn[standard]==0.52.4
+websockets==17.0.1

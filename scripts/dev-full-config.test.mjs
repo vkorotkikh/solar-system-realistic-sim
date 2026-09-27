@@ -61,4 +61,25 @@ describe('dev-full security boundary', () => {
     ));
     expect(networkArgs).not.toContain('--reload');
   });
+
+  it('passes the hard-capped command byte limit to Uvicorn', () => {
+    const defaultConfig = parseDevFullConfig([], {});
+    const defaultArgs = buildBackendArgs(defaultConfig);
+    const maxSizeIndex = defaultArgs.indexOf('--ws-max-size');
+
+    expect(defaultConfig.websocketMaxBytes).toBe(16 * 1024);
+    expect(defaultArgs.slice(maxSizeIndex, maxSizeIndex + 2)).toEqual([
+      '--ws-max-size',
+      String(16 * 1024),
+    ]);
+
+    const narrowed = parseDevFullConfig([], { WS_SIM_COMMAND_MAX_BYTES: '2048' });
+    expect(narrowed.websocketMaxBytes).toBe(2048);
+
+    const attemptedRaise = parseDevFullConfig(
+      [],
+      { WS_SIM_COMMAND_MAX_BYTES: String(16 * 1024 + 1) },
+    );
+    expect(attemptedRaise.websocketMaxBytes).toBe(16 * 1024);
+  });
 });

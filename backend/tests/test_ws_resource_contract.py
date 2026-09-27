@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 import threading
 
@@ -551,3 +552,166 @@ def test_local_websocket_remains_header_optional(monkeypatch) -> None:
 
     assert exc_info.value.code == 1013
     assert admission_subjects == [None]
+
+
+class _ReceiveLoopWebSocket:
+    def __init__(self, messages: list[dict]) -> None:
+        self._messages = iter(messages)
+        self.sent: list[str] = []
+        self.closed: list[dict[str, object]] = []
+
+    async def receive(self) -> dict:
+        return next(
+            self._messages,
+            {"type": "websocket.disconnect", "code": 1000, "reason": "test complete"},
+        )
+
+    async def send_text(self, payload: str) -> None:
+        self.sent.append(payload)
+
+    async def close(self, *, code: int = 1000, reason: str = "") -> None:
+        self.closed.append({"code": code, "reason": reason})
+
+
+class _RecordingCommandRunner:
+    def __init__(self) -> None:
+        self.commands: list[dict] = []
+
+    def send_command(self, command: dict) -> bool:
+        self.commands.append(command)
+        return True
+
+
+def test_websocket_oversize_text_closes_1009_before_json_parsing(monkeypatch) -> None:
+    raw = "\N{SNOWMAN}" * ((server.WS_SIM_COMMAND_MAX_BYTES // 3) + 1)
+    assert len(raw) < server.WS_SIM_COMMAND_MAX_BYTES
+    assert len(raw.encode("utf-8")) > server.WS_SIM_COMMAND_MAX_BYTES
+    websocket = _ReceiveLoopWebSocket(
+        [{"type": "websocket.receive", "text": raw}]
+    )
+    runner = _RecordingCommandRunner()
+
+    def unexpected_json_parse(_payload: str):
+        raise AssertionError("oversized frame reached application JSON parsing")
+
+    monkeypatch.setattr(server.json, "loads", unexpected_json_parse)
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        asyncio.run(server._ws_receive_loop(websocket, runner))
+
+    assert exc_info.value.code == 1009
+    assert websocket.closed[0]["code"] == 1009
+    assert websocket.sent == []
+    assert runner.commands == []
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_code"),
+    [
+        ("{", "invalid_json"),
+        ("[]", "invalid_command"),
+        (
+            json.dumps(
+                {
+                    "type": "pause",
+                    "extra": {"nested": {"too": {"deep": True}}},
+                }
+            ),
+            "invalid_command",
+        ),
+        (
+            json.dumps(
+                {
+                    "type": "pause",
+                    **{f"extra_{index}": index for index in range(8)},
+                }
+            ),
+            "invalid_command",
+        ),
+    ],
+    ids=("malformed-json", "non-object", "too-deep", "too-many-fields"),
+)
+def test_websocket_rejects_malformed_or_unsafe_command_shapes(
+    raw: str,
+    expected_code: str,
+) -> None:
+    websocket = _ReceiveLoopWebSocket(
+        [{"type": "websocket.receive", "text": raw}]
+    )
+    runner = _RecordingCommandRunner()
+
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        asyncio.run(server._ws_receive_loop(websocket, runner))
+
+    assert exc_info.value.code == 1000
+    assert runner.commands == []
+    assert websocket.closed == []
+    assert len(websocket.sent) == 1
+    error = json.loads(websocket.sent[0])
+    assert error["type"] == "error"
+    assert error["code"] == expected_code
+
+
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ({"type": " pause ", "ignored": {"nested": True}}, {"type": "pause"}),
+        (
+            {"type": "set_time_scale", "days_per_sec": 12, "ignored": "drop"},
+            {"type": "set_time_scale", "days_per_sec": 12},
+        ),
+        (
+            {
+                "type": "set_julian_date",
+                "jd": 2_460_000.5,
+                "jd_time_scale": "TDB",
+                "ignored": [1, 2, 3],
+            },
+            {
+                "type": "set_julian_date",
+                "jd": 2_460_000.5,
+                "jd_time_scale": "TDB",
+            },
+        ),
+        (
+            {
+                "type": "activate_kuiper",
+                "center": [42, 0, 0],
+                "spread": 5,
+                "ignored": False,
+            },
+            {"type": "activate_kuiper", "center": [42, 0, 0], "spread": 5},
+        ),
+        (
+            {"type": "get_orbital_elements", "body_id": "earth", "ignored": 1},
+            {"type": "get_orbital_elements", "body_id": "earth"},
+        ),
+        (
+            {"type": "future_command", "attacker_controlled": "drop"},
+            {"type": "future_command"},
+        ),
+    ],
+    ids=(
+        "no-argument-action",
+        "time-scale",
+        "julian-date",
+        "kuiper",
+        "orbital-elements",
+        "unsupported-action",
+    ),
+)
+def test_websocket_normalizes_commands_before_enqueueing(
+    command: dict,
+    expected: dict,
+) -> None:
+    websocket = _ReceiveLoopWebSocket(
+        [{"type": "websocket.receive", "text": json.dumps(command)}]
+    )
+    runner = _RecordingCommandRunner()
+
+    with pytest.raises(WebSocketDisconnect):
+        asyncio.run(server._ws_receive_loop(websocket, runner))
+
+    assert runner.commands == [expected]
+    assert websocket.sent == []
+    assert websocket.closed == []

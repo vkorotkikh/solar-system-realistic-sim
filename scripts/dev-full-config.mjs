@@ -1,6 +1,8 @@
 const DEFAULT_BACKEND_PORT = 8042;
 const DEFAULT_FRONTEND_PORT = 5173;
 const DEFAULT_HOST = '127.0.0.1';
+const DEFAULT_WS_COMMAND_MAX_BYTES = 16 * 1024;
+const WS_COMMAND_MAX_BYTES_HARD_LIMIT = 16 * 1024;
 
 function parsePort(raw, option) {
   if (!/^\d+$/.test(raw)) {
@@ -11,6 +13,13 @@ function parsePort(raw, option) {
     throw new Error(`${option} must be an integer between 1 and 65535`);
   }
   return value;
+}
+
+function boundedEnvironmentInteger(raw, defaultValue, minimum, maximum) {
+  if (raw === undefined || !/^[+-]?\d+$/.test(String(raw))) return defaultValue;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) return defaultValue;
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 export function isCanonicalLoopbackHost(host) {
@@ -38,6 +47,12 @@ export function parseDevFullConfig(argv, env = process.env) {
     open: false,
     help: false,
     securityProfile: profile,
+    websocketMaxBytes: boundedEnvironmentInteger(
+      env.WS_SIM_COMMAND_MAX_BYTES,
+      DEFAULT_WS_COMMAND_MAX_BYTES,
+      256,
+      WS_COMMAND_MAX_BYTES_HARD_LIMIT,
+    ),
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -79,6 +94,7 @@ export function buildBackendArgs(config) {
     '-m', 'uvicorn', 'server:app',
     '--host', config.host,
     '--port', String(config.backendPort),
+    '--ws-max-size', String(config.websocketMaxBytes),
     '--no-proxy-headers',
   ];
   if (config.securityProfile === 'local') args.push('--reload');

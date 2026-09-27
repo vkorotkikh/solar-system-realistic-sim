@@ -823,6 +823,24 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT = 16 * 1_024
+WS_SIM_COMMAND_MAX_BYTES = _load_bounded_env_int(
+    "WS_SIM_COMMAND_MAX_BYTES",
+    WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT,
+    min_value=256,
+    max_value=WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT,
+)
+WS_SIM_COMMAND_MAX_FIELDS = 8
+WS_SIM_COMMAND_MAX_DEPTH = 3
+_WS_SIM_COMMAND_FIELDS: dict[str, tuple[str, ...]] = {
+    "set_time_scale": ("days_per_sec",),
+    "pause": (),
+    "resume": (),
+    "set_julian_date": ("jd", "jd_time_scale"),
+    "activate_kuiper": ("center", "spread"),
+    "deactivate_kuiper": (),
+    "get_orbital_elements": ("body_id",),
+}
 WS_SIM_QUERY_MAX_BYTES = 4_096
 WS_SIM_QUERY_MAX_FIELDS = 32
 WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS = frozenset(
@@ -4537,24 +4555,120 @@ class SimulationRunner:
 
 # ── WebSocket task helpers ────────────────────────────────────────────────────
 
+def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
+    if not isinstance(message, dict):
+        return None, "Payload must be a JSON object"
+
+    field_count = 0
+    pending: list[tuple[dict[str, Any] | list[Any], int]] = [(message, 1)]
+    while pending:
+        value, depth = pending.pop()
+        if depth > WS_SIM_COMMAND_MAX_DEPTH:
+            return None, "Command payload exceeds the nesting-depth limit"
+        if isinstance(value, dict):
+            field_count += len(value)
+            if field_count > WS_SIM_COMMAND_MAX_FIELDS:
+                return None, "Command payload contains too many object fields"
+            children = value.values()
+        else:
+            children = value
+        for child in children:
+            if isinstance(child, (dict, list)):
+                pending.append((child, depth + 1))
+
+    action_raw = message.get("type")
+    action = action_raw.strip() if isinstance(action_raw, str) else ""
+    if not action:
+        return None, "Command requires a non-empty string `type` field"
+
+    normalized: dict[str, Any] = {"type": action}
+    for field in _WS_SIM_COMMAND_FIELDS.get(action, ()):
+        if field in message:
+            normalized[field] = message[field]
+    return normalized, None
+
+
+async def _send_ws_command_error(
+    websocket: WebSocket,
+    message: str,
+    *,
+    code: str,
+) -> None:
+    await websocket.send_text(json.dumps({
+        "type": "error",
+        "message": message,
+        "code": code,
+    }))
+
+
+async def _close_ws_command_too_large(websocket: WebSocket) -> None:
+    reason = f"Command frame exceeds {WS_SIM_COMMAND_MAX_BYTES} bytes"
+    await websocket.close(code=1009, reason=reason)
+    raise WebSocketDisconnect(code=1009, reason=reason)
+
+
 async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
     while True:
-        raw = await websocket.receive_text()
+        event = await websocket.receive()
+        event_type = event.get("type")
+        if event_type == "websocket.disconnect":
+            raise WebSocketDisconnect(
+                code=int(event.get("code", 1000)),
+                reason=str(event.get("reason", "")),
+            )
+        if event_type != "websocket.receive":
+            continue
+
+        raw_text = event.get("text")
+        raw_bytes = event.get("bytes")
+        if isinstance(raw_text, str):
+            try:
+                frame_bytes = len(raw_text.encode("utf-8"))
+            except UnicodeEncodeError:
+                await _send_ws_command_error(
+                    websocket,
+                    "Command payload must be valid UTF-8 text",
+                    code="invalid_command",
+                )
+                continue
+            if frame_bytes > WS_SIM_COMMAND_MAX_BYTES:
+                await _close_ws_command_too_large(websocket)
+            raw = raw_text
+        elif isinstance(raw_bytes, (bytes, bytearray)):
+            if len(raw_bytes) > WS_SIM_COMMAND_MAX_BYTES:
+                await _close_ws_command_too_large(websocket)
+            await _send_ws_command_error(
+                websocket,
+                "Command payload must be JSON text",
+                code="invalid_command",
+            )
+            continue
+        else:
+            await _send_ws_command_error(
+                websocket,
+                "Command payload must be JSON text",
+                code="invalid_command",
+            )
+            continue
+
         try:
             msg = json.loads(raw)
-        except json.JSONDecodeError:
-            await websocket.send_text(json.dumps({
-                "type": "error",
-                "message": "Invalid JSON payload",
-            }))
+        except (ValueError, RecursionError):
+            await _send_ws_command_error(
+                websocket,
+                "Invalid JSON payload",
+                code="invalid_json",
+            )
             continue
-        if not isinstance(msg, dict):
-            await websocket.send_text(json.dumps({
-                "type": "error",
-                "message": "Payload must be a JSON object",
-            }))
+        command, shape_error = _normalize_ws_command(msg)
+        if command is None:
+            await _send_ws_command_error(
+                websocket,
+                shape_error or "Invalid command payload",
+                code="invalid_command",
+            )
             continue
-        if not runner.send_command(msg):
+        if not runner.send_command(command):
             await websocket.send_text(json.dumps({
                 "type": "error",
                 "message": "Command queue is full; retry shortly",
@@ -4787,4 +4901,5 @@ if __name__ == "__main__":
         port=8042,
         proxy_headers=False,
         reload=SOLAR_SECURITY_CONFIG.profile == "local",
+        ws_max_size=WS_SIM_COMMAND_MAX_BYTES,
     )

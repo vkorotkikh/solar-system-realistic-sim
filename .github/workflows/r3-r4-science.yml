@@ -39,6 +39,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Assert the declared npm version
+        run: test "$(npm --version)" = "10.9.8"
+
       - name: Install the isolated R3/R4 test environment
         run: python -m pip install -r ci/r3-r4-requirements.txt
 
@@ -75,3 +78,35 @@ jobs:
           name: r3-r4-science-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/r3-r4-science-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: error
+
+  backend-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      TZ: UTC
+    steps:
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select the pinned Python interpreter
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.13"
+          cache: pip
+          cache-dependency-path: ci/r3-r4-requirements.txt
+
+      - name: Install the locked backend test environment
+        run: python -m pip install -r ci/r3-r4-requirements.txt
+
+      - name: Run the complete backend test suite
+        run: python -m pytest -q backend/tests
