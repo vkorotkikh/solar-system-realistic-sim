@@ -369,9 +369,26 @@ class SolarRealtimeDataProvider:
         *,
         now_utc: datetime,
     ) -> dict[str, Any]:
-        """Return a delivery-time view whose SWPC ages cannot be frozen by cache."""
+        """Return a delivery-time view whose source ages cannot freeze in cache."""
 
         snapshot = copy.deepcopy(snapshot)
+        silso = snapshot.get("silso")
+        if isinstance(silso, dict):
+            observation_date_text = silso.get("date")
+            if isinstance(observation_date_text, str):
+                try:
+                    observation_date = date.fromisoformat(observation_date_text)
+                    silso_state = self._silso_delivery_state(
+                        observation_date,
+                        now_utc.date(),
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    pass
+                else:
+                    if silso_state["ok"] is True:
+                        silso["source_age_days"] = silso_state["source_age_days"]
+                        silso["coverage"] = silso_state["coverage"]
+
         swpc = snapshot.get("swpc")
         if not isinstance(swpc, dict):
             return snapshot

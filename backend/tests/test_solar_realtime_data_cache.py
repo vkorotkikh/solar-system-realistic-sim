@@ -137,6 +137,56 @@ def test_snapshot_cache_deliveries_are_deeply_detached(
     }
 
 
+def test_cached_silso_delivery_recomputes_wall_utc_metadata_without_swpc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(cache_ttl_s=300.0)
+    wall_now = [datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc)]
+    fetches = 0
+    monkeypatch.setattr(provider, "_utc_now", lambda: wall_now[0])
+
+    def fetch_snapshot(jd_tdb: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        return {
+            "requested_jd_tdb": jd_tdb,
+            "source_status": {
+                "swpc": {"ok": False, "error": "offline"},
+                "silso": {"ok": True, "updated": "2026-08-31"},
+            },
+            "swpc": None,
+            "silso": {
+                "date": "2026-08-31",
+                "source_age_days": 999,
+                "coverage": {"status": "stale-at-fetch"},
+            },
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    september = provider.latest(jd_tdb=2_400_000.5)
+    retained = provider._snapshot_cache[("snapshot", "jd_tdb", 2_400_000.5)][1]
+    wall_now[0] = datetime(2026, 10, 1, 0, 1, tzinfo=timezone.utc)
+    october = provider.latest(jd_tdb=2_400_000.5)
+
+    assert september["silso"]["source_age_days"] == 30
+    assert september["silso"]["coverage"] == {
+        "policy": "through_last_elapsed_month",
+        "latest_expected_date": "2026-08-31",
+        "status": "current_for_published_coverage",
+    }
+    assert october["silso"]["source_age_days"] == 31
+    assert october["silso"]["coverage"] == {
+        "policy": "through_last_elapsed_month",
+        "latest_expected_date": "2026-09-30",
+        "status": "lagging_within_age_bound",
+    }
+    assert october["requested_jd_tdb"] == 2_400_000.5
+    assert fetches == 1
+    assert retained["silso"]["source_age_days"] == 999
+    assert retained["silso"]["coverage"] == {"status": "stale-at-fetch"}
+
+
 def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
