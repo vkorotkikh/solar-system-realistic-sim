@@ -187,6 +187,35 @@ def test_aia_png_rejects_invalid_ihdr_structure(
 
 
 @pytest.mark.parametrize(
+    ("width", "height"),
+    (
+        (1, 1),
+        (512, 1024),
+        (0xFFFFFFFF, 0xFFFFFFFF),
+    ),
+    ids=("one-pixel", "wrong-height", "huge-encoded-dimensions"),
+)
+def test_aia_png_requires_exact_viewport_dimensions(
+    monkeypatch: pytest.MonkeyPatch,
+    width: int,
+    height: int,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = provider.HELIOVIEWER_TILE_URL
+    response = _Response(
+        _aia_png_header(width=width, height=height),
+        url=url,
+        headers=_Headers([("Content-Type", "image/png")]),
+    )
+    _install_routes(monkeypatch, {url: [response]})
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png(url)
+
+    assert raised.value.code == "invalid_aia_png_dimensions"
+
+
+@pytest.mark.parametrize(
     "fields",
     (
         [],

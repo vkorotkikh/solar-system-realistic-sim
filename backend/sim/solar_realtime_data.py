@@ -817,6 +817,16 @@ class SolarRealtimeDataProvider:
                 "invalid_aia_png_header",
                 "AIA upstream PNG IHDR envelope was invalid",
             )
+        if (
+            int.from_bytes(response.payload[16:20], "big")
+            != self.AIA_VIEWPORT_TILE_SIZE_PX
+            or int.from_bytes(response.payload[20:24], "big")
+            != self.AIA_VIEWPORT_TILE_SIZE_PX
+        ):
+            raise SolarRealtimeFetchError(
+                "invalid_aia_png_dimensions",
+                "AIA upstream PNG dimensions did not match the viewport contract",
+            )
         assert response.content_type == "image/png"
         return response.payload, response.content_type
 
