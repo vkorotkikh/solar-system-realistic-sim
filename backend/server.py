@@ -119,7 +119,11 @@ from sim.solar_process_worker import (
     validate_solar_physics_result,
 )
 from sim.solar_physics import ObservedSolarInputUnavailable, SolarCoronaPhysicsModel
-from sim.solar_realtime_data import AiaImageIdentityMismatch, SolarRealtimeDataProvider
+from sim.solar_realtime_data import (
+    AiaImageIdentityMismatch,
+    SolarRealtimeDataProvider,
+    SolarRealtimeFetchError,
+)
 from sim.solar_time import current_jd_tdb
 from trajectory import (
     DEFAULT_ASSIST_POOL,
@@ -3044,24 +3048,68 @@ async def solar_realtime_aia_tile(
     except asyncio.TimeoutError as exc:
         raise HTTPException(
             status_code=503,
-            detail="AIA tile generation timed out. Try again later.",
+            detail={
+                "code": "aia_tile_unavailable",
+                "message": "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
         ) from exc
     except AiaImageIdentityMismatch as exc:
         raise _aia_identity_conflict(
             exc.requested_image_id,
             exc.available_image_id,
         ) from exc
-    except KeyError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except SolarRealtimeFetchError as exc:
+        validation_messages = {
+            "invalid_aia_media_type": (
+                "AIA tile upstream Content-Type is invalid."
+            ),
+            "unsupported_aia_media_type": (
+                "AIA tile upstream media type is unsupported."
+            ),
+            "invalid_aia_png_signature": "AIA tile PNG signature is invalid.",
+            "invalid_aia_png_header": "AIA tile PNG header is invalid.",
+            "invalid_aia_png_dimensions": "AIA tile PNG dimensions are invalid.",
+            "invalid_aia_provider_contract": (
+                "AIA tile provider returned an invalid artifact contract."
+            ),
+        }
+        message = validation_messages.get(exc.code)
+        code = exc.code if message is not None else "aia_tile_unavailable"
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": code,
+                "message": message or "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "aia_tile_unavailable",
+                "message": "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
+        ) from exc
     available_image_id = tile.get("image_id")
     if image_id is not None and available_image_id != image_id:
         raise _aia_identity_conflict(image_id, available_image_id)
 
+    if tile.get("content_type") != "image/png":
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "invalid_aia_provider_contract",
+                "message": "AIA tile provider returned an invalid artifact contract.",
+                "retryable": True,
+            },
+        )
+
     response = Response(
         content=tile["content"],
-        media_type=str(tile.get("content_type") or "image/png"),
+        media_type="image/png",
     )
     response.headers["Cache-Control"] = (
         f"private, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"

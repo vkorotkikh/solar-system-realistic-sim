@@ -6,6 +6,7 @@ import time
 
 import server
 from server import app
+from sim.solar_realtime_data import SolarRealtimeFetchError
 
 client = TestClient(app)
 
@@ -456,6 +457,145 @@ def test_solar_realtime_aia_tile_proxy_uses_provider_payload(monkeypatch) -> Non
     })
 
 
+@pytest.mark.parametrize(
+    ("code", "message"),
+    (
+        (
+            "invalid_aia_media_type",
+            "AIA tile upstream Content-Type is invalid.",
+        ),
+        (
+            "unsupported_aia_media_type",
+            "AIA tile upstream media type is unsupported.",
+        ),
+        (
+            "invalid_aia_png_signature",
+            "AIA tile PNG signature is invalid.",
+        ),
+        (
+            "invalid_aia_png_header",
+            "AIA tile PNG header is invalid.",
+        ),
+        (
+            "invalid_aia_png_dimensions",
+            "AIA tile PNG dimensions are invalid.",
+        ),
+    ),
+)
+def test_aia_tile_api_preserves_typed_validation_failure_without_detail_leak(
+    monkeypatch,
+    code: str,
+    message: str,
+) -> None:
+    def fail_validation(*_args, **_kwargs):
+        raise SolarRealtimeFetchError(code, "secret upstream body and URL")
+
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        fail_validation,
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": code,
+            "message": message,
+            "retryable": True,
+        }
+    }
+    assert "secret" not in response.text
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    (None, 123, "", "Image/PNG", "image/png; charset=binary"),
+)
+def test_aia_tile_api_rejects_noncanonical_provider_media_contract(
+    monkeypatch,
+    content_type: object,
+) -> None:
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: {
+            "channel": "aia_193",
+            "image_id": "1",
+            "content": b"provider bytes",
+            "content_type": content_type,
+        },
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "invalid_aia_provider_contract",
+            "message": "AIA tile provider returned an invalid artifact contract.",
+            "retryable": True,
+        }
+    }
+    assert response.content != b"provider bytes"
+
+
+def test_aia_tile_api_preserves_typed_provider_contract_failure(monkeypatch) -> None:
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            SolarRealtimeFetchError(
+                "invalid_aia_provider_contract",
+                "secret internal provider detail",
+            )
+        ),
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "invalid_aia_provider_contract",
+            "message": "AIA tile provider returned an invalid artifact contract.",
+            "retryable": True,
+        }
+    }
+    assert "secret" not in response.text
+
+
+@pytest.mark.parametrize("error_type", (RuntimeError, KeyError))
+def test_aia_tile_api_sanitizes_unknown_acquisition_failure(
+    monkeypatch,
+    error_type: type[Exception],
+) -> None:
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            error_type("secret upstream exception detail")
+        ),
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "aia_tile_unavailable",
+            "message": "AIA tile acquisition is unavailable.",
+            "retryable": True,
+        }
+    }
+    assert "secret" not in response.text
+
+
 def test_aia_tile_response_rejects_unvalidated_spatial_eligibility_claim(
     monkeypatch,
 ) -> None:
@@ -811,6 +951,13 @@ def test_aia_tile_times_out_with_short_budget(monkeypatch) -> None:
 
     response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
     assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "aia_tile_unavailable",
+            "message": "AIA tile acquisition is unavailable.",
+            "retryable": True,
+        }
+    }
 
 
 def test_aia_tile_environment_knobs_cannot_exceed_compile_time_hard_caps(

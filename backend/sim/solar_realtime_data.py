@@ -209,7 +209,7 @@ class SolarRealtimeDataProvider:
             tuple[str, str, float | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
         self._binary_cache: OrderedDict[
-            str, tuple[float, bytes, str | None, int]
+            str, tuple[float, bytes, int]
         ] = OrderedDict()
         self._binary_cache_bytes = 0
         self._inflight_fetches: dict[Any, dict[str, Any]] = {}
@@ -655,14 +655,17 @@ class SolarRealtimeDataProvider:
         if not isinstance(tile_url, str) or not tile_url:
             raise RuntimeError(f"No tile URL available for AIA channel `{channel_key}`")
 
-        tile_content, content_type = self._fetch_binary_cached(tile_url, ttl_s=self.cache_ttl_s)
+        tile_content, content_type = self._fetch_aia_png_cached(
+            tile_url,
+            ttl_s=self.cache_ttl_s,
+        )
         return {
             "channel": channel_key,
             "image_id": available_image_id,
             "image_date": channel_entry.get("image_date"),
             "tile_url": tile_url,
             "content": tile_content,
-            "content_type": content_type or "image/png",
+            "content_type": content_type,
             "artifact": channel_entry.get("artifact"),
             "spatial_use": channel_entry.get("spatial_use"),
         }
@@ -807,34 +810,41 @@ class SolarRealtimeDataProvider:
             max_bytes=self.MAX_BINARY_RESPONSE_BYTES,
             pre_body_validator=self._canonical_aia_media_type,
         )
-        if response.payload[:8] != self.AIA_PNG_SIGNATURE:
+        self._validate_aia_png_envelope(response.payload)
+        if response.content_type != "image/png":
+            raise SolarRealtimeFetchError(
+                "invalid_aia_provider_contract",
+                "AIA acquisition did not return canonical media metadata",
+            )
+        return response.payload, response.content_type
+
+    @classmethod
+    def _validate_aia_png_envelope(cls, payload: bytes) -> None:
+        if payload[:8] != cls.AIA_PNG_SIGNATURE:
             raise SolarRealtimeFetchError(
                 "invalid_aia_png_signature",
                 "AIA upstream body did not have a PNG signature",
             )
         if (
-            len(response.payload) < 33
-            or int.from_bytes(response.payload[8:12], "big") != 13
-            or response.payload[12:16] != b"IHDR"
-            or int.from_bytes(response.payload[29:33], "big")
-            != (zlib.crc32(response.payload[12:29]) & 0xFFFFFFFF)
+            len(payload) < 33
+            or int.from_bytes(payload[8:12], "big") != 13
+            or payload[12:16] != b"IHDR"
+            or int.from_bytes(payload[29:33], "big")
+            != (zlib.crc32(payload[12:29]) & 0xFFFFFFFF)
         ):
             raise SolarRealtimeFetchError(
                 "invalid_aia_png_header",
                 "AIA upstream PNG IHDR envelope was invalid",
             )
         if (
-            int.from_bytes(response.payload[16:20], "big")
-            != self.AIA_VIEWPORT_TILE_SIZE_PX
-            or int.from_bytes(response.payload[20:24], "big")
-            != self.AIA_VIEWPORT_TILE_SIZE_PX
+            int.from_bytes(payload[16:20], "big") != cls.AIA_VIEWPORT_TILE_SIZE_PX
+            or int.from_bytes(payload[20:24], "big")
+            != cls.AIA_VIEWPORT_TILE_SIZE_PX
         ):
             raise SolarRealtimeFetchError(
                 "invalid_aia_png_dimensions",
                 "AIA upstream PNG dimensions did not match the viewport contract",
             )
-        assert response.content_type == "image/png"
-        return response.payload, response.content_type
 
     @staticmethod
     def _header_values(response: Any, name: str) -> list[str]:
@@ -1283,7 +1293,11 @@ class SolarRealtimeDataProvider:
             finally:
                 response.close()
 
-    def _fetch_binary_cached(self, url: str, ttl_s: float | None = None) -> tuple[bytes, str | None]:
+    def _fetch_aia_png_cached(
+        self,
+        url: str,
+        ttl_s: float | None = None,
+    ) -> tuple[bytes, str]:
         canonical_url, _ = self._validate_upstream_url(url)
         cache_ttl = max(5.0, float(ttl_s if ttl_s is not None else self.cache_ttl_s))
         now_monotonic = time.monotonic()
@@ -1291,27 +1305,38 @@ class SolarRealtimeDataProvider:
         with self._lock:
             cached = self._binary_cache.get(canonical_url)
             if cached is not None:
-                expiry, payload, content_type, entry_size = cached
+                expiry, payload, entry_size = cached
                 if now_monotonic < expiry:
+                    try:
+                        self._validate_aia_png_envelope(payload)
+                    except SolarRealtimeFetchError:
+                        self._binary_cache.pop(canonical_url, None)
+                        self._binary_cache_bytes -= entry_size
+                        raise
                     self._binary_cache.move_to_end(canonical_url)
-                    return payload, content_type
+                    return payload, "image/png"
                 self._binary_cache.pop(canonical_url, None)
                 self._binary_cache_bytes -= entry_size
 
-        def fetch_and_cache_binary() -> tuple[bytes, str | None]:
-            payload, content_type = self._fetch_binary(canonical_url)
+        def fetch_and_cache_aia_png() -> tuple[bytes, str]:
+            payload, content_type = self._fetch_aia_png(canonical_url)
+            self._validate_aia_png_envelope(payload)
+            if content_type != "image/png":
+                raise SolarRealtimeFetchError(
+                    "invalid_aia_provider_contract",
+                    "AIA acquisition did not return canonical media metadata",
+                )
             completed_monotonic = time.monotonic()
             entry_size = self._binary_cache_entry_size(
                 canonical_url,
                 payload,
-                content_type,
             )
             with self._lock:
                 # Publish before releasing the single-flight entry and measure the
                 # full TTL from completion, not from the beginning of a slow fetch.
                 previous = self._binary_cache.pop(canonical_url, None)
                 if previous is not None:
-                    self._binary_cache_bytes -= previous[3]
+                    self._binary_cache_bytes -= previous[2]
 
                 stale_keys = [
                     cache_key
@@ -1319,14 +1344,13 @@ class SolarRealtimeDataProvider:
                     if value[0] <= completed_monotonic
                 ]
                 for stale_key in stale_keys:
-                    _, _, _, stale_size = self._binary_cache.pop(stale_key)
+                    _, _, stale_size = self._binary_cache.pop(stale_key)
                     self._binary_cache_bytes -= stale_size
 
                 if entry_size <= self.binary_cache_max_bytes:
                     self._binary_cache[canonical_url] = (
                         completed_monotonic + cache_ttl,
                         payload,
-                        content_type,
                         entry_size,
                     )
                     self._binary_cache.move_to_end(canonical_url)
@@ -1336,13 +1360,13 @@ class SolarRealtimeDataProvider:
                     len(self._binary_cache) > self.binary_cache_max_entries
                     or self._binary_cache_bytes > self.binary_cache_max_bytes
                 ):
-                    _, (_, _, _, evicted_size) = self._binary_cache.popitem(last=False)
+                    _, (_, _, evicted_size) = self._binary_cache.popitem(last=False)
                     self._binary_cache_bytes -= evicted_size
-            return payload, content_type
+            return payload, "image/png"
 
         return self._singleflight_fetch(
-            key=("binary", canonical_url),
-            fetch_fn=fetch_and_cache_binary,
+            key=("aia_png", canonical_url),
+            fetch_fn=fetch_and_cache_aia_png,
             wait_timeout_s=self.timeout_s + 0.5,
         )
 
@@ -1351,13 +1375,11 @@ class SolarRealtimeDataProvider:
         cls,
         url: str,
         payload: bytes,
-        content_type: str | None,
     ) -> int:
         return (
             cls.BINARY_CACHE_ENTRY_OVERHEAD_BYTES
             + len(url.encode("ascii"))
             + len(payload)
-            + len((content_type or "").encode("utf-8"))
         )
 
     def _singleflight_fetch(
@@ -1462,6 +1484,14 @@ class SolarRealtimeDataProvider:
             "invalid_response_validator": "Solar realtime response validator was invalid",
             "invalid_image_id": "Solar realtime Helioviewer image identity was rejected",
             "acquisition_deadline": "Solar realtime acquisition deadline expired",
+            "invalid_aia_media_type": "AIA tile upstream Content-Type is invalid.",
+            "unsupported_aia_media_type": "AIA tile upstream media type is unsupported.",
+            "invalid_aia_png_signature": "AIA tile PNG signature is invalid.",
+            "invalid_aia_png_header": "AIA tile PNG header is invalid.",
+            "invalid_aia_png_dimensions": "AIA tile PNG dimensions are invalid.",
+            "invalid_aia_provider_contract": (
+                "AIA tile provider returned an invalid artifact contract."
+            ),
         }
         if isinstance(error, SolarRealtimeFetchError):
             detail = safe_fetch_details.get(error.code)

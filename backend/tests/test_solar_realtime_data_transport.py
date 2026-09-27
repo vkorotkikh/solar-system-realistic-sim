@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from collections import deque
-import struct
+from collections.abc import Callable
 from typing import Any
 import urllib.request
-import zlib
 
 import pytest
 
@@ -24,28 +23,6 @@ class _Headers:
 
     def items(self) -> list[tuple[str, str]]:
         return list(self._fields)
-
-
-def _aia_png_header(
-    *,
-    width: int = 512,
-    height: int = 512,
-    chunk_length: int = 13,
-    chunk_type: bytes = b"IHDR",
-    crc: int | None = None,
-) -> bytes:
-    """Build one deterministic 33-byte PNG IHDR envelope for boundary tests."""
-
-    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    crc_payload = chunk_type + ihdr_data
-    checksum = zlib.crc32(crc_payload) & 0xFFFFFFFF if crc is None else crc
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + struct.pack(">I", chunk_length)
-        + chunk_type
-        + ihdr_data
-        + struct.pack(">I", checksum)
-    )
 
 
 class _Response:
@@ -106,11 +83,12 @@ class _Opener:
 def test_aia_png_media_type_is_strictly_parsed_and_canonicalized(
     monkeypatch: pytest.MonkeyPatch,
     declared_type: str,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
     provider = SolarRealtimeDataProvider()
     url = provider.HELIOVIEWER_TILE_URL
     response = _Response(
-        _aia_png_header(),
+        aia_png_header(),
         url=url,
         headers=_Headers([("Content-Type", declared_type)]),
     )
@@ -118,7 +96,7 @@ def test_aia_png_media_type_is_strictly_parsed_and_canonicalized(
 
     payload, content_type = provider._fetch_aia_png(url)
 
-    assert payload == _aia_png_header()
+    assert payload == aia_png_header()
     assert content_type == "image/png"
 
 
@@ -151,15 +129,8 @@ def test_aia_png_rejects_invalid_signature(
 
 
 @pytest.mark.parametrize(
-    "body",
+    "case",
     (
-        b"\x89PNG\r\n\x1a\n",
-        b"\x89PNG\r\n\x1a\n" + (b"x" * 24),
-        _aia_png_header(chunk_length=14),
-        _aia_png_header(chunk_type=b"IDAT"),
-        _aia_png_header(crc=0),
-    ),
-    ids=(
         "signature-only",
         "short-header",
         "wrong-ihdr-length",
@@ -169,12 +140,20 @@ def test_aia_png_rejects_invalid_signature(
 )
 def test_aia_png_rejects_invalid_ihdr_structure(
     monkeypatch: pytest.MonkeyPatch,
-    body: bytes,
+    case: str,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
+    bodies = {
+        "signature-only": b"\x89PNG\r\n\x1a\n",
+        "short-header": b"\x89PNG\r\n\x1a\n" + (b"x" * 24),
+        "wrong-ihdr-length": aia_png_header(chunk_length=14),
+        "wrong-first-chunk-type": aia_png_header(chunk_type=b"IDAT"),
+        "bad-ihdr-crc": aia_png_header(crc=0),
+    }
     provider = SolarRealtimeDataProvider()
     url = provider.HELIOVIEWER_TILE_URL
     response = _Response(
-        body,
+        bodies[case],
         url=url,
         headers=_Headers([("Content-Type", "image/png")]),
     )
@@ -199,11 +178,12 @@ def test_aia_png_requires_exact_viewport_dimensions(
     monkeypatch: pytest.MonkeyPatch,
     width: int,
     height: int,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
     provider = SolarRealtimeDataProvider()
     url = provider.HELIOVIEWER_TILE_URL
     response = _Response(
-        _aia_png_header(width=width, height=height),
+        aia_png_header(width=width, height=height),
         url=url,
         headers=_Headers([("Content-Type", "image/png")]),
     )
@@ -219,11 +199,12 @@ def test_aia_png_requires_exact_viewport_dimensions(
 def test_aia_png_requires_exact_http_200_without_reading_body(
     monkeypatch: pytest.MonkeyPatch,
     status: int,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
     provider = SolarRealtimeDataProvider()
     url = provider.HELIOVIEWER_TILE_URL
     response = _Response(
-        _aia_png_header(),
+        aia_png_header(),
         url=url,
         status=status,
         headers=_Headers([("Content-Type", "image/png")]),

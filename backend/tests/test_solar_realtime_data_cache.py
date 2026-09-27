@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import gc
+from collections.abc import Callable
 from typing import Any
 import weakref
 
@@ -690,68 +691,79 @@ def test_singleflight_known_fetch_failure_keeps_only_sanitized_code() -> None:
     assert "secret-body" not in str(first_failure.value)
 
 
-def test_binary_cache_enforces_byte_budget_with_lru_eviction(
+def test_aia_png_cache_enforces_byte_budget_with_lru_eviction(
     monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=1_150)
     fetches: list[str] = []
     urls = [
-        f"{provider.HELIOVIEWER_TILE_URL}?id={image_id}"
+        f"{SolarRealtimeDataProvider.HELIOVIEWER_TILE_URL}?id={image_id}"
         for image_id in (1, 2, 3)
     ]
+    payload = aia_png_header()
+    budget = sum(
+        SolarRealtimeDataProvider._binary_cache_entry_size(url, payload)
+        for url in urls[:2]
+    )
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=budget)
 
-    def fetch_binary(url: str) -> tuple[bytes, str]:
+    def fetch_aia_png(url: str) -> tuple[bytes, str]:
         fetches.append(url)
-        return b"png", "image/png"
+        return payload, "image/png"
 
-    monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
+    monkeypatch.setattr(provider, "_fetch_aia_png", fetch_aia_png)
 
-    assert provider._fetch_binary_cached(urls[0])[0] == b"png"
-    assert provider._fetch_binary_cached(urls[1])[0] == b"png"
-    assert provider._fetch_binary_cached(urls[0])[0] == b"png"  # LRU touch.
-    assert provider._fetch_binary_cached(urls[2])[0] == b"png"  # Evicts id=2.
-    assert provider._fetch_binary_cached(urls[1])[0] == b"png"
+    assert provider._fetch_aia_png_cached(urls[0])[0] == payload
+    assert provider._fetch_aia_png_cached(urls[1])[0] == payload
+    assert provider._fetch_aia_png_cached(urls[0])[0] == payload  # LRU touch.
+    assert provider._fetch_aia_png_cached(urls[2])[0] == payload  # Evicts id=2.
+    assert provider._fetch_aia_png_cached(urls[1])[0] == payload
 
     assert fetches == [urls[0], urls[1], urls[2], urls[1]]
-    assert provider._binary_cache_bytes <= 1_150
+    assert provider._binary_cache_bytes <= budget
     assert provider._binary_cache_bytes == sum(
-        512
-        + len(url.encode("ascii"))
-        + len(entry[1])
-        + len((entry[2] or "").encode("ascii"))
+        provider._binary_cache_entry_size(url, entry[1])
         for url, entry in provider._binary_cache.items()
     )
 
 
-def test_binary_entry_larger_than_cache_budget_is_never_retained(
+def test_aia_png_entry_larger_than_cache_budget_is_never_retained(
     monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=550)
     fetch_count = 0
-    url = f"{provider.HELIOVIEWER_TILE_URL}?id=1"
+    url = f"{SolarRealtimeDataProvider.HELIOVIEWER_TILE_URL}?id=1"
+    payload = aia_png_header()
+    entry_size = SolarRealtimeDataProvider._binary_cache_entry_size(url, payload)
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=entry_size - 1)
 
-    def fetch_binary(_url: str) -> tuple[bytes, str]:
+    def fetch_aia_png(_url: str) -> tuple[bytes, str]:
         nonlocal fetch_count
         fetch_count += 1
-        return b"four", "image/png"
+        return payload, "image/png"
 
-    monkeypatch.setattr(provider, "_fetch_binary", fetch_binary)
+    monkeypatch.setattr(provider, "_fetch_aia_png", fetch_aia_png)
 
-    assert provider._fetch_binary_cached(url)[0] == b"four"
-    assert provider._fetch_binary_cached(url)[0] == b"four"
+    assert provider._fetch_aia_png_cached(url)[0] == payload
+    assert provider._fetch_aia_png_cached(url)[0] == payload
 
     assert fetch_count == 2
     assert provider._binary_cache_bytes == 0
     assert len(provider._binary_cache) == 0
 
 
-def test_binary_cache_replacement_subtracts_expired_payload_bytes(
+def test_aia_png_cache_replacement_subtracts_expired_payload_bytes(
     monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
-    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=700)
     monotonic_now = [100.0]
-    payloads = iter((b"aa", b"bbbb"))
-    url = f"{provider.HELIOVIEWER_TILE_URL}?id=1"
+    payloads = iter((aia_png_header(), aia_png_header() + b"trailing"))
+    url = f"{SolarRealtimeDataProvider.HELIOVIEWER_TILE_URL}?id=1"
+    replacement_size = SolarRealtimeDataProvider._binary_cache_entry_size(
+        url,
+        aia_png_header() + b"trailing",
+    )
+    provider = SolarRealtimeDataProvider(binary_cache_max_bytes=replacement_size)
     monkeypatch.setattr(
         solar_realtime_data.time,
         "monotonic",
@@ -759,22 +771,23 @@ def test_binary_cache_replacement_subtracts_expired_payload_bytes(
     )
     monkeypatch.setattr(
         provider,
-        "_fetch_binary",
+        "_fetch_aia_png",
         lambda _url: (next(payloads), "image/png"),
     )
 
-    assert provider._fetch_binary_cached(url, ttl_s=5.0)[0] == b"aa"
+    assert provider._fetch_aia_png_cached(url, ttl_s=5.0)[0] == aia_png_header()
     monotonic_now[0] = 106.0
-    assert provider._fetch_binary_cached(url, ttl_s=5.0)[0] == b"bbbb"
-
-    assert provider._binary_cache_bytes == (
-        512 + len(url.encode("ascii")) + len(b"bbbb") + len(b"image/png")
+    assert provider._fetch_aia_png_cached(url, ttl_s=5.0)[0] == (
+        aia_png_header() + b"trailing"
     )
+
+    assert provider._binary_cache_bytes == replacement_size
     assert len(provider._binary_cache) == 1
 
 
-def test_binary_cache_rejects_megabyte_url_before_cache_or_fetch(
+def test_aia_png_cache_rejects_megabyte_url_before_cache_or_fetch(
     monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
 ) -> None:
     provider = SolarRealtimeDataProvider()
     fetches = 0
@@ -782,19 +795,163 @@ def test_binary_cache_rejects_megabyte_url_before_cache_or_fetch(
     def forbidden_fetch(_url: str) -> tuple[bytes, str]:
         nonlocal fetches
         fetches += 1
-        return b"png", "image/png"
+        return aia_png_header(), "image/png"
 
-    monkeypatch.setattr(provider, "_fetch_binary", forbidden_fetch)
+    monkeypatch.setattr(provider, "_fetch_aia_png", forbidden_fetch)
     oversized_url = provider.HELIOVIEWER_TILE_URL + "?id=" + ("1" * 1_000_000)
 
     with pytest.raises(SolarRealtimeFetchError, match="URL.*byte limit"):
-        provider._fetch_binary_cached(oversized_url)
+        provider._fetch_aia_png_cached(oversized_url)
 
     assert fetches == 0
     assert provider._binary_cache == {}
     assert provider._binary_cache_bytes == 0
     assert provider._inflight_fetches == {}
     assert provider._inflight_failures == {}
+
+
+def test_aia_png_cache_revalidates_and_atomically_evicts_corrupt_live_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    corrupt_url = f"{provider.HELIOVIEWER_TILE_URL}?id=corrupt"
+    retained_url = f"{provider.HELIOVIEWER_TILE_URL}?id=retained"
+    corrupt_payload = b"not-a-png"
+    retained_payload = aia_png_header()
+    corrupt_size = provider._binary_cache_entry_size(corrupt_url, corrupt_payload)
+    retained_size = provider._binary_cache_entry_size(retained_url, retained_payload)
+    provider._binary_cache[corrupt_url] = (200.0, corrupt_payload, corrupt_size)
+    provider._binary_cache[retained_url] = (200.0, retained_payload, retained_size)
+    provider._binary_cache_bytes = corrupt_size + retained_size
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png_cached(corrupt_url)
+
+    assert raised.value.code == "invalid_aia_png_signature"
+    assert list(provider._binary_cache) == [retained_url]
+    assert provider._binary_cache_bytes == retained_size
+
+
+def test_aia_png_cache_validates_fetched_bytes_before_accounting_or_publish(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id=invalid"
+    monkeypatch.setattr(
+        provider,
+        "_fetch_aia_png",
+        lambda _url: (b"not-a-png", "image/png"),
+    )
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png_cached(url)
+
+    assert raised.value.code == "invalid_aia_png_signature"
+    assert provider._binary_cache == {}
+    assert provider._binary_cache_bytes == 0
+
+
+def test_aia_png_cache_reuses_one_valid_fetch_and_stores_no_media_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id=valid"
+    payload = aia_png_header()
+    fetches = 0
+
+    def fetch_aia_png(_url: str) -> tuple[bytes, str]:
+        nonlocal fetches
+        fetches += 1
+        return payload, "image/png"
+
+    monkeypatch.setattr(provider, "_fetch_aia_png", fetch_aia_png)
+
+    first = provider._fetch_aia_png_cached(url)
+    second = provider._fetch_aia_png_cached(url)
+
+    assert first == second == (payload, "image/png")
+    assert fetches == 1
+    assert len(provider._binary_cache[url]) == 3
+
+
+@pytest.mark.parametrize(
+    ("code", "safe_detail"),
+    (
+        (
+            "invalid_aia_media_type",
+            "AIA tile upstream Content-Type is invalid.",
+        ),
+        (
+            "unsupported_aia_media_type",
+            "AIA tile upstream media type is unsupported.",
+        ),
+        (
+            "invalid_aia_png_signature",
+            "AIA tile PNG signature is invalid.",
+        ),
+        (
+            "invalid_aia_png_header",
+            "AIA tile PNG header is invalid.",
+        ),
+        (
+            "invalid_aia_png_dimensions",
+            "AIA tile PNG dimensions are invalid.",
+        ),
+    ),
+)
+def test_aia_validation_failure_replay_preserves_sanitized_code_without_graph(
+    monkeypatch: pytest.MonkeyPatch,
+    code: str,
+    safe_detail: str,
+) -> None:
+    class RetainedPayload:
+        pass
+
+    provider = SolarRealtimeDataProvider()
+    provider.singleflight_error_backoff_s = 60.0
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id={code}"
+    retained_payload = RetainedPayload()
+    retained_ref = weakref.ref(retained_payload)
+    attempts = 0
+
+    def fail_fetch(_url: str) -> tuple[bytes, str]:
+        nonlocal attempts
+        attempts += 1
+        error = SolarRealtimeFetchError(code, "secret injected upstream detail")
+        error.retained_payload = retained_payload  # type: ignore[attr-defined]
+        raise error
+
+    monkeypatch.setattr(provider, "_fetch_aia_png", fail_fetch)
+
+    with pytest.raises(SolarRealtimeFetchError) as leader:
+        provider._fetch_aia_png_cached(url)
+    del retained_payload
+    gc.collect()
+    with pytest.raises(SolarRealtimeFetchError) as replay:
+        provider._fetch_aia_png_cached(url)
+
+    assert attempts == 1
+    assert leader.value is not replay.value
+    assert leader.value.code == replay.value.code == code
+    assert leader.value.detail == replay.value.detail == safe_detail
+    assert "secret" not in str(leader.value)
+    assert "secret" not in str(replay.value)
+    assert retained_ref() is None
+    descriptor = provider._inflight_failures[("aia_png", url)]
+    assert not isinstance(descriptor, BaseException)
+    assert descriptor.kind == "fetch"
+    assert descriptor.code == code
+    assert descriptor.detail == safe_detail
+    assert provider._binary_cache == {}
+    assert provider._binary_cache_bytes == 0
 
 
 @pytest.mark.parametrize("jd", [float("nan"), float("inf"), float("-inf")])
@@ -1002,7 +1159,7 @@ def test_aia_snapshot_never_reads_viewport_pixels_or_derives_science(
         binary_reads.append(url)
         raise AssertionError("snapshot generation must remain metadata-only")
 
-    monkeypatch.setattr(provider, "_fetch_binary_cached", forbidden_binary_read)
+    monkeypatch.setattr(provider, "_fetch_aia_png_cached", forbidden_binary_read)
 
     snapshot = provider._fetch_sdo_aia(2_459_291.4394237916)
 
@@ -1048,7 +1205,7 @@ def test_aia_provider_accepts_equal_legacy_epoch_alias(
     monkeypatch.setattr(provider, "latest", fake_latest)
     monkeypatch.setattr(
         provider,
-        "_fetch_binary_cached",
+        "_fetch_aia_png_cached",
         lambda *_args, **_kwargs: (b"png", "image/png"),
     )
 
@@ -1083,7 +1240,7 @@ def test_aia_tile_rejects_changed_snapshot_identity_before_binary_fetch(
     binary_fetches: list[str] = []
     monkeypatch.setattr(
         provider,
-        "_fetch_binary_cached",
+        "_fetch_aia_png_cached",
         lambda url, **_kwargs: (binary_fetches.append(url), (b"wrong", "image/png"))[1],
     )
 
@@ -1136,7 +1293,7 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
         fetched_urls.append(url)
         return b"exact-image-a", "image/png"
 
-    monkeypatch.setattr(provider, "_fetch_binary_cached", fetch_binary)
+    monkeypatch.setattr(provider, "_fetch_aia_png_cached", fetch_binary)
 
     tile = provider.latest_aia_tile(channel="aia_193", image_id="100")
 
@@ -1145,3 +1302,33 @@ def test_aia_tile_serves_the_exact_requested_snapshot_artifact(
     assert tile["content"] == b"exact-image-a"
     assert tile["artifact"]["delivery"] == "raw_on_demand"
     assert tile["spatial_use"]["eligible"] is False
+
+
+def test_aia_tile_provider_does_not_relabel_missing_content_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "latest",
+        lambda **_kwargs: {
+            "sdo_aia": {
+                "channels": {
+                    "aia_193": {
+                        "tile_url": "https://example.invalid/aia.png",
+                        "image_id": "1",
+                        "image_date": "2026-01-01T00:00:00Z",
+                    }
+                }
+            }
+        },
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_aia_png_cached",
+        lambda *_args, **_kwargs: (b"png", None),
+    )
+
+    tile = provider.latest_aia_tile()
+
+    assert tile["content_type"] is None
