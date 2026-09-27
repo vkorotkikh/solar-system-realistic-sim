@@ -128,6 +128,47 @@ def test_snapshot_force_refresh_does_not_bypass_independent_silso_cache(
     assert second["silso"]["acquisition"]["cache_status"] == "fresh"
 
 
+def test_silso_delivery_is_deeply_detached_from_canonical_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+
+    first = provider._fetch_silso()
+    retained = provider._silso_cache
+
+    assert retained is not None
+    assert first is not retained.value
+    assert first["schema"] is not retained.value["schema"]
+    assert first["units"] is not retained.value["units"]
+    assert first["provenance"] is not retained.value["provenance"]
+    assert first["provenance"]["license"] is not retained.value["provenance"]["license"]
+
+    first["schema"]["version"] = 999
+    first["units"]["source_age_days"] = "corrupt"
+    first["coverage"]["status"] = "corrupt"
+    first["provenance"]["license"]["name"] = "corrupt"
+    first["provenance"]["license"]["large_marker"] = "x" * 1_000_000
+
+    second = provider._fetch_silso()
+
+    assert second["schema"]["version"] == 2
+    assert second["units"]["source_age_days"] == "d"
+    assert second["coverage"]["status"] == "current_for_published_coverage"
+    assert second["provenance"]["license"] == {
+        "name": "CC BY-NC 4.0",
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+    }
+    assert retained.value["schema"]["version"] == 2
+    assert retained.value["units"]["source_age_days"] == "d"
+    assert retained.value["coverage"]["status"] == "current_for_published_coverage"
+    assert retained.value["provenance"]["license"] == {
+        "name": "CC BY-NC 4.0",
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+    }
+
+
 def test_silso_revalidates_with_bounded_conditional_headers_and_304(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

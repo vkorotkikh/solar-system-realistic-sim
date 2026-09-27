@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import math
 import threading
@@ -1648,7 +1649,7 @@ class SolarRealtimeDataProvider:
         cache_status: str,
         failure: _FetchFailureDescriptor | None = None,
     ) -> dict[str, Any]:
-        value = dict(entry.value)
+        value = copy.deepcopy(entry.value)
         observation_date_text = value.get("date")
         if not isinstance(observation_date_text, str):
             raise RuntimeError("SILSO cached observation date is invalid")
