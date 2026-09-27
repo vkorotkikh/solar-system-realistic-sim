@@ -441,6 +441,27 @@ class SolarRealtimeDataProvider:
 
             delivered_statuses["silso"] = silso_status
             snapshot["source_status"] = delivered_statuses
+        else:
+            snapshot["silso"] = None
+            statuses = snapshot.get("source_status")
+            delivered_statuses = (
+                dict(statuses) if isinstance(statuses, Mapping) else {}
+            )
+            prior_status = delivered_statuses.get("silso")
+            if isinstance(prior_status, Mapping) and prior_status.get("ok") is True:
+                silso_status = dict(prior_status)
+                silso_status.pop("source_age_days", None)
+                silso_status.pop("coverage", None)
+                silso_status.update(
+                    {
+                        "ok": False,
+                        "updated": None,
+                        "reason": "invalid_delivery_date",
+                        "delivered_at_utc": self._canonical_utc_time_tag(now_utc),
+                    }
+                )
+                delivered_statuses["silso"] = silso_status
+                snapshot["source_status"] = delivered_statuses
 
         swpc = snapshot.get("swpc")
         if not isinstance(swpc, dict):
