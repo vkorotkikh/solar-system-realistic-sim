@@ -177,6 +177,39 @@ afterEach(() => {
 });
 
 describe('SolarRealtimeClient delivery contract', () => {
+  it.each([
+    { label: 'available', statusOk: true, hasPayload: true },
+    { label: 'unavailable', statusOk: false, hasPayload: false }
+  ])(
+    'accepts matched AIA status and payload availability ($label)',
+    ({ statusOk, hasPayload }) => {
+      const payload = projectedPayload();
+      payload.snapshot.source_status.sdo_aia.ok = statusOk;
+      if (!hasPayload) payload.snapshot.sdo_aia = null;
+
+      const validated = validateSolarRealtimePayload(payload);
+
+      expect(validated.snapshot.source_status.sdo_aia.ok).toBe(statusOk);
+      expect(validated.snapshot.sdo_aia !== null).toBe(hasPayload);
+    }
+  );
+
+  it.each([
+    { label: 'successful status without payload', statusOk: true, hasPayload: false },
+    { label: 'failed status with renderable payload', statusOk: false, hasPayload: true }
+  ])(
+    'rejects contradictory AIA status and payload availability ($label)',
+    ({ statusOk, hasPayload }) => {
+      const payload = projectedPayload();
+      payload.snapshot.source_status.sdo_aia.ok = statusOk;
+      if (!hasPayload) payload.snapshot.sdo_aia = null;
+
+      expect(() => validateSolarRealtimePayload(payload)).toThrow(
+        'source_status.sdo_aia.ok must match whether snapshot.sdo_aia is non-null'
+      );
+    }
+  );
+
   it('accepts SILSO delivery metadata with exact payload and status parity', () => {
     const payload = validateSolarRealtimePayload(payloadWithSilso());
 

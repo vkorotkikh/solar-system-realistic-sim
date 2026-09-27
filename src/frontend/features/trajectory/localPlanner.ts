@@ -1,21 +1,10 @@
 import { Vector3 } from 'three';
-import { AU_M, AU_KM, DAY_SECONDS, G_SI, MU_SUN_AU3_DAY2, auPerDayToKmPerSec } from '../../../constants';
+import { MU_SUN_AU3_DAY2, auPerDayToKmPerSec } from '../../../constants';
 
 const DEFAULT_ASSIST_POOL = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn'];
 const MAX_LOCAL_ASSISTS = 3;
 const MAX_LOCAL_ASSIST_POOL_SIZE = 8;
 const MAX_LOCAL_ROUTE_TOPOLOGIES = 401;
-
-function muAu3Day2FromMassKg(massKg) {
-  const muSi = G_SI * massKg;
-  return (muSi * DAY_SECONDS * DAY_SECONDS) / (AU_M * AU_M * AU_M);
-}
-
-function safeAngleBetween(a, b) {
-  const denom = Math.max(1e-9, a.length() * b.length());
-  const cosTheta = Math.min(1, Math.max(-1, a.dot(b) / denom));
-  return Math.acos(cosTheta);
-}
 
 function computeHohmannLeg(model, fromId, toId, departureJd) {
   const fromAtDeparture = model.sampleBodyStateAt(fromId, departureJd);
@@ -47,9 +36,6 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
   const deltaVDepartureKmS = auPerDayToKmPerSec(Math.abs(vTransfer1 - vCircular1));
   const deltaVArrivalKmS = auPerDayToKmPerSec(Math.abs(vCircular2 - vTransfer2));
 
-  const averageVelocity = toState.position.clone().sub(fromState.position).divideScalar(tofDays);
-  const departureVelocityApprox = averageVelocity.clone();
-  const arrivalVelocityApprox = averageVelocity.clone();
   const endpointChordAu = fromState.position.distanceTo(toState.position);
 
   return {
@@ -67,87 +53,7 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
     deltaVDepartureKmS,
     deltaVArrivalKmS,
     startPosition: fromState.position.clone(),
-    endPosition: toState.position.clone(),
-    departureVelocityApprox,
-    arrivalVelocityApprox
-  };
-}
-
-function evaluateAssist(model, body, incomingLeg, outgoingLeg) {
-  if (!body) {
-    return {
-      assistGainKmS: 0,
-      vInfinityInKmS: 0,
-      vInfinityOutKmS: 0,
-      vInfinityMismatchKmS: 0,
-      vInfinityToleranceKmS: 0,
-      vInfinityConserved: false,
-      requiredTurnDeg: 0,
-      maxTurnDeg: 0,
-      feasible: false
-    };
-  }
-
-  if (!body.massKg || !body.radiusKm) {
-    return {
-      assistGainKmS: 0,
-      vInfinityInKmS: 0,
-      vInfinityOutKmS: 0,
-      vInfinityMismatchKmS: 0,
-      vInfinityToleranceKmS: 0,
-      vInfinityConserved: false,
-      requiredTurnDeg: 0,
-      maxTurnDeg: 0,
-      feasible: false
-    };
-  }
-
-  const encounterJd = incomingLeg.arrivalJd;
-  const bodyState = model.sampleBodyStateAt(body.id, encounterJd);
-  const bodyVelocity = bodyState.velocity;
-
-  const vInfIn = incomingLeg.arrivalVelocityApprox.clone().sub(bodyVelocity);
-  const vInfOut = outgoingLeg.departureVelocityApprox.clone().sub(bodyVelocity);
-
-  const vInfInMagnitudeAuDay = vInfIn.length();
-  const vInfOutMagnitudeAuDay = vInfOut.length();
-  const vInfinityInKmS = auPerDayToKmPerSec(vInfInMagnitudeAuDay);
-  const vInfinityOutKmS = auPerDayToKmPerSec(vInfOutMagnitudeAuDay);
-  const vInfinityMismatchKmS = Math.abs(vInfinityInKmS - vInfinityOutKmS);
-  const vInfinityToleranceKmS = Math.max(
-    1e-3,
-    1e-4 * Math.max(vInfinityInKmS, vInfinityOutKmS)
-  );
-  const vInfinityConserved =
-    Number.isFinite(vInfinityMismatchKmS) && vInfinityMismatchKmS <= vInfinityToleranceKmS;
-  const requiredTurn = safeAngleBetween(vInfIn, vInfOut);
-
-  const muBody = muAu3Day2FromMassKg(body.massKg);
-  const rpAu = (body.radiusKm + 300) / AU_KM;
-
-  let maxTurn = 0;
-  if (muBody > 0 && vInfInMagnitudeAuDay > 1e-8) {
-    const denominator = 1 + (rpAu * vInfInMagnitudeAuDay * vInfInMagnitudeAuDay) / muBody;
-    maxTurn = 2 * Math.asin(Math.min(1, 1 / denominator));
-  }
-
-  const appliedTurn = Math.min(requiredTurn, maxTurn);
-  const turnFeasible = requiredTurn <= maxTurn + 1e-6;
-  const feasible = vInfinityConserved && turnFeasible;
-  const assistGainKmS = feasible
-    ? 2 * vInfinityInKmS * Math.sin(appliedTurn / 2)
-    : 0;
-
-  return {
-    assistGainKmS,
-    vInfinityInKmS,
-    vInfinityOutKmS,
-    vInfinityMismatchKmS,
-    vInfinityToleranceKmS,
-    vInfinityConserved,
-    requiredTurnDeg: (requiredTurn * 180) / Math.PI,
-    maxTurnDeg: (maxTurn * 180) / Math.PI,
-    feasible
+    endPosition: toState.position.clone()
   };
 }
 
@@ -188,33 +94,6 @@ function estimateRouteCount(poolSize: number, maxAssists: number): number {
     count += permutations;
   }
   return count;
-}
-
-function* generateAssistRoutes(
-  startId: string,
-  endId: string,
-  assistPool: string[],
-  maxAssists: number
-): Generator<string[], void, unknown> {
-  yield [startId, endId];
-
-  function* backtrack(path: string[], remainingDepth: number): Generator<string[], void, unknown> {
-    if (remainingDepth === 0) {
-      yield [...path, endId];
-      return;
-    }
-
-    for (const candidate of assistPool) {
-      if (candidate === startId || candidate === endId || path.includes(candidate)) {
-        continue;
-      }
-      yield* backtrack([...path, candidate], remainingDepth - 1);
-    }
-  }
-
-  for (let assistCount = 1; assistCount <= maxAssists; assistCount += 1) {
-    yield* backtrack([startId], assistCount);
-  }
 }
 
 export function planInterplanetaryRoute(model, bodyById, options) {
@@ -300,7 +179,12 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     );
   }
 
-  const routeBodies = generateAssistRoutes(fromId, toId, sanitizedAssistPool, boundedMaxAssists);
+  const assistedTopologiesRequested =
+    boundedMaxAssists > 0 && sanitizedAssistPool.length > 0;
+  // Hohmann fallback legs provide endpoint positions and scalar burn estimates,
+  // not physically valid endpoint velocity vectors. Until bounded Lambert
+  // endpoint velocities are available, evaluate only the direct topology.
+  const routeBodies = [[fromId, toId]];
   const evaluatedRoutes = [];
   let evaluatedTopologies = 0;
 
@@ -333,35 +217,9 @@ export function planInterplanetaryRoute(model, bodyById, options) {
       continue;
     }
 
-    let totalAssistGainKmS = 0;
-    let turnDeficitPenalty = 0;
+    const totalAssistGainKmS = 0;
+    const turnDeficitPenalty = 0;
     const assists = [];
-
-    for (let i = 1; i < bodyRoute.length - 1; i += 1) {
-      const assistBodyId = bodyRoute[i];
-      const assistBody = bodyById.get(assistBodyId);
-      const assist = evaluateAssist(model, assistBody, legs[i - 1], legs[i]);
-
-      assists.push({
-        bodyId: assistBodyId,
-        ...assist
-      });
-
-      totalAssistGainKmS += assist.assistGainKmS;
-
-      if (!assist.feasible) {
-        routeValid = false;
-        break;
-      }
-    }
-
-
-    // A patched-conic flyby must conserve hyperbolic excess speed as well as
-    // stay within the body's turn-angle limit. Never rank or render a route
-    // that failed either physical gate.
-    if (!routeValid) {
-      continue;
-    }
 
     const totalPathLengthAu = legs.reduce((sum, leg) => sum + leg.pathLengthAu, 0);
     const totalTimeDays = legs[legs.length - 1].arrivalJd - legs[0].departureJd;
@@ -399,15 +257,16 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     alternatives: evaluatedRoutes.slice(1, 6),
     search: {
       strategy: 'bounded_local_routes_v1',
-      configuredFrontierCompleted: true,
-      // Every admitted topology is visited, but each leg uses one heuristic
-      // Hohmann timing. That is not exhaustive over the continuous trajectory
-      // domain and must never be presented as such.
-      topologySpaceExhaustive: true,
+      configuredFrontierCompleted: !assistedTopologiesRequested,
+      // Assisted topologies are intentionally outside the local frontier until
+      // their endpoints can be solved with bounded Lambert calculations.
+      topologySpaceExhaustive: !assistedTopologiesRequested,
       searchSpaceExhaustive: false,
       optimalityGuaranteed: false,
       truncated: false,
-      terminationReason: 'configured_frontier_completed',
+      terminationReason: assistedTopologiesRequested
+        ? 'assisted_routes_disabled_without_lambert_endpoint_velocities'
+        : 'configured_frontier_completed',
       estimatedRouteCount,
       evaluatedTopologies,
       limits: {

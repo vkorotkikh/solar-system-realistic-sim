@@ -585,9 +585,9 @@ export function validateSolarRealtimePayload(rawPayload: unknown): SolarRealtime
   }
 
   const aiaStatus = snapshot.source_status.sdo_aia as Record<string, unknown>;
-  if (aiaStatus.ok === true && !isRecord(snapshot.sdo_aia)) {
+  if (aiaStatus.ok !== (snapshot.sdo_aia !== null)) {
     throw new Error(
-      'Solar realtime sdo_aia status claims success but snapshot data is unavailable'
+      'Solar realtime source_status.sdo_aia.ok must match whether snapshot.sdo_aia is non-null'
     );
   }
   if (snapshot.sdo_aia !== null) {
