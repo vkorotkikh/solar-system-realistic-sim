@@ -1073,6 +1073,216 @@ def test_aia_provider_converts_jdtdb_to_utc_before_query(
     assert abs((encoded_request_date - expected_utc).total_seconds()) < 50e-6
 
 
+def test_snapshot_stops_starting_sources_after_aggregate_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    monotonic_now = [100.0]
+    calls: list[str] = []
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+
+    def fetch_swpc() -> dict[str, Any]:
+        calls.append("swpc")
+        monotonic_now[0] += 0.5
+        return {}
+
+    def fetch_silso() -> dict[str, Any]:
+        calls.append("silso")
+        monotonic_now[0] += 0.5
+        return {}
+
+    def fetch_aia(_jd_tdb: float | None) -> dict[str, Any]:
+        calls.append("aia")
+        return {}
+
+    monkeypatch.setattr(provider, "_fetch_swpc", fetch_swpc)
+    monkeypatch.setattr(provider, "_fetch_silso", fetch_silso)
+    monkeypatch.setattr(provider, "_fetch_sdo_aia", fetch_aia)
+
+    snapshot = provider._fetch_snapshot(None)
+
+    assert calls == ["swpc", "silso"]
+    assert snapshot["source_status"]["sdo_aia"]["ok"] is False
+    assert "acquisition deadline" in snapshot["source_status"]["sdo_aia"][
+        "error"
+    ]
+
+
+def test_aia_metadata_loop_stops_when_shared_deadline_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    monotonic_now = [200.0]
+    requested_sources: list[int] = []
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+
+    def fetch_closest(source_id: int, _date_utc: datetime) -> dict[str, Any]:
+        requested_sources.append(source_id)
+        monotonic_now[0] += 0.5
+        return {
+            "source_id": source_id,
+            "image_id": None,
+            "image_date": None,
+            "tile_url": None,
+        }
+
+    monkeypatch.setattr(provider, "_fetch_helioviewer_closest", fetch_closest)
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_sdo_aia(None)
+
+    assert raised.value.code == "acquisition_deadline"
+    assert requested_sources == list(provider.AIA_SOURCE_IDS.values())[:2]
+
+
+def test_aia_tile_reuses_snapshot_deadline_before_binary_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    monotonic_now = [300.0]
+    work: list[str] = []
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+
+    def latest(**_kwargs: Any) -> dict[str, Any]:
+        work.append("metadata")
+        monotonic_now[0] += 1.0
+        return {
+            "sdo_aia": {
+                "channels": {
+                    "aia_193": {
+                        "image_id": "1",
+                        "image_date": "2026-09-27T12:00:00Z",
+                        "tile_url": provider.HELIOVIEWER_TILE_URL,
+                    }
+                }
+            }
+        }
+
+    def fetch_tile(*_args: Any, **_kwargs: Any) -> tuple[bytes, str]:
+        work.append("tile")
+        return b"png", "image/png"
+
+    monkeypatch.setattr(provider, "latest", latest)
+    monkeypatch.setattr(provider, "_fetch_aia_png_cached", fetch_tile)
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider.latest_aia_tile()
+
+    assert raised.value.code == "acquisition_deadline"
+    assert work == ["metadata"]
+
+
+def test_aia_metadata_is_canonicalized_before_snapshot_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+
+    def unavailable() -> dict[str, Any]:
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(provider, "_fetch_swpc", unavailable)
+    monkeypatch.setattr(provider, "_fetch_silso", unavailable)
+    monkeypatch.setattr(
+        provider,
+        "_fetch_json",
+        lambda _url: {
+            "id": 184733789,
+            "date": "2026-09-27 12:34:56",
+            "name": "AIA 193 Angstrom",
+            "scale": 0.6,
+            "width": 4096,
+            "height": 4096,
+            "rsun": 1585.0,
+            "rotation": 0.0,
+        },
+    )
+
+    delivered = provider.latest(force_refresh=True)
+    retained = provider._snapshot_cache[("snapshot", "latest", None)][1]
+
+    for snapshot in (delivered, retained):
+        channels = snapshot["sdo_aia"]["channels"]
+        assert channels
+        assert all(
+            channel["image_date"] == "2026-09-27T12:34:56Z"
+            for channel in channels.values()
+        )
+        assert all(
+            channel["name"] == "AIA 193 Angstrom"
+            for channel in channels.values()
+        )
+        assert snapshot["sdo_aia"]["latest_image_date_utc"] == (
+            "2026-09-27T12:34:56Z"
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "unsafe_value"),
+    (
+        ("name", "unsafe\r\nname"),
+        ("name", "non-ascii-\u2603"),
+        ("name", "x" * 129),
+        ("date", "2026-09-27 12:34:56\r\nX-Injected: yes"),
+        ("date", "2026-09-27 12:34:\u2603"),
+        ("date", "x" * 129),
+    ),
+    ids=(
+        "name-control",
+        "name-non-ascii",
+        "name-overlong",
+        "date-control",
+        "date-non-ascii",
+        "date-overlong",
+    ),
+)
+def test_unsafe_aia_metadata_is_rejected_before_snapshot_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    unsafe_value: str,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+
+    def unavailable() -> dict[str, Any]:
+        raise RuntimeError("offline")
+
+    payload: dict[str, Any] = {
+        "id": 184733789,
+        "date": "2026-09-27 12:34:56",
+        "name": "AIA 193 Angstrom",
+        "scale": 0.6,
+        "width": 4096,
+        "height": 4096,
+        "rsun": 1585.0,
+        "rotation": 0.0,
+    }
+    payload[field] = unsafe_value
+    monkeypatch.setattr(provider, "_fetch_swpc", unavailable)
+    monkeypatch.setattr(provider, "_fetch_silso", unavailable)
+    monkeypatch.setattr(provider, "_fetch_json", lambda _url: payload)
+
+    provider.latest(force_refresh=True)
+    retained = provider._snapshot_cache[("snapshot", "latest", None)][1]
+
+    assert retained["sdo_aia"] is None
+    assert retained["source_status"]["sdo_aia"]["ok"] is False
+    assert "invalid_aia_metadata" in retained["source_status"]["sdo_aia"][
+        "error"
+    ]
+    assert unsafe_value not in retained["source_status"]["sdo_aia"]["error"]
+
+
 def test_aia_channel_declares_viewport_artifact_as_nonspatial(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

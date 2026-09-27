@@ -855,3 +855,80 @@ def test_network_profile_rejects_refresh_get_flags_before_work(
         "retryable": False,
     }
     assert work_called is False
+
+
+def test_realtime_provider_deadline_is_inside_server_timeout_contracts() -> None:
+    assert 0.0 < server.SOLAR_REALTIME_DATA.timeout_s
+    assert (
+        server.SOLAR_REALTIME_DATA.timeout_s
+        < server.SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS
+    )
+    assert (
+        server.SOLAR_REALTIME_DATA.timeout_s
+        < server.SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS
+    )
+
+
+@pytest.mark.parametrize(
+    ("image_date", "expected_status", "expected_header"),
+    (
+        ("2026-09-27 12:34:56", 200, "2026-09-27T12:34:56Z"),
+        ("2026-09-27T12:34:56Z", 200, "2026-09-27T12:34:56Z"),
+        ("2026-09-27T12:34:56Z\r\nX-Injected: yes", 503, None),
+        ("2026-09-27T12:34:5\u2603Z", 503, None),
+        ("x" * 129, 503, None),
+        ("not-a-date", 503, None),
+    ),
+    ids=(
+        "upstream-format-canonicalized",
+        "canonical",
+        "control",
+        "non-ascii",
+        "overlong",
+        "invalid-date",
+    ),
+)
+def test_aia_tile_date_is_safe_and_canonical_before_header_emission(
+    monkeypatch,
+    image_date: str,
+    expected_status: int,
+    expected_header: str | None,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(_security_env()),
+    )
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", OrderedDict())
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda **_kwargs: {
+            "channel": "aia_193",
+            "image_id": "1",
+            "image_date": image_date,
+            "content": b"png",
+            "content_type": "image/png",
+            "artifact": {
+                "schema": {
+                    "name": "helioviewer_viewport_tile",
+                    "version": 1,
+                },
+                "delivery": "raw_on_demand",
+            },
+            "spatial_use": {
+                "eligible": False,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": None,
+            },
+        },
+    )
+
+    response = client.get("/solar/realtime/aia-tile")
+
+    assert response.status_code == expected_status
+    if expected_header is None:
+        assert response.json()["detail"]["code"] == "invalid_aia_provider_contract"
+        assert "x-solar-aia-image-date" not in response.headers
+    else:
+        assert response.headers["x-solar-aia-image-date"] == expected_header

@@ -863,7 +863,6 @@ NEARBY_SYSTEMS_SCHEMA = {
     "version": NEARBY_SYSTEMS_SCHEMA_VERSION,
 }
 SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
-SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
 
 
 SOLAR_PHYSICS_MAX_FEATURES = 256
@@ -1009,6 +1008,21 @@ SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = (
     _load_solar_aia_tile_concurrent_request_limit()
 )
 SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_solar_aia_tile_request_timeout()
+SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS = 0.05
+SOLAR_REALTIME_PROVIDER_TIMEOUT_SECONDS = max(
+    0.05,
+    min(
+        3.8,
+        SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS
+        - SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS,
+        SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS
+        - SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS,
+    ),
+)
+SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(
+    timeout_s=SOLAR_REALTIME_PROVIDER_TIMEOUT_SECONDS,
+    cache_ttl_s=120.0,
+)
 TRAJECTORY_REQUEST_MAX_BODY_BYTES = _load_bounded_env_int(
     "TRAJECTORY_REQUEST_MAX_BODY_BYTES",
     32 * 1_024,
@@ -2396,6 +2410,32 @@ def _enforce_trajectory_remote_search_policy(provider: str, operation: str) -> N
     )
 
 
+def _canonical_aia_header_date(value: Any) -> str | None:
+    if type(value) is not str:
+        return None
+    try:
+        encoded = value.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    if (
+        not encoded
+        or len(encoded) > 32
+        or value != value.strip()
+        or any(byte < 32 or byte == 127 for byte in encoded)
+    ):
+        return None
+    for date_format in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            parsed = datetime.strptime(value, date_format)
+        except (ValueError, OverflowError):
+            continue
+        if parsed.strftime(date_format) == value:
+            return parsed.replace(tzinfo=timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+    return None
+
+
 def _build_aia_tile_payload(
     channel: str,
     jd_tdb: float | None = None,
@@ -3120,6 +3160,20 @@ async def solar_realtime_aia_tile(
             },
         )
 
+    image_date = tile.get("image_date")
+    canonical_image_date: str | None = None
+    if image_date is not None:
+        canonical_image_date = _canonical_aia_header_date(image_date)
+        if canonical_image_date is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "invalid_aia_provider_contract",
+                    "message": "AIA tile provider returned an invalid artifact contract.",
+                    "retryable": True,
+                },
+            )
+
     response = Response(
         content=tile["content"],
         media_type="image/png",
@@ -3196,8 +3250,8 @@ async def solar_realtime_aia_tile(
         response.headers["X-Solar-AIA-Spatial-Reason"] = safe_reason
     if tile.get("image_id") is not None:
         response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])
-    if tile.get("image_date") is not None:
-        response.headers["X-Solar-AIA-Image-Date"] = str(tile["image_date"])
+    if canonical_image_date is not None:
+        response.headers["X-Solar-AIA-Image-Date"] = canonical_image_date
     return response
 
 

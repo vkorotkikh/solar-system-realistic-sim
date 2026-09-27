@@ -10,7 +10,8 @@ import urllib.parse
 import urllib.request
 import zlib
 from collections import OrderedDict
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -158,6 +159,8 @@ class SolarRealtimeDataProvider:
     # accounting integer, and Python object headers beyond encoded data bytes.
     BINARY_CACHE_ENTRY_OVERHEAD_BYTES = 512
     AIA_IMAGE_ID_MAX_DIGITS = 20
+    AIA_IMAGE_NAME_MAX_BYTES = 128
+    AIA_IMAGE_DATE_MAX_BYTES = 32
 
     # Redirects may move only within the source's explicitly trusted host set.
     # In particular, an upstream response cannot turn this server into an SSRF
@@ -194,7 +197,7 @@ class SolarRealtimeDataProvider:
         binary_cache_max_bytes: int = 16 * 1024 * 1024,
         singleflight_failure_max_entries: int = 64,
     ):
-        self.timeout_s = max(0.8, float(timeout_s))
+        self.timeout_s = max(0.05, float(timeout_s))
         self.cache_ttl_s = max(10.0, float(cache_ttl_s))
         self.snapshot_cache_max_entries = max(1, int(snapshot_cache_max_entries))
         self.binary_cache_max_entries = max(1, int(binary_cache_max_entries))
@@ -204,6 +207,7 @@ class SolarRealtimeDataProvider:
             int(singleflight_failure_max_entries),
         )
         self.singleflight_error_backoff_s = 4.5
+        self._acquisition_state = threading.local()
         self._lock = threading.Lock()
         self._snapshot_cache: OrderedDict[
             tuple[str, str, float | None], tuple[float, dict[str, Any]]
@@ -218,6 +222,43 @@ class SolarRealtimeDataProvider:
         )
         self._silso_cache: _SilsoCacheEntry | None = None
         self._silso_failure: _FetchFailureDescriptor | None = None
+
+    @contextmanager
+    def _acquisition_scope(self) -> Iterator[float]:
+        inherited_deadline = getattr(
+            self._acquisition_state,
+            "deadline_monotonic",
+            None,
+        )
+        owns_deadline = inherited_deadline is None
+        deadline_monotonic = (
+            time.monotonic() + self.timeout_s
+            if owns_deadline
+            else float(inherited_deadline)
+        )
+        if owns_deadline:
+            self._acquisition_state.deadline_monotonic = deadline_monotonic
+        try:
+            self._remaining_acquisition_time(deadline_monotonic)
+            yield deadline_monotonic
+        finally:
+            if owns_deadline:
+                del self._acquisition_state.deadline_monotonic
+
+    def _active_acquisition_deadline(self) -> float:
+        deadline_monotonic = getattr(
+            self._acquisition_state,
+            "deadline_monotonic",
+            None,
+        )
+        if deadline_monotonic is None:
+            return time.monotonic() + self.timeout_s
+        return float(deadline_monotonic)
+
+    def _remaining_provider_budget(self) -> float:
+        return self._remaining_acquisition_time(
+            self._active_acquisition_deadline()
+        )
 
     def capabilities(self) -> dict[str, Any]:
         return {
@@ -553,6 +594,20 @@ class SolarRealtimeDataProvider:
         *,
         jd: float | None = None,
     ) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._latest(
+                jd_tdb=jd_tdb,
+                force_refresh=force_refresh,
+                jd=jd,
+            )
+
+    def _latest(
+        self,
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+        *,
+        jd: float | None = None,
+    ) -> dict[str, Any]:
         requested_jd_tdb = self._resolve_jd_tdb_alias(jd_tdb, jd)
         if requested_jd_tdb is None:
             key = ("snapshot", "latest", None)
@@ -574,6 +629,7 @@ class SolarRealtimeDataProvider:
 
         def fetch_and_cache_snapshot() -> dict[str, Any]:
             snapshot = self._fetch_snapshot(requested_jd_tdb)
+            self._remaining_provider_budget()
             completed_monotonic = time.monotonic()
             completed_utc = self._utc_now().astimezone(timezone.utc)
             cache_lifetime_s = self._snapshot_cache_lifetime_s(
@@ -603,7 +659,7 @@ class SolarRealtimeDataProvider:
         snapshot = self._singleflight_fetch(
             key=key,
             fetch_fn=fetch_and_cache_snapshot,
-            wait_timeout_s=self.timeout_s + 0.5,
+            wait_timeout_s=self._remaining_provider_budget(),
             allow_cached_failure=not force_refresh,
         )
         return self._snapshot_for_delivery(
@@ -612,6 +668,24 @@ class SolarRealtimeDataProvider:
         )
 
     def latest_aia_tile(
+        self,
+        channel: str = "aia_193",
+        jd_tdb: float | None = None,
+        force_refresh: bool = False,
+        *,
+        image_id: str | None = None,
+        jd: float | None = None,
+    ) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._latest_aia_tile(
+                channel=channel,
+                jd_tdb=jd_tdb,
+                force_refresh=force_refresh,
+                image_id=image_id,
+                jd=jd,
+            )
+
+    def _latest_aia_tile(
         self,
         channel: str = "aia_193",
         jd_tdb: float | None = None,
@@ -655,10 +729,12 @@ class SolarRealtimeDataProvider:
         if not isinstance(tile_url, str) or not tile_url:
             raise RuntimeError(f"No tile URL available for AIA channel `{channel_key}`")
 
+        self._remaining_provider_budget()
         tile_content, content_type = self._fetch_aia_png_cached(
             tile_url,
             ttl_s=self.cache_ttl_s,
         )
+        self._remaining_provider_budget()
         return {
             "channel": channel_key,
             "image_id": available_image_id,
@@ -685,8 +761,11 @@ class SolarRealtimeDataProvider:
         )
         decoded = payload.decode("utf-8")
         if parse_int is None:
-            return json.loads(decoded)
-        return json.loads(decoded, parse_int=parse_int)
+            parsed = json.loads(decoded)
+        else:
+            parsed = json.loads(decoded, parse_int=parse_int)
+        self._remaining_provider_budget()
+        return parsed
 
     def _fetch_binary(self, url: str) -> tuple[bytes, str | None]:
         return self._request_bytes(
@@ -1089,7 +1168,7 @@ class SolarRealtimeDataProvider:
         require_full_response: bool = False,
         pre_body_validator: Callable[[int, list[str]], str | None] | None = None,
     ) -> _BoundedHttpPayload:
-        deadline_monotonic = time.monotonic() + self.timeout_s
+        deadline_monotonic = self._active_acquisition_deadline()
         current, allowed_hosts = self._validate_upstream_url(url)
         self._remaining_acquisition_time(deadline_monotonic)
         visited = {current}
@@ -1304,6 +1383,14 @@ class SolarRealtimeDataProvider:
         url: str,
         ttl_s: float | None = None,
     ) -> tuple[bytes, str]:
+        with self._acquisition_scope():
+            return self._fetch_aia_png_cached_with_deadline(url, ttl_s=ttl_s)
+
+    def _fetch_aia_png_cached_with_deadline(
+        self,
+        url: str,
+        ttl_s: float | None = None,
+    ) -> tuple[bytes, str]:
         canonical_url, _ = self._validate_upstream_url(url)
         cache_ttl = max(5.0, float(ttl_s if ttl_s is not None else self.cache_ttl_s))
         now_monotonic = time.monotonic()
@@ -1373,7 +1460,7 @@ class SolarRealtimeDataProvider:
         return self._singleflight_fetch(
             key=("aia_png", canonical_url),
             fetch_fn=fetch_and_cache_aia_png,
-            wait_timeout_s=self.timeout_s + 0.5,
+            wait_timeout_s=self._remaining_provider_budget(),
         )
 
     @classmethod
@@ -1489,6 +1576,7 @@ class SolarRealtimeDataProvider:
             "response_validator_limit": "Solar realtime response validator exceeds its byte limit",
             "invalid_response_validator": "Solar realtime response validator was invalid",
             "invalid_image_id": "Solar realtime Helioviewer image identity was rejected",
+            "invalid_aia_metadata": "Solar realtime Helioviewer metadata was rejected",
             "acquisition_deadline": "Solar realtime acquisition deadline expired",
             "invalid_aia_media_type": "AIA tile upstream Content-Type is invalid.",
             "unsupported_aia_media_type": "AIA tile upstream media type is unsupported.",
@@ -1695,11 +1783,16 @@ class SolarRealtimeDataProvider:
         return None
 
     def _fetch_swpc(self) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._fetch_swpc_with_deadline()
+
+    def _fetch_swpc_with_deadline(self) -> dict[str, Any]:
         wind = self._fetch_json(
             self.NOAA_WIND_URL,
             max_bytes=self.SWPC_WIND_MAX_RESPONSE_BYTES,
             parse_int=self._parse_swpc_json_int,
         )
+        self._remaining_provider_budget()
         mag = self._fetch_json(
             self.NOAA_MAG_URL,
             max_bytes=self.SWPC_MAG_MAX_RESPONSE_BYTES,
@@ -2032,6 +2125,10 @@ class SolarRealtimeDataProvider:
         raise RuntimeError("SILSO acquisition unavailable") from None
 
     def _fetch_silso(self) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._fetch_silso_with_deadline()
+
+    def _fetch_silso_with_deadline(self) -> dict[str, Any]:
         call_reference_date = self._utc_now().astimezone(timezone.utc).date()
         now_monotonic = time.monotonic()
         with self._lock:
@@ -2102,12 +2199,13 @@ class SolarRealtimeDataProvider:
                         ),
                     )
                     cache_status = "revalidated"
-                else:
-                    parsed = self._parse_silso_document(
-                        response.payload.decode("utf-8", errors="replace"),
-                        reference_date=response_reference_date,
-                    )
-                    entry = _SilsoCacheEntry(
+                  else:
+                      parsed = self._parse_silso_document(
+                          response.payload.decode("utf-8", errors="replace"),
+                          reference_date=response_reference_date,
+                      )
+                      self._remaining_provider_budget()
+                      entry = _SilsoCacheEntry(
                         value=parsed,
                         etag=response.etag,
                         last_modified=response.last_modified,
@@ -2146,7 +2244,7 @@ class SolarRealtimeDataProvider:
             entry, cache_status, response_reference_date = self._singleflight_fetch(
                 key=("silso_source",),
                 fetch_fn=refresh,
-                wait_timeout_s=self.timeout_s + 0.5,
+                wait_timeout_s=self._remaining_provider_budget(),
                 allow_cached_failure=False,
             )
             return self._silso_cache_value(
@@ -2174,14 +2272,77 @@ class SolarRealtimeDataProvider:
                 )
             raise
 
+    @classmethod
+    def _validated_aia_metadata_text(
+        cls,
+        value: Any,
+        *,
+        field_name: str,
+        max_bytes: int,
+        required: bool,
+    ) -> str | None:
+        if value is None and not required:
+            return None
+        if type(value) is not str:
+            raise SolarRealtimeFetchError(
+                "invalid_aia_metadata",
+                f"Solar realtime Helioviewer {field_name} metadata is invalid",
+            )
+        try:
+            encoded = value.encode("ascii")
+        except UnicodeEncodeError as exc:
+            raise SolarRealtimeFetchError(
+                "invalid_aia_metadata",
+                f"Solar realtime Helioviewer {field_name} metadata is invalid",
+            ) from exc
+        if (
+            not encoded
+            or len(encoded) > max_bytes
+            or value != value.strip()
+            or any(byte < 32 or byte == 127 for byte in encoded)
+        ):
+            raise SolarRealtimeFetchError(
+                "invalid_aia_metadata",
+                f"Solar realtime Helioviewer {field_name} metadata is invalid",
+            )
+        return value
+
+    @classmethod
+    def _canonical_aia_image_date(cls, value: Any) -> str:
+        text = cls._validated_aia_metadata_text(
+            value,
+            field_name="date",
+            max_bytes=cls.AIA_IMAGE_DATE_MAX_BYTES,
+            required=True,
+        )
+        assert text is not None
+        parsed: datetime | None = None
+        for date_format in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"):
+            try:
+                candidate = datetime.strptime(text, date_format)
+            except (ValueError, OverflowError):
+                continue
+            if candidate.strftime(date_format) == text:
+                parsed = candidate.replace(tzinfo=timezone.utc)
+                break
+        if parsed is None:
+            raise SolarRealtimeFetchError(
+                "invalid_aia_metadata",
+                "Solar realtime Helioviewer date metadata is invalid",
+            )
+        return cls._canonical_utc_time_tag(parsed)
+
     @staticmethod
     def _parse_helioviewer_image_date(value: Any) -> datetime | None:
-        if not isinstance(value, str) or not value.strip():
+        if type(value) is not str or len(value) != 20 or not value.isascii():
             return None
         try:
-            return datetime.strptime(value.strip(), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        except Exception:
+            parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        except (ValueError, OverflowError):
             return None
+        if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+            return None
+        return parsed.replace(tzinfo=timezone.utc)
 
     @classmethod
     def _normalize_aia_image_id(cls, value: Any) -> str | None:
@@ -2253,13 +2414,20 @@ class SolarRealtimeDataProvider:
         if not isinstance(payload, dict):
             raise RuntimeError("Helioviewer closest-image response is not an object")
         image_id_text = self._normalize_aia_image_id(payload.get("id"))
+        image_date = self._canonical_aia_image_date(payload.get("date"))
+        image_name = self._validated_aia_metadata_text(
+            payload.get("name"),
+            field_name="name",
+            max_bytes=self.AIA_IMAGE_NAME_MAX_BYTES,
+            required=False,
+        )
         image_scale = _safe_float(payload.get("scale"))
         tile_url = self._build_aia_tile_url(image_id_text, image_scale)
         return {
             "source_id": int(source_id),
             "image_id": image_id_text,
-            "image_date": payload.get("date"),
-            "name": payload.get("name"),
+            "image_date": image_date,
+            "name": image_name,
             "scale": image_scale,
             "width": _safe_float(payload.get("width")),
             "height": _safe_float(payload.get("height")),
@@ -2294,6 +2462,13 @@ class SolarRealtimeDataProvider:
         }
 
     def _fetch_sdo_aia(self, jd_tdb: float | None) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._fetch_sdo_aia_with_deadline(jd_tdb)
+
+    def _fetch_sdo_aia_with_deadline(
+        self,
+        jd_tdb: float | None,
+    ) -> dict[str, Any]:
         if jd_tdb is None:
             request_date = datetime.now(timezone.utc)
         else:
@@ -2301,6 +2476,7 @@ class SolarRealtimeDataProvider:
 
         channels: dict[str, dict[str, Any]] = {}
         for key, source_id in self.AIA_SOURCE_IDS.items():
+            self._remaining_provider_budget()
             channels[key] = self._fetch_helioviewer_closest(source_id, request_date)
 
         # Fallback confidence component based on image cadence.
@@ -2368,6 +2544,13 @@ class SolarRealtimeDataProvider:
         }
 
     def _fetch_snapshot(self, jd_tdb: float | None) -> dict[str, Any]:
+        with self._acquisition_scope():
+            return self._fetch_snapshot_with_deadline(jd_tdb)
+
+    def _fetch_snapshot_with_deadline(
+        self,
+        jd_tdb: float | None,
+    ) -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "schema": {"name": "solar_realtime_context", "version": 1},
             "fetched_at_utc": _utc_iso_now(),
@@ -2384,6 +2567,7 @@ class SolarRealtimeDataProvider:
         weight_total = 0.0
 
         try:
+            self._remaining_provider_budget()
             swpc = self._fetch_swpc()
             snapshot["swpc"] = swpc
             snapshot["source_status"]["swpc"] = {
@@ -2404,6 +2588,7 @@ class SolarRealtimeDataProvider:
             }
 
         try:
+            self._remaining_provider_budget()
             silso = self._fetch_silso()
             snapshot["silso"] = silso
             snapshot["source_status"]["silso"] = {
@@ -2423,6 +2608,7 @@ class SolarRealtimeDataProvider:
             }
 
         try:
+            self._remaining_provider_budget()
             sdo_aia = self._fetch_sdo_aia(jd_tdb)
             snapshot["sdo_aia"] = sdo_aia
             snapshot["source_status"]["sdo_aia"] = {

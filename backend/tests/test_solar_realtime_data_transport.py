@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any
 import urllib.request
 
@@ -685,3 +686,57 @@ def test_slow_drip_reads_receive_remaining_budget_and_stop_at_deadline(
     assert socket.timeouts == pytest.approx([1.0, 0.7, 0.4, 0.1])
     assert len(response.read_sizes) == 4
     assert response.closed is True
+
+
+def test_sequential_swpc_requests_receive_only_shared_remaining_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monotonic_now = [100.0]
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    observed_timeouts: list[float] = []
+    observed_urls: list[str] = []
+    wind_response = _Response(
+        b'[{"active":true,"overall_quality":0,"source":"DSCOVR",'
+        b'"time_tag":"2026-09-27T12:00:00Z","proton_density":5.0,'
+        b'"proton_speed":450.0,"proton_temperature":100000.0}]',
+        url=provider.NOAA_WIND_URL,
+    )
+    mag_response = _Response(
+        b'[{"active":true,"overall_quality":0,"source":"DSCOVR",'
+        b'"time_tag":"2026-09-27T12:00:00Z","bt":5.0,"bz_gsm":-2.0}]',
+        url=provider.NOAA_MAG_URL,
+    )
+    responses = {
+        provider.NOAA_WIND_URL: wind_response,
+        provider.NOAA_MAG_URL: mag_response,
+    }
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    monkeypatch.setattr(
+        provider,
+        "_utc_now",
+        lambda: datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc),
+    )
+
+    def open_request(request, *, timeout: float):
+        observed_urls.append(request.full_url)
+        observed_timeouts.append(timeout)
+        monotonic_now[0] += 0.35
+        return responses[request.full_url]
+
+    monkeypatch.setattr(
+        urllib.request,
+        "build_opener",
+        lambda *_handlers: _Opener(open_request),
+    )
+
+    result = provider._fetch_swpc()
+
+    assert result["solar_wind_speed_kms"] == 450.0
+    assert observed_urls == [provider.NOAA_WIND_URL, provider.NOAA_MAG_URL]
+    assert observed_timeouts == pytest.approx([1.0, 0.65])
+    assert wind_response.closed is True
+    assert mag_response.closed is True
