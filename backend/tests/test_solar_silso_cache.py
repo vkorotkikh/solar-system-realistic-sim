@@ -588,6 +588,47 @@ def test_transport_fresh_silso_refreshes_after_scientific_age_boundary(
     assert len(opened) == 2
 
 
+def test_scientifically_expired_silso_is_not_lkg_after_refresh_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    utc_now = [datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)]
+    monotonic_now = [100.0]
+    monkeypatch.setattr(provider, "_utc_now", lambda: utc_now[0])
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [_ok_response(provider), TimeoutError("secret timeout detail")],
+    )
+
+    provider._fetch_silso()
+    retained = provider._silso_cache
+    assert retained is not None
+    utc_now[0] = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+    monotonic_now[0] += 1.0
+
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+
+    assert len(opened) == 2
+    assert provider._silso_cache is retained
+    assert provider._silso_cache.validated_monotonic == 100.0
+    failure = provider._silso_failure
+    assert failure is not None
+    assert not isinstance(failure, BaseException)
+    assert failure.code == "upstream_timeout"
+    assert failure.detail == "Solar realtime upstream acquisition timed out"
+    assert "secret" not in failure.detail
+    assert failure.expires_monotonic == 401.0
+
+
 def test_lagged_silso_is_excluded_from_realtime_activity_proxy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1697,6 +1697,7 @@ class SolarRealtimeDataProvider:
             entry is not None
             and now_monotonic - entry.validated_monotonic
             <= self.SILSO_LKG_MAX_AGE_S
+            and self._silso_entry_is_scientifically_admissible(entry)
         ):
             return self._silso_cache_value(
                 entry,
