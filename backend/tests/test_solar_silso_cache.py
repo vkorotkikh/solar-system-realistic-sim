@@ -717,6 +717,92 @@ def test_scientifically_expired_silso_is_not_lkg_after_refresh_timeout(
     assert failure.expires_monotonic == 401.0
 
 
+def test_silso_timeout_waiters_use_failure_date_for_lkg_at_midnight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    before_midnight = datetime(2026, 11, 1, 23, 59, 59, tzinfo=timezone.utc)
+    after_midnight = datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(provider, "_utc_now", lambda: before_midnight)
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+    provider._fetch_silso()
+    retained = provider._silso_cache
+    assert retained is not None
+
+    monotonic_now[0] += provider.SILSO_REVALIDATE_INTERVAL_S + 1.0
+    clock_reads: list[datetime] = []
+    clock_lock = threading.Lock()
+
+    def crossing_midnight() -> datetime:
+        with clock_lock:
+            value = before_midnight if len(clock_reads) < 2 else after_midnight
+            clock_reads.append(value)
+            return value
+
+    monkeypatch.setattr(provider, "_utc_now", crossing_midnight)
+    entered = threading.Event()
+    release = threading.Event()
+    request_count = 0
+
+    def timeout_response(_request, *, timeout_s: float):
+        nonlocal request_count
+        assert timeout_s > 0.0
+        request_count += 1
+        entered.set()
+        assert release.wait(timeout=2.0)
+        raise TimeoutError("secret midnight timeout")
+
+    monkeypatch.setattr(provider, "_open_response", timeout_response)
+    results: list[dict[str, Any]] = []
+    failures: list[BaseException] = []
+
+    def fetch() -> None:
+        try:
+            results.append(provider._fetch_silso())
+        except BaseException as exc:  # pragma: no cover - diagnostic collection
+            failures.append(exc)
+
+    first = threading.Thread(target=fetch)
+    second = threading.Thread(target=fetch)
+    first.start()
+    assert entered.wait(timeout=1.0)
+    second.start()
+    time.sleep(0.05)
+    release.set()
+    first.join(timeout=2.0)
+    second.join(timeout=2.0)
+
+    assert results == []
+    assert len(failures) == 2
+    assert all(
+        isinstance(failure, RuntimeError)
+        and str(failure) == "SILSO acquisition unavailable"
+        for failure in failures
+    )
+    assert request_count == 1
+    assert clock_reads == [
+        before_midnight,
+        before_midnight,
+        after_midnight,
+        after_midnight,
+    ]
+    assert provider._silso_cache is retained
+    assert provider._silso_cache.validated_monotonic == 100.0
+    assert provider._silso_failure is not None
+    assert provider._silso_failure.code == "upstream_timeout"
+
+    monkeypatch.setattr(provider, "_utc_now", lambda: after_midnight)
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+    assert request_count == 1
+
+
 def test_scientifically_expired_silso_304_is_not_published_or_retried(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -761,6 +847,68 @@ def test_scientifically_expired_silso_304_is_not_published_or_retried(
     assert failure.detail == "Solar realtime upstream acquisition failed"
     assert failure.expires_monotonic == 401.0
 
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+    assert len(opened) == 2
+
+
+def test_rejected_silso_304_uses_failure_date_for_lkg_at_midnight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    before_midnight = datetime(2026, 11, 1, 23, 59, 59, tzinfo=timezone.utc)
+    after_midnight = datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(provider, "_utc_now", lambda: before_midnight)
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    not_modified = _Response(
+        b"",
+        url=provider.SILSO_DAILY_URL,
+        status=304,
+        headers={"ETag": '"silso-v1"', "Last-Modified": SILSO_LAST_MODIFIED},
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [_ok_response(provider), not_modified],
+    )
+
+    provider._fetch_silso()
+    retained = provider._silso_cache
+    assert retained is not None
+    monotonic_now[0] += provider.SILSO_REVALIDATE_INTERVAL_S + 1.0
+    clock_values = deque(
+        (before_midnight, before_midnight, after_midnight, after_midnight)
+    )
+    clock_reads: list[datetime] = []
+
+    def crossing_midnight() -> datetime:
+        value = clock_values.popleft()
+        clock_reads.append(value)
+        return value
+
+    monkeypatch.setattr(provider, "_utc_now", crossing_midnight)
+
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+
+    assert len(opened) == 2
+    assert clock_reads == [
+        before_midnight,
+        before_midnight,
+        after_midnight,
+        after_midnight,
+    ]
+    assert provider._silso_cache is retained
+    assert provider._silso_cache.validated_monotonic == 100.0
+    assert provider._silso_failure is not None
+    assert provider._silso_failure.code == "upstream_failure"
+
+    monkeypatch.setattr(provider, "_utc_now", lambda: after_midnight)
     with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
         provider._fetch_silso()
     assert len(opened) == 2

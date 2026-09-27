@@ -1855,6 +1855,9 @@ class SolarRealtimeDataProvider:
                 reference_date=response_reference_date,
             )
         except Exception as exc:
+            failure_reference_date = (
+                self._utc_now().astimezone(timezone.utc).date()
+            )
             failure = self._describe_failure(
                 exc,
                 expires_monotonic=(
@@ -1867,7 +1870,7 @@ class SolarRealtimeDataProvider:
                 return self._silso_lkg_or_unavailable(
                     now_monotonic=time.monotonic(),
                     failure=failure,
-                    reference_date=call_reference_date,
+                    reference_date=failure_reference_date,
                 )
             raise
 
