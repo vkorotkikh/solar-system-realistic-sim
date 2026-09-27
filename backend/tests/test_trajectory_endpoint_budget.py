@@ -503,7 +503,18 @@ def test_trajectory_body_limit_counts_chunked_messages_without_content_length() 
     assert sent[0]["status"] == 413
 
 
-def test_root_path_cannot_bypass_trajectory_streaming_body_limit() -> None:
+@pytest.mark.parametrize(
+    ("root_path", "path"),
+    [
+        ("/api", "/api/trajectory/plan"),
+        ("/", "//trajectory/plan"),
+        ("/api/", "/api//trajectory/plan"),
+    ],
+)
+def test_root_path_cannot_bypass_trajectory_streaming_body_limit(
+    root_path: str,
+    path: str,
+) -> None:
     inner_called = False
     sent = []
     messages = iter(
@@ -533,8 +544,8 @@ def test_root_path_cannot_bypass_trajectory_streaming_body_limit() -> None:
             {
                 "type": "http",
                 "method": "POST",
-                "root_path": "/api",
-                "path": "/api/trajectory/plan",
+                "root_path": root_path,
+                "path": path,
                 "headers": [],
             },
             receive,
@@ -546,7 +557,18 @@ def test_root_path_cannot_bypass_trajectory_streaming_body_limit() -> None:
     assert sent[0]["status"] == 413
 
 
-def test_root_path_cannot_bypass_trajectory_rate_limit() -> None:
+@pytest.mark.parametrize(
+    ("root_path", "path"),
+    [
+        ("/api", "/api/trajectory/plan"),
+        ("/", "//trajectory/plan"),
+        ("/api/", "/api//trajectory/plan"),
+    ],
+)
+def test_root_path_cannot_bypass_trajectory_rate_limit(
+    root_path: str,
+    path: str,
+) -> None:
     inner_calls = 0
     sent = []
 
@@ -569,8 +591,8 @@ def test_root_path_cannot_bypass_trajectory_rate_limit() -> None:
     scope = {
         "type": "http",
         "method": "POST",
-        "root_path": "/api",
-        "path": "/api/trajectory/plan",
+        "root_path": root_path,
+        "path": path,
         "headers": [],
         "client": ("192.0.2.10", 1234),
     }

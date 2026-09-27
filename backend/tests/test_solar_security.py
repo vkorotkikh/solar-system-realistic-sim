@@ -532,6 +532,65 @@ def test_network_profile_authenticates_every_http_route_family_except_liveness(
     assert authenticated.status_code == 200
 
 
+@pytest.mark.parametrize(
+    ("root_path", "path", "expected_status"),
+    [
+        ("/", "//health/live", 204),
+        ("/api", "/api/health/live", 204),
+        ("/api/", "/api//health/live", 204),
+        ("/", "//info", 401),
+        ("/api/", "/api//info", 401),
+    ],
+)
+def test_network_authentication_uses_router_equivalent_root_path(
+    monkeypatch,
+    root_path: str,
+    path: str,
+    expected_status: int,
+) -> None:
+    config = server._load_solar_security_config(
+        _security_env(
+            SOLAR_SECURITY_PROFILE="network",
+            SOLAR_PHYSICS_API_KEYS="root-path-secret",
+        )
+    )
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", config)
+    downstream_called = False
+    messages: list[dict[str, object]] = []
+
+    async def downstream(scope, _receive, send) -> None:
+        nonlocal downstream_called
+        downstream_called = True
+        assert server.scope_route_path(scope) == "/health/live"
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message) -> None:
+        messages.append(message)
+
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "https",
+        "root_path": root_path,
+        "path": path,
+        "raw_path": path.encode("ascii"),
+        "query_string": b"",
+        "headers": [],
+        "client": ("198.51.100.10", 43100),
+        "server": ("backend.internal", 8042),
+    }
+
+    asyncio.run(server._NetworkAuthenticationMiddleware(downstream)(scope, receive, send))
+
+    assert messages[0]["status"] == expected_status
+    assert downstream_called is (expected_status == 204)
+
+
 def test_network_authentication_rejects_before_reading_request_body(monkeypatch) -> None:
     config = server._load_solar_security_config(
         _security_env(

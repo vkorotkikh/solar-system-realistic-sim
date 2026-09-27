@@ -21,24 +21,27 @@ _MAX_ORIGIN_BYTES = 512
 
 
 def scope_route_path(scope: Mapping[str, object]) -> str:
-    """Return the app-relative path for direct and root-path-prefixed scopes."""
+    """Return the same app-relative path Starlette uses for route dispatch.
+
+    ASGI servers retain a trailing slash in ``root_path``.  Stripping it here
+    changes ``/api/`` + ``/api//route`` into ``//route``, while Starlette
+    dispatches that scope as ``/route``.  Security middleware must classify
+    the exact path seen by the router, including the special ``root_path='/'``
+    case.
+    """
 
     path = scope.get("path")
     if not isinstance(path, str):
         return ""
     root_path = scope.get("root_path", "")
-    if (
-        not isinstance(root_path, str)
-        or not root_path.startswith("/")
-        or root_path == "/"
-    ):
+    if not isinstance(root_path, str) or not root_path:
         return path
-    normalized_root = root_path.rstrip("/")
-    if path == normalized_root:
-        return "/"
-    prefix = f"{normalized_root}/"
-    if path.startswith(prefix):
-        return path[len(normalized_root) :]
+    if not path.startswith(root_path):
+        return path
+    if path == root_path:
+        return ""
+    if path[len(root_path)] == "/":
+        return path[len(root_path) :]
     return path
 
 

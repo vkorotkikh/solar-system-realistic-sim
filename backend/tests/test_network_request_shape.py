@@ -10,6 +10,7 @@ from http_ingress import (
     NetworkRequestLimits,
     NetworkRequestShapeMiddleware,
     NetworkSafeMethodBodyMiddleware,
+    scope_route_path,
 )
 
 
@@ -22,6 +23,25 @@ DEFAULT_LIMITS = NetworkRequestLimits(
     max_header_bytes=32_768,
     max_body_bytes=65_536,
 )
+
+
+@pytest.mark.parametrize(
+    ("root_path", "path", "expected"),
+    [
+        ("", "/trajectory/lambert", "/trajectory/lambert"),
+        ("/", "//trajectory/lambert", "/trajectory/lambert"),
+        ("/api", "/api/trajectory/lambert", "/trajectory/lambert"),
+        ("/api/", "/api//trajectory/lambert", "/trajectory/lambert"),
+        ("/api", "/api", ""),
+        ("/api", "/apiary/trajectory/lambert", "/apiary/trajectory/lambert"),
+    ],
+)
+def test_scope_route_path_matches_starlette_root_path_semantics(
+    root_path: str,
+    path: str,
+    expected: str,
+) -> None:
+    assert scope_route_path({"root_path": root_path, "path": path}) == expected
 
 
 def _scope(
