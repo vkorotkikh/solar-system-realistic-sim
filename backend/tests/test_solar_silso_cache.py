@@ -410,6 +410,66 @@ def test_silso_cold_fetch_is_singleflight(
     assert "large_marker" not in provider._silso_cache.value["provenance"]["license"]
 
 
+def test_silso_singleflight_waiters_share_response_reference_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    before_midnight = datetime(2026, 11, 1, 23, 59, 59, tzinfo=timezone.utc)
+    after_midnight = datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc)
+    clock_reads: list[datetime] = []
+    clock_lock = threading.Lock()
+
+    def crossing_midnight() -> datetime:
+        with clock_lock:
+            value = before_midnight if len(clock_reads) < 5 else after_midnight
+            clock_reads.append(value)
+            return value
+
+    monkeypatch.setattr(provider, "_utc_now", crossing_midnight)
+    entered = threading.Event()
+    release = threading.Event()
+    fetch_count = 0
+
+    def open_response(_request, *, timeout_s: float):
+        nonlocal fetch_count
+        assert timeout_s > 0.0
+        fetch_count += 1
+        entered.set()
+        assert release.wait(timeout=2.0)
+        return _ok_response(provider)
+
+    monkeypatch.setattr(provider, "_open_response", open_response)
+    results: list[dict[str, Any]] = []
+    failures: list[BaseException] = []
+
+    def fetch() -> None:
+        try:
+            results.append(provider._fetch_silso())
+        except BaseException as exc:  # pragma: no cover - diagnostic collection
+            failures.append(exc)
+
+    first = threading.Thread(target=fetch)
+    second = threading.Thread(target=fetch)
+    first.start()
+    assert entered.wait(timeout=1.0)
+    second.start()
+    time.sleep(0.05)
+    release.set()
+    first.join(timeout=2.0)
+    second.join(timeout=2.0)
+
+    assert failures == []
+    assert len(results) == 2
+    assert fetch_count == 1
+    assert {result["source_age_days"] for result in results} == {62}
+    assert {result["acquisition"]["cache_status"] for result in results} == {
+        "refreshed"
+    }
+    assert results[0] is not results[1]
+    assert results[0]["coverage"] is not results[1]["coverage"]
+    assert clock_reads == [before_midnight] * 4
+
+
 def test_silso_failure_backoff_serves_lkg_only_within_bounded_age(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -704,6 +764,59 @@ def test_scientifically_expired_silso_304_is_not_published_or_retried(
     with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
         provider._fetch_silso()
     assert len(opened) == 2
+
+
+def test_silso_304_uses_one_response_reference_date_at_midnight(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    before_midnight = datetime(2026, 11, 1, 23, 59, 59, tzinfo=timezone.utc)
+    after_midnight = datetime(2026, 11, 2, 0, 0, tzinfo=timezone.utc)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(provider, "_utc_now", lambda: before_midnight)
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    not_modified = _Response(
+        b"",
+        url=provider.SILSO_DAILY_URL,
+        status=304,
+        headers={"ETag": '"silso-v1"', "Last-Modified": SILSO_LAST_MODIFIED},
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [_ok_response(provider), not_modified],
+    )
+
+    provider._fetch_silso()
+    retained = provider._silso_cache
+    assert retained is not None
+    monotonic_now[0] += provider.SILSO_REVALIDATE_INTERVAL_S + 1.0
+    clock_values = deque(
+        (before_midnight, before_midnight, before_midnight, after_midnight)
+    )
+    clock_reads: list[datetime] = []
+
+    def crossing_midnight() -> datetime:
+        value = clock_values.popleft()
+        clock_reads.append(value)
+        return value
+
+    monkeypatch.setattr(provider, "_utc_now", crossing_midnight)
+
+    revalidated = provider._fetch_silso()
+
+    assert revalidated["source_age_days"] == 62
+    assert revalidated["acquisition"]["cache_status"] == "revalidated"
+    assert len(opened) == 2
+    assert provider._silso_cache is not retained
+    assert provider._silso_cache is not None
+    assert provider._silso_cache.validated_monotonic == 21_701.0
+    assert provider._silso_failure is None
+    assert clock_reads == [before_midnight, before_midnight, before_midnight]
 
 
 def test_lagged_silso_is_excluded_from_realtime_activity_proxy(

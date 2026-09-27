@@ -1523,9 +1523,18 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _parse_silso_document(self, text: str) -> dict[str, Any]:
+    def _parse_silso_document(
+        self,
+        text: str,
+        *,
+        reference_date: date | None = None,
+    ) -> dict[str, Any]:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
-        reference_date = self._utc_now().astimezone(timezone.utc).date()
+        effective_reference_date = (
+            reference_date
+            if reference_date is not None
+            else self._utc_now().astimezone(timezone.utc).date()
+        )
         selected_date: date | None = None
         selected: dict[str, Any] | None = None
 
@@ -1550,7 +1559,7 @@ class SolarRealtimeDataProvider:
                 next_year_start = date(year + 1, 1, 1)
                 temporal_metadata = self._silso_temporal_metadata(
                     observation_date,
-                    reference_date=reference_date,
+                    reference_date=effective_reference_date,
                 )
             except (ValueError, OverflowError):
                 continue
@@ -1752,7 +1761,7 @@ class SolarRealtimeDataProvider:
                 reference_date=call_reference_date,
             )
 
-        def refresh() -> tuple[_SilsoCacheEntry, str]:
+        def refresh() -> tuple[_SilsoCacheEntry, str, date]:
             with self._lock:
                 prior = self._silso_cache
 
@@ -1769,6 +1778,9 @@ class SolarRealtimeDataProvider:
                     require_full_response=True,
                 )
                 completed_monotonic = time.monotonic()
+                response_reference_date = (
+                    self._utc_now().astimezone(timezone.utc).date()
+                )
                 validated_at_utc = _utc_iso_now()
                 if response.status == 304:
                     if prior is None:
@@ -1792,7 +1804,8 @@ class SolarRealtimeDataProvider:
                     cache_status = "revalidated"
                 else:
                     parsed = self._parse_silso_document(
-                        response.payload.decode("utf-8", errors="replace")
+                        response.payload.decode("utf-8", errors="replace"),
+                        reference_date=response_reference_date,
                     )
                     entry = _SilsoCacheEntry(
                         value=parsed,
@@ -1806,7 +1819,10 @@ class SolarRealtimeDataProvider:
                         ),
                     )
                     cache_status = "refreshed"
-                if not self._silso_entry_is_scientifically_admissible(entry):
+                if not self._silso_entry_is_scientifically_admissible(
+                    entry,
+                    reference_date=response_reference_date,
+                ):
                     raise RuntimeError(
                         "SILSO candidate observation is outside its scientific coverage window"
                     )
@@ -1824,16 +1840,20 @@ class SolarRealtimeDataProvider:
             with self._lock:
                 self._silso_cache = entry
                 self._silso_failure = None
-            return entry, cache_status
+            return entry, cache_status, response_reference_date
 
         try:
-            entry, cache_status = self._singleflight_fetch(
+            entry, cache_status, response_reference_date = self._singleflight_fetch(
                 key=("silso_source",),
                 fetch_fn=refresh,
                 wait_timeout_s=self.timeout_s + 0.5,
                 allow_cached_failure=False,
             )
-            return self._silso_cache_value(entry, cache_status=cache_status)
+            return self._silso_cache_value(
+                entry,
+                cache_status=cache_status,
+                reference_date=response_reference_date,
+            )
         except Exception as exc:
             failure = self._describe_failure(
                 exc,
