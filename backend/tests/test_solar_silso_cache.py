@@ -393,6 +393,19 @@ def test_silso_cold_fetch_is_singleflight(
     assert len(results) == 2
     assert fetch_count == 1
     assert {result["daily_sunspot_number"] for result in results} == {58.0}
+    assert results[0] is not results[1]
+    assert results[0]["schema"] is not results[1]["schema"]
+    assert results[0]["provenance"] is not results[1]["provenance"]
+    assert results[0]["provenance"]["license"] is not results[1]["provenance"]["license"]
+
+    results[0]["schema"]["version"] = 999
+    results[0]["provenance"]["license"]["large_marker"] = "x" * 1_000_000
+
+    assert results[1]["schema"]["version"] == 2
+    assert "large_marker" not in results[1]["provenance"]["license"]
+    assert provider._silso_cache is not None
+    assert provider._silso_cache.value["schema"]["version"] == 2
+    assert "large_marker" not in provider._silso_cache.value["provenance"]["license"]
 
 
 def test_silso_failure_backoff_serves_lkg_only_within_bounded_age(

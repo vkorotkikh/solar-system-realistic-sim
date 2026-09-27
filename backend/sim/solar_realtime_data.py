@@ -1708,7 +1708,7 @@ class SolarRealtimeDataProvider:
                 failure=recent_failure,
             )
 
-        def refresh() -> dict[str, Any]:
+        def refresh() -> tuple[_SilsoCacheEntry, str]:
             with self._lock:
                 prior = self._silso_cache
 
@@ -1776,15 +1776,16 @@ class SolarRealtimeDataProvider:
             with self._lock:
                 self._silso_cache = entry
                 self._silso_failure = None
-            return self._silso_cache_value(entry, cache_status=cache_status)
+            return entry, cache_status
 
         try:
-            return self._singleflight_fetch(
+            entry, cache_status = self._singleflight_fetch(
                 key=("silso_source",),
                 fetch_fn=refresh,
                 wait_timeout_s=self.timeout_s + 0.5,
                 allow_cached_failure=False,
             )
+            return self._silso_cache_value(entry, cache_status=cache_status)
         except Exception as exc:
             failure = self._describe_failure(
                 exc,
