@@ -42,10 +42,28 @@ def test_different_fidelity_yields_a_different_payload() -> None:
     assert _payload(fidelity="operational") != _payload(fidelity="high")
 
 
-def test_jd_outside_the_validity_window_is_rejected_without_computing() -> None:
+def test_jd_outside_the_validity_window_is_rejected_without_computing(monkeypatch) -> None:
+    class _FailingRunner:
+        def __init__(self) -> None:
+            self.called = False
+
+        async def run(self, payload, *, timeout_seconds):
+            self.called = True
+            raise AssertionError(
+                f"out-of-range request reached process runner: {payload!r}, {timeout_seconds!r}"
+            )
+
+    runner = _FailingRunner()
+    monkeypatch.setattr(server, "_solar_physics_runner", runner, raising=False)
+
     resp = client.get("/solar/physics", params={"jd_tdb": server.SOLAR_PHYSICS_JD_MAX + 1.0})
     assert resp.status_code == 400
-    assert "jd" in resp.json()["detail"].lower()
+    detail = resp.json()["detail"]
+    assert detail["code"] == "jd_out_of_range"
+    assert detail["retryable"] is False
+    assert "jd_tdb" in detail["message"]
+    assert "JDTDB" in detail["message"]
+    assert runner.called is False
 
 
 def test_jd_inside_the_window_is_accepted() -> None:
