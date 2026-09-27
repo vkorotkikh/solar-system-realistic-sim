@@ -2199,13 +2199,13 @@ class SolarRealtimeDataProvider:
                         ),
                     )
                     cache_status = "revalidated"
-                  else:
-                      parsed = self._parse_silso_document(
-                          response.payload.decode("utf-8", errors="replace"),
-                          reference_date=response_reference_date,
-                      )
-                      self._remaining_provider_budget()
-                      entry = _SilsoCacheEntry(
+                else:
+                    parsed = self._parse_silso_document(
+                        response.payload.decode("utf-8", errors="replace"),
+                        reference_date=response_reference_date,
+                    )
+                    self._remaining_provider_budget()
+                    entry = _SilsoCacheEntry(
                         value=parsed,
                         etag=response.etag,
                         last_modified=response.last_modified,
