@@ -235,6 +235,55 @@ def test_silso_delivery_synchronizes_source_status_and_delivery_time(
     assert fetches == 1
 
 
+def test_silso_delivery_fails_closed_after_62_days_without_refetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(cache_ttl_s=300.0)
+    wall_now = [datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)]
+    fetches = 0
+    monkeypatch.setattr(provider, "_utc_now", lambda: wall_now[0])
+
+    def fetch_snapshot(_jd_tdb: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        return {
+            "source_status": {
+                "swpc": {"ok": False, "error": "offline"},
+                "silso": {"ok": True, "updated": "2026-08-31"},
+            },
+            "swpc": None,
+            "silso": {"date": "2026-08-31", "source_age_days": 62},
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    boundary = provider.latest()
+    retained = provider._snapshot_cache[("snapshot", "latest", None)][1]
+    wall_now[0] = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+    expired = provider.latest()
+
+    assert boundary["silso"]["source_age_days"] == 62
+    assert expired["silso"] is None
+    assert expired["source_status"]["silso"] == {
+        "ok": False,
+        "updated": "2026-08-31",
+        "reason": "outside_source_age_bound",
+        "source_age_days": 63,
+        "coverage": {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-10-31",
+            "status": "outside_age_bound",
+        },
+        "delivered_at_utc": "2026-11-02T12:00:00Z",
+    }
+    assert fetches == 1
+    assert retained["silso"] == {"date": "2026-08-31", "source_age_days": 62}
+    assert retained["source_status"]["silso"] == {
+        "ok": True,
+        "updated": "2026-08-31",
+    }
+
+
 def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
