@@ -45,8 +45,8 @@ export interface SolarRealtimeSilsoSnapshot {
     version: 2;
   };
   date: string;
-  source_age_days: number;
-  coverage: SolarRealtimeSilsoCoverage;
+  source_age_days?: number;
+  coverage?: SolarRealtimeSilsoCoverage;
   [key: string]: unknown;
 }
 
@@ -181,6 +181,17 @@ function requireUtcTimestamp(value: unknown, context: string): string {
   return value;
 }
 
+function requireIsoUtcTimestamp(value: unknown, context: string): string {
+  if (
+    typeof value !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+    || !Number.isFinite(Date.parse(value))
+  ) {
+    throw new Error(`${context} must be an ISO UTC timestamp`);
+  }
+  return value;
+}
+
 function requireIsoDate(value: unknown, context: string): string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new Error(`${context} must be an ISO calendar date`);
@@ -236,7 +247,7 @@ function validateSilsoDelivery(
     validateSilsoCoverage(rawStatus.coverage, 'Solar realtime SILSO source status coverage');
   }
   if (hasOwn(rawStatus, 'delivered_at_utc')) {
-    requireUtcTimestamp(
+    requireIsoUtcTimestamp(
       rawStatus.delivered_at_utc,
       'Solar realtime SILSO source status delivered_at_utc'
     );
@@ -266,14 +277,6 @@ function validateSilsoDelivery(
     payload.date,
     'Solar realtime SILSO payload date'
   );
-  const sourceAgeDays = requireNonnegativeInteger(
-    payload.source_age_days,
-    'Solar realtime SILSO payload source_age_days'
-  );
-  const coverage = validateSilsoCoverage(
-    payload.coverage,
-    'Solar realtime SILSO payload coverage'
-  );
   if (rawStatus.ok !== true) {
     throw new Error('Solar realtime SILSO payload requires a successful source status');
   }
@@ -281,26 +284,50 @@ function validateSilsoDelivery(
     rawStatus.updated,
     'Solar realtime SILSO source status updated'
   );
-  const statusAge = requireNonnegativeInteger(
-    rawStatus.source_age_days,
-    'Solar realtime SILSO source status source_age_days'
-  );
-  const statusCoverage = validateSilsoCoverage(
-    rawStatus.coverage,
-    'Solar realtime SILSO source status coverage'
-  );
-  requireUtcTimestamp(
-    rawStatus.delivered_at_utc,
-    'Solar realtime SILSO source status delivered_at_utc'
-  );
-  if (
-    statusDate !== observationDate
-    || statusAge !== sourceAgeDays
-    || statusCoverage.policy !== coverage.policy
-    || statusCoverage.latest_expected_date !== coverage.latest_expected_date
-    || statusCoverage.status !== coverage.status
-  ) {
+  if (statusDate !== observationDate) {
     throw new Error('Solar realtime SILSO payload and source status metadata must match');
+  }
+
+  const payloadHasAge = hasOwn(payload, 'source_age_days');
+  const statusHasAge = hasOwn(rawStatus, 'source_age_days');
+  if (payloadHasAge !== statusHasAge) {
+    throw new Error('Solar realtime SILSO payload and source status metadata must match');
+  }
+  if (payloadHasAge) {
+    const sourceAgeDays = requireNonnegativeInteger(
+      payload.source_age_days,
+      'Solar realtime SILSO payload source_age_days'
+    );
+    const statusAge = requireNonnegativeInteger(
+      rawStatus.source_age_days,
+      'Solar realtime SILSO source status source_age_days'
+    );
+    if (statusAge !== sourceAgeDays) {
+      throw new Error('Solar realtime SILSO payload and source status metadata must match');
+    }
+  }
+
+  const payloadHasCoverage = hasOwn(payload, 'coverage');
+  const statusHasCoverage = hasOwn(rawStatus, 'coverage');
+  if (payloadHasCoverage !== statusHasCoverage) {
+    throw new Error('Solar realtime SILSO payload and source status metadata must match');
+  }
+  if (payloadHasCoverage) {
+    const coverage = validateSilsoCoverage(
+      payload.coverage,
+      'Solar realtime SILSO payload coverage'
+    );
+    const statusCoverage = validateSilsoCoverage(
+      rawStatus.coverage,
+      'Solar realtime SILSO source status coverage'
+    );
+    if (
+      statusCoverage.policy !== coverage.policy
+      || statusCoverage.latest_expected_date !== coverage.latest_expected_date
+      || statusCoverage.status !== coverage.status
+    ) {
+      throw new Error('Solar realtime SILSO payload and source status metadata must match');
+    }
   }
   return payload as unknown as SolarRealtimeSilsoSnapshot;
 }

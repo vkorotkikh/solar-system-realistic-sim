@@ -247,6 +247,29 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(validateSolarRealtimePayload(validPayload()).snapshot.silso).toBeNull();
   });
 
+  it('accepts a legacy v1 snapshot whose SILSO delivery fields are absent', () => {
+    const payload = structuredClone(validPayload()) as SolarRealtimePayload;
+    payload.snapshot.silso = {
+      schema: { name: 'wdc_silso_daily_total_sunspot_number', version: 2 },
+      date: '2026-08-31'
+    } as SolarRealtimePayload['snapshot']['silso'];
+    payload.snapshot.source_status.silso = {
+      ok: true,
+      updated: '2026-08-31'
+    };
+
+    expect(validateSolarRealtimePayload(payload).snapshot.silso?.date).toBe(
+      '2026-08-31'
+    );
+  });
+
+  it('rejects a parseable non-timestamp SILSO delivery time', () => {
+    const payload = payloadWithSilso();
+    payload.snapshot.source_status.silso.delivered_at_utc = '2026-09-26';
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
   it('accepts a labelled backend snapshot and reports its provenance', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-26T15:00:30Z'));
