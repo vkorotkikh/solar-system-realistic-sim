@@ -143,6 +143,7 @@ class SolarRealtimeDataProvider:
     SILSO_REVALIDATE_INTERVAL_S = 6.0 * 60.0 * 60.0
     SILSO_LKG_MAX_AGE_S = 48.0 * 60.0 * 60.0
     SILSO_FAILURE_BACKOFF_S = 5.0 * 60.0
+    SILSO_LAST_MODIFIED_MAX_FUTURE_S = 5.0 * 60.0
     SILSO_MAX_SOURCE_AGE_DAYS = 62
     SILSO_OBSERVATION_CADENCE = "P1D"
     SILSO_PUBLICATION_CADENCE = "P1M"
@@ -737,6 +738,8 @@ class SolarRealtimeDataProvider:
         cls,
         response: Any,
         name: str,
+        *,
+        now_utc: datetime | None = None,
     ) -> str | None:
         values = cls._header_values(response, name)
         if not values:
@@ -793,6 +796,16 @@ class SolarRealtimeDataProvider:
                     "invalid_response_validator",
                     "Solar realtime Last-Modified response validator is malformed",
                 )
+            if (
+                now_utc is not None
+                and parsed.astimezone(timezone.utc)
+                > now_utc.astimezone(timezone.utc)
+                + timedelta(seconds=cls.SILSO_LAST_MODIFIED_MAX_FUTURE_S)
+            ):
+                raise SolarRealtimeFetchError(
+                    "invalid_response_validator",
+                    "Solar realtime Last-Modified response validator is implausibly future-dated",
+                )
         return value
 
     def _request_bounded_http_payload(
@@ -804,6 +817,7 @@ class SolarRealtimeDataProvider:
         conditional_last_modified: str | None = None,
         allow_not_modified: bool = False,
         capture_validators: bool = False,
+        require_full_response: bool = False,
     ) -> _BoundedHttpPayload:
         deadline_monotonic = time.monotonic() + self.timeout_s
         current, allowed_hosts = self._validate_upstream_url(url)
@@ -818,6 +832,10 @@ class SolarRealtimeDataProvider:
             request_headers["If-None-Match"] = conditional_etag
         if conditional_last_modified is not None:
             request_headers["If-Modified-Since"] = conditional_last_modified
+        sent_conditional_validator = (
+            "If-None-Match" in request_headers
+            or "If-Modified-Since" in request_headers
+        )
 
         while True:
             request = urllib.request.Request(
@@ -877,17 +895,43 @@ class SolarRealtimeDataProvider:
                     visited.add(target)
                     current = target
                     continue
+                if status == 304 and not (
+                    allow_not_modified and sent_conditional_validator
+                ):
+                    raise SolarRealtimeFetchError(
+                        "http_status",
+                        "Solar realtime upstream returned an unsolicited HTTP 304",
+                    )
+                if require_full_response and status not in (200, 304):
+                    raise SolarRealtimeFetchError(
+                        "http_status",
+                        f"Solar realtime upstream returned HTTP {status}",
+                    )
+                if status != 304 and not 200 <= status < 300:
+                    raise SolarRealtimeFetchError(
+                        "http_status",
+                        f"Solar realtime upstream returned HTTP {status}",
+                    )
+                validator_now_utc = (
+                    self._utc_now().astimezone(timezone.utc)
+                    if capture_validators
+                    else None
+                )
                 etag = (
                     self._validated_response_validator(response, "ETag")
                     if capture_validators
                     else None
                 )
                 last_modified = (
-                    self._validated_response_validator(response, "Last-Modified")
+                    self._validated_response_validator(
+                        response,
+                        "Last-Modified",
+                        now_utc=validator_now_utc,
+                    )
                     if capture_validators
                     else None
                 )
-                if status == 304 and allow_not_modified:
+                if status == 304:
                     self._remaining_acquisition_time(deadline_monotonic)
                     return _BoundedHttpPayload(
                         status=status,
@@ -896,12 +940,6 @@ class SolarRealtimeDataProvider:
                         etag=etag,
                         last_modified=last_modified,
                     )
-                if not 200 <= status < 300:
-                    raise SolarRealtimeFetchError(
-                        "http_status",
-                        f"Solar realtime upstream returned HTTP {status}",
-                    )
-
                 content_lengths = self._header_values(response, "Content-Length")
                 declared_size: int | None = None
                 if content_lengths:
@@ -1652,6 +1690,7 @@ class SolarRealtimeDataProvider:
                     ),
                     allow_not_modified=prior is not None,
                     capture_validators=True,
+                    require_full_response=True,
                 )
                 completed_monotonic = time.monotonic()
                 validated_at_utc = _utc_iso_now()

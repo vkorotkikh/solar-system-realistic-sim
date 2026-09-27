@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import threading
 import time
 from typing import Any
@@ -163,6 +163,137 @@ def test_silso_revalidates_with_bounded_conditional_headers_and_304(
     assert headers[1]["if-none-match"] == '"silso-v1"'
     assert headers[1]["if-modified-since"] == SILSO_LAST_MODIFIED
     assert not_modified.closed is True
+
+
+def test_silso_does_not_accept_304_without_a_sent_conditional_validator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    body = SILSO_ROW.encode("utf-8")
+    initial = _Response(
+        body,
+        url=provider.SILSO_DAILY_URL,
+        headers={
+            "Content-Length": str(len(body)),
+            "Content-Type": "text/csv",
+        },
+    )
+    unsolicited = _Response(
+        b"",
+        url=provider.SILSO_DAILY_URL,
+        status=304,
+        headers={"ETag": '"unsolicited"'},
+    )
+    headers = _install_responses(monkeypatch, provider, [initial, unsolicited])
+
+    provider._fetch_silso()
+    retained_before = provider._silso_cache
+    monotonic_now[0] += provider.SILSO_REVALIDATE_INTERVAL_S + 1.0
+    result = provider._fetch_silso()
+
+    assert result["acquisition"]["cache_status"] == "stale_lkg"
+    assert result["acquisition"]["failure_code"] == "http_status"
+    assert "if-none-match" not in headers[1]
+    assert "if-modified-since" not in headers[1]
+    assert provider._silso_cache is retained_before
+    assert provider._silso_cache is not None
+    assert provider._silso_cache.etag is None
+    assert provider._silso_cache.last_modified is None
+    assert provider._silso_cache.validated_monotonic == 100.0
+
+
+def test_silso_rejects_partial_content_without_retaining_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    body = SILSO_ROW.encode("utf-8")
+    partial = _Response(
+        body,
+        url=provider.SILSO_DAILY_URL,
+        status=206,
+        headers={
+            "Content-Length": str(len(body)),
+            "Content-Type": "text/csv",
+        },
+    )
+    _install_responses(monkeypatch, provider, [partial])
+
+    with pytest.raises(SolarRealtimeFetchError) as exc_info:
+        provider._fetch_silso()
+
+    assert exc_info.value.code == "http_status"
+    assert partial.closed is True
+    assert provider._silso_cache is None
+
+
+def test_silso_rejects_implausibly_future_last_modified_without_retaining_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    future_last_modified = (
+        SILSO_REFERENCE_NOW + timedelta(minutes=6)
+    ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    response = _ok_response(provider, last_modified=future_last_modified)
+    _install_responses(monkeypatch, provider, [response])
+
+    with pytest.raises(SolarRealtimeFetchError) as exc_info:
+        provider._fetch_silso()
+
+    assert exc_info.value.code == "invalid_response_validator"
+    assert response.closed is True
+    assert provider._silso_cache is None
+
+
+def test_silso_replays_last_modified_within_clock_skew_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    near_future_last_modified = (
+        SILSO_REFERENCE_NOW + timedelta(minutes=4)
+    ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    body = SILSO_ROW.encode("utf-8")
+    response = _Response(
+        body,
+        url=provider.SILSO_DAILY_URL,
+        headers={
+            "Content-Length": str(len(body)),
+            "Content-Type": "text/csv",
+            "Last-Modified": near_future_last_modified,
+        },
+    )
+    not_modified = _Response(
+        b"",
+        url=provider.SILSO_DAILY_URL,
+        status=304,
+    )
+    headers = _install_responses(monkeypatch, provider, [response, not_modified])
+
+    first = provider._fetch_silso()
+    monotonic_now[0] += provider.SILSO_REVALIDATE_INTERVAL_S + 1.0
+    second = provider._fetch_silso()
+
+    assert first["acquisition"]["cache_status"] == "refreshed"
+    assert second["acquisition"]["cache_status"] == "revalidated"
+    assert "if-none-match" not in headers[1]
+    assert headers[1]["if-modified-since"] == near_future_last_modified
+    assert provider._silso_cache is not None
+    assert provider._silso_cache.last_modified == near_future_last_modified
 
 
 def test_silso_rejects_oversized_response_validator_without_retaining_it(
