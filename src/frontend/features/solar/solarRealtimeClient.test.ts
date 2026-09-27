@@ -355,6 +355,83 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(validateSolarRealtimePayload(payload).snapshot.silso).toBeNull();
   });
 
+  it('rejects outside-published diagnostics whose observation precedes the cutoff', () => {
+    const payload = validPayload();
+    payload.snapshot.source_status.silso = {
+      ok: false,
+      updated: '2026-07-25',
+      reason: 'outside_published_coverage',
+      source_age_days: 63,
+      coverage: {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-08-31',
+        status: 'outside_published_coverage'
+      },
+      delivered_at_utc: '2026-09-26T12:00:00Z'
+    };
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
+  it('accepts outside-published diagnostics derived from delivery UTC', () => {
+    const payload = validPayload();
+    payload.snapshot.source_status.silso = {
+      ok: false,
+      updated: '2026-09-01',
+      reason: 'outside_published_coverage',
+      source_age_days: 25,
+      coverage: {
+        policy: 'through_last_elapsed_month',
+        latest_expected_date: '2026-08-31',
+        status: 'outside_published_coverage'
+      },
+      delivered_at_utc: '2026-09-26T12:00:00Z'
+    };
+
+    expect(validateSolarRealtimePayload(payload).snapshot.silso).toBeNull();
+  });
+
+  it.each([
+    ['mirrored age differs from UTC day difference', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.source_age_days = 25;
+      payload.snapshot.source_status.silso.source_age_days = 25;
+    }],
+    ['current label uses an observation before cutoff', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.date = '2026-07-31';
+      payload.snapshot.silso!.source_age_days = 57;
+      payload.snapshot.source_status.silso.updated = '2026-07-31';
+      payload.snapshot.source_status.silso.source_age_days = 57;
+    }],
+    ['lagging label uses the cutoff observation', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.coverage!.status = 'lagging_within_age_bound';
+      payload.snapshot.source_status.silso.coverage!.status =
+        'lagging_within_age_bound';
+    }],
+    ['cutoff is not the last elapsed delivery month', (payload: SolarRealtimePayload) => {
+      payload.snapshot.silso!.coverage!.latest_expected_date = '2026-07-31';
+      payload.snapshot.source_status.silso.coverage!.latest_expected_date =
+        '2026-07-31';
+    }]
+  ])('rejects date-inconsistent delivered SILSO metadata (%s)', (_label, mutate) => {
+    const payload = payloadWithSilso();
+    mutate(payload);
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
+  it('accepts mirrored lagging metadata derived from delivery UTC', () => {
+    const payload = payloadWithSilso();
+    payload.snapshot.silso!.date = '2026-07-31';
+    payload.snapshot.silso!.source_age_days = 57;
+    payload.snapshot.silso!.coverage!.status = 'lagging_within_age_bound';
+    payload.snapshot.source_status.silso.updated = '2026-07-31';
+    payload.snapshot.source_status.silso.source_age_days = 57;
+    payload.snapshot.source_status.silso.coverage!.status =
+      'lagging_within_age_bound';
+
+    expect(validateSolarRealtimePayload(payload).snapshot.silso).not.toBeNull();
+  });
+
   it('accepts a legacy v1 snapshot with unavailable SILSO metadata', () => {
     expect(validateSolarRealtimePayload(validPayload()).snapshot.silso).toBeNull();
   });

@@ -243,6 +243,48 @@ function validateSilsoCoverage(value: unknown, context: string): SolarRealtimeSi
   return value as unknown as SolarRealtimeSilsoCoverage;
 }
 
+function validateSilsoDateDerivedState(rawStatus: Record<string, unknown>): void {
+  if (typeof rawStatus.updated !== 'string' || !isRecord(rawStatus.coverage)) return;
+  const coverage = rawStatus.coverage as unknown as SolarRealtimeSilsoCoverage;
+  const updated = rawStatus.updated;
+  if (
+    (coverage.status === 'current_for_published_coverage'
+      && updated !== coverage.latest_expected_date)
+    || (coverage.status === 'lagging_within_age_bound'
+      && updated >= coverage.latest_expected_date)
+    || (coverage.status === 'outside_age_bound'
+      && updated > coverage.latest_expected_date)
+    || (coverage.status === 'outside_published_coverage'
+      && updated <= coverage.latest_expected_date)
+  ) {
+    throw new Error('Solar realtime SILSO coverage status is inconsistent with its dates');
+  }
+
+  if (typeof rawStatus.delivered_at_utc !== 'string') return;
+  const delivered = new Date(rawStatus.delivered_at_utc);
+  const expectedCutoff = new Date(Date.UTC(
+    delivered.getUTCFullYear(),
+    delivered.getUTCMonth(),
+    0
+  )).toISOString().slice(0, 10);
+  if (coverage.latest_expected_date !== expectedCutoff) {
+    throw new Error('Solar realtime SILSO coverage cutoff is inconsistent with delivery UTC');
+  }
+
+  if (hasOwn(rawStatus, 'source_age_days')) {
+    const deliveredDay = Date.UTC(
+      delivered.getUTCFullYear(),
+      delivered.getUTCMonth(),
+      delivered.getUTCDate()
+    );
+    const observationDay = new Date(`${updated}T00:00:00Z`).getTime();
+    const expectedAgeDays = (deliveredDay - observationDay) / 86_400_000;
+    if (rawStatus.source_age_days !== expectedAgeDays) {
+      throw new Error('Solar realtime SILSO source age is inconsistent with delivery UTC');
+    }
+  }
+}
+
 function validateSilsoDelivery(
   payload: unknown,
   rawStatus: unknown
@@ -279,6 +321,7 @@ function validateSilsoDelivery(
   if (hasOwn(rawStatus, 'updated') && rawStatus.updated !== null) {
     requireIsoDate(rawStatus.updated, 'Solar realtime SILSO source status updated');
   }
+  validateSilsoDateDerivedState(rawStatus);
   if (rawStatus.ok === true && hasOwn(rawStatus, 'reason')) {
     throw new Error('Solar realtime SILSO successful status cannot carry a failure reason');
   }
