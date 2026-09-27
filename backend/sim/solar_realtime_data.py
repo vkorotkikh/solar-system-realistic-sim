@@ -1618,38 +1618,52 @@ class SolarRealtimeDataProvider:
             raise RuntimeError("SILSO payload had no valid sunspot rows")
         return selected
 
+    def _silso_delivery_state(
+        self,
+        observation_date: date,
+        reference_date: date,
+    ) -> dict[str, Any]:
+        latest_expected_date = reference_date.replace(day=1) - timedelta(days=1)
+        source_age_days = (reference_date - observation_date).days
+        if observation_date > latest_expected_date:
+            status = "outside_published_coverage"
+            reason = "outside_published_coverage"
+        elif source_age_days > self.SILSO_MAX_SOURCE_AGE_DAYS:
+            status = "outside_age_bound"
+            reason = "outside_source_age_bound"
+        elif observation_date == latest_expected_date:
+            status = "current_for_published_coverage"
+            reason = None
+        else:
+            status = "lagging_within_age_bound"
+            reason = None
+        return {
+            "ok": reason is None,
+            "reason": reason,
+            "source_age_days": source_age_days,
+            "coverage": {
+                "policy": self.SILSO_COVERAGE_POLICY,
+                "latest_expected_date": latest_expected_date.isoformat(),
+                "status": status,
+            },
+        }
+
     def _silso_temporal_metadata(
         self,
         observation_date: date,
         *,
         reference_date: date | None = None,
     ) -> dict[str, Any]:
-        effective_reference_date = (
-            reference_date
-            if reference_date is not None
-            else self._utc_now().astimezone(timezone.utc).date()
-        )
-        latest_expected_date = effective_reference_date.replace(
-            day=1
-        ) - timedelta(days=1)
-        source_age_days = (effective_reference_date - observation_date).days
-        if (
-            observation_date > latest_expected_date
-            or source_age_days < 0
-            or source_age_days > self.SILSO_MAX_SOURCE_AGE_DAYS
-        ):
+        effective_reference_date = reference_date or self._utc_now().astimezone(
+            timezone.utc
+        ).date()
+        state = self._silso_delivery_state(observation_date, effective_reference_date)
+        source_age_days = state["source_age_days"]
+        if state["ok"] is not True:
             raise ValueError("SILSO observation date is outside its coverage window")
         return {
             "source_age_days": source_age_days,
-            "coverage": {
-                "policy": self.SILSO_COVERAGE_POLICY,
-                "latest_expected_date": latest_expected_date.isoformat(),
-                "status": (
-                    "current_for_published_coverage"
-                    if observation_date == latest_expected_date
-                    else "lagging_within_age_bound"
-                ),
-            },
+            "coverage": state["coverage"],
         }
 
     def _silso_cache_value(

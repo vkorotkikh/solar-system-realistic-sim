@@ -593,6 +593,53 @@ def test_silso_discloses_monthly_coverage_age_units_and_official_provenance(
     assert capability["provenance"] == result["provenance"]
 
 
+def test_silso_delivery_state_uses_literal_day_month_and_age_boundaries() -> None:
+    provider = SolarRealtimeDataProvider()
+    reference_date = datetime(2026, 11, 1, tzinfo=timezone.utc).date()
+
+    current = provider._silso_delivery_state(
+        datetime(2026, 10, 31, tzinfo=timezone.utc).date(),
+        reference_date,
+    )
+    boundary = provider._silso_delivery_state(
+        datetime(2026, 8, 31, tzinfo=timezone.utc).date(),
+        reference_date,
+    )
+    outside_age_bound = provider._silso_delivery_state(
+        datetime(2026, 8, 30, tzinfo=timezone.utc).date(),
+        reference_date,
+    )
+    outside_published_coverage = provider._silso_delivery_state(
+        datetime(2026, 11, 1, tzinfo=timezone.utc).date(),
+        reference_date,
+    )
+
+    assert current == {
+        "ok": True,
+        "reason": None,
+        "source_age_days": 1,
+        "coverage": {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-10-31",
+            "status": "current_for_published_coverage",
+        },
+    }
+    assert boundary["ok"] is True
+    assert boundary["source_age_days"] == 62
+    assert boundary["coverage"]["status"] == "lagging_within_age_bound"
+    assert outside_age_bound["ok"] is False
+    assert outside_age_bound["reason"] == "outside_source_age_bound"
+    assert outside_age_bound["source_age_days"] == 63
+    assert outside_age_bound["coverage"]["status"] == "outside_age_bound"
+    assert outside_published_coverage["ok"] is False
+    assert outside_published_coverage["reason"] == "outside_published_coverage"
+    assert outside_published_coverage["source_age_days"] == 0
+    assert (
+        outside_published_coverage["coverage"]["status"]
+        == "outside_published_coverage"
+    )
+
+
 def test_silso_cached_record_recomputes_source_age_and_monthly_coverage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
