@@ -388,6 +388,28 @@ class SolarRealtimeDataProvider:
                     if silso_state["ok"] is True:
                         silso["source_age_days"] = silso_state["source_age_days"]
                         silso["coverage"] = silso_state["coverage"]
+                        statuses = snapshot.get("source_status")
+                        delivered_statuses = (
+                            dict(statuses) if isinstance(statuses, Mapping) else {}
+                        )
+                        prior_status = delivered_statuses.get("silso")
+                        silso_status = (
+                            dict(prior_status)
+                            if isinstance(prior_status, Mapping)
+                            else {}
+                        )
+                        silso_status.update(
+                            {
+                                "updated": observation_date_text,
+                                "source_age_days": silso_state["source_age_days"],
+                                "coverage": silso_state["coverage"],
+                                "delivered_at_utc": self._canonical_utc_time_tag(
+                                    now_utc
+                                ),
+                            }
+                        )
+                        delivered_statuses["silso"] = silso_status
+                        snapshot["source_status"] = delivered_statuses
 
         swpc = snapshot.get("swpc")
         if not isinstance(swpc, dict):

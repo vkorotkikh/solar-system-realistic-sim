@@ -187,6 +187,54 @@ def test_cached_silso_delivery_recomputes_wall_utc_metadata_without_swpc(
     assert retained["silso"]["coverage"] == {"status": "stale-at-fetch"}
 
 
+def test_silso_delivery_synchronizes_source_status_and_delivery_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(cache_ttl_s=300.0)
+    wall_now = [datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc)]
+    fetches = 0
+    monkeypatch.setattr(provider, "_utc_now", lambda: wall_now[0])
+
+    def fetch_snapshot(_jd_tdb: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        return {
+            "source_status": {
+                "swpc": {"ok": False, "error": "offline"},
+                "silso": {
+                    "ok": True,
+                    "updated": "2026-08-31",
+                    "source_age_days": 999,
+                    "coverage": {"status": "stale-at-fetch"},
+                },
+            },
+            "swpc": None,
+            "silso": {"date": "2026-08-31"},
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    first = provider.latest()
+    wall_now[0] = datetime(2026, 10, 1, 0, 1, tzinfo=timezone.utc)
+    second = provider.latest()
+
+    assert first["source_status"]["silso"]["updated"] == "2026-08-31"
+    assert first["source_status"]["silso"]["source_age_days"] == 30
+    assert first["source_status"]["silso"]["coverage"] == first["silso"]["coverage"]
+    assert (
+        first["source_status"]["silso"]["delivered_at_utc"]
+        == "2026-09-30T23:59:00Z"
+    )
+    assert second["source_status"]["silso"]["updated"] == "2026-08-31"
+    assert second["source_status"]["silso"]["source_age_days"] == 31
+    assert second["source_status"]["silso"]["coverage"] == second["silso"]["coverage"]
+    assert (
+        second["source_status"]["silso"]["delivered_at_utc"]
+        == "2026-10-01T00:01:00Z"
+    )
+    assert fetches == 1
+
+
 def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
