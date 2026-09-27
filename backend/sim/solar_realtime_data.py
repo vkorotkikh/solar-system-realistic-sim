@@ -8,6 +8,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -804,6 +805,17 @@ class SolarRealtimeDataProvider:
             raise SolarRealtimeFetchError(
                 "invalid_aia_png_signature",
                 "AIA upstream body did not have a PNG signature",
+            )
+        if (
+            len(response.payload) < 33
+            or int.from_bytes(response.payload[8:12], "big") != 13
+            or response.payload[12:16] != b"IHDR"
+            or int.from_bytes(response.payload[29:33], "big")
+            != (zlib.crc32(response.payload[12:29]) & 0xFFFFFFFF)
+        ):
+            raise SolarRealtimeFetchError(
+                "invalid_aia_png_header",
+                "AIA upstream PNG IHDR envelope was invalid",
             )
         assert response.content_type == "image/png"
         return response.payload, response.content_type

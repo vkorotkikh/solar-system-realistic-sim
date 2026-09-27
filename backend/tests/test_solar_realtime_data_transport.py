@@ -151,6 +151,42 @@ def test_aia_png_rejects_invalid_signature(
 
 
 @pytest.mark.parametrize(
+    "body",
+    (
+        b"\x89PNG\r\n\x1a\n",
+        b"\x89PNG\r\n\x1a\n" + (b"x" * 24),
+        _aia_png_header(chunk_length=14),
+        _aia_png_header(chunk_type=b"IDAT"),
+        _aia_png_header(crc=0),
+    ),
+    ids=(
+        "signature-only",
+        "short-header",
+        "wrong-ihdr-length",
+        "wrong-first-chunk-type",
+        "bad-ihdr-crc",
+    ),
+)
+def test_aia_png_rejects_invalid_ihdr_structure(
+    monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = provider.HELIOVIEWER_TILE_URL
+    response = _Response(
+        body,
+        url=url,
+        headers=_Headers([("Content-Type", "image/png")]),
+    )
+    _install_routes(monkeypatch, {url: [response]})
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png(url)
+
+    assert raised.value.code == "invalid_aia_png_header"
+
+
+@pytest.mark.parametrize(
     "fields",
     (
         [],
