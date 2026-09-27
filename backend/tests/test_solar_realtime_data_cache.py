@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import gc
 from typing import Any
 import weakref
@@ -78,6 +78,96 @@ def test_same_epoch_reuses_snapshot_until_refresh() -> None:
     assert cached is first
     assert refreshed["fetch_number"] == 2
     assert requests == [2_460_000.5, 2_460_000.5]
+
+
+def test_snapshot_cache_updates_swpc_age_and_expires_at_source_freshness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(cache_ttl_s=300.0)
+    monotonic_now = [100.0]
+    wall_now = [datetime(2026, 9, 26, 23, 0, tzinfo=timezone.utc)]
+    fetches = 0
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    monkeypatch.setattr(provider, "_utc_now", lambda: wall_now[0])
+
+    def fetch_snapshot(_jd: float | None) -> dict[str, Any]:
+        nonlocal fetches
+        fetches += 1
+        sample_time = wall_now[0] - timedelta(seconds=800)
+        time_tag = sample_time.isoformat().replace("+00:00", "Z")
+        return {
+            "fetched_at_utc": wall_now[0].isoformat().replace("+00:00", "Z"),
+            "source_status": {
+                "swpc": {"ok": True, "updated": time_tag},
+            },
+            "swpc": {
+                "time_tag": time_tag,
+                "wind_time_tag": time_tag,
+                "mag_time_tag": time_tag,
+                "retrieved_at_utc": wall_now[0].isoformat().replace("+00:00", "Z"),
+                "age_s": 800.0,
+                "wind_age_s": 800.0,
+                "mag_age_s": 800.0,
+                "activity_proxy": 0.2,
+            },
+            "combined_activity_proxy": 0.2,
+            "fetch_number": fetches,
+        }
+
+    monkeypatch.setattr(provider, "_fetch_snapshot", fetch_snapshot)
+
+    initial = provider.latest()
+    monotonic_now[0] += 99.0
+    wall_now[0] += timedelta(seconds=99)
+    cached = provider.latest()
+    monotonic_now[0] += 2.0
+    wall_now[0] += timedelta(seconds=2)
+    refreshed = provider.latest()
+
+    assert initial["swpc"]["age_s"] == 800.0
+    assert cached["swpc"]["age_s"] == 899.0
+    assert cached["source_status"]["swpc"]["age_s"] == 899.0
+    assert cached["swpc"]["delivered_at_utc"] == "2026-09-26T23:01:39Z"
+    assert refreshed["fetch_number"] == 2
+    assert refreshed["swpc"]["age_s"] == 800.0
+    assert fetches == 2
+
+
+def test_snapshot_delivery_fails_closed_for_unparseable_claimed_current_swpc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_utc_now",
+        lambda: datetime(2026, 9, 26, 23, 0, tzinfo=timezone.utc),
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_snapshot",
+        lambda _jd: {
+            "source_status": {"swpc": {"ok": True, "updated": "not-a-time"}},
+            "swpc": {
+                "time_tag": "not-a-time",
+                "activity_proxy": 0.7,
+            },
+            "combined_activity_proxy": 0.7,
+        },
+    )
+
+    delivered = provider.latest()
+
+    assert delivered["swpc"] is None
+    assert delivered["combined_activity_proxy"] is None
+    assert delivered["source_status"]["swpc"]["ok"] is False
+    assert delivered["source_status"]["swpc"]["error"] == (
+        "NOAA SWPC RTSW component timestamps are invalid at delivery"
+    )
+    assert provider._snapshot_cache == {}
 
 
 def test_snapshot_cache_is_bounded_and_uses_lru_eviction() -> None:
