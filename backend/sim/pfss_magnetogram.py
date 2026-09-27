@@ -17,6 +17,7 @@ import io
 import math
 import struct
 import threading
+from collections import OrderedDict
 import time
 import urllib.request
 from collections import OrderedDict
@@ -1104,7 +1105,22 @@ class PFSSCache:
     the cache lock so unrelated keys can progress independently.
     """
 
-    def __init__(self, max_entries: int = 3):
+# A follower waiting on a leader's in-flight computation gives up after this long
+# rather than blocking a request thread indefinitely.
+DEFAULT_INFLIGHT_WAIT_S = 30.0
+
+
+class PFSSCache:
+    """Thread-safe cache for PFSS solutions.
+
+    Two properties beyond a plain dict cache:
+      * the key includes fidelity and activity, so a cached entry is only reused
+        for a genuinely identical request (fixes SF-4);
+      * concurrent misses for the same key coalesce onto a single computation
+        (single-flight), so N simultaneous requests cost one compute, not N.
+    """
+
+    def __init__(self, max_entries: int = 12, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
         self._lock = threading.Lock()
         self._cache: OrderedDict[
             tuple[int, float, float, int, int, float], dict[str, Any]
