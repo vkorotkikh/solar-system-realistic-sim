@@ -1275,7 +1275,7 @@ async def _bounded_request_validation_error(
 ):
     """Keep trajectory-family schema failures on the public error contract."""
 
-    if request.url.path not in TRAJECTORY_INGRESS_PATHS:
+    if scope_route_path(request.scope) not in TRAJECTORY_INGRESS_PATHS:
         return await request_validation_exception_handler(request, exc)
     errors = [
         {

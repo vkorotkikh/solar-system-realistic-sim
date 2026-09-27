@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -602,6 +603,52 @@ def test_root_path_cannot_bypass_trajectory_rate_limit(
 
     assert inner_calls == 1
     assert sent[0]["status"] == 429
+
+
+def test_root_path_preserves_structured_trajectory_validation_contract() -> None:
+    sent: list[dict[str, object]] = []
+    request_messages = iter(
+        [{"type": "http.request", "body": b"{}", "more_body": False}]
+    )
+
+    async def receive():
+        return next(request_messages)
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(
+        server.app(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0"},
+                "http_version": "1.1",
+                "method": "POST",
+                "scheme": "https",
+                "root_path": "/api",
+                "path": "/api/trajectory/plan",
+                "raw_path": b"/api/trajectory/plan",
+                "query_string": b"",
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", b"2"),
+                ],
+                "client": ("198.51.100.10", 43100),
+                "server": ("backend.internal", 8042),
+            },
+            receive,
+            send,
+        )
+    )
+
+    start = next(message for message in sent if message["type"] == "http.response.start")
+    body = b"".join(
+        message.get("body", b"")
+        for message in sent
+        if message["type"] == "http.response.body"
+    )
+    assert start["status"] == 422
+    assert json.loads(body)["detail"]["code"] == "trajectory_request_validation_error"
 
 
 def test_trajectory_body_limit_rejects_unbounded_empty_chunk_stream() -> None:
