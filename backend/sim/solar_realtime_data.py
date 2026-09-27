@@ -17,6 +17,9 @@ from typing import Any, Callable
 from .solar_time import jd_tdb_to_utc_datetime
 
 
+_INVALID_SWPC_JSON_INTEGER = object()
+
+
 def _clamp(value: float, lower: float, upper: float) -> float:
     return min(upper, max(lower, value))
 
@@ -121,6 +124,7 @@ class SolarRealtimeDataProvider:
     SWPC_MAX_SAMPLE_AGE_S = 15.0 * 60.0
     SWPC_MAX_FUTURE_OFFSET_S = 2.0 * 60.0
     SWPC_MAX_PRODUCT_SKEW_S = 5.0 * 60.0
+    SWPC_MAX_JSON_INTEGER_DIGITS = 4_300
     SWPC_NUMERIC_VALIDATION_VERSION = "defensive_operational_envelope_v1"
     # These deliberately broad fail-closed envelopes are an application input
     # contract, not a claim about instrument calibration uncertainty. They
@@ -568,14 +572,23 @@ class SolarRealtimeDataProvider:
             "spatial_use": channel_entry.get("spatial_use"),
         }
 
-    def _fetch_json(self, url: str, *, max_bytes: int | None = None) -> Any:
+    def _fetch_json(
+        self,
+        url: str,
+        *,
+        max_bytes: int | None = None,
+        parse_int: Callable[[str], Any] | None = None,
+    ) -> Any:
         payload, _ = self._request_bytes(
             url,
             max_bytes=(
                 self.MAX_JSON_RESPONSE_BYTES if max_bytes is None else max_bytes
             ),
         )
-        return json.loads(payload.decode("utf-8"))
+        decoded = payload.decode("utf-8")
+        if parse_int is None:
+            return json.loads(decoded)
+        return json.loads(decoded, parse_int=parse_int)
 
     def _fetch_binary(self, url: str) -> tuple[bytes, str | None]:
         return self._request_bytes(
@@ -1268,6 +1281,16 @@ class SolarRealtimeDataProvider:
             },
         }
 
+    @classmethod
+    def _parse_swpc_json_int(cls, value: str) -> Any:
+        digits = value[1:] if value.startswith("-") else value
+        if len(digits) > cls.SWPC_MAX_JSON_INTEGER_DIGITS:
+            return _INVALID_SWPC_JSON_INTEGER
+        try:
+            return int(value)
+        except ValueError:
+            return _INVALID_SWPC_JSON_INTEGER
+
     def _usable_swpc_rows(
         self,
         payload: Any,
@@ -1382,10 +1405,12 @@ class SolarRealtimeDataProvider:
         wind = self._fetch_json(
             self.NOAA_WIND_URL,
             max_bytes=self.SWPC_WIND_MAX_RESPONSE_BYTES,
+            parse_int=self._parse_swpc_json_int,
         )
         mag = self._fetch_json(
             self.NOAA_MAG_URL,
             max_bytes=self.SWPC_MAG_MAX_RESPONSE_BYTES,
+            parse_int=self._parse_swpc_json_int,
         )
         retrieved_at = self._utc_now().astimezone(timezone.utc)
 

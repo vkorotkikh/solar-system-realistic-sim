@@ -67,7 +67,13 @@ def _install_fixture_fetcher(
     }
     calls: list[tuple[str, int | None]] = []
 
-    def fetch_json(url: str, *, max_bytes: int | None = None) -> Any:
+    def fetch_json(
+        url: str,
+        *,
+        max_bytes: int | None = None,
+        parse_int: Any = None,
+    ) -> Any:
+        del parse_int
         calls.append((url, max_bytes))
         return payloads[url]
 
