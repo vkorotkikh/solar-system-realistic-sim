@@ -227,7 +227,15 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     assistPool = DEFAULT_ASSIST_POOL
   } = options;
 
-  if (!bodyById.has(fromId) || !bodyById.has(toId) || fromId === toId) {
+  const fromBody = bodyById.get(fromId);
+  const toBody = bodyById.get(toId);
+  if (
+    !fromBody ||
+    !toBody ||
+    fromId === toId ||
+    String(fromBody.type ?? '').toLowerCase() === 'moon' ||
+    String(toBody.type ?? '').toLowerCase() === 'moon'
+  ) {
     return {
       best: null,
       alternatives: []

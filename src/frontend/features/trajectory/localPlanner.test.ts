@@ -31,6 +31,58 @@ function fixture(ids = ['earth', 'mars']) {
 }
 
 describe('bounded local trajectory fallback', () => {
+  it('rejects a moon origin with a structured empty outcome', () => {
+    const { model, bodyById } = fixture(['moon', 'mars']);
+    Object.assign(bodyById.get('moon')!, { type: 'moon' });
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'moon',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result).toEqual({
+      best: null,
+      alternatives: []
+    });
+  });
+
+  it('rejects a moon destination with a structured empty outcome', () => {
+    const { model, bodyById } = fixture(['earth', 'moon']);
+    Object.assign(bodyById.get('moon')!, { type: 'moon' });
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'moon',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result).toEqual({
+      best: null,
+      alternatives: []
+    });
+  });
+
+  it('continues to plan a valid planet-to-planet route', () => {
+    const { model, bodyById } = fixture();
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result.best?.bodyRoute).toEqual(['earth', 'mars']);
+    expect(result.alternatives).toEqual([]);
+    expect(result.search?.configuredFrontierCompleted).toBe(true);
+  });
+
   it('preserves an explicitly empty assist pool', () => {
     const { model, bodyById } = fixture();
     const result = planInterplanetaryRoute(model, bodyById, {
