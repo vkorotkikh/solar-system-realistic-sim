@@ -690,6 +690,119 @@ class SolarRealtimeDataProvider:
         )
 
     @staticmethod
+    def _consume_http_token(value: str, offset: int) -> int:
+        """Return the first byte after one RFC 9110 token, or ``offset``."""
+
+        token_punctuation = "!#$%&'*+-.^_`|~"
+        cursor = offset
+        while cursor < len(value):
+            character = value[cursor]
+            if not (character.isalnum() or character in token_punctuation):
+                break
+            cursor += 1
+        return cursor
+
+    @classmethod
+    def _canonical_aia_media_type(
+        cls,
+        _status: int,
+        raw_content_type_values: list[str],
+    ) -> str:
+        """Validate one physical RFC 9110 Content-Type field for an AIA PNG."""
+
+        def invalid() -> SolarRealtimeFetchError:
+            return SolarRealtimeFetchError(
+                "invalid_aia_media_type",
+                "AIA upstream Content-Type was malformed",
+            )
+
+        if len(raw_content_type_values) != 1:
+            raise invalid()
+        declaration = raw_content_type_values[0]
+        try:
+            encoded = declaration.encode("ascii")
+        except UnicodeEncodeError as exc:
+            raise invalid() from exc
+        if (
+            not encoded
+            or len(encoded) > cls.MAX_CONTENT_TYPE_BYTES
+            or any(byte < 32 or byte == 127 for byte in encoded)
+        ):
+            raise invalid()
+
+        cursor = cls._consume_http_token(declaration, 0)
+        if cursor == 0 or cursor >= len(declaration) or declaration[cursor] != "/":
+            raise invalid()
+        media_type = declaration[:cursor]
+        cursor += 1
+        subtype_start = cursor
+        cursor = cls._consume_http_token(declaration, cursor)
+        if cursor == subtype_start:
+            raise invalid()
+        media_subtype = declaration[subtype_start:cursor]
+
+        while cursor < len(declaration):
+            while cursor < len(declaration) and declaration[cursor] == " ":
+                cursor += 1
+            if cursor >= len(declaration) or declaration[cursor] != ";":
+                raise invalid()
+            cursor += 1
+            while cursor < len(declaration) and declaration[cursor] == " ":
+                cursor += 1
+
+            name_start = cursor
+            cursor = cls._consume_http_token(declaration, cursor)
+            if (
+                cursor == name_start
+                or cursor >= len(declaration)
+                or declaration[cursor] != "="
+            ):
+                raise invalid()
+            cursor += 1
+            if cursor >= len(declaration):
+                raise invalid()
+
+            if declaration[cursor] == '"':
+                cursor += 1
+                while True:
+                    if cursor >= len(declaration):
+                        raise invalid()
+                    character = declaration[cursor]
+                    if character == '"':
+                        cursor += 1
+                        break
+                    if character == "\\":
+                        cursor += 1
+                        if cursor >= len(declaration):
+                            raise invalid()
+                        # Controls and non-ASCII were rejected above, so every
+                        # remaining escaped byte is SP or VCHAR.
+                        cursor += 1
+                        continue
+                    cursor += 1
+            else:
+                value_start = cursor
+                cursor = cls._consume_http_token(declaration, cursor)
+                if cursor == value_start:
+                    raise invalid()
+
+        if (media_type.lower(), media_subtype.lower()) != ("image", "png"):
+            raise SolarRealtimeFetchError(
+                "unsupported_aia_media_type",
+                "AIA upstream media type is not PNG",
+            )
+        return "image/png"
+
+    def _fetch_aia_png(self, url: str) -> tuple[bytes, str]:
+        response = self._request_bounded_http_payload(
+            url,
+            max_bytes=self.MAX_BINARY_RESPONSE_BYTES,
+            pre_body_validator=self._canonical_aia_media_type,
+        )
+        assert response.content_type == "image/png"
+        return response.payload, response.content_type
+
+    @staticmethod
     def _header_values(response: Any, name: str) -> list[str]:
         headers = response.headers
         get_all = getattr(headers, "get_all", None)
@@ -924,6 +1037,7 @@ class SolarRealtimeDataProvider:
         allow_not_modified: bool = False,
         capture_validators: bool = False,
         require_full_response: bool = False,
+        pre_body_validator: Callable[[int, list[str]], str | None] | None = None,
     ) -> _BoundedHttpPayload:
         deadline_monotonic = time.monotonic() + self.timeout_s
         current, allowed_hosts = self._validate_upstream_url(url)
@@ -1018,6 +1132,14 @@ class SolarRealtimeDataProvider:
                         "http_status",
                         f"Solar realtime upstream returned HTTP {status}",
                     )
+                prevalidated_content_type = (
+                    pre_body_validator(
+                        status,
+                        self._header_values(response, "Content-Type"),
+                    )
+                    if pre_body_validator is not None
+                    else None
+                )
                 validator_now_utc = (
                     self._utc_now().astimezone(timezone.utc)
                     if capture_validators
@@ -1101,18 +1223,21 @@ class SolarRealtimeDataProvider:
                         "Solar realtime response did not match its Content-Length",
                     )
 
-                content_types = self._header_values(response, "Content-Type")
-                content_type = content_types[0] if len(content_types) == 1 else None
-                if content_type is not None and ";" in content_type:
-                    content_type = content_type.split(";", 1)[0].strip()
-                if (
-                    content_type is not None
-                    and len(content_type.encode("utf-8")) > self.MAX_CONTENT_TYPE_BYTES
-                ):
-                    raise SolarRealtimeFetchError(
-                        "response_metadata_limit",
-                        "Solar realtime response metadata exceeds its byte limit",
-                    )
+                if pre_body_validator is not None:
+                    content_type = prevalidated_content_type
+                else:
+                    content_types = self._header_values(response, "Content-Type")
+                    content_type = content_types[0] if len(content_types) == 1 else None
+                    if content_type is not None and ";" in content_type:
+                        content_type = content_type.split(";", 1)[0].strip()
+                    if (
+                        content_type is not None
+                        and len(content_type.encode("utf-8")) > self.MAX_CONTENT_TYPE_BYTES
+                    ):
+                        raise SolarRealtimeFetchError(
+                            "response_metadata_limit",
+                            "Solar realtime response metadata exceeds its byte limit",
+                        )
                 self._remaining_acquisition_time(deadline_monotonic)
                 return _BoundedHttpPayload(
                     status=status,

@@ -7,7 +7,21 @@ import urllib.request
 import pytest
 
 import sim.solar_realtime_data as solar_realtime_data
-from sim.solar_realtime_data import SolarRealtimeDataProvider
+from sim.solar_realtime_data import SolarRealtimeDataProvider, SolarRealtimeFetchError
+
+
+class _Headers:
+    """Small ordered header bag that preserves physical duplicate fields."""
+
+    def __init__(self, fields: list[tuple[str, str]]) -> None:
+        self._fields = fields
+
+    def get_all(self, name: str) -> list[str]:
+        lowered = name.lower()
+        return [value for key, value in self._fields if key.lower() == lowered]
+
+    def items(self) -> list[tuple[str, str]]:
+        return list(self._fields)
 
 
 class _Response:
@@ -17,13 +31,13 @@ class _Response:
         *,
         url: str,
         status: int = 200,
-        headers: dict[str, str] | None = None,
+        headers: Any | None = None,
     ) -> None:
         self._body = body
         self._offset = 0
         self._url = url
         self.status = status
-        self.headers = headers or {}
+        self.headers = {} if headers is None else headers
         self.read_sizes: list[int] = []
         self.closed = False
 
@@ -54,6 +68,112 @@ class _Opener:
 
     def open(self, request, *, timeout: float):
         return self._open_request(request, timeout=timeout)
+
+
+@pytest.mark.parametrize(
+    "declared_type",
+    (
+        "image/png",
+        "Image/PNG",
+        'Image/PNG; profile="aia;viewport"; mode=tile',
+        'image/png; note="escaped \\"quote\\" and comma, accepted"',
+    ),
+)
+def test_aia_png_media_type_is_strictly_parsed_and_canonicalized(
+    monkeypatch: pytest.MonkeyPatch,
+    declared_type: str,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = provider.HELIOVIEWER_TILE_URL
+    response = _Response(
+        b"not-yet-header-validated",
+        url=url,
+        headers=_Headers([("Content-Type", declared_type)]),
+    )
+    _install_routes(monkeypatch, {url: [response]})
+
+    payload, content_type = provider._fetch_aia_png(url)
+
+    assert payload == b"not-yet-header-validated"
+    assert content_type == "image/png"
+
+
+@pytest.mark.parametrize(
+    "fields",
+    (
+        [],
+        [("Content-Type", "")],
+        [("Content-Type", "image/png"), ("Content-Type", "image/png")],
+        [("Content-Type", "image/png, image/png")],
+        [("Content-Type", " image/png")],
+        [("Content-Type", "image/png ")],
+        [("Content-Type", "image/png;")],
+        [("Content-Type", "image/png; profile")],
+        [("Content-Type", "image/png; profile=")],
+        [("Content-Type", 'image/png; profile="unterminated')],
+        [("Content-Type", 'image/png; profile="bad\\\x1fescape"')],
+        [("Content-Type", "image/png; bad name=tile")],
+        [("Content-Type", "image/png\x7f")],
+        [("Content-Type", "image/pn\N{LATIN SMALL LETTER G WITH ACUTE}")],
+        [("Content-Type", "image/png; profile=" + ("x" * 240))],
+    ),
+    ids=(
+        "missing",
+        "empty",
+        "duplicate-fields",
+        "comma-joined",
+        "leading-whitespace",
+        "trailing-whitespace",
+        "empty-parameter",
+        "missing-equals",
+        "missing-value",
+        "unterminated-quote",
+        "invalid-escape",
+        "invalid-parameter-name",
+        "control",
+        "non-ascii",
+        "overlong",
+    ),
+)
+def test_aia_png_rejects_invalid_media_declarations_before_reading_body(
+    monkeypatch: pytest.MonkeyPatch,
+    fields: list[tuple[str, str]],
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = provider.HELIOVIEWER_TILE_URL
+    response = _Response(
+        b"secret-upstream-body",
+        url=url,
+        headers=_Headers(fields),
+    )
+    _install_routes(monkeypatch, {url: [response]})
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png(url)
+
+    assert raised.value.code == "invalid_aia_media_type"
+    assert response.read_sizes == []
+    assert response.closed is True
+
+
+def test_aia_png_rejects_well_formed_non_png_media_before_reading_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = provider.HELIOVIEWER_TILE_URL
+    response = _Response(
+        b"<html>secret detail</html>",
+        url=url,
+        headers=_Headers([("Content-Type", "text/html; charset=utf-8")]),
+    )
+    _install_routes(monkeypatch, {url: [response]})
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png(url)
+
+    assert raised.value.code == "unsupported_aia_media_type"
+    assert response.read_sizes == []
+    assert response.closed is True
 
 
 def _install_routes(
