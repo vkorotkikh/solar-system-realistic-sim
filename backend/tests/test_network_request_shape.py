@@ -343,6 +343,28 @@ def test_network_ingress_enforces_shape_limits_before_downstream(
     assert expected_code in body
 
 
+def test_too_many_headers_does_not_rescan_unbounded_collection_for_cors() -> None:
+    class CountingHeaders(list[tuple[bytes, bytes]]):
+        iterations = 0
+
+        def __iter__(self):
+            for item in super().__iter__():
+                self.iterations += 1
+                yield item
+
+    headers = CountingHeaders(
+        [(b"origin", b"http://localhost:3000") for _ in range(10_000)]
+    )
+
+    called, messages = _exercise(_scope(method="OPTIONS", headers=headers))
+
+    status, body = _error(messages)
+    assert called is False
+    assert status == 431
+    assert b'"too_many_headers"' in body
+    assert headers.iterations == 0
+
+
 def test_network_ingress_accepts_canonical_bounded_chunked_post() -> None:
     called, messages = _exercise(
         _scope(
