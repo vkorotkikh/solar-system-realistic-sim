@@ -13,6 +13,7 @@ from sim.solar_realtime_data import SolarRealtimeDataProvider, SolarRealtimeFetc
 
 
 SILSO_ROW = "2026;08;31;2026.664;  58;  8.1;  33;0\n"
+SILSO_NEWER_ROW = "2026;09;30;2026.747;  71;  7.2;  29;0\n"
 SILSO_LAST_MODIFIED = "Tue, 01 Sep 2026 08:19:28 GMT"
 SILSO_REFERENCE_NOW = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
 
@@ -78,10 +79,11 @@ def _install_responses(
 def _ok_response(
     provider: SolarRealtimeDataProvider,
     *,
+    row: str = SILSO_ROW,
     etag: str = '"silso-v1"',
     last_modified: str = SILSO_LAST_MODIFIED,
 ) -> _Response:
-    body = SILSO_ROW.encode("utf-8")
+    body = row.encode("utf-8")
     return _Response(
         body,
         url=provider.SILSO_DAILY_URL,
@@ -550,6 +552,40 @@ def test_silso_cached_record_recomputes_source_age_and_monthly_coverage(
     assert october["coverage"]["latest_expected_date"] == "2026-09-30"
     assert october["coverage"]["status"] == "lagging_within_age_bound"
     assert october["acquisition"]["cache_status"] == "fresh"
+
+
+def test_transport_fresh_silso_refreshes_after_scientific_age_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    utc_now = [datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)]
+    monotonic_now = [100.0]
+    monkeypatch.setattr(provider, "_utc_now", lambda: utc_now[0])
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [
+            _ok_response(provider),
+            _ok_response(provider, row=SILSO_NEWER_ROW, etag='"silso-v2"'),
+        ],
+    )
+
+    boundary = provider._fetch_silso()
+    utc_now[0] = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+    monotonic_now[0] += 1.0
+    refreshed = provider._fetch_silso()
+
+    assert boundary["source_age_days"] == 62
+    assert refreshed["date"] == "2026-09-30"
+    assert refreshed["source_age_days"] == 33
+    assert refreshed["daily_sunspot_number"] == 71.0
+    assert refreshed["acquisition"]["cache_status"] == "refreshed"
+    assert len(opened) == 2
 
 
 def test_lagged_silso_is_excluded_from_realtime_activity_proxy(

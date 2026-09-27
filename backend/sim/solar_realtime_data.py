@@ -1671,6 +1671,20 @@ class SolarRealtimeDataProvider:
         value["acquisition"] = acquisition
         return value
 
+    def _silso_entry_is_scientifically_admissible(
+        self,
+        entry: _SilsoCacheEntry,
+    ) -> bool:
+        observation_date_text = entry.value.get("date")
+        if not isinstance(observation_date_text, str):
+            return False
+        try:
+            observation_date = date.fromisoformat(observation_date_text)
+            self._silso_temporal_metadata(observation_date)
+        except (TypeError, ValueError, OverflowError):
+            return False
+        return True
+
     def _silso_lkg_or_unavailable(
         self,
         *,
@@ -1697,7 +1711,11 @@ class SolarRealtimeDataProvider:
             cached = self._silso_cache
             recent_failure = self._silso_failure
 
-        if cached is not None and now_monotonic < cached.expires_monotonic:
+        if (
+            cached is not None
+            and now_monotonic < cached.expires_monotonic
+            and self._silso_entry_is_scientifically_admissible(cached)
+        ):
             return self._silso_cache_value(cached, cache_status="fresh")
         if (
             recent_failure is not None
