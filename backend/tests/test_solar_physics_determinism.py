@@ -5,8 +5,9 @@ alone, so identical requests could return different payloads depending on which
 fidelity computed a rotation first (SF-4), and the endpoint had no concurrency or
 range bound (R3). Each assertion below fails against that pre-R3 behaviour.
 
-`wall_epoch_jd` is intentionally a wall-clock stamp and is excluded from the
-byte-identity comparison; everything else must be reproducible for a fixed jd.
+`wall_epoch_jd_tdb` and its deprecated alias are response metadata, so they are
+excluded from byte-identity comparisons; all physical state must be reproducible
+for a fixed explicit epoch.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from fastapi.testclient import TestClient
 
 import server
 from server import app
+from sim.process_supervisor import ProcessSaturated
 
 client = TestClient(app)
 
@@ -23,10 +25,11 @@ _JD = 2_461_000.5
 
 
 def _payload(**params):
-    resp = client.get("/solar/physics", params={"jd": _JD, "forcing": "synthetic", **params})
+    resp = client.get("/solar/physics", params={"jd_tdb": _JD, "forcing": "synthetic", **params})
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    body.pop("wall_epoch_jd", None)  # wall-clock, deliberately non-deterministic
+    body.pop("wall_epoch_jd_tdb", None)
+    body.pop("wall_epoch_jd", None)
     return body
 
 
@@ -40,46 +43,44 @@ def test_different_fidelity_yields_a_different_payload() -> None:
 
 
 def test_jd_outside_the_validity_window_is_rejected_without_computing() -> None:
-    resp = client.get("/solar/physics", params={"jd": server.SOLAR_PHYSICS_JD_MAX + 1.0})
+    resp = client.get("/solar/physics", params={"jd_tdb": server.SOLAR_PHYSICS_JD_MAX + 1.0})
     assert resp.status_code == 400
     assert "jd" in resp.json()["detail"].lower()
 
 
 def test_jd_inside_the_window_is_accepted() -> None:
-    resp = client.get("/solar/physics", params={"jd": server.J2000_JD})
+    resp = client.get("/solar/physics", params={"jd_tdb": server.J2000_JD})
     assert resp.status_code == 200
 
 
 def test_oversized_max_features_is_rejected_with_413() -> None:
     resp = client.get(
         "/solar/physics",
-        params={"jd": _JD, "max_features": server.SOLAR_PHYSICS_MAX_FEATURES + 1000},
+        params={"jd_tdb": _JD, "max_features": server.SOLAR_PHYSICS_MAX_FEATURES + 1000},
     )
     assert resp.status_code == 413
 
 
-def test_saturation_sheds_load_with_503() -> None:
-    # Drain the concurrency guard by hand, then a real request must be shed, not queued.
-    guard = server._solar_physics_concurrent_guard
-    acquired = 0
-    while server._acquire_nonblocking(guard):
-        acquired += 1
-    try:
-        resp = client.get("/solar/physics", params={"jd": _JD, "fidelity": "preview"})
-        assert resp.status_code == 503
-        assert resp.headers.get("Retry-After")
-    finally:
-        for _ in range(acquired):
-            guard.release()
+def test_saturation_sheds_load_with_503(monkeypatch) -> None:
+    class _SaturatedRunner:
+        async def run(self, payload, *, timeout_seconds):
+            del payload, timeout_seconds
+            raise ProcessSaturated("process supervisor capacity is exhausted")
+
+    monkeypatch.setattr(server, "_solar_physics_runner", _SaturatedRunner(), raising=False)
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+
+    resp = client.get("/solar/physics", params={"jd_tdb": _JD, "fidelity": "preview"})
+    assert resp.status_code == 503
+    assert resp.headers.get("Retry-After")
 
 
-def test_concurrency_permit_is_held_until_the_work_actually_finishes() -> None:
-    """A timed-out request must not free its permit while its thread still runs.
+def test_run_owned_thread_holds_permit_until_the_work_actually_finishes() -> None:
+    """A timed-out owner must not free its permit while its thread still runs.
 
     Python threads cannot be cancelled, so releasing the permit when the request
     returns (rather than when the work ends) lets staggered timeouts accumulate
-    far more concurrent computes than the limit -- measured at 3x over three
-    waves before this was fixed. The endpoint therefore releases from the
+    far more concurrent work than the limit. The generic helper releases from the
     future's completion callback and shields the future from wait_for.
     """
     import asyncio
@@ -88,8 +89,8 @@ def test_concurrency_permit_is_held_until_the_work_actually_finishes() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     source = inspect.getsource(server._run_owned_thread)
-    # The permit must be released by the future's callback, never in a finally
-    # that runs as soon as wait_for gives up.
+    # Generic thread-backed work releases capacity from the future's callback,
+    # never from a finally that runs as soon as wait_for gives up.
     assert "add_done_callback" in source
     assert "asyncio.shield" in source
     assert "finally:" not in source.split("add_done_callback")[-1]

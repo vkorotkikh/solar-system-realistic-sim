@@ -37,8 +37,11 @@ def build_solar_physics_state(
         max_features=max_features,
         forcing=forcing,
         realtime_data=None,
-        wall_jd=wall_epoch_jd_tdb,
     )
+    # Wall time is response metadata only. Keeping it outside model sampling
+    # prevents an identical explicit epoch from acquiring different physics.
+    state["wall_epoch_jd_tdb"] = float(wall_epoch_jd_tdb)
+    state["wall_epoch_jd"] = float(wall_epoch_jd_tdb)
     state["forcing"] = forcing
     state["effective_forcing"] = "synthetic"
     state["live_data_requested"] = bool(live_data)

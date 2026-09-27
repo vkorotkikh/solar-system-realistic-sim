@@ -419,6 +419,9 @@ class SolarCoronaPhysicsModel:
         jd: float,
         wall_jd: float,
     ) -> tuple[float, float]:
+        # Retain the argument for private-call compatibility, but physical
+        # feature timing is a pure function of the requested epoch.
+        del wall_jd
         slow_period_days = 6.0 + tube.twist * 3.4
         if tube.family == "cme":
             rapid_period_days = 0.09 + (tube.idx % 7) * 0.011
@@ -428,8 +431,8 @@ class SolarCoronaPhysicsModel:
             rapid_period_days = 0.26 + (tube.idx % 13) * 0.018
 
         slow_phase = ((jd - J2000_JD) / slow_period_days) * 2.0 * math.pi
-        rapid_phase = ((wall_jd - J2000_JD) / rapid_period_days) * 2.0 * math.pi
-        micro_phase = ((wall_jd - J2000_JD) / max(0.03, rapid_period_days * 0.35)) * 2.0 * math.pi
+        rapid_phase = ((jd - J2000_JD) / rapid_period_days) * 2.0 * math.pi
+        micro_phase = ((jd - J2000_JD) / max(0.03, rapid_period_days * 0.35)) * 2.0 * math.pi
         phase_offset = tube.idx * 0.193 + tube.twist * 1.17
 
         slow = 0.5 + 0.5 * math.sin(slow_phase + phase_offset)
@@ -449,7 +452,8 @@ class SolarCoronaPhysicsModel:
         wall_jd: float,
         activity: float,
     ) -> float:
-        emergence, eruption_gate = self._feature_temporal_state(tube, jd, wall_jd)
+        del wall_jd
+        emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
         region = self.active_regions[tube.region_idx]
         cme_boost = 1.3 if tube.family == "cme" else 1.0
         plume_boost = 1.08 if tube.family == "plume" else 1.0
@@ -550,6 +554,7 @@ class SolarCoronaPhysicsModel:
         eruption_gate: float,
         points_count: int,
     ) -> dict[str, Any]:
+        del wall_jd
         region = self.active_regions[tube.region_idx]
         _, negative_dir, positive_dir, pair_axis, leading_polarity_sign = self._region_polarity_dirs(region, jd)
 
@@ -576,7 +581,7 @@ class SolarCoronaPhysicsModel:
 
         base = _normalize(_add(source_dir, sink_dir))
         tangent, binormal = _orthonormal_basis(base)
-        dynamic_phase = ((wall_jd - J2000_JD) / (0.22 + 0.04 * tube.twist)) * 2.0 * math.pi + tube.idx * 0.41
+        dynamic_phase = ((jd - J2000_JD) / (0.22 + 0.04 * tube.twist)) * 2.0 * math.pi + tube.idx * 0.41
 
         family = tube.family
         if family == "cme":
@@ -955,18 +960,18 @@ class SolarCoronaPhysicsModel:
             forcing,
             realtime_data,
         )
-        wall_jd = jd if wall_jd is None else wall_jd
+        response_wall_jd = jd if wall_jd is None else wall_jd
         safe_max_features = max(8, min(2_048, int(max_features)))
 
         scored: list[tuple[float, FluxTubeSeed, float, float]] = []
         for tube in self.seeds:
-            emergence, eruption_gate = self._feature_temporal_state(tube, jd, wall_jd)
-            score = self._feature_score(tube, jd, wall_jd, activity)
+            emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
+            score = self._feature_score(tube, jd, jd, activity)
             scored.append((score, tube, emergence, eruption_gate))
         scored.sort(key=lambda row: row[0], reverse=True)
 
         # Drive feature count with activity and requested fidelity.
-        rapid_scene_phase = ((wall_jd - J2000_JD) / 0.18) * 2.0 * math.pi
+        rapid_scene_phase = ((jd - J2000_JD) / 0.18) * 2.0 * math.pi
         live_variation = 0.5 + 0.5 * math.sin(rapid_scene_phase)
         nominal_count = int(18 + activity * 240 + live_variation * 96)
         feature_count = min(safe_max_features, max(12, nominal_count))
@@ -978,7 +983,7 @@ class SolarCoronaPhysicsModel:
                 self._build_feature_arc(
                     tube,
                     jd,
-                    wall_jd,
+                    jd,
                     activity,
                     emergence,
                     eruption_gate,
@@ -1053,11 +1058,11 @@ class SolarCoronaPhysicsModel:
             "schema": {"name": "solar_physics_state", "version": 2},
             "model": self.model_name,
             "epoch_jd_tdb": float(jd),
-            "wall_epoch_jd_tdb": float(wall_jd),
+            "wall_epoch_jd_tdb": float(response_wall_jd),
             "jd_time_scale": "TDB",
             # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
-            "wall_epoch_jd": float(wall_jd),
+            "wall_epoch_jd": float(response_wall_jd),
             "fidelity": fidelity_key,
             "solar_radius_km": SOLAR_RADIUS_KM,
             "solar_radius_au": SOLAR_RADIUS_AU,
