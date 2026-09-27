@@ -247,6 +247,69 @@ def test_network_shape_gate_runs_before_cors_preflight(
 
 
 @pytest.mark.parametrize(
+    ("field", "expected_code"),
+    [
+        (b"access-control-request-method", b'"ambiguous_cors_request_method"'),
+        (b"access-control-request-headers", b'"ambiguous_cors_request_headers"'),
+    ],
+)
+@pytest.mark.parametrize("reverse", [False, True])
+def test_network_shape_rejects_duplicate_cors_control_headers_order_independently(
+    field: bytes,
+    expected_code: bytes,
+    reverse: bool,
+) -> None:
+    downstream_called = False
+    sent: list[dict[str, Any]] = []
+    values = (
+        [b"GET", b"DELETE"]
+        if field.endswith(b"method")
+        else [b"content-type", b"x-denied"]
+    )
+    if reverse:
+        values.reverse()
+
+    async def downstream(_scope, _receive, _send) -> None:
+        nonlocal downstream_called
+        downstream_called = True
+
+    cors = CORSMiddleware(
+        downstream,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    )
+    middleware = NetworkRequestShapeMiddleware(
+        cors,
+        enabled=lambda: True,
+        limits=DEFAULT_LIMITS,
+        cors_allowed_origins=frozenset({"http://localhost:3000"}),
+    )
+    scope = _scope(
+        method="OPTIONS",
+        headers=[
+            (b"origin", b"http://localhost:3000"),
+            (field, values[0]),
+            (field, values[1]),
+        ],
+    )
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    asyncio.run(middleware(scope, receive, send))
+
+    status, body = _error(sent)
+    assert downstream_called is False
+    assert status == 400
+    assert expected_code in body
+
+
+@pytest.mark.parametrize(
     "headers",
     [
         [(b"content-encoding", b"gzip")],

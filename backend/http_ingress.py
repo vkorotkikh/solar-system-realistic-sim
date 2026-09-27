@@ -259,6 +259,8 @@ class NetworkRequestShapeMiddleware:
             b"transfer-encoding": [],
             b"content-encoding": [],
             b"origin": [],
+            b"access-control-request-method": [],
+            b"access-control-request-headers": [],
         }
         for item in headers:
             if (
@@ -316,6 +318,8 @@ class NetworkRequestShapeMiddleware:
         transfer_encodings = values[b"transfer-encoding"]
         content_encodings = values[b"content-encoding"]
         origins = values[b"origin"]
+        cors_request_methods = values[b"access-control-request-method"]
+        cors_request_headers = values[b"access-control-request-headers"]
 
         if len(origins) > 1:
             await self._reject(
@@ -344,6 +348,33 @@ class NetworkRequestShapeMiddleware:
                     message="Origin header is malformed or exceeds its byte limit.",
                 )
                 return
+
+        if len(cors_request_methods) > 1:
+            await self._reject(
+                scope,
+                receive,
+                send,
+                status_code=400,
+                code="ambiguous_cors_request_method",
+                message=(
+                    "Request must contain at most one "
+                    "Access-Control-Request-Method header."
+                ),
+            )
+            return
+        if len(cors_request_headers) > 1:
+            await self._reject(
+                scope,
+                receive,
+                send,
+                status_code=400,
+                code="ambiguous_cors_request_headers",
+                message=(
+                    "Request must contain at most one "
+                    "Access-Control-Request-Headers header."
+                ),
+            )
+            return
 
         if len(content_lengths) > 1:
             await self._reject(
