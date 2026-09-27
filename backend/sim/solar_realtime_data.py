@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
@@ -142,6 +142,10 @@ class SolarRealtimeDataProvider:
     SILSO_REVALIDATE_INTERVAL_S = 6.0 * 60.0 * 60.0
     SILSO_LKG_MAX_AGE_S = 48.0 * 60.0 * 60.0
     SILSO_FAILURE_BACKOFF_S = 5.0 * 60.0
+    SILSO_MAX_SOURCE_AGE_DAYS = 62
+    SILSO_OBSERVATION_CADENCE = "P1D"
+    SILSO_PUBLICATION_CADENCE = "P1M"
+    SILSO_COVERAGE_POLICY = "through_last_elapsed_month"
     # Conservative reserve for the OrderedDict node, tuple, expiry float,
     # accounting integer, and Python object headers beyond encoded data bytes.
     BINARY_CACHE_ENTRY_OVERHEAD_BYTES = 512
@@ -222,6 +226,12 @@ class SolarRealtimeDataProvider:
                 },
                 "silso": {
                     "daily_url": self.SILSO_DAILY_URL,
+                    "observation_cadence": self.SILSO_OBSERVATION_CADENCE,
+                    "publication_cadence": self.SILSO_PUBLICATION_CADENCE,
+                    "coverage_policy": self.SILSO_COVERAGE_POLICY,
+                    "maximum_source_age_days": self.SILSO_MAX_SOURCE_AGE_DAYS,
+                    "realtime_eligible": False,
+                    "provenance": self._silso_provenance(),
                 },
                 "sdo_aia": {
                     "closest_image_url": self.HELIOVIEWER_CLOSEST_URL,
@@ -255,6 +265,19 @@ class SolarRealtimeDataProvider:
             "runtime_eligible": False,
             "status": "disabled_unvalidated",
             "reason": "disabled_unvalidated",
+        }
+
+    @classmethod
+    def _silso_provenance(cls) -> dict[str, Any]:
+        return {
+            "provider": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+            "dataset": "Daily total sunspot number, version 2.0",
+            "endpoint": cls.SILSO_DAILY_URL,
+            "doi": "https://doi.org/10.24414/qnza-ac80",
+            "license": {
+                "name": "CC BY-NC 4.0",
+                "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+            },
         }
 
     @staticmethod
@@ -1240,34 +1263,125 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    @staticmethod
-    def _parse_silso_document(text: str) -> dict[str, Any]:
+    def _parse_silso_document(self, text: str) -> dict[str, Any]:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
+        reference_date = self._utc_now().astimezone(timezone.utc).date()
+        selected_date: date | None = None
+        selected: dict[str, Any] | None = None
 
-        for line in reversed(lines):
+        for line in lines:
             parts = [part.strip() for part in line.split(";")]
             if len(parts) < 8:
                 continue
-            year = int(parts[0])
-            month = int(parts[1])
-            day = int(parts[2])
+            try:
+                year = int(parts[0])
+                month = int(parts[1])
+                day = int(parts[2])
+                observation_date = date(year, month, day)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            decimal_date = _safe_float(parts[3])
             daily_total = _safe_float(parts[4])
             stdev = _safe_float(parts[5])
             observation_count = _safe_float(parts[6])
             provisional_flag = parts[7]
-            if daily_total is None or daily_total < 0:
+            try:
+                year_start = date(year, 1, 1)
+                next_year_start = date(year + 1, 1, 1)
+                temporal_metadata = self._silso_temporal_metadata(
+                    observation_date,
+                    reference_date=reference_date,
+                )
+            except (ValueError, OverflowError):
+                continue
+            expected_decimal_date = year + (
+                (observation_date - year_start).days + 0.5
+            ) / (next_year_start - year_start).days
+            if (
+                decimal_date is None
+                or not year <= decimal_date < year + 1
+                or abs(decimal_date - expected_decimal_date) > 0.001
+                or daily_total is None
+                or daily_total < 0
+                or not daily_total.is_integer()
+                or stdev is None
+                or stdev < 0
+                or observation_count is None
+                or observation_count < 1
+                or not observation_count.is_integer()
+                or provisional_flag not in {"0", "1"}
+            ):
                 continue
 
-            return {
-                "date": f"{year:04d}-{month:02d}-{day:02d}",
+            candidate = {
+                "schema": {
+                    "name": "wdc_silso_daily_total_sunspot_number",
+                    "version": 2,
+                },
+                "date": observation_date.isoformat(),
                 "daily_sunspot_number": daily_total,
                 "stdev": stdev,
-                "observation_count": observation_count,
+                "observation_count": int(observation_count),
                 "provisional_flag": provisional_flag,
-                "activity_proxy": _clamp(daily_total / 220.0, 0.0, 1.0),
+                "quality_status": (
+                    "provisional" if provisional_flag == "0" else "definitive"
+                ),
+                **temporal_metadata,
+                "observation_cadence": self.SILSO_OBSERVATION_CADENCE,
+                "publication_cadence": self.SILSO_PUBLICATION_CADENCE,
+                "realtime_eligible": False,
+                "activity_proxy": None,
+                "units": {
+                    "daily_sunspot_number": "1 (dimensionless relative index)",
+                    "stdev": "1 (sunspot-number standard deviation)",
+                    "observation_count": "count",
+                    "source_age_days": "d",
+                },
+                "provenance": self._silso_provenance(),
             }
+            if selected_date is None or observation_date > selected_date:
+                selected_date = observation_date
+                selected = candidate
+            elif observation_date == selected_date and selected != candidate:
+                raise RuntimeError("SILSO payload had conflicting duplicate rows")
 
-        raise RuntimeError("SILSO payload had no valid sunspot rows")
+        if selected is None:
+            raise RuntimeError("SILSO payload had no valid sunspot rows")
+        return selected
+
+    def _silso_temporal_metadata(
+        self,
+        observation_date: date,
+        *,
+        reference_date: date | None = None,
+    ) -> dict[str, Any]:
+        effective_reference_date = (
+            reference_date
+            if reference_date is not None
+            else self._utc_now().astimezone(timezone.utc).date()
+        )
+        latest_expected_date = effective_reference_date.replace(
+            day=1
+        ) - timedelta(days=1)
+        source_age_days = (effective_reference_date - observation_date).days
+        if (
+            observation_date > latest_expected_date
+            or source_age_days < 0
+            or source_age_days > self.SILSO_MAX_SOURCE_AGE_DAYS
+        ):
+            raise ValueError("SILSO observation date is outside its coverage window")
+        return {
+            "source_age_days": source_age_days,
+            "coverage": {
+                "policy": self.SILSO_COVERAGE_POLICY,
+                "latest_expected_date": latest_expected_date.isoformat(),
+                "status": (
+                    "current_for_published_coverage"
+                    if observation_date == latest_expected_date
+                    else "lagging_within_age_bound"
+                ),
+            },
+        }
 
     def _silso_cache_value(
         self,
@@ -1277,6 +1391,14 @@ class SolarRealtimeDataProvider:
         failure: _FetchFailureDescriptor | None = None,
     ) -> dict[str, Any]:
         value = dict(entry.value)
+        observation_date_text = value.get("date")
+        if not isinstance(observation_date_text, str):
+            raise RuntimeError("SILSO cached observation date is invalid")
+        try:
+            observation_date = date.fromisoformat(observation_date_text)
+            value.update(self._silso_temporal_metadata(observation_date))
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("SILSO cached observation date is invalid") from exc
         acquisition: dict[str, Any] = {
             "cache_status": cache_status,
             "last_validated_at_utc": entry.validated_at_utc,
@@ -1654,12 +1776,11 @@ class SolarRealtimeDataProvider:
                 "ok": True,
                 "updated": silso.get("date"),
                 "endpoint": self.SILSO_DAILY_URL,
+                "source_age_days": silso.get("source_age_days"),
+                "coverage": silso.get("coverage"),
+                "realtime_eligible": False,
+                "acquisition": silso.get("acquisition"),
             }
-            if isinstance(silso.get("activity_proxy"), (float, int)):
-                proxy = float(silso["activity_proxy"])
-                proxies.append(proxy)
-                weighted_sum += proxy * 0.35
-                weight_total += 0.35
         except Exception as exc:
             snapshot["source_status"]["silso"] = {
                 "ok": False,

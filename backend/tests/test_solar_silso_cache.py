@@ -14,6 +14,7 @@ from sim.solar_realtime_data import SolarRealtimeDataProvider, SolarRealtimeFetc
 
 SILSO_ROW = "2026;08;31;2026.664;  58;  8.1;  33;0\n"
 SILSO_LAST_MODIFIED = "Tue, 01 Sep 2026 08:19:28 GMT"
+SILSO_REFERENCE_NOW = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
 
 
 class _Response:
@@ -93,10 +94,18 @@ def _ok_response(
     )
 
 
+def _freeze_silso_clock(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: SolarRealtimeDataProvider,
+) -> None:
+    monkeypatch.setattr(provider, "_utc_now", lambda: SILSO_REFERENCE_NOW)
+
+
 def test_snapshot_force_refresh_does_not_bypass_independent_silso_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = SolarRealtimeDataProvider(cache_ttl_s=10.0)
+    _freeze_silso_clock(monkeypatch, provider)
     opened = _install_responses(monkeypatch, provider, [_ok_response(provider)])
     monkeypatch.setattr(
         provider,
@@ -123,6 +132,7 @@ def test_silso_revalidates_with_bounded_conditional_headers_and_304(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
     monotonic_now = [100.0]
     monkeypatch.setattr(
         solar_realtime_data.time,
@@ -159,6 +169,7 @@ def test_silso_rejects_oversized_response_validator_without_retaining_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
     response = _ok_response(provider, etag='"' + ("x" * 4_096) + '"')
     _install_responses(monkeypatch, provider, [response])
 
@@ -173,6 +184,7 @@ def test_silso_cold_fetch_is_singleflight(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
     entered = threading.Event()
     release = threading.Event()
     fetch_count = 0
@@ -215,6 +227,7 @@ def test_silso_failure_backoff_serves_lkg_only_within_bounded_age(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
     monotonic_now = [100.0]
     monkeypatch.setattr(
         solar_realtime_data.time,
@@ -248,3 +261,142 @@ def test_silso_failure_backoff_serves_lkg_only_within_bounded_age(
     with pytest.raises(RuntimeError, match="SILSO acquisition unavailable"):
         provider._fetch_silso()
     assert len(opened) == 3
+
+
+def test_silso_parser_rejects_invalid_calendar_and_current_month_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    text = "\n".join(
+        (
+            "2026;07;31;2026.579;  41;  7.0;  20;1",
+            "2026;08;31;2026.664;  58;  8.1;  33;0",
+            "2026;02;30;2026.164; 999;  1.0;  99;1",
+            "2026;09;01;2026.667; 888;  1.0;  99;0",
+        )
+    )
+
+    result = provider._parse_silso_document(text)
+
+    assert result["date"] == "2026-08-31"
+    assert result["daily_sunspot_number"] == 58.0
+
+
+@pytest.mark.parametrize(
+    "row",
+    (
+        "2026;02;30;2026.164; 58; 8.1; 33;0",
+        "2026;09;01;2026.667; 58; 8.1; 33;0",
+        "2026;05;31;2026.414; 58; 8.1; 33;0",
+        "2026;08;31;2026.001; 58; 8.1; 33;0",
+        "2026;08;31;2026.664; 58; 8.1; 33;9",
+    ),
+)
+def test_silso_parser_fails_closed_without_a_temporally_valid_row(
+    monkeypatch: pytest.MonkeyPatch,
+    row: str,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+
+    with pytest.raises(RuntimeError, match="no valid sunspot rows"):
+        provider._parse_silso_document(row)
+
+
+def test_silso_discloses_monthly_coverage_age_units_and_official_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+
+    result = provider._parse_silso_document(SILSO_ROW)
+
+    assert result["source_age_days"] == 26
+    assert result["coverage"] == {
+        "policy": "through_last_elapsed_month",
+        "latest_expected_date": "2026-08-31",
+        "status": "current_for_published_coverage",
+    }
+    assert result["observation_cadence"] == "P1D"
+    assert result["publication_cadence"] == "P1M"
+    assert result["quality_status"] == "provisional"
+    assert result["realtime_eligible"] is False
+    assert result["activity_proxy"] is None
+    assert result["units"] == {
+        "daily_sunspot_number": "1 (dimensionless relative index)",
+        "stdev": "1 (sunspot-number standard deviation)",
+        "observation_count": "count",
+        "source_age_days": "d",
+    }
+    assert result["provenance"] == {
+        "provider": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+        "dataset": "Daily total sunspot number, version 2.0",
+        "endpoint": provider.SILSO_DAILY_URL,
+        "doi": "https://doi.org/10.24414/qnza-ac80",
+        "license": {
+            "name": "CC BY-NC 4.0",
+            "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+        },
+    }
+    capability = provider.capabilities()["sources"]["silso"]
+    assert capability["coverage_policy"] == "through_last_elapsed_month"
+    assert capability["maximum_source_age_days"] == 62
+    assert capability["realtime_eligible"] is False
+    assert capability["provenance"] == result["provenance"]
+
+
+def test_silso_cached_record_recomputes_source_age_and_monthly_coverage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    utc_now = [datetime(2026, 9, 30, 23, 59, tzinfo=timezone.utc)]
+    monkeypatch.setattr(provider, "_utc_now", lambda: utc_now[0])
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+
+    september = provider._fetch_silso()
+    utc_now[0] = datetime(2026, 10, 1, 0, 1, tzinfo=timezone.utc)
+    october = provider._fetch_silso()
+
+    assert september["source_age_days"] == 30
+    assert september["coverage"]["latest_expected_date"] == "2026-08-31"
+    assert september["coverage"]["status"] == "current_for_published_coverage"
+    assert october["source_age_days"] == 31
+    assert october["coverage"]["latest_expected_date"] == "2026-09-30"
+    assert october["coverage"]["status"] == "lagging_within_age_bound"
+    assert october["acquisition"]["cache_status"] == "fresh"
+
+
+def test_lagged_silso_is_excluded_from_realtime_activity_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    silso = provider._parse_silso_document(SILSO_ROW)
+    monkeypatch.setattr(
+        provider,
+        "_fetch_silso",
+        lambda: silso,
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_sdo_aia",
+        lambda _jd: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_swpc",
+        lambda: {"time_tag": "2026-09-26T12:00:00Z", "activity_proxy": 0.2},
+    )
+
+    with_swpc = provider._fetch_snapshot(None)
+    assert with_swpc["combined_activity_proxy"] == pytest.approx(0.2)
+    assert with_swpc["source_status"]["silso"]["realtime_eligible"] is False
+
+    monkeypatch.setattr(
+        provider,
+        "_fetch_swpc",
+        lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+    without_swpc = provider._fetch_snapshot(None)
+    assert without_swpc["combined_activity_proxy"] is None
