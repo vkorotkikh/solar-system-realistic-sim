@@ -1251,7 +1251,12 @@ class SolarRealtimeDataProvider:
 
     @staticmethod
     def _parse_swpc_time_tag(value: Any) -> datetime | None:
-        if not isinstance(value, str) or not value or len(value) > 64:
+        if (
+            not isinstance(value, str)
+            or not value
+            or len(value) > 64
+            or not value.isascii()
+        ):
             return None
         try:
             parsed = datetime.fromisoformat(
