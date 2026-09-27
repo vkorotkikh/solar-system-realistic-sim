@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 import server
 from data.bodies import ALL_BODIES
 from trajectory.lambert import PorkchopScanCancelled
+from trajectory.budget import PlanningCancelled
 from trajectory.planner import run_porkchop_scan
 
 
@@ -67,7 +68,7 @@ def test_porkchop_scan_honors_preexisting_cancellation() -> None:
     cancel_event = threading.Event()
     cancel_event.set()
 
-    with pytest.raises(PorkchopScanCancelled):
+    with pytest.raises((PorkchopScanCancelled, PlanningCancelled)):
         run_porkchop_scan(
             ALL_BODIES,
             from_id="earth",

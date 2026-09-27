@@ -279,9 +279,16 @@ void main() {
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
   vec3 baseTex = texture2D(baseMap, uvAdj).rgb;
-  vec3 obsTex  = texture2D(observationMap, fract(uvRotated + vec2(time * 0.0022, 0.0))).rgb;
+  // Observation textures are admitted only under the static full-surface
+  // sun_surface_uv_v1 contract. Do not scroll or vertically wrap spatial data.
+  vec2 observationUv = vec2(fract(vUv.x), clamp(vUv.y, 0.0, 1.0));
+  vec3 obsTex  = texture2D(observationMap, observationUv).rgb;
   float obsLuma = dot(obsTex, vec3(0.2126, 0.7152, 0.0722));
-  float obsNeighbor = dot(texture2D(observationMap, fract(uvRotated + vec2(0.0018, -0.0018))).rgb,
+  vec2 observationNeighborUv = vec2(
+    fract(observationUv.x + 0.0018),
+    clamp(observationUv.y - 0.0018, 0.0, 1.0)
+  );
+  float obsNeighbor = dot(texture2D(observationMap, observationNeighborUv).rgb,
                           vec3(0.2126, 0.7152, 0.0722));
   float obsContrast = abs(obsLuma - obsNeighbor);
   
@@ -690,7 +697,10 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
   }
 }
 
-export function updateSunFlaresUniforms(sunSurfaceMaterial: ShaderMaterial | null | undefined, flareParamsArray: Vector4[]): void {
+export function updateSunFlaresUniforms(
+  sunSurfaceMaterial: ShaderMaterial | null | undefined,
+  flareParamsArray: readonly number[]
+): void {
   if (!sunSurfaceMaterial?.uniforms?.flarePoints) return;
   const fp = sunSurfaceMaterial.uniforms.flarePoints.value;
   for (let i = 0; i < 3; i++) {
@@ -924,7 +934,9 @@ export function createSunGlow(sunDisplayRadius: number): Sprite {
   return glow;
 }
 
-export function createSunCoronaShell(geometry: BufferGeometry): Mesh {
+export function createSunCoronaShell(
+  geometry: BufferGeometry
+): Mesh<BufferGeometry, ShaderMaterial> {
   const material = new ShaderMaterial({
     vertexShader: SUN_CORONA_VERTEX_SHADER,
     fragmentShader: SUN_CORONA_FRAGMENT_SHADER,
@@ -1072,7 +1084,10 @@ void main() {
  * @param geometry - A SphereGeometry to use (shared with other shells or dedicated)
  * @param sunDisplayRadius - The Sun's display radius in scene units
  */
-export function createTransitionRegionShell(geometry: BufferGeometry, sunDisplayRadius: number): Mesh {
+export function createTransitionRegionShell(
+  geometry: BufferGeometry,
+  sunDisplayRadius: number
+): Mesh<BufferGeometry, ShaderMaterial> {
   const material = new ShaderMaterial({
     vertexShader: TR_VERTEX_SHADER,
     fragmentShader: TR_FRAGMENT_SHADER,

@@ -129,6 +129,43 @@ def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch)
     assert "no_verified_candidate" in response.text
 
 
+def test_mission_plan_maps_inconclusive_trajectory_search_to_503(monkeypatch) -> None:
+    search = {
+        "truncated": True,
+        "budgetExhausted": True,
+        "terminationReason": "leg_evaluations_budget_exhausted",
+    }
+    monkeypatch.setattr(
+        MissionPlannerAgent,
+        "plan",
+        lambda *_args, **_kwargs: {
+            "status": "trajectory_search_inconclusive",
+            "recommendation": None,
+            "alternatives": [],
+            "trajectorySearch": {"outbound": search, "returns": []},
+        },
+    )
+
+    response = client.post(
+        "/mission/plan",
+        json={
+            "from_id": "earth",
+            "target_id": "psyche",
+            "return_id": "earth",
+            "departure_jd": 2_460_450.5,
+            "max_assists": 0,
+            "assist_pool": [],
+            "objective": "min_distance",
+            "ephemeris_provider": "kepler",
+        },
+    )
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["code"] == "trajectory_compute_budget_exhausted"
+    assert detail["context"]["trajectorySearch"]["outbound"] == search
+
+
 def test_benchmark_accuracy_rejects_invalid_provider() -> None:
     response = client.get("/benchmark/accuracy", params={"ephemeris_provider": "bogus"})
 
@@ -150,6 +187,42 @@ def test_lambert_rejects_same_from_and_to() -> None:
 
     assert response.status_code == 400
     assert "must differ" in response.text
+
+
+def test_lambert_rejects_overflowing_time_of_flight_before_admission() -> None:
+    response = client.post(
+        "/trajectory/lambert",
+        json={
+            "from_id": "earth",
+            "to_id": "mars",
+            "departure_jd": -1.0e308,
+            "arrival_jd": 1.0e308,
+            "ephemeris_provider": "kepler",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "trajectory_invalid_time_range"
+
+
+def test_porkchop_rejects_subminimum_steps_before_worker_admission() -> None:
+    response = client.post(
+        "/trajectory/porkchop",
+        json={
+            "from_id": "earth",
+            "to_id": "mars",
+            "departure_start_jd": 2_460_500.5,
+            "departure_end_jd": 2_460_520.5,
+            "departure_step_days": 0.1,
+            "tof_min_days": 100.0,
+            "tof_max_days": 140.0,
+            "tof_step_days": 10.0,
+            "ephemeris_provider": "kepler",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "trajectory_invalid_time_range"
 
 
 def test_porkchop_rejects_unknown_body() -> None:

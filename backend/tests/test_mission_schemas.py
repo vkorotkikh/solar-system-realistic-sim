@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from mission.schemas import MissionRequestSchema, parse_mission_request
+import pytest
+
+from mission.schemas import (
+    MAX_MISSION_ASSIST_POOL_SIZE,
+    MAX_MISSION_RISK_SAMPLES,
+    MAX_MISSION_VEHICLE_STAGES,
+    MissionRequestSchema,
+    parse_mission_request,
+)
 
 
 def test_parse_mission_request_defaults_and_bounds() -> None:
@@ -68,3 +76,64 @@ def test_parse_mission_request_prograde_bool_coercion() -> None:
 
     assert parsed_no.prograde is False
     assert parsed_zero.prograde is False
+
+
+def test_parse_mission_request_preserves_explicit_empty_assist_pool() -> None:
+    parsed = parse_mission_request({"assist_pool": []})
+
+    assert parsed.assist_pool == []
+
+
+def test_parse_mission_request_rejects_oversized_assist_pool_before_iteration() -> None:
+    poison_entries = [object()] * (MAX_MISSION_ASSIST_POOL_SIZE + 1)
+
+    with pytest.raises(ValueError, match="assist_pool is limited"):
+        parse_mission_request({"assist_pool": poison_entries})
+
+
+def test_parse_mission_request_rejects_oversized_vehicle_before_iteration() -> None:
+    poison_stages = [object()] * (MAX_MISSION_VEHICLE_STAGES + 1)
+
+    with pytest.raises(ValueError, match="vehicle.stages is limited"):
+        parse_mission_request({"vehicle": {"stages": poison_stages}})
+
+
+def test_parse_mission_request_clamps_direct_call_risk_work() -> None:
+    parsed = parse_mission_request({"risk_samples": MAX_MISSION_RISK_SAMPLES + 10_000})
+
+    assert parsed.risk_samples == MAX_MISSION_RISK_SAMPLES
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("departure_jd", float("inf")),
+        ("payload_mass_kg", float("nan")),
+        ("mining_days", float("inf")),
+        ("extraction_rate_kg_day", float("-inf")),
+        ("available_power_kw", float("nan")),
+    ],
+)
+def test_parse_mission_request_rejects_nonfinite_direct_call_values(
+    field: str,
+    value: float,
+) -> None:
+    with pytest.raises(ValueError, match="must be finite"):
+        parse_mission_request({field: value})
+
+
+def test_parse_mission_request_rejects_nonfinite_vehicle_values() -> None:
+    with pytest.raises(ValueError, match="must be finite"):
+        parse_mission_request(
+            {
+                "vehicle": {
+                    "stages": [
+                        {
+                            "dry_mass_kg": float("inf"),
+                            "propellant_mass_kg": 1_000.0,
+                            "isp_s": 300.0,
+                        }
+                    ]
+                }
+            }
+        )

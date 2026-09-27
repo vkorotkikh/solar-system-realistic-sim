@@ -1,8 +1,43 @@
 import { clamp } from '../../../constants';
+import type { SolarPhysicsStateLike } from './solarFeatureBlending';
 import type { SolarObservationPhysicsStateLike } from './solarObservationTexture';
+
+// The backend admits at most 19 s for a solar-physics computation. Keep the
+// browser deadline above that ceiling, while bounding it tightly enough that a
+// disconnected backend cannot strand the delivery loop. Physics is expensive
+// and evolves slowly relative to a frame, so polling twice a minute is ample.
+export const SOLAR_PHYSICS_POLL_INTERVAL_MS = 30_000;
+export const SOLAR_PHYSICS_REQUEST_TIMEOUT_MS = 20_000;
+export const SOLAR_PHYSICS_ERROR_BACKOFF_MS = 30_000;
+export const SOLAR_PHYSICS_MAX_FEATURES = 256;
+
+export type SolarForcingMode = 'synthetic' | 'hybrid' | 'data_driven';
 
 /** Subset of `GET /solar/physics` JSON used by the frontend sun stack. */
 export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLike {
+  schema: {
+    name: 'solar_physics_state';
+    version: 2;
+  };
+  epoch_jd_tdb: number;
+  wall_epoch_jd_tdb: number;
+  jd_time_scale: 'TDB';
+  /** @deprecated Unlabelled JDs are retained only for backend compatibility. */
+  epoch_jd?: number;
+  /** @deprecated Unlabelled JDs are retained only for backend compatibility. */
+  wall_epoch_jd?: number;
+  forcing: SolarForcingMode;
+  effective_forcing: 'synthetic';
+  live_data_requested: boolean;
+  live_data_enabled: false;
+  fallback_reason?: string;
+  forcing_status: {
+    requested: SolarForcingMode;
+    effective: 'synthetic';
+    observed_input_status: string;
+    runtime_eligible: boolean;
+    fallback_reason?: string;
+  };
   activity_index?: number;
   synthetic_activity_index?: number;
   corona?: {
@@ -12,9 +47,125 @@ export interface SolarPhysicsStatePayload extends SolarObservationPhysicsStateLi
     source?: string;
     carrington_rotation?: number;
   };
-  coronal_holes?: unknown;
-  heliosphere?: unknown;
+  coronal_holes?: {
+    holes?: Array<{
+      center_lon_rad?: unknown;
+      center_lat_rad?: unknown;
+      extent_lon_rad?: unknown;
+      extent_lat_rad?: unknown;
+    }> | null;
+  } | null;
+  heliosphere?: SolarPhysicsStateLike['heliosphere'];
   [key: string]: unknown;
+}
+
+function hasOwn(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function isSolarForcingMode(value: unknown): value is SolarForcingMode {
+  return value === 'synthetic' || value === 'hybrid' || value === 'data_driven';
+}
+
+function requireFiniteField(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Solar physics response ${key} must be finite`);
+  }
+  return value;
+}
+
+function validateSolarPhysicsPayload(
+  rawPayload: unknown,
+  requestedJdTdb: number,
+  requestedForcing: SolarForcingMode
+): SolarPhysicsStatePayload {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
+    throw new Error('Solar physics response must be an object');
+  }
+  const payload = rawPayload as Record<string, unknown>;
+  const schema = payload.schema;
+  if (
+    !schema ||
+    typeof schema !== 'object' ||
+    Array.isArray(schema) ||
+    (schema as Record<string, unknown>).name !== 'solar_physics_state' ||
+    (schema as Record<string, unknown>).version !== 2
+  ) {
+    throw new Error('Solar physics response schema must be solar_physics_state version 2');
+  }
+  const epochJdTdb = requireFiniteField(payload, 'epoch_jd_tdb');
+  const wallEpochJdTdb = requireFiniteField(payload, 'wall_epoch_jd_tdb');
+  if (payload.jd_time_scale !== 'TDB') {
+    throw new Error('Solar physics response time scale must be TDB');
+  }
+  if (!isSolarForcingMode(payload.forcing) || payload.forcing !== requestedForcing) {
+    throw new Error('Solar physics response requested forcing does not match the client request');
+  }
+  if (payload.effective_forcing !== 'synthetic') {
+    throw new Error('Solar physics response effective_forcing must be synthetic');
+  }
+  if (typeof payload.live_data_requested !== 'boolean') {
+    throw new Error('Solar physics response live_data_requested must be boolean');
+  }
+  if (payload.live_data_enabled !== false) {
+    throw new Error('Solar physics response live_data_enabled must be false');
+  }
+
+  const encodedRequestJdTdb = Number(requestedJdTdb.toFixed(8));
+  if (Math.abs(epochJdTdb - encodedRequestJdTdb) > 5e-9) {
+    throw new Error('Solar physics response epoch_jd_tdb does not match the requested epoch');
+  }
+
+  if (hasOwn(payload, 'epoch_jd')) {
+    const legacyEpoch = requireFiniteField(payload, 'epoch_jd');
+    if (legacyEpoch !== epochJdTdb) {
+      throw new Error('Solar physics response deprecated epoch_jd alias conflicts with epoch_jd_tdb');
+    }
+  }
+  if (hasOwn(payload, 'wall_epoch_jd')) {
+    const legacyWallEpoch = requireFiniteField(payload, 'wall_epoch_jd');
+    if (legacyWallEpoch !== wallEpochJdTdb) {
+      throw new Error(
+        'Solar physics response deprecated wall_epoch_jd alias conflicts with wall_epoch_jd_tdb'
+      );
+    }
+  }
+
+  const status = payload.forcing_status;
+  if (!status || typeof status !== 'object' || Array.isArray(status)) {
+    throw new Error('Solar physics response forcing_status must be an object');
+  }
+  const fields = status as Record<string, unknown>;
+  if (
+    fields.requested !== requestedForcing ||
+    fields.effective !== 'synthetic' ||
+    typeof fields.observed_input_status !== 'string' ||
+    fields.runtime_eligible !== false
+  ) {
+    throw new Error('Solar physics response forcing_status is inconsistent');
+  }
+  if (requestedForcing === 'synthetic') {
+    if (
+      fields.observed_input_status !== 'not_requested' ||
+      hasOwn(payload, 'fallback_reason') ||
+      hasOwn(fields, 'fallback_reason')
+    ) {
+      throw new Error('Solar physics response synthetic forcing must not claim fallback');
+    }
+  } else if (requestedForcing === 'hybrid') {
+    if (
+      fields.observed_input_status !== 'disabled_unvalidated' ||
+      fields.fallback_reason !== 'disabled_unvalidated' ||
+      payload.fallback_reason !== 'disabled_unvalidated'
+    ) {
+      throw new Error('Solar physics response hybrid fallback contract is invalid');
+    }
+  } else {
+    throw new Error('Solar physics data_driven responses must fail closed');
+  }
+
+  return payload as unknown as SolarPhysicsStatePayload;
 }
 
 interface SolarPhysicsClientOptions {
@@ -23,7 +174,7 @@ interface SolarPhysicsClientOptions {
   timeoutMs?: number;
   maxFeatures?: number;
   fidelity?: string;
-  forcing?: string;
+  forcing?: SolarForcingMode;
   liveData?: boolean;
 }
 
@@ -33,7 +184,7 @@ export class SolarPhysicsClient {
   timeoutMs: number;
   maxFeatures: number;
   fidelity: string;
-  forcing: string;
+  forcing: SolarForcingMode;
   liveData: boolean;
   lastError: string | null;
   lastSuccessMs: number;
@@ -44,22 +195,30 @@ export class SolarPhysicsClient {
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
   _reqId: number;
+  disposed: boolean;
 
   constructor({
     baseUrl,
-    pollIntervalMs = 1_800,
-    timeoutMs = 2_400,
+    pollIntervalMs = SOLAR_PHYSICS_POLL_INTERVAL_MS,
+    timeoutMs = SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
     maxFeatures = 220,
     fidelity = 'high',
     forcing = 'hybrid',
     liveData = true
   }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
-    this.pollIntervalMs = clamp(Number(pollIntervalMs), 300, 30_000);
-    this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
-    this.maxFeatures = clamp(Number(maxFeatures), 8, 2_048);
+    this.pollIntervalMs = clamp(Number(pollIntervalMs), 5_000, 300_000);
+    // A shorter browser deadline would detach from work the backend is still
+    // entitled to run. Keep the public option for compatibility but enforce
+    // the cross-runtime ownership contract.
+    this.timeoutMs = clamp(
+      Number(timeoutMs),
+      SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
+      SOLAR_PHYSICS_REQUEST_TIMEOUT_MS
+    );
+    this.maxFeatures = clamp(Number(maxFeatures), 8, SOLAR_PHYSICS_MAX_FEATURES);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
-    this.forcing = `${forcing ?? 'hybrid'}`.trim().toLowerCase() || 'hybrid';
+    this.forcing = forcing ?? 'hybrid';
     this.liveData = Boolean(liveData);
 
     this.lastError = null;
@@ -71,6 +230,7 @@ export class SolarPhysicsClient {
     this.latest = null;
     this.abortController = null;
     this._reqId = 0;
+    this.disposed = false;
   }
 
   latestState(): SolarPhysicsStatePayload | null {
@@ -84,11 +244,16 @@ export class SolarPhysicsClient {
       lastRefreshMs: this.lastRefreshMs,
       lastLatencyMs: this.lastLatencyMs,
       pollIntervalMs: this.pollIntervalMs,
-      nextRefreshMs: this.nextRefreshMs
+      nextRefreshMs: this.nextRefreshMs,
+      inFlight: this.inFlight,
+      disposed: this.disposed
     };
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this._reqId += 1;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -98,6 +263,8 @@ export class SolarPhysicsClient {
 
   async maybeRefresh(jd: number, force = false): Promise<boolean> {
     const nowMs = Date.now();
+
+    if (this.disposed) return false;
 
     if (this.inFlight) {
       if (force) {
@@ -116,7 +283,7 @@ export class SolarPhysicsClient {
     const currentReqId = this._reqId;
     this.lastRefreshMs = nowMs;
     const query = new URLSearchParams({
-      jd: Number(jd).toFixed(8),
+      jd_tdb: Number(jd).toFixed(8),
       fidelity: this.fidelity,
       max_features: `${Math.round(this.maxFeatures)}`,
       forcing: this.forcing,
@@ -127,6 +294,10 @@ export class SolarPhysicsClient {
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
     this.abortController = controller;
+    const ownsRequest = (): boolean =>
+      !this.disposed &&
+      this._reqId === currentReqId &&
+      this.abortController === controller;
     
     try {
       timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -137,12 +308,14 @@ export class SolarPhysicsClient {
       });
       
       // If a new request started while we were awaiting, ignore this result
-      if (this._reqId !== currentReqId) return false;
+      if (!ownsRequest()) return false;
 
       if (!response.ok) {
         throw new Error(`Solar physics request failed (${response.status})`);
       }
-      const payload = (await response.json()) as SolarPhysicsStatePayload;
+      const rawPayload = await response.json();
+      if (!ownsRequest()) return false;
+      const payload = validateSolarPhysicsPayload(rawPayload, jd, this.forcing);
       this.latest = payload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();
@@ -150,15 +323,21 @@ export class SolarPhysicsClient {
       this.nextRefreshMs = nowMs + this.pollIntervalMs;
       return true;
     } catch (error: unknown) {
+      if (!ownsRequest()) return false;
       this.lastError = error instanceof Error ? error.message : String(error);
-      this.nextRefreshMs = nowMs + Math.max(6_000, this.pollIntervalMs);
+      this.nextRefreshMs = Date.now() + Math.max(
+        SOLAR_PHYSICS_ERROR_BACKOFF_MS,
+        this.pollIntervalMs
+      );
       return false;
     } finally {
       if (timeoutHandle !== null) {
         clearTimeout(timeoutHandle);
       }
-      this.abortController = null;
-      this.inFlight = false;
+      if (ownsRequest()) {
+        this.abortController = null;
+        this.inFlight = false;
+      }
     }
   }
 }

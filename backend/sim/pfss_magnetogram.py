@@ -13,7 +13,11 @@ References:
 
 from __future__ import annotations
 
+import base64
+import copy
+import hashlib
 import io
+import json
 import math
 import struct
 import threading
@@ -21,16 +25,43 @@ from collections import OrderedDict
 import time
 import urllib.request
 from collections import OrderedDict
-from typing import Any
+from dataclasses import asdict, dataclass
+from typing import Any, Literal
 
 import numpy as np
+from astropy.time import Time, TimeDelta
+
+from . import gong_magnetogram as gong
+from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
+from .pfss_tracing import safe_norm, trace_field, trace_field_batch
+from .solar_time import (
+    CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
+    CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    jd_tdb_to_utc_datetime,
+    mean_carrington_rotation_range_jd_tdb,
+    mean_carrington_rotation_number_from_jd_tdb,
+    provider_carrington_state_from_crnow,
+)
+from .spherical_harmonics import (
+    HARMONIC_CONVENTION_VERSION,
+    schmidt_azimuthal_factor,
+    schmidt_legendre,
+    schmidt_legendre_with_theta_derivative,
+)
 
 # ─── Physical Constants ────────────────────────────────────────────────────────
 
 SOURCE_SURFACE_RADII = 2.5        # Standard PFSS source surface
-CARRINGTON_EPOCH_JD = 2398167.4   # JD of Carrington rotation 1 start (1853-11-09)
-CARRINGTON_PERIOD_DAYS = 27.2753  # Sidereal Carrington rotation period
+# Compatibility aliases. New code should import the scale/period-explicit names
+# from ``solar_time``.
+CARRINGTON_EPOCH_JD = CARRINGTON_ROTATION_1_EPOCH_JD_TT
+CARRINGTON_PERIOD_DAYS = CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS
 GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))  # For Fibonacci spiral seeding
+
+WSA_MODEL_VERSION = "wsa_inspired_v1"
+WSA_CALIBRATION_STATUS = "unvalidated"
+WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
+WSA_RADIAL_FIELD_FLOOR = 1e-15
 
 # GONG synoptic magnetogram archive URL pattern
 # bqs = "quick synoptic" maps (updated daily, sine-latitude grid)
@@ -44,14 +75,15 @@ def _clamp(value: float, lower: float, upper: float) -> float:
 # ─── Carrington Rotation ───────────────────────────────────────────────────────
 
 def carrington_rotation_number(jd: float) -> int:
-    """Compute the Carrington rotation number for a given Julian Date."""
-    return int((float(jd) - CARRINGTON_EPOCH_JD) / CARRINGTON_PERIOD_DAYS) + 1
+    """Return a mean Carrington rotation search hint for an explicit JDTDB."""
+
+    return mean_carrington_rotation_number_from_jd_tdb(jd)
 
 
 def carrington_rotation_jd_range(cr: int) -> tuple[float, float]:
-    """Return (start_jd, end_jd) for a given Carrington rotation number."""
-    start = CARRINGTON_EPOCH_JD + (cr - 1) * CARRINGTON_PERIOD_DAYS
-    return start, start + CARRINGTON_PERIOD_DAYS
+    """Return mean ``(start_jd_tdb, end_jd_tdb)`` compatibility boundaries."""
+
+    return mean_carrington_rotation_range_jd_tdb(cr)
 
 
 # ─── Minimal FITS Reader (numpy-only) ─────────────────────────────────────────
@@ -136,11 +168,8 @@ def fetch_gong_synoptic_map(cr: int, timeout_s: float = 6.0) -> np.ndarray | Non
     or None if the data is unavailable.
     """
     # Compute approximate date for this CR to build the archive path
-    cr_start_jd = CARRINGTON_EPOCH_JD + (cr - 1) * CARRINGTON_PERIOD_DAYS
-    # Convert JD to calendar date for path construction
-    unix_s = (cr_start_jd - 2_440_587.5) * 86_400.0
-    import datetime as dt
-    date = dt.datetime.fromtimestamp(unix_s, tz=dt.timezone.utc)
+    cr_start_jd_tdb, _ = carrington_rotation_jd_range(cr)
+    date = jd_tdb_to_utc_datetime(cr_start_jd_tdb)
     yyyymm = date.strftime("%Y%m")
 
     # GONG bqs directory contains files named like:
@@ -204,16 +233,21 @@ def synthetic_magnetogram(
     jd: float,
     n_lat: int = 180,
     n_lon: int = 360,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> np.ndarray:
     """Generate a synthetic photospheric Br map from activity index.
 
     Produces a dipole + quadrupole + octupole field with activity-dependent
     amplitudes, plus noise-seeded active regions at butterfly-law latitudes.
-    Returns Br on a uniform θ (colatitude) × φ (longitude) grid.
+    Defaults to equal-area sine-latitude centers. An explicit grid supplies
+    both coordinates and dimensions, overriding n_lat and n_lon.
     """
     activity = _clamp(float(activity), 0.0, 1.0)
-    theta = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    phi = np.linspace(0, 2 * np.pi, n_lon, endpoint=False)
+    if grid is None:
+        grid = equal_area_sine_latitude_grid(n_lat, n_lon)
+    theta = np.arccos(grid.mu)
+    phi = grid.phi_rad
     theta_grid, phi_grid = np.meshgrid(theta, phi, indexing="ij")
     cos_theta = np.cos(theta_grid)
     sin_theta = np.sin(theta_grid)
@@ -280,96 +314,49 @@ def _clamp_arr(arr: np.ndarray, lo: float, hi: float) -> np.ndarray:
 # ─── Spherical Harmonic Decomposition ─────────────────────────────────────────
 
 def _associated_legendre(lmax: int, cos_theta: np.ndarray) -> dict[tuple[int, int], np.ndarray]:
-    """Compute fully normalized associated Legendre functions P_l^m(cos θ).
-
-    Uses the recurrence relation for Schmidt semi-normalized harmonics,
-    which is the standard for geomagnetism and solar physics.
-    Returns dict[(l, m)] → array of shape (n_theta,).
-    """
-    n = cos_theta.shape[0]
-    sin_theta = np.sqrt(1.0 - cos_theta**2)
-    result: dict[tuple[int, int], np.ndarray] = {}
-
-    # P_0^0 = 1
-    result[(0, 0)] = np.ones(n)
-
-    for l in range(1, lmax + 1):
-        # P_l^l (diagonal)
-        if l == 1:
-            result[(1, 1)] = sin_theta.copy()
-        else:
-            result[(l, l)] = result[(l - 1, l - 1)] * sin_theta * math.sqrt((2 * l - 1) / (2 * l))
-
-        # P_l^{l-1} (sub-diagonal)
-        result[(l, l - 1)] = cos_theta * math.sqrt(2 * l - 1) * result[(l - 1, l - 1)]
-
-        # P_l^m for m < l-1 (horizontal recurrence)
-        for m in range(l - 2, -1, -1):
-            a = math.sqrt(((2 * l - 1) * (2 * l + 1)) / ((l - m) * (l + m)))
-            b = math.sqrt(((2 * l + 1) * (l + m - 1) * (l - m - 1)) / ((l - m) * (l + m) * (2 * l - 3)))
-            result[(l, m)] = a * cos_theta * result[(l - 1, m)]
-            if (l - 2, m) in result:
-                result[(l, m)] -= b * result[(l - 2, m)]
-
-    return result
+    """Legacy delegate for the shared Schmidt quasi-normalized basis."""
+    return schmidt_legendre(lmax, cos_theta)
 
 
 def decompose_spherical_harmonics(
     br_map: np.ndarray,
     lmax: int = 15,
+    *,
+    grid: MagnetogramGrid,
+    condition_limit: float = 1e6,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Decompose a Br(θ, φ) map into spherical harmonic coefficients.
+    """Fit real Schmidt harmonics on explicitly supplied pixel centers.
 
-    Parameters
-    ----------
-    br_map : ndarray, shape (n_lat, n_lon)
-        Radial magnetic field on a uniform colatitude × longitude grid.
-    lmax : int
-        Maximum spherical harmonic degree.
-
-    Returns
-    -------
-    g_lm : ndarray, shape (lmax+1, lmax+1)
-        Cosine (g) coefficients.
-    h_lm : ndarray, shape (lmax+1, lmax+1)
-        Sine (h) coefficients.
+    Uniform-longitude Fourier amplitudes are fitted in latitude by area-
+    weighted least squares (NumPy SVD, no normal equations). Each design's
+    2-norm condition number must be finite and <= condition_limit. The m=0
+    fit includes the monopole; flux-balance policy is outside this projection.
     """
+    br_map = grid.validate_map(br_map)
+    plm = schmidt_legendre(lmax, grid.mu)
     n_lat, n_lon = br_map.shape
-    theta = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
-    d_theta = np.pi / n_lat
-    d_phi = 2.0 * np.pi / n_lon
-
-    # Compute Legendre functions
-    plm = _associated_legendre(lmax, cos_theta)
-
+    if n_lat < lmax + 1 or n_lon < 2 * lmax + 1:
+        raise ValueError("grid undersamples the requested harmonic degree")
+    if not np.isfinite(condition_limit) or condition_limit < 1:
+        raise ValueError("condition_limit must be finite and >= 1")
     g_lm = np.zeros((lmax + 1, lmax + 1))
     h_lm = np.zeros((lmax + 1, lmax + 1))
-
-    phi = np.linspace(0, 2 * np.pi, n_lon, endpoint=False)
-
-    for l in range(lmax + 1):
-        for m in range(l + 1):
-            p = plm[(l, m)]  # shape (n_lat,)
-
-            # Integrate over longitude: cos(m*phi) and sin(m*phi)
-            cos_m_phi = np.cos(m * phi)  # (n_lon,)
-            sin_m_phi = np.sin(m * phi)  # (n_lon,)
-
-            # br_map[i, j] * cos(m*phi_j) summed over j → (n_lat,)
-            br_cos = br_map @ cos_m_phi * d_phi  # (n_lat,)
-            br_sin = br_map @ sin_m_phi * d_phi  # (n_lat,)
-
-            # Integrate over colatitude with sin(theta) weight
-            weight = p * sin_theta * d_theta  # (n_lat,)
-
-            # Normalization factor
-            epsilon_m = 1.0 if m == 0 else 2.0
-            norm = (2 * l + 1) / (4.0 * np.pi) * epsilon_m
-
-            g_lm[l, m] = norm * np.sum(br_cos * weight)
-            h_lm[l, m] = norm * np.sum(br_sin * weight)
+    sqrt_weight = np.sqrt(grid.area_weights)
+    for m in range(lmax + 1):
+        design = np.column_stack([plm[(l, m)] for l in range(m, lmax + 1)])
+        weighted = design * sqrt_weight[:, None]
+        condition = np.linalg.cond(weighted, p=2)
+        if not np.isfinite(condition) or condition > condition_limit:
+            raise ValueError(f"latitude design for m={m} has condition {condition:g} above limit {condition_limit:g}")
+        # Factor 2 extracts real Fourier amplitudes for m>0; it is not an
+        # extra Schmidt normalization applied to the recovered coefficients.
+        factor = (1 if m == 0 else 2) / n_lon
+        rhs = np.column_stack((br_map @ np.cos(m * grid.phi_rad),
+                               br_map @ np.sin(m * grid.phi_rad))) * factor
+        coefficients, _, rank, _ = np.linalg.lstsq(weighted, rhs * sqrt_weight[:, None], rcond=None)
+        if rank != design.shape[1]:
+            raise ValueError(f"latitude design for m={m} is rank deficient")
+        g_lm[m:, m], h_lm[m:, m] = coefficients.T
 
     return g_lm, h_lm
 
@@ -386,7 +373,10 @@ def pfss_solve(
 
     The Altschuler-Newkirk solution gives the potential field between
     r = 1 R☉ (photosphere) and r = r_ss (source surface, default 2.5 R☉),
-    with the boundary condition Br = 0 at r_ss.
+    with the source-surface boundary condition Btheta = Bphi = 0 at r_ss.
+    The radial field remains nonzero in general, allowing radial magnetic
+    flux through the source surface. At r=1, Br reconstructs the supplied
+    coefficients for degrees 1..lmax (the monopole is excluded).
     """
     return PFSSField(g_lm, h_lm, min(lmax, g_lm.shape[0] - 1), r_ss)
 
@@ -406,7 +396,7 @@ class PFSSField:
         Units match the input coefficient units (typically Gauss for g_lm).
         """
         cos_t = math.cos(theta)
-        sin_t = max(1e-10, math.sin(theta))
+        sin_t = math.sin(theta)
 
         # Compute Legendre functions at this colatitude
         plm_vals: dict[tuple[int, int], float] = {}
@@ -418,18 +408,13 @@ class PFSSField:
         bp_val = 0.0
 
         for l in range(1, self.lmax + 1):
-            # Radial basis functions (Altschuler-Newkirk):
-            # c_l(r) = (r)^l + ((l+1)/l) * r^{-(l+1)} * (1/r_ss)^{2l+1}
-            # But for the standard PFSS: B_r has the form:
-            #   B_r(r,θ,φ) = sum_l sum_m [c_l(r)] * P_l^m(cosθ) * (g*cos(mφ)+h*sin(mφ))
-            # where c_l(r) = (l+1) * [(r_ss/r)^{l+2} - 1] / [(l+1) + l*(r_ss)^{-(2l+1)}]
-            # ... simplified:
-            # f_l(r) = (r)^{-(l+2)} * [1 - (r/r_ss)^{2l+1}] / [1 + (l+1)/l * (1/r_ss)^{2l+1}]
+            # B=-grad(Psi), with each unit-coefficient potential mode
+            # Psi_l = [r^(-l-1) - r^l/rss^(2l+1)] / D_l * Y_lm,
+            # D_l = l+1 + l/rss^(2l+1). Thus Psi_l(rss)=0,
+            # Br(1)=Y_lm, and Btheta(rss)=Bphi(rss)=0.
+            # Br(rss)=(2l+1)*rss^(-l-2)/D_l * Y_lm is generally nonzero.
             rss = self.r_ss
 
-            # More standard form from Wang & Sheeley (1992):
-            # R_l(r) for Br:  (l+1) * [1 - (r/rss)^(2l+1)] / [l + (l+1)*(r/rss)^(2l+1)] * r^{-(l+2)}
-            # But simplified using ratio to photosphere (r=1):
             r_ratio = r  # r in solar radii, photosphere = 1
             rss_pow = (1.0 / rss) ** (2 * l + 1)
 
@@ -460,7 +445,7 @@ class PFSSField:
 
                 br_val += cl_br * plm * gh_cos
                 bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * plm * m * gh_sin / sin_t
+                bp_val += cl_bp * float(schmidt_azimuthal_factor(m, cos_t, plm, dplm)) * gh_sin
 
         return (br_val, bt_val, bp_val)
 
@@ -493,42 +478,10 @@ class PFSSField:
         plm: dict[tuple[int, int], float],
         dplm: dict[tuple[int, int], float],
     ) -> None:
-        """Compute P_l^m and dP_l^m/dθ at a single point."""
-        plm[(0, 0)] = 1.0
-        dplm[(0, 0)] = 0.0
-
-        for l in range(1, self.lmax + 1):
-            # Diagonal: P_l^l
-            if l == 1:
-                plm[(1, 1)] = sin_t
-                dplm[(1, 1)] = cos_t
-            else:
-                fac = math.sqrt((2 * l - 1) / (2 * l))
-                plm[(l, l)] = fac * sin_t * plm[(l - 1, l - 1)]
-                dplm[(l, l)] = fac * (cos_t * plm[(l - 1, l - 1)] + sin_t * dplm[(l - 1, l - 1)])
-
-            # Sub-diagonal: P_l^{l-1}
-            fac_sub = math.sqrt(2 * l - 1)
-            plm[(l, l - 1)] = fac_sub * cos_t * plm[(l - 1, l - 1)]
-            dplm[(l, l - 1)] = fac_sub * (-sin_t * plm[(l - 1, l - 1)] + cos_t * dplm[(l - 1, l - 1)])
-
-            # Horizontal recurrence for m < l-1
-            for m in range(l - 2, -1, -1):
-                a_num = (2 * l - 1) * (2 * l + 1)
-                a_den = (l - m) * (l + m)
-                a = math.sqrt(a_num / a_den)
-
-                b_num = (2 * l + 1) * (l + m - 1) * (l - m - 1)
-                b_den = (l - m) * (l + m) * (2 * l - 3)
-                b = math.sqrt(b_num / b_den) if b_den > 0 else 0.0
-
-                plm_prev = plm.get((l - 1, m), 0.0)
-                dplm_prev = dplm.get((l - 1, m), 0.0)
-                plm_prev2 = plm.get((l - 2, m), 0.0)
-                dplm_prev2 = dplm.get((l - 2, m), 0.0)
-
-                plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
-                dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
+        """Legacy scalar delegate; sin_t is retained only for call compatibility."""
+        values, derivatives = schmidt_legendre_with_theta_derivative(self.lmax, cos_t)
+        plm.update({key: float(value) for key, value in values.items()})
+        dplm.update({key: float(value) for key, value in derivatives.items()})
 
     def evaluate_cartesian_batch(self, x: np.ndarray, y: np.ndarray, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Evaluate B vectorially at Cartesian positions (x, y, z) in solar radii. Returns (Bx, By, Bz)."""
@@ -560,7 +513,7 @@ class PFSSField:
     def _evaluate_batch(self, r: np.ndarray, theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Vectorized B(r, θ, φ) integration."""
         cos_t = np.cos(theta)
-        sin_t = np.maximum(1e-10, np.sin(theta))
+        sin_t = np.sin(theta)
         n_points = len(r)
         
         plm_vals, dplm_vals = self._legendre_batch(cos_t, sin_t)
@@ -570,6 +523,7 @@ class PFSSField:
         bp_val = np.zeros(n_points)
         
         for l in range(1, self.lmax + 1):
+            # Same -grad(Psi_l) factors and normalization as evaluate().
             rss_pow = (1.0 / self.r_ss) ** (2 * l + 1)
             denominator = (l + 1) + l * rss_pow
             if abs(denominator) < 1e-30:
@@ -599,50 +553,13 @@ class PFSSField:
                 
                 br_val += cl_br * plm * gh_cos
                 bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * plm * m * gh_sin / sin_t
+                bp_val += cl_bp * schmidt_azimuthal_factor(m, cos_t, plm, dplm) * gh_sin
                 
         return br_val, bt_val, bp_val
 
     def _legendre_batch(self, cos_t: np.ndarray, sin_t: np.ndarray) -> tuple[dict[tuple[int, int], np.ndarray], dict[tuple[int, int], np.ndarray]]:
-        """Vectorized computation of P_l^m and dP_l^m/dθ."""
-        plm: dict[tuple[int, int], np.ndarray] = {}
-        dplm: dict[tuple[int, int], np.ndarray] = {}
-        n_points = len(cos_t)
-        
-        plm[(0, 0)] = np.ones(n_points)
-        dplm[(0, 0)] = np.zeros(n_points)
-        
-        for l in range(1, self.lmax + 1):
-            if l == 1:
-                plm[(1, 1)] = sin_t.copy()
-                dplm[(1, 1)] = cos_t.copy()
-            else:
-                fac = math.sqrt((2 * l - 1) / (2 * l))
-                plm[(l, l)] = fac * sin_t * plm[(l - 1, l - 1)]
-                dplm[(l, l)] = fac * (cos_t * plm[(l - 1, l - 1)] + sin_t * dplm[(l - 1, l - 1)])
-
-            fac_sub = math.sqrt(2 * l - 1)
-            plm[(l, l - 1)] = fac_sub * cos_t * plm[(l - 1, l - 1)]
-            dplm[(l, l - 1)] = fac_sub * (-sin_t * plm[(l - 1, l - 1)] + cos_t * dplm[(l - 1, l - 1)])
-
-            for m in range(l - 2, -1, -1):
-                a_num = (2 * l - 1) * (2 * l + 1)
-                a_den = (l - m) * (l + m)
-                a = math.sqrt(a_num / a_den)
-
-                b_num = (2 * l + 1) * (l + m - 1) * (l - m - 1)
-                b_den = (l - m) * (l + m) * (2 * l - 3)
-                b = math.sqrt(b_num / b_den) if b_den > 0 else 0.0
-
-                plm_prev = plm.get((l - 1, m), np.zeros(n_points))
-                dplm_prev = dplm.get((l - 1, m), np.zeros(n_points))
-                plm_prev2 = plm.get((l - 2, m), np.zeros(n_points))
-                dplm_prev2 = dplm.get((l - 2, m), np.zeros(n_points))
-
-                plm[(l, m)] = a * cos_t * plm_prev - b * plm_prev2
-                dplm[(l, m)] = a * (-sin_t * plm_prev + cos_t * dplm_prev) - b * dplm_prev2
-
-        return plm, dplm
+        """Legacy batch delegate; sin_t is retained only for call compatibility."""
+        return schmidt_legendre_with_theta_derivative(self.lmax, cos_t)
 
 
 # ─── Field Line Tracer ─────────────────────────────────────────────────────────
@@ -653,19 +570,21 @@ def trace_field_lines(
     max_steps: int = 300,
     step_size: float = 0.02,
     br_map: np.ndarray | None = None,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> list[dict[str, Any]]:
     """Trace magnetic field lines from the photosphere through the PFSS domain.
 
     Seeds footpoints using a Fibonacci spiral biased toward high-|Br| regions
     (active regions). Each line is traced outward via RK4 and classified as
-    open (reaches source surface) or closed (returns to photosphere).
+    open (reaches source surface), closed (returns to photosphere), or
+    indeterminate (no validated boundary crossing).
     """
     lines: list[dict[str, Any]] = []
-    r_ss = field.r_ss
     safe_n = max(8, min(500, int(n_lines)))
 
     # Generate seed footpoints
-    seeds = _generate_seed_footpoints(safe_n, br_map)
+    seeds = _generate_seed_footpoints(safe_n, br_map, grid=grid)
 
     for idx, (theta_0, phi_0) in enumerate(seeds):
         # Start slightly above photosphere
@@ -674,56 +593,10 @@ def trace_field_lines(
         y = r_start * math.sin(theta_0) * math.sin(phi_0)
         z = r_start * math.cos(theta_0)
 
-        # Determine initial field direction for polarity
-        bx, by, bz = field.evaluate_cartesian(x, y, z)
-        b_mag = math.sqrt(bx * bx + by * by + bz * bz)
-        if b_mag < 1e-12:
-            continue
-
-        # Radial component at footpoint determines polarity
-        r_hat = (x / r_start, y / r_start, z / r_start)
-        br_dot = bx * r_hat[0] + by * r_hat[1] + bz * r_hat[2]
-        polarity = 1 if br_dot > 0 else -1
-
-        # Trace direction: follow field outward
-        trace_sign = float(polarity)
-
-        arc: list[list[float]] = [[x, y, z]]
-        is_open = False
-
-        px, py, pz = x, y, z
-
-        for step in range(max_steps):
-            # RK4 integration
-            k1x, k1y, k1z = _normalized_field(field, px, py, pz, trace_sign)
-
-            mx, my, mz = px + k1x * step_size * 0.5, py + k1y * step_size * 0.5, pz + k1z * step_size * 0.5
-            k2x, k2y, k2z = _normalized_field(field, mx, my, mz, trace_sign)
-
-            mx2, my2, mz2 = px + k2x * step_size * 0.5, py + k2y * step_size * 0.5, pz + k2z * step_size * 0.5
-            k3x, k3y, k3z = _normalized_field(field, mx2, my2, mz2, trace_sign)
-
-            ex, ey, ez = px + k3x * step_size, py + k3y * step_size, pz + k3z * step_size
-            k4x, k4y, k4z = _normalized_field(field, ex, ey, ez, trace_sign)
-
-            px += step_size * (k1x + 2 * k2x + 2 * k3x + k4x) / 6
-            py += step_size * (k1y + 2 * k2y + 2 * k3y + k4y) / 6
-            pz += step_size * (k1z + 2 * k2z + 2 * k3z + k4z) / 6
-
-            r = math.sqrt(px * px + py * py + pz * pz)
-            arc.append([round(px, 4), round(py, 4), round(pz, 4)])
-
-            if r >= r_ss:
-                is_open = True
-                break
-            elif r <= 1.0 and step > 5:
-                # Returned to photosphere — closed loop
-                is_open = False
-                break
-
-        # Only keep lines with enough points
-        if len(arc) < 5:
-            continue
+        result = trace_field(field, [x, y, z], max_steps=max_steps, step_size=step_size)
+        termination = result.termination
+        is_open = {"open": True, "closed": False, "indeterminate": None}[termination.state]
+        arc = np.round(result.arc, 4).tolist()
 
         # Convert footpoint to lat/lon
         fp_lat_deg = round(90.0 - math.degrees(theta_0), 1)
@@ -731,8 +604,14 @@ def trace_field_lines(
 
         lines.append({
             "id": f"pfss-{idx:03d}",
+            "state": termination.state,
             "is_open": is_open,
-            "polarity": polarity,
+            "termination_reason": termination.reason,
+            "steps": termination.steps,
+            "endpoint": result.endpoint.tolist(),
+            "endpoint_field": result.endpoint_field.tolist() if result.endpoint_field is not None else None,
+            "endpoint_radius_residual": termination.endpoint_radius_residual,
+            "polarity": result.polarity,
             "footpoint_lat_deg": fp_lat_deg,
             "footpoint_lon_deg": fp_lon_deg,
             "arc": arc,
@@ -741,31 +620,21 @@ def trace_field_lines(
     return lines
 
 
-def _normalized_field(
-    field: PFSSField,
-    x: float, y: float, z: float,
-    sign: float,
-) -> tuple[float, float, float]:
-    """Evaluate normalized magnetic field direction at Cartesian point."""
-    bx, by, bz = field.evaluate_cartesian(x, y, z)
-    mag = math.sqrt(bx * bx + by * by + bz * bz)
-    if mag < 1e-15:
-        return (0.0, 0.0, 0.0)
-    inv = sign / mag
-    return (bx * inv, by * inv, bz * inv)
-
-
 def _generate_seed_footpoints(
     n: int,
     br_map: np.ndarray | None = None,
+    *,
+    grid: MagnetogramGrid | None = None,
 ) -> list[tuple[float, float]]:
     """Generate n footpoint seeds on the photosphere.
 
     Uses a Fibonacci spiral for uniform coverage, then biases toward
     high-|Br| regions if a magnetogram is provided.
     """
-    if br_map is not None and br_map.size > 0:
-        return _importance_sample_footpoints(n, br_map)
+    if br_map is not None:
+        if grid is None:
+            raise ValueError("magnetogram seeding requires an explicit grid")
+        return _importance_sample_footpoints(n, br_map, grid=grid)
 
     # Uniform Fibonacci spiral
     seeds: list[tuple[float, float]] = []
@@ -781,15 +650,16 @@ def _generate_seed_footpoints(
 
 def _importance_sample_footpoints(
     n: int, br_map: np.ndarray,
+    *,
+    grid: MagnetogramGrid,
 ) -> list[tuple[float, float]]:
     """Sample footpoints biased toward high |Br| regions."""
+    br_map = grid.validate_map(br_map)
     n_lat, n_lon = br_map.shape
     abs_br = np.abs(br_map)
 
-    # Weight by sin(theta) for area correction + |Br| for importance
-    theta_vals = np.linspace(0, np.pi, n_lat, endpoint=False) + np.pi / (2 * n_lat)
-    sin_weight = np.sin(theta_vals)[:, np.newaxis]
-    weight_map = abs_br * sin_weight + 0.1 * sin_weight  # small uniform floor
+    # Exact cell areas; equal-area maps need no extra sin(theta) factor.
+    weight_map = (abs_br + 0.1) * grid.area_weights[:, None]
     weight_map = weight_map / weight_map.sum()
 
     flat_weights = weight_map.ravel()
@@ -797,45 +667,229 @@ def _importance_sample_footpoints(
     indices = rng.choice(len(flat_weights), size=n, replace=True, p=flat_weights)
 
     seeds: list[tuple[float, float]] = []
+    edges = grid.mu_edges
     for idx in indices:
         i_lat = idx // n_lon
         i_lon = idx % n_lon
-        theta = theta_vals[i_lat] + rng.uniform(-0.5, 0.5) * np.pi / n_lat
-        phi = (i_lon + rng.uniform(-0.5, 0.5)) * 2 * np.pi / n_lon
-        theta = _clamp(theta, 0.01, np.pi - 0.01)
+        mu = edges[i_lat] + rng.uniform() * (edges[i_lat + 1] - edges[i_lat])
+        theta = math.acos(mu)
+        phi = grid.phi_rad[i_lon] + rng.uniform(-0.5, 0.5) * 2 * np.pi / n_lon
         phi = phi % (2 * np.pi)
         seeds.append((float(theta), float(phi)))
 
     return seeds
 
 
-# ─── Wang-Sheeley-Arge (WSA) Solar Wind Speed Model ───────────────────────────
+# ─── Versioned WSA-inspired solar-wind mapping ────────────────────────────────
 
 def _wsa_velocity(fs: float, theta_b: float) -> float:
-    """Arge et al. (2000, 2003) empirical solar wind speed formula.
+    """Evaluate the repository's unvalidated ``wsa_inspired_v1`` relation.
 
-    Parameters
-    ----------
-    fs : float
-        Flux tube expansion factor (dimensionless, ≥ 1).
-    theta_b : float
-        Angular distance (radians) from the open footpoint to the nearest
-        coronal hole boundary (closed-field region).
-
-    Returns
-    -------
-    float
-        Predicted solar wind speed in km/s, clamped to [265, 850].
+    This is deliberately not labelled as the operational WSA model.  It is a
+    bounded visualization relation using an expansion factor and a coronal-hole
+    boundary distance.  The exact constants and limitations are recorded in
+    ``docs/adr/0004-wsa-inspired-semantics.md``.
     """
-    fs_safe = max(1.0, float(fs))
-    tb_safe = max(0.0, float(theta_b))
+    try:
+        fs_value = float(fs)
+        theta_value = float(theta_b)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("WSA-inspired inputs must be numeric") from exc
+    if not math.isfinite(fs_value) or fs_value <= 0:
+        raise ValueError("expansion factor must be finite and positive")
+    if not math.isfinite(theta_value) or not 0 <= theta_value <= math.pi:
+        raise ValueError("boundary distance must be finite and in [0, pi]")
 
-    # Arge+ (2003) refined calibration:
-    #   V = 267.5 + 410 / fs^(2/5) * [1 - 0.8 * exp(-(θ_b / 0.045)^3)]
-    boundary_term = 1.0 - 0.8 * math.exp(-(tb_safe / 0.045) ** 3)
-    v_sw = 267.5 + 410.0 / (fs_safe ** 0.4) * boundary_term
-
+    # Versioned repository relation (angles in radians, output in km/s):
+    #   V = 267.5 + 410 / max(1, fs)^0.4
+    #                  * [1 - 0.8 exp(-(theta_b / 0.045)^3)]
+    fs_for_relation = max(1.0, fs_value)
+    boundary_term = 1.0 - 0.8 * math.exp(-(theta_value / 0.045) ** 3)
+    v_sw = 267.5 + 410.0 / (fs_for_relation ** 0.4) * boundary_term
     return _clamp(v_sw, 265.0, 850.0)
+
+
+def _unit_vectors(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    sin_theta = np.sin(theta)
+    return np.column_stack((
+        sin_theta * np.cos(phi),
+        sin_theta * np.sin(phi),
+        np.cos(theta),
+    ))
+
+
+def _great_circle_distances(target: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """Stable angular distances from one unit vector to many unit vectors."""
+    dots = np.clip(candidates @ target, -1.0, 1.0)
+    cross_norms = safe_norm(np.cross(candidates, target))
+    return np.arctan2(cross_norms, dots)
+
+
+def _open_closed_boundary_midpoints(
+    states: np.ndarray,
+    phi_arr: np.ndarray,
+) -> np.ndarray:
+    """Return edge midpoints that separate confirmed open and closed cells."""
+    n_lat, n_lon = states.shape
+    points: list[tuple[float, float]] = []
+
+    def is_boundary(left: object, right: object) -> bool:
+        return {str(left), str(right)} == {"open", "closed"}
+
+    # Latitude edges lie at the exact equal-area mu boundaries.
+    for i_lat in range(n_lat - 1):
+        theta_edge = math.acos(_clamp(1.0 - 2.0 * (i_lat + 1) / n_lat, -1.0, 1.0))
+        for i_lon in range(n_lon):
+            if is_boundary(states[i_lat, i_lon], states[i_lat + 1, i_lon]):
+                points.append((theta_edge, float(phi_arr[i_lon])))
+
+    # Longitude is periodic.  The midpoint after the final cell wraps to zero.
+    delta_phi = 2.0 * math.pi / n_lon
+    for i_lat in range(n_lat):
+        theta_north = math.acos(
+            _clamp(1.0 - 2.0 * i_lat / n_lat, -1.0, 1.0),
+        )
+        theta_south = math.acos(
+            _clamp(1.0 - 2.0 * (i_lat + 1) / n_lat, -1.0, 1.0),
+        )
+        theta_midpoint = 0.5 * (theta_north + theta_south)
+        for i_lon in range(n_lon):
+            next_lon = (i_lon + 1) % n_lon
+            if is_boundary(states[i_lat, i_lon], states[i_lat, next_lon]):
+                phi_midpoint = (
+                    float(phi_arr[i_lon]) + 0.5 * delta_phi
+                ) % (2.0 * math.pi)
+                points.append((theta_midpoint, phi_midpoint))
+
+    if not points:
+        return np.empty((0, 3), dtype=float)
+    coordinates = np.asarray(points, dtype=float)
+    return _unit_vectors(coordinates[:, 0], coordinates[:, 1])
+
+
+def _local_equal_area_cell_diagonal(theta: float, n_lat: int, n_lon: int) -> float:
+    """Great-circle diagonal of the equal-area row containing ``theta``."""
+    mu = math.cos(theta)
+    row = min(n_lat - 1, max(0, int(math.floor((1.0 - mu) * n_lat / 2.0))))
+    theta_north = math.acos(_clamp(1.0 - 2.0 * row / n_lat, -1.0, 1.0))
+    theta_south = math.acos(_clamp(1.0 - 2.0 * (row + 1) / n_lat, -1.0, 1.0))
+    delta_phi = 2.0 * math.pi / n_lon
+    cosine = (
+        math.cos(theta_north) * math.cos(theta_south)
+        + math.sin(theta_north) * math.sin(theta_south) * math.cos(delta_phi)
+    )
+    return math.acos(_clamp(cosine, -1.0, 1.0))
+
+
+def _validated_wsa_samples(
+    wsa_result: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, int, int] | None:
+    """Extract finite, shape-consistent source-surface samples and grid size."""
+    if wsa_result.get("model") != WSA_MODEL_VERSION:
+        return None
+    try:
+        raw_theta = np.asarray(wsa_result.get("ss_theta"))
+        raw_phi = np.asarray(wsa_result.get("ss_phi"))
+        raw_velocity = np.asarray(wsa_result.get("velocity_map"))
+        open_mask = np.asarray(wsa_result.get("open_mask"))
+        raw_grid_theta = np.asarray(wsa_result.get("grid_theta"))
+        raw_grid_phi = np.asarray(wsa_result.get("grid_phi"))
+    except (TypeError, ValueError):
+        return None
+    numeric_kinds = {"f", "i", "u"}
+    if (
+        raw_theta.dtype.kind not in numeric_kinds
+        or raw_phi.dtype.kind not in numeric_kinds
+        or raw_velocity.dtype.kind not in numeric_kinds
+        or raw_grid_theta.dtype.kind not in numeric_kinds
+        or raw_grid_phi.dtype.kind not in numeric_kinds
+        or open_mask.dtype.kind != "b"
+    ):
+        return None
+    ss_theta = raw_theta.astype(float, copy=False)
+    ss_phi = raw_phi.astype(float, copy=False)
+    velocity = raw_velocity.astype(float, copy=False)
+    grid_theta = raw_grid_theta.astype(float, copy=False)
+    grid_phi = raw_grid_phi.astype(float, copy=False)
+    if (
+        ss_theta.ndim != 2
+        or not ss_theta.size
+        or ss_phi.shape != ss_theta.shape
+        or velocity.shape != ss_theta.shape
+        or open_mask.shape != ss_theta.shape
+        or grid_theta.ndim != 1
+        or grid_phi.ndim != 1
+        or not grid_theta.size
+        or not grid_phi.size
+        or not np.isfinite(grid_theta).all()
+        or not np.isfinite(grid_phi).all()
+    ):
+        return None
+    expected_theta = np.arccos(np.linspace(
+        1.0 - 1.0 / grid_theta.size,
+        -1.0 + 1.0 / grid_theta.size,
+        grid_theta.size,
+    ))
+    expected_phi = np.arange(grid_phi.size, dtype=float) * 2.0 * math.pi / grid_phi.size
+    if (
+        not np.allclose(grid_theta, expected_theta, rtol=0, atol=1e-12)
+        or not np.allclose(grid_phi, expected_phi, rtol=0, atol=1e-12)
+    ):
+        return None
+    valid = (
+        open_mask
+        & np.isfinite(ss_theta)
+        & np.isfinite(ss_phi)
+        & np.isfinite(velocity)
+        & (ss_theta >= 0)
+        & (ss_theta <= math.pi)
+        & (velocity >= 265.0)
+        & (velocity <= 850.0)
+    )
+    if not valid.any():
+        return None
+    vectors = _unit_vectors(ss_theta[valid], np.mod(ss_phi[valid], 2.0 * math.pi))
+    return vectors, velocity[valid], int(grid_theta.size), int(grid_phi.size)
+
+
+def _source_surface_coverage_fraction(
+    ss_theta: np.ndarray,
+    ss_phi: np.ndarray,
+    velocity_map: np.ndarray,
+    open_mask: np.ndarray,
+    theta_arr: np.ndarray,
+    phi_arr: np.ndarray,
+) -> float:
+    sample_result = {
+        "model": WSA_MODEL_VERSION,
+        "ss_theta": ss_theta,
+        "ss_phi": ss_phi,
+        "velocity_map": velocity_map,
+        "open_mask": open_mask,
+        "grid_theta": theta_arr,
+        "grid_phi": phi_arr,
+    }
+    prepared = _validated_wsa_samples(sample_result)
+    if prepared is None:
+        return 0.0
+    candidates, _, n_lat, n_lon = prepared
+    target_theta, target_phi = np.meshgrid(theta_arr, phi_arr, indexing="ij")
+    flat_theta = target_theta.ravel()
+    targets = _unit_vectors(flat_theta, target_phi.ravel())
+    caps = np.asarray([
+        WSA_LOOKUP_MAX_CELL_DIAGONALS * _local_equal_area_cell_diagonal(float(theta), n_lat, n_lon)
+        for theta in flat_theta
+    ])
+    covered = np.zeros(len(targets), dtype=bool)
+    # Bound peak temporary memory while retaining stable atan2 distances.
+    for start in range(0, len(targets), 128):
+        stop = min(start + 128, len(targets))
+        batch = targets[start:stop]
+        dots = np.clip(batch @ candidates.T, -1.0, 1.0)
+        cross_norms = safe_norm(np.cross(batch[:, None, :], candidates[None, :, :]))
+        distances = np.arctan2(cross_norms, dots)
+        covered[start:stop] = np.min(distances, axis=1) <= caps[start:stop] + 1e-14
+    return float(np.count_nonzero(covered) / covered.size)
 
 
 def compute_wsa_velocity_map(
@@ -846,11 +900,12 @@ def compute_wsa_velocity_map(
     max_steps: int = 300,
     step_size: float = 0.02,
 ) -> dict[str, Any]:
-    """Compute a 2D WSA solar wind velocity map at the source surface.
+    """Compute a versioned WSA-inspired velocity map at the source surface.
 
     Traces a global grid of field lines from the photosphere, classifies them
-    as open or closed, computes the flux tube expansion factor and coronal
-    hole boundary distance, then applies the Arge (2003) velocity formula.
+    as open, closed, or indeterminate; evaluates radial expansion at exact
+    shell boundaries; and applies ``wsa_inspired_v1`` only where all required
+    quantities are available.
 
     Returns
     -------
@@ -858,7 +913,9 @@ def compute_wsa_velocity_map(
         - 'velocity_map': 2D array (n_lat, n_lon) of V_sw in km/s at the
           source surface (NaN for closed footpoints).
         - 'open_mask': boolean 2D array, True for open flux footpoints.
-        - 'mean_velocity_kms': mean open-flux velocity.
+        - 'closed_mask', 'indeterminate_mask': independently classified masks.
+        - 'trace_states', 'trace_endpoints': topology and full-precision endpoints.
+        - 'mean_velocity_kms': nullable mean of valid mapped velocities.
         - 'fs_map': expansion factor map.
         - 'theta_b_map': boundary distance map (radians).
     """
@@ -875,92 +932,51 @@ def compute_wsa_velocity_map(
     theta_flat = theta_grid.ravel()
     phi_flat = phi_grid.ravel()
 
-    # Initial footpoints at r=1.005
-    r_foot = 1.005
-    x0 = r_foot * np.sin(theta_flat) * np.cos(phi_flat)
-    y0 = r_foot * np.sin(theta_flat) * np.sin(phi_flat)
-    z0 = r_foot * np.cos(theta_flat)
+    # Trace from the exact photospheric boundary.  The tracing engine rejects
+    # the inward r=1 self-hit and records only physical shell crossings.
+    photosphere_vectors = _unit_vectors(theta_flat, phi_flat)
 
-    # Evaluate |B| at footpoint
-    bx0, by0, bz0 = field.evaluate_cartesian_batch(x0, y0, z0)
-    b_foot = np.sqrt(bx0**2 + by0**2 + bz0**2)
-    
-    # Polarity for trace direction
-    r_hat_x, r_hat_y, r_hat_z = x0 / r_foot, y0 / r_foot, z0 / r_foot
-    br_dot = bx0 * r_hat_x + by0 * r_hat_y + bz0 * r_hat_z
-    trace_sign = np.where(br_dot > 0, 1.0, -1.0)
-
-    # Active mask for RK4 (only trace lines with non-zero B)
-    active = b_foot > 1e-12
-    reached_ss = np.zeros(n_points, dtype=bool)
-    
-    px, py, pz = x0.copy(), y0.copy(), z0.copy()
-
-    def _norm_batch(fx: np.ndarray, fy: np.ndarray, fz: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        tx, ty, tz = fx[mask], fy[mask], fz[mask]
-        ts = trace_sign[mask]
-        bx, by, bz = field.evaluate_cartesian_batch(tx, ty, tz)
-        mag = np.sqrt(bx*bx + by*by + bz*bz)
-        inv = np.where(mag > 1e-15, ts / mag, 0.0)
-        return bx * inv, by * inv, bz * inv
-
-    # Pre-allocate k arrays to avoid reassignment noise
-    k1x = np.zeros(n_points); k1y = np.zeros(n_points); k1z = np.zeros(n_points)
-    k2x = np.zeros(n_points); k2y = np.zeros(n_points); k2z = np.zeros(n_points)
-    k3x = np.zeros(n_points); k3y = np.zeros(n_points); k3z = np.zeros(n_points)
-    k4x = np.zeros(n_points); k4y = np.zeros(n_points); k4z = np.zeros(n_points)
-
-    for step in range(max_steps):
-        if not np.any(active):
-            break
-            
-        k1x[active], k1y[active], k1z[active] = _norm_batch(px, py, pz, active)
-        
-        mx = px + k1x * step_size * 0.5
-        my = py + k1y * step_size * 0.5
-        mz = pz + k1z * step_size * 0.5
-        k2x[active], k2y[active], k2z[active] = _norm_batch(mx, my, mz, active)
-        
-        mx2 = px + k2x * step_size * 0.5
-        my2 = py + k2y * step_size * 0.5
-        mz2 = pz + k2z * step_size * 0.5
-        k3x[active], k3y[active], k3z[active] = _norm_batch(mx2, my2, mz2, active)
-        
-        ex = px + k3x * step_size
-        ey = py + k3y * step_size
-        ez = pz + k3z * step_size
-        k4x[active], k4y[active], k4z[active] = _norm_batch(ex, ey, ez, active)
-
-        px[active] += step_size * (k1x[active] + 2*k2x[active] + 2*k3x[active] + k4x[active]) / 6.0
-        py[active] += step_size * (k1y[active] + 2*k2y[active] + 2*k3y[active] + k4y[active]) / 6.0
-        pz[active] += step_size * (k1z[active] + 2*k2z[active] + 2*k3z[active] + k4z[active]) / 6.0
-
-        r_current = np.sqrt(px*px + py*py + pz*pz)
-        
-        # Check termination condition
-        hit_ss = (r_current >= r_ss) & active
-        reached_ss[hit_ss] = True
-        active[hit_ss] = False
-        
-        if step > 5:
-            hit_surface = (r_current <= 1.0) & active
-            active[hit_surface] = False
-
-    # This footpoint is open flux
-    open_mask_flat = reached_ss
+    traces = trace_field_batch(
+        field, photosphere_vectors,
+        max_steps=max_steps, step_size=step_size,
+    )
+    px, py, pz = traces.endpoints.T
+    trace_states = traces.states.reshape(n_lat, n_lon)
+    open_mask_flat = traces.states == "open"
     open_mask = open_mask_flat.reshape(n_lat, n_lon)
-
-    # Evaluate |B| at source surface endpoint
-    bx_ss, by_ss, bz_ss = field.evaluate_cartesian_batch(px, py, pz)
-    b_ss = np.sqrt(bx_ss**2 + by_ss**2 + bz_ss**2)
-
-    # Expansion factor
-    fs_val = np.full(n_points, 100.0)
-    valid_b = b_ss > 1e-15
-    fs_val[valid_b] = ((1.0 / r_ss) ** 2) * (b_foot[valid_b] / b_ss[valid_b])
-    
-    # Mask out closed flux
-    fs_val[~open_mask_flat] = np.nan
+    closed_mask = trace_states == "closed"
+    indeterminate_mask = trace_states == "indeterminate"
+    # Expansion uses signed radial components at exact boundaries.  Tangential
+    # magnitude is intentionally irrelevant; absolute values enter only in the
+    # positive ratio after finite/nonzero validation.
+    fs_val = np.full(n_points, np.nan)
+    photosphere_fields = np.asarray(
+        field.evaluate_cartesian_batch(*photosphere_vectors.T), dtype=float,
+    ).T
+    br_photosphere = np.sum(photosphere_fields * photosphere_vectors, axis=1)
+    br_source_surface = np.full(n_points, np.nan)
+    if open_mask_flat.any():
+        open_endpoints = traces.endpoints[open_mask_flat]
+        open_radii = safe_norm(open_endpoints)
+        open_unit = np.full_like(open_endpoints, np.nan)
+        np.divide(open_endpoints, open_radii[:, None], out=open_unit, where=(open_radii > 0)[:, None])
+        open_fields = np.asarray(
+            field.evaluate_cartesian_batch(*open_endpoints.T), dtype=float,
+        ).T
+        br_source_surface[open_mask_flat] = np.sum(open_fields * open_unit, axis=1)
+    valid_radial = (
+        open_mask_flat
+        & np.isfinite(br_photosphere)
+        & np.isfinite(br_source_surface)
+        & (np.abs(br_photosphere) > WSA_RADIAL_FIELD_FLOOR)
+        & (np.abs(br_source_surface) > WSA_RADIAL_FIELD_FLOOR)
+    )
+    fs_val[valid_radial] = (
+        (1.0 / r_ss) ** 2
+        * np.abs(br_photosphere[valid_radial])
+        / np.abs(br_source_surface[valid_radial])
+    )
+    fs_val[~np.isfinite(fs_val) | (fs_val <= 0)] = np.nan
     fs_map = fs_val.reshape(n_lat, n_lon)
 
     # Source surface coordinates
@@ -977,38 +993,19 @@ def compute_wsa_velocity_map(
     ss_phi = ss_phi_flat.reshape(n_lat, n_lon)
 
     # ── Compute boundary distance θ_b ────────────────────────────────────
-    # For each open footpoint, find the minimum great-circle distance to
-    # any closed footpoint on the grid.
-    closed_mask = ~open_mask
+    # For each open footpoint, find the minimum great-circle distance to an
+    # edge midpoint separating adjacent confirmed-open/confirmed-closed cells.
+    # Indeterminate cells cannot create either side of a boundary.
     theta_b_map = np.full((n_lat, n_lon), np.nan)
-
-    # Precompute Cartesian unit vectors for all grid points
-    grid_x = np.sin(theta_arr[:, None]) * np.cos(phi_arr[None, :])  # (n_lat, n_lon)
-    grid_y = np.sin(theta_arr[:, None]) * np.sin(phi_arr[None, :])
-    grid_z = np.cos(theta_arr[:, None]) * np.ones((1, n_lon))
-
-    # Extract closed-field points as flat arrays
-    closed_indices = np.argwhere(closed_mask)
-    if closed_indices.shape[0] > 0:
-        cx = grid_x[closed_mask]  # (N_closed,)
-        cy = grid_y[closed_mask]
-        cz = grid_z[closed_mask]
-
-        # For each open footpoint, compute minimum angular distance
-        open_indices = np.argwhere(open_mask)
-        for oi in range(open_indices.shape[0]):
-            i_lat_o, i_lon_o = open_indices[oi]
-            ox = grid_x[i_lat_o, i_lon_o]
-            oy = grid_y[i_lat_o, i_lon_o]
-            oz = grid_z[i_lat_o, i_lon_o]
-
-            # Great-circle distance via dot product: cos(d) = dot(open, closed)
-            dots = np.clip(ox * cx + oy * cy + oz * cz, -1.0, 1.0)
-            min_dist = float(np.min(np.arccos(dots)))
-            theta_b_map[i_lat_o, i_lon_o] = min_dist
-    else:
-        # All open (pure coronal hole, unlikely but handle)
-        theta_b_map[open_mask] = math.pi / 2  # Maximum distance
+    boundary_vectors = _open_closed_boundary_midpoints(trace_states, phi_arr)
+    if boundary_vectors.size:
+        for i_lat_o, i_lon_o in np.argwhere(open_mask):
+            target = _unit_vectors(
+                np.asarray([theta_arr[i_lat_o]]), np.asarray([phi_arr[i_lon_o]]),
+            )[0]
+            theta_b_map[i_lat_o, i_lon_o] = float(
+                np.min(_great_circle_distances(target, boundary_vectors)),
+            )
 
     # ── Apply WSA velocity formula ────────────────────────────────────────
     velocity_map = np.full((n_lat, n_lon), np.nan)
@@ -1019,20 +1016,56 @@ def compute_wsa_velocity_map(
             fs_v = fs_map[i_lat_v, i_lon_v]
             tb_v = theta_b_map[i_lat_v, i_lon_v]
             if np.isfinite(fs_v) and np.isfinite(tb_v):
-                velocity_map[i_lat_v, i_lon_v] = _wsa_velocity(fs_v, tb_v)
+                velocity_map[i_lat_v, i_lon_v] = _wsa_velocity(float(fs_v), float(tb_v))
 
-    # Mean velocity for diagnostics
+    # Availability and quality are part of the result contract; absence never
+    # turns into the historic 380/400 km/s defaults.
     valid_v = velocity_map[np.isfinite(velocity_map)]
-    mean_v = float(np.mean(valid_v)) if valid_v.size > 0 else 400.0
+    mean_v = round(float(np.mean(valid_v)), 1) if valid_v.size else None
+    quality_reasons: list[str] = []
+    if not boundary_vectors.size:
+        quality_reasons.append("no_open_closed_boundary")
+    if np.any(open_mask_flat & ~valid_radial):
+        quality_reasons.append("invalid_radial_field")
+    if indeterminate_mask.any():
+        quality_reasons.append("indeterminate_traces")
+    valid_fraction = float(valid_v.size / n_points)
+    indeterminate_fraction = float(np.count_nonzero(indeterminate_mask) / n_points)
+    coverage_fraction = _source_surface_coverage_fraction(
+        ss_theta, ss_phi, velocity_map, open_mask, theta_arr, phi_arr,
+    )
+    if valid_v.size == 0:
+        quality_reasons.append("no_valid_wsa_speed")
+    elif coverage_fraction < 1.0:
+        quality_reasons.append("incomplete_source_surface_coverage")
 
     return {
+        "model": WSA_MODEL_VERSION,
+        "calibration_status": WSA_CALIBRATION_STATUS,
+        "formula": "267.5 + 410/max(1,fs)^0.4*(1-0.8*exp(-(theta_b/0.045)^3))",
+        "angle_units": "radian",
+        "velocity_units": "km/s",
+        "source_surface_radii": float(r_ss),
+        "boundary_distance_method": "adjacent_open_closed_edge_midpoints_v1",
+        "lookup_max_cell_diagonals": WSA_LOOKUP_MAX_CELL_DIAGONALS,
+        "valid_fraction": valid_fraction,
+        "indeterminate_fraction": indeterminate_fraction,
+        "coverage_fraction": coverage_fraction,
+        "quality_reasons": quality_reasons,
         "velocity_map": velocity_map,
         "open_mask": open_mask,
+        "closed_mask": closed_mask,
+        "indeterminate_mask": indeterminate_mask,
+        "trace_states": trace_states,
+        "trace_endpoints": traces.endpoints.reshape(n_lat, n_lon, 3),
+        "trace_termination_reasons": traces.reasons.reshape(n_lat, n_lon),
+        "trace_steps": traces.steps.reshape(n_lat, n_lon),
+        "trace_endpoint_radius_residuals": traces.endpoint_radius_residuals.reshape(n_lat, n_lon),
         "fs_map": fs_map,
         "theta_b_map": theta_b_map,
         "ss_theta": ss_theta,
         "ss_phi": ss_phi,
-        "mean_velocity_kms": round(mean_v, 1),
+        "mean_velocity_kms": mean_v,
         "grid_theta": theta_arr,
         "grid_phi": phi_arr,
     }
@@ -1042,73 +1075,320 @@ def wsa_velocity_at_source_surface(
     wsa_result: dict[str, Any],
     ss_lat_rad: float,
     ss_lon_rad: float,
-) -> float:
-    """Look up the WSA wind speed at a given source-surface coordinate.
-
-    Uses nearest-neighbour lookup on the traced WSA grid.
-    If no open flux is nearby, returns a slow-wind fallback (380 km/s).
-    """
-    ss_theta_target = math.pi / 2.0 - ss_lat_rad  # colatitude
-    ss_phi_target = ss_lon_rad % (2.0 * math.pi)
-
-    ss_theta_arr = wsa_result.get("ss_theta")
-    ss_phi_arr = wsa_result.get("ss_phi")
-    velocity_map = wsa_result.get("velocity_map")
-    open_mask = wsa_result.get("open_mask")
-
-    if ss_theta_arr is None or velocity_map is None or open_mask is None:
-        return 380.0
-
-    # Convert source surface trace endpoints to Cartesian for distance calc
-    target_x = math.sin(ss_theta_target) * math.cos(ss_phi_target)
-    target_y = math.sin(ss_theta_target) * math.sin(ss_phi_target)
-    target_z = math.cos(ss_theta_target)
-
-    # Gather all open footpoints that have valid source surface coordinates
-    n_lat, n_lon = open_mask.shape
-    best_dist = 999.0
-    best_v = 380.0
-
-    for il in range(n_lat):
-        for jl in range(n_lon):
-            if not open_mask[il, jl]:
-                continue
-            s_t = ss_theta_arr[il, jl]
-            s_p = ss_phi_arr[il, jl]
-            v_val = velocity_map[il, jl]
-            if not (np.isfinite(s_t) and np.isfinite(s_p) and np.isfinite(v_val)):
-                continue
-            sx = math.sin(s_t) * math.cos(s_p)
-            sy = math.sin(s_t) * math.sin(s_p)
-            sz = math.cos(s_t)
-            dot = _clamp(target_x * sx + target_y * sy + target_z * sz, -1.0, 1.0)
-            dist = math.acos(dot)
-            if dist < best_dist:
-                best_dist = dist
-                best_v = float(v_val)
-
-    return best_v
+) -> float | None:
+    """Return a nearby finite WSA-inspired sample, or ``None`` if uncovered."""
+    if not isinstance(wsa_result, dict):
+        return None
+    try:
+        latitude = float(ss_lat_rad)
+        longitude = float(ss_lon_rad)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not math.isfinite(latitude)
+        or not math.isfinite(longitude)
+        or not -math.pi / 2.0 <= latitude <= math.pi / 2.0
+    ):
+        return None
+    prepared = _validated_wsa_samples(wsa_result)
+    if prepared is None:
+        return None
+    candidates, velocities, n_lat, n_lon = prepared
+    theta_target = math.pi / 2.0 - latitude
+    phi_target = longitude % (2.0 * math.pi)
+    target = _unit_vectors(np.asarray([theta_target]), np.asarray([phi_target]))[0]
+    distances = _great_circle_distances(target, candidates)
+    nearest = int(np.argmin(distances))
+    max_distance = (
+        WSA_LOOKUP_MAX_CELL_DIAGONALS
+        * _local_equal_area_cell_diagonal(theta_target, n_lat, n_lon)
+    )
+    if float(distances[nearest]) > max_distance + 1e-14:
+        return None
+    return float(velocities[nearest])
 
 
 # ─── PFSS Cache ────────────────────────────────────────────────────────────────
 
+
+PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
+PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
+SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-equal-area-v1"
+SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
+PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
+PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
+PFSS_TRACER_VERSION = "rk4-three-state-v1"
+PFSS_SEEDING_POLICY_VERSION = "importance-abs-br-exact-area-v1"
+PFSS_DECOMPOSITION_VERSION = "weighted-schmidt-least-squares-v1"
+WSA_BOUNDARY_DISTANCE_VERSION = "adjacent-open-closed-edge-midpoints-v1"
+_SNAPSHOT_TIME_ATOL_DAYS = 5e-10
+_SNAPSHOT_ROTATION_ATOL = 5e-7
+
+
+def _canonical_json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("ascii")
+
+
+def _domain_sha256(domain: bytes, *chunks: bytes) -> str:
+    digest = hashlib.sha256()
+    digest.update(domain)
+    for chunk in chunks:
+        digest.update(len(chunk).to_bytes(8, "big"))
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _canonical_integer(value: object, name: str, *, minimum: int, maximum: int) -> int:
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be an integer")
+    try:
+        converted = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if isinstance(value, (float, np.floating)) and not float(value).is_integer():
+        raise ValueError(f"{name} must be an integer")
+    if converted < minimum:
+        if name == "lmax":
+            raise ValueError("lmax must be a positive integer")
+        converted = minimum
+    return min(converted, maximum)
+
+
+@dataclass(frozen=True, slots=True)
+class PFSSSolutionConfig:
+    """All scientific policy inputs that can affect a cached PFSS solution."""
+
+    line_count: int = 120
+    lmax: int = 15
+    source_surface_radii: float = SOURCE_SURFACE_RADII
+    seeding_policy_version: str = PFSS_SEEDING_POLICY_VERSION
+    wsa_n_lat: int = 36
+    wsa_n_lon: int = 72
+    preprocessing_policy_version: str = PFSS_PREPROCESSING_POLICY_VERSION
+    decomposition_version: str = PFSS_DECOMPOSITION_VERSION
+    solver_version: str = PFSS_SOLVER_VERSION
+    tracer_version: str = PFSS_TRACER_VERSION
+    wsa_version: str = WSA_MODEL_VERSION
+    harmonic_convention_version: str = HARMONIC_CONVENTION_VERSION
+    wsa_boundary_distance_version: str = WSA_BOUNDARY_DISTANCE_VERSION
+    schema_version: str = PFSS_SOLUTION_CONFIG_VERSION
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "line_count",
+            _canonical_integer(self.line_count, "line_count", minimum=8, maximum=500),
+        )
+        object.__setattr__(
+            self,
+            "lmax",
+            _canonical_integer(self.lmax, "lmax", minimum=1, maximum=15),
+        )
+        try:
+            r_ss = float(self.source_surface_radii)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("source_surface_radii must be finite and greater than 1") from exc
+        if not math.isfinite(r_ss) or r_ss <= 1.0:
+            raise ValueError("source_surface_radii must be finite and greater than 1")
+        object.__setattr__(self, "source_surface_radii", r_ss)
+        for name in ("wsa_n_lat", "wsa_n_lon"):
+            raw_value = getattr(self, name)
+            value = _canonical_integer(raw_value, name, minimum=1, maximum=4096)
+            if value != raw_value or value < 1:
+                raise ValueError(f"{name} must be an integer in [1, 4096]")
+            object.__setattr__(self, name, value)
+        implemented_versions = {
+            "seeding_policy_version": PFSS_SEEDING_POLICY_VERSION,
+            "preprocessing_policy_version": PFSS_PREPROCESSING_POLICY_VERSION,
+            "decomposition_version": PFSS_DECOMPOSITION_VERSION,
+            "solver_version": PFSS_SOLVER_VERSION,
+            "tracer_version": PFSS_TRACER_VERSION,
+            "wsa_version": WSA_MODEL_VERSION,
+            "harmonic_convention_version": HARMONIC_CONVENTION_VERSION,
+            "wsa_boundary_distance_version": WSA_BOUNDARY_DISTANCE_VERSION,
+            "schema_version": PFSS_SOLUTION_CONFIG_VERSION,
+        }
+        for name, implemented in implemented_versions.items():
+            if getattr(self, name) != implemented:
+                raise ValueError(f"{name} is not implemented")
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"PFSS_SOLUTION_CONFIG_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "line_count": self.line_count,
+                "lmax": self.lmax,
+                "source_surface_radii": self.source_surface_radii.hex(),
+                "seeding_policy_version": self.seeding_policy_version,
+                "wsa_shape": [self.wsa_n_lat, self.wsa_n_lon],
+                "preprocessing_policy_version": self.preprocessing_policy_version,
+                "decomposition_version": self.decomposition_version,
+                "solver_version": self.solver_version,
+                "tracer_version": self.tracer_version,
+                "wsa_version": self.wsa_version,
+                "harmonic_convention_version": self.harmonic_convention_version,
+                "wsa_boundary_distance_version": self.wsa_boundary_distance_version,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticSnapshotId:
+    schema_version: str
+    jd_tdb: float
+    activity: float
+    normalized_content_sha256: str
+    carrington_rotation: int
+    grid_sha256: str
+    grid_convention: str
+    grid_shape: tuple[int, int]
+    row_order: str
+    transform_version: str = SYNTHETIC_TRANSFORM_VERSION
+    flux_balance_policy_version: str = SYNTHETIC_FLUX_POLICY_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != SYNTHETIC_SNAPSHOT_ID_VERSION:
+            raise ValueError("synthetic snapshot schema_version is not implemented")
+        if self.transform_version != SYNTHETIC_TRANSFORM_VERSION:
+            raise ValueError("synthetic transform_version is not implemented")
+        if self.flux_balance_policy_version != SYNTHETIC_FLUX_POLICY_VERSION:
+            raise ValueError("synthetic flux_balance_policy_version is not implemented")
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"SYNTHETIC_SNAPSHOT_ID_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "jd_tdb": self.jd_tdb.hex(),
+                "activity": self.activity.hex(),
+                "normalized_content_sha256": self.normalized_content_sha256,
+                "carrington_rotation": self.carrington_rotation,
+                "grid_sha256": self.grid_sha256,
+                "grid_convention": self.grid_convention,
+                "grid_shape": list(self.grid_shape),
+                "row_order": self.row_order,
+                "transform_version": self.transform_version,
+                "flux_balance_policy_version": self.flux_balance_policy_version,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class PFSSSolutionKey:
+    source_kind: Literal["observed", "synthetic"]
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId
+    config: PFSSSolutionConfig
+    schema_version: str = PFSS_SOLUTION_KEY_VERSION
+
+    def __post_init__(self) -> None:
+        if self.schema_version != PFSS_SOLUTION_KEY_VERSION:
+            raise ValueError("PFSS solution key schema_version is not implemented")
+
+    def _identity(self) -> tuple[str, str, PFSSSolutionConfig, str]:
+        return (
+            self.source_kind,
+            self.snapshot_id.sha256,
+            self.config,
+            self.schema_version,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, PFSSSolutionKey) and self._identity() == other._identity()
+
+    def __hash__(self) -> int:
+        return hash(self._identity())
+
+    @property
+    def sha256(self) -> str:
+        return _domain_sha256(
+            b"PFSS_SOLUTION_KEY_V1\0",
+            _canonical_json_bytes({
+                "schema_version": self.schema_version,
+                "source_kind": self.source_kind,
+                "snapshot_id": self.snapshot_id.sha256,
+                "config": self.config.sha256,
+            }),
+        )
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _ResolvedMagnetogram:
+    source_kind: Literal["observed", "synthetic"]
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId
+    field_gauss: np.ndarray
+    grid: MagnetogramGrid
+    provenance: gong.GongProvenance | None = None
+
+    def __post_init__(self) -> None:
+        field = self.grid.validate_map(self.field_gauss)
+        immutable = np.frombuffer(
+            np.asarray(field, dtype="<f8", order="C").tobytes(order="C"), dtype="<f8"
+        ).reshape(field.shape)
+        object.__setattr__(self, "field_gauss", immutable)
+
+
+def _serialize_snapshot_id(
+    snapshot_id: gong.SnapshotId | SyntheticSnapshotId,
+) -> dict[str, Any]:
+    payload = asdict(snapshot_id)
+    payload["sha256"] = snapshot_id.sha256
+    return payload
+
+
+def _serialize_solution_config(config: PFSSSolutionConfig) -> dict[str, Any]:
+    payload = asdict(config)
+    payload["sha256"] = config.sha256
+    return payload
+
+
+def _serialize_observed_provenance(
+    provenance: gong.GongProvenance,
+) -> dict[str, Any]:
+    """Serialize the complete current snapshot provenance as JSON-safe data."""
+
+    def encoded_bytes(value: bytes) -> dict[str, Any]:
+        return {
+            "encoding": "base64",
+            "length": len(value),
+            "sha256": hashlib.sha256(value).hexdigest(),
+            "data": base64.b64encode(value).decode("ascii"),
+        }
+
+    payload = asdict(provenance)
+    payload["native_header_bytes"] = encoded_bytes(provenance.native_header_bytes)
+    payload["wcs"]["normalized_header_bytes"] = encoded_bytes(
+        provenance.wcs.normalized_header_bytes
+    )
+    return payload
+
+
+DEFAULT_INFLIGHT_WAIT_S = 30.0
+
 class PFSSCache:
-    """Thread-safe, bounded cache for fully identified PFSS solutions.
+    """Bounded, two-phase snapshot and PFSS solution cache.
 
-    Carrington rotation alone is not a sufficient cache identity.  A synthetic
-    fallback also depends on the requested epoch and activity, while the public
-    payload depends on the requested trace count and harmonic degree.  The GONG
-    timeout can change whether a request uses observed or synthetic input, so it
-    is part of the identity as well.
-
-    Identical cache misses share one computation.  Computation remains outside
-    the cache lock so unrelated keys can progress independently.
+    Observed identity is the validated provider snapshot, never request or
+    retrieval metadata. Synthetic identity includes the exact requested epoch
+    and activity. Returned payloads are deep copies so callers cannot mutate a
+    cached solution or the value observed by concurrent waiters.
     """
 
 # A follower waiting on a leader's in-flight computation gives up after this long
 # rather than blocking a request thread indefinitely.
 DEFAULT_INFLIGHT_WAIT_S = 30.0
 
+
+DEFAULT_INFLIGHT_WAIT_S = 30.0
 
 class PFSSCache:
     """Thread-safe cache for PFSS solutions.
@@ -1122,28 +1402,35 @@ class PFSSCache:
 
     def __init__(self, max_entries: int = 12, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
         self._lock = threading.Lock()
-        self._cache: OrderedDict[
-            tuple[int, float, float, int, int, float], dict[str, Any]
+        self._cache: OrderedDict[PFSSSolutionKey, dict[str, Any]] = OrderedDict()
+        self._inflight: dict[PFSSSolutionKey, dict[str, Any]] = {}
+        self._snapshot_cache: OrderedDict[
+            tuple[float, float], _ResolvedMagnetogram
         ] = OrderedDict()
-        self._inflight: dict[
-            tuple[int, float, float, int, int, float], dict[str, Any]
-        ] = {}
+        self._snapshot_inflight: dict[tuple[float, float], dict[str, Any]] = {}
         self._max_entries = max(1, int(max_entries))
+        try:
+            normalized_wait = float(inflight_wait_s)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("inflight_wait_s must be finite and positive") from exc
+        if not math.isfinite(normalized_wait) or normalized_wait <= 0.0:
+            raise ValueError("inflight_wait_s must be finite and positive")
+        self._inflight_wait_s = normalized_wait
 
     @staticmethod
-    def _normalize_key(
+    def _normalize_request(
         jd: float,
         activity: float,
-        n_lines: int,
-        lmax: int,
         gong_timeout_s: float,
-    ) -> tuple[int, float, float, int, int, float]:
+    ) -> tuple[float, float]:
         try:
             normalized_jd = float(jd)
         except (TypeError, ValueError) as exc:
             raise ValueError("jd must be finite") from exc
         if not math.isfinite(normalized_jd):
             raise ValueError("jd must be finite")
+        if normalized_jd == 0.0:
+            normalized_jd = 0.0
 
         try:
             normalized_activity = float(activity)
@@ -1152,24 +1439,8 @@ class PFSSCache:
         if not math.isfinite(normalized_activity):
             raise ValueError("activity must be finite")
         normalized_activity = _clamp(normalized_activity, 0.0, 1.0)
-
-        try:
-            requested_lines = int(n_lines)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise ValueError("n_lines must be an integer") from exc
-        # trace_field_lines applies these same effective bounds.  Canonicalizing
-        # here prevents equivalent requests from occupying distinct cache slots.
-        normalized_lines = max(8, min(500, requested_lines))
-
-        try:
-            requested_lmax = int(lmax)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise ValueError("lmax must be a positive integer") from exc
-        if isinstance(lmax, float) and not lmax.is_integer():
-            raise ValueError("lmax must be a positive integer")
-        if requested_lmax < 1:
-            raise ValueError("lmax must be a positive integer")
-        normalized_lmax = min(requested_lmax, 15)
+        if normalized_activity == 0.0:
+            normalized_activity = 0.0
 
         try:
             normalized_timeout = float(gong_timeout_s)
@@ -1177,16 +1448,7 @@ class PFSSCache:
             raise ValueError("gong_timeout_s must be finite and positive") from exc
         if not math.isfinite(normalized_timeout) or normalized_timeout <= 0.0:
             raise ValueError("gong_timeout_s must be finite and positive")
-
-        cr = carrington_rotation_number(normalized_jd)
-        return (
-            cr,
-            normalized_jd,
-            normalized_activity,
-            normalized_lines,
-            normalized_lmax,
-            normalized_timeout,
-        )
+        return normalized_jd, normalized_activity
 
     def get_or_compute(
         self,
@@ -1195,44 +1457,68 @@ class PFSSCache:
         n_lines: int = 120,
         lmax: int = 15,
         gong_timeout_s: float = 6.0,
+        *,
+        snapshot: gong.MagnetogramSnapshot | None = None,
+        solution_config: PFSSSolutionConfig | None = None,
     ) -> dict[str, Any]:
-        """Get cached PFSS result or compute fresh."""
-        key = self._normalize_key(jd, activity, n_lines, lmax, gong_timeout_s)
-        cr, normalized_jd, normalized_activity, normalized_lines, normalized_lmax, normalized_timeout = key
+        """Resolve a snapshot, then get or compute its keyed PFSS solution."""
+        normalized_jd, normalized_activity = self._normalize_request(
+            jd, activity, gong_timeout_s
+        )
+        if solution_config is None:
+            config = PFSSSolutionConfig(line_count=n_lines, lmax=lmax)
+        elif isinstance(solution_config, PFSSSolutionConfig):
+            config = solution_config
+        else:
+            raise ValueError("solution_config must be a PFSSSolutionConfig")
+
+        if snapshot is None:
+            resolved = self._resolve_synthetic_snapshot(normalized_jd, normalized_activity)
+        else:
+            resolved = self._resolve_observed_snapshot(snapshot)
+        key = PFSSSolutionKey(resolved.source_kind, resolved.snapshot_id, config)
 
         with self._lock:
             cached = self._cache.get(key)
             if cached is not None:
                 self._cache.move_to_end(key)
-                return cached
-
-            state = self._inflight.get(key)
-            if state is None:
-                state = {
-                    "event": threading.Event(),
-                    "value": None,
-                    "error": None,
-                }
-                self._inflight[key] = state
-                is_leader = True
+                cache_hit = cached
             else:
+                cache_hit = None
+
+            if cache_hit is not None:
+                state = None
                 is_leader = False
+            else:
+                state = self._inflight.get(key)
+                if state is None:
+                    state = {
+                        "event": threading.Event(),
+                        "value": None,
+                        "error": None,
+                    }
+                    self._inflight[key] = state
+                    is_leader = True
+                else:
+                    is_leader = False
+
+        if cache_hit is not None:
+            return self._attach_snapshot_envelope(cache_hit, resolved, key)
 
         if not is_leader:
-            state["event"].wait()
+            assert state is not None
+            if not state["event"].wait(timeout=self._inflight_wait_s):
+                raise TimeoutError(
+                    "PFSS solution timed out waiting for in-flight computation"
+                )
             if state["error"] is not None:
                 raise state["error"]
-            return state["value"]
+            return self._attach_snapshot_envelope(state["value"], resolved, key)
 
+        assert state is not None
         try:
-            result = self._compute(
-                cr,
-                normalized_activity,
-                normalized_jd,
-                normalized_lines,
-                normalized_lmax,
-                normalized_timeout,
-            )
+            result = self._compute_solution(resolved, key)
+            stored = copy.deepcopy(result)
         except BaseException as exc:
             with self._lock:
                 state["error"] = exc
@@ -1241,78 +1527,532 @@ class PFSSCache:
             raise
 
         with self._lock:
-            self._cache[key] = result
+            self._cache[key] = stored
             self._cache.move_to_end(key)
             while len(self._cache) > self._max_entries:
                 self._cache.popitem(last=False)
-            state["value"] = result
+            state["value"] = stored
             self._inflight.pop(key, None)
             state["event"].set()
+        return self._attach_snapshot_envelope(stored, resolved, key)
 
+    @staticmethod
+    def _attach_snapshot_envelope(
+        numerical_result: dict[str, Any],
+        snapshot: _ResolvedMagnetogram,
+        key: PFSSSolutionKey,
+    ) -> dict[str, Any]:
+        """Attach current-caller identity and provenance outside the solution cache."""
+        result = copy.deepcopy(numerical_result)
+        config = key.config
+        if snapshot.source_kind == "observed":
+            fallback_reason = None
+            cr = snapshot.snapshot_id.current_carrington_rotation
+            map_left_edge_cr = snapshot.snapshot_id.car_rot
+            map_left_edge_longitude = snapshot.snapshot_id.long0_deg
+            if snapshot.provenance is None:
+                raise ValueError("observed snapshot provenance is required")
+            provenance_payload = _serialize_observed_provenance(snapshot.provenance)
+        else:
+            fallback_reason = "legacy_gong_grid_orientation_unvalidated"
+            cr = snapshot.snapshot_id.carrington_rotation
+            map_left_edge_cr = None
+            map_left_edge_longitude = None
+            provenance_payload = None
+        result.update({
+            "source": snapshot.source_kind,
+            "fallback_reason": fallback_reason,
+            "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
+            "snapshot_sha256": snapshot.snapshot_id.sha256,
+            "solution_id": key.sha256,
+            "solution_config": _serialize_solution_config(config),
+            "magnetogram_provenance": provenance_payload,
+            "grid_convention": snapshot.grid.convention,
+            "harmonic_convention": config.harmonic_convention_version,
+            "carrington_rotation": cr,
+            "map_left_edge_carrington_rotation": map_left_edge_cr,
+            "map_left_edge_longitude_deg": map_left_edge_longitude,
+            "source_surface_radii": config.source_surface_radii,
+            "lmax": config.lmax,
+        })
         return result
 
-    def _compute(
-        self,
-        cr: int,
-        activity: float,
-        jd: float,
-        n_lines: int,
-        lmax: int,
-        gong_timeout_s: float,
-    ) -> dict[str, Any]:
-        """Compute PFSS field lines for a given Carrington rotation."""
-        source = "synthetic"
-        br_map = None
-
-        # Try to fetch GONG synoptic magnetogram
+    def _resolve_synthetic_snapshot(
+        self, jd: float, activity: float
+    ) -> _ResolvedMagnetogram:
+        intent = (jd, activity)
+        with self._lock:
+            cached = self._snapshot_cache.get(intent)
+            if cached is not None:
+                self._snapshot_cache.move_to_end(intent)
+                return cached
+            state = self._snapshot_inflight.get(intent)
+            if state is None:
+                state = {"event": threading.Event(), "value": None, "error": None}
+                self._snapshot_inflight[intent] = state
+                is_leader = True
+            else:
+                is_leader = False
+        if not is_leader:
+            if not state["event"].wait(timeout=self._inflight_wait_s):
+                raise TimeoutError(
+                    "PFSS snapshot timed out waiting for in-flight computation"
+                )
+            if state["error"] is not None:
+                raise state["error"]
+            return state["value"]
         try:
-            gong_map = fetch_gong_synoptic_map(cr, timeout_s=gong_timeout_s)
-            if gong_map is not None and gong_map.size > 100:
-                br_map = gong_map
-                source = f"gong_cr{cr}"
-        except Exception:
-            pass
+            resolved = self._build_synthetic_snapshot(jd, activity)
+        except BaseException as exc:
+            with self._lock:
+                state["error"] = exc
+                self._snapshot_inflight.pop(intent, None)
+                state["event"].set()
+            raise
+        with self._lock:
+            self._snapshot_cache[intent] = resolved
+            self._snapshot_cache.move_to_end(intent)
+            while len(self._snapshot_cache) > self._max_entries:
+                self._snapshot_cache.popitem(last=False)
+            state["value"] = resolved
+            self._snapshot_inflight.pop(intent, None)
+            state["event"].set()
+        return resolved
 
-        # Fall back to synthetic magnetogram
-        if br_map is None:
-            br_map = synthetic_magnetogram(activity, jd)
-            source = "synthetic"
+    @staticmethod
+    def _build_synthetic_snapshot(jd: float, activity: float) -> _ResolvedMagnetogram:
+        grid = equal_area_sine_latitude_grid(180, 360)
+        br_map = synthetic_magnetogram(activity, jd, grid=grid)
+        grid_hash = gong._grid_sha256(grid)
+        content_hash = _domain_sha256(
+            b"SYNTHETIC_MAGNETOGRAM_CONTENT_V1\0",
+            _canonical_json_bytes({
+                "jd_tdb": jd.hex(),
+                "activity": activity.hex(),
+                "shape": list(br_map.shape),
+                "dtype": "<f8",
+                "grid_sha256": grid_hash,
+                "transform_version": SYNTHETIC_TRANSFORM_VERSION,
+                "flux_balance_policy_version": SYNTHETIC_FLUX_POLICY_VERSION,
+            }),
+            np.asarray(br_map, dtype="<f8", order="C").tobytes(order="C"),
+        )
+        snapshot_id = SyntheticSnapshotId(
+            schema_version=SYNTHETIC_SNAPSHOT_ID_VERSION,
+            jd_tdb=jd,
+            activity=activity,
+            normalized_content_sha256=content_hash,
+            carrington_rotation=carrington_rotation_number(jd),
+            grid_sha256=grid_hash,
+            grid_convention=grid.convention,
+            grid_shape=(grid.mu.size, grid.phi_rad.size),
+            row_order=grid.row_order,
+        )
+        return _ResolvedMagnetogram("synthetic", snapshot_id, br_map, grid)
 
-        # Decompose into spherical harmonics
-        effective_lmax = min(lmax, 15)
-        g_lm, h_lm = decompose_spherical_harmonics(br_map, lmax=effective_lmax)
-
-        # Solve PFSS
-        field = pfss_solve(g_lm, h_lm, lmax=effective_lmax)
-
-        # Trace field lines (for visualization)
-        lines = trace_field_lines(field, n_lines=n_lines, br_map=br_map)
-
-        # Compute WSA solar wind velocity map
-        wsa_grid_lat = 36  # coarser for speed
-        wsa_grid_lon = 72
-        wsa_result = compute_wsa_velocity_map(
-            field, br_map=br_map,
-            n_lat=wsa_grid_lat, n_lon=wsa_grid_lon,
+    @staticmethod
+    def _resolve_observed_snapshot(snapshot: gong.MagnetogramSnapshot) -> _ResolvedMagnetogram:
+        if not isinstance(snapshot, gong.MagnetogramSnapshot):
+            raise ValueError("snapshot must be a validated MagnetogramSnapshot")
+        field = PFSSCache._validate_observed_snapshot_contract(snapshot)
+        return _ResolvedMagnetogram(
+            "observed",
+            snapshot.snapshot_id,
+            field,
+            snapshot.grid,
+            provenance=snapshot.provenance,
         )
 
-        # Count open vs closed
-        open_count = sum(1 for l in lines if l.get("is_open"))
-        closed_count = len(lines) - open_count
+    @staticmethod
+    def _validate_observed_snapshot_contract(
+        snapshot: gong.MagnetogramSnapshot,
+    ) -> np.ndarray:
+        """Re-run the complete frozen scientific snapshot contract."""
+        sid = snapshot.snapshot_id
+        provenance = snapshot.provenance
+        field = snapshot.grid.validate_map(snapshot.field_gauss)
+        if sid.schema_version != gong.SNAPSHOT_ID_VERSION:
+            raise ValueError("snapshot schema version is not implemented")
+        if sid.transform_version != gong.GONG_TRANSFORM_VERSION:
+            raise ValueError("snapshot transform version is not implemented")
+        if sid.coverage_semantics != gong.GONG_COVERAGE_SEMANTICS:
+            raise ValueError("snapshot coverage semantics are not implemented")
+        if sid.flux_balance_policy_version != gong.FLUX_BALANCE_POLICY_VERSION:
+            raise ValueError("snapshot flux-balance policy is not implemented")
+        frozen_provenance = (
+            provenance.provider == "NSO/GONG"
+            and provenance.source_kind == "observed"
+            and provenance.product == gong.GONG_PRODUCT
+            and provenance.product_token == gong.GONG_PRODUCT_TOKEN
+            and provenance.time_scale_assumption == gong.GONG_TIME_ASSUMPTION
+            and provenance.coverage_warning == gong.GONG_COVERAGE_WARNING
+            and provenance.canonical_bunit == "G"
+            and provenance.physical_quantity == "photospheric magnetic flux density"
+            and provenance.radial_assumption == "provider-approximately-radial-v1"
+            and provenance.polar_fill_status == "provider-polar-filled"
+            and provenance.zero_point_status == "provider-zero-point-corrected"
+            and provenance.quality_flags
+            == ("complete-pixels", "flux-balanced-roundoff-only")
+        )
+        if not frozen_provenance:
+            raise ValueError("snapshot provider provenance is inconsistent")
+        try:
+            gong._validate_context(gong.GongParseContext(
+                request_jd_tdb=provenance.request_jd_tdb,
+                source_url=provenance.source_url,
+                filename=provenance.filename,
+                compressed_sha256=provenance.compressed_sha256,
+                retrieved_at_utc=provenance.retrieved_at_utc,
+                retrieval_timeout_s=provenance.retrieval_timeout_s,
+            ))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("snapshot acquisition provenance is inconsistent") from exc
+        filename_match = gong._FILENAME_RE.fullmatch(provenance.filename)
+        if filename_match is None:
+            raise ValueError("snapshot filename is inconsistent")
+        filename_date = filename_match.group("date")
+        expected_source_url = (
+            f"{gong.GONG_ARCHIVE_BASE_URL}20{filename_date[:4]}/"
+            f"mrzqs{filename_date}/{provenance.filename}"
+        )
+        if provenance.source_url != expected_source_url:
+            raise ValueError("snapshot source URL and filename are inconsistent")
+        limits = gong.GongParseLimits()
+        if (
+            not isinstance(provenance.native_header_bytes, bytes)
+            or len(provenance.native_header_bytes) > limits.max_header_bytes
+            or hashlib.sha256(provenance.native_header_bytes).hexdigest()
+            != provenance.native_header_sha256
+            or not gong._HEX_SHA256_RE.fullmatch(provenance.expanded_fits_sha256)
+            or not gong._HEX_SHA256_RE.fullmatch(provenance.compressed_sha256)
+        ):
+            raise ValueError("snapshot artifact hashes are inconsistent")
+        try:
+            extracted_header = gong._native_header_bytes(
+                provenance.native_header_bytes, limits.max_header_bytes
+            )
+            if extracted_header != provenance.native_header_bytes:
+                raise ValueError("native header contains non-header bytes")
+            native_header = gong.fits.Header.fromstring(
+                provenance.native_header_bytes.decode("ascii"), sep=""
+            )
+            filename_metadata = gong._filename_metadata(provenance.filename)
+            header_metadata = gong._validate_header_metadata(
+                native_header, filename_metadata
+            )
+            native_bunit, gauss_factor = gong._validate_unit(native_header)
+            expected_wcs, header_grid = gong._validate_wcs(
+                native_header, header_metadata.long0_deg
+            )
+            reconstructed_fits = PFSSCache._reconstructed_expanded_fits(
+                native_header,
+                provenance.native_header_bytes,
+                field,
+                provenance.flux.removed_mean_g,
+                provenance.gauss_conversion_factor,
+            )
+        except (UnicodeDecodeError, TypeError, ValueError) as exc:
+            raise ValueError("snapshot native header provenance is inconsistent") from exc
+        if (
+            header_metadata.reference_native_ut != provenance.reference_native_ut
+            or header_metadata.reference_utc != provenance.reference_utc
+            or header_metadata.revision != provenance.product_revision
+            or header_metadata.car_rot != provenance.car_rot
+            or header_metadata.long0_deg != provenance.long0_deg
+            or header_metadata.credge != provenance.credge
+            or header_metadata.crnow != provenance.crnow
+            or native_bunit != provenance.native_bunit
+            or not math.isclose(
+                gauss_factor,
+                provenance.gauss_conversion_factor,
+                rel_tol=0.0,
+                abs_tol=1e-15,
+            )
+            or expected_wcs != provenance.wcs
+            or gong._grid_sha256(header_grid) != gong._grid_sha256(snapshot.grid)
+            or hashlib.sha256(reconstructed_fits).hexdigest()
+            != provenance.expanded_fits_sha256
+        ):
+            raise ValueError("snapshot native header fields are inconsistent")
+        try:
+            reparsed = gong.parse_gong_fits(
+                reconstructed_fits,
+                context=gong.GongParseContext(
+                    request_jd_tdb=provenance.request_jd_tdb,
+                    source_url=provenance.source_url,
+                    filename=provenance.filename,
+                    compressed_sha256=provenance.compressed_sha256,
+                    retrieved_at_utc=provenance.retrieved_at_utc,
+                    retrieval_timeout_s=provenance.retrieval_timeout_s,
+                ),
+                limits=limits,
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("snapshot reconstructed FITS is invalid") from exc
+        if (
+            gong._grid_sha256(reparsed.grid) != gong._grid_sha256(snapshot.grid)
+            or not np.array_equal(reparsed.field_gauss, field)
+        ):
+            raise ValueError("snapshot disagrees with reconstructed FITS")
+        expected_grid_hash = gong._grid_sha256(snapshot.grid)
+        if (
+            sid.grid_sha256 != expected_grid_hash
+            or sid.grid_convention != snapshot.grid.convention
+            or sid.grid_shape != (snapshot.grid.mu.size, snapshot.grid.phi_rad.size)
+            or sid.row_order != snapshot.grid.row_order
+        ):
+            raise ValueError("snapshot grid identity is inconsistent")
+        longitude_step_deg = 360.0 / snapshot.grid.phi_rad.size
+        grid_left_edge_deg = (
+            math.degrees(float(snapshot.grid.phi_rad[0])) - longitude_step_deg / 2.0
+        ) % 360.0
+
+        def same_longitude(left: float, right: float) -> bool:
+            return abs((left - right + 180.0) % 360.0 - 180.0) <= 1e-10
+
+        if (
+            not same_longitude(sid.long0_deg, provenance.long0_deg)
+            or not same_longitude(sid.long0_deg, provenance.wcs.left_edge_longitude_deg)
+            or not same_longitude(sid.long0_deg, grid_left_edge_deg)
+        ):
+            raise ValueError("snapshot longitude provenance is inconsistent")
+        invariant_pairs = (
+            (sid.product, provenance.product),
+            (sid.product_revision, provenance.product_revision),
+            (sid.reference_utc, provenance.reference_utc),
+            (sid.reference_jd_tdb, provenance.reference_jd_tdb),
+            (sid.coverage_start_jd_tdb, provenance.coverage_start_jd_tdb),
+            (sid.coverage_end_jd_tdb, provenance.coverage_end_jd_tdb),
+            (sid.coverage_semantics, provenance.coverage_semantics),
+            (sid.crnow, provenance.crnow),
+            (sid.current_carrington_rotation, provenance.current_carrington_rotation),
+            (sid.current_central_meridian_deg, provenance.current_central_meridian_deg),
+            (sid.credge, provenance.credge),
+            (sid.car_rot, provenance.car_rot),
+            (sid.long0_deg, provenance.long0_deg),
+            (sid.transform_version, provenance.wcs.transform_version),
+            (sid.row_order, provenance.wcs.row_order),
+            (sid.flux_balance_policy_version, provenance.flux.policy_version),
+            (sid.normalized_content_sha256, provenance.normalized_content_sha256),
+        )
+        if any(left != right for left, right in invariant_pairs):
+            raise ValueError("snapshot identifier and provenance are inconsistent")
+
+        try:
+            reference = Time(
+                sid.reference_utc.removesuffix("Z"), format="isot", scale="utc"
+            )
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ValueError("snapshot reference UTC is invalid") from exc
+        expected_reference_jd_tdb = float(reference.tdb.jd)
+        expected_coverage_start_jd_tdb = float(
+            (
+                reference.tt
+                - TimeDelta(
+                    CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS, format="jd", scale="tt"
+                )
+            ).tdb.jd
+        )
+        if (
+            reference.utc.strftime("%Y-%m-%dT%H:%M:%SZ") != sid.reference_utc
+            or abs(sid.reference_jd_tdb - expected_reference_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or abs(sid.coverage_start_jd_tdb - expected_coverage_start_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or abs(sid.coverage_end_jd_tdb - sid.reference_jd_tdb)
+            > _SNAPSHOT_TIME_ATOL_DAYS
+            or sid.coverage_start_jd_tdb >= sid.coverage_end_jd_tdb
+        ):
+            raise ValueError("snapshot reference time or coverage is inconsistent")
+
+        carrington = provider_carrington_state_from_crnow(sid.crnow)
+        expected_credge = sid.car_rot + ((360.0 - sid.long0_deg) % 360.0) / 360.0
+        if (
+            carrington.rotation_number != sid.current_carrington_rotation
+            or sid.car_rot
+            not in (
+                sid.current_carrington_rotation,
+                sid.current_carrington_rotation + 1,
+            )
+            or not same_longitude(
+                carrington.current_longitude_deg,
+                sid.current_central_meridian_deg,
+            )
+            or abs(sid.credge - expected_credge) > _SNAPSHOT_ROTATION_ATOL
+        ):
+            raise ValueError("snapshot Carrington metadata is inconsistent")
+        PFSSCache._validate_observed_flux(field, provenance.flux)
+        expected_content_hash = gong.normalized_content_sha256(
+            field,
+            snapshot.grid,
+            product=sid.product,
+            product_revision=sid.product_revision,
+            transform_version=sid.transform_version,
+            gauss_conversion_factor=provenance.gauss_conversion_factor,
+            flux=provenance.flux,
+        )
+        if sid.normalized_content_sha256 != expected_content_hash:
+            raise ValueError("snapshot normalized content hash is inconsistent")
+        if reparsed.snapshot_id != sid or reparsed.provenance != provenance:
+            raise ValueError("snapshot disagrees with reconstructed FITS")
+        return field
+
+    @staticmethod
+    def _reconstructed_expanded_fits(
+        header: Any,
+        native_header_bytes: bytes,
+        field: np.ndarray,
+        removed_mean_g: float,
+        gauss_conversion_factor: float,
+    ) -> bytes:
+        """Reconstruct the frozen single-HDU FITS artifact from parsed science."""
+        if int(header.get("NAXIS", -1)) != 2:
+            raise ValueError("snapshot FITS must contain a two-dimensional image")
+        shape = (int(header.get("NAXIS2", -1)), int(header.get("NAXIS1", -1)))
+        if shape != field.shape or shape != (180, 360):
+            raise ValueError("snapshot FITS dimensions disagree with science pixels")
+        bitpix = int(header["BITPIX"])
+        dtype_by_bitpix = {
+            8: np.dtype(">u1"),
+            16: np.dtype(">i2"),
+            32: np.dtype(">i4"),
+            64: np.dtype(">i8"),
+            -32: np.dtype(">f4"),
+            -64: np.dtype(">f8"),
+        }
+        if bitpix not in dtype_by_bitpix:
+            raise ValueError("snapshot FITS BITPIX is unsupported")
+        bscale = float(header.get("BSCALE", 1.0))
+        bzero = float(header.get("BZERO", 0.0))
+        if (
+            not math.isfinite(bscale)
+            or bscale == 0.0
+            or not math.isfinite(bzero)
+            or not math.isfinite(gauss_conversion_factor)
+            or gauss_conversion_factor == 0.0
+        ):
+            raise ValueError("snapshot FITS scaling is invalid")
+        scaled = (np.asarray(field, dtype=np.float64) + removed_mean_g) / (
+            gauss_conversion_factor
+        )
+        raw = (scaled - bzero) / bscale
+        dtype = dtype_by_bitpix[bitpix]
+        if bitpix > 0:
+            rounded = np.rint(raw)
+            limits = np.iinfo(dtype)
+            if (
+                not np.all(np.isfinite(raw))
+                or np.any(rounded < limits.min)
+                or np.any(rounded > limits.max)
+                or not np.allclose(raw, rounded, rtol=0.0, atol=1e-9)
+            ):
+                raise ValueError("snapshot pixels disagree with integer FITS storage")
+            raw = rounded
+        data_bytes = np.asarray(raw, dtype=dtype, order="C").tobytes(order="C")
+        expected_data_bytes = shape[0] * shape[1] * (abs(bitpix) // 8)
+        if len(data_bytes) != expected_data_bytes:
+            raise ValueError("snapshot FITS data size is inconsistent")
+        data_bytes += b"\0" * ((-len(data_bytes)) % 2880)
+        expanded = native_header_bytes + data_bytes
+        if len(expanded) > gong.GongParseLimits().max_expanded_fits_bytes:
+            raise ValueError("snapshot FITS exceeds the expanded byte limit")
+        return expanded
+
+    @staticmethod
+    def _validate_observed_flux(
+        field: np.ndarray, flux: gong.FluxBalanceMetrics
+    ) -> None:
+        """Re-derive the parser's balance metrics from its immutable field."""
+        flat = np.asarray(field, dtype=np.float64, order="C").ravel(order="C")
+        cell_area = 4.0 * math.pi / flat.size
+        post_signed = math.fsum(float(value) for value in flat) * cell_area
+        post_unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
+        pre_flat = flat + flux.removed_mean_g
+        pre_signed = math.fsum(float(value) for value in pre_flat) * cell_area
+        pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
+        acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
+
+        def agrees(actual: float, expected: float) -> bool:
+            return math.isfinite(actual) and math.isclose(
+                actual, expected, rel_tol=2e-13, abs_tol=2e-12
+            )
+
+        if (
+            flux.policy_version != gong.FLUX_BALANCE_POLICY_VERSION
+            or not agrees(flux.removed_g00_g, flux.removed_mean_g)
+            or not agrees(flux.pre_signed_flux_g_sr, pre_signed)
+            or not agrees(flux.pre_unsigned_flux_g_sr, pre_unsigned)
+            or not agrees(flux.acceptance_limit_g_sr, acceptance_limit)
+            or not agrees(flux.post_signed_flux_g_sr, post_signed)
+            or not agrees(flux.post_unsigned_flux_g_sr, post_unsigned)
+            or abs(pre_signed) > acceptance_limit
+            or abs(post_signed) > acceptance_limit
+        ):
+            raise ValueError("snapshot flux-balance provenance is inconsistent")
+
+    def _compute_solution(
+        self, snapshot: _ResolvedMagnetogram, key: PFSSSolutionKey
+    ) -> dict[str, Any]:
+        """Compute one immutable-input PFSS solution outside cache locks."""
+        config = key.config
+        br_map = snapshot.field_gauss
+        grid = snapshot.grid
+
+        # Decompose into spherical harmonics
+        g_lm, h_lm = decompose_spherical_harmonics(
+            br_map, lmax=config.lmax, grid=grid
+        )
+
+        # Solve PFSS
+        field = pfss_solve(
+            g_lm, h_lm, lmax=config.lmax, r_ss=config.source_surface_radii
+        )
+
+        # Trace field lines (for visualization)
+        lines = trace_field_lines(
+            field, n_lines=config.line_count, br_map=br_map, grid=grid
+        )
+
+        # Compute the versioned WSA-inspired visualization velocity map.
+        wsa_result = compute_wsa_velocity_map(
+            field, br_map=br_map,
+            n_lat=config.wsa_n_lat, n_lon=config.wsa_n_lon,
+        )
+
+        open_count = sum(1 for line in lines if line["state"] == "open")
+        closed_count = sum(1 for line in lines if line["state"] == "closed")
+        indeterminate_count = sum(1 for line in lines if line["state"] == "indeterminate")
 
         return {
-            "source": source,
-            "carrington_rotation": cr,
-            "source_surface_radii": SOURCE_SURFACE_RADII,
-            "lmax": effective_lmax,
             "line_count": len(lines),
             "open_line_count": open_count,
             "closed_line_count": closed_count,
+            "indeterminate_line_count": indeterminate_count,
             "lines": lines,
             "wsa": {
                 "mean_velocity_kms": wsa_result["mean_velocity_kms"],
-                "grid_resolution": f"{wsa_grid_lat}x{wsa_grid_lon}",
-                "model": "arge_2003",
+                "grid_resolution": f"{config.wsa_n_lat}x{config.wsa_n_lon}",
+                "model": wsa_result.get("model", WSA_MODEL_VERSION),
+                "calibration_status": wsa_result.get(
+                    "calibration_status", WSA_CALIBRATION_STATUS,
+                ),
+                "valid_fraction": wsa_result.get("valid_fraction", 0.0),
+                "indeterminate_fraction": wsa_result.get(
+                    "indeterminate_fraction", 1.0,
+                ),
+                "coverage_fraction": wsa_result.get("coverage_fraction", 0.0),
+                "quality_reasons": list(wsa_result.get(
+                    "quality_reasons", ["wsa_result_metadata_incomplete"],
+                )),
+                "source_surface_radii": wsa_result.get(
+                    "source_surface_radii", float(field.r_ss),
+                ),
+                "boundary_distance_method": wsa_result.get(
+                    "boundary_distance_method", "unavailable",
+                ),
+                "lookup_max_cell_diagonals": wsa_result.get(
+                    "lookup_max_cell_diagonals", WSA_LOOKUP_MAX_CELL_DIAGONALS,
+                ),
             },
             "_wsa_result": wsa_result,  # internal, not serialized to JSON
         }

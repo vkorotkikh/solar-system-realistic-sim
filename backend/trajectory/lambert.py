@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import math
+from numbers import Real
 from threading import Event
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from mission.ephemeris_service import EphemerisService
+from mission.ephemeris_service import (
+    EphemerisProtocolError,
+    EphemerisSample,
+    EphemerisService,
+    TRAJECTORY_STATE_CONTRACT,
+)
 from mission.orbital import (
     MU_SUN_AU3_DAY2,
     au_per_day_to_km_per_sec,
@@ -16,9 +22,434 @@ from mission.orbital import (
     vector_sub,
 )
 
+from .budget import (
+    HARD_MAX_UNIQUE_EPHEMERIS_STATES,
+    PlanningBudgetExceeded,
+    PlanningContext,
+    PlanningError,
+)
+from .contracts import MAX_BODY_ID_LENGTH
+
+
+LAMBERT_ROOT_TOLERANCE_DAYS = 1.0e-4
+MAX_LAMBERT_ROOT_ITERATIONS = 512
+MAX_PORKCHOP_GRID_POINTS = 2_000
+MAX_PORKCHOP_WINDOW_DAYS = 3_650.0
+MIN_PORKCHOP_DEPARTURE_STEP_DAYS = 0.5
+MIN_PORKCHOP_TOF_STEP_DAYS = 5.0
+
+
+class TrajectoryInputError(ValueError):
+    """Pure request-validation failure carrying a stable machine code."""
+
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        context: Dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = str(code)
+        self.context = dict(context or {})
+
 
 class PorkchopScanCancelled(RuntimeError):
     """Raised when a request owner cancels an in-progress grid scan."""
+
+
+def _bounded_vector3(vector: Any, label: str) -> tuple[float, float, float]:
+    """Read at most four values so arbitrary iterables cannot amplify work."""
+
+    try:
+        iterator = iter(vector)
+    except TypeError as exc:
+        raise ValueError(f"{label} must contain three finite values") from exc
+
+    values: list[float] = []
+    try:
+        for _ in range(4):
+            try:
+                raw_value = next(iterator)
+            except StopIteration:
+                break
+            values.append(float(raw_value))
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{label} must contain three finite values") from exc
+    if len(values) != 3 or not all(math.isfinite(value) for value in values):
+        raise ValueError(f"{label} must contain three finite values")
+    return values[0], values[1], values[2]
+
+
+def _validated_body_pair(from_id: str, to_id: str) -> tuple[str, str]:
+    if not isinstance(from_id, str) or not isinstance(to_id, str):
+        raise TrajectoryInputError(
+            "trajectory_invalid_body_id",
+            "Trajectory body identifiers must be non-empty strings",
+        )
+    normalized_from = from_id.strip().lower()
+    normalized_to = to_id.strip().lower()
+    if not normalized_from or not normalized_to:
+        raise TrajectoryInputError(
+            "trajectory_invalid_body_id",
+            "Trajectory body identifiers must be non-empty strings",
+        )
+    if len(normalized_from) > MAX_BODY_ID_LENGTH or len(normalized_to) > MAX_BODY_ID_LENGTH:
+        raise TrajectoryInputError(
+            "trajectory_invalid_body_id",
+            f"Trajectory body identifiers are limited to {MAX_BODY_ID_LENGTH} characters",
+            context={"maximumLength": MAX_BODY_ID_LENGTH},
+        )
+    if normalized_from == normalized_to:
+        raise TrajectoryInputError(
+            "trajectory_same_body",
+            "Trajectory departure and destination bodies must differ",
+            context={"bodyId": normalized_from},
+        )
+    return normalized_from, normalized_to
+
+
+def _finite_time_value(name: str, value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            f"`{name}` must be a finite number",
+            context={"field": name},
+        )
+    try:
+        normalized = float(value)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            f"`{name}` must be a finite number",
+            context={"field": name},
+        ) from exc
+    if not math.isfinite(normalized):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            f"`{name}` must be a finite number",
+            context={"field": name},
+        )
+    return normalized
+
+
+def validate_direct_lambert_request(
+    *,
+    from_id: str,
+    to_id: str,
+    departure_jd: Any,
+    arrival_jd: Any,
+) -> tuple[str, str, float, float]:
+    """Normalize a direct-transfer request without touching a provider."""
+
+    normalized_from, normalized_to = _validated_body_pair(from_id, to_id)
+    departure = _finite_time_value("departure_jd", departure_jd)
+    arrival = _finite_time_value("arrival_jd", arrival_jd)
+    tof = arrival - departure
+    if tof <= 0.0 or not math.isfinite(tof):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "`arrival_jd` must be greater than `departure_jd` and produce a finite time of flight",
+            context={"departureJd": departure, "arrivalJd": arrival},
+        )
+    return normalized_from, normalized_to, departure, arrival
+
+
+def _validate_lambert_leg_request(
+    *,
+    from_id: str,
+    to_id: str,
+    departure_jd: Any,
+    tof_days: Any,
+) -> tuple[str, str, float, float]:
+    normalized_from, normalized_to = _validated_body_pair(from_id, to_id)
+    departure = _finite_time_value("departure_jd", departure_jd)
+    tof = _finite_time_value("tof_days", tof_days)
+    arrival = departure + tof
+    if tof <= 0.0 or not math.isfinite(arrival) or arrival <= departure:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "`tof_days` must be positive and produce a finite arrival epoch",
+            context={"departureJd": departure, "tofDays": tof},
+        )
+    return normalized_from, normalized_to, departure, tof
+
+
+def validate_porkchop_request(
+    *,
+    from_id: str,
+    to_id: str,
+    departure_start_jd: Any,
+    departure_end_jd: Any,
+    departure_step_days: Any,
+    tof_min_days: Any,
+    tof_max_days: Any,
+    tof_step_days: Any,
+) -> Dict[str, Any]:
+    """Normalize and bound a porkchop grid before any session/provider work."""
+
+    normalized_from, normalized_to = _validated_body_pair(from_id, to_id)
+    values = {
+        name: _finite_time_value(name, value)
+        for name, value in {
+            "departure_start_jd": departure_start_jd,
+            "departure_end_jd": departure_end_jd,
+            "departure_step_days": departure_step_days,
+            "tof_min_days": tof_min_days,
+            "tof_max_days": tof_max_days,
+            "tof_step_days": tof_step_days,
+        }.items()
+    }
+    departure_window = values["departure_end_jd"] - values["departure_start_jd"]
+    if not math.isfinite(departure_window):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop departure range must have a finite span",
+        )
+    if departure_window < 0.0:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop departure range must be ordered",
+        )
+    if departure_window > MAX_PORKCHOP_WINDOW_DAYS:
+        raise TrajectoryInputError(
+            "trajectory_complexity_limit",
+            f"Porkchop departure window may not exceed {MAX_PORKCHOP_WINDOW_DAYS} days",
+        )
+    if values["departure_step_days"] < MIN_PORKCHOP_DEPARTURE_STEP_DAYS:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop departure step must be at least "
+            f"{MIN_PORKCHOP_DEPARTURE_STEP_DAYS} days",
+        )
+
+    tof_window = values["tof_max_days"] - values["tof_min_days"]
+    if not math.isfinite(tof_window):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop time-of-flight range must have a finite span",
+        )
+    if values["tof_min_days"] <= 0.0 or tof_window < 0.0:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop time-of-flight range must be positive and ordered",
+        )
+    if tof_window > MAX_PORKCHOP_WINDOW_DAYS:
+        raise TrajectoryInputError(
+            "trajectory_complexity_limit",
+            f"Porkchop time-of-flight window may not exceed {MAX_PORKCHOP_WINDOW_DAYS} days",
+        )
+    if values["tof_step_days"] < MIN_PORKCHOP_TOF_STEP_DAYS:
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            f"Porkchop time-of-flight step must be at least {MIN_PORKCHOP_TOF_STEP_DAYS} days",
+        )
+
+    departure_count = int(
+        math.floor(departure_window / values["departure_step_days"] + 1.0e-12)
+    ) + 1
+    tof_count = int(math.floor(tof_window / values["tof_step_days"] + 1.0e-12)) + 1
+    if (
+        departure_count > 1
+        and values["departure_start_jd"] + values["departure_step_days"]
+        <= values["departure_start_jd"]
+    ):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop departure step cannot advance the departure epoch",
+        )
+    if (
+        tof_count > 1
+        and values["tof_min_days"] + values["tof_step_days"]
+        <= values["tof_min_days"]
+    ):
+        raise TrajectoryInputError(
+            "trajectory_invalid_time_range",
+            "Porkchop time-of-flight step cannot advance the grid",
+        )
+    for departure in (values["departure_start_jd"], values["departure_end_jd"]):
+        for tof in (values["tof_min_days"], values["tof_max_days"]):
+            arrival = departure + tof
+            if not math.isfinite(arrival) or arrival <= departure:
+                raise TrajectoryInputError(
+                    "trajectory_invalid_time_range",
+                    "Porkchop epochs and times of flight must produce finite, later arrivals",
+                )
+    estimated_grid_points = departure_count * tof_count
+    if estimated_grid_points > MAX_PORKCHOP_GRID_POINTS:
+        raise TrajectoryInputError(
+            "trajectory_complexity_limit",
+            f"Porkchop grid may contain at most {MAX_PORKCHOP_GRID_POINTS} points",
+            context={"estimatedGridPointCount": estimated_grid_points},
+        )
+
+    # Compute the exact cache-key domain before any provider/session work.
+    # This is itself bounded by MAX_PORKCHOP_GRID_POINTS and accounts for
+    # arrival-epoch collisions rather than relying on a loose 2*N estimate.
+    departure_values = [
+        values["departure_start_jd"]
+        + departure_index * values["departure_step_days"]
+        for departure_index in range(departure_count)
+    ]
+    tof_values = [
+        values["tof_min_days"] + tof_index * values["tof_step_days"]
+        for tof_index in range(tof_count)
+    ]
+    prospective_states = {
+        ("from", round(departure, 9)) for departure in departure_values
+    }
+    prospective_states.update(
+        ("to", round(departure + tof, 9))
+        for departure in departure_values
+        for tof in tof_values
+    )
+    estimated_unique_states = len(prospective_states)
+    if estimated_unique_states > HARD_MAX_UNIQUE_EPHEMERIS_STATES:
+        raise TrajectoryInputError(
+            "trajectory_complexity_limit",
+            "Porkchop grid exceeds the unique-state computation budget",
+            context={
+                "estimatedGridPointCount": estimated_grid_points,
+                "estimatedUniqueEphemerisStates": estimated_unique_states,
+                "maximumUniqueEphemerisStates": HARD_MAX_UNIQUE_EPHEMERIS_STATES,
+            },
+        )
+
+    return {
+        "from_id": normalized_from,
+        "to_id": normalized_to,
+        **values,
+        "departure_count": departure_count,
+        "tof_count": tof_count,
+        "estimated_grid_points": estimated_grid_points,
+        "estimated_unique_states": estimated_unique_states,
+    }
+
+
+def _underlying_ephemeris_session(ephemeris: Any) -> Any:
+    """Reject duck-typed sessions that can bypass shared provider budgets."""
+
+    if type(ephemeris) is not EphemerisService:
+        raise ValueError("Ephemeris session must be an exact EphemerisService")
+    return ephemeris
+
+
+def _session_planning_context(ephemeris: Any) -> PlanningContext | None:
+    session = _underlying_ephemeris_session(ephemeris)
+    context = getattr(session, "planning_context", getattr(session, "_context", None))
+    return context if type(context) is PlanningContext else None
+
+
+def _require_session_context(
+    ephemeris: Any,
+    planning_context: PlanningContext | None = None,
+) -> PlanningContext:
+    owned_context = _session_planning_context(ephemeris)
+    if owned_context is None:
+        raise ValueError("Ephemeris session must be owned by a PlanningContext")
+    if planning_context is not None and owned_context is not planning_context:
+        raise ValueError("Ephemeris session does not belong to the supplied planning context")
+    return owned_context
+
+
+def _resolved_provider(ephemeris: Any) -> str:
+    session = _underlying_ephemeris_session(ephemeris)
+    return str(getattr(session, "resolved_provider", "")).strip().lower()
+
+
+def _protocol_error(
+    ephemeris: Any,
+    message: str,
+    *,
+    body_id: str | None = None,
+    jd: float | None = None,
+) -> EphemerisProtocolError:
+    return EphemerisProtocolError(
+        message,
+        provider=_resolved_provider(ephemeris) or "unknown",
+        body_id=body_id,
+        jd=jd,
+    )
+
+
+def _validate_lambert_state_pair(
+    ephemeris: Any,
+    from_state: Any,
+    to_state: Any,
+    *,
+    from_id: str,
+    to_id: str,
+    departure_jd: float,
+    arrival_jd: float,
+) -> tuple[EphemerisSample, EphemerisSample]:
+    """Fail closed before solving if two provider states are not compatible."""
+
+    if not isinstance(from_state, EphemerisSample) or not isinstance(to_state, EphemerisSample):
+        raise _protocol_error(
+            ephemeris,
+            "Ephemeris provider returned a non-canonical state sample",
+        )
+
+    requested = (
+        (from_state, str(from_id).strip().lower(), float(departure_jd), "departure"),
+        (to_state, str(to_id).strip().lower(), float(arrival_jd), "arrival"),
+    )
+    for sample, expected_body_id, expected_jd, label in requested:
+        if str(sample.body_id).strip().lower() != expected_body_id:
+            raise _protocol_error(
+                ephemeris,
+                f"Ephemeris {label} state identified the wrong body",
+                body_id=expected_body_id,
+                jd=expected_jd,
+            )
+        if not math.isclose(float(sample.jd), expected_jd, rel_tol=0.0, abs_tol=5.0e-10):
+            raise _protocol_error(
+                ephemeris,
+                f"Ephemeris {label} state identified the wrong epoch",
+                body_id=expected_body_id,
+                jd=expected_jd,
+            )
+
+    session = _underlying_ephemeris_session(ephemeris)
+    session_contract = getattr(session, "state_contract", None)
+    if (
+        session_contract != TRAJECTORY_STATE_CONTRACT
+        or from_state.contract != session_contract
+        or to_state.contract != session_contract
+        or from_state.contract != to_state.contract
+    ):
+        raise _protocol_error(
+            ephemeris,
+            "Ephemeris states do not share the canonical trajectory frame/unit contract",
+        )
+
+    provider = _resolved_provider(ephemeris)
+    if not provider or from_state.source != provider or to_state.source != provider:
+        raise _protocol_error(
+            ephemeris,
+            "Ephemeris states were mixed across providers",
+        )
+    from_revision = str(from_state.provider_revision or "").strip()
+    to_revision = str(to_state.provider_revision or "").strip()
+    if not from_revision or not to_revision or from_revision != to_revision:
+        raise _protocol_error(
+            ephemeris,
+            "Ephemeris states used missing or incompatible provider revisions",
+        )
+
+    expected_target_definition = (
+        "catalog_orbit_reference" if provider == "kepler" else "body_center"
+    )
+    for sample, expected_body_id, expected_jd, label in requested:
+        if sample.target_definition != expected_target_definition:
+            raise _protocol_error(
+                ephemeris,
+                f"Ephemeris {label} state used an incompatible target definition",
+                body_id=expected_body_id,
+                jd=expected_jd,
+            )
+
+    return from_state, to_state
 
 
 def _stumpff_c2(z: float) -> float:
@@ -177,16 +608,47 @@ def solve_lambert_universal(
 ) -> Optional[Dict[str, Any]]:
     """Solve Lambert's problem with universal variables in AU/day units."""
 
+    try:
+        gravitational_parameter = float(mu)
+        tolerance_days = float(tol_days)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Lambert solver parameters must be finite numbers") from exc
+    if not math.isfinite(gravitational_parameter) or gravitational_parameter <= 0.0:
+        raise ValueError("Lambert gravitational parameter must be finite and positive")
+    if (
+        not math.isfinite(tolerance_days)
+        or tolerance_days <= 0.0
+        or tolerance_days > LAMBERT_ROOT_TOLERANCE_DAYS
+    ):
+        raise ValueError(
+            f"Lambert root tolerance must be in (0, {LAMBERT_ROOT_TOLERANCE_DAYS}] days"
+        )
+    if (
+        isinstance(max_iter, bool)
+        or not isinstance(max_iter, int)
+        or max_iter < 0
+        or max_iter > MAX_LAMBERT_ROOT_ITERATIONS
+    ):
+        raise ValueError(
+            f"Lambert max_iter must be an integer between 0 and {MAX_LAMBERT_ROOT_ITERATIONS}"
+        )
+
+    normalized_vectors = [
+        _bounded_vector3(vector, f"Lambert {label}")
+        for label, vector in (("r1", r1), ("r2", r2))
+    ]
+    r1_values, r2_values = normalized_vectors
+
     tof_target = float(tof_days)
     if not math.isfinite(tof_target) or tof_target <= 0.0:
         return None
 
-    r1_mag = vector_length(r1)
-    r2_mag = vector_length(r2)
+    r1_mag = vector_length(r1_values)
+    r2_mag = vector_length(r2_values)
     if r1_mag < 1e-12 or r2_mag < 1e-12:
         return None
 
-    theta = _transfer_angle(r1, r2, prograde=prograde)
+    theta = _transfer_angle(r1_values, r2_values, prograde=prograde)
     denominator = max(1e-15, 1.0 - math.cos(theta))
     A = math.sin(theta) * math.sqrt((r1_mag * r2_mag) / denominator)
     if abs(A) < 1e-12:
@@ -199,7 +661,7 @@ def solve_lambert_universal(
     sampled: List[Tuple[float, float, Tuple[float, float, float, float]]] = []
     z = z_min
     while z <= z_max + 1e-12:
-        tof_state = _tof_from_z(z, r1_mag, r2_mag, A, mu)
+        tof_state = _tof_from_z(z, r1_mag, r2_mag, A, gravitational_parameter)
         if tof_state is not None:
             sampled.append((z, tof_state[0] - tof_target, tof_state))
         z += step
@@ -211,21 +673,9 @@ def solve_lambert_universal(
     root_high: Optional[float] = None
     root_low_state: Optional[Tuple[float, float, float, float]] = None
     root_high_state: Optional[Tuple[float, float, float, float]] = None
-    best_z = sampled[0][0]
-    best_abs = abs(sampled[0][1])
-    best_state = sampled[0][2]
-
     for idx in range(len(sampled) - 1):
         z0, f0, state0 = sampled[idx]
         z1, f1, state1 = sampled[idx + 1]
-        if abs(f0) < best_abs:
-            best_z = z0
-            best_abs = abs(f0)
-            best_state = state0
-        if abs(f1) < best_abs:
-            best_z = z1
-            best_abs = abs(f1)
-            best_state = state1
         if f0 == 0.0:
             root_low = z0
             root_high = z0
@@ -239,40 +689,46 @@ def solve_lambert_universal(
             root_high_state = state1
             break
 
-    root_bracketed = root_low is not None and root_high is not None
+    # The pairwise loop does not otherwise inspect the last sampled point as a
+    # possible exact, degenerate bracket.
+    if root_low is None:
+        final_z, final_residual, final_state = sampled[-1]
+        if final_residual == 0.0:
+            root_low = final_z
+            root_high = final_z
+            root_low_state = final_state
+            root_high_state = final_state
 
+    root_bracketed = root_low is not None and root_high is not None
     if not root_bracketed:
-        z_star = best_z
-        tof_state = best_state
-        if abs(tof_state[0] - tof_target) > tol_days:
-            return None
-    else:
-        root_solution = _solve_bracketed_z(
-            root_low,
-            root_high,
-            tof_target,
-            r1_mag,
-            r2_mag,
-            A,
-            mu,
-            max_iter=max_iter,
-            tol_days=tol_days,
-            left_state=root_low_state,
-            right_state=root_high_state,
-        )
-        if root_solution is None:
-            return None
-        z_star, tof_state = root_solution
+        return None
+
+    root_solution = _solve_bracketed_z(
+        root_low,
+        root_high,
+        tof_target,
+        r1_mag,
+        r2_mag,
+        A,
+        gravitational_parameter,
+        max_iter=max_iter,
+        tol_days=tolerance_days,
+        left_state=root_low_state,
+        right_state=root_high_state,
+    )
+    if root_solution is None:
+        return None
+    z_star, tof_state = root_solution
 
     tof_value, y, _, _ = tof_state
     f = 1.0 - y / r1_mag
-    g = A * math.sqrt(y / mu)
+    g = A * math.sqrt(y / gravitational_parameter)
     if abs(g) < 1e-12:
         return None
     g_dot = 1.0 - y / r2_mag
 
-    v1 = [(r2[idx] - f * r1[idx]) / g for idx in range(3)]
-    v2 = [(g_dot * r2[idx] - r1[idx]) / g for idx in range(3)]
+    v1 = [(r2_values[idx] - f * r1_values[idx]) / g for idx in range(3)]
+    v2 = [(g_dot * r2_values[idx] - r1_values[idx]) / g for idx in range(3)]
 
     return {
         "v1": v1,
@@ -296,20 +752,34 @@ def compute_lambert_leg_from_state_vectors(
     *,
     prograde: bool = True,
 ) -> Optional[Dict[str, Any]]:
+    normalized = [
+        _bounded_vector3(vector, label)
+        for label, vector in (
+        ("start_position_au", start_position_au),
+        ("start_velocity_au_day", start_velocity_au_day),
+        ("end_position_au", end_position_au),
+        ("end_velocity_au_day", end_velocity_au_day),
+        )
+    ]
+    start_position, start_velocity, end_position, end_velocity = normalized
+
     lambert = solve_lambert_universal(
-        start_position_au,
-        end_position_au,
+        start_position,
+        end_position,
         tof_days,
         prograde=prograde,
     )
-    if lambert is None:
+    if lambert is None or not bool(lambert.get("rootBracketed")):
+        return None
+    residual_days = float(lambert.get("rootResidualDays", math.inf))
+    if not math.isfinite(residual_days) or residual_days > LAMBERT_ROOT_TOLERANCE_DAYS:
         return None
 
     v_depart = lambert["v1"]
     v_arrive = lambert["v2"]
-    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, start_velocity_au_day)))
-    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(end_velocity_au_day, v_arrive)))
-    chord = vector_length(vector_sub(end_position_au, start_position_au))
+    delta_v_depart = au_per_day_to_km_per_sec(vector_length(vector_sub(v_depart, start_velocity)))
+    delta_v_arrive = au_per_day_to_km_per_sec(vector_length(vector_sub(end_velocity, v_arrive)))
+    chord = vector_length(vector_sub(end_position, start_position))
 
     return {
         "tofDays": float(tof_days),
@@ -323,17 +793,17 @@ def compute_lambert_leg_from_state_vectors(
         "transferAngleDeg": float(lambert["transferAngleDeg"]),
         "deltaVDepartureKmS": delta_v_depart,
         "deltaVArrivalKmS": delta_v_arrive,
-        "startPosition": list(start_position_au),
-        "endPosition": list(end_position_au),
+        "startPosition": list(start_position),
+        "endPosition": list(end_position),
         "departureVelocityApprox": list(v_depart),
         "arrivalVelocityApprox": list(v_arrive),
-        "fromPlanetVelocity": list(start_velocity_au_day),
-        "toPlanetVelocity": list(end_velocity_au_day),
+        "fromPlanetVelocity": list(start_velocity),
+        "toPlanetVelocity": list(end_velocity),
         "solver": "lambert_universal",
     }
 
 
-def compute_lambert_leg(
+def _compute_lambert_leg_reserved(
     ephemeris: EphemerisService,
     from_id: str,
     to_id: str,
@@ -342,9 +812,29 @@ def compute_lambert_leg(
     *,
     prograde: bool = True,
 ) -> Optional[Dict[str, Any]]:
-    arrival_jd = float(departure_jd) + float(tof_days)
+    from_id, to_id, departure_jd, tof_days = _validate_lambert_leg_request(
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        tof_days=tof_days,
+    )
+    _require_session_context(ephemeris)
+    # Validate the complete pair before sampling either endpoint. Otherwise a
+    # strict remote/native provider can perform work for the departure and only
+    # then discover that the destination is unsupported.
+    ephemeris.preflight([from_id, to_id])
+    arrival_jd = departure_jd + tof_days
     from_state = ephemeris.sample_state(from_id, departure_jd)
     to_state = ephemeris.sample_state(to_id, arrival_jd)
+    from_state, to_state = _validate_lambert_state_pair(
+        ephemeris,
+        from_state,
+        to_state,
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        arrival_jd=arrival_jd,
+    )
 
     leg = compute_lambert_leg_from_state_vectors(
         from_state.position_au,
@@ -359,14 +849,63 @@ def compute_lambert_leg(
 
     leg.update(
         {
-        "fromId": from_id,
-        "toId": to_id,
-        "departureJd": float(departure_jd),
-        "arrivalJd": arrival_jd,
-        "stateSource": {"from": from_state.source, "to": to_state.source},
+            "fromId": from_id,
+            "toId": to_id,
+            "departureJd": float(departure_jd),
+            "arrivalJd": arrival_jd,
+            "stateSource": {"from": from_state.source, "to": to_state.source},
+            "stateContract": from_state.contract.to_dict(),
+            "stateTargets": {
+                "from": {
+                    "bodyId": from_state.body_id,
+                    "targetDefinition": from_state.target_definition,
+                    "providerRevision": from_state.provider_revision,
+                },
+                "to": {
+                    "bodyId": to_state.body_id,
+                    "targetDefinition": to_state.target_definition,
+                    "providerRevision": to_state.provider_revision,
+                },
+            },
         }
     )
     return leg
+
+
+def compute_lambert_leg(
+    ephemeris: EphemerisService,
+    from_id: str,
+    to_id: str,
+    departure_jd: float,
+    tof_days: float,
+    *,
+    prograde: bool = True,
+) -> Optional[Dict[str, Any]]:
+    """Compute one public Lambert leg and charge its request-owned budget.
+
+    Search implementations that already reserve a logical leg request and
+    evaluation use ``_compute_lambert_leg_reserved``. Keeping the reservation
+    at this public boundary prevents direct Python callers from bypassing the
+    same hard ceilings enforced by the HTTP and search entry points.
+    """
+
+    from_id, to_id, departure_jd, tof_days = _validate_lambert_leg_request(
+        from_id=from_id,
+        to_id=to_id,
+        departure_jd=departure_jd,
+        tof_days=tof_days,
+    )
+    context = _require_session_context(ephemeris)
+    ephemeris.preflight([from_id, to_id])
+    context.reserve(leg_requests=1, leg_evaluations=1)
+    return _compute_lambert_leg_reserved(
+        ephemeris,
+        from_id,
+        to_id,
+        departure_jd,
+        tof_days,
+        prograde=prograde,
+    )
 
 
 def _pareto_by_tof(points: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -394,50 +933,104 @@ def scan_porkchop_window(
     tof_step_days: float,
     prograde: bool = True,
     cancel_event: Event | None = None,
+    planning_context: PlanningContext | None = None,
 ) -> Dict[str, Any]:
-    dep_step = max(0.5, float(departure_step_days))
-    tof_step = max(5.0, float(tof_step_days))
+    validated = validate_porkchop_request(
+        from_id=from_id,
+        to_id=to_id,
+        departure_start_jd=departure_start_jd,
+        departure_end_jd=departure_end_jd,
+        departure_step_days=departure_step_days,
+        tof_min_days=tof_min_days,
+        tof_max_days=tof_max_days,
+        tof_step_days=tof_step_days,
+    )
+    from_id = validated["from_id"]
+    to_id = validated["to_id"]
+
+    session = _underlying_ephemeris_session(ephemeris)
+    requested_provider = str(getattr(session, "provider", "")).strip().lower()
+    resolved_provider = _resolved_provider(session)
+    if "horizons" in (requested_provider, resolved_provider):
+        raise ValueError(
+            "Horizons is not supported for combinatorial trajectory search; "
+            "use `kepler`/`auto` for porkchop scans or direct Lambert for Horizons"
+        )
+
+    context = _require_session_context(session, planning_context)
+    if cancel_event is not None and context.cancel_event is not cancel_event:
+        raise ValueError("Porkchop cancellation event must belong to the planning context")
+    if validated["estimated_unique_states"] > context.limits.unique_ephemeris_states:
+        raise TrajectoryInputError(
+            "trajectory_complexity_limit",
+            "Porkchop grid exceeds this planning context's unique-state budget",
+            context={
+                "estimatedUniqueEphemerisStates": validated["estimated_unique_states"],
+                "maximumUniqueEphemerisStates": context.limits.unique_ephemeris_states,
+            },
+        )
+    session.preflight([from_id, to_id])
+
+    dep_step = validated["departure_step_days"]
+    tof_step = validated["tof_step_days"]
+    estimated_grid_points = validated["estimated_grid_points"]
 
     points: List[Dict[str, Any]] = []
     failures: List[Dict[str, Any]] = []
 
-    dep = float(departure_start_jd)
-    while dep <= departure_end_jd + 1e-12:
-        tof = float(tof_min_days)
-        while tof <= tof_max_days + 1e-12:
-            if cancel_event is not None and cancel_event.is_set():
-                raise PorkchopScanCancelled("porkchop scan cancelled by request owner")
-            leg = compute_lambert_leg(
-                ephemeris,
-                from_id,
-                to_id,
-                dep,
-                tof,
-                prograde=prograde,
-            )
-            if leg is None:
-                failures.append(
-                    {
-                        "departureJd": dep,
-                        "tofDays": tof,
-                        "reason": "lambert_no_solution",
-                    }
+    departure_start = validated["departure_start_jd"]
+    tof_min = validated["tof_min_days"]
+    departure_count = validated["departure_count"]
+    tof_count = validated["tof_count"]
+    truncated = False
+    budget_exhausted = False
+    termination_reason = "configured_grid_completed"
+    try:
+        for departure_index in range(departure_count):
+            context.checkpoint()
+            dep = departure_start + departure_index * dep_step
+            for tof_index in range(tof_count):
+                context.checkpoint()
+                tof = tof_min + tof_index * tof_step
+                context.reserve(leg_requests=1, leg_evaluations=1)
+                leg = _compute_lambert_leg_reserved(
+                    session,
+                    from_id,
+                    to_id,
+                    dep,
+                    tof,
+                    prograde=prograde,
                 )
-            else:
-                total_delta_v = float(leg["deltaVDepartureKmS"]) + float(leg["deltaVArrivalKmS"])
-                points.append(
-                    {
-                        "departureJd": dep,
-                        "arrivalJd": dep + tof,
-                        "tofDays": tof,
-                        "deltaVDepartureKmS": float(leg["deltaVDepartureKmS"]),
-                        "deltaVArrivalKmS": float(leg["deltaVArrivalKmS"]),
-                        "totalDeltaVKmS": total_delta_v,
-                        "transferAngleDeg": float(leg["transferAngleDeg"]),
-                    }
-                )
-            tof += tof_step
-        dep += dep_step
+                if leg is None:
+                    failures.append(
+                        {
+                            "departureJd": dep,
+                            "tofDays": tof,
+                            "reason": "lambert_no_solution",
+                        }
+                    )
+                else:
+                    total_delta_v = float(leg["deltaVDepartureKmS"]) + float(leg["deltaVArrivalKmS"])
+                    points.append(
+                        {
+                            "departureJd": dep,
+                            "arrivalJd": dep + tof,
+                            "tofDays": tof,
+                            "deltaVDepartureKmS": float(leg["deltaVDepartureKmS"]),
+                            "deltaVArrivalKmS": float(leg["deltaVArrivalKmS"]),
+                            "totalDeltaVKmS": total_delta_v,
+                            "transferAngleDeg": float(leg["transferAngleDeg"]),
+                            "computedTofDays": float(leg["computedTofDays"]),
+                            "rootResidualDays": float(leg["rootResidualDays"]),
+                            "rootBracketed": bool(leg["rootBracketed"]),
+                        }
+                    )
+    except PlanningError as exc:
+        if not points:
+            raise
+        truncated = True
+        budget_exhausted = isinstance(exc, PlanningBudgetExceeded)
+        termination_reason = context.termination_reason or exc.code
 
     points.sort(key=lambda item: (float(item["totalDeltaVKmS"]), float(item["tofDays"])))
     pareto = _pareto_by_tof(points)
@@ -446,19 +1039,39 @@ def scan_porkchop_window(
         "fromId": from_id,
         "toId": to_id,
         "grid": {
-            "departureStartJd": float(departure_start_jd),
-            "departureEndJd": float(departure_end_jd),
+            "departureStartJd": validated["departure_start_jd"],
+            "departureEndJd": validated["departure_end_jd"],
             "departureStepDays": dep_step,
-            "tofMinDays": float(tof_min_days),
-            "tofMaxDays": float(tof_max_days),
+            "tofMinDays": tof_min,
+            "tofMaxDays": validated["tof_max_days"],
             "tofStepDays": tof_step,
             "prograde": bool(prograde),
         },
         "count": len(points),
+        "successCount": len(points),
+        "failureCount": len(failures),
+        "evaluatedCount": len(points) + len(failures),
+        "estimatedGridPointCount": estimated_grid_points,
+        "estimatedUniqueEphemerisStates": validated["estimated_unique_states"],
+        "configuredGridCompleted": not truncated,
+        "truncated": truncated,
+        "budgetExhausted": budget_exhausted,
+        "terminationReason": termination_reason,
         "best": points[0] if points else None,
         "pareto": pareto[:40],
         "points": points[:500],
         "failures": failures[:100],
+        "retention": {
+            "pointsReturned": min(len(points), 500),
+            "pointsTotal": len(points),
+            "pointsTruncated": len(points) > 500,
+            "paretoReturned": min(len(pareto), 40),
+            "paretoTotal": len(pareto),
+            "paretoTruncated": len(pareto) > 40,
+            "failuresReturned": min(len(failures), 100),
+            "failuresTotal": len(failures),
+            "failuresTruncated": len(failures) > 100,
+        },
     }
 
 
@@ -467,8 +1080,14 @@ def estimate_turn_angle_deg(incoming_v_inf: Sequence[float], outgoing_v_inf: Seq
 
 
 __all__ = [
+    "LAMBERT_ROOT_TOLERANCE_DAYS",
+    "MAX_LAMBERT_ROOT_ITERATIONS",
+    "MAX_PORKCHOP_GRID_POINTS",
+    "TrajectoryInputError",
     "compute_lambert_leg",
     "estimate_turn_angle_deg",
     "scan_porkchop_window",
     "solve_lambert_universal",
+    "validate_direct_lambert_request",
+    "validate_porkchop_request",
 ]

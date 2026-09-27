@@ -1,0 +1,222 @@
+import { describe, expect, it } from 'vitest';
+import { Vector3 } from 'three';
+import { describeRoute, planInterplanetaryRoute } from './localPlanner';
+
+function testBody(id: string, radiusAu: number) {
+  return {
+    id,
+    name: id,
+    massKg: 5.0e24,
+    radiusKm: 6_000,
+    type: 'planet',
+    orbit: {},
+    testRadiusAu: radiusAu
+  };
+}
+
+function fixture(ids = ['earth', 'mars']) {
+  const bodies = ids.map((id, index) => testBody(id, 1 + index * 0.2));
+  const bodyById = new Map(bodies.map((body) => [body.id, body]));
+  const model = {
+    sampleBodyStateAt(id: string) {
+      const body = bodyById.get(id);
+      if (!body) throw new Error(`Unknown body: ${id}`);
+      return {
+        position: new Vector3(body.testRadiusAu, 0, 0),
+        velocity: new Vector3(0, 0.01 / Math.sqrt(body.testRadiusAu), 0)
+      };
+    }
+  };
+  return { model, bodyById };
+}
+
+describe('bounded local trajectory fallback', () => {
+  it('preserves an explicitly empty assist pool', () => {
+    const { model, bodyById } = fixture();
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      maxAssists: 3,
+      assistPool: []
+    });
+
+    expect(result.best?.bodyRoute).toEqual(['earth', 'mars']);
+    expect(result.search?.estimatedRouteCount).toBe(1);
+    expect(result.search?.evaluatedTopologies).toBe(1);
+    expect(result.search?.topologySpaceExhaustive).toBe(true);
+    expect(result.search?.searchSpaceExhaustive).toBe(false);
+    expect(result.best?.legs[0].pathLengthAu).toBeCloseTo(0.2, 12);
+    expect(result.best?.pathMetric).toBe('endpoint_chord_sum');
+  });
+
+  it('rejects duplicate assists instead of silently deduplicating them', () => {
+    const { model, bodyById } = fixture(['earth', 'mars', 'venus']);
+    expect(() =>
+      planInterplanetaryRoute(model, bodyById, {
+        fromId: 'earth',
+        toId: 'mars',
+        departureJd: 2_460_000,
+        maxAssists: 1,
+        assistPool: ['venus', 'venus']
+      })
+    ).toThrow(/duplicate/i);
+  });
+
+  it('rejects an oversized assist pool before evaluating routes', () => {
+    const assistIds = Array.from({ length: 9 }, (_, index) => `assist-${index}`);
+    const { model, bodyById } = fixture(['earth', 'mars', ...assistIds]);
+    expect(() =>
+      planInterplanetaryRoute(model, bodyById, {
+        fromId: 'earth',
+        toId: 'mars',
+        departureJd: 2_460_000,
+        maxAssists: 1,
+        assistPool: assistIds
+      })
+    ).toThrow(/limited to 8/i);
+  });
+
+  it('rejects assist depth outside the published local limit', () => {
+    const { model, bodyById } = fixture();
+    expect(() =>
+      planInterplanetaryRoute(model, bodyById, {
+        fromId: 'earth',
+        toId: 'mars',
+        departureJd: 2_460_000,
+        maxAssists: 4,
+        assistPool: []
+      })
+    ).toThrow(/0 through 3/i);
+  });
+
+  it('fails closed for an assist without physical flyby parameters', () => {
+    const { model, bodyById } = fixture(['earth', 'mars', 'massless']);
+    Object.assign(bodyById.get('massless')!, { massKg: null });
+
+    expect(() =>
+      planInterplanetaryRoute(model, bodyById, {
+        fromId: 'earth',
+        toId: 'mars',
+        departureJd: 2_460_000,
+        maxAssists: 1,
+        assistPool: ['massless']
+      })
+    ).toThrow(/ineligible assist/i);
+  });
+
+  it('never returns or plots a flyby that violates v-infinity continuity', () => {
+    const { model, bodyById } = fixture(['earth', 'venus', 'mars']);
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      objective: 'max_assist',
+      maxAssists: 1,
+      assistPool: ['venus']
+    });
+
+    const returnedRoutes = [result.best, ...result.alternatives].filter(Boolean);
+    expect(returnedRoutes).toHaveLength(1);
+    expect(returnedRoutes[0]?.bodyRoute).toEqual(['earth', 'mars']);
+    expect(returnedRoutes.every((route) => route!.assists.every((assist) => assist.feasible))).toBe(true);
+  });
+
+  it('does not insert hidden propulsive burns at a certified interior flyby', () => {
+    const radii = new Map([
+      ['earth', 1.0],
+      ['venus', 1.2],
+      ['mars', 1.466941581048196]
+    ]);
+    const bodies = [...radii].map(([id, radiusAu]) => ({
+      id,
+      name: id,
+      massKg: 5.0e24,
+      radiusKm: 6_000,
+      type: 'planet',
+      orbit: {},
+      radiusAu
+    }));
+    const bodyById = new Map(bodies.map((body) => [body.id, body]));
+    const model = {
+      sampleBodyStateAt(id: string) {
+        const radiusAu = radii.get(id);
+        if (radiusAu == null) throw new Error(`Unknown body: ${id}`);
+        return {
+          position: new Vector3(radiusAu, 0, 0),
+          velocity: new Vector3(0, 0, 0)
+        };
+      }
+    };
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      objective: 'max_assist',
+      maxAssists: 1,
+      assistPool: ['venus']
+    });
+    const assisted = [result.best, ...result.alternatives].find(
+      (route) => route?.bodyRoute.length === 3
+    );
+
+    expect(assisted).toBeDefined();
+    expect(assisted?.assists[0].feasible).toBe(true);
+    expect(assisted?.assistGainMetric).toBe('patched_conic_velocity_deflection');
+    expect(assisted?.deltaVModel).toBe('endpoint_propulsive_burns_only');
+    expect(assisted?.totalDeltaVKmS).toBeCloseTo(
+      assisted!.legs[0].deltaVDepartureKmS +
+        assisted!.legs[assisted!.legs.length - 1].deltaVArrivalKmS,
+      12
+    );
+    expect(assisted!.legs[1].deltaVDepartureKmS).toBeGreaterThan(0);
+  });
+
+  it('rejects an unknown objective instead of silently treating it as distance', () => {
+    const { model, bodyById } = fixture();
+    expect(() =>
+      planInterplanetaryRoute(model, bodyById, {
+        fromId: 'earth',
+        toId: 'mars',
+        departureJd: 2_460_000,
+        objective: 'cheapest',
+        maxAssists: 0,
+        assistPool: []
+      })
+    ).toThrow(/objective/i);
+  });
+
+  it('labels chord distance and assist deflection without implying flown path or delta-v', () => {
+    const bodyById = new Map([
+      ['earth', { name: 'Earth' }],
+      ['venus', { name: 'Venus' }],
+      ['mars', { name: 'Mars' }]
+    ]);
+    const description = describeRoute(
+      {
+        bodyRoute: ['earth', 'venus', 'mars'],
+        assists: [
+          {
+            bodyId: 'venus',
+            assistGainKmS: 1.25,
+            feasible: true,
+            requiredTurnDeg: 20,
+            maxTurnDeg: 40
+          }
+        ],
+        objective: 'min_distance',
+        totalTimeDays: 200,
+        totalPathLengthAu: 1.7,
+        totalDeltaVKmS: 5.2,
+        totalAssistGainKmS: 1.25
+      },
+      bodyById
+    );
+
+    expect(description).toContain('Endpoint chord-distance metric');
+    expect(description).toContain('velocity deflection estimate');
+    expect(description).not.toContain('Total transfer path');
+    expect(description).not.toContain('Estimated gravity-assist gain');
+  });
+});

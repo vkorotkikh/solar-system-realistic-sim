@@ -48,6 +48,10 @@ npm run dev:ui -- --width 2560 --height 1440 --render-scale 1.25 --max-pixel-rat
 npm run dev:full
 ```
 
+The unified launcher binds both processes to `127.0.0.1`. A non-loopback
+`--host` is rejected unless `SOLAR_SECURITY_PROFILE=network`; the backend then
+also requires `SOLAR_PHYSICS_API_KEYS` at startup.
+
 ## Backend (optional)
 
 The frontend runs standalone in **Local (Keplerian)** mode. For higher-fidelity physics, start the Python backend and switch simulation engines in the UI dropdown.
@@ -63,10 +67,28 @@ The frontend runs standalone in **Local (Keplerian)** mode. For higher-fidelity 
 ```bash
 cd backend
 python -m pip install -r requirements.txt
-python -m uvicorn server:app --host 0.0.0.0 --port 8042 --reload
+python -m uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers
 ```
 
 Then choose **REBOUND** or **TudatPy** in the frontend and click **Connect**.
+
+The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
+without a key and should stay bound to loopback. To expose the backend on a
+network, explicitly set `SOLAR_SECURITY_PROFILE=network`, provide one or more
+comma-separated `SOLAR_PHYSICS_API_KEYS`, configure exact
+`SOLAR_CORS_ALLOWED_ORIGINS`, and pass a non-loopback host to Uvicorn without
+`--reload`. Network profile startup fails closed when no API key is configured,
+and its default browser CORS policy is deny-all. Forwarded client addresses are
+accepted only from `SOLAR_TRUSTED_PROXY_CIDRS`; otherwise the immediate socket
+peer is used for rate limiting. Keep Uvicorn proxy-header rewriting disabled so
+the application can verify that immediate peer itself.
+
+Solar rate-limit identity stores have fixed memory ceilings and TTL expiry.
+Under more simultaneous valid peer identities than the configured ceiling,
+the least-recently-used identity is evicted; this is memory containment, not a
+replacement for an edge rate limiter in a network deployment.
+`SOLAR_SECURITY_PROFILE` covers the solar HTTP endpoints in this tranche; it
+does not add route-wide authentication or replace production TLS/proxy policy.
 
 ### WebSocket tuning
 

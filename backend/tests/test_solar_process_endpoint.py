@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from fastapi.testclient import TestClient
+import pytest
+
+import server
+from sim.process_supervisor import (
+    ProcessCrashed,
+    ProcessResultRejected,
+    ProcessSaturated,
+    ProcessSubmissionFailed,
+    ProcessTimedOut,
+    ProcessWorkerFailed,
+)
+
+
+client = TestClient(server.app)
+
+
+def _state() -> dict[str, Any]:
+    return {
+        "schema": {"name": "solar_physics_state", "version": 2},
+        "source": "backend",
+        "epoch_jd_tdb": 2_460_000.5,
+    }
+
+
+class _FakeRunner:
+    def __init__(self, outcome: Any) -> None:
+        self.outcome = outcome
+        self.calls: list[tuple[dict[str, Any], float]] = []
+        self.shutdown_calls = 0
+
+    async def run(self, payload: dict[str, Any], *, timeout_seconds: float) -> Any:
+        self.calls.append((payload, timeout_seconds))
+        if isinstance(self.outcome, BaseException):
+            raise self.outcome
+        return self.outcome
+
+    def shutdown(self) -> None:
+        self.shutdown_calls += 1
+
+
+def test_solar_endpoint_uses_dedicated_process_runner_not_heavy_thread_pool(
+    monkeypatch,
+) -> None:
+    runner = _FakeRunner(_state())
+    monkeypatch.setattr(server, "_solar_physics_runner", runner, raising=False)
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+
+    def forbidden_thread_path(*_args, **_kwargs):
+        raise AssertionError("solar work entered the shared heavy thread pool")
+
+    monkeypatch.setattr(server, "_run_owned_thread", forbidden_thread_path)
+
+    response = client.get(
+        "/solar/physics",
+        params={
+            "jd_tdb": 2_460_000.5,
+            "fidelity": "preview",
+            "max_features": 8,
+            "forcing": "synthetic",
+            "live_data": "false",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == _state()
+    assert runner.calls == [
+        (
+            {
+                "epoch_jd_tdb": 2_460_000.5,
+                "fidelity": "preview",
+                "max_features": 8,
+                "forcing": "synthetic",
+                "live_data": False,
+            },
+            server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_code", "retryable"),
+    [
+        (ProcessSaturated("full"), "solar_compute_saturated", True),
+        (ProcessTimedOut("late"), "solar_compute_timeout", True),
+        (ProcessCrashed(19), "solar_compute_worker_crashed", True),
+        (ProcessSubmissionFailed("submit"), "solar_compute_unavailable", True),
+        (ProcessWorkerFailed("target"), "solar_compute_worker_failed", True),
+        (ProcessResultRejected("bad"), "solar_compute_invalid_result", False),
+    ],
+)
+def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
+    monkeypatch,
+    failure: BaseException,
+    expected_code: str,
+    retryable: bool,
+) -> None:
+    monkeypatch.setattr(server, "_solar_physics_runner", _FakeRunner(failure), raising=False)
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+
+    response = client.get(
+        "/solar/physics",
+        params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+    )
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["code"] == expected_code
+    assert detail["retryable"] is retryable
+    assert "process" not in detail["message"].lower()
+    if expected_code == "solar_compute_saturated":
+        assert response.headers["retry-after"] == "2"
+
+
+def test_health_path_remains_available_when_solar_process_capacity_is_full(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "_solar_physics_runner",
+        _FakeRunner(ProcessSaturated("full")),
+        raising=False,
+    )
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(
+        server,
+        "_rebound_readiness",
+        lambda: {"available": True, "fidelity": "high"},
+    )
+
+    saturated = client.get(
+        "/solar/physics",
+        params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+    )
+    health = client.get("/health")
+
+    assert saturated.status_code == 503
+    assert health.status_code == 200
+    assert health.json()["status"] == "ok"
+
+
+def test_application_lifespan_shuts_down_its_solar_process_runner(monkeypatch) -> None:
+    runner = _FakeRunner(_state())
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
+
+    with TestClient(server.app):
+        assert runner.shutdown_calls == 0
+
+    assert runner.shutdown_calls == 1
+
+
+def test_closed_broken_runner_is_not_replaced_with_fresh_capacity(monkeypatch) -> None:
+    from sim.process_supervisor import ProcessSubmissionFailed, SupervisedProcessRunner
+
+    runner = SupervisedProcessRunner(
+        "sim.solar_process_worker:execute_solar_physics_job",
+        max_workers=1,
+        max_queue=0,
+    )
+    with runner._state_lock:
+        runner._closed = True
+        runner._broken_reason = "injected retained child"
+        runner._in_flight = 1
+    replacement_calls = 0
+
+    def forbidden_replacement():
+        nonlocal replacement_calls
+        replacement_calls += 1
+        raise AssertionError("quarantined ownership was replaced")
+
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
+    monkeypatch.setattr(server, "_new_solar_physics_runner", forbidden_replacement)
+
+    with pytest.raises(ProcessSubmissionFailed, match="quarantined"):
+        server._get_solar_physics_runner()
+    assert replacement_calls == 0
+
+    with runner._state_lock:
+        runner._in_flight = 0
+        runner._broken_reason = None
+    runner.shutdown()
+
+
+def test_request_disconnect_cancels_owned_process_run() -> None:
+    class CancelAwareRunner:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.cancelled = asyncio.Event()
+
+        async def run(self, _payload, *, timeout_seconds):
+            del timeout_seconds
+            self.started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancelled.set()
+                raise
+
+    class DisconnectAfterStart:
+        def __init__(self, runner: CancelAwareRunner) -> None:
+            self.runner = runner
+
+        async def is_disconnected(self) -> bool:
+            await self.runner.started.wait()
+            return True
+
+    async def scenario() -> None:
+        runner = CancelAwareRunner()
+        request = DisconnectAfterStart(runner)
+        with pytest.raises(server._RequestOwnerDisconnected):
+            await server._run_request_owned_process(
+                request,
+                runner,
+                {"work": "solar"},
+                timeout_seconds=2.0,
+                disconnect_poll_seconds=0.0,
+            )
+        assert runner.cancelled.is_set()
+
+    asyncio.run(scenario())
+
+
+def test_handler_cancellation_cancels_owned_process_run() -> None:
+    class CancelAwareRunner:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.cancelled = asyncio.Event()
+
+        async def run(self, _payload, *, timeout_seconds):
+            del timeout_seconds
+            self.started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancelled.set()
+                raise
+
+    class ConnectedRequest:
+        async def is_disconnected(self) -> bool:
+            return False
+
+    async def scenario() -> None:
+        runner = CancelAwareRunner()
+        task = asyncio.create_task(
+            server._run_request_owned_process(
+                ConnectedRequest(),
+                runner,
+                {"work": "solar"},
+                timeout_seconds=2.0,
+                disconnect_poll_seconds=0.01,
+            )
+        )
+        await runner.started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert runner.cancelled.is_set()
+
+    asyncio.run(scenario())
+
+
+def test_server_process_limits_do_not_exceed_supervisor_hard_caps() -> None:
+    from sim.process_supervisor import (
+        HARD_MAX_PROCESS_QUEUE,
+        HARD_MAX_PROCESS_WORKERS,
+        HARD_MAX_RESULT_BYTES,
+        HARD_MAX_TIMEOUT_SECONDS,
+        MIN_SUPPORTED_SOLAR_RESULT_BYTES,
+    )
+
+    assert 1 <= server.SOLAR_PHYSICS_PROCESS_WORKERS <= HARD_MAX_PROCESS_WORKERS
+    assert 0 <= server.SOLAR_PHYSICS_PROCESS_QUEUE <= HARD_MAX_PROCESS_QUEUE
+    assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES <= HARD_MAX_RESULT_BYTES
+    assert server.SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES >= MIN_SUPPORTED_SOLAR_RESULT_BYTES
+    assert server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS <= HARD_MAX_TIMEOUT_SECONDS
+    assert (
+        server.SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS
+        <= server.SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS
+        < 20.0
+    )
+    assert server.SOLAR_PHYSICS_MAX_FEATURES == 256
+
+
+def test_solar_wire_budget_environment_cannot_undercut_supported_floor(
+    monkeypatch,
+) -> None:
+    from sim.process_supervisor import MIN_SUPPORTED_SOLAR_RESULT_BYTES
+
+    monkeypatch.setenv("SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES", "65536")
+
+    assert (
+        server._load_solar_physics_result_byte_limit()
+        == MIN_SUPPORTED_SOLAR_RESULT_BYTES
+    )
+
+
+def test_solar_compute_timeout_environment_cannot_outlive_browser_deadline(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS", "60")
+
+    assert (
+        server._load_solar_physics_compute_timeout()
+        == server.SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS
+        == 19.0
+    )
