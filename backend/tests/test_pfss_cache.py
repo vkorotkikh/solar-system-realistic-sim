@@ -225,6 +225,17 @@ def test_solution_config_rejects_noncanonical_scientific_inputs(
 
 
 @pytest.mark.parametrize(
+    "inflight_wait_s",
+    [0.0, -1.0, float("nan"), float("inf"), float("-inf")],
+)
+def test_cache_rejects_nonfinite_or_nonpositive_inflight_wait(
+    inflight_wait_s: float,
+) -> None:
+    with pytest.raises(ValueError, match="finite and positive"):
+        pfss.PFSSCache(inflight_wait_s=inflight_wait_s)
+
+
+@pytest.mark.parametrize(
     ("field", "value"),
     [
         ("jd", float("nan")),
@@ -810,6 +821,96 @@ def test_snapshot_and_solution_lru_eviction_are_independent(
     assert len(cache._cache) == 2
     assert len(cache._snapshot_cache) == 2
     assert len(calls) == 5
+
+
+def test_solution_follower_timeout_preserves_leader_inflight_state(
+    monkeypatch: pytest.MonkeyPatch,
+    observed_snapshot: gong.MagnetogramSnapshot,
+) -> None:
+    cache = pfss.PFSSCache(inflight_wait_s=901.0)
+    leader_started = threading.Event()
+    release_leader = threading.Event()
+
+    def compute(*_args: Any) -> dict[str, Any]:
+        leader_started.set()
+        assert release_leader.wait(3)
+        return {"ok": True}
+
+    monkeypatch.setattr(cache, "_compute_solution", compute)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        leader = pool.submit(
+            cache.get_or_compute, **BASE_REQUEST, snapshot=observed_snapshot
+        )
+        assert leader_started.wait(2)
+        with cache._lock:
+            assert len(cache._inflight) == 1
+            key, state = next(iter(cache._inflight.items()))
+            original_state = state.copy()
+        wait_timeouts: list[float | None] = []
+
+        def time_out_immediately(*, timeout: float | None = None) -> bool:
+            wait_timeouts.append(timeout)
+            return False
+
+        monkeypatch.setattr(state["event"], "wait", time_out_immediately)
+        try:
+            with pytest.raises(TimeoutError, match="PFSS solution timed out"):
+                cache.get_or_compute(
+                    **BASE_REQUEST,
+                    snapshot=observed_snapshot,
+                )
+            assert wait_timeouts == [901.0]
+            with cache._lock:
+                assert cache._inflight.get(key) is state
+                assert state == original_state
+                assert not state["event"].is_set()
+                assert cache._cache == {}
+        finally:
+            release_leader.set()
+        assert leader.result(3)["ok"] is True
+
+
+def test_snapshot_follower_timeout_preserves_leader_inflight_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = pfss.PFSSCache(inflight_wait_s=902.0)
+    leader_started = threading.Event()
+    release_leader = threading.Event()
+    original_build = cache._build_synthetic_snapshot
+
+    def build(*args: Any) -> Any:
+        leader_started.set()
+        assert release_leader.wait(3)
+        return original_build(*args)
+
+    monkeypatch.setattr(cache, "_build_synthetic_snapshot", build)
+    monkeypatch.setattr(cache, "_compute_solution", lambda *_: {"ok": True})
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        leader = pool.submit(cache.get_or_compute, **BASE_REQUEST)
+        assert leader_started.wait(2)
+        with cache._lock:
+            assert len(cache._snapshot_inflight) == 1
+            intent, state = next(iter(cache._snapshot_inflight.items()))
+            original_state = state.copy()
+        wait_timeouts: list[float | None] = []
+
+        def time_out_immediately(*, timeout: float | None = None) -> bool:
+            wait_timeouts.append(timeout)
+            return False
+
+        monkeypatch.setattr(state["event"], "wait", time_out_immediately)
+        try:
+            with pytest.raises(TimeoutError, match="PFSS snapshot timed out"):
+                cache.get_or_compute(**BASE_REQUEST)
+            assert wait_timeouts == [902.0]
+            with cache._lock:
+                assert cache._snapshot_inflight.get(intent) is state
+                assert state == original_state
+                assert not state["event"].is_set()
+                assert cache._snapshot_cache == {}
+        finally:
+            release_leader.set()
+        assert leader.result(3)["ok"] is True
 
 
 def test_solution_flight_propagates_leader_error_cleans_up_and_retries(

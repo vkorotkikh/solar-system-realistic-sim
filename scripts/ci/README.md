@@ -17,13 +17,14 @@ pinned Python 3.12.13 environment:
 python scripts/ci/verify_r3_r4.py \
   --repo . \
   --manifest ci/r3-r4-science-verification.json \
-  --artifacts artifacts/r3-r4-science-manual-001 \
   all
 ```
 
-The explicit artifact directory must be absent or empty. Use a new name for
-every attempt. Omitting `--artifacts` creates a unique run directory below
-`artifacts/`.
+By default, the verifier creates a unique run directory below the
+repository-root `artifacts/` directory, which is ignored by Git. This is the
+recommended output mode for local runs. To select an output path explicitly,
+pass `--artifacts artifacts/<new-run-name>`; that directory must be absent or
+empty, and each attempt should use a new name.
 
 `baseline` runs only the unmodified required-node gate. `mutations` still runs
 that baseline first, then executes all mutants. `all` is the release-lane
