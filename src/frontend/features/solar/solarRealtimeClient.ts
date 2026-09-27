@@ -182,14 +182,27 @@ function requireUtcTimestamp(value: unknown, context: string): string {
 }
 
 function requireIsoUtcTimestamp(value: unknown, context: string): string {
+  const match = typeof value === 'string'
+    ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/.exec(value)
+    : null;
+  if (!match) {
+    throw new Error(`${context} must be an ISO UTC timestamp`);
+  }
+  const timestamp = value as string;
+  const parsed = new Date(timestamp);
+  const [year, month, day, hour, minute, second] = match.slice(1).map(Number);
   if (
-    typeof value !== 'string'
-    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
-    || !Number.isFinite(Date.parse(value))
+    !Number.isFinite(parsed.getTime())
+    || parsed.getUTCFullYear() !== year
+    || parsed.getUTCMonth() + 1 !== month
+    || parsed.getUTCDate() !== day
+    || parsed.getUTCHours() !== hour
+    || parsed.getUTCMinutes() !== minute
+    || parsed.getUTCSeconds() !== second
   ) {
     throw new Error(`${context} must be an ISO UTC timestamp`);
   }
-  return value;
+  return timestamp;
 }
 
 function requireIsoDate(value: unknown, context: string): string {

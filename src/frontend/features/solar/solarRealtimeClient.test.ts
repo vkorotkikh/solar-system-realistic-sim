@@ -382,6 +382,24 @@ describe('SolarRealtimeClient delivery contract', () => {
     expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
   });
 
+  it.each([
+    '2026-02-30T12:00:00Z',
+    '2026-09-26T24:00:00Z'
+  ])('rejects an impossible SILSO delivery timestamp (%s)', (deliveredAtUtc) => {
+    const payload = payloadWithSilso();
+    payload.snapshot.source_status.silso.delivered_at_utc = deliveredAtUtc;
+
+    expect(() => validateSolarRealtimePayload(payload)).toThrow(/SILSO/i);
+  });
+
+  it('accepts a valid fractional-second SILSO delivery timestamp', () => {
+    const payload = payloadWithSilso();
+    payload.snapshot.source_status.silso.delivered_at_utc =
+      '2026-09-26T12:00:00.123456Z';
+
+    expect(validateSolarRealtimePayload(payload).snapshot.silso).not.toBeNull();
+  });
+
   it('accepts a labelled backend snapshot and reports its provenance', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-26T15:00:30Z'));
