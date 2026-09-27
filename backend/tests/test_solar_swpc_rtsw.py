@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -313,6 +314,44 @@ def test_fetch_swpc_selects_newest_coherent_pair_instead_of_failing_on_newest_ro
     assert result["mag_time_tag"] == "2026-09-26T22:50:00Z"
     assert result["product_skew_s"] == 240.0
     assert result["solar_wind_speed_kms"] == 440.0
+
+
+def test_fetch_swpc_advances_newest_magnetometer_candidates_without_mutating_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = [_wind_row("2026-09-26T22:50:00Z")]
+    mag = [
+        _mag_row("2026-09-26T22:59:00Z", bt=7.0),
+        _mag_row("2026-09-26T22:54:00Z", bt=4.5),
+    ]
+    wind_before = copy.deepcopy(wind)
+    mag_before = copy.deepcopy(mag)
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["wind_time_tag"] == "2026-09-26T22:50:00Z"
+    assert result["mag_time_tag"] == "2026-09-26T22:54:00Z"
+    assert result["product_skew_s"] == 240.0
+    assert result["imf_bt_nt"] == 4.5
+    assert wind == wind_before
+    assert mag == mag_before
+
+
+def test_fetch_swpc_accepts_exactly_300_second_product_skew(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    wind = [_wind_row("2026-09-26T22:55:00Z")]
+    mag = [_mag_row("2026-09-26T22:50:00Z")]
+    _install_fixture_fetcher(monkeypatch, provider, wind=wind, mag=mag)
+
+    result = provider._fetch_swpc()
+
+    assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
+    assert result["mag_time_tag"] == "2026-09-26T22:50:00Z"
+    assert result["product_skew_s"] == 300.0
 
 
 def test_fetch_swpc_skips_newest_magnetometer_row_with_impossible_vector(
