@@ -75,6 +75,34 @@ def _install_fixture_fetcher(
     return calls
 
 
+def _install_raw_swpc_fetcher(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: SolarRealtimeDataProvider,
+    *,
+    wind: bytes,
+    mag: bytes,
+) -> list[tuple[str, int]]:
+    monkeypatch.setattr(
+        provider,
+        "_utc_now",
+        lambda: datetime(2026, 9, 26, 23, 0, tzinfo=timezone.utc),
+    )
+    payloads = {
+        provider.NOAA_WIND_URL: wind,
+        provider.NOAA_MAG_URL: mag,
+    }
+    calls: list[tuple[str, int]] = []
+
+    def request_bytes(url: str, *, max_bytes: int) -> tuple[bytes, str]:
+        calls.append((url, max_bytes))
+        payload = payloads[url]
+        assert len(payload) <= max_bytes
+        return payload, "application/json"
+
+    monkeypatch.setattr(provider, "_request_bytes", request_bytes)
+    return calls
+
+
 def test_fixture_manifest_pins_authority_selection_contract_and_hashes() -> None:
     manifest = _fixture("swpc_rtsw_manifest.json")
 
@@ -320,6 +348,44 @@ def test_fetch_swpc_skips_adversarial_row_without_suppressing_later_valid_data(
 
     assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
     assert result["mag_time_tag"] == "2026-09-26T22:58:00Z"
+
+
+def test_fetch_swpc_raw_json_skips_overlong_integer_and_selects_later_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    valid_wind_row = json.dumps(
+        _wind_row("2026-09-26T22:55:00Z", proton_speed=440.0),
+        separators=(",", ":"),
+    ).encode("utf-8")
+    wind = (
+        b'[{"active":true,"overall_quality":0,"source":"SOLAR1",'
+        b'"time_tag":"2026-09-26T22:59:00Z","proton_density":4.0,'
+        b'"proton_speed":'
+        + (b"9" * 4_301)
+        + b',"proton_temperature":150000},'
+        + valid_wind_row
+        + b"]"
+    )
+    mag = json.dumps(
+        [_mag_row("2026-09-26T22:58:00Z")],
+        separators=(",", ":"),
+    ).encode("utf-8")
+    calls = _install_raw_swpc_fetcher(
+        monkeypatch,
+        provider,
+        wind=wind,
+        mag=mag,
+    )
+
+    result = provider._fetch_swpc()
+
+    assert calls == [
+        (provider.NOAA_WIND_URL, provider.SWPC_WIND_MAX_RESPONSE_BYTES),
+        (provider.NOAA_MAG_URL, provider.SWPC_MAG_MAX_RESPONSE_BYTES),
+    ]
+    assert result["wind_time_tag"] == "2026-09-26T22:55:00Z"
+    assert result["solar_wind_speed_kms"] == 440.0
 
 
 @pytest.mark.parametrize(
