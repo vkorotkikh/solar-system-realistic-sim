@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import threading
 import time
 from typing import Any
@@ -591,6 +591,18 @@ def test_silso_discloses_monthly_coverage_age_units_and_official_provenance(
     assert capability["maximum_source_age_days"] == 62
     assert capability["realtime_eligible"] is False
     assert capability["provenance"] == result["provenance"]
+
+
+def test_silso_parser_emits_canonical_calendar_date_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+
+    result = provider._parse_silso_document(SILSO_ROW)
+
+    assert result["date"] == "2026-08-31"
+    assert date.fromisoformat(result["date"]).isoformat() == result["date"]
 
 
 def test_silso_delivery_state_uses_literal_day_month_and_age_boundaries() -> None:

@@ -305,6 +305,8 @@ def test_silso_delivery_fails_closed_after_62_days_without_refetch(
         ({}, "invalid_delivery_date", None),
         ({"date": 20260831}, "invalid_delivery_date", None),
         ({"date": "not-a-date"}, "invalid_delivery_date", None),
+        ({"date": "20260831"}, "invalid_delivery_date", None),
+        ({"date": "2026-W36-1"}, "invalid_delivery_date", None),
         ({"date": "2026-09-01"}, "outside_published_coverage", 25),
         ({"date": "2026-10-01"}, "outside_published_coverage", None),
     ),

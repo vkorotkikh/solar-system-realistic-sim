@@ -379,6 +379,8 @@ class SolarRealtimeDataProvider:
             if isinstance(observation_date_text, str):
                 try:
                     observation_date = date.fromisoformat(observation_date_text)
+                    if observation_date.isoformat() != observation_date_text:
+                        raise ValueError("SILSO delivery date is not canonical")
                     silso_state = self._silso_delivery_state(
                         observation_date,
                         now_utc.date(),
