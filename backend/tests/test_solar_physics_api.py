@@ -543,6 +543,36 @@ def test_aia_tile_api_rejects_noncanonical_provider_media_contract(
     assert response.content != b"provider bytes"
 
 
+def test_aia_tile_api_rejects_non_string_equality_spoofed_media_contract(
+    monkeypatch,
+    aia_png_equality_spoof: object,
+) -> None:
+    invalid_body = b"arbitrary bytes from equality-spoofed provider contract"
+    monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
+    monkeypatch.setattr(
+        server.SOLAR_REALTIME_DATA,
+        "latest_aia_tile",
+        lambda *_args, **_kwargs: {
+            "channel": "aia_193",
+            "image_id": "1",
+            "content": invalid_body,
+            "content_type": aia_png_equality_spoof,
+        },
+    )
+
+    response = client.get("/solar/realtime/aia-tile", params={"channel": "aia_193"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "invalid_aia_provider_contract",
+            "message": "AIA tile provider returned an invalid artifact contract.",
+            "retryable": True,
+        }
+    }
+    assert response.content != invalid_body
+
+
 def test_aia_tile_api_preserves_typed_provider_contract_failure(monkeypatch) -> None:
     monkeypatch.setattr(server, "_solar_aia_tile_rate_locks", {})
     monkeypatch.setattr(

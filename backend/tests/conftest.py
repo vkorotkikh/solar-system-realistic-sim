@@ -38,3 +38,18 @@ def _build_aia_png_header(
 @pytest.fixture
 def aia_png_header() -> Callable[..., bytes]:
     return _build_aia_png_header
+
+
+class _ImagePngEqualitySpoof:
+    """Non-string object that defeats equality-only media contract checks."""
+
+    def __eq__(self, other: object) -> bool:
+        return other == "image/png"
+
+    def __ne__(self, other: object) -> bool:
+        return not self == other
+
+
+@pytest.fixture
+def aia_png_equality_spoof() -> object:
+    return _ImagePngEqualitySpoof()

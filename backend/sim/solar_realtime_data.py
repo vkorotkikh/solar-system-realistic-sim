@@ -811,12 +811,13 @@ class SolarRealtimeDataProvider:
             pre_body_validator=self._canonical_aia_media_type,
         )
         self._validate_aia_png_envelope(response.payload)
-        if response.content_type != "image/png":
+        content_type = response.content_type
+        if type(content_type) is not str or content_type != "image/png":
             raise SolarRealtimeFetchError(
                 "invalid_aia_provider_contract",
                 "AIA acquisition did not return canonical media metadata",
             )
-        return response.payload, response.content_type
+        return response.payload, content_type
 
     @classmethod
     def _validate_aia_png_envelope(cls, payload: bytes) -> None:
@@ -1321,7 +1322,7 @@ class SolarRealtimeDataProvider:
         def fetch_and_cache_aia_png() -> tuple[bytes, str]:
             payload, content_type = self._fetch_aia_png(canonical_url)
             self._validate_aia_png_envelope(payload)
-            if content_type != "image/png":
+            if type(content_type) is not str or content_type != "image/png":
                 raise SolarRealtimeFetchError(
                     "invalid_aia_provider_contract",
                     "AIA acquisition did not return canonical media metadata",

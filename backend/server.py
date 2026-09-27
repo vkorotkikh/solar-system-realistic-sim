@@ -3097,7 +3097,8 @@ async def solar_realtime_aia_tile(
     if image_id is not None and available_image_id != image_id:
         raise _aia_identity_conflict(image_id, available_image_id)
 
-    if tile.get("content_type") != "image/png":
+    content_type = tile.get("content_type")
+    if type(content_type) is not str or content_type != "image/png":
         raise HTTPException(
             status_code=503,
             detail={

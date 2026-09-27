@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import gc
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 import weakref
 
@@ -854,6 +855,48 @@ def test_aia_png_cache_validates_fetched_bytes_before_accounting_or_publish(
         provider._fetch_aia_png_cached(url)
 
     assert raised.value.code == "invalid_aia_png_signature"
+    assert provider._binary_cache == {}
+    assert provider._binary_cache_bytes == 0
+
+
+def test_aia_png_fetch_rejects_non_string_equality_spoofed_media_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
+    aia_png_equality_spoof: object,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    monkeypatch.setattr(
+        provider,
+        "_request_bounded_http_payload",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            payload=aia_png_header(),
+            content_type=aia_png_equality_spoof,
+        ),
+    )
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png(provider.HELIOVIEWER_TILE_URL)
+
+    assert raised.value.code == "invalid_aia_provider_contract"
+
+
+def test_aia_png_cache_rejects_non_string_equality_spoof_before_publish(
+    monkeypatch: pytest.MonkeyPatch,
+    aia_png_header: Callable[..., bytes],
+    aia_png_equality_spoof: object,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    url = f"{provider.HELIOVIEWER_TILE_URL}?id=spoof"
+    monkeypatch.setattr(
+        provider,
+        "_fetch_aia_png",
+        lambda _url: (aia_png_header(), aia_png_equality_spoof),
+    )
+
+    with pytest.raises(SolarRealtimeFetchError) as raised:
+        provider._fetch_aia_png_cached(url)
+
+    assert raised.value.code == "invalid_aia_provider_contract"
     assert provider._binary_cache == {}
     assert provider._binary_cache_bytes == 0
 
