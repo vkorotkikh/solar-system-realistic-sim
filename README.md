@@ -67,7 +67,7 @@ The frontend runs standalone in **Local (Keplerian)** mode. For higher-fidelity 
 ```bash
 cd backend
 python -m pip install -r requirements.txt
-python -m uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers
+python -m uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers --ws-max-size 16384
 ```
 
 Then choose **REBOUND** or **TudatPy** in the frontend and click **Connect**.

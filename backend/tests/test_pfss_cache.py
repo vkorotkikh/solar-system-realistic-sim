@@ -299,7 +299,7 @@ def test_observed_solution_reuses_within_provider_lookback_independent_of_attemp
     second = cache.get_or_compute(
         jd=(
             reference_jd_tdb
-            + (gong.GongFetchLimits().max_lookback_hours - 1.0) / 24.0
+            + (gong.GongArchiveLimits().max_lookback_hours - 1.0) / 24.0
         ),
         activity=0.99,
         n_lines=40,
@@ -317,7 +317,7 @@ def test_observed_solution_reuses_within_provider_lookback_independent_of_attemp
     [
         pytest.param(-1.0 / 60.0, "future", id="future"),
         pytest.param(
-            gong.GongFetchLimits().max_lookback_hours + 1.0 / 60.0,
+            gong.GongArchiveLimits().max_lookback_hours + 1.0 / 60.0,
             "lookback",
             id="stale",
         ),

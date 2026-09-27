@@ -206,7 +206,7 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
     )
     request_jd_tdb = (
         snapshot.snapshot_id.reference_jd_tdb
-        + gong.GongFetchLimits().max_lookback_hours / 48.0
+        + gong.GongArchiveLimits().max_lookback_hours / 48.0
     )
     result = pfss.PFSSCache().get_or_compute(
         request_jd_tdb,

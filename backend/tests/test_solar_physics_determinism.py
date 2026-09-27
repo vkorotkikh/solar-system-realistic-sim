@@ -148,4 +148,3 @@ def test_run_owned_thread_holds_permit_until_the_work_actually_finishes() -> Non
     asyncio.run(waves())
     assert live["peak"] <= limit, f"over-admission: {live['peak']} concurrent vs limit {limit}"
     pool.shutdown(wait=True)
-

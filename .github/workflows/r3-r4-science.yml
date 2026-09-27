@@ -103,10 +103,10 @@ jobs:
         with:
           python-version: "3.12.13"
           cache: pip
-          cache-dependency-path: ci/r3-r4-requirements.txt
+          cache-dependency-path: ci/backend-test-requirements.txt
 
       - name: Install the locked backend test environment
-        run: python -m pip install -r ci/r3-r4-requirements.txt
+        run: python -m pip install -r ci/backend-test-requirements.txt
 
       - name: Run the complete backend test suite
         run: python -m pytest -q backend/tests

@@ -29,7 +29,11 @@ def test_workflow_installs_pinned_environment_and_runs_exact_all_lane():
     assert checkout["with"]["fetch-depth"] == 0
     assert checkout["with"]["persist-credentials"] is False
     setup = next(step for step in steps if step.get("uses", "").startswith("actions/setup-python@"))
-    assert setup["with"]["python-version"] == "3.12.13"
+    assert setup["with"] == {
+        "python-version": "3.12.13",
+        "cache": "pip",
+        "cache-dependency-path": "ci/r3-r4-requirements.txt",
+    }
     setup_node = next(
         step for step in steps if step.get("uses", "").startswith("actions/setup-node@")
     )
@@ -74,10 +78,10 @@ def test_backend_job_uses_pinned_python_and_runs_the_full_suite():
     assert setup["with"] == {
         "python-version": "3.12.13",
         "cache": "pip",
-        "cache-dependency-path": "ci/r3-r4-requirements.txt",
+        "cache-dependency-path": "ci/backend-test-requirements.txt",
     }
     commands = "\n".join(step.get("run", "") for step in steps)
-    assert "python -m pip install -r ci/r3-r4-requirements.txt" in commands
+    assert "python -m pip install -r ci/backend-test-requirements.txt" in commands
     assert "python -m pytest -q backend/tests" in commands
     assert all(not step.get("continue-on-error", False) for step in steps)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import math
 from datetime import datetime, timezone
 
@@ -242,38 +243,17 @@ def test_jdtdb_to_utc_datetime_matches_literal_cr2242_instant() -> None:
     assert abs((converted - expected).total_seconds()) < 50e-6
 
 
-def test_legacy_gong_month_hint_converts_jdtdb_to_utc(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Catch the dormant fetcher deriving an archive month from raw JDTDB."""
+def test_pfss_has_no_legacy_gong_downloader_and_validates_provider_snapshots() -> None:
+    """Keep archive transport outside PFSS and require validated snapshots."""
 
-    requested_urls: list[str] = []
+    legacy_symbols = ("GONG_SYNOPTIC_BASE", "fetch_gong_synoptic_map", "urllib")
+    assert all(not hasattr(pfss_magnetogram, symbol) for symbol in legacy_symbols)
 
-    class _EmptyListing:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return b""
-
-    def urlopen(request, *, timeout: float):
-        requested_urls.append(request.full_url)
-        assert timeout == 2.0
-        return _EmptyListing()
-
-    monkeypatch.setattr(
-        pfss_magnetogram,
-        "jd_tdb_to_utc_datetime",
-        lambda _jd_tdb: datetime(2037, 2, 1, tzinfo=timezone.utc),
-        raising=False,
+    resolver_source = inspect.getsource(
+        pfss_magnetogram.PFSSCache._resolve_observed_snapshot
     )
-    monkeypatch.setattr(pfss_magnetogram.urllib.request, "urlopen", urlopen)
-
-    assert pfss_magnetogram.fetch_gong_synoptic_map(2242, timeout_s=2.0) is None
-    assert requested_urls == [f"{pfss_magnetogram.GONG_SYNOPTIC_BASE}203702/"]
+    assert "gong.MagnetogramSnapshot" in resolver_source
+    assert "_validate_observed_snapshot_contract(snapshot)" in resolver_source
 
 
 @pytest.mark.parametrize(

@@ -1524,7 +1524,7 @@ class PFSSCache:
                 "the requested JDTDB"
             )
         provider_lookback_days = (
-            gong.GongFetchLimits().max_lookback_hours / 24.0
+            gong.GongArchiveLimits().max_lookback_hours / 24.0
         )
         if (
             map_age_days

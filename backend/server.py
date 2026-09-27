@@ -7,7 +7,7 @@ over WebSocket, with on-demand Kuiper belt local dynamics.
 
 Run:
     cd backend && pip install -r requirements.txt
-    uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers
+    uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers --ws-max-size 16384
 
 Protocol (WebSocket /ws/sim):
     Client → Server:

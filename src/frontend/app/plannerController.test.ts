@@ -98,7 +98,7 @@ describe('planner UI trajectory outcomes', () => {
     expect(harness.clearRouteVisualization).toHaveBeenCalledOnce();
   });
 
-  it('labels offline local output as degraded and heuristic', async () => {
+  it('labels offline local output as degraded, assist-disabled, and heuristic', async () => {
     const route = {
       bodyRoute: ['earth', 'mars'],
       legs: [],
@@ -118,10 +118,10 @@ describe('planner UI trajectory outcomes', () => {
         fallbackReason: 'backend_unreachable',
         search: {
           truncated: false,
-          configuredFrontierCompleted: true,
+          configuredFrontierCompleted: false,
           searchSpaceExhaustive: false,
           optimalityGuaranteed: false,
-          terminationReason: 'configured_frontier_completed'
+          terminationReason: 'assisted_routes_disabled_without_lambert_endpoint_velocities'
         }
       })
     );
@@ -129,7 +129,9 @@ describe('planner UI trajectory outcomes', () => {
     await harness.controller.runPlanner({ directOnly: false });
 
     expect(harness.output.textContent).toContain('Mode: bounded offline fallback');
-    expect(harness.output.textContent).toContain('Search status: configured frontier completed');
+    expect(harness.output.textContent).toContain(
+      'Search status: assisted_routes_disabled_without_lambert_endpoint_velocities'
+    );
     expect(harness.output.textContent).toContain('Optimality: heuristic; not guaranteed');
     expect(harness.plotRoute).toHaveBeenCalledWith(route);
   });
