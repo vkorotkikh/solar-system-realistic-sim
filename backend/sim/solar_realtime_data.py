@@ -751,6 +751,7 @@ class SolarRealtimeDataProvider:
         if cursor == subtype_start:
             raise invalid()
         media_subtype = declaration[subtype_start:cursor]
+        parameter_names: set[str] = set()
 
         while cursor < len(declaration):
             while cursor < len(declaration) and declaration[cursor] == " ":
@@ -769,6 +770,10 @@ class SolarRealtimeDataProvider:
                 or declaration[cursor] != "="
             ):
                 raise invalid()
+            parameter_name = declaration[name_start:cursor].casefold()
+            if parameter_name in parameter_names:
+                raise invalid()
+            parameter_names.add(parameter_name)
             cursor += 1
             if cursor >= len(declaration):
                 raise invalid()
