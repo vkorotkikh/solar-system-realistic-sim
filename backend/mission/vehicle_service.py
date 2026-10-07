@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 G0 = 9.80665
 
@@ -33,7 +33,9 @@ class VehicleService:
         payload_mass_kg: float,
         burns_km_s: Sequence[float],
         reserve_fraction: float = 0.05,
+        cargo_added_kg: Optional[Sequence[float]] = None,
     ) -> Dict[str, Any]:
+        """`cargo_added_kg[k]` is loaded immediately before burn k (e.g. mined cargo before the return)."""
         if payload_mass_kg <= 0.0:
             return {
                 "feasible": False,
@@ -67,6 +69,10 @@ class VehicleService:
         current_stage_idx = 0
 
         for burn_index, burn_km_s in enumerate(burns_km_s):
+            cargo_kg = 0.0
+            if cargo_added_kg is not None and burn_index < len(cargo_added_kg):
+                cargo_kg = max(0.0, float(cargo_added_kg[burn_index]))
+            mass_kg += cargo_kg
             burn_target_m_s = max(0.0, float(burn_km_s) * 1000.0)
             burn_remaining_m_s = burn_target_m_s
             burn_prop_used = 0.0
@@ -118,6 +124,7 @@ class VehicleService:
             burn_reports.append(
                 {
                     "burnIndex": burn_index,
+                    "cargoAddedKg": cargo_kg,
                     "requestedDeltaV_km_s": burn_target_m_s / 1000.0,
                     "unmetDeltaV_km_s": burn_remaining_m_s / 1000.0,
                     "propellantUsedKg": burn_prop_used,
@@ -149,6 +156,47 @@ class VehicleService:
             "finalMassKg": mass_kg,
             "stageTelemetry": stages,
         }
+
+    def max_closable_cargo_kg(
+        self,
+        vehicle: VehicleDefinition,
+        *,
+        payload_mass_kg: float,
+        burns_km_s: Sequence[float],
+        cargo_burn_index: int,
+        available_cargo_kg: float,
+        reserve_fraction: float = 0.05,
+        tolerance_kg: float = 1.0,
+    ) -> Optional[float]:
+        """Largest cargo (<= available) loaded before `burns_km_s[cargo_burn_index]` that still
+        closes every burn, or None when the burns do not close even with no cargo."""
+
+        def closes(cargo_kg: float) -> bool:
+            added = [0.0] * len(burns_km_s)
+            added[cargo_burn_index] = cargo_kg
+            return bool(
+                self.evaluate_burn_budget(
+                    vehicle,
+                    payload_mass_kg=payload_mass_kg,
+                    burns_km_s=burns_km_s,
+                    reserve_fraction=reserve_fraction,
+                    cargo_added_kg=added,
+                ).get("feasible")
+            )
+
+        available = max(0.0, float(available_cargo_kg))
+        if not closes(0.0):
+            return None
+        if closes(available):
+            return available
+        lo, hi = 0.0, available  # more cargo never makes a burn easier, so bisect
+        while hi - lo > tolerance_kg:
+            mid = 0.5 * (lo + hi)
+            if closes(mid):
+                lo = mid
+            else:
+                hi = mid
+        return lo
 
 
 def default_vehicle() -> VehicleDefinition:

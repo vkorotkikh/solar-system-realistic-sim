@@ -60,32 +60,36 @@ class MiningService:
             },
         }
 
+    @staticmethod
+    def deliverable_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.03) -> float:
+        storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
+        return storable_payload * (1.0 - max(0.0, min(0.6, float(handling_loss_fraction))))
+
     def payload_return_closure(
         self,
         mining_result: Dict[str, Any],
         *,
         outbound_propellant_kg: float,
         return_propellant_kg: float,
+        return_capacity_kg: float,
         handling_loss_fraction: float = 0.03,
     ) -> Dict[str, Any]:
         storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
-        outbound_propellant_kg = max(0.0, float(outbound_propellant_kg))
-        return_propellant_kg = max(0.0, float(return_propellant_kg))
         handling_loss_fraction = max(0.0, min(0.6, float(handling_loss_fraction)))
+        delivered_before_propellant = self.deliverable_cargo_kg(mining_result, handling_loss_fraction)
 
-        handling_survival = 1.0 - handling_loss_fraction
-        delivered_before_propellant = storable_payload * handling_survival
-
-        # Closure model: mission return cargo is what remains after return-leg
-        # propellant burden and handling losses.
-        returned_payload_kg = max(0.0, delivered_before_propellant - return_propellant_kg)
+        # The return propellant comes out of the vehicle's tanks and its cost is already in the
+        # rocket equation, which carried this cargo. Subtracting it from the cargo as well counted
+        # it twice. What comes home is the cargo the return burn can close with.
+        returned_payload_kg = min(delivered_before_propellant, max(0.0, float(return_capacity_kg)))
 
         return {
             "storablePayloadKg": storable_payload,
             "handlingLossFraction": handling_loss_fraction,
             "deliveredBeforePropellantKg": delivered_before_propellant,
-            "outboundPropellantKg": outbound_propellant_kg,
-            "returnPropellantKg": return_propellant_kg,
+            "outboundPropellantKg": max(0.0, float(outbound_propellant_kg)),
+            "returnPropellantKg": max(0.0, float(return_propellant_kg)),
+            "returnCapacityKg": max(0.0, float(return_capacity_kg)),
             "returnedPayloadKg": returned_payload_kg,
         }
 

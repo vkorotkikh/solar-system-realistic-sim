@@ -131,6 +131,7 @@ class MiningAgent:
         *,
         outbound_propellant_kg: float,
         return_propellant_kg: float,
+        return_capacity_kg: float,
         handling_loss_fraction: float,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
@@ -138,6 +139,7 @@ class MiningAgent:
             mining_result,
             outbound_propellant_kg=outbound_propellant_kg,
             return_propellant_kg=return_propellant_kg,
+            return_capacity_kg=return_capacity_kg,
             handling_loss_fraction=handling_loss_fraction,
         )
         decision_log.add(
@@ -199,14 +201,28 @@ class LogisticsAgent:
         outbound_delta_v_km_s: float,
         return_delta_v_km_s: float,
         reserve_fraction: float,
+        return_cargo_available_kg: float,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
-        budget = self._vehicle_service.evaluate_burn_budget(
+        burns = [outbound_delta_v_km_s, return_delta_v_km_s]
+        # The return burn carries the mined cargo: load as much as still closes.
+        cargo_kg = self._vehicle_service.max_closable_cargo_kg(
             vehicle,
             payload_mass_kg=payload_mass_kg,
-            burns_km_s=[outbound_delta_v_km_s, return_delta_v_km_s],
+            burns_km_s=burns,
+            cargo_burn_index=1,
+            available_cargo_kg=return_cargo_available_kg,
             reserve_fraction=reserve_fraction,
         )
+        budget = self.reclose(
+            vehicle,
+            payload_mass_kg=payload_mass_kg,
+            burns_km_s=burns,
+            reserve_fraction=reserve_fraction,
+            return_cargo_kg=cargo_kg or 0.0,
+        )
+        budget["returnCargoAvailableKg"] = max(0.0, float(return_cargo_available_kg))
+        budget["returnCargoKg"] = cargo_kg or 0.0
         decision_log.add(
             agent=self.name,
             action="evaluate_vehicle_budget",
@@ -218,6 +234,23 @@ class LogisticsAgent:
             },
         )
         return budget
+
+    def reclose(
+        self,
+        vehicle: VehicleDefinition,
+        *,
+        payload_mass_kg: float,
+        burns_km_s: List[float],
+        reserve_fraction: float,
+        return_cargo_kg: float,
+    ) -> Dict[str, Any]:
+        return self._vehicle_service.evaluate_burn_budget(
+            vehicle,
+            payload_mass_kg=payload_mass_kg,
+            burns_km_s=burns_km_s,
+            reserve_fraction=reserve_fraction,
+            cargo_added_kg=[0.0, return_cargo_kg],
+        )
 
 
 class VerifierAgent:
@@ -483,6 +516,9 @@ class MissionPlannerAgent:
                 outbound_delta_v_km_s=float(outbound["totalDeltaVKmS"]),
                 return_delta_v_km_s=float(return_route["totalDeltaVKmS"]),
                 reserve_fraction=mission_inputs["reserve_fraction"],
+                return_cargo_available_kg=MiningService.deliverable_cargo_kg(
+                    mining_result, mission_inputs["handling_loss_fraction"]
+                ),
                 decision_log=candidate_log,
             )
             if not candidate_checkpoint():
@@ -496,6 +532,7 @@ class MissionPlannerAgent:
                 mining_result,
                 outbound_propellant_kg=outbound_propellant,
                 return_propellant_kg=return_propellant,
+                return_capacity_kg=float(logistics.get("returnCargoKg", 0.0)),
                 handling_loss_fraction=mission_inputs["handling_loss_fraction"],
                 decision_log=candidate_log,
             )
@@ -505,14 +542,23 @@ class MissionPlannerAgent:
             total_delta_v = float(outbound["totalDeltaVKmS"]) + float(return_route["totalDeltaVKmS"])
             total_time_days = float(outbound["totalTimeDays"]) + float(mission_inputs["mining_days"]) + float(return_route["totalTimeDays"])
             arrival_jd = float(return_route["legs"][-1]["arrivalJd"])
-            prop_margin = float(logistics.get("propellantMarginKg", 0.0))
+            burns_km_s = [float(outbound["totalDeltaVKmS"]), float(return_route["totalDeltaVKmS"])]
+
+            def reclose(dv_factor: float, cargo_kg: float, burns_km_s: List[float] = burns_km_s) -> Dict[str, Any]:
+                return self._logistics_agent.reclose(
+                    vehicle,
+                    payload_mass_kg=mission_inputs["payload_mass_kg"],
+                    burns_km_s=[burn * dv_factor for burn in burns_km_s],
+                    reserve_fraction=mission_inputs["reserve_fraction"],
+                    return_cargo_kg=cargo_kg,
+                )
 
             risk = self._risk_service.run_monte_carlo(
                 base_total_delta_v_km_s=total_delta_v,
                 base_total_time_days=total_time_days,
                 base_returned_payload_kg=float(closure["returnedPayloadKg"]),
                 base_arrival_jd=arrival_jd,
-                base_propellant_margin_kg=prop_margin,
+                reclose=reclose,
                 samples=mission_inputs["risk_samples"],
                 seed=mission_inputs["risk_seed"] + idx,
             )
