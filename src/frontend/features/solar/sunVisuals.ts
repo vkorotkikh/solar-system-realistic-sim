@@ -19,6 +19,7 @@ import {
   Texture,
   Vector4
 } from 'three';
+import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
@@ -1431,9 +1432,10 @@ export function updateSunCoronalLoopsFromBlendView(
       const radialScale = 1 + flow * (0.004 + brightness * 0.012) * envelope;
       const tangentOffset = wobble * (0.0009 + brightness * 0.003) * envelope;
 
-      array[base] = sampleX * sunRadiusAu * radialScale + tx * sunRadiusAu * tangentOffset;
-      array[base + 1] = sampleY * sunRadiusAu * radialScale + ty * sunRadiusAu * tangentOffset;
-      array[base + 2] = sampleZ * sunRadiusAu * radialScale + tz * sunRadiusAu * tangentOffset;
+      const displayRadius = coronalToDisplay(sampleLen, sunRadiusAu) * radialScale;
+      array[base] = nx * displayRadius + tx * sunRadiusAu * tangentOffset;
+      array[base + 1] = ny * displayRadius + ty * sunRadiusAu * tangentOffset;
+      array[base + 2] = nz * displayRadius + tz * sunRadiusAu * tangentOffset;
     }
     positionAttr.needsUpdate = true;
     geometry.setDrawRange(0, pointCount);
@@ -1526,6 +1528,9 @@ export function updateSunParkerSpiralFromPhysicsState(
       const y = Number(sample[1]);
       const z = Number(sample[2]);
       if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      // The heliosphere is drawn at true distances so the spiral crosses 1 AU at Earth's orbit;
+      // the part that would sit inside the enlarged Sun is clipped (owner decision D3).
+      if (Math.hypot(x, y, z) * SOLAR_RADIUS_AU < sunRadiusAu * 1.05) continue;
       arc.push([x, y, z]);
     }
     if (arc.length < 2) {
@@ -1543,9 +1548,9 @@ export function updateSunParkerSpiralFromPhysicsState(
     const array = positionAttr.array;
     for (let p = 0; p < pointCount; p += 1) {
       const base = p * 3;
-      array[base] = arc[p][0] * sunRadiusAu;
-      array[base + 1] = arc[p][1] * sunRadiusAu;
-      array[base + 2] = arc[p][2] * sunRadiusAu;
+      array[base] = arc[p][0] * SOLAR_RADIUS_AU;
+      array[base + 1] = arc[p][1] * SOLAR_RADIUS_AU;
+      array[base + 2] = arc[p][2] * SOLAR_RADIUS_AU;
     }
     positionAttr.needsUpdate = true;
     geometry.setDrawRange(0, pointCount);
@@ -1615,9 +1620,11 @@ export function updateSunEruptionLayerFromBlendView({
 
       const brightness = solarFeatureEntryBrightness(featureEntry, blendAlpha);
       const radialBoost = 1 + brightness * 0.065;
-      bursts.positions[base] = sampled[0] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 1] = sampled[1] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 2] = sampled[2] * sunRadiusAu * radialBoost;
+      const sampledLen = Math.hypot(sampled[0], sampled[1], sampled[2]) || 1;
+      const displayScale = (coronalToDisplay(sampledLen, sunRadiusAu) / sampledLen) * radialBoost;
+      bursts.positions[base] = sampled[0] * displayScale;
+      bursts.positions[base + 1] = sampled[1] * displayScale;
+      bursts.positions[base + 2] = sampled[2] * displayScale;
     }
   } else {
     const plumeFactor = 0.45 + activity * 0.95;
