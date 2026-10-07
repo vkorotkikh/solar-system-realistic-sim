@@ -102,16 +102,19 @@ export const POSITION_BUDGET_KM: Record<string, PerEpoch> = {
   Ariel:     { j2000: 1.5e3, p30d: 1.3e3, p180d: 9.6e2, p1y: 9.6e2, p5y: 9.6e2, y2025: 9.6e2, y2026: 9.6e2 },
   Titania:   { j2000: 5.0e3, p30d: 5.0e3, p180d: 5.0e3, p1y: 5.0e3, p5y: 5.0e3, y2025: 5.0e3, y2026: 5.0e3 },
   Charon:    { j2000: 9.8e1, p30d: 9.8e1, p180d: 9.8e1, p1y: 9.8e1, p5y: 9.8e1, y2025: 9.8e1, y2026: 9.8e1 },
-  Callisto:  { j2000: 9.6e3, p30d: 9.5e3, p180d: 2.6e4, p1y: 5.0e4, p5y: 2.3e5, y2025: 1.2e6, y2026: 1.2e6 },
   Nereid:    { j2000: 6.3e4, p30d: 7.3e4, p180d: 2.3e5, p1y: 6.5e4, p5y: 7.2e4, y2025: 2.2e5, y2026: 2.4e5 },
-  Triton:    { j2000: 2.0e5, p30d: 2.0e5, p180d: 2.0e5, p1y: 2.0e5, p5y: 2.0e5, y2025: 2.0e5, y2026: 2.0e5 },
   Miranda:   { j2000: 1.0e4, p30d: 1.0e4, p180d: 1.0e4, p1y: 1.0e4, p5y: 1.0e4, y2025: 1.0e4, y2026: 1.0e4 },
   Himalia:   { j2000: 6.9e5, p30d: 8.8e5, p180d: 1.9e6, p1y: 5.1e5, p5y: 2.1e6, y2025: 9.3e6, y2026: 2.2e7 },
 
-  // -- data-limited rows: see DATA_LIMITED --
-  Io:        { j2000: 2.2e3, p30d: 3.3e5, p180d: 1.6e6, p1y: 1.2e6, p5y: 1.2e6, y2025: 1.2e6, y2026: 1.7e6 },
-  Europa:    { j2000: 3.4e3, p30d: 5.3e5, p180d: 2.5e6, p1y: 2.0e6, p5y: 1.9e6, y2025: 1.9e6, y2026: 2.7e6 },
-  Ganymede:  { j2000: 5.4e3, p30d: 6.7e3, p180d: 4.9e4, p1y: 1.1e5, p5y: 5.0e5, y2025: 2.4e6, y2026: 2.5e6 },
+  // -- re-measured 2026-10-07 after catalog.ts MEASURED_ORBITS (Io, Europa, Triton) and with
+  //    JUP365 periods read as anomalistic (Ganymede, Callisto): 2x the worst fixture epoch.
+  //    Worst over 61 independent Horizons epochs 2000-2030: Io 1.56e3, Europa 2.16e3,
+  //    Ganymede 4.49e3, Callisto 4.91e3, Triton 2.53e4 km (was 8.47e5 / 1.35e6 / - / - / 1.47e5).
+  Io:        { j2000: 2.7e3, p30d: 2.7e3, p180d: 2.7e3, p1y: 2.7e3, p5y: 2.7e3, y2025: 2.7e3, y2026: 2.7e3 },
+  Europa:    { j2000: 2.7e3, p30d: 2.7e3, p180d: 2.7e3, p1y: 2.7e3, p5y: 2.7e3, y2025: 2.7e3, y2026: 2.7e3 },
+  Ganymede:  { j2000: 3.2e3, p30d: 3.2e3, p180d: 3.2e3, p1y: 3.2e3, p5y: 3.2e3, y2025: 3.2e3, y2026: 3.2e3 },
+  Callisto:  { j2000: 9.6e3, p30d: 9.6e3, p180d: 9.6e3, p1y: 9.6e3, p5y: 9.6e3, y2025: 9.6e3, y2026: 9.6e3 },
+  Triton:    { j2000: 5.1e4, p30d: 5.1e4, p180d: 5.1e4, p1y: 5.1e4, p5y: 5.1e4, y2025: 5.1e4, y2026: 5.1e4 },
   // JPL-fitted ephemerides. These limits cover the independently measured
   // 2000-2050 held-out maxima with headroom; they replace the former 2-radii
   // phase exemptions and Cordelia's 180-degree plane exemption.
@@ -205,18 +208,23 @@ export const VELOCITY_BUDGET_KM_S: Partial<Record<string, PerEpoch>> = {
  * Nereid 2020-01-01): "drift from J2000" still cancels a constant offset and is still
  * a valid rate check, but J2000 is a 25-year and 20-year backward extrapolation for
  * them rather than a zero-baseline anchor.
+ *
+ * Io, Europa, Ganymede, Callisto and Triton (re-measured 2026-10-07): 2x the measured drift,
+ * floored at 10% of the position budget where the J2000 row is already the worst one and
+ * drift is therefore <= 0. The pre-fix drifts were 8.4e5, 1.3e6 and 1.0e5 km for Io,
+ * Europa and Triton, so every floor still fails that defect by >= 20x.
  */
 export const DRIFT_BUDGET_KM: Record<string, number> = {
   Moon: 3.0e4,
-  Io: 1.7e6,
-  Europa: 2.7e6,
-  Ganymede: 2.5e6,
-  Callisto: 1.2e6,
+  Io: 1.0e3,
+  Europa: 1.9e3,
+  Ganymede: 3.2e2,
+  Callisto: 9.6e2,
   Enceladus: 7.1e3,
   Titan: 5.0e1,
   Iapetus: 1.25e2,
   Phoebe: 2.5e2,
-  Triton: 1.5e5,
+  Triton: 5.1e3,
   Charon: 9.8e1,
   Cordelia: 1.25e2,
   Miranda: 5.0e3,
@@ -239,47 +247,6 @@ export const DRIFT_BUDGET_KM: Record<string, number> = {
  * good enough". Every entry is a known blind spot with a named cause.
  */
 export const DATA_LIMITED: Record<string, { evidence: string; tightenTo?: Partial<PerEpoch> }> = {
-  Io: {
-    evidence:
-      'periodDays = 1.762732 d is not Io\'s sidereal period. Measured from Horizons over ' +
-      '2000-2026, Io\'s mean sidereal rate is 203.488959 deg/d (P = 1.769138 d); the shipped ' +
-      'value implies 204.228436 deg/d, i.e. n_sidereal + varpidot to 4 significant figures. ' +
-      'So 2*pi/periodDays is NEITHER dL/dt nor dM/dt, and Io drifts ~270 deg/yr even with the ' +
-      'double-count removed. Io is therefore NOT a witness for the mean-anomaly defect: the ' +
-      'current tip is 8.41e5 km off at +1 yr and a correct propagator on this data is 5.96e5 km ' +
-      'off -- a 1.4x difference that no honest budget can separate.',
-    tightenTo: { j2000: 2.2e3, p30d: 3.1e3, p180d: 7.8e3, p1y: 9.7e3, p5y: 8.3e3, y2025: 1.6e4, y2026: 2.6e3 }
-  },
-  Europa: {
-    evidence:
-      'Same defect as Io. periodDays = 3.525463 d implies 102.114247 deg/d against a measured ' +
-      'sidereal 101.374726 deg/d (P = 3.551181 d) -- 0.72% fast.',
-    tightenTo: { j2000: 3.4e3, p30d: 1.6e4, p180d: 2.6e4, p1y: 3.5e4, p5y: 5.7e4, y2025: 5.3e4, y2026: 3.7e4 }
-  },
-  Ganymede: {
-    evidence:
-      'periodDays = 7.155588 d is the ANOMALISTIC period, not the sidereal one: measured ' +
-      'sidereal rate 50.317604 deg/d, and 360/(50.317604 - varpidot) = 7.1555886 d reproduces ' +
-      'the shipped value to 7 digits. The legacy double-count is therefore accidentally CORRECT ' +
-      'for Ganymede, and removing it makes Ganymede 32x WORSE (3.68e4 km -> 1.17e6 km at 2025). ' +
-      'These budgets are wide enough to admit both. Fix periodDays to 7.154554 d and tighten.',
-    tightenTo: { j2000: 5.4e3, p30d: 5.4e3, p180d: 5.4e3, p1y: 5.4e3, p5y: 1.8e4, y2025: 7.4e4, y2026: 7.0e4 }
-  },
-  Callisto: {
-    evidence:
-      'Same as Ganymede: periodDays = 16.690440 d equals 360/(21.571071 - varpidot) = 16.6904409 d, ' +
-      'the anomalistic period. Removing the double-count makes Callisto 35x worse at 2025. Fix ' +
-      'periodDays to 16.689019 d and tighten.',
-    tightenTo: { j2000: 9.6e3, p30d: 9.5e3, p180d: 9.5e3, p1y: 9.5e3, p5y: 9.5e3, y2025: 3.2e4, y2026: 1.2e4 }
-  },
-  Triton: {
-    evidence:
-      'Two independent data problems. (1) periodDays = 5.876994 d implies 61.255805 deg/d ' +
-      'against a measured mean sidereal 61.258550 deg/d (P = 5.876731 d) -- the same ' +
-      'n_sidereal + varpidot convention error as Io, though only 0.004% here. Native-frame ' +
-      'precession fixes the former axis error; the residual long-baseline offset belongs to ' +
-      'the approximate mean-element data rather than the frame composition.'
-  },
   Pasiphae: { evidence: 'Outer irregular: solar-perturbed, non-Keplerian over decades. Measured mean rate 0.509427 deg/d against a shipped 0.490182 -- 3.9% slow, so the phase is lost within a few years no matter what the propagator does.' },
   Sinope: { evidence: 'Outer irregular: measured mean rate 0.495559 deg/d against a shipped 0.483484 -- 2.4% slow.' },
   Carme: { evidence: 'Outer irregular: measured mean rate 0.512979 deg/d against a shipped 0.500500 -- 2.4% slow.' },

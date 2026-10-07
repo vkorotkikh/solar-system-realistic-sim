@@ -439,6 +439,29 @@ const SIDEREAL_PERIOD_EPHEMERIDES: ReadonlySet<string> = new Set([
   'PLU060'
 ]);
 
+/**
+ * Orbits the JPL mean-element table gets wrong, re-measured against JPL Horizons on 2026-10-07
+ * (parent-relative state vectors; worst error over 61 epochs 2000-2030 quoted before -> after).
+ *
+ * Io, Europa: the Laplace resonance locks their forced periapses to the conjunction line, which
+ * REGRESSES at 2 n_Europa - n_Io = -0.7395 deg/d; the table gives only |rate| and the catalog
+ * assumes the usual prograde (J2) sense. Their JUP365 periods are anomalistic, so the measured
+ * sidereal period plus the mean-longitude convention gives dL/dt exactly and, with the sign
+ * fixed, dM/dt too. Io 8.47e5 -> 1.56e3 km, Europa 1.35e6 -> 2.16e3 km.
+ *
+ * Triton: retrograde (i = 157 deg), so J2 drives its node PROGRADE (dOmega/dt ~ -cos i).
+ * Measured +53.126 deg/cy (677.6 yr, 1950-2050) against the table's -105.764 deg/cy; draconic
+ * period 5.876715 d. 1.47e5 -> 2.53e4 km, no longer growing (the rest is the J2000 offset).
+ */
+const MEASURED_ORBITS: Record<
+  string,
+  { periodDays: number; periodIsMeanLongitudePeriod?: true; apsisRegresses?: true; nodeDegPerCentury?: number }
+> = {
+  Io: { periodDays: 1.769138, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
+  Europa: { periodDays: 3.551181, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
+  Triton: { periodDays: 5.876715, nodeDegPerCentury: 53.126 }
+};
+
 function precessionRateDegreesPerCentury(
   periodYears: number | null,
   directionSign: number,
@@ -469,10 +492,16 @@ function precessionRateDegreesPerCentury(
 
 export function resolveMoonSecularRates(
   moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'> &
-    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris'>>
+    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris' | 'name'>>
 ): KeplerOrbit['secularRates'] | undefined {
-  const argRate = precessionRateDegreesPerCentury(moon.apsisPrecessionYears, 1, moon.periodDays);
-  const nodeRate = precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1, moon.periodDays);
+  const measured = moon.name === undefined ? undefined : MEASURED_ORBITS[moon.name];
+  const argRate = precessionRateDegreesPerCentury(
+    moon.apsisPrecessionYears,
+    measured?.apsisRegresses ? -1 : 1,
+    moon.periodDays
+  );
+  const nodeRate =
+    measured?.nodeDegPerCentury ?? precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1, moon.periodDays);
 
   if (argRate === undefined && nodeRate === undefined) {
     return undefined;
@@ -485,7 +514,10 @@ export function resolveMoonSecularRates(
 
   // Only opt in where the source table was MEASURED to publish a mean-longitude period. Everything
   // else keeps 2*pi/periodDays as dM/dt, unchanged.
-  if (moon.ephemeris !== undefined && SIDEREAL_PERIOD_EPHEMERIDES.has(moon.ephemeris)) {
+  if (
+    measured?.periodIsMeanLongitudePeriod ||
+    (moon.ephemeris !== undefined && SIDEREAL_PERIOD_EPHEMERIDES.has(moon.ephemeris))
+  ) {
     rates.periodIsMeanLongitudePeriod = true;
   }
 
@@ -675,7 +707,9 @@ export function createSolarSystemCatalog(
     ['Pluto', 'pluto']
   ]);
 
-  for (const moon of moons) {
+  for (const sourceMoon of moons) {
+    const measuredPeriodDays = MEASURED_ORBITS[sourceMoon.name]?.periodDays;
+    const moon = measuredPeriodDays === undefined ? sourceMoon : { ...sourceMoon, periodDays: measuredPeriodDays };
     const parentId = planetNameToId.get(moon.planet);
     if (!parentId) {
       continue;
