@@ -62,6 +62,10 @@ import {
   pickAiaObservationChannel,
   type SolarObservationPhysicsStateLike
 } from './frontend/features/solar/solarObservationTexture';
+import {
+  describeSolarDataStatus,
+  type SolarDataSourceStatus
+} from './frontend/features/solar/solarDataStatus';
 
 type GwDisplayer = ReturnType<typeof createGWVisualization>;
 type WarpDisplayer = ReturnType<typeof createWarpSlipstreamVisualization>;
@@ -75,6 +79,7 @@ export interface CreateSunControllerOptions {
   observationTextureLoader: TextureLoader;
   getSunRadiusAu: () => number;
   isMagneticFieldEnabled: () => boolean;
+  onSolarDataStatus?: (status: SolarDataSourceStatus) => void;
 }
 
 const TWO_PI = Math.PI * 2;
@@ -122,6 +127,7 @@ function fallbackSolarActivityFromJulianDate(julianDate: number): number {
  *   observationTextureLoader   – THREE.TextureLoader instance
  *   getSunRadiusAu             – () => number (current sun render radius)
  *   isMagneticFieldEnabled     – () => boolean
+ *   onSolarDataStatus          – (status) => void, called after every refresh attempt and image load
  */
 export function createSunController({
   camera,
@@ -130,7 +136,8 @@ export function createSunController({
   configureLoadedTexture,
   observationTextureLoader,
   getSunRadiusAu,
-  isMagneticFieldEnabled
+  isMagneticFieldEnabled,
+  onSolarDataStatus
 }: CreateSunControllerOptions) {
   let sunSurfaceMaterial: ShaderMaterial | null = null;
   let sunCoronaMaterial: ShaderMaterial | null = null;
@@ -166,6 +173,7 @@ export function createSunController({
   let solarObservationTextureLoadInFlight = false;
   let solarObservationTextureLastLoadMs = 0;
   let userAiaChannelOverride: string | null = null;
+  let solarObservationFailedChannel: string | null = null;
   let lastTimeSec: number | null = null;
 
   const solarPhysicsClient = new SolarPhysicsClient({
@@ -178,6 +186,23 @@ export function createSunController({
   const solarRealtimeClient = new SolarRealtimeClient({
     baseUrl: backendBaseUrl
   });
+
+  function publishSolarDataStatus() {
+    const clientStatus = solarPhysicsClient.status();
+    const status = describeSolarDataStatus({
+      lastSuccessMs: clientStatus.lastSuccessMs,
+      lastFailure: clientStatus.lastFailure,
+      timeoutMs: clientStatus.timeoutMs,
+      backendBaseUrl: backendBaseUrl(),
+      pageOrigin: globalThis.location?.origin ?? '',
+      payload: solarPhysicsState,
+      displayedImageChannel: solarObservationTexture ? solarObservationTextureChannel : null,
+      failedImageChannel: solarObservationFailedChannel
+    });
+    onSolarDataStatus?.(status);
+  }
+
+  publishSolarDataStatus();
 
   // ── internal helpers ─────────────────────────────────────────────────────
 
@@ -372,9 +397,15 @@ export function createSunController({
         solarObservationTextureChannel = nextChannel;
         applySunObservationTextureToMaterials();
         solarObservationTextureLoadInFlight = false;
+        solarObservationFailedChannel = null;
+        publishSolarDataStatus();
       },
       undefined,
-      () => { solarObservationTextureLoadInFlight = false; }
+      () => {
+        solarObservationTextureLoadInFlight = false;
+        solarObservationFailedChannel = nextChannel;
+        publishSolarDataStatus();
+      }
     );
   }
 
@@ -651,7 +682,10 @@ export function createSunController({
           ? clientNextRefreshMs
           : Date.now() + SOLAR_PHYSICS_POLL_INTERVAL_MS;
       })
-      .finally(() => { solarPhysicsRefreshInFlight = false; });
+      .finally(() => {
+        solarPhysicsRefreshInFlight = false;
+        publishSolarDataStatus();
+      });
   }
 
   function maybeRefreshRealtime(nowMs = Date.now(), force = false) {

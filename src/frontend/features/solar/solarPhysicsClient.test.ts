@@ -285,3 +285,198 @@ describe('SolarPhysicsClient time contract', () => {
     expect(client.status()).toMatchObject({ disposed: true, inFlight: false });
   });
 });
+
+describe('SolarPhysicsClient failure classification', () => {
+  const BASE_URL = 'http://localhost:8042';
+  const JD = 2_460_000.5;
+
+  function abortError(): DOMException {
+    return new DOMException('This operation was aborted', 'AbortError');
+  }
+
+  /** A request that never answers; it only settles when its signal aborts. */
+  function hangUntilAborted(init?: RequestInit): Promise<Response> {
+    return new Promise((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(abortError()));
+    });
+  }
+
+  /** How `/health` behaves: answering everyone, answering only no-cors requests, or not at all. */
+  function healthServer(behaviour: 'up' | 'refuses-origin' | 'down') {
+    return (init?: RequestInit): Promise<Response> => {
+      if (behaviour === 'down' || (behaviour === 'refuses-origin' && init?.mode !== 'no-cors')) {
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    };
+  }
+
+  function stubFetch(
+    physics: (init?: RequestInit) => Promise<Response>,
+    health: (init?: RequestInit) => Promise<Response> = healthServer('down')
+  ) {
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => (
+      `${input}`.endsWith('/health') ? health(init) : physics(init)
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  function structuredError(status: number, code: string, headers: Record<string, string> = {}): Response {
+    return new Response(JSON.stringify({ detail: { code, message: `${code} message`, retryable: true } }), { status, headers });
+  }
+
+  const createClient = () => new SolarPhysicsClient({ baseUrl: () => BASE_URL });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('records a timeout when the server does not answer within the request deadline', async () => {
+    vi.useFakeTimers();
+    stubFetch(hangUntilAborted);
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD, true);
+    await vi.advanceTimersByTimeAsync(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
+
+    await expect(pending).resolves.toBe(false);
+    const status = client.status();
+    expect(status.lastFailure?.kind).toBe('timeout');
+    expect(status.lastError).toBe('No reply from the solar server within 20 s');
+    expect(status.consecutiveFailures).toBe(1);
+    expect(status.timeoutMs).toBe(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
+  });
+
+  it.each([
+    [503, 'solar_compute_saturated', 'busy'],
+    [503, 'solar_compute_timeout', 'server-timeout'],
+    [429, 'solar_rate_limit_exceeded', 'rate-limited'],
+    [503, 'solar_compute_worker_crashed', 'http'],
+    [400, 'jd_out_of_range', 'http'],
+  ] as const)('classifies HTTP %i %s as %s and keeps the code', async (status, code, kind) => {
+    stubFetch(() => Promise.resolve(structuredError(status, code)));
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+
+    expect(client.status().lastFailure).toMatchObject({ kind, httpStatus: status, code });
+    expect(client.lastError).toContain(`(${status}): ${code} message`);
+  });
+
+  it('reports a refused origin when only the no-cors probe reaches the server', async () => {
+    const fetchMock = stubFetch(() => Promise.reject(new TypeError('Failed to fetch')), healthServer('refuses-origin'));
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+
+    expect(client.status().lastFailure?.kind).toBe('blocked');
+    const probeModes = fetchMock.mock.calls
+      .filter(([input]) => `${input}`.endsWith('/health'))
+      .map(([, init]) => init?.mode);
+    expect(probeModes).toEqual(['cors', 'no-cors']);
+  });
+
+  it.each([
+    ['up', 'server-error'],
+    ['down', 'unreachable'],
+  ] as const)('after a TypeError with /health %s, reports %s', async (behaviour, kind) => {
+    stubFetch(() => Promise.reject(new TypeError('Failed to fetch')), healthServer(behaviour));
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+
+    expect(client.status().lastFailure?.kind).toBe(kind);
+  });
+
+  it.each([
+    ['refuses-origin', 'blocked'],
+    ['up', 'timeout'],
+    ['down', 'timeout'],
+  ] as const)('after a timeout with /health %s, reports %s', async (behaviour, kind) => {
+    vi.useFakeTimers();
+    stubFetch(hangUntilAborted, healthServer(behaviour));
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD, true);
+    await vi.advanceTimersByTimeAsync(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
+    await pending;
+
+    expect(client.status().lastFailure?.kind).toBe(kind);
+  });
+
+  it('reuses a probe verdict for the same kind of failure, and re-probes once a timeout contradicts it', async () => {
+    vi.useFakeTimers();
+    let serverUp = false;
+    const fetchMock = stubFetch(
+      (init) => (serverUp ? hangUntilAborted(init) : Promise.reject(new TypeError('Failed to fetch'))),
+      (init) => healthServer(serverUp ? 'refuses-origin' : 'down')(init)
+    );
+    const probes = () => fetchMock.mock.calls.filter(([input]) => `${input}`.endsWith('/health')).length;
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+    await client.maybeRefresh(JD, true);
+    expect(client.status().lastFailure?.kind).toBe('unreachable');
+    expect(probes()).toBe(2);
+
+    serverUp = true;
+    const pending = client.maybeRefresh(JD, true);
+    await vi.advanceTimersByTimeAsync(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
+    await pending;
+    expect(client.status().lastFailure?.kind).toBe('blocked');
+  });
+
+  it('does not count dispose() during the probe as a server failure', async () => {
+    let releaseProbe: (() => void) | undefined;
+    stubFetch(
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      () => new Promise<Response>((resolve) => { releaseProbe = () => resolve(new Response(null)); })
+    );
+    const client = createClient();
+
+    const pending = client.maybeRefresh(JD, true);
+    await vi.waitFor(() => expect(releaseProbe).toBeDefined());
+    client.dispose();
+    releaseProbe?.();
+
+    await expect(pending).resolves.toBe(false);
+    expect(client.status().lastFailure).toBeNull();
+  });
+
+  it('classifies an invalid payload as invalid-response and keeps the validation message', async () => {
+    stubFetch(() => Promise.resolve(responseWith({ ...validPayload(JD), jd_time_scale: 'UTC' })));
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+
+    expect(client.status().lastFailure?.kind).toBe('invalid-response');
+    expect(client.lastError).toContain('time scale');
+  });
+
+  it('clears the failure after a successful refresh', async () => {
+    stubFetch(() => Promise.resolve(structuredError(503, 'solar_compute_saturated')));
+    const client = createClient();
+    await client.maybeRefresh(JD, true);
+    expect(client.status().consecutiveFailures).toBe(1);
+
+    stubFetch(() => Promise.resolve(responseWith(validPayload(JD))));
+    await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+
+    expect(client.status()).toMatchObject({ lastFailure: null, lastError: null, consecutiveFailures: 0 });
+  });
+
+  it.each([
+    ['60', 60_000],
+    ['3600', 120_000],
+    [null, 30_000],
+  ] as const)('waits for Retry-After %s before the next attempt', async (retryAfter, waitMs) => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    stubFetch(() => Promise.resolve(structuredError(429, 'solar_rate_limit_exceeded', retryAfter ? { 'Retry-After': retryAfter } : {})));
+    const client = createClient();
+
+    await client.maybeRefresh(JD, true);
+
+    expect(client.status().nextRefreshMs - 1_000_000).toBe(waitMs);
+  });
+});
