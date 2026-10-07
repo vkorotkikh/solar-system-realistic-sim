@@ -1,5 +1,37 @@
 # H-1 remediation plan: getting the backend solar model onto the screen
 
+> **Status update 2026-10-07 (read first).** `main` moved to `17d1e63`. It now contains `sun-focus` (merged, so the
+> OP-P0 reconcile is done) and the R3/R4 PFSS remediation, merged on 2026-09-27. Re-baseline before following the phases below:
+> - **Done on branch `fix/solar-status-chip-on-main`** (from `main`, unmerged):
+>   - **H0:** the status chip, merged onto main's v2 client. 503s are classified by `detail.code`; the forcing text reads
+>     `effective_forcing`/`forcing_status`. Verified against main's real backend in Chromium: server-timeout, then
+>     unreachable, with remedies in the console and 0 page errors.
+>   - **H2.1:** the fallback activity follows the solar cycle, not `Number(null) = 0`. Red/green commits.
+> - **Appears covered by main (verify before relying on it):**
+>   - R3.1 harmonics and the GONG/WSA tests;
+>   - PFSS process isolation;
+>   - observations disabled until validated (`effective_forcing: synthetic`), which covers the C24/T31 blending trap;
+>   - the AIA spatial contract (non-spatial viewport tiles are no longer drawn, which covers C9/T18);
+>   - client cadence 30 s / timeout 20 s;
+>   - `:4173` in the default CORS list;
+>   - the JD bound.
+> - **Still open:**
+>   - H1 harness and diagnostics;
+>   - H2.2 display scale (D3);
+>   - H2.3 flare lifetime;
+>   - H2.4 layer gates;
+>   - H2.5 shader frame (D10);
+>   - H2.6 Auto tint (D4);
+>   - H2.7 stale-state clearing;
+>   - H3.4 Vite proxy and H3.5 runtimeConfig;
+>   - H4 HGC frame;
+>   - H5 and H6, which depend on main's validation work.
+> - **Observed on 2026-10-07:**
+>   - A cold high-fidelity request took 13.8 s with `curl`. In the browser all three requests returned 503
+>     `solar_compute_timeout`, but the host was at load 31/32 from unrelated processes, so this is not a latency finding.
+>   - `main` has one failing test (`solarRealtimeClient.test.ts:605`, an assertion-message mismatch).
+>   - `typecheck:ratchet` fails on `trajectory/localPlanner.ts` independently of this work.
+
 **Status:** final synthesis, revised after the evidence and completeness critiques, 2026-09-25. Only Phase 0 (the status chip) is implemented, on its own unmerged branch; everything else is plan. The revision log is at the end.
 
 **How this was produced:** six investigators read and ran the real code (digest in the evidence folder). Three independent designs (incremental, architecture, product-truth) were scored by two judges, who both chose product-truth as the skeleton (46 and 48, against 41/44 and 38/40). The merged plan was checked by an evidence critic (40+ claims) and a completeness critic, then revised. Before saving, five of its sharpest claims were re-checked by hand: the three Legendre copies; shader latitude taken from world normals while the spin axis is world +Z; the `dev-full` 0.0.0.0 default; Vite's proxy answering a dead backend with an empty 500; and no overlap between the chip's files and the reconcile's two-sided files.
