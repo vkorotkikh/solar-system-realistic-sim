@@ -166,9 +166,13 @@ function normalizeRadians(angle: number): number {
 }
 
 export function solveKeplerFast(M: number, e: number): number {
-  let E = M;
-  for (let i = 0; i < 6; i++) {
-    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  // Danby's starter E0 = M + 0.85 e sign(sin M) converges for every e < 1; the old E0 = M with a
+  // fixed six steps diverged for e >= ~0.99. Usually 3-5 steps, so still fast.
+  let E = M + 0.85 * e * Math.sign(Math.sin(M));
+  for (let i = 0; i < 50; i++) {
+    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-12) break;
   }
   return E;
 }
