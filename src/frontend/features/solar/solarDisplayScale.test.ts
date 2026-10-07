@@ -53,3 +53,13 @@ describe('drawn extents on the enlarged Sun', () => {
     expect(maxDrawnRadiusAu(group)).toBeLessThanOrEqual(1.6 * ENLARGED_SUN_AU);
   });
 });
+
+describe('Sun shaders use the body frame for latitude (owner decision D10)', () => {
+  it('never reads latitude from a world-space normal', async () => {
+    const shaders = await import('./sunVisuals');
+    for (const source of [shaders.SUN_SURFACE_VERTEX_SHADER, shaders.SUN_SURFACE_FRAGMENT_SHADER, shaders.SUN_CORONA_FRAGMENT_SHADER]) {
+      expect(source).not.toMatch(/\b(normalDir|vWorldNormal)\.y\b/);
+    }
+    expect(shaders.SUN_SURFACE_VERTEX_SHADER).toContain('vLatitude = asin(clamp(vSunNormal.y');
+  });
+});
