@@ -62,6 +62,11 @@ export function clampUnit(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+/** `Number(null)` is 0, which would turn "no activity reported" into a completely quiet Sun. */
+export function finiteOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 export function lerpNumber(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
@@ -300,11 +305,11 @@ export function buildSolarFeatureBlendView({
   }
 
   let activityIndex = nextCurrentFeatureSet.activityIndex;
-  const currentActivity = Number(nextCurrentFeatureSet.activityIndex);
-  const targetActivity = Number(nextTargetFeatureSet.activityIndex);
-  if (Number.isFinite(currentActivity) && Number.isFinite(targetActivity)) {
+  const currentActivity = finiteOrNull(nextCurrentFeatureSet.activityIndex);
+  const targetActivity = finiteOrNull(nextTargetFeatureSet.activityIndex);
+  if (currentActivity !== null && targetActivity !== null) {
     activityIndex = lerpNumber(currentActivity, targetActivity, blendAlpha);
-  } else if (Number.isFinite(targetActivity)) {
+  } else if (targetActivity !== null) {
     activityIndex = targetActivity;
   }
 
@@ -388,9 +393,7 @@ export function materializeSolarFeatureSetFromBlendView(
   return {
     features,
     featureById,
-    activityIndex: Number.isFinite(Number(blendView.activityIndex))
-      ? clampUnit(Number(blendView.activityIndex))
-      : null,
+    activityIndex: finiteOrNull(blendView.activityIndex) === null ? null : clampUnit(blendView.activityIndex as number),
     epochJd: fallbackEpochJd
   };
 }

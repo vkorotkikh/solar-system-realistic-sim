@@ -46,6 +46,7 @@ import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
 import {
   clampUnit,
+  finiteOrNull,
   normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl,
@@ -527,11 +528,11 @@ export function createSunController({
     lastTimeSec = timeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
-    const blendedActivityRaw = Number(solarBlendView?.activityIndex);
-    const backendActivityRaw = Number(solarPhysicsState?.activity_index);
-    const activity = Number.isFinite(blendedActivityRaw)
-      ? clampUnit(blendedActivityRaw)
-      : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
+    const activity = clampUnit(
+      finiteOrNull(solarBlendView?.activityIndex)
+        ?? finiteOrNull(solarPhysicsState?.activity_index)
+        ?? fallbackActivity
+    );
     const observationState = getRenderableObservationState(Date.now());
     const observationSelection = pickAiaObservationChannel(
       observationState,

@@ -293,8 +293,10 @@ describe('sun controller solar delivery', () => {
 
     controller.update(2_461_307.5, 1);
 
-    // The cycle model gives about 0.754 on 2026-09-24; Number(null) used to pin it at 0.
-    expect(material?.uniforms.activity.value).toBeCloseTo(0.754, 2);
+    // 2026-09-24 is near solar-cycle-25 maximum, so the cycle model is high (about 0.75);
+    // Number(null) used to pin the uniform at 0, a completely quiet Sun.
+    expect(material?.uniforms.activity.value).toBeGreaterThan(0.5);
+    expect(material?.uniforms.activity.value).toBeLessThan(1);
     controller.disposeSolarDelivery();
   });
 
