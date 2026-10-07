@@ -278,6 +278,26 @@ describe('sun controller solar delivery', () => {
     controller.disposeSolarDelivery();
   });
 
+  it('draws the solar-cycle activity, not a quiet Sun, before any backend data', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_461_307.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load: vi.fn() } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    const material = controller.createSunMaterial({} as Texture);
+
+    controller.update(2_461_307.5, 1);
+
+    // The cycle model gives about 0.754 on 2026-09-24; Number(null) used to pin it at 0.
+    expect(material?.uniforms.activity.value).toBeCloseTo(0.754, 2);
+    controller.disposeSolarDelivery();
+  });
+
   it('republishes the Sun status chip when a loaded texture is revoked', async () => {
     vi.stubGlobal('fetch', vi
       .fn()
