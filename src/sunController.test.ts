@@ -278,6 +278,40 @@ describe('sun controller solar delivery', () => {
     controller.disposeSolarDelivery();
   });
 
+  it('republishes the Sun status chip when a loaded texture is revoked', async () => {
+    vi.stubGlobal('fetch', vi
+      .fn()
+      .mockResolvedValueOnce(responseWith(realtimePayload(true)))
+      .mockRejectedValueOnce(new Error('network offline')));
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const onSolarDataStatus = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false,
+      onSolarDataStatus
+    });
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    (settleTexture as unknown as (texture: Texture) => void)({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    const publishedBeforeRevoke = onSolarDataStatus.mock.calls.length;
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().observation.textureLoaded).toBe(false);
+    });
+
+    expect(onSolarDataStatus.mock.calls.length).toBeGreaterThan(publishedBeforeRevoke);
+    controller.disposeSolarDelivery();
+  });
+
   it('revokes a loaded projected texture when the snapshot freshness deadline passes', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-26T15:00:00Z'));

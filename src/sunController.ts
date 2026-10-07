@@ -248,6 +248,7 @@ export function createSunController({
     if (revokedTexture && typeof revokedTexture.dispose === 'function') {
       revokedTexture.dispose();
     }
+    if (hadObservationBinding) publishSolarDataStatus();
   }
 
   function loadedObservationMatches(
