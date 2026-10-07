@@ -4,8 +4,7 @@
  * Physics-based compound shockwave propagation with 7+ channels:
  *   GW, EM, neutrino, UHECR, CR tsunami, Alfvén/MHD, physical blast wave.
  *
- * Each channel propagates at its physical speed (diffusive, ballistic, or c)
- * with optional apparent superluminal projection in observer frame.
+ * Each channel propagates at its physical speed (diffusive, ballistic, or c).
  *
  * Source catalog: Sgr A*, Centaurus A, Maffei 1, M87* (educational).
  * Event presets: from daily flares to Fermi Bubble-class outbursts.
@@ -20,7 +19,6 @@ import {
 import {
     computeMultiMessengerTimeline,
     yearsToDisplaySeconds,
-    apparentBeta,
     dopplerFactor,
     timeCompressionFactor,
     lorentzGamma,
@@ -108,7 +106,6 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
     let currentEnergyErg = 1e56;
     let currentThetaRad = toRadians(35);
 
-    let observerFrameMode = true;
     let shutdownTimer = null;
 
     let stochasticActive = false;
@@ -289,11 +286,11 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         },
 
         /**
-         * Toggle apparent superluminal observer frame mode.
+         * Kept so the UI switch stays wired. It no longer changes the front: when a radial front
+         * reaches the observer does not depend on the frame, and apparent superluminal speed is a
+         * transverse (sky-plane) effect.
          */
-        setObserverFrameMode(enabled) {
-            observerFrameMode = Boolean(enabled);
-        },
+        setObserverFrameMode(_enabled) {},
 
         /**
          * Start/stop continuous stochastic flaring background (H6).
@@ -336,17 +333,14 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
 
             elapsedSec += dt;
 
+            // frontTravelDisplaySec is the display arrival of the front's own channel (GW, or the H29
+            // slipstream whose arrival already includes frameSpeedOverC), so the front hits the Sun
+            // exactly when that channel fires. Arrival at the observer is frame-invariant: the
+            // transverse apparent speed b*sin(t)/(1 - b*cos(t)) is a sky-plane projection and must not
+            // scale this radial front.
             const frontTravelSec = Math.max(0.001, currentTimeline.frontTravelDisplaySec);
-            const h29FrontSpeed = currentPhysics?.h29?.frameSpeedOverC || 1.0;
-            const jetBeta = currentSource.jetBetaSpine || currentSource.jetBeta || 0.9;
-            const apparentFactor = observerFrameMode
-                ? Math.max(1, apparentBeta(jetBeta, currentThetaRad))
-                : 1.0;
-            const frontSpeed = currentTimeline.isH29Mode
-                ? Math.max(apparentFactor, h29FrontSpeed)
-                : apparentFactor;
             // Allow front to propagate past the origin (frontProgress from 0.0 to 2.0)
-            const frontProgress = clamp((elapsedSec * frontSpeed) / frontTravelSec, 0.0, 2.0);
+            const frontProgress = clamp(elapsedSec / frontTravelSec, 0.0, 2.0);
             currentDistanceUnits = frontStartUnits * (1.0 - frontProgress);
 
             if (gwDisplayer) {
