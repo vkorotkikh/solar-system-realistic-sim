@@ -4,7 +4,7 @@
  "_center": "500@10 -- Sun body centre (heliocentric, NOT the solar system barycentre)",
  "_frame": "Ecliptic of J2000.0, ICRF orientation (Horizons \"Reference frame: Ecliptic of J2000.0\")",
  "_units": "km, km/s",
- "_targets": "Planet BARYCENTRES, Horizons ids 1..8. These -- not the planet centres -- are the bodies the JPL Standish approximate-element table describes. Horizons id 3 is therefore the EARTH-MOON BARYCENTER, which differs from Earth itself by up to ~4700 km; any comparison against Earth the planet would carry that as a floor.",
+ "_targets": "Planet BARYCENTRES, Horizons ids 1..8, plus 9 (Pluto, retrieved 2026-10-07 with the same query). These -- not the planet centres -- are the bodies the JPL Standish approximate-element table describes. Horizons id 3 is therefore the EARTH-MOON BARYCENTER, which differs from Earth itself by up to ~4700 km; any comparison against Earth the planet would carry that as a floor.",
  "_ephemeris": "DE441",
  "_timescale": "TDB (TIME_TYPE=TDB); JD values are JDTDB",
  "_epochs": [
@@ -512,6 +512,66 @@
      "vx": -1.510176525592651,
      "vy": -5.208373073529424,
      "vz": 0.1418658336062835
+    }
+   ]
+  },
+  "pluto": {
+   "hid": "9",
+   "horizonsName": "Pluto Barycenter (9)",
+   "states": [
+    {
+     "jd": 2415020.5,
+     "x": 1540431633.806554,
+     "y": 6753704837.972438,
+     "z": -1168941164.341141,
+     "vx": -3.741653796726164,
+     "vy": 0.3621999156857085,
+     "vz": 1.046185526637238
+    },
+    {
+     "jd": 2433282.5,
+     "x": -3969438644.326406,
+     "y": 3632852886.044941,
+     "z": 759123903.3162832,
+     "vx": -2.223379276133351,
+     "vy": -4.484352049490344,
+     "vz": 1.12598745759174
+    },
+    {
+     "jd": 2451545,
+     "x": -1477331666.009064,
+     "y": -4182576442.612421,
+     "z": 875214251.751896,
+     "vx": 5.24415135931201,
+     "vy": -2.662610372918008,
+     "vz": -1.233148148822542
+    },
+    {
+     "jd": 2460676.5,
+     "x": 2726993661.967716,
+     "y": -4489133481.511034,
+     "z": -308144587.2808347,
+     "vx": 4.779292512553075,
+     "vy": 1.626497216691799,
+     "vz": -1.559201463761901
+    },
+    {
+     "jd": 2469807.5,
+     "x": 5603179974.30254,
+     "y": -2263844031.85989,
+     "z": -1378501176.657452,
+     "vx": 2.416647425244709,
+     "vy": 3.643462574681404,
+     "vz": -1.091844233953204
+    },
+    {
+     "jd": 2488069.5,
+     "x": 5935341284.19266,
+     "y": 3725700243.102945,
+     "z": -2115792370.282448,
+     "vx": -1.696046572706027,
+     "vy": 3.287653659058255,
+     "vz": 0.1380499436215397
     }
    ]
   }

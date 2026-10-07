@@ -39,7 +39,7 @@ const propagate = propagateKeplerOrbit as unknown as PropagateFn;
 describe('planet positions vs JPL Horizons 1900-2100 snapshot', () => {
   it('ships a structurally valid, multi-epoch, provenanced fixture', () => {
     expect(validateFixture(fixture)).toEqual([]);
-    expect(Object.keys(fixture.bodies).length).toBe(8);
+    expect(Object.keys(fixture.bodies).length).toBe(9); // eight planets + Pluto
     // The single-epoch trap: a model anchored at J2000 that drifts passes one
     // epoch by construction. Six epochs over two centuries is the whole point.
     expect(fixture._epochs.length).toBeGreaterThanOrEqual(MIN_EPOCHS);
@@ -98,8 +98,8 @@ describe('planet positions vs JPL Horizons 1900-2100 snapshot', () => {
     });
   }
 
-  it('keeps the aggregate error over all 48 planet x epoch rows within budget', () => {
-    expect(allRows.length).toBe(48);
+  it('keeps the aggregate error over all 54 planet x epoch rows within budget', () => {
+    expect(allRows.length).toBe(54);
     const totalKm = allRows.reduce((sum, r) => sum + r.errKm, 0);
     expect(
       totalKm,
