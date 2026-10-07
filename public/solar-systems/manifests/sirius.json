@@ -5,6 +5,7 @@
   "epoch_jd": 2451545.0,
   "fidelity_tier": "B",
   "sources": [
+    "Bond et al. 2017, ApJ 840, 70 (arXiv:1703.10625), Tables 4-6: relative visual orbit, parallax and dynamical masses",
     "Gaia EDR3 / VizieR J/A+A/650/A201",
     "USNO ORB6 binary-orbit references",
     "NASA Exoplanet Archive system search (no confirmed Sirius planets as of 2026-03-21)"
@@ -16,7 +17,7 @@
       "id": "sirius-a",
       "name": "Sirius A",
       "type": "star",
-      "mass_kg": 4.018e30,
+      "mass_kg": 4.1022e30,
       "radius_km": 1190000,
       "display_radius_au": 0.034,
       "color": "#dceeff",
@@ -28,22 +29,22 @@
       "name": "Sirius B",
       "type": "star",
       "parent_id": "sirius-a",
-      "mass_kg": 2.063e30,
+      "mass_kg": 2.0243e30,
       "radius_km": 5840,
       "display_radius_au": 0.014,
       "color": "#e6f2ff",
       "rotation_period_hours": 24,
       "orbit": {
-        "a_au": 20.1,
-        "e": 0.592,
-        "i_deg": 136.5,
-        "ascending_node_deg": 45.5,
-        "arg_periapsis_deg": 147.3,
-        "mean_anomaly_deg": 88.0,
-        "period_days": 18309.0,
+        "a_au": 19.7828,
+        "e": 0.59142,
+        "i_deg": 136.336,
+        "ascending_node_deg": 45.4,
+        "arg_periapsis_deg": 149.161,
+        "mean_anomaly_deg": 38.985,
+        "period_days": 18309.41,
         "epoch_jd": 2451545.0
       },
-      "notes": "Observed white dwarf companion orbit."
+      "notes": "Observed white dwarf companion orbit (Bond et al. 2017): sky-plane relative visual orbit, a = 7.4957 arcsec at the adopted parallax 0.3789 arcsec; masses 2.063 and 1.018 Msun; mean anomaly from periastron 1994.5715."
     }
   ],
   "planets": []
