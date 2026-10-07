@@ -31,36 +31,53 @@ AU_M = 1.496e11         # AU in meters
 # Galactic parameters
 OMEGA_0 = 8.4e-16       # Solar orbital angular velocity [rad/s] (26 km/s/kpc)
 RHO_0 = 0.1 * M_SUN / PC_M**3  # Local disk density [kg/m³] ≈ 6.77e-21
+KM_S_KPC = 1.0e3 / (1.0e3 * PC_M)  # 1 km/s/kpc in 1/s
+OORT_A = 15.3 * KM_S_KPC   # Oort constants (Bovy 2017)
+OORT_B = -11.9 * KM_S_KPC
+
+# Heisler & Tremaine (1986) tidal tensor on galactic axes (x radial, y along rotation, z to NGP):
+#   a_x = +(A - B)(3A + B) x   -- a radial STRETCH, not a pull toward the Sun
+#   a_y = -(A - B)^2 y
+#   a_z = -[4 pi G rho_0 - 2(B^2 - A^2)] z
+TIDE_XX = (OORT_A - OORT_B) * (3.0 * OORT_A + OORT_B)
+TIDE_YY = -((OORT_A - OORT_B) ** 2)
+TIDE_ZZ = -(4.0 * math.pi * G_CONST * RHO_0 - 2.0 * (OORT_B**2 - OORT_A**2))
+
+
+def _unit(v):
+    n = math.sqrt(sum(c * c for c in v))
+    return [c / n for c in v]
+
+
+def _radec_to_ecliptic(ra_deg, dec_deg, obliquity_deg=23.4392911):
+    ra, dec, eps = (math.radians(a) for a in (ra_deg, dec_deg, obliquity_deg))
+    x, y, z = math.cos(dec) * math.cos(ra), math.cos(dec) * math.sin(ra), math.sin(dec)
+    return [x, y * math.cos(eps) + z * math.sin(eps), -y * math.sin(eps) + z * math.cos(eps)]
+
+
+# Galactic axes in ecliptic J2000 coordinates, from the IAU galactic pole and centre (ICRS).
+_GAL_Z = _unit(_radec_to_ecliptic(192.85948, 27.12825))
+_gc = _radec_to_ecliptic(266.40510, -28.93617)
+_GAL_X = _unit([c - sum(a * b for a, b in zip(_gc, _GAL_Z)) * z for c, z in zip(_gc, _GAL_Z)])
+_GAL_Y = [_GAL_Z[1] * _GAL_X[2] - _GAL_Z[2] * _GAL_X[1],
+          _GAL_Z[2] * _GAL_X[0] - _GAL_Z[0] * _GAL_X[2],
+          _GAL_Z[0] * _GAL_X[1] - _GAL_Z[1] * _GAL_X[0]]
 
 
 def galactic_tidal_acceleration_si(x_m, y_m, z_m):
     """
-    Compute galactic tidal acceleration in the local galactic rest frame.
-    
-    The Heisler & Tremaine (1986) linearized tidal field in the
-    rotating Sun-centered galactic frame:
-    
-        a_x = -Ω₀² × x                     (radial toward galactic center)
-        a_z = -(4πGρ₀ - Ω₀²) × z           (vertical, perpendicular to disk)
-        a_y = -Ω₀² × y                     (azimuthal)
-    
-    Note: the z-component (perpendicular to galactic disk) is ~5× stronger
-    than the x,y components because 4πGρ₀ >> Ω₀².
-    
-    Parameters:
-        x_m, y_m, z_m: position relative to Sun [meters], 
-                         in local galactic frame
-    Returns:
-        (ax, ay, az): tidal acceleration [m/s²]
+    Galactic tidal acceleration [m/s^2] for a heliocentric ECLIPTIC J2000 position [m].
+
+    The Heisler & Tremaine (1986) tensor is diagonal on galactic axes, so the position is
+    rotated onto them, scaled, and rotated back. Applying the diagonal tensor directly to
+    ecliptic coordinates (as this module used to) points the strong vertical tide ~60 deg
+    away from the galactic pole.
     """
-    omega2 = OMEGA_0 ** 2
-    vertical_term = 4 * math.pi * G_CONST * RHO_0 - omega2
-    
-    ax = -omega2 * x_m
-    ay = -omega2 * y_m
-    az = -vertical_term * z_m  # This dominates (vertical tide)
-    
-    return (ax, ay, az)
+    r = (x_m, y_m, z_m)
+    gx = sum(a * b for a, b in zip(r, _GAL_X)) * TIDE_XX
+    gy = sum(a * b for a, b in zip(r, _GAL_Y)) * TIDE_YY
+    gz = sum(a * b for a, b in zip(r, _GAL_Z)) * TIDE_ZZ
+    return tuple(gx * _GAL_X[i] + gy * _GAL_Y[i] + gz * _GAL_Z[i] for i in range(3))
 
 
 def galactic_tidal_acceleration_au(x_au, y_au, z_au):
@@ -117,9 +134,8 @@ def rebound_galactic_tide_callback(reb_sim):
     Usage:
         reb_sim.additional_forces = rebound_galactic_tide_callback
     
-    Note: Assumes REBOUND simulation uses AU, solar masses, yr units.
-    Coordinate system should be aligned with the local galactic frame
-    (z perpendicular to disk plane).
+    Note: Assumes REBOUND simulation uses AU, solar masses, yr units, in heliocentric
+    ecliptic J2000 coordinates (rotated onto galactic axes internally).
     """
     sun = reb_sim.particles[0]
     
