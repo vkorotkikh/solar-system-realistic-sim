@@ -88,7 +88,7 @@ def _orthonormal_basis(base: tuple[float, float, float]) -> tuple[tuple[float, f
 def _differential_rotation_rad_day(lat_rad: float) -> float:
     sin_lat = math.sin(lat_rad)
     sin2 = sin_lat * sin_lat
-    # Snodgrass-like differential rotation profile (deg/day).
+    # Snodgrass & Ulrich (1990) sidereal photospheric Doppler profile (deg/day).
     deg_per_day = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2
     return deg_per_day * math.pi / 180.0
 
@@ -1091,7 +1091,7 @@ class SolarCoronaPhysicsModel:
             "cycle_phase_rad": cycle_phase,
             "data_assimilation": assimilation,
             "surface": {
-                "differential_rotation_model": "snodgrass_1983_like",
+                "differential_rotation_model": "snodgrass_ulrich_1990",
                 "activity_cycle_model": "hathaway_2015_normalized",
                 "activity_cycle_params": {
                     "b_months": HATHAWAY_B,
