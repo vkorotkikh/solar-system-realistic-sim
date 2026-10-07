@@ -37,6 +37,8 @@ export interface SolarDataStatusInput {
     effective_forcing?: string;
     forcing_status?: { observed_input_status?: string };
   } | null;
+  /** Whether backend geometry (spots, loops, holes, spiral) is drawn, or only its activity level. */
+  geometryFromBackend: boolean;
   /** Channel of the AIA image currently drawn on the Sun, set only after it loaded. */
   displayedImageChannel: string | null;
   /** Channel of the most recent image load that failed, cleared by a successful load. */
@@ -181,7 +183,8 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
     const imageUnavailable = input.failedImageChannel !== null && input.displayedImageChannel === null;
     return {
       state: 'backend',
-      text: `Sun: backend solar model (${describeForcing(input.payload)}${describeObservationImage(input)})`
+      text: `Sun: ${input.geometryFromBackend ? 'backend solar model' : 'backend activity, procedural features'}`
+        + ` (${describeForcing(input.payload)}${describeObservationImage(input)})`
         + ` · updated ${formatUtcMinute(input.lastSuccessMs)}`,
       announcementKey: imageUnavailable ? 'backend:image-unavailable' : 'backend',
       announcement: imageUnavailable

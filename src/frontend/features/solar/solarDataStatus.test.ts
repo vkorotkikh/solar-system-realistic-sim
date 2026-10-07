@@ -18,6 +18,7 @@ function input(overrides: Partial<SolarDataStatusInput> = {}): SolarDataStatusIn
     backendBaseUrl: 'http://localhost:8042',
     pageOrigin: 'http://localhost:4173',
     payload: null,
+    geometryFromBackend: true,
     displayedImageChannel: null,
     failedImageChannel: null,
     ...overrides,
@@ -89,6 +90,13 @@ describe('describeSolarDataStatus', () => {
       text: 'Sun: backend solar model (synthetic forcing, observations disabled until validated; AIA 94 image) · updated 14:03 UTC',
       announcementKey: 'backend',
     });
+  });
+
+  it('says only the activity is from the backend while its geometry is not drawn', () => {
+    const status = describeSolarDataStatus(input({ lastSuccessMs: SUCCESS_MS, payload: HYBRID_PAYLOAD, geometryFromBackend: false }));
+    expect(status.text).toBe(
+      'Sun: backend activity, procedural features (synthetic forcing, observations disabled until validated) · updated 14:03 UTC'
+    );
   });
 
   it('keeps the drawn image and names a replacement that failed to load', () => {

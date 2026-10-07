@@ -2,6 +2,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Camera, Texture, TextureLoader } from 'three';
 
 import { createSunController } from './sunController';
+import {
+  updateSunCoronalLoopsFromBlendView,
+  updateSunParkerSpiralFromPhysicsState,
+  updateSunspotUniforms
+} from './frontend/features/solar/sunVisuals';
+
+// Call-through spies: every test still draws with the real functions.
+vi.mock('./frontend/features/solar/sunVisuals', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./frontend/features/solar/sunVisuals')>();
+  return {
+    ...actual,
+    updateSunCoronalLoopsFromBlendView: vi.fn(actual.updateSunCoronalLoopsFromBlendView),
+    updateSunParkerSpiralFromPhysicsState: vi.fn(actual.updateSunParkerSpiralFromPhysicsState),
+    updateSunspotUniforms: vi.fn(actual.updateSunspotUniforms)
+  };
+});
 
 function responseWith(payload: unknown, status = 200): Response {
   return {
@@ -275,6 +291,54 @@ describe('sun controller solar delivery', () => {
         textureLoaded: false
       }
     });
+    controller.disposeSolarDelivery();
+  });
+
+  it('keeps backend geometry off-screen until its frame is validated, and says so', async () => {
+    const jdTdb = 2_460_000.5;
+    const physicsPayload = {
+      schema: { name: 'solar_physics_state', version: 2 },
+      epoch_jd_tdb: jdTdb,
+      wall_epoch_jd_tdb: jdTdb,
+      jd_time_scale: 'TDB',
+      forcing: 'hybrid',
+      effective_forcing: 'synthetic',
+      live_data_requested: true,
+      live_data_enabled: false,
+      fallback_reason: 'disabled_unvalidated',
+      forcing_status: {
+        requested: 'hybrid',
+        effective: 'synthetic',
+        observed_input_status: 'disabled_unvalidated',
+        runtime_eligible: false,
+        fallback_reason: 'disabled_unvalidated'
+      },
+      activity_index: 0.42,
+      corona: { features: [{ id: 'loop-1', kind: 'loop', brightness: 1, arc: [[1, 0, 0], [1.2, 0.3, 0], [1, 0.5, 0]] }] },
+      heliosphere: { parker_spiral: { lines: [{ id: 'arm-0', arc: [[1.1, 0, 0], [200, 40, 0], [400, 120, 0]], wind_speed_kms: 420 }] } }
+    };
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => (
+      String(input).includes('/solar/physics') ? responseWith(physicsPayload) : Promise.reject(new Error('offline'))
+    )));
+    const onSolarDataStatus = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: jdTdb },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load: vi.fn() } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.3755,
+      isMagneticFieldEnabled: () => false,
+      onSolarDataStatus
+    });
+    controller.maybeRefreshPhysics(Date.now(), true);
+    await vi.waitFor(() => expect(onSolarDataStatus.mock.lastCall?.[0]?.state).toBe('backend'));
+    controller.update(jdTdb, 1);
+
+    expect(vi.mocked(updateSunParkerSpiralFromPhysicsState).mock.lastCall?.[1]).toBeNull();
+    expect(vi.mocked(updateSunCoronalLoopsFromBlendView).mock.lastCall?.[1]).toBeNull();
+    expect(vi.mocked(updateSunspotUniforms).mock.lastCall?.[3]).toBeUndefined();
+    expect(onSolarDataStatus.mock.lastCall?.[0]?.text).toContain('Sun: backend activity, procedural features');
     controller.disposeSolarDelivery();
   });
 
