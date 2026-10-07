@@ -1,5 +1,19 @@
 # H-1 remediation plan: getting the backend solar model onto the screen
 
+> **Display phase 2026-10-07 (branch `fix/solar-display-truth`, stacked on the chip branch, unmerged).** Owner decisions:
+> D3 (b), D4 (a), D10 (a) and D17 start now. Done, each with a test that fails without it:
+> - **H2.4:** backend geometry gated (`BACKEND_GEOMETRY_VALIDATED = false`); the chip says "backend activity, procedural features".
+> - **H2.2:** D3 scale (`coronalToDisplay`, k = 0.15; Parker spiral at true AU, clipped). Old code: spiral 242 AU, loop 1.77 AU.
+>   New code: about 3.0 AU and at most 0.60 AU. A "not to scale" note sits under the Realistic-scale toggle.
+> - **H2.3:** flares visible. CMEs grow to their D3 extent over the flash, as a time-lapse (this touches D5, still open).
+> - **H2.5:** D10, shaders in the body frame. The rendered check used thresholds registered before the change: side-view
+>   polar/equatorial limb ratio 5.69 → 0.147 (pass < 0.8); pole-on limb CV 0.89 → 0.136 (pass < 0.3).
+>   Evidence: `$SP/h2-d10/`.
+> - **H2.6:** D4, white light in Auto.
+>
+> Still open in H2: H2.7 stale-state clearing, H2.8 field-line rebuild signature, H2.9 blending, H2.10 header badge, and the
+> wall-time differential-rotation drift.
+
 > **Status update 2026-10-07 (read first).** `main` moved to `17d1e63`. It now contains `sun-focus` (merged, so the
 > OP-P0 reconcile is done) and the R3/R4 PFSS remediation, merged on 2026-09-27. Re-baseline before following the phases below:
 > - **Done on branch `fix/solar-status-chip-on-main`** (from `main`, unmerged):
