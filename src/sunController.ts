@@ -554,7 +554,9 @@ export function createSunController({
       revokeSolarObservationTexture();
     }
     const observationTextureUsable = loadedObservationMatches(observationSelection);
-    const activeObservationChannel = observationTextureUsable
+    // Owner decision D4: in Auto the image still loads and is placed on the Sun, but the
+    // false-colour EUV tint applies only once the user picks a wavelength.
+    const activeObservationChannel = observationTextureUsable && userAiaChannelOverride
       ? observationSelection?.channel ?? null
       : null;
     const observationControls = deriveSunObservationControls(
@@ -562,7 +564,7 @@ export function createSunController({
       activity,
       activeObservationChannel,
       {
-        selectedChannel: observationSelection?.channel ?? activeObservationChannel,
+        selectedChannel: userAiaChannelOverride ? observationSelection?.channel ?? activeObservationChannel : null,
         selectedImageDate: observationSelection?.imageDate ?? null,
         hasObservationTexture: observationTextureUsable,
         spatialUseEligible: observationTextureUsable

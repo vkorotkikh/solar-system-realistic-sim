@@ -4,6 +4,7 @@ import type { Camera, Texture, TextureLoader } from 'three';
 import { createSunController } from './sunController';
 import {
   updateSunCoronalLoopsFromBlendView,
+  updateSunMaterialUniforms,
   updateSunParkerSpiralFromPhysicsState,
   updateSunspotUniforms
 } from './frontend/features/solar/sunVisuals';
@@ -14,6 +15,7 @@ vi.mock('./frontend/features/solar/sunVisuals', async (importOriginal) => {
   return {
     ...actual,
     updateSunCoronalLoopsFromBlendView: vi.fn(actual.updateSunCoronalLoopsFromBlendView),
+    updateSunMaterialUniforms: vi.fn(actual.updateSunMaterialUniforms),
     updateSunParkerSpiralFromPhysicsState: vi.fn(actual.updateSunParkerSpiralFromPhysicsState),
     updateSunspotUniforms: vi.fn(actual.updateSunspotUniforms)
   };
@@ -149,6 +151,39 @@ describe('sun controller solar delivery', () => {
       spatialUse: 'disabled',
       activeRenderChannel: null
     });
+    controller.disposeSolarDelivery();
+  });
+
+  it('keeps the white-light look in Auto and tints only for a chosen wavelength', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => (
+      String(input).includes('/solar/realtime') ? responseWith(realtimePayload(true)) : Promise.reject(new Error('offline'))
+    )));
+    const settle: Array<(texture: Texture) => void> = [];
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => { settle.push(onLoad); });
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    const lastUniforms = () => vi.mocked(updateSunMaterialUniforms).mock.lastCall?.[0];
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    settle[0]({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    controller.update(2_460_000.5, 1);
+    expect(controller.getSolarDeliveryStatus().observation.textureLoaded).toBe(true);
+    expect(lastUniforms()).toMatchObject({ activeChannel: undefined, coronaHue: undefined });
+
+    controller.setAiaChannelOverride('aia_193');
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    settle[1]({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    controller.update(2_460_000.5, 2);
+    expect(lastUniforms()?.activeChannel).toBe('aia_193');
+    expect(lastUniforms()?.coronaHue).toBeDefined();
     controller.disposeSolarDelivery();
   });
 
