@@ -12,7 +12,8 @@
  * compares the heliocentric ecliptic-J2000 position against a committed JPL
  * Horizons snapshot. It needs no network: the truth values live in
  * scripts/fixtures/. The fixture targets planet BARYCENTRES (Horizons ids 1..9),
- * which is what the Standish table describes; id 3 is the Earth-Moon barycentre.
+ * which is what the Standish table describes -- except Earth, whose truth is the
+ * geocentre (399) because the catalog places Earth there rather than at the EMB.
  *
  * Two independent quantities are gated per planet (see src/sim/planetPositionCheck.ts):
  *   errKm  -- |r_model - r_horizons| at each epoch, against a per-planet budget;

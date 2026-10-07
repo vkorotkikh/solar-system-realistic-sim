@@ -25,10 +25,12 @@
  *   - src/sim/planetPositions.horizons.test.ts (the CI gate, one case per planet)
  *   - scripts/verify-planet-positions.mjs      (the planet x epoch diagnostic table)
  *
- * The fixture targets planet BARYCENTRES (Horizons ids 1..8), because those are the
- * bodies the Standish element table describes. Horizons id 3 is the EARTH-MOON
- * BARYCENTER, not Earth: comparing the model against Earth itself would add the
- * ~4700 km Earth/EMB offset as an irreducible floor.
+ * The fixture targets planet BARYCENTRES (Horizons ids 1..9), because those are the
+ * bodies the Standish element table describes -- except Earth. Standish "Earth" is the
+ * Earth-Moon barycentre, and the catalog moves Earth to the geocentre (EMB minus the Moon's
+ * mass fraction of r_moon), so Earth's truth is Horizons 399, Earth itself. The ~4,700 km
+ * offset sits inside Standish's own position error, so the gate pins it with Earth's
+ * VELOCITY (12 m/s off at the barycentre, < 1.5 m/s at the geocentre).
  */
 
 import type { CatalogBody, SolarCatalog } from './catalog';

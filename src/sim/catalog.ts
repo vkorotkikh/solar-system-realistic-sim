@@ -770,6 +770,14 @@ export function createSolarSystemCatalog(
     });
   }
 
+  // Standish's "Earth" elements are the Earth-Moon barycentre; put Earth at the geocentre
+  // (~4,700 km, ~12 m/s away). Mass fraction from the DE440 GM values, 4902.800118 / 403503.235625.
+  const earth = bodies.find((body) => body.id === 'earth');
+  const moon = bodies.find((body) => body.parentId === 'earth' && body.name === 'Moon');
+  if (earth?.orbit && moon?.orbit) {
+    earth.orbit = { ...earth.orbit, barycentreCompanion: { orbit: moon.orbit, massFraction: 0.01215058 } };
+  }
+
   applyDisplayScaleConstraints(bodies);
 
   const jumpBodyIds = [
