@@ -8,6 +8,7 @@ import server
 from server import app
 from sim.solar_realtime_data import SolarRealtimeFetchError
 
+pytestmark = pytest.mark.usefixtures("runner_independent_solar_deadline")
 client = TestClient(app)
 
 
@@ -170,12 +171,12 @@ def test_historical_response_uses_separate_current_wall_epoch(monkeypatch) -> No
 
     def fake_sample_state(epoch_jd_tdb: float, **kwargs):
         model_calls.append({"epoch": epoch_jd_tdb, **kwargs})
+        # Wall time is response metadata that the worker stamps after sampling;
+        # the model never receives it, so the fake returns none.
         return {
             "epoch_jd_tdb": epoch_jd_tdb,
-            "wall_epoch_jd_tdb": kwargs["wall_jd"],
             "jd_time_scale": "TDB",
             "epoch_jd": epoch_jd_tdb,
-            "wall_epoch_jd": kwargs["wall_jd"],
             "data_assimilation": {"mode": kwargs["forcing"]},
         }
 
@@ -195,7 +196,7 @@ def test_historical_response_uses_separate_current_wall_epoch(monkeypatch) -> No
     assert payload["wall_epoch_jd_tdb"] == payload["wall_epoch_jd"] == wall_epoch
     assert payload["wall_epoch_jd_tdb"] != payload["epoch_jd_tdb"]
     assert payload["jd_time_scale"] == "TDB"
-    assert model_calls[0]["wall_jd"] == wall_epoch
+    assert "wall_jd" not in model_calls[0]
 
 
 def test_solar_physics_rejects_conflicting_epoch_aliases_before_admission(monkeypatch) -> None:
@@ -295,16 +296,13 @@ def test_synthetic_and_hybrid_builders_never_request_realtime_data(monkeypatch) 
         max_features: int,
         forcing: str,
         realtime_data,
-        wall_jd: float,
     ):
         model_inputs.append(realtime_data)
         return {
             "data_assimilation": {"mode": forcing},
             "epoch_jd_tdb": _epoch_jd_tdb,
-            "wall_epoch_jd_tdb": wall_jd,
             "jd_time_scale": "TDB",
             "epoch_jd": _epoch_jd_tdb,
-            "wall_epoch_jd": wall_jd,
         }
 
     monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest", forbidden_provider)

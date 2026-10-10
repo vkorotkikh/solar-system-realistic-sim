@@ -53,3 +53,25 @@ class _ImagePngEqualitySpoof:
 @pytest.fixture
 def aia_png_equality_spoof() -> object:
     return _ImagePngEqualitySpoof()
+
+
+@pytest.fixture
+def runner_independent_solar_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep /solar/physics content tests independent of runner speed.
+
+    The production deadline (18 s, env-capped at 19 s) is a latency contract,
+    not a correctness one. GitHub's 2-vCPU runners need more than 18 s for a
+    high-fidelity PFSS request that finishes in about 10 s locally, which
+    turned five content tests into 503 solar_compute_timeout failures. Modules
+    whose tests request real PFSS output opt in with
+    ``pytestmark = pytest.mark.usefixtures("runner_independent_solar_deadline")``
+    and get the process supervisor's own hard cap (HARD_MAX_TIMEOUT_SECONDS,
+    60 s). Tests that exercise the deadline itself set
+    SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS in their body, which overrides this.
+    Not autouse: test_solar_process_endpoint asserts the configured deadline
+    stays under the 19 s HTTP cap.
+    """
+
+    server = sys.modules.get("server")
+    if server is not None:
+        monkeypatch.setattr(server, "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS", 60.0, raising=False)

@@ -116,7 +116,7 @@
     {
       "id": "uniform-theta-area-weights",
       "patch": "scripts/ci/mutations/uniform-theta-area-weights.patch",
-      "patch_sha256": "d50024f06e41d87019ee49759aea924bc0b0d940982cee96f2b1482775685959",
+      "patch_sha256": "5a27e5d4fb91b9a4954f42dea76c039ac5f8e37108bad5aed8e3ddd2630708ea",
       "production_files": [
         "backend/sim/magnetogram_grid.py"
       ],
