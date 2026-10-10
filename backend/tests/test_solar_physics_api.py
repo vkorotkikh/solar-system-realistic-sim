@@ -8,6 +8,7 @@ import server
 from server import app
 from sim.solar_realtime_data import SolarRealtimeFetchError
 
+pytestmark = pytest.mark.usefixtures("runner_independent_solar_deadline")
 client = TestClient(app)
 
 

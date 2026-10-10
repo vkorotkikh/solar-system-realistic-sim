@@ -11,6 +11,8 @@ for a fixed explicit epoch.
 """
 from __future__ import annotations
 
+import pytest
+
 import time
 
 from fastapi.testclient import TestClient
@@ -19,6 +21,7 @@ import server
 from server import app
 from sim.process_supervisor import ProcessSaturated
 
+pytestmark = pytest.mark.usefixtures("runner_independent_solar_deadline")
 client = TestClient(app)
 
 _JD = 2_461_000.5
