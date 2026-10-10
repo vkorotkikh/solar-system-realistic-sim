@@ -3,12 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.23.2",
+    "npm": "10.9.8"
+  },
   "scripts": {
     "dev": "vite",
     "dev:full": "node ./scripts/dev-full.mjs",
     "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
     "test": "vitest run",
+    "typecheck:ratchet": "node ./scripts/ci/typescript-error-ratchet.mjs",
     "phase1:asteroid-dataset": "python3 scripts/build_asteroid_phase1_dataset.py",
     "typecheck": "tsc --project tsconfig.json --strict --noEmit",
     "preview": "vite preview",

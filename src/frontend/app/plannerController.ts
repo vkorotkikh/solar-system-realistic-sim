@@ -258,6 +258,10 @@ function describeSearchStatus(result: PlannerResult): string[] {
   if (!search) return lines;
   if (search.truncated) {
     lines.push(`Search status: partial (${search.terminationReason ?? 'bounded limit reached'})`);
+  } else if (
+    search.terminationReason === 'assisted_routes_disabled_without_lambert_endpoint_velocities'
+  ) {
+    lines.push(`Search status: ${search.terminationReason}`);
   } else if (search.configuredFrontierCompleted) {
     const scope = search.searchSpaceExhaustive ? 'configured domain exhausted' : 'configured frontier completed';
     lines.push(`Search status: ${scope}`);

@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.12.13",
+    "requirements": {
+      "path": "ci/r3-r4-requirements.txt",
+      "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+    },
+    "packages": {
+      "astropy": "8.0.1",
+      "astropy-iers-data": "0.2026.9.21.0.56.25",
+      "iniconfig": "2.3.0",
+      "numpy": "2.5.2",
+      "packaging": "26.3",
+      "pluggy": "1.6.0",
+      "Pygments": "2.20.0",
+      "pyerfa": "2.0.1.5",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3",
+      "scipy": "1.18.0",
+      "typing_extensions": "4.16.0"
+    },
+    "variables": {
+      "LANG": "C.UTF-8",
+      "LC_ALL": "C.UTF-8",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONHASHSEED": "0",
+      "TZ": "UTC"
+    }
+  },
+  "inputs": [
+    {
+      "path": "ci/r3-r4-requirements.txt",
+      "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+    },
+    {
+      "path": "scripts/ci/verify_r3_r4.py",
+      "sha256": "aa0169fd9a6356a5c3d83f66a76460f7d0db98204a3027b654ce9925b6c2d42c"
+    },
+    {
+      "path": "backend/sim/spherical_harmonics.py",
+      "sha256": "d166e005fa5a460e062ba9f0139729719eb8d9281b55ffd39722ee2122a20fad"
+    },
+    {
+      "path": "backend/sim/magnetogram_grid.py",
+      "sha256": "85d923bd2d6fd7b367ba8f4296e5698e2648337cfb4da82e140b02d56f073047"
+    },
+    {
+      "path": "backend/sim/pfss_magnetogram.py",
+      "sha256": "944e851d62f7224d0d8df942d3c0f398ad0297e5756e70c381512645d0981185"
+    },
+    {
+      "path": "backend/sim/pfss_tracing.py",
+      "sha256": "b9658b25d7674b5bc82e0914fc5252718e7d54cb342af37e81eb961e35530fb0"
+    },
+    {
+      "path": "backend/tests/test_pfss_harmonics.py",
+      "sha256": "c04e3811e4d2c8aa3c346be3b07f3ab8f329aac1b3db47dbda3b82408819587b"
+    },
+    {
+      "path": "backend/tests/test_pfss_decomposition.py",
+      "sha256": "5f21f0380681ed620d643c1def20e51331f1b9ba175aa107376cdb9dad024140"
+    },
+    {
+      "path": "backend/tests/test_pfss_analytic_fields.py",
+      "sha256": "7cbd8bd6a23f65fe51a08f1a636798bbbe5d3a2d4c2b08675eaa292ae4192f36"
+    },
+    {
+      "path": "backend/tests/test_pfss_tracing.py",
+      "sha256": "da823c943135452eb1a92fb5aa08008069764cdb8ab09008339f3abe1f6d0c24"
+    },
+    {
+      "path": "backend/tests/test_wsa_semantics.py",
+      "sha256": "237fd86ffaffa7ed14c316331d20d174f86befe446aeb25c9adcfb33b5635188"
+    },
+    {
+      "path": "backend/tests/fixtures/pfss/harmonics_schmidt_v1.json",
+      "sha256": "f969b908369b259370a34663e86fec55ee03b6773a781e452bb9764166f8d504"
+    },
+    {
+      "path": "scripts/generate_pfss_harmonic_fixture.py",
+      "sha256": "1dfced4438d610a87bbbffd282d904ffba662fc2e20d263cff46a07f3af6d787"
+    }
+  ],
+  "pytest": {
+    "conftest_policy": "disabled",
+    "pythonpath": [
+      "backend"
+    ],
+    "required_nodes": [
+      "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
+      "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude"
+    ],
+    "timeout_seconds": 120
+  },
+  "mutations": [
+    {
+      "id": "old-legendre-recurrence",
+      "patch": "scripts/ci/mutations/old-legendre-recurrence.patch",
+      "patch_sha256": "17c8d50996443e50ee278413d2d9f038e6464751eb6b3e4a1105005290bd4274",
+      "production_files": [
+        "backend/sim/spherical_harmonics.py"
+      ],
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "expected_assertion_regex": "R4-LEGENDRE-RECURRENCE",
+      "fixed_commit": "1a6fcaaaf37e2be711a2a81533f8d28b4f171787",
+      "oracle_class": "immutable-independent-scipy-fixture"
+    },
+    {
+      "id": "uniform-theta-area-weights",
+      "patch": "scripts/ci/mutations/uniform-theta-area-weights.patch",
+      "patch_sha256": "5a27e5d4fb91b9a4954f42dea76c039ac5f8e37108bad5aed8e3ddd2630708ea",
+      "production_files": [
+        "backend/sim/magnetogram_grid.py"
+      ],
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "expected_assertion_regex": "R4-THETA-AREA-WEIGHTS",
+      "fixed_commit": "70af7c81ea40d0fd090423922d767949fb30c3e3",
+      "oracle_class": "analytic-area-integral"
+    },
+    {
+      "id": "extra-m-normalization",
+      "patch": "scripts/ci/mutations/extra-m-normalization.patch",
+      "patch_sha256": "b49556b4f6f78c093502f04b18da9adb6c209f713fe66202ce66856d199571d2",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "expected_assertion_regex": "R4-M-NORMALIZATION",
+      "fixed_commit": "70af7c81ea40d0fd090423922d767949fb30c3e3",
+      "oracle_class": "analytic-isolated-real-harmonic"
+    },
+    {
+      "id": "corrupt-source-surface-factor",
+      "patch": "scripts/ci/mutations/corrupt-source-surface-factor.patch",
+      "patch_sha256": "de68651d9bd1d80ab20c929bbbc8ca3d82905b20164b1a6f3cf218ba50948213",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
+      "expected_assertion_regex": "R4-PFSS-SOURCE-SURFACE",
+      "fixed_commit": "99b323166f2b51c3f44e8e9adf01b2fe36fefdc7",
+      "oracle_class": "analytic-potential-solution"
+    },
+    {
+      "id": "omit-exact-boundary-crossing",
+      "patch": "scripts/ci/mutations/omit-exact-boundary-crossing.patch",
+      "patch_sha256": "c185bdc6afaf411470926c60edd5bce33ee3ad86d15b390d04a6a52f438b2d57",
+      "production_files": [
+        "backend/sim/pfss_tracing.py"
+      ],
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "expected_assertion_regex": "R4-TRACE-EXACT-CROSSING",
+      "fixed_commit": "487a0efc13ceab74d769dd03f9a456f3772298ac",
+      "oracle_class": "analytic-shell-intersection"
+    },
+    {
+      "id": "wsa-vector-magnitude-expansion",
+      "patch": "scripts/ci/mutations/wsa-vector-magnitude-expansion.patch",
+      "patch_sha256": "c80e5772895af27711aa28da98bcb39805bc0ad9048303b6fa15d6509d869a69",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
+      "expected_assertion_regex": "R4-WSA-RADIAL-COMPONENT",
+      "fixed_commit": "8fd45d5fd20588edb7bcc7fcb585ce3ac3777799",
+      "oracle_class": "analytic-radial-flux-tube"
+    }
+  ]
+}

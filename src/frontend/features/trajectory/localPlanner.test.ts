@@ -31,6 +31,58 @@ function fixture(ids = ['earth', 'mars']) {
 }
 
 describe('bounded local trajectory fallback', () => {
+  it('rejects a moon origin with a structured empty outcome', () => {
+    const { model, bodyById } = fixture(['moon', 'mars']);
+    Object.assign(bodyById.get('moon')!, { type: 'moon' });
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'moon',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result).toEqual({
+      best: null,
+      alternatives: []
+    });
+  });
+
+  it('rejects a moon destination with a structured empty outcome', () => {
+    const { model, bodyById } = fixture(['earth', 'moon']);
+    Object.assign(bodyById.get('moon')!, { type: 'moon' });
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'moon',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result).toEqual({
+      best: null,
+      alternatives: []
+    });
+  });
+
+  it('continues to plan a valid planet-to-planet route', () => {
+    const { model, bodyById } = fixture();
+
+    const result = planInterplanetaryRoute(model, bodyById, {
+      fromId: 'earth',
+      toId: 'mars',
+      departureJd: 2_460_000,
+      maxAssists: 0,
+      assistPool: []
+    });
+
+    expect(result.best?.bodyRoute).toEqual(['earth', 'mars']);
+    expect(result.alternatives).toEqual([]);
+    expect(result.search?.configuredFrontierCompleted).toBe(true);
+  });
+
   it('preserves an explicitly empty assist pool', () => {
     const { model, bodyById } = fixture();
     const result = planInterplanetaryRoute(model, bodyById, {
@@ -105,7 +157,7 @@ describe('bounded local trajectory fallback', () => {
     ).toThrow(/ineligible assist/i);
   });
 
-  it('never returns or plots a flyby that violates v-infinity continuity', () => {
+  it('does not certify a requested local flyby without Lambert endpoint velocities', () => {
     const { model, bodyById } = fixture(['earth', 'venus', 'mars']);
     const result = planInterplanetaryRoute(model, bodyById, {
       fromId: 'earth',
@@ -119,58 +171,42 @@ describe('bounded local trajectory fallback', () => {
     const returnedRoutes = [result.best, ...result.alternatives].filter(Boolean);
     expect(returnedRoutes).toHaveLength(1);
     expect(returnedRoutes[0]?.bodyRoute).toEqual(['earth', 'mars']);
-    expect(returnedRoutes.every((route) => route!.assists.every((assist) => assist.feasible))).toBe(true);
+    expect(returnedRoutes[0]?.assists).toEqual([]);
+    expect(result.search).toMatchObject({
+      configuredFrontierCompleted: false,
+      topologySpaceExhaustive: false,
+      estimatedRouteCount: 2,
+      evaluatedTopologies: 1,
+      terminationReason: 'assisted_routes_disabled_without_lambert_endpoint_velocities'
+    });
   });
 
-  it('does not insert hidden propulsive burns at a certified interior flyby', () => {
-    const radii = new Map([
-      ['earth', 1.0],
-      ['venus', 1.2],
-      ['mars', 1.466941581048196]
+  it('does not certify flybys from the default assist pool and retains a direct route', () => {
+    const { model, bodyById } = fixture([
+      'mercury',
+      'venus',
+      'earth',
+      'mars',
+      'jupiter',
+      'saturn'
     ]);
-    const bodies = [...radii].map(([id, radiusAu]) => ({
-      id,
-      name: id,
-      massKg: 5.0e24,
-      radiusKm: 6_000,
-      type: 'planet',
-      orbit: {},
-      radiusAu
-    }));
-    const bodyById = new Map(bodies.map((body) => [body.id, body]));
-    const model = {
-      sampleBodyStateAt(id: string) {
-        const radiusAu = radii.get(id);
-        if (radiusAu == null) throw new Error(`Unknown body: ${id}`);
-        return {
-          position: new Vector3(radiusAu, 0, 0),
-          velocity: new Vector3(0, 0, 0)
-        };
-      }
-    };
-
     const result = planInterplanetaryRoute(model, bodyById, {
       fromId: 'earth',
       toId: 'mars',
       departureJd: 2_460_000,
-      objective: 'max_assist',
-      maxAssists: 1,
-      assistPool: ['venus']
+      objective: 'max_assist'
     });
-    const assisted = [result.best, ...result.alternatives].find(
-      (route) => route?.bodyRoute.length === 3
-    );
 
-    expect(assisted).toBeDefined();
-    expect(assisted?.assists[0].feasible).toBe(true);
-    expect(assisted?.assistGainMetric).toBe('patched_conic_velocity_deflection');
-    expect(assisted?.deltaVModel).toBe('endpoint_propulsive_burns_only');
-    expect(assisted?.totalDeltaVKmS).toBeCloseTo(
-      assisted!.legs[0].deltaVDepartureKmS +
-        assisted!.legs[assisted!.legs.length - 1].deltaVArrivalKmS,
-      12
-    );
-    expect(assisted!.legs[1].deltaVDepartureKmS).toBeGreaterThan(0);
+    expect(result.best?.bodyRoute).toEqual(['earth', 'mars']);
+    expect(result.best?.assists).toEqual([]);
+    expect(result.alternatives).toEqual([]);
+    expect(result.search).toMatchObject({
+      configuredFrontierCompleted: false,
+      topologySpaceExhaustive: false,
+      estimatedRouteCount: 5,
+      evaluatedTopologies: 1,
+      terminationReason: 'assisted_routes_disabled_without_lambert_endpoint_velocities'
+    });
   });
 
   it('rejects an unknown objective instead of silently treating it as distance', () => {

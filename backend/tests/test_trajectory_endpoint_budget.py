@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -106,15 +107,39 @@ def test_trajectory_capabilities_publish_runtime_limits_and_provider_policy() ->
     }
 
 
-def test_trajectory_ingress_middleware_order_is_cors_rate_then_body_limit() -> None:
+def test_network_ingress_order_is_shape_cors_auth_safe_body_rate_then_body_limit() -> None:
     middleware_classes = [entry.cls for entry in server.app.user_middleware]
 
+    assert middleware_classes.index(
+        server.NetworkRequestShapeMiddleware
+    ) < middleware_classes.index(server.CORSMiddleware)
     assert middleware_classes.index(server.CORSMiddleware) < middleware_classes.index(
+        server._NetworkAuthenticationMiddleware
+    )
+    assert middleware_classes.index(
+        server._NetworkAuthenticationMiddleware
+    ) < middleware_classes.index(
+        server.NetworkSafeMethodBodyMiddleware
+    )
+    assert middleware_classes.index(
+        server.NetworkSafeMethodBodyMiddleware
+    ) < middleware_classes.index(
         server._TrajectoryRateLimitMiddleware
     )
     assert middleware_classes.index(
         server._TrajectoryRateLimitMiddleware
     ) < middleware_classes.index(server._RequestBodyLimitMiddleware)
+
+
+def test_every_registered_post_route_has_streaming_body_limit() -> None:
+    registered_post_paths = {
+        route.path
+        for route in server.app.routes
+        if "POST" in getattr(route, "methods", set())
+    }
+
+    assert registered_post_paths
+    assert registered_post_paths <= server.TRAJECTORY_INGRESS_PATHS
 
 
 def test_server_side_resource_knobs_have_compile_time_ceiling() -> None:
@@ -219,6 +244,136 @@ def test_trajectory_rate_limiter_rejects_before_body_read_and_recovers_determini
     asyncio.run(invoke("192.0.2.11"))
     asyncio.run(invoke("192.0.2.12"))
     assert len(middleware._requests) <= 2
+
+
+def test_network_trajectory_rate_limit_uses_bounded_authenticated_subjects(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "network",
+                "SOLAR_PHYSICS_API_KEYS": "rate-limit-network-secret",
+            }
+        ),
+    )
+    inner_calls = 0
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+        clock=lambda: 100.0,
+    )
+
+    async def invoke(subject: str, host: str):
+        sent = []
+
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/trajectory/plan",
+                "headers": [],
+                "client": (host, 1234),
+                "state": {"authenticated_subject": subject},
+            },
+            receive,
+            send,
+        )
+        return sent
+
+    subject_a = f"credential:sha256:{'a' * 64}"
+    subject_b = f"credential:sha256:{'b' * 64}"
+    subject_c = f"credential:sha256:{'c' * 64}"
+
+    assert asyncio.run(invoke(subject_a, "10.0.0.9")) == []
+    assert asyncio.run(invoke(subject_b, "10.0.0.9")) == []
+    repeated_subject = asyncio.run(invoke(subject_a, "10.0.0.10"))
+    assert repeated_subject[0]["status"] == 429
+
+    assert asyncio.run(invoke(subject_c, "10.0.0.11")) == []
+    assert len(middleware._requests) == 2
+    assert set(middleware._requests) == {subject_a, subject_c}
+    assert inner_calls == 3
+
+
+def test_local_trajectory_rate_limit_retains_peer_identity(monkeypatch) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config({"SOLAR_SECURITY_PROFILE": "local"}),
+    )
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        lambda *_args: None,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+        clock=lambda: 100.0,
+    )
+    scope_a = {
+        "client": ("192.0.2.10", 1234),
+        "state": {"authenticated_subject": f"credential:sha256:{'a' * 64}"},
+    }
+    scope_b = {
+        "client": ("192.0.2.10", 1234),
+        "state": {"authenticated_subject": f"credential:sha256:{'b' * 64}"},
+    }
+
+    identity_a = middleware._identity(scope_a)
+    identity_b = middleware._identity(scope_b)
+
+    assert identity_a == "192.0.2.10"
+    assert identity_b == identity_a
+    assert middleware._retry_after(identity_a) is None
+    assert middleware._retry_after(identity_b) == 60
+
+
+def test_network_trajectory_rate_identity_rejects_oversized_subject(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "network",
+                "SOLAR_PHYSICS_API_KEYS": "bounded-rate-identity-secret",
+            }
+        ),
+    )
+    middleware = server._TrajectoryRateLimitMiddleware(
+        lambda *_args: None,
+        max_requests=1,
+        window_seconds=60.0,
+        max_identities=2,
+        paths={"/trajectory/plan"},
+    )
+    scope = {
+        "client": ("192.0.2.44", 1234),
+        "state": {"authenticated_subject": "x" * 10_000},
+    }
+
+    identity = middleware._identity(scope)
+
+    assert identity == "192.0.2.44"
+    assert len(identity.encode("utf-8")) <= 255
 
 
 def test_plan_rejects_duplicate_assists_before_worker_submission(monkeypatch) -> None:
@@ -347,6 +502,153 @@ def test_trajectory_body_limit_counts_chunked_messages_without_content_length() 
     assert inner_called is False
     assert sent[0]["type"] == "http.response.start"
     assert sent[0]["status"] == 413
+
+
+@pytest.mark.parametrize(
+    ("root_path", "path"),
+    [
+        ("/api", "/api/trajectory/plan"),
+        ("/", "//trajectory/plan"),
+        ("/api/", "/api//trajectory/plan"),
+    ],
+)
+def test_root_path_cannot_bypass_trajectory_streaming_body_limit(
+    root_path: str,
+    path: str,
+) -> None:
+    inner_called = False
+    sent = []
+    messages = iter(
+        [
+            {"type": "http.request", "body": b"12345", "more_body": True},
+            {"type": "http.request", "body": b"67890", "more_body": False},
+        ]
+    )
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_called
+        inner_called = True
+
+    async def receive():
+        return next(messages)
+
+    async def send(message):
+        sent.append(message)
+
+    middleware = server._RequestBodyLimitMiddleware(
+        inner,
+        max_body_bytes=8,
+        paths={"/trajectory/plan"},
+    )
+    asyncio.run(
+        middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "root_path": root_path,
+                "path": path,
+                "headers": [],
+            },
+            receive,
+            send,
+        )
+    )
+
+    assert inner_called is False
+    assert sent[0]["status"] == 413
+
+
+@pytest.mark.parametrize(
+    ("root_path", "path"),
+    [
+        ("/api", "/api/trajectory/plan"),
+        ("/", "//trajectory/plan"),
+        ("/api/", "/api//trajectory/plan"),
+    ],
+)
+def test_root_path_cannot_bypass_trajectory_rate_limit(
+    root_path: str,
+    path: str,
+) -> None:
+    inner_calls = 0
+    sent = []
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=1,
+        window_seconds=60.0,
+        paths={"/trajectory/plan"},
+    )
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "root_path": root_path,
+        "path": path,
+        "headers": [],
+        "client": ("192.0.2.10", 1234),
+    }
+
+    asyncio.run(middleware(scope, receive, send))
+    asyncio.run(middleware(scope, receive, send))
+
+    assert inner_calls == 1
+    assert sent[0]["status"] == 429
+
+
+def test_root_path_preserves_structured_trajectory_validation_contract() -> None:
+    sent: list[dict[str, object]] = []
+    request_messages = iter(
+        [{"type": "http.request", "body": b"{}", "more_body": False}]
+    )
+
+    async def receive():
+        return next(request_messages)
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(
+        server.app(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0"},
+                "http_version": "1.1",
+                "method": "POST",
+                "scheme": "https",
+                "root_path": "/api",
+                "path": "/api/trajectory/plan",
+                "raw_path": b"/api/trajectory/plan",
+                "query_string": b"",
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", b"2"),
+                ],
+                "client": ("198.51.100.10", 43100),
+                "server": ("backend.internal", 8042),
+            },
+            receive,
+            send,
+        )
+    )
+
+    start = next(message for message in sent if message["type"] == "http.response.start")
+    body = b"".join(
+        message.get("body", b"")
+        for message in sent
+        if message["type"] == "http.response.body"
+    )
+    assert start["status"] == 422
+    assert json.loads(body)["detail"]["code"] == "trajectory_request_validation_error"
 
 
 def test_trajectory_body_limit_rejects_unbounded_empty_chunk_stream() -> None:

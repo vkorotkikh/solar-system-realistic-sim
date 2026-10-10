@@ -221,7 +221,6 @@ export function resolveKeplerOrbitAtElapsedDays(
   // drawing, the UI readout and the satellite code all consume it. It no longer drives the mean
   // anomaly for bodies that carry a tabulated mean-longitude rate.
   const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
-
   const meanLongitudeRate = secularRates?.meanLongitudeDegPerCentury;
   // d(varpi)/dt, the rate Omega and argPeriapsis were just precessed at above. Both branches owe
   // it back to the mean anomaly (see THE APSIDAL INVARIANT on KeplerOrbitSecularRates). It is
@@ -253,7 +252,6 @@ export function resolveKeplerOrbitAtElapsedDays(
       ((orbit.meanAnomalyDeg ?? 0) + meanAnomalyDegPerCentury * centuriesSinceEpoch) % 360;
     meanAnomalyRad = normalizeRadians(degToRad(meanAnomalyDeg));
   }
-
   return {
     aAu: a,
     e,

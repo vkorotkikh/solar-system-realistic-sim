@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "typescript_version": "5.9.3",
+  "command": [
+    "tsc",
+    "--project",
+    "tsconfig.json",
+    "--strict",
+    "--noEmit",
+    "--pretty",
+    "false"
+  ],
+  "total_error_budget": 226,
+  "buckets": {
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339": 9,
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005": 14,
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006": 19,
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7034": 4,
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7053": 6,
+    "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2304": 1,
+    "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2339": 4,
+    "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006": 75,
+    "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7053": 1,
+    "src/frontend/features/trajectory/localPlanner.ts|TS2339": 3,
+    "src/frontend/features/trajectory/localPlanner.ts|TS7006": 21,
+    "src/frontend/rendering/lodManager.ts|TS2339": 3,
+    "src/frontend/rendering/lodManager.ts|TS7031": 8,
+    "src/frontend/rendering/milkyWay.ts|TS2345": 2,
+    "src/frontend/rendering/milkyWay.ts|TS2349": 1,
+    "src/frontend/rendering/milkyWay.ts|TS7006": 34,
+    "src/frontend/rendering/milkyWay.ts|TS7031": 3,
+    "src/main.ts|TS18049": 2,
+    "src/main.ts|TS2322": 3,
+    "src/main.ts|TS2339": 2,
+    "src/main.ts|TS7005": 1,
+    "src/main.ts|TS7006": 8,
+    "src/main.ts|TS7034": 1,
+    "src/main.ts|TS7053": 1
+  }
+}

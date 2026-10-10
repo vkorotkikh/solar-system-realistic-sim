@@ -7,7 +7,7 @@ over WebSocket, with on-demand Kuiper belt local dynamics.
 
 Run:
     cd backend && pip install -r requirements.txt
-    uvicorn server:app --host 0.0.0.0 --port 8042 --reload
+    uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers --ws-max-size 16384
 
 Protocol (WebSocket /ws/sim):
     Client → Server:
@@ -29,6 +29,9 @@ Protocol (WebSocket /ws/sim):
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
+import ipaddress
 import json
 import math
 import queue
@@ -36,13 +39,17 @@ import os
 import threading
 import time
 from collections import Counter, OrderedDict, deque
+from collections.abc import Mapping, MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
+from urllib.parse import parse_qsl, urlsplit
 
-from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,6 +60,12 @@ from benchmark import (
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
     generate_accuracy_report,
+)
+from http_ingress import (
+    NetworkRequestLimits,
+    NetworkRequestShapeMiddleware,
+    NetworkSafeMethodBodyMiddleware,
+    scope_route_path,
 )
 from data.bodies import ALL_BODIES
 from data.nearby_systems import (
@@ -86,8 +99,32 @@ from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
 from sim.rebound_nbody import REBOUNDEngine
-from sim.solar_physics import SolarCoronaPhysicsModel, utc_now_to_julian_date
-from sim.solar_realtime_data import SolarRealtimeDataProvider
+from sim.process_supervisor import (
+    DEFAULT_MAX_RESULT_BYTES,
+    HARD_MAX_PROCESS_QUEUE,
+    HARD_MAX_PROCESS_WORKERS,
+    HARD_MAX_RESULT_BYTES,
+    MIN_SUPPORTED_SOLAR_RESULT_BYTES,
+    ProcessCancelled,
+    ProcessCrashed,
+    ProcessResultRejected,
+    ProcessSaturated,
+    ProcessSubmissionFailed,
+    ProcessTimedOut,
+    ProcessWorkerFailed,
+    SupervisedProcessRunner,
+)
+from sim.solar_process_worker import (
+    build_solar_physics_state,
+    validate_solar_physics_result,
+)
+from sim.solar_physics import ObservedSolarInputUnavailable, SolarCoronaPhysicsModel
+from sim.solar_realtime_data import (
+    AiaImageIdentityMismatch,
+    SolarRealtimeDataProvider,
+    SolarRealtimeFetchError,
+)
+from sim.solar_time import current_jd_tdb
 from trajectory import (
     DEFAULT_ASSIST_POOL,
     TRAJECTORY_OBJECTIVES,
@@ -132,10 +169,23 @@ except Exception:
     TudatPyEngine = None  # type: ignore
     _TUDATPY_AVAILABLE = False
 
+@asynccontextmanager
+async def _app_lifespan(_application: FastAPI):
+    # FastAPI lifespan is the primary ownership boundary. Each application
+    # lifespan owns exactly one live runner and synchronously reaps its children
+    # before shutdown completes.
+    _get_solar_physics_runner()
+    try:
+        yield
+    finally:
+        _shutdown_solar_physics_runner()
+
+
 app = FastAPI(
     title="Solar System Simulation Backend",
     description="N-body gravitational simulation server for the Solar System Mission Lab.",
     version="0.1.0",
+    lifespan=_app_lifespan,
 )
 
 
@@ -189,7 +239,7 @@ class _RequestBodyLimitMiddleware:
         if (
             scope.get("type") != "http"
             or str(scope.get("method", "")).upper() != "POST"
-            or str(scope.get("path", "")) not in self.paths
+            or scope_route_path(scope) not in self.paths
         ):
             await self.app(scope, receive, send)
             return
@@ -294,7 +344,9 @@ class _RequestBodyLimitMiddleware:
 
 
 class _TrajectoryRateLimitMiddleware:
-    """Bound trajectory ingress per peer before reading or parsing its body."""
+    """Bound trajectory ingress by authenticated subject or local peer."""
+
+    IDENTITY_MAX_BYTES = 255
 
     def __init__(
         self,
@@ -317,6 +369,17 @@ class _TrajectoryRateLimitMiddleware:
 
     @staticmethod
     def _identity(scope: dict[str, Any]) -> str:
+        state = scope.get("state")
+        if SOLAR_SECURITY_CONFIG.profile == "network" and isinstance(state, Mapping):
+            authenticated_subject = state.get("authenticated_subject")
+            if isinstance(authenticated_subject, str) and authenticated_subject:
+                try:
+                    subject_bytes = authenticated_subject.encode("utf-8")
+                except UnicodeEncodeError:
+                    subject_bytes = b""
+                if len(subject_bytes) <= _TrajectoryRateLimitMiddleware.IDENTITY_MAX_BYTES:
+                    return authenticated_subject
+
         client = scope.get("client")
         if isinstance(client, (tuple, list)) and client:
             host = str(client[0]).strip()
@@ -351,7 +414,7 @@ class _TrajectoryRateLimitMiddleware:
         if (
             scope.get("type") != "http"
             or str(scope.get("method", "")).upper() not in {"GET", "POST"}
-            or str(scope.get("path", "")) not in self.paths
+            or scope_route_path(scope) not in self.paths
         ):
             await self.app(scope, receive, send)
             return
@@ -379,6 +442,326 @@ class _TrajectoryRateLimitMiddleware:
         await self.app(scope, receive, send)
 
 
+_DEFAULT_SOLAR_CORS_ALLOWED_ORIGINS = (
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+)
+SOLAR_FORWARDED_FOR_MAX_HOPS = 16
+SOLAR_FORWARDED_FOR_MAX_BYTES = 2_048
+SOLAR_API_KEY_MAX_COUNT = 64
+SOLAR_API_KEY_MAX_BYTES = 256
+SOLAR_TRUSTED_PROXY_MAX_CIDRS = 32
+SOLAR_TRUSTED_PROXY_CONFIG_MAX_BYTES = 4_096
+SOLAR_CORS_MAX_ORIGINS = 32
+SOLAR_CORS_ORIGIN_MAX_BYTES = 512
+NETWORK_REQUEST_LIMITS = NetworkRequestLimits(
+    max_path_bytes=2_048,
+    max_query_bytes=8_192,
+    max_header_count=64,
+    max_header_name_bytes=128,
+    max_header_value_bytes=8_192,
+    max_header_bytes=32 * 1_024,
+    max_body_bytes=64 * 1_024,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SolarSecurityConfig:
+    """Validated solar-endpoint trust boundary.
+
+    Raw credentials are deliberately reduced to one-way digests while the
+    environment is loaded. The resulting object is therefore safe to retain
+    for process lifetime and to include in diagnostic representations.
+    """
+
+    profile: str
+    api_key_hashes: frozenset[str]
+    trusted_proxy_networks: tuple[
+        ipaddress.IPv4Network | ipaddress.IPv6Network,
+        ...,
+    ]
+    cors_allowed_origins: tuple[str, ...]
+
+    @property
+    def authentication_required(self) -> bool:
+        return self.profile == "network" or bool(self.api_key_hashes)
+
+    @property
+    def default_bind_host(self) -> str:
+        return "127.0.0.1" if self.profile == "local" else "0.0.0.0"
+
+
+def _api_key_digest(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _load_solar_security_config(
+    environ: Mapping[str, str] | None = None,
+) -> SolarSecurityConfig:
+    """Load the explicit local/network security profile or fail startup.
+
+    The local default keeps the historical single-machine workflow. A network
+    deployment is never permitted to silently fall back to unauthenticated
+    solar endpoints.
+    """
+
+    source = os.environ if environ is None else environ
+    profile = source.get("SOLAR_SECURITY_PROFILE", "local").strip().lower()
+    if profile not in {"local", "network"}:
+        raise RuntimeError(
+            "SOLAR_SECURITY_PROFILE must be either 'local' or 'network'."
+        )
+
+    raw_api_keys = source.get("SOLAR_PHYSICS_API_KEYS", "")
+    if len(raw_api_keys.encode("utf-8")) > (
+        SOLAR_API_KEY_MAX_COUNT * (SOLAR_API_KEY_MAX_BYTES + 1)
+    ):
+        raise RuntimeError("SOLAR_PHYSICS_API_KEYS exceeds its byte limit.")
+    raw_keys = tuple(
+        token.strip()
+        for token in raw_api_keys.split(",")
+        if token.strip()
+    )
+    if len(raw_keys) > SOLAR_API_KEY_MAX_COUNT:
+        raise RuntimeError(
+            f"SOLAR_PHYSICS_API_KEYS cannot contain more than "
+            f"{SOLAR_API_KEY_MAX_COUNT} keys."
+        )
+    if any(len(token.encode("utf-8")) > SOLAR_API_KEY_MAX_BYTES for token in raw_keys):
+        raise RuntimeError(
+            f"Each SOLAR_PHYSICS_API_KEYS token is limited to "
+            f"{SOLAR_API_KEY_MAX_BYTES} bytes."
+        )
+    if any(
+        not token.isascii()
+        or any(not 33 <= ord(character) <= 126 for character in token)
+        for token in raw_keys
+    ):
+        raise RuntimeError(
+            "SOLAR_PHYSICS_API_KEYS tokens must contain printable ASCII "
+            "characters without whitespace."
+        )
+    if profile == "network" and not raw_keys:
+        raise RuntimeError(
+            "SOLAR_PHYSICS_API_KEYS must contain at least one key when "
+            "SOLAR_SECURITY_PROFILE=network."
+        )
+    api_key_hashes = frozenset(_api_key_digest(token) for token in raw_keys)
+
+    raw_proxy_cidrs = source.get("SOLAR_TRUSTED_PROXY_CIDRS", "")
+    if len(raw_proxy_cidrs.encode("utf-8")) > SOLAR_TRUSTED_PROXY_CONFIG_MAX_BYTES:
+        raise RuntimeError("SOLAR_TRUSTED_PROXY_CIDRS exceeds its byte limit.")
+    proxy_cidrs = tuple(
+        cidr.strip() for cidr in raw_proxy_cidrs.split(",") if cidr.strip()
+    )
+    if len(proxy_cidrs) > SOLAR_TRUSTED_PROXY_MAX_CIDRS:
+        raise RuntimeError(
+            f"SOLAR_TRUSTED_PROXY_CIDRS cannot contain more than "
+            f"{SOLAR_TRUSTED_PROXY_MAX_CIDRS} networks."
+        )
+    trusted_proxy_networks: list[
+        ipaddress.IPv4Network | ipaddress.IPv6Network
+    ] = []
+    for cidr in proxy_cidrs:
+        try:
+            trusted_proxy_networks.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError as exc:
+            raise RuntimeError(
+                f"SOLAR_TRUSTED_PROXY_CIDRS contains invalid CIDR {cidr!r}."
+            ) from exc
+
+    cors_raw = source.get("SOLAR_CORS_ALLOWED_ORIGINS")
+    if cors_raw is None:
+        cors_origins = (
+            _DEFAULT_SOLAR_CORS_ALLOWED_ORIGINS if profile == "local" else ()
+        )
+    else:
+        cors_origins = tuple(
+            origin.strip() for origin in cors_raw.split(",") if origin.strip()
+        )
+        if not cors_origins:
+            raise RuntimeError("SOLAR_CORS_ALLOWED_ORIGINS cannot be empty.")
+    if len(cors_origins) > SOLAR_CORS_MAX_ORIGINS:
+        raise RuntimeError(
+            f"SOLAR_CORS_ALLOWED_ORIGINS cannot contain more than "
+            f"{SOLAR_CORS_MAX_ORIGINS} origins."
+        )
+    if any(
+        len(origin.encode("utf-8")) > SOLAR_CORS_ORIGIN_MAX_BYTES
+        for origin in cors_origins
+    ):
+        raise RuntimeError("SOLAR_CORS_ALLOWED_ORIGINS contains an oversized origin.")
+    if any(origin == "*" for origin in cors_origins):
+        raise RuntimeError(
+            "SOLAR_CORS_ALLOWED_ORIGINS cannot contain the wildcard origin '*'."
+        )
+    for origin in cors_origins:
+        try:
+            parsed = urlsplit(origin)
+            parsed_port = parsed.port
+        except ValueError as exc:
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS contains an invalid origin."
+            ) from exc
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or (
+                parsed_port is not None
+                and not 1 <= parsed_port <= 65_535
+            )
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
+            )
+
+    return SolarSecurityConfig(
+        profile=profile,
+        api_key_hashes=api_key_hashes,
+        trusted_proxy_networks=tuple(trusted_proxy_networks),
+        cors_allowed_origins=tuple(cors_origins),
+    )
+
+
+SOLAR_SECURITY_CONFIG = _load_solar_security_config()
+SOLAR_CORS_ALLOWED_ORIGINS = list(SOLAR_SECURITY_CONFIG.cors_allowed_origins)
+NETWORK_PUBLIC_HTTP_ROUTES = frozenset(
+    {
+        ("GET", "/health/live"),
+        ("HEAD", "/health/live"),
+    }
+)
+
+
+def _merge_network_protected_response_headers(message: dict[str, Any]) -> None:
+    """Make an authenticated network response unusable as a shared cache entry."""
+
+    if message.get("type") != "http.response.start":
+        return
+
+    original_headers = list(message.get("headers", ()))
+    retained_headers: list[tuple[bytes, bytes]] = []
+    cache_directives: list[bytes] = []
+    vary_fields: list[bytes] = []
+    seen_cache_directives: set[bytes] = set()
+    seen_vary_fields: set[bytes] = set()
+
+    for raw_name, raw_value in original_headers:
+        name = bytes(raw_name)
+        value = bytes(raw_value)
+        lowered_name = name.lower()
+        if lowered_name == b"cache-control":
+            for raw_directive in value.split(b","):
+                directive = raw_directive.strip()
+                if not directive:
+                    continue
+                directive_name = directive.split(b"=", 1)[0].strip().lower()
+                if directive_name == b"public":
+                    continue
+                lowered_directive = directive.lower()
+                if lowered_directive not in seen_cache_directives:
+                    seen_cache_directives.add(lowered_directive)
+                    cache_directives.append(directive)
+            continue
+        if lowered_name == b"vary":
+            for raw_field in value.split(b","):
+                field = raw_field.strip()
+                if not field:
+                    continue
+                lowered_field = field.lower()
+                if lowered_field not in seen_vary_fields:
+                    seen_vary_fields.add(lowered_field)
+                    vary_fields.append(field)
+            continue
+        retained_headers.append((name, value))
+
+    for directive in (b"private", b"no-store"):
+        if directive not in seen_cache_directives:
+            seen_cache_directives.add(directive)
+            cache_directives.append(directive)
+
+    if b"*" not in seen_vary_fields:
+        for field in (b"Authorization", b"X-API-Key"):
+            lowered_field = field.lower()
+            if lowered_field not in seen_vary_fields:
+                seen_vary_fields.add(lowered_field)
+                vary_fields.append(field)
+
+    retained_headers.append((b"cache-control", b", ".join(cache_directives)))
+    if vary_fields:
+        retained_headers.append((b"vary", b", ".join(vary_fields)))
+    message["headers"] = retained_headers
+
+
+class _NetworkAuthenticationMiddleware:
+    """Authenticate every non-liveness HTTP request in network deployments.
+
+    This middleware deliberately runs before body buffering, rate admission,
+    request-model parsing, and endpoint code. CORS remains outside it so an
+    exact-origin browser receives CORS headers on an authentication failure and
+    standards-compliant preflight is answered without entering this boundary.
+    """
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        active_config = SOLAR_SECURITY_CONFIG
+        if scope.get("type") != "http" or active_config.profile != "network":
+            await self.app(scope, receive, send)
+            return
+
+        route = (
+            str(scope.get("method", "")).upper(),
+            scope_route_path(scope),
+        )
+        if route in NETWORK_PUBLIC_HTTP_ROUTES:
+            await self.app(scope, receive, send)
+            return
+
+        async def protected_send(message) -> None:
+            _merge_network_protected_response_headers(message)
+            await send(message)
+
+        subject = _authenticated_api_subject_from_scope(
+            scope,
+            config=active_config,
+        )
+        if subject is None:
+            response = JSONResponse(
+                status_code=401,
+                headers={"WWW-Authenticate": 'Bearer realm="solar-system-backend"'},
+                content={
+                    "detail": {
+                        "code": "authentication_required",
+                        "message": "Authentication is required for this network endpoint.",
+                        "retryable": False,
+                    }
+                },
+            )
+            await response(scope, receive, protected_send)
+            return
+
+        state = scope.setdefault("state", {})
+        state["authenticated_subject"] = subject
+        # Compatibility for the solar rate-identity path while callers migrate
+        # to the route-wide name.
+        state["solar_authenticated_subject"] = subject
+        await self.app(scope, receive, protected_send)
+
+
 def _load_env_csv(name: str, default: list[str]) -> list[str]:
     raw = os.getenv(name)
     if raw is None:
@@ -388,18 +771,6 @@ def _load_env_csv(name: str, default: list[str]) -> list[str]:
         return list(default)
     return values if values else list(default)
 
-
-SOLAR_CORS_ALLOWED_ORIGINS = _load_env_csv(
-    "SOLAR_CORS_ALLOWED_ORIGINS",
-    [
-        "http://localhost:3000",
-        "https://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-)
 
 def _load_env_int(name: str, default: int, *, min_value: int) -> int:
     raw = os.getenv(name)
@@ -444,6 +815,7 @@ def _load_bounded_env_float(
     """Load a floating-point knob within a compile-time safety envelope."""
     return min(max_value, _load_env_float(name, default, min_value=min_value))
 
+
 SUPPORTED_INTEGRATORS = ("ias15", "whfast", "mercurius")
 DEFAULT_INTEGRATOR = "ias15"
 DEFAULT_ENGINE = "rebound"
@@ -451,7 +823,52 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT = 16 * 1_024
+WS_SIM_COMMAND_MAX_BYTES = _load_bounded_env_int(
+    "WS_SIM_COMMAND_MAX_BYTES",
+    WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT,
+    min_value=256,
+    max_value=WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT,
+)
+WS_SIM_COMMAND_MAX_FIELDS = 8
+WS_SIM_COMMAND_MAX_DEPTH = 3
+_WS_SIM_COMMAND_FIELDS: dict[str, tuple[str, ...]] = {
+    "set_time_scale": ("days_per_sec",),
+    "pause": (),
+    "resume": (),
+    "set_julian_date": ("jd", "jd_time_scale"),
+    "activate_kuiper": ("center", "spread"),
+    "deactivate_kuiper": (),
+    "get_orbital_elements": ("body_id",),
+}
+WS_SIM_QUERY_MAX_BYTES = 4_096
+WS_SIM_QUERY_MAX_FIELDS = 32
+WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS = frozenset(
+    {
+        "access_token",
+        "api-key",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "bearer",
+        "token",
+        "x-api-key",
+        "x_api_key",
+    }
+)
 WS_SIM_CONNECTION_LIMIT = _load_env_int("WS_SIM_CONNECTION_LIMIT", 4, min_value=1)
+WS_SIM_PER_SUBJECT_CONNECTION_HARD_MAX = 8
+_WS_SIM_CONFIGURED_PER_SUBJECT_CONNECTION_LIMIT = _load_bounded_env_int(
+    "WS_SIM_PER_SUBJECT_CONNECTION_LIMIT",
+    2,
+    min_value=1,
+    max_value=WS_SIM_PER_SUBJECT_CONNECTION_HARD_MAX,
+)
+WS_SIM_PER_SUBJECT_CONNECTION_LIMIT = min(
+    _WS_SIM_CONFIGURED_PER_SUBJECT_CONNECTION_LIMIT,
+    max(1, WS_SIM_CONNECTION_LIMIT - 1),
+)
 WS_SIM_ALLOWED_ORIGINS = frozenset(
     _load_env_csv("WS_SIM_ALLOWED_ORIGINS", SOLAR_CORS_ALLOWED_ORIGINS)
 )
@@ -464,55 +881,165 @@ NEARBY_SYSTEMS_SCHEMA = {
     "version": NEARBY_SYSTEMS_SCHEMA_VERSION,
 }
 SOLAR_PHYSICS_MODEL = SolarCoronaPhysicsModel(seed=17, base_tube_count=540)
-SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(timeout_s=3.8, cache_ttl_s=120.0)
 
 
-SOLAR_PHYSICS_MAX_FEATURES = _load_env_int("SOLAR_PHYSICS_MAX_FEATURES", 256, min_value=64)
+SOLAR_PHYSICS_MAX_FEATURES = 256
 SOLAR_PHYSICS_MIN_FEATURES = 8
-SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_env_int(
+# Keep expensive solar calculations inside the validity envelope used by the
+# corona model and its time conversions. Operators may narrow this window but
+# cannot expand it beyond the reviewed two-century bound.
+J2000_JD = 2_451_545.0
+SOLAR_PHYSICS_JD_HALF_RANGE_DAYS = _load_bounded_env_float(
+    "SOLAR_PHYSICS_JD_HALF_RANGE_DAYS",
+    200.0 * 365.25,
+    min_value=365.25,
+    max_value=200.0 * 365.25,
+)
+SOLAR_PHYSICS_JD_MIN = J2000_JD - SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+SOLAR_PHYSICS_JD_MAX = J2000_JD + SOLAR_PHYSICS_JD_HALF_RANGE_DAYS
+SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW",
     36,
     min_value=2,
+    max_value=120,
 )
-SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_env_float(
+SOLAR_PHYSICS_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     "SOLAR_PHYSICS_RATE_WINDOW_SECONDS",
     60.0,
     min_value=1.0,
+    max_value=300.0,
 )
-SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_env_float(
-    "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
-    12.0,
-    min_value=0.5,
-)
-SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS = 19.0
+
+
+def _load_solar_physics_compute_timeout() -> float:
+    return _load_bounded_env_float(
+        "SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS",
+        18.0,
+        min_value=0.5,
+        max_value=SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS,
+    )
+
+
+SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS = _load_solar_physics_compute_timeout()
+_SOLAR_PHYSICS_LEGACY_WORKER_LIMIT = _load_bounded_env_int(
     "SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT",
     2,
     min_value=1,
-    max_value=2,
+    max_value=HARD_MAX_PROCESS_WORKERS,
 )
-SOLAR_PHYSICS_API_KEYS = frozenset(
-    key.strip() for key in os.getenv("SOLAR_PHYSICS_API_KEYS", "").split(",") if key.strip()
+SOLAR_PHYSICS_PROCESS_WORKERS = _load_bounded_env_int(
+    "SOLAR_PHYSICS_PROCESS_WORKERS",
+    _SOLAR_PHYSICS_LEGACY_WORKER_LIMIT,
+    min_value=1,
+    max_value=HARD_MAX_PROCESS_WORKERS,
+)
+SOLAR_PHYSICS_PROCESS_QUEUE = _load_bounded_env_int(
+    "SOLAR_PHYSICS_PROCESS_QUEUE",
+    2,
+    min_value=0,
+    max_value=HARD_MAX_PROCESS_QUEUE,
+)
+def _load_solar_physics_result_byte_limit() -> int:
+    return _load_bounded_env_int(
+        "SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES",
+        DEFAULT_MAX_RESULT_BYTES,
+        min_value=MIN_SUPPORTED_SOLAR_RESULT_BYTES,
+        max_value=HARD_MAX_RESULT_BYTES,
+    )
+
+
+SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES = _load_solar_physics_result_byte_limit()
+# Compatibility metric for operators that consumed the prior limit. It now
+# means concurrently running solar worker processes, not in-process threads.
+SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT = SOLAR_PHYSICS_PROCESS_WORKERS
+SOLAR_RATE_LIMIT_MAX_IDENTITIES = _load_bounded_env_int(
+    "SOLAR_RATE_LIMIT_MAX_IDENTITIES",
+    1_024,
+    min_value=16,
+    max_value=4_096,
 )
 
-SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_env_int(
+SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
+    "SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW",
+    36,
+    min_value=2,
+    max_value=120,
+)
+SOLAR_REALTIME_RATE_WINDOW_SECONDS = _load_bounded_env_float(
+    "SOLAR_REALTIME_RATE_WINDOW_SECONDS",
+    60.0,
+    min_value=1.0,
+    max_value=300.0,
+)
+SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT = _load_bounded_env_int(
+    "SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT",
+    2,
+    min_value=1,
+    max_value=8,
+)
+# This is an aggregate HTTP response deadline. Timed-out threads retain their
+# permit until the finite upstream acquisition exits, so detached work cannot
+# accumulate. The compile-time ceiling stays below the browser's 15 s timeout.
+SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS",
+    12.0,
+    min_value=0.5,
+    max_value=14.0,
+)
+
+SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW = _load_bounded_env_int(
     "SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW",
     60,
     min_value=2,
+    max_value=240,
 )
-SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_env_float(
+SOLAR_AIA_TILE_RATE_WINDOW_SECONDS = _load_bounded_env_float(
     "SOLAR_AIA_TILE_RATE_WINDOW_SECONDS",
     60.0,
     min_value=1.0,
+    max_value=300.0,
 )
-SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = _load_env_int(
-    "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
-    2,
-    min_value=1,
+SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX = 8
+SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS = 14.0
+
+
+def _load_solar_aia_tile_concurrent_request_limit() -> int:
+    return _load_bounded_env_int(
+        "SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT",
+        2,
+        min_value=1,
+        max_value=SOLAR_AIA_TILE_CONCURRENT_REQUEST_HARD_MAX,
+    )
+
+
+def _load_solar_aia_tile_request_timeout() -> float:
+    return _load_bounded_env_float(
+        "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS",
+        4.0,
+        min_value=0.5,
+        max_value=SOLAR_AIA_TILE_REQUEST_TIMEOUT_HARD_MAX_SECONDS,
+    )
+
+
+SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT = (
+    _load_solar_aia_tile_concurrent_request_limit()
 )
-SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_env_float(
-    "SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS",
-    4.0,
-    min_value=0.5,
+SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS = _load_solar_aia_tile_request_timeout()
+SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS = 0.05
+SOLAR_REALTIME_PROVIDER_TIMEOUT_SECONDS = max(
+    0.05,
+    min(
+        3.8,
+        SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS
+        - SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS,
+        SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS
+        - SOLAR_REALTIME_PROVIDER_DEADLINE_MARGIN_SECONDS,
+    ),
+)
+SOLAR_REALTIME_DATA = SolarRealtimeDataProvider(
+    timeout_s=SOLAR_REALTIME_PROVIDER_TIMEOUT_SECONDS,
+    cache_ttl_s=120.0,
 )
 TRAJECTORY_REQUEST_MAX_BODY_BYTES = _load_bounded_env_int(
     "TRAJECTORY_REQUEST_MAX_BODY_BYTES",
@@ -796,7 +1323,7 @@ async def _bounded_request_validation_error(
 ):
     """Keep trajectory-family schema failures on the public error contract."""
 
-    if request.url.path not in TRAJECTORY_INGRESS_PATHS:
+    if scope_route_path(request.scope) not in TRAJECTORY_INGRESS_PATHS:
         return await request_validation_exception_handler(request, exc)
     errors = [
         {
@@ -832,17 +1359,33 @@ app.add_middleware(
     paths=TRAJECTORY_INGRESS_PATHS,
 )
 app.add_middleware(
+    NetworkSafeMethodBodyMiddleware,
+    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
+    body_idle_timeout_s=2.0,
+)
+app.add_middleware(_NetworkAuthenticationMiddleware)
+app.add_middleware(
     CORSMiddleware,
     allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+)
+app.add_middleware(
+    NetworkRequestShapeMiddleware,
+    enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
+    limits=NETWORK_REQUEST_LIMITS,
+    cors_allowed_origins=frozenset(SOLAR_CORS_ALLOWED_ORIGINS),
 )
 
-_solar_physics_rate_locks: dict[str, deque[float]] = {}
+_solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_physics_rate_lock = threading.Lock()
-_solar_physics_concurrent_guard = threading.BoundedSemaphore(SOLAR_PHYSICS_CONCURRENT_REQUEST_LIMIT)
-_solar_aia_tile_rate_locks: dict[str, deque[float]] = {}
+_solar_realtime_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
+_solar_realtime_rate_lock = threading.Lock()
+_solar_realtime_concurrent_guard = threading.BoundedSemaphore(
+    SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT
+)
+_solar_aia_tile_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
 _solar_aia_tile_rate_lock = threading.Lock()
 _solar_aia_tile_concurrent_guard = threading.BoundedSemaphore(SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT)
 _trajectory_plan_concurrent_guard = threading.BoundedSemaphore(TRAJECTORY_PLAN_CONCURRENT_REQUEST_LIMIT)
@@ -853,11 +1396,20 @@ _benchmark_concurrent_guard = threading.BoundedSemaphore(BENCHMARK_CONCURRENT_RE
 _ws_sim_connection_guard = threading.BoundedSemaphore(WS_SIM_CONNECTION_LIMIT)
 _ws_sim_connection_lock = threading.Lock()
 _ws_sim_active_connections = 0
-# Heavy endpoint work never enters Starlette/AnyIO's shared request pool. This
-# preserves health/control-plane capacity even while a scientific calculation
-# is at its budget. One shared pool also bounds aggregate CPU work across solar,
-# trajectory, and mission endpoints instead of enforcing independent limits
-# that can add up to host-wide oversubscription.
+_ws_sim_active_connections_by_subject: dict[str, int] = {}
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class _WebSocketAdmissionLease:
+    """One exact, single-release ownership token for a WebSocket slot."""
+
+    authenticated_subject: str | None
+
+
+_ws_sim_active_leases: set[_WebSocketAdmissionLease] = set()
+# Trajectory and mission work never enters Starlette/AnyIO's shared request
+# pool. Solar/PFSS work is deliberately absent: it runs in killable, reaped
+# spawn children owned by the dedicated supervisor below.
 _heavy_compute_executor = ThreadPoolExecutor(
     max_workers=HEAVY_COMPUTE_THREAD_LIMIT,
     thread_name_prefix="solar-sim-compute",
@@ -866,86 +1418,478 @@ _aia_tile_executor = ThreadPoolExecutor(
     max_workers=SOLAR_AIA_TILE_CONCURRENT_REQUEST_LIMIT,
     thread_name_prefix="solar-aia-io",
 )
+_solar_realtime_executor = ThreadPoolExecutor(
+    max_workers=SOLAR_REALTIME_CONCURRENT_REQUEST_LIMIT,
+    thread_name_prefix="solar-realtime-io",
+)
+_solar_physics_runner_lifecycle_lock = threading.Lock()
 
 
-def _extract_solar_api_key(request: Request) -> str | None:
-    header_key = request.headers.get("x-api-key")
-    if header_key:
-        token = header_key.strip()
-        if token:
-            return token
-    auth = request.headers.get("authorization")
+def _new_solar_physics_runner() -> SupervisedProcessRunner:
+    return SupervisedProcessRunner(
+        "sim.solar_process_worker:execute_solar_physics_job",
+        max_workers=SOLAR_PHYSICS_PROCESS_WORKERS,
+        max_queue=SOLAR_PHYSICS_PROCESS_QUEUE,
+        max_result_bytes=SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES,
+        result_validator=validate_solar_physics_result,
+    )
+
+
+_solar_physics_runner = _new_solar_physics_runner()
+
+
+def _get_solar_physics_runner():
+    """Return a live runner without replacing quarantined child ownership."""
+
+    global _solar_physics_runner
+    with _solar_physics_runner_lifecycle_lock:
+        runner = _solar_physics_runner
+        if isinstance(runner, SupervisedProcessRunner):
+            snapshot = runner.snapshot()
+            if snapshot["closed"]:
+                if (
+                    snapshot["broken"]
+                    or snapshot["active_processes"]
+                    or snapshot["in_flight"]
+                ):
+                    raise ProcessSubmissionFailed(
+                        "solar process supervisor is quarantined with retained ownership"
+                    )
+                runner = _new_solar_physics_runner()
+                _solar_physics_runner = runner
+        return runner
+
+
+def _shutdown_solar_physics_runner() -> None:
+    """Terminate and reap all solar children during FastAPI lifespan shutdown."""
+
+    with _solar_physics_runner_lifecycle_lock:
+        runner = _solar_physics_runner
+    shutdown = getattr(runner, "shutdown", None)
+    if callable(shutdown):
+        shutdown()
+
+
+# Deliberately do not register a user ``atexit`` callback. Python joins
+# ThreadPoolExecutor workers before running user callbacks, so such a callback
+# cannot provide prompt fallback cleanup. If this module is used outside the
+# ASGI lifespan, each admitted supervisor job still has a hard deadline (at
+# most ``SOLAR_PHYSICS_HTTP_TIMEOUT_HARD_MAX_SECONDS``); its owner thread then
+# terminates and joins the child before normal interpreter exit can finish.
+
+
+def _bounded_unique_scope_header(
+    scope: Mapping[str, Any],
+    name: bytes,
+    *,
+    max_bytes: int,
+) -> tuple[bool, str | None]:
+    """Read one ASCII header without accepting duplicate-field ambiguity."""
+
+    value: bytes | None = None
+    aggregate_bytes = 0
+    matches = 0
+    for raw_name, raw_value in scope.get("headers", ()):
+        if bytes(raw_name).lower() != name:
+            continue
+        matches += 1
+        aggregate_bytes += len(raw_value)
+        if matches > 1 or aggregate_bytes > max_bytes:
+            return False, None
+        value = bytes(raw_value)
+    if value is None:
+        return True, None
+    try:
+        return True, value.decode("ascii")
+    except UnicodeDecodeError:
+        return False, None
+
+
+def _bounded_unique_request_header(
+    request: Request,
+    name: bytes,
+    *,
+    max_bytes: int,
+) -> tuple[bool, str | None]:
+    return _bounded_unique_scope_header(
+        request.scope,
+        name,
+        max_bytes=max_bytes,
+    )
+
+
+def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
+    api_key_valid, header_key = _bounded_unique_scope_header(
+        scope,
+        b"x-api-key",
+        max_bytes=SOLAR_API_KEY_MAX_BYTES,
+    )
+    auth_valid, auth = _bounded_unique_scope_header(
+        scope,
+        b"authorization",
+        max_bytes=SOLAR_API_KEY_MAX_BYTES + len("Bearer "),
+    )
+    if not api_key_valid or not auth_valid:
+        return None
+
+    api_key_token = header_key.strip() if header_key else ""
+    bearer_token = ""
     if auth and auth.lower().startswith("bearer "):
-        token = auth[7:].strip()
-        if token:
-            return token
+        bearer_token = auth[7:].strip()
+    if api_key_token and bearer_token:
+        return None
+    token = api_key_token or bearer_token
+    if token and len(token.encode("utf-8")) <= SOLAR_API_KEY_MAX_BYTES:
+        return token
     return None
 
 
-def _client_identity(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
-    return "anonymous"
+def _extract_solar_api_key(request: Request) -> str | None:
+    """Compatibility wrapper for existing solar endpoint tests and callers."""
+
+    return _extract_api_key_from_scope(request.scope)
 
 
-def _require_optional_solar_api_key(request: Request) -> str | None:
-    if not SOLAR_PHYSICS_API_KEYS:
+def _authenticated_api_subject_from_scope(
+    scope: Mapping[str, Any],
+    *,
+    config: SolarSecurityConfig,
+) -> str | None:
+    token = _extract_api_key_from_scope(scope)
+    if token is None:
         return None
-    token = _extract_solar_api_key(request)
-    if token is None or token not in SOLAR_PHYSICS_API_KEYS:
+    token_digest = _api_key_digest(token)
+    authenticated = False
+    for configured_digest in config.api_key_hashes:
+        # Evaluate every configured digest so key ordering does not become a
+        # credential-selection timing oracle.
+        authenticated = (
+            hmac.compare_digest(token_digest, configured_digest)
+            or authenticated
+        )
+    if not authenticated:
+        return None
+    return f"credential:sha256:{token_digest}"
+
+
+def _address_in_trusted_proxy_networks(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    config: SolarSecurityConfig,
+) -> bool:
+    return any(
+        address.version == network.version and address in network
+        for network in config.trusted_proxy_networks
+    )
+
+
+def _parse_ip_address(
+    raw: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    try:
+        return ipaddress.ip_address(raw.strip())
+    except ValueError:
+        return None
+
+
+def _client_identity(
+    request: Request,
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str:
+    """Return an authenticated subject or a validated network identity.
+
+    Forwarding headers are considered only when the ASGI peer is itself in an
+    explicitly configured trusted-proxy network. A right-to-left walk selects
+    the first non-trusted address, preventing intermediary proxy addresses from
+    fragmenting the store.
+    """
+
+    authenticated_subject = getattr(request.state, "authenticated_subject", None)
+    if not isinstance(authenticated_subject, str) or not authenticated_subject:
+        authenticated_subject = getattr(
+            request.state,
+            "solar_authenticated_subject",
+            None,
+        )
+    if isinstance(authenticated_subject, str) and authenticated_subject:
+        return authenticated_subject
+
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    peer_host = (
+        request.client.host.strip()
+        if request.client and request.client.host
+        else "anonymous"
+    )
+    peer_address = _parse_ip_address(peer_host)
+    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
+
+    forwarded_header_valid, forwarded_for = _bounded_unique_request_header(
+        request,
+        b"x-forwarded-for",
+        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
+    )
+    if (
+        not forwarded_header_valid
+        or not forwarded_for
+        or peer_address is None
+        or not _address_in_trusted_proxy_networks(peer_address, active_config)
+    ):
+        return f"peer:{peer_identity}"
+
+    raw_chain = forwarded_for.split(",")
+    if (
+        not raw_chain
+        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
+        or any(not item.strip() for item in raw_chain)
+    ):
+        return f"peer:{peer_identity}"
+    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
+    if any(address is None for address in parsed_chain):
+        return f"peer:{peer_identity}"
+
+    complete_chain = [
+        *(address for address in parsed_chain if address is not None),
+        peer_address,
+    ]
+    for address in reversed(complete_chain):
+        if not _address_in_trusted_proxy_networks(address, active_config):
+            return f"peer:{address}"
+    return f"peer:{complete_chain[0]}"
+
+
+def _require_optional_solar_api_key(
+    request: Request,
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str | None:
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    authenticated_subject = (
+        getattr(request.state, "authenticated_subject", None)
+        if config is None
+        else None
+    )
+    if not isinstance(authenticated_subject, str) or not authenticated_subject:
+        authenticated_subject = _authenticated_api_subject_from_scope(
+            request.scope,
+            config=active_config,
+        )
+    if active_config.authentication_required and authenticated_subject is None:
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid API key for solar endpoints.",
             headers={"WWW-Authenticate": "X-API-Key"},
         )
-    return token
+    if authenticated_subject is None:
+        return None
+    request.state.authenticated_subject = authenticated_subject
+    request.state.solar_authenticated_subject = authenticated_subject
+    return authenticated_subject
+
+
+def _reject_network_refresh_get(requested: bool) -> None:
+    """Keep explicit refresh work off legacy GET routes in network mode."""
+
+    if SOLAR_SECURITY_CONFIG.profile != "network" or not requested:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "code": "network_refresh_get_forbidden",
+            "message": "Explicit refresh is disabled for GET requests in network profile.",
+            "retryable": False,
+        },
+    )
+
+
+def _pop_oldest_rate_identity(
+    store: MutableMapping[str, deque[float]],
+) -> None:
+    if not store:
+        return
+    try:
+        store.popitem(last=False)  # type: ignore[call-arg]
+    except TypeError:
+        del store[next(iter(store))]
+
+
+def _move_rate_identity_to_end(
+    store: MutableMapping[str, deque[float]],
+    identity: str,
+) -> None:
+    move_to_end = getattr(store, "move_to_end", None)
+    if callable(move_to_end):
+        move_to_end(identity)
+
+
+def _record_solar_rate_request(
+    store: MutableMapping[str, deque[float]],
+    *,
+    identity: str,
+    now: float,
+    window_seconds: float,
+    max_requests: int,
+    max_identities: int,
+) -> int | None:
+    """Record one request in a bounded TTL/LRU sliding-window store."""
+
+    window = max(1.0, float(window_seconds))
+    request_limit = max(1, int(max_requests))
+    identity_limit = max(1, int(max_identities))
+    cutoff = float(now) - window
+
+    # OrderedDict insertion order is LRU order. Pruning from the cold end
+    # amortizes cleanup instead of turning every request into an O(cap) scan.
+    while store:
+        stored_identity = next(iter(store))
+        queue = store[stored_identity]
+        while queue and queue[0] <= cutoff:
+            queue.popleft()
+        if queue:
+            break
+        del store[stored_identity]
+
+    queue = store.get(identity)
+    if queue is None:
+        while len(store) >= identity_limit:
+            _pop_oldest_rate_identity(store)
+        queue = deque()
+        store[identity] = queue
+    else:
+        while queue and queue[0] <= cutoff:
+            queue.popleft()
+        _move_rate_identity_to_end(store, identity)
+
+    if len(queue) >= request_limit:
+        return max(1, int(math.ceil(queue[0] + window - float(now))))
+    queue.append(float(now))
+    return None
+
+
+def _enforce_solar_rate_limit(
+    request: Request,
+    *,
+    store: MutableMapping[str, deque[float]],
+    lock: threading.Lock,
+    window_seconds: float,
+    max_requests: int,
+    message: str,
+) -> None:
+    now = time.monotonic()
+    identity = _client_identity(request)
+    with lock:
+        retry_after = _record_solar_rate_request(
+            store,
+            identity=identity,
+            now=now,
+            window_seconds=window_seconds,
+            max_requests=max_requests,
+            max_identities=SOLAR_RATE_LIMIT_MAX_IDENTITIES,
+        )
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=message,
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 def _enforce_solar_request_rate_limit(request: Request) -> None:
-    now = time.monotonic()
-    window = max(1.0, SOLAR_PHYSICS_RATE_WINDOW_SECONDS)
-    max_requests = max(1, SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW)
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_physics_rate_locks,
+        lock=_solar_physics_rate_lock,
+        window_seconds=SOLAR_PHYSICS_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_PHYSICS_RATE_LIMIT_PER_WINDOW,
+        message="Solar request rate limit exceeded; retry later.",
+    )
 
-    identity = _extract_solar_api_key(request) or _client_identity(request)
-    cutoff = now - window
 
-    with _solar_physics_rate_lock:
-        queue = _solar_physics_rate_locks.setdefault(identity, deque())
-        while queue and queue[0] < cutoff:
-            queue.popleft()
-        if len(queue) >= max_requests:
-            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
-            raise HTTPException(
-                status_code=429,
-                detail="Solar request rate limit exceeded; retry later.",
-                headers={"Retry-After": str(retry_after)},
-            )
-        queue.append(now)
+def _enforce_solar_realtime_rate_limit(request: Request) -> None:
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_realtime_rate_locks,
+        lock=_solar_realtime_rate_lock,
+        window_seconds=SOLAR_REALTIME_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW,
+        message="Solar realtime request rate limit exceeded; retry later.",
+    )
 
 
 def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
-    now = time.monotonic()
-    window = max(1.0, SOLAR_AIA_TILE_RATE_WINDOW_SECONDS)
-    max_requests = max(1, SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW)
+    _enforce_solar_rate_limit(
+        request,
+        store=_solar_aia_tile_rate_locks,
+        lock=_solar_aia_tile_rate_lock,
+        window_seconds=SOLAR_AIA_TILE_RATE_WINDOW_SECONDS,
+        max_requests=SOLAR_AIA_TILE_RATE_LIMIT_PER_WINDOW,
+        message="Solar AIA tile request rate limit exceeded; retry later.",
+    )
 
-    identity = _extract_solar_api_key(request) or _client_identity(request)
-    cutoff = now - window
 
-    with _solar_aia_tile_rate_lock:
-        queue = _solar_aia_tile_rate_locks.setdefault(identity, deque())
-        while queue and queue[0] < cutoff:
-            queue.popleft()
-        if len(queue) >= max_requests:
-            retry_after = max(1, int(math.ceil(queue[0] + window - now)))
+def _resolve_jd_tdb_query(
+    jd_tdb: str | None,
+    jd: str | None,
+    *,
+    default_to_now: bool,
+) -> float | None:
+    """Resolve the labelled JDTDB input and its temporary unlabelled alias."""
+
+    def parse(raw_value: str, parameter: str) -> float:
+        try:
+            parsed = float(raw_value)
+        except (TypeError, ValueError) as exc:
             raise HTTPException(
-                status_code=429,
-                detail="Solar AIA tile request rate limit exceeded; retry later.",
-                headers={"Retry-After": str(retry_after)},
+                status_code=400,
+                detail={
+                    "code": f"invalid_{parameter}",
+                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                    "retryable": False,
+                },
+            ) from exc
+        if not math.isfinite(parsed):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": f"invalid_{parameter}",
+                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                    "retryable": False,
+                },
             )
-        queue.append(now)
+        return parsed
+
+    canonical = parse(jd_tdb, "jd_tdb") if jd_tdb is not None else None
+    # Deprecated `jd` is interpreted as JDTDB for one compatibility window.
+    legacy = parse(jd, "jd") if jd is not None else None
+    if canonical is not None and legacy is not None and canonical != legacy:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "conflicting_julian_date_aliases",
+                "message": "`jd_tdb` and deprecated `jd` must identify the same JDTDB epoch.",
+                "retryable": False,
+            },
+        )
+    resolved = canonical if canonical is not None else legacy
+    if resolved is None and default_to_now:
+        return current_jd_tdb()
+    return resolved
+
+
+def _observed_solar_input_http_error(
+    exc: ObservedSolarInputUnavailable,
+) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={
+            "code": "solar_observed_input_unavailable",
+            "message": "Observed solar forcing is not runtime eligible.",
+            "provider": "gong_zqs",
+            "product": "zqs",
+            "status": exc.reason,
+            "reason": exc.reason,
+            "retryable": False,
+        },
+    )
 
 
 def _build_solar_physics_state(
@@ -956,57 +1900,117 @@ def _build_solar_physics_state(
     live_data: bool,
     force_data_refresh: bool,
 ) -> dict[str, Any]:
-    realtime_data = None
-    if live_data and forcing_key != "synthetic":
-        try:
-            realtime_data = SOLAR_REALTIME_DATA.latest(
-                jd=epoch_jd,
-                force_refresh=bool(force_data_refresh),
-            )
-        except Exception:
-            # Keep synthetic fallback resilient on transient upstream data failures.
-            realtime_data = None
-
-    state = SOLAR_PHYSICS_MODEL.sample_state(
-        epoch_jd,
+    # Retained as a direct, testable construction seam. HTTP requests use the
+    # import-safe child entry point instead of this in-process wrapper.
+    del force_data_refresh
+    return build_solar_physics_state(
+        SOLAR_PHYSICS_MODEL,
+        epoch_jd_tdb=epoch_jd,
+        wall_epoch_jd_tdb=current_jd_tdb(),
         fidelity=fidelity_key,
         max_features=safe_max_features,
         forcing=forcing_key,
-        realtime_data=realtime_data,
+        live_data=bool(live_data),
     )
-    state["forcing"] = forcing_key
-    state["live_data_enabled"] = bool(live_data)
-    state["source"] = "backend"
-    return state
 
 
 def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
     return sem.acquire(blocking=False)
 
 
-def _try_acquire_ws_sim_slot() -> bool:
+def _try_acquire_ws_sim_slot(
+    authenticated_subject: str | None = None,
+) -> _WebSocketAdmissionLease | None:
     global _ws_sim_active_connections
     if not _acquire_nonblocking(_ws_sim_connection_guard):
-        return False
+        return None
     with _ws_sim_connection_lock:
+        if authenticated_subject is not None:
+            subject_connections = _ws_sim_active_connections_by_subject.get(
+                authenticated_subject,
+                0,
+            )
+            if subject_connections >= WS_SIM_PER_SUBJECT_CONNECTION_LIMIT:
+                _ws_sim_connection_guard.release()
+                return None
+        lease = _WebSocketAdmissionLease(authenticated_subject)
+        _ws_sim_active_leases.add(lease)
         _ws_sim_active_connections += 1
-    return True
+        if authenticated_subject is not None:
+            _ws_sim_active_connections_by_subject[authenticated_subject] = (
+                subject_connections + 1
+            )
+    return lease
 
 
-def _release_ws_sim_slot() -> None:
+def _release_ws_sim_slot(lease: _WebSocketAdmissionLease) -> None:
     global _ws_sim_active_connections
     with _ws_sim_connection_lock:
+        if lease not in _ws_sim_active_leases:
+            raise RuntimeError("WebSocket admission lease is not active")
         if _ws_sim_active_connections <= 0:
             raise RuntimeError("WebSocket simulation admission counter underflow")
+        authenticated_subject = lease.authenticated_subject
+        if authenticated_subject is not None:
+            subject_connections = _ws_sim_active_connections_by_subject.get(
+                authenticated_subject,
+                0,
+            )
+            if subject_connections <= 0:
+                raise RuntimeError("WebSocket subject admission counter underflow")
+            if subject_connections == 1:
+                del _ws_sim_active_connections_by_subject[authenticated_subject]
+            else:
+                _ws_sim_active_connections_by_subject[authenticated_subject] = (
+                    subject_connections - 1
+                )
+        _ws_sim_active_leases.remove(lease)
         _ws_sim_active_connections -= 1
     _ws_sim_connection_guard.release()
 
 
 def _websocket_origin_allowed(websocket: WebSocket) -> bool:
-    origin = websocket.headers.get("origin")
+    origin_valid, origin = _bounded_unique_scope_header(
+        websocket.scope,
+        b"origin",
+        max_bytes=SOLAR_CORS_ORIGIN_MAX_BYTES,
+    )
     # Non-browser scientific clients commonly omit Origin. Browser clients must
     # match the same explicit loopback allowlist as the HTTP application.
-    return origin is None or origin in WS_SIM_ALLOWED_ORIGINS
+    return origin_valid and (origin is None or origin in WS_SIM_ALLOWED_ORIGINS)
+
+
+def _websocket_query_has_safe_shape(websocket: WebSocket) -> bool:
+    """Reject credential transport and unbounded parsing in WebSocket URLs."""
+
+    raw_query = websocket.scope.get("query_string", b"")
+    if not isinstance(raw_query, (bytes, bytearray)):
+        return False
+    query_bytes = bytes(raw_query)
+    if len(query_bytes) > WS_SIM_QUERY_MAX_BYTES:
+        return False
+    try:
+        decoded_query = query_bytes.decode("ascii")
+        fields = parse_qsl(
+            decoded_query,
+            keep_blank_values=True,
+            max_num_fields=WS_SIM_QUERY_MAX_FIELDS,
+        )
+    except (UnicodeDecodeError, ValueError):
+        return False
+    return all(
+        key.strip().lower() not in WS_FORBIDDEN_CREDENTIAL_QUERY_KEYS
+        for key, _value in fields
+    )
+
+
+def _network_websocket_subject(websocket: WebSocket) -> str | None:
+    if SOLAR_SECURITY_CONFIG.profile != "network":
+        return None
+    return _authenticated_api_subject_from_scope(
+        websocket.scope,
+        config=SOLAR_SECURITY_CONFIG,
+    )
 
 
 def _release_guard_when_work_finishes(
@@ -1074,6 +2078,64 @@ async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float 
         if await request.is_disconnected():
             return
         await asyncio.sleep(poll_seconds)
+
+
+async def _run_request_owned_process(
+    request: Request,
+    runner,
+    payload: Mapping[str, Any],
+    *,
+    timeout_seconds: float,
+    disconnect_poll_seconds: float = 0.05,
+):
+    """Cancel a supervised child when its HTTP owner disconnects.
+
+    Some ASGI servers do not cancel a route coroutine when the peer leaves.
+    Polling closes that ownership gap. Cancelling ``runner.run`` signals its
+    supervisor thread, which retains admission until the real child is killed
+    and joined.
+    """
+
+    worker_task = asyncio.create_task(
+        runner.run(payload, timeout_seconds=timeout_seconds)
+    )
+    disconnect_task = asyncio.create_task(
+        _wait_for_request_disconnect(
+            request,
+            poll_seconds=disconnect_poll_seconds,
+        )
+    )
+    try:
+        done, _pending = await asyncio.wait(
+            (worker_task, disconnect_task),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if worker_task in done:
+            return await worker_task
+
+        await disconnect_task
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise _RequestOwnerDisconnected()
+    except _RequestOwnerDisconnected:
+        raise
+    except asyncio.CancelledError:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+        raise
+    finally:
+        if not disconnect_task.done():
+            disconnect_task.cancel()
+            try:
+                await disconnect_task
+            except asyncio.CancelledError:
+                pass
 
 
 async def _run_request_owned_thread(
@@ -1366,15 +2428,67 @@ def _enforce_trajectory_remote_search_policy(provider: str, operation: str) -> N
     )
 
 
+def _canonical_aia_header_date(value: Any) -> str | None:
+    if type(value) is not str:
+        return None
+    try:
+        encoded = value.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    if (
+        not encoded
+        or len(encoded) > 32
+        or value != value.strip()
+        or any(byte < 32 or byte == 127 for byte in encoded)
+    ):
+        return None
+    for date_format in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            parsed = datetime.strptime(value, date_format)
+        except (ValueError, OverflowError):
+            continue
+        if parsed.strftime(date_format) == value:
+            return parsed.replace(tzinfo=timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+    return None
+
+
 def _build_aia_tile_payload(
     channel: str,
-    jd: float | None = None,
+    jd_tdb: float | None = None,
     force_refresh: bool = False,
+    image_id: str | None = None,
 ) -> dict[str, Any]:
-    return SOLAR_REALTIME_DATA.latest_aia_tile(
-        channel=channel,
-        jd=jd,
-        force_refresh=bool(force_refresh),
+    kwargs: dict[str, Any] = {
+        "channel": channel,
+        "jd_tdb": jd_tdb,
+        "force_refresh": bool(force_refresh),
+    }
+    # Preserve compatibility for internal/provider doubles while making an
+    # explicit browser identity an end-to-end invariant.
+    if image_id is not None:
+        kwargs["image_id"] = image_id
+    return SOLAR_REALTIME_DATA.latest_aia_tile(**kwargs)
+
+
+def _build_solar_realtime_snapshot(force_refresh: bool = False) -> dict[str, Any]:
+    return SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
+
+
+def _aia_identity_conflict(
+    requested_image_id: str,
+    available_image_id: Any,
+) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail={
+            "code": "aia_image_identity_mismatch",
+            "message": "Requested AIA image is no longer the retained channel snapshot.",
+            "requested_image_id": requested_image_id,
+            "available_image_id": available_image_id,
+            "retryable": True,
+        },
     )
 
 
@@ -1832,6 +2946,13 @@ class AccuracyReportRequest(StrictRequestModel):
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
 
+@app.api_route("/health/live", methods=["GET", "HEAD"], include_in_schema=False)
+def health_liveness():
+    """Constant-cost process liveness without engine construction or I/O."""
+
+    return {"status": "ok"}
+
+
 @app.get("/health")
 def health():
     rebound_status = _rebound_readiness()
@@ -1889,8 +3010,49 @@ def solar_capabilities():
 
 
 @app.get("/solar/realtime")
-def solar_realtime_data(force_refresh: bool = False):
-    snapshot = SOLAR_REALTIME_DATA.latest(force_refresh=bool(force_refresh))
+async def solar_realtime_data(request: Request, force_refresh: bool = False):
+    _reject_network_refresh_get(force_refresh)
+    _require_optional_solar_api_key(request)
+    _enforce_solar_realtime_rate_limit(request)
+    if not _acquire_nonblocking(_solar_realtime_concurrent_guard):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_saturated",
+                "message": "Solar realtime acquisition capacity is busy.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
+        )
+    try:
+        snapshot = await _run_owned_thread(
+            _build_solar_realtime_snapshot,
+            guard=_solar_realtime_concurrent_guard,
+            executor=_solar_realtime_executor,
+            timeout_seconds=SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS,
+            force_refresh=bool(force_refresh),
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_timeout",
+                "message": "Solar realtime acquisition exceeded its aggregate deadline.",
+                "retryable": True,
+                "timeout_seconds": SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS,
+            },
+            headers={"Retry-After": "2"},
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_realtime_unavailable",
+                "message": "Solar realtime acquisition is unavailable.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
+        ) from exc
     return {
         "schema": {"name": "solar_realtime_endpoint", "version": 1},
         "source": "backend",
@@ -1902,9 +3064,29 @@ def solar_realtime_data(force_refresh: bool = False):
 async def solar_realtime_aia_tile(
     request: Request,
     channel: str = "aia_193",
-    jd: float | None = None,
+    image_id: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            max_length=128,
+            description="Exact Helioviewer image identity retained by /solar/realtime.",
+        ),
+    ] = None,
+    jd_tdb: Annotated[
+        str | None,
+        Query(description="Julian Date in Barycentric Dynamical Time (TDB)."),
+    ] = None,
+    jd: Annotated[
+        str | None,
+        Query(
+            description="Deprecated alias for `jd_tdb`; interpreted as TDB.",
+            deprecated=True,
+        ),
+    ] = None,
     force_refresh: bool = False,
 ):
+    _reject_network_refresh_get(force_refresh)
+    epoch_jd_tdb = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
     _require_optional_solar_api_key(request)
     _enforce_solar_aia_tile_rate_limit(request)
 
@@ -1929,53 +3111,205 @@ async def solar_realtime_aia_tile(
             executor=_aia_tile_executor,
             timeout_seconds=SOLAR_AIA_TILE_REQUEST_TIMEOUT_SECONDS,
             channel=channel_key,
-            jd=jd,
+            jd_tdb=epoch_jd_tdb,
             force_refresh=bool(force_refresh),
+            image_id=image_id,
         )
     except asyncio.TimeoutError as exc:
         raise HTTPException(
             status_code=503,
-            detail="AIA tile generation timed out. Try again later.",
+            detail={
+                "code": "aia_tile_unavailable",
+                "message": "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
         ) from exc
-    except KeyError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except AiaImageIdentityMismatch as exc:
+        raise _aia_identity_conflict(
+            exc.requested_image_id,
+            exc.available_image_id,
+        ) from exc
+    except SolarRealtimeFetchError as exc:
+        validation_messages = {
+            "invalid_aia_media_type": (
+                "AIA tile upstream Content-Type is invalid."
+            ),
+            "unsupported_aia_media_type": (
+                "AIA tile upstream media type is unsupported."
+            ),
+            "invalid_aia_png_signature": "AIA tile PNG signature is invalid.",
+            "invalid_aia_png_header": "AIA tile PNG header is invalid.",
+            "invalid_aia_png_dimensions": "AIA tile PNG dimensions are invalid.",
+            "invalid_aia_provider_contract": (
+                "AIA tile provider returned an invalid artifact contract."
+            ),
+        }
+        message = validation_messages.get(exc.code)
+        code = exc.code if message is not None else "aia_tile_unavailable"
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": code,
+                "message": message or "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"AIA tile unavailable: {exc}") from exc
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "aia_tile_unavailable",
+                "message": "AIA tile acquisition is unavailable.",
+                "retryable": True,
+            },
+        ) from exc
+    available_image_id = tile.get("image_id")
+    if image_id is not None and available_image_id != image_id:
+        raise _aia_identity_conflict(image_id, available_image_id)
+
+    content_type = tile.get("content_type")
+    if type(content_type) is not str or content_type != "image/png":
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "invalid_aia_provider_contract",
+                "message": "AIA tile provider returned an invalid artifact contract.",
+                "retryable": True,
+            },
+        )
+
+    image_date = tile.get("image_date")
+    canonical_image_date: str | None = None
+    if image_date is not None:
+        canonical_image_date = _canonical_aia_header_date(image_date)
+        if canonical_image_date is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "invalid_aia_provider_contract",
+                    "message": "AIA tile provider returned an invalid artifact contract.",
+                    "retryable": True,
+                },
+            )
+
     response = Response(
         content=tile["content"],
-        media_type=str(tile.get("content_type") or "image/png"),
+        media_type="image/png",
     )
-    response.headers["Cache-Control"] = f"public, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"
+    response.headers["Cache-Control"] = (
+        f"private, max-age={int(SOLAR_REALTIME_DATA.cache_ttl_s)}"
+    )
+    response.headers["Vary"] = "Authorization, X-API-Key"
     response.headers["X-Solar-AIA-Channel"] = str(tile.get("channel") or channel_key)
+    artifact = tile.get("artifact")
+    artifact_schema = artifact.get("schema") if isinstance(artifact, dict) else None
+    artifact_name = (
+        artifact_schema.get("name") if isinstance(artifact_schema, dict) else None
+    )
+    artifact_version = (
+        artifact_schema.get("version") if isinstance(artifact_schema, dict) else None
+    )
+    if (
+        artifact_name in {"helioviewer_viewport_tile", "solar_surface_texture"}
+        and artifact_version == 1
+    ):
+        response.headers["X-Solar-AIA-Artifact"] = f"{artifact_name}/v1"
+
+    surface_artifact_valid = bool(
+        isinstance(artifact, dict)
+        and artifact_name == "solar_surface_texture"
+        and artifact_version == 1
+        and artifact.get("delivery") == "raw_on_demand"
+    )
+
+    spatial_use = tile.get("spatial_use")
+    spatial_contract = (
+        spatial_use.get("contract") if isinstance(spatial_use, dict) else None
+    )
+    spatial_contract_schema = (
+        spatial_contract.get("schema") if isinstance(spatial_contract, dict) else None
+    )
+    spatial_eligible = bool(
+        surface_artifact_valid
+        and isinstance(spatial_use, dict)
+        and spatial_use.get("eligible") is True
+        and spatial_use.get("reason") is None
+        and isinstance(spatial_contract_schema, dict)
+        and spatial_contract_schema.get("name") == "solar_surface_texture_projection"
+        and spatial_contract_schema.get("version") == 1
+        and spatial_contract.get("projection") == "equirectangular"
+        and spatial_contract.get("coordinate_frame") == "iau_sun_body_fixed"
+        and spatial_contract.get("coverage") == "full_surface"
+        and spatial_contract.get("uv_mapping") == "sun_surface_uv_v1"
+    )
+    response.headers["X-Solar-AIA-Spatial-Use"] = (
+        "eligible" if spatial_eligible else "disabled"
+    )
+    if not spatial_eligible:
+        reason = (
+            spatial_use.get("reason") if isinstance(spatial_use, dict) else None
+        )
+        if (
+            artifact_name is not None
+            and artifact_name != "solar_surface_texture"
+            and isinstance(spatial_use, dict)
+            and spatial_use.get("eligible") is True
+        ):
+            safe_reason = "artifact_not_spatial_surface_texture"
+        else:
+            safe_reason = (
+                reason
+                if isinstance(reason, str)
+                and 0 < len(reason) <= 128
+                and reason.isascii()
+                and reason.replace("_", "").isalnum()
+                else "missing_validated_spatial_projection_contract"
+            )
+        response.headers["X-Solar-AIA-Spatial-Reason"] = safe_reason
     if tile.get("image_id") is not None:
         response.headers["X-Solar-AIA-Image-Id"] = str(tile["image_id"])
-    if tile.get("image_date") is not None:
-        response.headers["X-Solar-AIA-Image-Date"] = str(tile["image_date"])
+    if canonical_image_date is not None:
+        response.headers["X-Solar-AIA-Image-Date"] = canonical_image_date
     return response
 
 
 @app.get("/solar/physics")
 async def solar_physics_state(
     request: Request,
-    jd: float | None = None,
+    jd_tdb: Annotated[
+        str | None,
+        Query(description="Julian Date in Barycentric Dynamical Time (TDB)."),
+    ] = None,
+    jd: Annotated[
+        str | None,
+        Query(
+            description="Deprecated alias for `jd_tdb`; interpreted as TDB.",
+            deprecated=True,
+        ),
+    ] = None,
     fidelity: str = "operational",
     max_features: int = 220,
     forcing: str = "synthetic",
     live_data: bool = False,
     force_data_refresh: bool = False,
 ):
+    _reject_network_refresh_get(force_data_refresh)
+    epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
+    assert epoch_jd is not None
+    if not (SOLAR_PHYSICS_JD_MIN <= epoch_jd <= SOLAR_PHYSICS_JD_MAX):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "jd_out_of_range",
+                "message": (
+                    "'jd_tdb' must be within "
+                    f"[{SOLAR_PHYSICS_JD_MIN:.1f}, {SOLAR_PHYSICS_JD_MAX:.1f}] "
+                    "JDTDB (the corona model validity window)."
+                ),
+                "retryable": False,
+            },
+        )
     _require_optional_solar_api_key(request)
-    _enforce_solar_request_rate_limit(request)
-
-    if jd is None:
-        epoch_jd = utc_now_to_julian_date()
-    else:
-        try:
-            epoch_jd = float(jd)
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="`jd` must be numeric") from exc
-        if not math.isfinite(epoch_jd):
-            raise HTTPException(status_code=400, detail="`jd` must be finite")
 
     fidelity_key = fidelity.strip().lower()
     if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
@@ -1991,6 +3325,14 @@ async def solar_physics_state(
             detail=f"`forcing` must be one of {list(SOLAR_PHYSICS_MODEL.FORCING_MODES)}",
         )
 
+    if forcing_key == "data_driven":
+        try:
+            raise ObservedSolarInputUnavailable()
+        except ObservedSolarInputUnavailable as exc:
+            raise _observed_solar_input_http_error(exc) from exc
+
+    _enforce_solar_request_rate_limit(request)
+
     requested_max_features = int(max_features)
     safe_max_features = min(
         SOLAR_PHYSICS_MAX_FEATURES,
@@ -2005,31 +3347,85 @@ async def solar_physics_state(
             ),
         )
 
-    if not _acquire_nonblocking(_solar_physics_concurrent_guard):
-        raise HTTPException(
-            status_code=503,
-            detail="Solar physics requests are temporarily saturated. Retry shortly.",
-            headers={"Retry-After": "2"},
-        )
-
     try:
-        state = await _run_owned_thread(
-            _build_solar_physics_state,
-            epoch_jd,
-            fidelity_key,
-            safe_max_features,
-            forcing_key,
-            bool(live_data),
-            bool(force_data_refresh),
-            guard=_solar_physics_concurrent_guard,
-            executor=_heavy_compute_executor,
+        state = await _run_request_owned_process(
+            request,
+            _get_solar_physics_runner(),
+            {
+                "epoch_jd_tdb": epoch_jd,
+                "fidelity": fidelity_key,
+                "max_features": safe_max_features,
+                "forcing": forcing_key,
+                "live_data": bool(live_data),
+            },
             timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
         )
-    except asyncio.TimeoutError as exc:
+    except ProcessSaturated as exc:
         raise HTTPException(
             status_code=503,
-            detail="Solar physics generation timed out. Try again later.",
+            detail={
+                "code": "solar_compute_saturated",
+                "message": "Solar physics capacity is saturated. Retry shortly.",
+                "retryable": True,
+            },
+            headers={"Retry-After": "2"},
         ) from exc
+    except ProcessTimedOut as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_timeout",
+                "message": "Solar physics generation exceeded its hard deadline.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessCrashed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_worker_crashed",
+                "message": "Solar physics generation ended unexpectedly.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessSubmissionFailed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_unavailable",
+                "message": "Solar physics execution is temporarily unavailable.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessWorkerFailed as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_worker_failed",
+                "message": "Solar physics generation failed.",
+                "retryable": True,
+            },
+        ) from exc
+    except ProcessResultRejected as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_invalid_result",
+                "message": "Solar physics generation returned an invalid result.",
+                "retryable": False,
+            },
+        ) from exc
+    except ProcessCancelled as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "solar_compute_unavailable",
+                "message": "Solar physics execution is temporarily unavailable.",
+                "retryable": True,
+            },
+        ) from exc
+    except ObservedSolarInputUnavailable as exc:
+        raise _observed_solar_input_http_error(exc) from exc
     return state
 
 
@@ -3159,24 +4555,120 @@ class SimulationRunner:
 
 # ── WebSocket task helpers ────────────────────────────────────────────────────
 
+def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
+    if not isinstance(message, dict):
+        return None, "Payload must be a JSON object"
+
+    field_count = 0
+    pending: list[tuple[dict[str, Any] | list[Any], int]] = [(message, 1)]
+    while pending:
+        value, depth = pending.pop()
+        if depth > WS_SIM_COMMAND_MAX_DEPTH:
+            return None, "Command payload exceeds the nesting-depth limit"
+        if isinstance(value, dict):
+            field_count += len(value)
+            if field_count > WS_SIM_COMMAND_MAX_FIELDS:
+                return None, "Command payload contains too many object fields"
+            children = value.values()
+        else:
+            children = value
+        for child in children:
+            if isinstance(child, (dict, list)):
+                pending.append((child, depth + 1))
+
+    action_raw = message.get("type")
+    action = action_raw.strip() if isinstance(action_raw, str) else ""
+    if not action:
+        return None, "Command requires a non-empty string `type` field"
+
+    normalized: dict[str, Any] = {"type": action}
+    for field in _WS_SIM_COMMAND_FIELDS.get(action, ()):
+        if field in message:
+            normalized[field] = message[field]
+    return normalized, None
+
+
+async def _send_ws_command_error(
+    websocket: WebSocket,
+    message: str,
+    *,
+    code: str,
+) -> None:
+    await websocket.send_text(json.dumps({
+        "type": "error",
+        "message": message,
+        "code": code,
+    }))
+
+
+async def _close_ws_command_too_large(websocket: WebSocket) -> None:
+    reason = f"Command frame exceeds {WS_SIM_COMMAND_MAX_BYTES} bytes"
+    await websocket.close(code=1009, reason=reason)
+    raise WebSocketDisconnect(code=1009, reason=reason)
+
+
 async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
     while True:
-        raw = await websocket.receive_text()
+        event = await websocket.receive()
+        event_type = event.get("type")
+        if event_type == "websocket.disconnect":
+            raise WebSocketDisconnect(
+                code=int(event.get("code", 1000)),
+                reason=str(event.get("reason", "")),
+            )
+        if event_type != "websocket.receive":
+            continue
+
+        raw_text = event.get("text")
+        raw_bytes = event.get("bytes")
+        if isinstance(raw_text, str):
+            try:
+                frame_bytes = len(raw_text.encode("utf-8"))
+            except UnicodeEncodeError:
+                await _send_ws_command_error(
+                    websocket,
+                    "Command payload must be valid UTF-8 text",
+                    code="invalid_command",
+                )
+                continue
+            if frame_bytes > WS_SIM_COMMAND_MAX_BYTES:
+                await _close_ws_command_too_large(websocket)
+            raw = raw_text
+        elif isinstance(raw_bytes, (bytes, bytearray)):
+            if len(raw_bytes) > WS_SIM_COMMAND_MAX_BYTES:
+                await _close_ws_command_too_large(websocket)
+            await _send_ws_command_error(
+                websocket,
+                "Command payload must be JSON text",
+                code="invalid_command",
+            )
+            continue
+        else:
+            await _send_ws_command_error(
+                websocket,
+                "Command payload must be JSON text",
+                code="invalid_command",
+            )
+            continue
+
         try:
             msg = json.loads(raw)
-        except json.JSONDecodeError:
-            await websocket.send_text(json.dumps({
-                "type": "error",
-                "message": "Invalid JSON payload",
-            }))
+        except (ValueError, RecursionError):
+            await _send_ws_command_error(
+                websocket,
+                "Invalid JSON payload",
+                code="invalid_json",
+            )
             continue
-        if not isinstance(msg, dict):
-            await websocket.send_text(json.dumps({
-                "type": "error",
-                "message": "Payload must be a JSON object",
-            }))
+        command, shape_error = _normalize_ws_command(msg)
+        if command is None:
+            await _send_ws_command_error(
+                websocket,
+                shape_error or "Invalid command payload",
+                code="invalid_command",
+            )
             continue
-        if not runner.send_command(msg):
+        if not runner.send_command(command):
             await websocket.send_text(json.dumps({
                 "type": "error",
                 "message": "Command queue is full; retry shortly",
@@ -3367,10 +4859,28 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/sim")
 async def simulation_websocket(websocket: WebSocket):
+    authenticated_subject: str | None = None
+    if not _websocket_query_has_safe_shape(websocket):
+        await websocket.close(
+            code=1008,
+            reason="WebSocket query credentials are not allowed",
+        )
+        return
+    if SOLAR_SECURITY_CONFIG.profile == "network":
+        authenticated_subject = _network_websocket_subject(websocket)
+        if authenticated_subject is None:
+            await websocket.close(
+                code=1008,
+                reason="WebSocket authentication is required",
+            )
+            return
+        state = websocket.scope.setdefault("state", {})
+        state["authenticated_subject"] = authenticated_subject
     if not _websocket_origin_allowed(websocket):
         await websocket.close(code=1008, reason="WebSocket origin is not allowed")
         return
-    if not _try_acquire_ws_sim_slot():
+    admission_lease = _try_acquire_ws_sim_slot(authenticated_subject)
+    if admission_lease is None:
         await websocket.close(code=1013, reason="Simulation capacity is exhausted")
         return
 
@@ -3378,11 +4888,18 @@ async def simulation_websocket(websocket: WebSocket):
         await websocket.accept()
         await _serve_simulation_websocket(websocket)
     finally:
-        _release_ws_sim_slot()
+        _release_ws_sim_slot(admission_lease)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8042, reload=True)
+    uvicorn.run(
+        "server:app",
+        host=SOLAR_SECURITY_CONFIG.default_bind_host,
+        port=8042,
+        proxy_headers=False,
+        reload=SOLAR_SECURITY_CONFIG.profile == "local",
+        ws_max_size=WS_SIM_COMMAND_MAX_BYTES,
+    )
