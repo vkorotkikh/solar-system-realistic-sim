@@ -1,8 +1,45 @@
-import { writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SOURCE_URL = 'https://ssd.jpl.nasa.gov/sats/elem/';
+const EXPECTED_COLUMNS = 20;
+const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const DEFAULT_OUTPUT = path.join(ROOT_DIR, 'src', 'data', 'moons.json');
+
+const USAGE = `Usage: node scripts/update-moons-data.mjs [--dry-run] [--out <path>] [--help]
+
+Fetches the JPL SSD satellite mean-elements table (${SOURCE_URL}) and writes
+the moon catalog. Without --out the tracked catalog src/data/moons.json is
+replaced; the write is atomic (temp file + rename) and refused when the
+upstream table yields no records.
+
+  --dry-run   fetch and parse, report the record count, write nothing
+  --out PATH  write to PATH instead of the tracked catalog
+  --help      print this message and exit without fetching
+`;
+
+export function parseArgs(argv) {
+  const options = { dryRun: false, out: DEFAULT_OUTPUT, help: false };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+    } else if (arg === '--dry-run') {
+      options.dryRun = true;
+    } else if (arg === '--out') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('--out requires a path');
+      }
+      options.out = path.resolve(value);
+      index += 1;
+    } else {
+      throw new Error(`Unknown argument: ${arg}\n\n${USAGE}`);
+    }
+  }
+  return options;
+}
 
 function stripTagsAndNormalize(text) {
   return text
@@ -23,13 +60,7 @@ function toNumeric(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-async function main() {
-  const response = await fetch(SOURCE_URL);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${SOURCE_URL}: HTTP ${response.status}`);
-  }
-
-  const html = await response.text();
+export function parseSatelliteTable(html) {
   const tableMatch = html.match(/<table id="sat_elem"[\s\S]*?<\/table>/i);
   if (!tableMatch) {
     throw new Error('Unable to find sat_elem table in source HTML');
@@ -45,7 +76,7 @@ async function main() {
 
   for (const rowMatch of rows) {
     const cols = [...rowMatch[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((col) => stripTagsAndNormalize(col[1]));
-    if (cols.length !== 20) {
+    if (cols.length !== EXPECTED_COLUMNS) {
       continue;
     }
 
@@ -73,14 +104,46 @@ async function main() {
     });
   }
 
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const outputPath = path.join(rootDir, 'src', 'data', 'moons.json');
-
-  await writeFile(outputPath, `${JSON.stringify(records, null, 2)}\n`, 'utf8');
-  console.log(`Saved ${records.length} satellite records to ${outputPath}`);
+  if (records.length === 0) {
+    // A matched but empty table must never replace the catalog with [].
+    throw new Error('sat_elem table parsed to zero records; refusing to write');
+  }
+  return records;
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+export async function writeCatalogAtomically(outputPath, records) {
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  const tempPath = `${outputPath}.${process.pid}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(records, null, 2)}\n`, 'utf8');
+  await rename(tempPath, outputPath);
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    process.stdout.write(USAGE);
+    return;
+  }
+
+  const response = await fetch(SOURCE_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${SOURCE_URL}: HTTP ${response.status}`);
+  }
+  const records = parseSatelliteTable(await response.text());
+
+  if (options.dryRun) {
+    console.log(`Dry run: parsed ${records.length} satellite records; nothing written`);
+    return;
+  }
+
+  await writeCatalogAtomically(options.out, records);
+  console.log(`Saved ${records.length} satellite records to ${options.out}`);
+}
+
+const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
