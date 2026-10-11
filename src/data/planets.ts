@@ -13,7 +13,7 @@ export const SUN = {
 
 // J2000 mean elements from NASA/JPL planetary theory values.
 //
-// The eight planets carry the full JPL Standish "Approximate Positions of the Major Planets"
+// The eight planets and Pluto carry the full JPL Standish "Approximate Positions of the Major Planets"
 // Table 1 set (valid 1800 AD - 2050 AD), referenced to epoch J2000 (epochJd = J2000_JD):
 //   aAu / e / iDeg / ascendingNodeDeg  are Standish a0, e0, I0, Omega0
 //   argPeriapsisDeg                    is varpi0 - Omega0
@@ -274,7 +274,16 @@ export const PLANETS = [
       ascendingNodeDeg: 110.30393684,
       argPeriapsisDeg: 113.76497945,
       meanAnomalyDeg: 14.86012204,
-      periodDays: 90_560
+      periodDays: 90_560,
+      // Standish Table 1 rates, same set as the planets above (varpidot -0.04062942).
+      secularRates: {
+        aAuPerCentury: -0.00031596,
+        ePerCentury: 0.0000517,
+        iDegPerCentury: 0.00004818,
+        ascendingNodeDegPerCentury: -0.01183482,
+        argPeriapsisDegPerCentury: -0.0287946,
+        meanLongitudeDegPerCentury: 145.20780515
+      }
     }
   }
 ];

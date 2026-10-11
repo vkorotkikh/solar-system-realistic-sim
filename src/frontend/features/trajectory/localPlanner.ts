@@ -219,7 +219,13 @@ export function planInterplanetaryRoute(model, bodyById, options) {
 
     const totalAssistGainKmS = 0;
     const turnDeficitPenalty = 0;
-    const assists = [];
+    const assists: Array<{
+      bodyId: string;
+      feasible: boolean;
+      assistGainKmS: number;
+      requiredTurnDeg: number;
+      maxTurnDeg: number;
+    }> = [];
 
     const totalPathLengthAu = legs.reduce((sum, leg) => sum + leg.pathLengthAu, 0);
     const totalTimeDays = legs[legs.length - 1].arrivalJd - legs[0].departureJd;

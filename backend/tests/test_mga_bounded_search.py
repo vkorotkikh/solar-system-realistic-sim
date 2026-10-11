@@ -102,7 +102,7 @@ def _independent_flyby_oracle(body: dict, incoming: dict, outgoing: dict) -> dic
     cosine = sum(v_in[index] * v_out[index] for index in range(3)) / (in_au_day * out_au_day)
     turn_rad = math.acos(max(-1.0, min(1.0, cosine)))
     mu_km3_s2 = 6.67430e-20 * float(body["mass_kg"])
-    periapsis_km = float(body["radius_km"]) + mga.MIN_FLYBY_ALTITUDE_KM
+    periapsis_km = mga.min_flyby_periapsis_km(body, float(body["radius_km"]))
     max_turn_rad = 2.0 * math.asin(1.0 / (1.0 + periapsis_km * in_kms**2 / mu_km3_s2))
     tolerance_kms = max(
         mga.UNPOWERED_FLYBY_VINF_ABS_TOLERANCE_KMS,

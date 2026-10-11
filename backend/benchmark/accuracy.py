@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from mission.ephemeris_service import EphemerisService
 from trajectory import solve_direct_lambert
+from trajectory.lambert import solve_lambert_universal
 from trajectory.budget import PlanningContext, PlanningLimits
 
 REQUIRED_TOOLS: Tuple[str, str, str] = ("gmat", "orekit", "tudat")
@@ -361,6 +362,47 @@ def _scenario_row(
     }
 
 
+_AU_KM = 149_597_870.7
+_DAY_S = 86_400.0
+
+
+def _fixed_state_rows(path: Path, context: PlanningContext) -> List[Dict[str, Any]]:
+    """Solve published fixed-state Lambert problems and compare against their printed answers.
+
+    Unlike the legacy window captures these need no external tool to regenerate: the inputs and
+    the expected velocities are in the cited texts, so anyone can re-derive the reference.
+    """
+    if path.stat().st_size > MAX_REFERENCE_FILE_BYTES:
+        raise ValueError(f"Fixed-state reference file `{path}` exceeds {MAX_REFERENCE_FILE_BYTES} bytes")
+    references = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(references, list) or len(references) > MAX_REFERENCE_SCENARIOS:
+        raise ValueError(f"Fixed-state reference file `{path}` must be a list of at most {MAX_REFERENCE_SCENARIOS}")
+    rows: List[Dict[str, Any]] = []
+    for ref in references:
+        context.checkpoint()
+        mu = float(ref["mu_km3_s2"]) * _DAY_S**2 / _AU_KM**3
+        solution = solve_lambert_universal(
+            [float(c) / _AU_KM for c in ref["r1_km"]],
+            [float(c) / _AU_KM for c in ref["r2_km"]],
+            float(ref["tof_s"]) / _DAY_S,
+            mu=mu,
+            prograde=bool(ref.get("prograde", True)),
+            tol_days=1e-10,
+            max_iter=400,
+            min_periapsis_au=0.0,
+        )
+        tolerance = float(ref["tolerance_km_s"])
+        row: Dict[str, Any] = {"id": ref["id"], "citation": ref["citation"], "toleranceKmS": tolerance}
+        if solution is None:
+            rows.append({**row, "status": "no_solution", "pass": False})
+            continue
+        model = [c * _AU_KM / _DAY_S for c in (*solution["v1"], *solution["v2"])]
+        expected = [float(c) for c in (*ref["expected_v1_km_s"], *ref["expected_v2_km_s"])]
+        error = max(abs(a - b) for a, b in zip(model, expected))
+        rows.append({**row, "status": "ok", "maxAbsErrorKmS": error, "pass": error <= tolerance})
+    return rows
+
+
 def _benchmark_planning_limits() -> PlanningLimits:
     return PlanningLimits(
         ephemeris_queries=MAX_REFERENCE_SCENARIOS * 2,
@@ -441,6 +483,7 @@ def benchmark_against_references(
     ephemeris_provider: str = "auto",
     scenarios_path: str | Path | None = None,
     planning_context: PlanningContext | None = None,
+    fixed_state_path: str | Path | None = None,
 ) -> Dict[str, Any]:
     provider = str(ephemeris_provider).strip().lower()
     if provider not in _SUPPORTED_EPHEMERIS_PROVIDERS:
@@ -510,10 +553,15 @@ def benchmark_against_references(
     pass_count = sum(1 for row in ok_rows if row.get("pass"))
     fail_count = sum(1 for row in ok_rows if not row.get("pass"))
     no_solution_count = sum(1 for row in rows if row.get("status") == "no_solution")
+    # None, not 0.0, when nothing was compared: a zero error reads as a perfect score.
     mean_abs_error = (
         sum(float(row["absErrorKmS"]) for row in ok_rows) / len(ok_rows)
         if ok_rows
-        else 0.0
+        else None
+    )
+    fixed_rows = _fixed_state_rows(
+        Path(fixed_state_path) if fixed_state_path else base_dir / "fixed_state_references.json",
+        context,
     )
     reference_integrity_ok = all(
         bool(row.get("reference", {}).get("requiredToolsPresent"))
@@ -533,12 +581,26 @@ def benchmark_against_references(
         "noSolutionCount": no_solution_count,
         "passCount": pass_count,
         "failedCount": fail_count,
-        "passRate": (pass_count / len(ok_rows)) if ok_rows else 0.0,
+        "passRate": (pass_count / len(ok_rows)) if ok_rows else None,
         "validationCoverage": (len(ok_rows) / len(rows)) if rows else 0.0,
         "meanAbsErrorKmS": mean_abs_error,
+        "fixedStateReferences": {
+            "count": len(fixed_rows),
+            "passCount": sum(1 for row in fixed_rows if row["pass"]),
+            "maxAbsErrorKmS": max((row["maxAbsErrorKmS"] for row in fixed_rows if "maxAbsErrorKmS" in row), default=None),
+            "rows": fixed_rows,
+        },
         "planningContext": context.snapshot(),
         "rows": rows,
     }
+
+
+def _percent_or_na(value: Any) -> str:
+    return "n/a (nothing compared)" if value is None else f"{float(value) * 100.0:.1f}%"
+
+
+def _km_s_or_na(value: Any, fmt: str = ".3f") -> str:
+    return "n/a (nothing compared)" if value is None else f"{float(value):{fmt}} km/s"
 
 
 def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
@@ -557,8 +619,12 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
         f"- Passed tolerance: {summary.get('passCount', 0)}",
         f"- Failed tolerance: {summary.get('failedCount', 0)}",
         f"- Validation coverage: {float(summary.get('validationCoverage', 0.0)) * 100.0:.1f}%",
-        f"- Pass rate: {float(summary.get('passRate', 0.0)) * 100.0:.1f}%",
-        f"- Mean |delta-v error|: {float(summary.get('meanAbsErrorKmS', 0.0)):.3f} km/s",
+        f"- Pass rate: {_percent_or_na(summary.get('passRate'))}",
+        f"- Mean |delta-v error|: {_km_s_or_na(summary.get('meanAbsErrorKmS'))}",
+        "- Fixed-state textbook references passed: "
+        f"{summary.get('fixedStateReferences', {}).get('passCount', 0)}"
+        f"/{summary.get('fixedStateReferences', {}).get('count', 0)}"
+        f" (max |dv| {_km_s_or_na(summary.get('fixedStateReferences', {}).get('maxAbsErrorKmS'), '.2e')})",
         f"- Reference integrity OK: {summary.get('referenceIntegrityOk', False)}",
         f"- Required calibration tools: {', '.join(summary.get('requiredTools', []))}",
         f"- Reference file: `{summary.get('referenceFile', '')}`",

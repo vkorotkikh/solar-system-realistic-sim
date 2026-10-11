@@ -7,6 +7,8 @@ import pytest
 from mission.orbital import AU_KM, mu_au3_day2_from_mass_kg
 from trajectory.mga import (
     MIN_FLYBY_ALTITUDE_KM,
+    MIN_FLYBY_PERIAPSIS_KM,
+    min_flyby_periapsis_km,
     UNPOWERED_FLYBY_VINF_ABS_TOLERANCE_KMS,
     UNPOWERED_FLYBY_VINF_REL_TOLERANCE,
     _evaluate_flyby,
@@ -47,7 +49,7 @@ def _legs(
 def _expected_max_turn_deg(incoming_speed_kms: float) -> float:
     v_inf_au_day = incoming_speed_kms * 86_400.0 / AU_KM
     mu = mu_au3_day2_from_mass_kg(EARTH["mass_kg"])
-    rp_au = (EARTH["radius_km"] + MIN_FLYBY_ALTITUDE_KM) / AU_KM
+    rp_au = min_flyby_periapsis_km(EARTH, EARTH["radius_km"]) / AU_KM
     eccentricity = 1.0 + rp_au * v_inf_au_day**2 / mu
     return math.degrees(2.0 * math.asin(1.0 / eccentricity))
 
@@ -124,3 +126,21 @@ def test_missing_body_parameters_fail_closed_with_diagnostics() -> None:
     assert result["vInfInKmS"] == pytest.approx(8.0)
     assert result["vInfOutKmS"] == pytest.approx(8.0)
     assert result["turnDeficitDeg"] == pytest.approx(5.0)
+
+
+def test_giant_flyby_periapsis_floors_respect_atmosphere_and_radiation() -> None:
+    from data.bodies import ALL_BODIES
+
+    bodies = {body["id"]: body for body in ALL_BODIES}
+    saturn, jupiter = bodies["saturn"], bodies["jupiter"]
+    # Mean radius + 300 km put Saturn's periapsis 1,736 km inside its 1-bar equator (60,268 km).
+    assert saturn["radius_km"] + MIN_FLYBY_ALTITUDE_KM < 60_268.0
+    assert min_flyby_periapsis_km(saturn, saturn["radius_km"]) == pytest.approx(60_268.0 + MIN_FLYBY_ALTITUDE_KM)
+    assert MIN_FLYBY_PERIAPSIS_KM["jupiter"] == pytest.approx(671_492.0)
+
+    # At v_inf = 10 km/s, R_mean + 300 km allowed a 142.7 deg turn at Jupiter; the GTOP floor allows 81.6 deg.
+    incoming, outgoing = _legs(10.0, 10.0, 120.0)
+    result = _evaluate_flyby(jupiter, incoming, outgoing)
+    assert result["maxTurnDeg"] == pytest.approx(81.6, abs=0.2)
+    assert result["feasible"] is False
+    assert result["reason"] == "turn_limit"

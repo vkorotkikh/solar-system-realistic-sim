@@ -586,7 +586,7 @@ describe('SolarRealtimeClient delivery contract', () => {
         ...validPayload(),
         snapshot: { ...validPayload().snapshot, sdo_aia: null }
       },
-      'sdo_aia status'
+      'source_status.sdo_aia.ok must match'
     ],
     [
       {

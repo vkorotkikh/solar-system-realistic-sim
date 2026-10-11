@@ -416,7 +416,7 @@ export class SolarPhysicsClient {
       !this.disposed &&
       this._reqId === currentReqId &&
       this.abortController === controller;
-    
+
     try {
       timeoutHandle = setTimeout(() => {
         timedOut = true;
@@ -432,7 +432,7 @@ export class SolarPhysicsClient {
       } catch (error: unknown) {
         throw await this.classifyFetchError(error, timedOut, controller.signal);
       }
-      
+
       // If a new request started while we were awaiting, ignore this result
       if (!ownsRequest()) return false;
 

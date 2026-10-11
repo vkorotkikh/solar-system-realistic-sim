@@ -8,6 +8,8 @@ from sim.solar_physics import (
     CYCLE_25_START_JD,
     CYCLE_LENGTH_MONTHS,
     HATHAWAY_B,
+    HATHAWAY_C,
+    HATHAWAY_PEAK_MONTHS,
     J2000_JD,
     MEAN_MONTH_DAYS,
     ObservedSolarInputUnavailable,
@@ -51,7 +53,7 @@ def _fallback_reasons(value: object) -> list[str]:
 def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
     cycle_days = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
-    peak_days = HATHAWAY_B * math.sqrt(1.5) * MEAN_MONTH_DAYS
+    peak_days = HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS
 
     start_activity, _ = model._activity_index(CYCLE_25_START_JD)
     peak_activity, _ = model._activity_index(CYCLE_25_START_JD + peak_days)
@@ -62,6 +64,22 @@ def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     assert peak_activity > 0.75
     assert peak_activity > start_activity + 0.45
     assert peak_activity > end_activity + 0.45
+
+
+def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
+    from sim.solar_physics import _hathaway_normalized
+
+    months = [k * 0.01 for k in range(1, 13_201)]
+    values = [_hathaway_normalized(t) for t in months]
+    peak_index = max(range(len(values)), key=values.__getitem__)
+
+    assert max(values) == pytest.approx(1.0, abs=1e-9)
+    assert months[peak_index] == pytest.approx(HATHAWAY_PEAK_MONTHS, abs=0.01)
+    assert HATHAWAY_PEAK_MONTHS == pytest.approx(58.39, abs=0.01)  # not b*sqrt(1.5) = 66.1 for c = 0.71
+    assert HATHAWAY_C > 0
+    # Normalising at b*sqrt(1.5) pushed ~14 months of every cycle above 1, which the clamp
+    # flattened into a plateau. Now at most the grid point nearest the peak can reach 1.
+    assert sum(v >= 1.0 - 1e-12 for v in values) <= 1
 
 
 def test_hale_leading_polarity_flips_between_adjacent_cycles() -> None:
@@ -143,7 +161,7 @@ def test_synthetic_coronal_holes_present_at_solar_minimum() -> None:
 def test_synthetic_coronal_holes_coverage_decreases_at_solar_max() -> None:
     """Polar coronal hole coverage should be smaller at solar maximum."""
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-    peak_days = HATHAWAY_B * math.sqrt(1.5) * MEAN_MONTH_DAYS
+    peak_days = HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS
 
     min_jd = CYCLE_25_START_JD + 0.2 * 365.25
     max_jd = CYCLE_25_START_JD + peak_days

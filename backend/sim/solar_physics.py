@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from functools import lru_cache
 from random import Random
 from typing import Any
 
@@ -87,7 +88,7 @@ def _orthonormal_basis(base: tuple[float, float, float]) -> tuple[tuple[float, f
 def _differential_rotation_rad_day(lat_rad: float) -> float:
     sin_lat = math.sin(lat_rad)
     sin2 = sin_lat * sin_lat
-    # Snodgrass-like differential rotation profile (deg/day).
+    # Snodgrass & Ulrich (1990) sidereal photospheric Doppler profile (deg/day).
     deg_per_day = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2
     return deg_per_day * math.pi / 180.0
 
@@ -134,9 +135,28 @@ def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C)
     return ratio3 / denom
 
 
+@lru_cache(maxsize=8)
+def _hathaway_peak_months(b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    # d/dx [x^3 / (exp(x^2) - c)] = 0 with x = t/b  <=>  exp(s) * (3 - 2s) = 3c, s = x^2.
+    # The left side falls monotonically from 2*e^0.5 (> 3c for c < 1) at s = 0.5 to 0 at s = 1.5,
+    # so bisect there. Only c = 0 gives the textbook b*sqrt(3/2); c = 0.71 peaks at 58.4 months.
+    lo, hi = 0.5, 1.5
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if math.exp(mid) * (3.0 - 2.0 * mid) > 3.0 * c:
+            lo = mid
+        else:
+            hi = mid
+    return b * math.sqrt(0.5 * (lo + hi))
+
+
+HATHAWAY_PEAK_MONTHS = _hathaway_peak_months()
+
+
 def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
-    # Analytic peak at t = b * sqrt(3/2) for the canonical Hathaway form.
-    t_peak = b * math.sqrt(1.5)
+    # Normalise by the true maximum. Dividing by the value at b*sqrt(3/2) (the c = 0 peak)
+    # overshot 1 by 3.4% and the clamp flattened the top of every cycle.
+    t_peak = _hathaway_peak_months(b, c)
     peak_val = _hathaway_raw(t_peak, b, c)
     if peak_val <= 1e-12:
         return 0.0
@@ -1071,7 +1091,7 @@ class SolarCoronaPhysicsModel:
             "cycle_phase_rad": cycle_phase,
             "data_assimilation": assimilation,
             "surface": {
-                "differential_rotation_model": "snodgrass_1983_like",
+                "differential_rotation_model": "snodgrass_ulrich_1990",
                 "activity_cycle_model": "hathaway_2015_normalized",
                 "activity_cycle_params": {
                     "b_months": HATHAWAY_B,
