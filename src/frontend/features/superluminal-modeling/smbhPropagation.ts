@@ -623,7 +623,7 @@ export function computeMultiMessengerTimeline(source, energyErg, thetaObsRad = 0
             blastVelocityCmS: blastVelocity,
             pressureFactor: pFactor,
             compressedHeliopauseAU: heliopauseRadius(pFactor),
-            equilibriumTimeSec: heliosphereEquilibriumTime(pFactor) * 1e5,
+            equilibriumTimeSec: heliosphereEquilibriumTime(pFactor),
             compressionRatio: shockCompressionRatio()
         },
 

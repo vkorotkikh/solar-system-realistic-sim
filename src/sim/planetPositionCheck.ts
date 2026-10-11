@@ -25,10 +25,12 @@
  *   - src/sim/planetPositions.horizons.test.ts (the CI gate, one case per planet)
  *   - scripts/verify-planet-positions.mjs      (the planet x epoch diagnostic table)
  *
- * The fixture targets planet BARYCENTRES (Horizons ids 1..8), because those are the
- * bodies the Standish element table describes. Horizons id 3 is the EARTH-MOON
- * BARYCENTER, not Earth: comparing the model against Earth itself would add the
- * ~4700 km Earth/EMB offset as an irreducible floor.
+ * The fixture targets planet BARYCENTRES (Horizons ids 1..9), because those are the
+ * bodies the Standish element table describes -- except Earth. Standish "Earth" is the
+ * Earth-Moon barycentre, and the catalog moves Earth to the geocentre (EMB minus the Moon's
+ * mass fraction of r_moon), so Earth's truth is Horizons 399, Earth itself. The ~4,700 km
+ * offset sits inside Standish's own position error, so the gate pins it with Earth's
+ * VELOCITY (12 m/s off at the barycentre, < 1.5 m/s at the geocentre).
  */
 
 import type { CatalogBody, SolarCatalog } from './catalog';
@@ -58,6 +60,10 @@ export const JULIAN_CENTURY_DAYS = 36525;
  *   saturn             1.54e7 km      2.0e7 km            2.85e7 km
  *   uranus             1.82e6 km      2.8e6 km            2.27e7 km
  *   neptune            1.94e6 km      3.0e6 km            2.46e7 km
+ *   pluto              1.36e6 km      1.6e6 km            1.90e6 km  (no secular rates; added 2026-10-07)
+ *
+ * Pluto's headroom is ~1.2x, not 2x: its worst epoch is the Standish element set's own J2000
+ * offset (1.36e6 km at every propagator), and 2x would admit the rate-less model (1.90e6 km).
  *
  * The budgets are dominated by two things that are NOT propagator defects, which
  * is why they are as large as they are:
@@ -91,7 +97,8 @@ export const POSITION_BUDGET_KM: Record<string, number> = {
   jupiter: 2.5e6,
   saturn: 1.3e7,
   uranus: 4e6,
-  neptune: 4e6
+  neptune: 4e6,
+  pluto: 1.6e6
 };
 
 /**
@@ -120,6 +127,7 @@ export const POSITION_BUDGET_KM: Record<string, number> = {
  *   saturn          1.15e7 km   1.75e7 km             2.47e7 km
  *   uranus          7.42e5 km   1.2e6 km              2.16e7 km
  *   neptune         8.42e5 km   1.3e6 km              2.35e7 km
+ *   pluto          -1.72e5 km   2.5e5 km              5.43e5 km  (no secular rates)
  */
 export const DRIFT_BUDGET_KM: Record<string, number> = {
   // Also ~2x measured worst drift. This is the quantity that actually pins the
@@ -131,7 +139,8 @@ export const DRIFT_BUDGET_KM: Record<string, number> = {
   jupiter: 5e5,
   saturn: 5e6,
   uranus: 1.8e6,
-  neptune: 1.6e6
+  neptune: 1.6e6,
+  pluto: 2.5e5
 };
 
 /** Epochs closer than this to J2000 are the drift baseline, not drift samples. */
@@ -144,6 +153,7 @@ export const DRIFT_EPOCH_MIN_CENTURIES = 0.25;
  * every one of them at every epoch and still be far worse overall than anything
  * correct. This catches that: the reference implementation totals 6.95e7 km over
  * the 48 rows, the budget is 1.5x that, and the current buggy tip totals 2.61e8 km.
+ * Pluto's six rows (added 2026-10-07) contribute 5.2e6 km; the 54-row total is 4.2e7 km.
  */
 export const TOTAL_BUDGET_KM = 7.5e7;
 

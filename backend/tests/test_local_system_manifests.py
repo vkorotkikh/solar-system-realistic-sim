@@ -83,7 +83,7 @@ def test_sirius_manifest_excludes_unconfirmed_planets() -> None:
     [
         ("alpha-centauri.json", 0.02),
         ("barnards-star.json", 0.02),
-        ("sirius.json", 0.05),
+        ("sirius.json", 0.002),  # Bond et al. 2017 elements and masses close to 0.01%
     ],
 )
 def test_local_system_manifest_orbits_are_kepler_consistent(

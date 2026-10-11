@@ -83,6 +83,7 @@ import {
   renderAsteroidCatalogSourceStatus,
   verifiedAsteroidCatalogStatus,
 } from './frontend/features/asteroids/catalogSourceStatus';
+import { SolarDataAnnouncer, renderSolarDataStatus } from './frontend/features/solar/solarDataStatus';
 
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,8 @@ const dom = {
   statusBodies: elementById<HTMLElement>('status-bodies'),
   statusZoom: elementById<HTMLElement>('status-zoom'),
   statusCatalog: elementById<HTMLElement>('status-catalog'),
+  statusSolar: elementById<HTMLElement>('status-solar'),
+  statusSolarAnnouncer: elementById<HTMLElement>('status-solar-announcer'),
   zoomSensitivity: elementById<HTMLInputElement>('zoom-sensitivity'),
   zoomSensitivityValue: elementById<HTMLOutputElement>('zoom-sensitivity-value'),
   viewportShell: elementById<HTMLElement>('viewport-shell'),
@@ -257,6 +260,8 @@ if (sunTextureCanvas) {
 
 const sunBody = bodyById.get('sun');
 
+const solarDataAnnouncer = new SolarDataAnnouncer(dom.statusSolarAnnouncer);
+
 const sunCtrl = createSunController({
   camera,
   simState,
@@ -264,7 +269,13 @@ const sunCtrl = createSunController({
   configureLoadedTexture,
   observationTextureLoader: solarObservationTextureLoader,
   getSunRadiusAu: () => sunBody ? bodyBaseRadiusAu(sunBody) : 0.01,
-  isMagneticFieldEnabled: () => Boolean(dom.toggleMagneticField?.checked)
+  isMagneticFieldEnabled: () => Boolean(dom.toggleMagneticField?.checked),
+  onSolarDataStatus: (status) => {
+    renderSolarDataStatus(dom.statusSolar, status);
+    if (solarDataAnnouncer.observe(status) && status.state !== 'backend') {
+      console.warn(`[solar] ${status.text}${status.remedy ? `\n${status.remedy}` : ''}`);
+    }
+  }
 });
 
 // ── Body Nodes ───────────────────────────────────────────────────────────────

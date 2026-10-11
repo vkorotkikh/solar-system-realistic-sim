@@ -39,6 +39,13 @@ export interface KeplerOrbit {
   ephemerisRequired?: boolean;
   /** Native Laplace/equatorial axes for moon mean-element fallback propagation. */
   sourceFrameBasis?: SourceFrameBasis;
+  /**
+   * The elements describe the barycentre of this body and `orbit` (the companion's orbit
+   * relative to this body): Standish's "Earth" is the Earth-Moon barycentre. The body itself
+   * is at r_bary - massFraction * r_companion, with massFraction = m_companion / (m_body +
+   * m_companion); the same holds for velocity.
+   */
+  barycentreCompanion?: { orbit: KeplerOrbit; massFraction: number };
 }
 
 /**
@@ -166,9 +173,13 @@ function normalizeRadians(angle: number): number {
 }
 
 export function solveKeplerFast(M: number, e: number): number {
-  let E = M;
-  for (let i = 0; i < 6; i++) {
-    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  // Danby's starter E0 = M + 0.85 e sign(sin M) converges for every e < 1; the old E0 = M with a
+  // fixed six steps diverged for e >= ~0.99. Usually 3-5 steps, so still fast.
+  let E = M + 0.85 * e * Math.sign(Math.sin(M));
+  for (let i = 0; i < 50; i++) {
+    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-12) break;
   }
   return E;
 }
@@ -265,11 +276,49 @@ export function resolveKeplerOrbitAtElapsedDays(
   };
 }
 
+const baryPosition = new Vector3();
+const baryVelocity = new Vector3();
+const companionPosition = new Vector3();
+const companionVelocity = new Vector3();
+
 export function propagateKeplerOrbit(
   orbit: KeplerOrbit,
   elapsedDays: number,
   outPosition: Vector3,
   outVelocity: Vector3 | null = null
+): boolean {
+  const companion = orbit.barycentreCompanion;
+  if (!companion) return propagateOwnOrbit(orbit, elapsedDays, outPosition, outVelocity);
+
+  // ponytail: shared scratch vectors, so a companion must not itself carry a companion.
+  // Outputs are written once with .set(), and not at all on failure, like every other branch.
+  const companionElapsedDays = elapsedDays + orbit.epochJd - companion.orbit.epochJd;
+  const wantVelocity = outVelocity !== null;
+  if (
+    !propagateOwnOrbit(orbit, elapsedDays, baryPosition, wantVelocity ? baryVelocity : null) ||
+    !propagateOwnOrbit(companion.orbit, companionElapsedDays, companionPosition, wantVelocity ? companionVelocity : null)
+  ) {
+    return false;
+  }
+  const k = companion.massFraction;
+  outPosition.set(
+    baryPosition.x - k * companionPosition.x,
+    baryPosition.y - k * companionPosition.y,
+    baryPosition.z - k * companionPosition.z
+  );
+  outVelocity?.set(
+    baryVelocity.x - k * companionVelocity.x,
+    baryVelocity.y - k * companionVelocity.y,
+    baryVelocity.z - k * companionVelocity.z
+  );
+  return true;
+}
+
+function propagateOwnOrbit(
+  orbit: KeplerOrbit,
+  elapsedDays: number,
+  outPosition: Vector3,
+  outVelocity: Vector3 | null
 ): boolean {
   if (
     orbit.ephemeris &&

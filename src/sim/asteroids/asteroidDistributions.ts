@@ -164,16 +164,14 @@ export function generateAsteroidElement(population = 'main-belt') {
         e = Math.abs(randomGaussian(0.08, 0.04));
         i = Math.abs(randomGaussian(15.0, 8.0)); // Trojans can have quite high inclination
 
-        // Jupiter's mean anomaly is approximately the anchor.
-        // L4 leads by 60 deg, L5 trails by 60 deg. For a static generation, we just offset.
-        const jupiterApproxM = 20.0; // Very rough snapshot approximation
-        if (population === 'trojan-l4') {
-            meanAnomalyDeg = jupiterApproxM + 60 + randomGaussian(0, 15);
-        } else {
-            meanAnomalyDeg = jupiterApproxM - 60 + randomGaussian(0, 15);
-        }
-        // Normalize
-        meanAnomalyDeg = (meanAnomalyDeg + 360) % 360;
+        // It is the MEAN LONGITUDE (node + periapsis + mean anomaly) that librates about the
+        // Lagrange point: L4 leads Jupiter by 60 deg, L5 trails. Offsetting only M while node and
+        // periapsis are random spread the "Trojans" uniformly around the orbit.
+        const jupiterMeanLongitudeJ2000Deg = 34.39644051; // Standish L0; this pipeline's epoch is J2000
+        const lagrangeOffsetDeg = population === 'trojan-l4' ? 60 : -60;
+        meanAnomalyDeg = jupiterMeanLongitudeJ2000Deg + lagrangeOffsetDeg + randomGaussian(0, 15)
+            - ascendingNodeDeg - argPeriapsisDeg;
+        meanAnomalyDeg = ((meanAnomalyDeg % 360) + 360) % 360;
     }
     else if (population === 'nea') {
         // Near Earth Asteroids (Amor, Apollo, Aten, Atira)

@@ -11,8 +11,9 @@
  * This propagates each catalog planet to six epochs spanning 1900-2100 and
  * compares the heliocentric ecliptic-J2000 position against a committed JPL
  * Horizons snapshot. It needs no network: the truth values live in
- * scripts/fixtures/. The fixture targets planet BARYCENTRES (Horizons ids 1..8),
- * which is what the Standish table describes; id 3 is the Earth-Moon barycentre.
+ * scripts/fixtures/. The fixture targets planet BARYCENTRES (Horizons ids 1..9),
+ * which is what the Standish table describes -- except Earth, whose truth is the
+ * geocentre (399) because the catalog places Earth there rather than at the EMB.
  *
  * Two independent quantities are gated per planet (see src/sim/planetPositionCheck.ts):
  *   errKm  -- |r_model - r_horizons| at each epoch, against a per-planet budget;
@@ -20,7 +21,7 @@
  *             which forces the outer-planet budgets to be loose
  *   drift  -- worst (errKm - errKm at J2000) over the distant epochs; cancels that
  *             offset, so it stays sharp exactly where the absolute budget goes soft
- * plus an aggregate budget on the summed error over all 48 rows.
+ * plus an aggregate budget on the summed error over all 54 rows (eight planets + Pluto).
  *
  * The same comparison runs inside `npm test` as src/sim/planetPositions.horizons.test.ts.
  * This runner exists for the full table and for debugging without vitest.
