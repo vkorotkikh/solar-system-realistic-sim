@@ -5,10 +5,39 @@ import {
   renderSolarDataStatus,
   type SolarDataStatusInput
 } from './solarDataStatus';
-import type { SolarPhysicsFailureKind } from './solarPhysicsClient';
+import type {
+  SolarPhysicsFailure,
+  SolarPhysicsFailureKind,
+  SolarPhysicsStatePayload
+} from './solarPhysicsClient';
 
 const SUCCESS_MS = Date.UTC(2026, 8, 24, 14, 3, 27);
-const HYBRID_PAYLOAD = { data_assimilation: { mode: 'hybrid', applied: true, blend_weight: 0.4178 } };
+const BASE_PAYLOAD: SolarPhysicsStatePayload = {
+  schema: { name: 'solar_physics_state', version: 2 },
+  epoch_jd_tdb: 2_460_000.5,
+  wall_epoch_jd_tdb: 2_460_000.5,
+  jd_time_scale: 'TDB',
+  forcing: 'hybrid',
+  effective_forcing: 'synthetic',
+  live_data_requested: true,
+  live_data_enabled: false,
+  fallback_reason: 'disabled_unvalidated',
+  forcing_status: {
+    requested: 'hybrid',
+    effective: 'synthetic',
+    observed_input_status: 'disabled_unvalidated',
+    runtime_eligible: false,
+    fallback_reason: 'disabled_unvalidated'
+  }
+};
+
+function payload(overrides: Partial<SolarPhysicsStatePayload> = {}): SolarPhysicsStatePayload {
+  return { ...BASE_PAYLOAD, ...overrides };
+}
+
+const HYBRID_PAYLOAD = payload({
+  data_assimilation: { mode: 'hybrid', applied: true, blend_weight: 0.4178 }
+});
 
 function input(overrides: Partial<SolarDataStatusInput> = {}): SolarDataStatusInput {
   return {
@@ -24,8 +53,12 @@ function input(overrides: Partial<SolarDataStatusInput> = {}): SolarDataStatusIn
   };
 }
 
-function failure(kind: SolarPhysicsFailureKind, httpStatus: number | null = null, atMs = SUCCESS_MS + 60_000) {
-  return { kind, message: `${kind} failure`, httpStatus, atMs };
+function failure(
+  kind: SolarPhysicsFailureKind,
+  httpStatus: number | null = null,
+  atMs = SUCCESS_MS + 60_000
+): SolarPhysicsFailure {
+  return { kind, message: `${kind} failure`, httpStatus, code: null, atMs };
 }
 
 describe('describeSolarDataStatus', () => {
@@ -114,13 +147,15 @@ describe('describeSolarDataStatus', () => {
   it('says so when the backend ran without observations', () => {
     const synthetic = describeSolarDataStatus(input({
       lastSuccessMs: SUCCESS_MS,
-      payload: { data_assimilation: { mode: 'synthetic', applied: false } },
+      payload: payload({ data_assimilation: { mode: 'synthetic', applied: false } }),
     }));
     expect(synthetic.text).toBe('Sun: backend solar model (synthetic forcing, no observations) · updated 14:03 UTC');
 
     const unavailable = describeSolarDataStatus(input({
       lastSuccessMs: SUCCESS_MS,
-      payload: { data_assimilation: { mode: 'data_driven', applied: false, live_data_available: false } },
+      payload: payload({
+        data_assimilation: { mode: 'data_driven', applied: false, live_data_available: false }
+      }),
     }));
     expect(unavailable.text).toBe('Sun: backend solar model (data-driven forcing, observations unavailable) · updated 14:03 UTC');
   });
@@ -128,7 +163,7 @@ describe('describeSolarDataStatus', () => {
   it('marks earlier backend state as stale while refreshes fail', () => {
     const status = describeSolarDataStatus(input({
       lastSuccessMs: SUCCESS_MS,
-      payload: { activity_index: 0.4 },
+      payload: payload({ activity_index: 0.4 }),
       lastFailure: failure('busy', 503),
     }));
     expect(status).toMatchObject({
