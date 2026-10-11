@@ -51,6 +51,29 @@ VINFINITY_NEAR_ROOT_THRESHOLD_KMS = 0.25
 # model's coarse assist-epoch resolution and are retained only once.
 VINF_ROOT_DUPLICATE_TOF_TOLERANCE_DAYS = 0.05
 MIN_FLYBY_ALTITUDE_KM = 300.0
+# `radius_km` in data/bodies.py is the volumetric MEAN radius, which for the giants lies inside the
+# 1-bar equator (Saturn by 2,036 km), so periapsis floors start from IAU 2015 equatorial radii.
+# Jupiter uses the ESA ACT GTOP Cassini1 floor, 671,492 km (~9.4 R_J): R + 300 km sits inside the
+# Io plasma torus and overstated the achievable turn by ~60 deg at 10 km/s.
+# ponytail: ring and radiation limits beyond Jupiter are not modelled; add them per body here.
+EQUATORIAL_RADIUS_KM = {
+    "mercury": 2_440.53,
+    "venus": 6_051.8,
+    "earth": 6_378.137,
+    "mars": 3_396.19,
+    "jupiter": 71_492.0,
+    "saturn": 60_268.0,
+    "uranus": 25_559.0,
+    "neptune": 24_764.0,
+}
+MIN_FLYBY_PERIAPSIS_KM = {
+    **{body_id: radius + MIN_FLYBY_ALTITUDE_KM for body_id, radius in EQUATORIAL_RADIUS_KM.items()},
+    "jupiter": 671_492.0,
+}
+
+
+def min_flyby_periapsis_km(body: Dict[str, Any], radius_km: float) -> float:
+    return MIN_FLYBY_PERIAPSIS_KM.get(str(body.get("id", "")), radius_km + MIN_FLYBY_ALTITUDE_KM)
 LEG_EVALUATION_CUMULATIVE_TARGETS = {
     0: 128,
     1: 768,
@@ -518,7 +541,7 @@ def _evaluate_flyby(
         and radius_km > 0.0
     )
     mu_body = mu_au3_day2_from_mass_kg(mass_kg) if body_parameters_valid else 0.0
-    rp_au = (radius_km + MIN_FLYBY_ALTITUDE_KM) / AU_KM if body_parameters_valid else 0.0
+    rp_au = min_flyby_periapsis_km(body, radius_km) / AU_KM if body_parameters_valid else 0.0
 
     max_turn = 0.0
     if mu_body > 0.0 and v_inf_in_mag_au_day > 1e-12:
@@ -545,6 +568,7 @@ def _evaluate_flyby(
         "assistGainKmS": assist_gain,
         "requiredTurnDeg": math.degrees(required_turn),
         "maxTurnDeg": math.degrees(max_turn),
+        "minPeriapsisKm": rp_au * AU_KM,
         "turnDeficitDeg": math.degrees(turn_deficit),
         "vInfInKmS": v_inf_in_kms,
         "vInfOutKmS": v_inf_out_kms,
@@ -1192,6 +1216,8 @@ __all__ = [
     "MAX_LEG_EVALUATIONS",
     "MAX_PREFIX_EXPANSIONS",
     "MIN_FLYBY_ALTITUDE_KM",
+    "MIN_FLYBY_PERIAPSIS_KM",
+    "min_flyby_periapsis_km",
     "PRUNE_PER_DEPTH",
     "UNPOWERED_FLYBY_TURN_TOLERANCE_RAD",
     "UNPOWERED_FLYBY_VINF_ABS_TOLERANCE_KMS",

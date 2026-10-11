@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 
 def _quantile(sorted_values: List[float], q: float) -> float:
@@ -29,7 +29,7 @@ class RiskService:
         base_total_time_days: float,
         base_returned_payload_kg: float,
         base_arrival_jd: float,
-        base_propellant_margin_kg: float,
+        reclose: Callable[[float, float], Dict[str, Any]],
         samples: int = 300,
         seed: int = 7,
         ephemeris_sigma_fraction: float = 0.01,
@@ -61,12 +61,13 @@ class RiskService:
             payload = max(0.0, base_returned_payload_kg * payload_factor)
             arrival_jd = base_arrival_jd + (time_days - base_total_time_days)
 
-            # Margin shrinks if DV inflates and payload underperforms.
-            margin_penalty = (dv - base_total_delta_v_km_s) * 120.0
-            margin_penalty += max(0.0, base_returned_payload_kg - payload) * 0.08
-            margin = base_propellant_margin_kg - margin_penalty
+            # Re-close the staged rocket equation for this sample: every burn scaled by the
+            # sampled delta-v factor, carrying the planned cargo (or less, if less was mined).
+            # A plan short of delta-v therefore fails here instead of scoring 0% risk.
+            budget = reclose(dv_factor, min(payload, base_returned_payload_kg))
+            margin = float(budget.get("propellantMarginKg", 0.0))
 
-            if payload <= 0.0 or margin < 0.0:
+            if payload <= 0.0 or not budget.get("feasible", False):
                 failure_count += 1
 
             dv_samples.append(dv)

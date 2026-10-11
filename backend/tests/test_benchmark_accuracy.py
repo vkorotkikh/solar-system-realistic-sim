@@ -22,6 +22,16 @@ def test_benchmark_uses_strict_reference_integrity() -> None:
     assert summary["incomparableCount"] == summary["scenarioCount"]
     assert summary["solvedCount"] == 0
     assert summary["validationCoverage"] == pytest.approx(0.0)
+    # Nothing was compared, so there is no error and no pass rate -- not a perfect 0.0 / 0%.
+    assert summary["meanAbsErrorKmS"] is None
+    assert summary["passRate"] is None
+    fixed = summary["fixedStateReferences"]
+    assert fixed["count"] >= 2
+    assert fixed["passCount"] == fixed["count"]
+    assert fixed["maxAbsErrorKmS"] < 1e-4
+    report = benchmark_accuracy.render_accuracy_report_markdown(summary)
+    assert "Mean |delta-v error|: n/a" in report
+    assert f"passed: {fixed['count']}/{fixed['count']}" in report
 
     for row in summary["rows"]:
         reference = row.get("reference", {})
@@ -238,3 +248,17 @@ def test_reference_artifact_cannot_escape_reference_directory(tmp_path) -> None:
             ephemeris_provider="kepler",
             scenarios_path=reference_path,
         )
+
+
+def test_fixed_state_references_catch_a_wrong_solver(monkeypatch) -> None:
+    real_solver = benchmark_accuracy.solve_lambert_universal
+
+    def off_by_one_metre_per_second(*args, **kwargs):
+        solution = real_solver(*args, **kwargs)
+        nudge = 1e-3 * 86_400.0 / 149_597_870.7  # 1 m/s in AU/day
+        return {**solution, "v1": [solution["v1"][0] + nudge, *solution["v1"][1:]]}
+
+    monkeypatch.setattr(benchmark_accuracy, "solve_lambert_universal", off_by_one_metre_per_second)
+    summary = benchmark_against_references(ALL_BODIES, ephemeris_provider="kepler")
+
+    assert summary["fixedStateReferences"]["passCount"] == 0
