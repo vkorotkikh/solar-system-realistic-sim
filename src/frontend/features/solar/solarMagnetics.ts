@@ -242,6 +242,9 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
     for (let i = 0; i < pfssData.lines.length; i++) {
         const trace = pfssData.lines[i];
         if (!trace || !Array.isArray(trace.arc) || trace.arc.length < 2) continue;
+        // Explicit topology takes precedence; unresolved traces have no closed styling.
+        if (trace.state !== undefined && trace.state !== 'open' && trace.state !== 'closed') continue;
+        const isOpen = trace.state === undefined ? Boolean(trace.is_open) : trace.state === 'open';
 
         const positions = new Float32Array(trace.arc.length * 3);
         for (let p = 0; p < trace.arc.length; p++) {
@@ -259,7 +262,7 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
         const pseudoScore = 0.5 + jitter * 0.3;
         let opacity = 0.12 + pseudoScore * 0.16 + jitter * 0.05;
 
-        if (trace.is_open) {
+        if (isOpen) {
             lineColor = trace.polarity > 0 ? openPosColor : openNegColor;
             opacity = 0.24 + pseudoScore * 0.24 + jitter * 0.08;
         }
@@ -275,10 +278,10 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
         const line = new Line(geometry, material);
         line.userData.baseOpacity = opacity;
         line.userData.phaseOffset = seededNoise(i * 3.11 + 0.7) * Math.PI * 2;
-        line.userData.pulseRate = trace.is_open
+        line.userData.pulseRate = isOpen
             ? 0.55 + pseudoScore * 0.8
             : 0.28 + pseudoScore * 0.45;
-        line.userData.isOpen = trace.is_open;
+        line.userData.isOpen = isOpen;
         group.add(line);
     }
 

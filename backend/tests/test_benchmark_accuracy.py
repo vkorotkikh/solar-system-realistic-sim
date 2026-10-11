@@ -9,6 +9,7 @@ import pytest
 from benchmark import benchmark_against_references
 import benchmark.accuracy as benchmark_accuracy
 from data.bodies import ALL_BODIES
+from trajectory.budget import PlanningCancelled, PlanningContext
 
 
 def test_benchmark_uses_strict_reference_integrity() -> None:
@@ -21,6 +22,16 @@ def test_benchmark_uses_strict_reference_integrity() -> None:
     assert summary["incomparableCount"] == summary["scenarioCount"]
     assert summary["solvedCount"] == 0
     assert summary["validationCoverage"] == pytest.approx(0.0)
+    # Nothing was compared, so there is no error and no pass rate -- not a perfect 0.0 / 0%.
+    assert summary["meanAbsErrorKmS"] is None
+    assert summary["passRate"] is None
+    fixed = summary["fixedStateReferences"]
+    assert fixed["count"] >= 2
+    assert fixed["passCount"] == fixed["count"]
+    assert fixed["maxAbsErrorKmS"] < 1e-4
+    report = benchmark_accuracy.render_accuracy_report_markdown(summary)
+    assert "Mean |delta-v error|: n/a" in report
+    assert f"passed: {fixed['count']}/{fixed['count']}" in report
 
     for row in summary["rows"]:
         reference = row.get("reference", {})
@@ -51,6 +62,8 @@ def test_benchmark_reports_pass_fail_metrics(monkeypatch, tmp_path) -> None:
         (float(item["departure_jd"]), float(item["arrival_jd"])): item
         for item in scenarios
     }
+    observed_contexts = set()
+    observed_sessions = set()
 
     def fake_solve_direct_lambert(
         bodies,
@@ -61,7 +74,12 @@ def test_benchmark_reports_pass_fail_metrics(monkeypatch, tmp_path) -> None:
         arrival_jd,
         ephemeris_provider,
         prograde,
+        planning_context,
+        ephemeris,
     ):
+        observed_contexts.add(id(planning_context))
+        observed_sessions.add(id(ephemeris))
+        assert ephemeris.planning_context is planning_context
         scenario = scenario_by_window[(float(departure_jd), float(arrival_jd))]
         calibration = scenario["truth_calibration"]
         consensus = float(calibration["consensus_total_delta_v_km_s"])
@@ -108,6 +126,17 @@ def test_benchmark_reports_pass_fail_metrics(monkeypatch, tmp_path) -> None:
     assert rows["earth_venus_2024_window"]["pass"] is True
     assert rows["earth_jupiter_2024_window"]["pass"] is False
     assert {row["ephemerisProvider"] for row in summary["rows"]} == {"kepler"}
+    assert len(observed_contexts) == 1
+    assert len(observed_sessions) == 1
+    assert summary["planningContext"]["limits"] == {
+        "ephemeris_queries": benchmark_accuracy.MAX_REFERENCE_SCENARIOS * 2,
+        "unique_ephemeris_states": benchmark_accuracy.MAX_REFERENCE_SCENARIOS * 2,
+        "remote_ephemeris_states": 0,
+        "external_requests": 0,
+        "leg_requests": benchmark_accuracy.MAX_REFERENCE_SCENARIOS,
+        "leg_evaluations": benchmark_accuracy.MAX_REFERENCE_SCENARIOS,
+        "route_prefixes": 0,
+    }
 
 
 def test_benchmark_fails_on_checksum_mismatch(tmp_path) -> None:
@@ -126,3 +155,110 @@ def test_benchmark_fails_on_checksum_mismatch(tmp_path) -> None:
             ephemeris_provider="kepler",
             scenarios_path=src,
         )
+
+
+def test_benchmark_rejects_horizons_before_scenario_evaluation(monkeypatch) -> None:
+    invoked = False
+
+    def forbidden_solver(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        raise AssertionError("remote scenario evaluation must not start")
+
+    monkeypatch.setattr(benchmark_accuracy, "solve_direct_lambert", forbidden_solver)
+
+    with pytest.raises(ValueError, match="aggregate remote-request budget"):
+        benchmark_against_references(ALL_BODIES, ephemeris_provider="horizons")
+
+    assert invoked is False
+
+
+def test_reference_file_byte_limit_precedes_json_parse_and_ephemeris_creation(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    reference_path = tmp_path / "oversized.json"
+    reference_path.write_bytes(b" " * (benchmark_accuracy.MAX_REFERENCE_FILE_BYTES + 1))
+
+    def forbidden_ephemeris(*_args, **_kwargs):
+        raise AssertionError("ephemeris session must not be created for oversized input")
+
+    monkeypatch.setattr(benchmark_accuracy, "EphemerisService", forbidden_ephemeris)
+
+    with pytest.raises(ValueError, match="exceeds.*byte limit"):
+        benchmark_against_references(
+            ALL_BODIES,
+            ephemeris_provider="kepler",
+            scenarios_path=reference_path,
+        )
+
+
+def test_reference_scenario_count_limit_precedes_scenario_iteration(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    reference_path = tmp_path / "too-many.json"
+    reference_path.write_text(
+        json.dumps([{}] * (benchmark_accuracy.MAX_REFERENCE_SCENARIOS + 1)),
+        encoding="utf-8",
+    )
+
+    def forbidden_prepare(*_args, **_kwargs):
+        raise AssertionError("scenario iteration must not begin above the hard cap")
+
+    monkeypatch.setattr(benchmark_accuracy, "_prepare_scenario", forbidden_prepare)
+
+    with pytest.raises(ValueError, match="too many scenarios"):
+        benchmark_against_references(
+            ALL_BODIES,
+            ephemeris_provider="kepler",
+            scenarios_path=reference_path,
+        )
+
+
+def test_direct_benchmark_cancellation_precedes_reference_io(monkeypatch) -> None:
+    context = PlanningContext.with_timeout(2.0)
+    context.cancel("caller_cancelled")
+
+    def forbidden_load(*_args, **_kwargs):
+        raise AssertionError("cancelled direct caller must not read references")
+
+    monkeypatch.setattr(benchmark_accuracy, "_load_reference_scenarios", forbidden_load)
+
+    with pytest.raises(PlanningCancelled):
+        benchmark_against_references(
+            ALL_BODIES,
+            ephemeris_provider="kepler",
+            planning_context=context,
+        )
+
+
+def test_reference_artifact_cannot_escape_reference_directory(tmp_path) -> None:
+    source_path = Path(__file__).resolve().parents[1] / "benchmark" / "reference_scenarios.json"
+    scenarios = json.loads(source_path.read_text(encoding="utf-8"))
+    scenarios[0]["truth_calibration"]["tools"]["gmat"]["artifact_path"] = "../outside.csv"
+    reference_path = tmp_path / "references" / "scenarios.json"
+    reference_path.parent.mkdir()
+    reference_path.write_text(json.dumps(scenarios), encoding="utf-8")
+    (tmp_path / "outside.csv").write_text("outside", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must stay inside"):
+        benchmark_against_references(
+            ALL_BODIES,
+            ephemeris_provider="kepler",
+            scenarios_path=reference_path,
+        )
+
+
+def test_fixed_state_references_catch_a_wrong_solver(monkeypatch) -> None:
+    real_solver = benchmark_accuracy.solve_lambert_universal
+
+    def off_by_one_metre_per_second(*args, **kwargs):
+        solution = real_solver(*args, **kwargs)
+        nudge = 1e-3 * 86_400.0 / 149_597_870.7  # 1 m/s in AU/day
+        return {**solution, "v1": [solution["v1"][0] + nudge, *solution["v1"][1:]]}
+
+    monkeypatch.setattr(benchmark_accuracy, "solve_lambert_universal", off_by_one_metre_per_second)
+    summary = benchmark_against_references(ALL_BODIES, ephemeris_provider="kepler")
+
+    assert summary["fixedStateReferences"]["passCount"] == 0

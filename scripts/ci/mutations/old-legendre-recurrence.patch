@@ -1,0 +1,20 @@
+diff --git a/backend/sim/spherical_harmonics.py b/backend/sim/spherical_harmonics.py
+--- a/backend/sim/spherical_harmonics.py
++++ b/backend/sim/spherical_harmonics.py
+@@ -54,9 +54,13 @@ def schmidt_legendre_with_theta_derivative(
+         values[(l, l - 1)] = subdiagonal * mu * previous
+         derivatives[(l, l - 1)] = subdiagonal * (-sin_theta * previous + mu * dprevious)
+         for m in range(l - 1):
+-            denominator = l * l - m * m
+-            a = (2 * l - 1) / math.sqrt(denominator)
+-            b = math.sqrt(((l - 1)**2 - m * m) / denominator)
++            a = math.sqrt(
++                ((2 * l - 1) * (2 * l + 1)) / ((l - m) * (l + m))
++            )
++            b = math.sqrt(
++                ((2 * l + 1) * (l + m - 1) * (l - m - 1))
++                / ((l - m) * (l + m) * (2 * l - 3))
++            )
+             values[(l, m)] = a * mu * values[(l - 1, m)] - b * values[(l - 2, m)]
+             derivatives[(l, m)] = (
+                 a * (-sin_theta * values[(l - 1, m)] + mu * derivatives[(l - 1, m)])

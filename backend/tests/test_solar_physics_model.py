@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from sim.solar_physics import (
     CYCLE_25_START_JD,
     CYCLE_LENGTH_MONTHS,
     HATHAWAY_B,
+    HATHAWAY_C,
+    HATHAWAY_PEAK_MONTHS,
     J2000_JD,
     MEAN_MONTH_DAYS,
+    ObservedSolarInputUnavailable,
     SolarCoronaPhysicsModel,
 )
 
@@ -32,10 +37,23 @@ def _cme_speeds_for_epoch(model: SolarCoronaPhysicsModel, jd: float, wall_jd: fl
     return speeds
 
 
+def _fallback_reasons(value: object) -> list[str]:
+    reasons: list[str] = []
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if key == "fallback_reason" and isinstance(nested, str):
+                reasons.append(nested)
+            reasons.extend(_fallback_reasons(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            reasons.extend(_fallback_reasons(nested))
+    return reasons
+
+
 def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
     cycle_days = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
-    peak_days = HATHAWAY_B * math.sqrt(1.5) * MEAN_MONTH_DAYS
+    peak_days = HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS
 
     start_activity, _ = model._activity_index(CYCLE_25_START_JD)
     peak_activity, _ = model._activity_index(CYCLE_25_START_JD + peak_days)
@@ -46,6 +64,22 @@ def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     assert peak_activity > 0.75
     assert peak_activity > start_activity + 0.45
     assert peak_activity > end_activity + 0.45
+
+
+def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
+    from sim.solar_physics import _hathaway_normalized
+
+    months = [k * 0.01 for k in range(1, 13_201)]
+    values = [_hathaway_normalized(t) for t in months]
+    peak_index = max(range(len(values)), key=values.__getitem__)
+
+    assert max(values) == pytest.approx(1.0, abs=1e-9)
+    assert months[peak_index] == pytest.approx(HATHAWAY_PEAK_MONTHS, abs=0.01)
+    assert HATHAWAY_PEAK_MONTHS == pytest.approx(58.39, abs=0.01)  # not b*sqrt(1.5) = 66.1 for c = 0.71
+    assert HATHAWAY_C > 0
+    # Normalising at b*sqrt(1.5) pushed ~14 months of every cycle above 1, which the clamp
+    # flattened into a plateau. Now at most the grid point nearest the peak can reach 1.
+    assert sum(v >= 1.0 - 1e-12 for v in values) <= 1
 
 
 def test_hale_leading_polarity_flips_between_adjacent_cycles() -> None:
@@ -91,6 +125,17 @@ def test_parker_spiral_extends_to_multi_au_domain() -> None:
     assert spiral["point_count"] >= 80
     assert len(spiral["lines"]) == 6
     assert len(spiral["lines"][0]["arc"]) >= 80
+    pfss = state["pfss_field_lines"]
+    assert "_wsa_result" not in pfss
+    assert pfss["line_count"] == sum(pfss[f"{kind}_line_count"] for kind in ("open", "closed", "indeterminate"))
+    for kind in ("open", "closed", "indeterminate"):
+        assert pfss[f"{kind}_line_count"] == sum(line["state"] == kind for line in pfss["lines"])
+    import json
+    json.dumps(pfss, allow_nan=False)
+    for line in pfss["lines"]:
+        assert type(line["state"]) is str
+        assert line["is_open"] is {"open": True, "closed": False, "indeterminate": None}[line["state"]]
+        assert all(type(value) is float and math.isfinite(value) for value in line["endpoint"])
 
 
 def test_synthetic_coronal_holes_present_at_solar_minimum() -> None:
@@ -116,7 +161,7 @@ def test_synthetic_coronal_holes_present_at_solar_minimum() -> None:
 def test_synthetic_coronal_holes_coverage_decreases_at_solar_max() -> None:
     """Polar coronal hole coverage should be smaller at solar maximum."""
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-    peak_days = HATHAWAY_B * math.sqrt(1.5) * MEAN_MONTH_DAYS
+    peak_days = HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS
 
     min_jd = CYCLE_25_START_JD + 0.2 * 365.25
     max_jd = CYCLE_25_START_JD + peak_days
@@ -172,7 +217,73 @@ def test_sample_state_is_deterministic_for_fixed_epoch() -> None:
     state_b = model.sample_state(jd=jd, fidelity="high", max_features=64, forcing="synthetic")
 
     assert state_a == state_b
+    assert state_a["schema"] == {"name": "solar_physics_state", "version": 2}
     assert state_a["wall_epoch_jd"] == state_a["epoch_jd"] == jd
+    assert state_a["wall_epoch_jd_tdb"] == state_a["epoch_jd_tdb"] == jd
+    assert state_a["jd_time_scale"] == "TDB"
+    assert _fallback_reasons(state_a) == []
+
+
+def test_synthetic_forcing_ignores_observations_without_fallback_claim() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    synthetic_activity = 0.42
+    fake_observation = {
+        "combined_activity_proxy": 0.99,
+        "swpc": {"activity_proxy": 0.99, "solar_wind_speed_kms": 790.0},
+    }
+
+    activity, assimilation, wind_speed = model._apply_realtime_forcing(
+        synthetic_activity,
+        "synthetic",
+        fake_observation,
+    )
+
+    assert activity == synthetic_activity
+    assert wind_speed is None
+    assert assimilation["applied"] is False
+    assert assimilation["effective_mode"] == "synthetic"
+    assert assimilation["live_data_available"] is False
+    assert "fallback_reason" not in assimilation
+
+
+def test_hybrid_forcing_is_deterministic_disabled_synthetic() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    synthetic_activity = 0.42
+    fake_observation = {
+        "combined_activity_proxy": 0.99,
+        "swpc": {"activity_proxy": 0.99, "solar_wind_speed_kms": 790.0},
+    }
+
+    activity, assimilation, wind_speed = model._apply_realtime_forcing(
+        synthetic_activity,
+        "hybrid",
+        fake_observation,
+    )
+
+    assert activity == synthetic_activity
+    assert wind_speed is None
+    assert assimilation["applied"] is False
+    assert assimilation["effective_mode"] == "synthetic"
+    assert assimilation["live_data_available"] is False
+    assert assimilation["fallback_reason"] == "disabled_unvalidated"
+    assert assimilation["source_status"] is None
+    assert all(value is None for value in assimilation["sources"].values())
+
+    state = model.sample_state(
+        jd=2_460_000.5,
+        fidelity="preview",
+        max_features=8,
+        forcing="hybrid",
+    )
+    assert set(_fallback_reasons(state)) == {"disabled_unvalidated"}
+    assert state["pfss_field_lines"]["fallback_reason"] == "disabled_unvalidated"
+
+
+def test_data_driven_model_fails_closed_without_promoted_provider() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+
+    with pytest.raises(ObservedSolarInputUnavailable, match="disabled_unvalidated"):
+        model._apply_realtime_forcing(0.42, "data_driven", {"combined_activity_proxy": 0.8})
 
 
 def test_carrington_rotation_number() -> None:
@@ -184,17 +295,19 @@ def test_carrington_rotation_number() -> None:
 
 
 def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
     from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
     br = synthetic_magnetogram(activity=0.8, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=10)
+    grid = equal_area_sine_latitude_grid(*br.shape)
+    g, h = decompose_spherical_harmonics(br, lmax=10, grid=grid)
     field = pfss_solve(g, h, lmax=10)
     
     # 60 lines should be enough to capture both types
-    lines = trace_field_lines(field, n_lines=60, br_map=br)
+    lines = trace_field_lines(field, n_lines=60, br_map=br, grid=grid)
     
     assert len(lines) > 20
     open_count = sum(1 for line in lines if line["is_open"])
-    closed_count = sum(1 for line in lines if not line["is_open"])
+    closed_count = sum(1 for line in lines if line["state"] == "closed")
     
     # Needs to be a mix
     assert open_count > 0, "No open lines traced"
@@ -202,22 +315,22 @@ def test_pfss_synthetic_produces_open_and_closed_lines() -> None:
 
 
 def test_pfss_open_lines_reach_source_surface() -> None:
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
     from sim.pfss_magnetogram import synthetic_magnetogram, decompose_spherical_harmonics, pfss_solve, trace_field_lines
     br = synthetic_magnetogram(activity=0.5, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=8)
+    grid = equal_area_sine_latitude_grid(*br.shape)
+    g, h = decompose_spherical_harmonics(br, lmax=8, grid=grid)
     field = pfss_solve(g, h, lmax=8)
-    lines = trace_field_lines(field, n_lines=40, br_map=br)
+    lines = trace_field_lines(field, n_lines=40, br_map=br, grid=grid)
     
     for line in lines:
         if line["is_open"]:
-            # Last point should be >= 2.4 R_sun
-            last_pt = line["arc"][-1]
-            r = (last_pt[0]**2 + last_pt[1]**2 + last_pt[2]**2)**0.5
-            assert r >= 2.4, f"Open line terminated too early at r={r}"
+            r = math.hypot(*line["endpoint"])
+            assert abs(r - field.r_ss) <= 1e-6
 
 
 def test_wsa_velocity_bounds() -> None:
-    """WSA formula must produce physically plausible velocities."""
+    """The versioned WSA-inspired relation stays within its declared bounds."""
     from sim.pfss_magnetogram import _wsa_velocity
 
     # Deep coronal hole: low expansion, far from boundary → fast wind
@@ -234,15 +347,16 @@ def test_wsa_velocity_bounds() -> None:
 
 
 def test_wsa_velocity_map_produces_speeds() -> None:
-    """WSA velocity map must produce valid speeds for open flux regions."""
+    """Valid WSA-inspired samples stay within the declared speed bounds."""
     from sim.pfss_magnetogram import (
         synthetic_magnetogram, decompose_spherical_harmonics,
         pfss_solve, compute_wsa_velocity_map,
     )
     import numpy as np
+    from sim.magnetogram_grid import equal_area_sine_latitude_grid
 
     br = synthetic_magnetogram(activity=0.3, jd=2460000.0)
-    g, h = decompose_spherical_harmonics(br, lmax=8)
+    g, h = decompose_spherical_harmonics(br, lmax=8, grid=equal_area_sine_latitude_grid(*br.shape))
     field = pfss_solve(g, h, lmax=8)
 
     wsa = compute_wsa_velocity_map(field, br_map=br, n_lat=18, n_lon=36)
@@ -269,16 +383,22 @@ def test_wsa_velocity_map_produces_speeds() -> None:
 
 
 def test_parker_spiral_uses_wsa_model() -> None:
-    """Parker spiral lines should report WSA as wind speed source when available."""
+    """Parker lines disclose WSA-inspired use only where a sample is available."""
     model = SolarCoronaPhysicsModel(seed=42, base_tube_count=100)
     state = model.sample_state(jd=2460000.5, fidelity="preview", max_features=8)
 
     spiral = state.get("heliosphere", {}).get("parker_spiral", {})
     assert "wind_speed_model" in spiral
-    assert spiral["wind_speed_model"] in ("wsa_arge_2003", "empirical_ch_bimodal")
+    assert spiral["wind_speed_model"] in (
+        "wsa_inspired_v1", "empirical_ch_bimodal",
+        "mixed_wsa_inspired_v1_empirical_ch_bimodal",
+    )
 
     # All lines should have wind_speed_source
     for line in spiral.get("lines", []):
         assert "wind_speed_source" in line
+        assert line["wind_speed_source"] == (
+            "wsa_inspired_v1" if line["wsa_available"] else "empirical_ch_bimodal"
+        )
         v = line["wind_speed_kms"]
         assert 265.0 <= v <= 860.0, f"Spiral wind speed {v} out of range"

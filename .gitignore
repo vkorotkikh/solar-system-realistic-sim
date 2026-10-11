@@ -52,4 +52,5 @@ scripts/output/
 Screenshot *.png
 
 # Temporary local validation artifacts
+/artifacts/
 my-notes/ACCURACY_REPORT_smoke.md

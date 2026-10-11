@@ -1,0 +1,13 @@
+diff --git a/backend/sim/magnetogram_grid.py b/backend/sim/magnetogram_grid.py
+--- a/backend/sim/magnetogram_grid.py
++++ b/backend/sim/magnetogram_grid.py
+@@ -64,7 +64,8 @@ class MagnetogramGrid:
+     @property
+     def area_weights(self) -> np.ndarray:
+         """Exact strip widths dmu (common longitude width omitted)."""
+-        return np.abs(np.diff(self.mu_edges))
++        # Historical defect: assume every input is uniformly spaced in theta.
++        return np.sin(np.arccos(self.mu))
+ 
+     def validate_map(self, br_map) -> np.ndarray:
+         values = np.asarray(br_map, dtype=np.float64)

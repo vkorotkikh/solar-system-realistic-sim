@@ -16,6 +16,13 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
+import {
+  buildBackendArgs,
+  buildFrontendArgs,
+  displayHost,
+  parseDevFullConfig,
+} from './dev-full-config.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const BACKEND_DIR = resolve(ROOT, 'backend');
@@ -41,35 +48,23 @@ Options:
   --no-backend              Skip starting the Python backend
   --backend-port <port>     Backend port (default: 8042)
   --frontend-port <port>    Vite dev server port (default: 5173)
-  --host <host>             Bind address for both servers (default: 0.0.0.0)
+  --host <host>             Bind address for both servers (default: 127.0.0.1)
   --open                    Open browser automatically
   --help                    Show this help
 `);
 }
 
-const argv = process.argv.slice(2);
-const config = {
-  backend: true,
-  backendPort: 8042,
-  frontendPort: 5173,
-  host: '0.0.0.0',
-  open: false,
-};
-
-for (let i = 0; i < argv.length; i++) {
-  const arg = argv[i];
-  const next = () => {
-    const v = argv[++i];
-    if (v === undefined) { console.error(`Missing value for ${arg}`); process.exit(1); }
-    return v;
-  };
-  if (arg === '--help') { printHelp(); process.exit(0); }
-  else if (arg === '--no-backend') config.backend = false;
-  else if (arg === '--backend-port') config.backendPort = Number(next());
-  else if (arg === '--frontend-port') config.frontendPort = Number(next());
-  else if (arg === '--host') config.host = next();
-  else if (arg === '--open') config.open = true;
-  else { console.error(`Unknown argument: ${arg}`); printHelp(); process.exit(1); }
+let config;
+try {
+  config = parseDevFullConfig(process.argv.slice(2), process.env);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  printHelp();
+  process.exit(1);
+}
+if (config.help) {
+  printHelp();
+  process.exit(0);
 }
 
 const children = [];
@@ -114,7 +109,7 @@ function spawnTagged(tag, color, command, args, opts) {
 }
 
 console.log(`${prefix('dev', COLORS.green)} Solar System Realistic Sim — unified dev launcher`);
-console.log(`${prefix('dev', COLORS.dim)} frontend: http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.frontendPort}`);
+console.log(`${prefix('dev', COLORS.dim)} frontend: http://${displayHost(config.host)}:${config.frontendPort}`);
 
 if (config.backend) {
   if (!existsSync(resolve(BACKEND_DIR, 'server.py'))) {
@@ -122,23 +117,17 @@ if (config.backend) {
     process.exit(1);
   }
 
-  console.log(`${prefix('dev', COLORS.dim)} backend:  http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.backendPort}`);
+  console.log(`${prefix('dev', COLORS.dim)} backend:  http://${displayHost(config.host)}:${config.backendPort}`);
   console.log();
 
-  spawnTagged('backend', COLORS.yellow, 'python3', [
-    '-m', 'uvicorn', 'server:app',
-    '--host', config.host,
-    '--port', String(config.backendPort),
-    '--reload',
-  ], { cwd: BACKEND_DIR });
+  spawnTagged(
+    'backend',
+    COLORS.yellow,
+    'python3',
+    buildBackendArgs(config),
+    { cwd: BACKEND_DIR },
+  );
 }
 
-const viteArgs = [
-  'vite',
-  '--host', config.host,
-  '--port', String(config.frontendPort),
-];
-if (config.open) viteArgs.push('--open');
-
 const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-spawnTagged('frontend', COLORS.cyan, npxCmd, viteArgs, { cwd: ROOT });
+spawnTagged('frontend', COLORS.cyan, npxCmd, buildFrontendArgs(config), { cwd: ROOT });

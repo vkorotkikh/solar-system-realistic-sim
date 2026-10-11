@@ -47,6 +47,9 @@ export const MYR_S = 3.15576e13;
 // SMBH SOURCE CATALOG
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Schwarzschild radius 2GM/c² in cm, for a mass in solar masses. */
+const schwarzschildRadiusCm = (massMsun: number) => 2 * G_CGS * massMsun * M_SUN_G / (C_CM_S * C_CM_S);
+
 export const SGR_A = Object.freeze({
     key: 'SagittariusA',
     label: 'Sagittarius A*',
@@ -59,9 +62,9 @@ export const SGR_A = Object.freeze({
     distanceCm: 8.178 * 3.086e21,
     distanceLy: 26_673,
 
-    rSchwarzschildCm: 1.24e10,          // 0.083 AU
-    rIscoCm: 3.72e10,          // Schwarzschild ISCO = 3 R_s
-    rPhotonCm: 1.86e10,          // 1.5 R_s
+    rSchwarzschildCm: schwarzschildRadiusCm(4.154e6),       // 1.23e12 cm = 0.082 AU
+    rIscoCm: 3 * schwarzschildRadiusCm(4.154e6),            // Schwarzschild ISCO = 3 R_s
+    rPhotonCm: 1.5 * schwarzschildRadiusCm(4.154e6),        // 1.5 R_s
     angularSizeUas: 52,               // μas on sky (EHT)
 
     luminosityCurrent: 1e36,            // erg/s
@@ -149,7 +152,7 @@ export const M87 = Object.freeze({
     distanceCm: 16.8 * 3.086e24,
     distanceLy: 54_700_000,
 
-    rSchwarzschildCm: 1.9e13,           // 127 AU — bigger than Pluto's orbit
+    rSchwarzschildCm: schwarzschildRadiusCm(6.5e9),         // 1.92e15 cm = 128 AU — bigger than Pluto's orbit
     jetBeta: 0.98,
     jetBetaApp: 6.3,                   // Biretta+ 1999
     jetPowerErgS: 1e44,

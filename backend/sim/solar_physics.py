@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from functools import lru_cache
 from random import Random
 from typing import Any
+
+from .solar_time import current_jd_tdb
 
 AU_KM = 149_597_870.7
 SOLAR_RADIUS_KM = 695_700.0
@@ -27,8 +29,9 @@ PROTON_MASS_KG = 1.67262192369e-27
 
 
 def utc_now_to_julian_date() -> float:
-    unix_seconds = datetime.now(timezone.utc).timestamp()
-    return unix_seconds / 86_400.0 + 2_440_587.5
+    """Return the current UTC instant converted to the simulation's JDTDB."""
+
+    return current_jd_tdb()
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
@@ -85,7 +88,7 @@ def _orthonormal_basis(base: tuple[float, float, float]) -> tuple[tuple[float, f
 def _differential_rotation_rad_day(lat_rad: float) -> float:
     sin_lat = math.sin(lat_rad)
     sin2 = sin_lat * sin_lat
-    # Snodgrass-like differential rotation profile (deg/day).
+    # Snodgrass & Ulrich (1990) sidereal photospheric Doppler profile (deg/day).
     deg_per_day = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2
     return deg_per_day * math.pi / 180.0
 
@@ -132,9 +135,28 @@ def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C)
     return ratio3 / denom
 
 
+@lru_cache(maxsize=8)
+def _hathaway_peak_months(b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    # d/dx [x^3 / (exp(x^2) - c)] = 0 with x = t/b  <=>  exp(s) * (3 - 2s) = 3c, s = x^2.
+    # The left side falls monotonically from 2*e^0.5 (> 3c for c < 1) at s = 0.5 to 0 at s = 1.5,
+    # so bisect there. Only c = 0 gives the textbook b*sqrt(3/2); c = 0.71 peaks at 58.4 months.
+    lo, hi = 0.5, 1.5
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if math.exp(mid) * (3.0 - 2.0 * mid) > 3.0 * c:
+            lo = mid
+        else:
+            hi = mid
+    return b * math.sqrt(0.5 * (lo + hi))
+
+
+HATHAWAY_PEAK_MONTHS = _hathaway_peak_months()
+
+
 def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
-    # Analytic peak at t = b * sqrt(3/2) for the canonical Hathaway form.
-    t_peak = b * math.sqrt(1.5)
+    # Normalise by the true maximum. Dividing by the value at b*sqrt(3/2) (the c = 0 peak)
+    # overshot 1 by 3.4% and the clamp flattened the top of every cycle.
+    t_peak = _hathaway_peak_months(b, c)
     peak_val = _hathaway_raw(t_peak, b, c)
     if peak_val <= 1e-12:
         return 0.0
@@ -183,6 +205,15 @@ class FluxTubeSeed:
     polarity_sign: float
     footpoint_jitter_lat_rad: float
     footpoint_jitter_lon_rad: float
+
+
+class ObservedSolarInputUnavailable(RuntimeError):
+    """Raised when data-driven forcing lacks a scientifically promoted provider."""
+
+    reason = "disabled_unvalidated"
+
+    def __init__(self) -> None:
+        super().__init__("observed solar input is disabled_unvalidated")
 
 
 class SolarCoronaPhysicsModel:
@@ -356,44 +387,6 @@ class SolarCoronaPhysicsModel:
             ],
         }
 
-    @staticmethod
-    def _extract_numeric(mapping: dict[str, Any] | None, key: str) -> float | None:
-        if not isinstance(mapping, dict):
-            return None
-        value = mapping.get(key)
-        if not isinstance(value, (float, int)):
-            return None
-        value_f = float(value)
-        if not math.isfinite(value_f):
-            return None
-        return value_f
-
-    @staticmethod
-    def _parse_utc_timestamp(value: Any) -> datetime | None:
-        if not isinstance(value, str):
-            return None
-        raw = value.strip()
-        if not raw:
-            return None
-        # Normalize common UTC forms: "YYYY-MM-DD HH:MM:SS" and ISO8601 with Z.
-        normalized = raw.replace("Z", "+00:00")
-        if " " in normalized and "T" not in normalized:
-            normalized = normalized.replace(" ", "T")
-        try:
-            parsed = datetime.fromisoformat(normalized)
-        except ValueError:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
-
-    @staticmethod
-    def _freshness_weight(timestamp: datetime | None, max_age_s: float) -> float | None:
-        if timestamp is None:
-            return None
-        age_s = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
-        return _clamp(1.0 - age_s / max(1.0, max_age_s), 0.0, 1.0)
-
     def _apply_realtime_forcing(
         self,
         synthetic_activity: float,
@@ -406,6 +399,7 @@ class SolarCoronaPhysicsModel:
 
         assimilation = {
             "mode": forcing_key,
+            "effective_mode": "synthetic",
             "applied": False,
             "synthetic_activity_index": synthetic_activity,
             "observed_activity_index": None,
@@ -420,104 +414,16 @@ class SolarCoronaPhysicsModel:
                 "silso": None,
                 "sdo_aia": None,
             },
+            "observed_input_status": (
+                "not_requested" if forcing_key == "synthetic" else "disabled_unvalidated"
+            ),
         }
         if forcing_key == "synthetic":
             return synthetic_activity, assimilation, None
-        if not isinstance(realtime_data, dict):
+        if forcing_key == "hybrid":
+            assimilation["fallback_reason"] = "disabled_unvalidated"
             return synthetic_activity, assimilation, None
-
-        assimilation["source_status"] = realtime_data.get("source_status")
-        swpc = realtime_data.get("swpc")
-        silso = realtime_data.get("silso")
-        sdo_aia = realtime_data.get("sdo_aia")
-        assimilation["sources"]["swpc"] = swpc
-        assimilation["sources"]["silso"] = silso
-        assimilation["sources"]["sdo_aia"] = sdo_aia
-        assimilation["live_data_available"] = any(
-            isinstance(value, dict) for value in (swpc, silso, sdo_aia)
-        )
-
-        proxy_breakdown: dict[str, float] = {}
-        observed_proxy = self._extract_numeric(realtime_data, "combined_activity_proxy")
-        if observed_proxy is None:
-            weighted_sum = 0.0
-            weight_total = 0.0
-            swpc_proxy = self._extract_numeric(swpc, "activity_proxy")
-            silso_proxy = self._extract_numeric(silso, "activity_proxy")
-            sdo_proxy = self._extract_numeric(sdo_aia, "activity_proxy")
-            if swpc_proxy is not None:
-                weighted_sum += swpc_proxy * 0.5
-                weight_total += 0.5
-                proxy_breakdown["swpc"] = swpc_proxy
-            if silso_proxy is not None:
-                weighted_sum += silso_proxy * 0.35
-                weight_total += 0.35
-                proxy_breakdown["silso"] = silso_proxy
-            if sdo_proxy is not None:
-                weighted_sum += sdo_proxy * 0.15
-                weight_total += 0.15
-                proxy_breakdown["sdo_aia"] = sdo_proxy
-            if weight_total > 0:
-                observed_proxy = _clamp(weighted_sum / weight_total, 0.0, 1.0)
-        else:
-            proxy_breakdown["combined"] = observed_proxy
-
-        if observed_proxy is None:
-            assimilation["blended_activity_index"] = synthetic_activity
-            assimilation["proxy_breakdown"] = proxy_breakdown
-            return synthetic_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
-
-        swpc_time = self._parse_utc_timestamp(swpc.get("time_tag") if isinstance(swpc, dict) else None)
-        silso_date = self._parse_utc_timestamp(
-            f"{silso.get('date')}T00:00:00Z" if isinstance(silso, dict) and isinstance(silso.get("date"), str) else None
-        )
-        sdo_time = self._parse_utc_timestamp(
-            (
-                sdo_aia.get("latest_image_date_utc")
-                if isinstance(sdo_aia, dict) and isinstance(sdo_aia.get("latest_image_date_utc"), str)
-                else sdo_aia.get("request_date_utc")
-                if isinstance(sdo_aia, dict)
-                else None
-            )
-        )
-        swpc_weight = self._freshness_weight(swpc_time, max_age_s=4.0 * 3_600.0)
-        silso_weight = self._freshness_weight(silso_date, max_age_s=8.0 * 86_400.0)
-        sdo_weight = self._freshness_weight(sdo_time, max_age_s=10.0 * 3_600.0)
-
-        confidence_sum = 0.0
-        confidence_weight_total = 0.0
-        if swpc_weight is not None:
-            confidence_sum += swpc_weight * 0.48
-            confidence_weight_total += 0.48
-        if silso_weight is not None:
-            confidence_sum += silso_weight * 0.27
-            confidence_weight_total += 0.27
-        if sdo_weight is not None:
-            confidence_sum += sdo_weight * 0.25
-            confidence_weight_total += 0.25
-        observed_confidence = (
-            _clamp(confidence_sum / confidence_weight_total, 0.0, 1.0)
-            if confidence_weight_total > 0
-            else 0.0
-        )
-
-        assimilation["observed_activity_index"] = observed_proxy
-        assimilation["observed_confidence"] = observed_confidence
-        assimilation["proxy_breakdown"] = proxy_breakdown
-
-        if forcing_key == "data_driven":
-            blend_weight = 0.78 + 0.18 * observed_confidence
-        else:
-            # Hybrid keeps synthetic cycle continuity while nudging toward real-time observations.
-            blend_weight = 0.25 + 0.35 * observed_confidence
-        blend_weight = _clamp(blend_weight, 0.0, 1.0)
-        blended_activity = synthetic_activity * (1.0 - blend_weight) + observed_proxy * blend_weight
-        blended_activity = _clamp(blended_activity, 0.02, 0.98)
-
-        assimilation["applied"] = True
-        assimilation["blend_weight"] = blend_weight
-        assimilation["blended_activity_index"] = blended_activity
-        return blended_activity, assimilation, self._extract_numeric(swpc, "solar_wind_speed_kms")
+        raise ObservedSolarInputUnavailable()
 
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
@@ -533,6 +439,9 @@ class SolarCoronaPhysicsModel:
         jd: float,
         wall_jd: float,
     ) -> tuple[float, float]:
+        # Retain the argument for private-call compatibility, but physical
+        # feature timing is a pure function of the requested epoch.
+        del wall_jd
         slow_period_days = 6.0 + tube.twist * 3.4
         if tube.family == "cme":
             rapid_period_days = 0.09 + (tube.idx % 7) * 0.011
@@ -542,8 +451,8 @@ class SolarCoronaPhysicsModel:
             rapid_period_days = 0.26 + (tube.idx % 13) * 0.018
 
         slow_phase = ((jd - J2000_JD) / slow_period_days) * 2.0 * math.pi
-        rapid_phase = ((wall_jd - J2000_JD) / rapid_period_days) * 2.0 * math.pi
-        micro_phase = ((wall_jd - J2000_JD) / max(0.03, rapid_period_days * 0.35)) * 2.0 * math.pi
+        rapid_phase = ((jd - J2000_JD) / rapid_period_days) * 2.0 * math.pi
+        micro_phase = ((jd - J2000_JD) / max(0.03, rapid_period_days * 0.35)) * 2.0 * math.pi
         phase_offset = tube.idx * 0.193 + tube.twist * 1.17
 
         slow = 0.5 + 0.5 * math.sin(slow_phase + phase_offset)
@@ -563,7 +472,8 @@ class SolarCoronaPhysicsModel:
         wall_jd: float,
         activity: float,
     ) -> float:
-        emergence, eruption_gate = self._feature_temporal_state(tube, jd, wall_jd)
+        del wall_jd
+        emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
         region = self.active_regions[tube.region_idx]
         cme_boost = 1.3 if tube.family == "cme" else 1.0
         plume_boost = 1.08 if tube.family == "plume" else 1.0
@@ -664,6 +574,7 @@ class SolarCoronaPhysicsModel:
         eruption_gate: float,
         points_count: int,
     ) -> dict[str, Any]:
+        del wall_jd
         region = self.active_regions[tube.region_idx]
         _, negative_dir, positive_dir, pair_axis, leading_polarity_sign = self._region_polarity_dirs(region, jd)
 
@@ -690,7 +601,7 @@ class SolarCoronaPhysicsModel:
 
         base = _normalize(_add(source_dir, sink_dir))
         tangent, binormal = _orthonormal_basis(base)
-        dynamic_phase = ((wall_jd - J2000_JD) / (0.22 + 0.04 * tube.twist)) * 2.0 * math.pi + tube.idx * 0.41
+        dynamic_phase = ((jd - J2000_JD) / (0.22 + 0.04 * tube.twist)) * 2.0 * math.pi + tube.idx * 0.41
 
         family = tube.family
         if family == "cme":
@@ -894,6 +805,14 @@ class SolarCoronaPhysicsModel:
     ) -> dict[str, Any]:
         omega_sun_rad_day = 2.0 * math.pi / 25.38
         source_surface_radii = 2.5
+        if isinstance(wsa_result, dict):
+            candidate_radius = wsa_result.get("source_surface_radii")
+            if (
+                isinstance(candidate_radius, (float, int))
+                and math.isfinite(float(candidate_radius))
+                and 1.0 < float(candidate_radius) <= 10.0
+            ):
+                source_surface_radii = float(candidate_radius)
         source_surface_au = source_surface_radii * SOLAR_RADIUS_AU
         max_radius_au = max(source_surface_au * 1.5, float(max_extent_au))
         lines: list[dict[str, Any]] = []
@@ -905,9 +824,6 @@ class SolarCoronaPhysicsModel:
             if isinstance(wind_speed_kms_override, (float, int)) and math.isfinite(float(wind_speed_kms_override))
             else None
         )
-
-        # Import WSA lookup if available
-        has_wsa = wsa_result is not None and isinstance(wsa_result, dict) and wsa_result.get("open_mask") is not None
 
         # Extract coronal hole boundaries for fallback fast/slow wind assignment
         ch_holes = []
@@ -934,23 +850,34 @@ class SolarCoronaPhysicsModel:
 
             # ── Determine wind speed ──────────────────────────────────
             in_coronal_hole = False
-            wind_speed_source = "empirical"
+            wind_speed_source = "empirical_ch_bimodal"
+            wind_speed_quality_reasons: list[str] = []
+            wsa_available = False
+            wsa_v = None
 
-            if has_wsa:
-                # Use WSA model: look up velocity at source surface coordinates
+            if isinstance(wsa_result, dict):
                 from sim.pfss_magnetogram import wsa_velocity_at_source_surface
                 wsa_v = wsa_velocity_at_source_surface(
                     wsa_result,
                     ss_lat_rad=source_lat,
                     ss_lon_rad=arm_phase % (2.0 * math.pi),
                 )
+
+            if wsa_v is not None:
                 intrinsic_wind = wsa_v
-                in_coronal_hole = wsa_v > 550.0  # WSA fast wind threshold
-                wind_speed_source = "wsa_arge_2003"
+                # Compatibility field only: this is an explicitly identified
+                # speed-threshold heuristic, not a traced topology label.
+                in_coronal_hole = wsa_v > 550.0
+                wind_speed_source = "wsa_inspired_v1"
+                wsa_available = True
             else:
-                # Fallback: coronal hole heuristic
+                # Independently named visualization fallback.  It is never
+                # reported as a PFSS/WSA-derived value.
+                wind_speed_quality_reasons.extend((
+                    "wsa_unavailable_at_source_surface",
+                    "empirical_visualization_fallback",
+                ))
                 if ch_holes:
-                    hcs_tilt_rad_check = hcs_tilt_rad
                     for ch_center_lat, ch_extent_lat in ch_holes:
                         is_polar = abs(ch_center_lat) > math.radians(50)
                         if is_polar:
@@ -973,6 +900,9 @@ class SolarCoronaPhysicsModel:
                 if override_wind is not None
                 else _clamp(intrinsic_wind, 265.0, 860.0)
             )
+            if override_wind is not None:
+                wind_speed_source += "_realtime_blend"
+                wind_speed_quality_reasons.append("realtime_speed_blend")
             wind_speed_au_day = wind_speed_kms / (AU_KM / 86_400.0)
             polarity_sign = 1.0 if i % 2 == 0 else -1.0
             arc: list[list[float]] = []
@@ -994,12 +924,27 @@ class SolarCoronaPhysicsModel:
                     "source_lat_deg": round(math.degrees(source_lat), 1),
                     "wind_speed_kms": round(wind_speed_kms, 1),
                     "wind_speed_source": wind_speed_source,
+                    "wind_speed_quality_reasons": wind_speed_quality_reasons,
+                    "wsa_available": wsa_available,
                     "in_coronal_hole": in_coronal_hole,
+                    "in_coronal_hole_basis": (
+                        "speed_threshold_heuristic_v1"
+                        if wsa_available
+                        else "empirical_coronal_hole_geometry_v1"
+                    ),
                     "arc": arc,
                 }
             )
 
         mean_wind = sum(float(line["wind_speed_kms"]) for line in lines) / max(1, len(lines))
+        source_models = {str(line["wind_speed_source"]) for line in lines}
+        if source_models == {"wsa_inspired_v1", "empirical_ch_bimodal"}:
+            wind_speed_model = "mixed_wsa_inspired_v1_empirical_ch_bimodal"
+        elif len(source_models) == 1:
+            wind_speed_model = next(iter(source_models))
+        else:
+            wind_speed_model = "mixed"
+        wsa_available_count = sum(bool(line["wsa_available"]) for line in lines)
         return {
             "line_count": len(lines),
             "point_count": safe_point_count,
@@ -1007,7 +952,10 @@ class SolarCoronaPhysicsModel:
             "max_extent_au": max_radius_au,
             "max_extent_solar_radii": max_radius_au / SOLAR_RADIUS_AU,
             "wind_speed_kms": mean_wind,
-            "wind_speed_model": "wsa_arge_2003" if has_wsa else "empirical_ch_bimodal",
+            "wind_speed_model": wind_speed_model,
+            "wind_speed_sources": sorted(source_models),
+            "wsa_available_fraction": wsa_available_count / max(1, len(lines)),
+            "propagation_model": "constant_speed_parker_visualization",
             "omega_sun_rad_day": omega_sun_rad_day,
             "lines": lines,
         }
@@ -1032,18 +980,18 @@ class SolarCoronaPhysicsModel:
             forcing,
             realtime_data,
         )
-        wall_jd = jd if wall_jd is None else wall_jd
+        response_wall_jd = jd if wall_jd is None else wall_jd
         safe_max_features = max(8, min(2_048, int(max_features)))
 
         scored: list[tuple[float, FluxTubeSeed, float, float]] = []
         for tube in self.seeds:
-            emergence, eruption_gate = self._feature_temporal_state(tube, jd, wall_jd)
-            score = self._feature_score(tube, jd, wall_jd, activity)
+            emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
+            score = self._feature_score(tube, jd, jd, activity)
             scored.append((score, tube, emergence, eruption_gate))
         scored.sort(key=lambda row: row[0], reverse=True)
 
         # Drive feature count with activity and requested fidelity.
-        rapid_scene_phase = ((wall_jd - J2000_JD) / 0.18) * 2.0 * math.pi
+        rapid_scene_phase = ((jd - J2000_JD) / 0.18) * 2.0 * math.pi
         live_variation = 0.5 + 0.5 * math.sin(rapid_scene_phase)
         nominal_count = int(18 + activity * 240 + live_variation * 96)
         feature_count = min(safe_max_features, max(12, nominal_count))
@@ -1055,7 +1003,7 @@ class SolarCoronaPhysicsModel:
                 self._build_feature_arc(
                     tube,
                     jd,
-                    wall_jd,
+                    jd,
                     activity,
                     emergence,
                     eruption_gate,
@@ -1076,10 +1024,6 @@ class SolarCoronaPhysicsModel:
 
         # ─── Coronal Hole Extraction / Synthesis ────────────────────────────
         coronal_holes_data: dict[str, Any] | None = None
-        if isinstance(realtime_data, dict):
-            sdo_aia = realtime_data.get("sdo_aia")
-            if isinstance(sdo_aia, dict):
-                coronal_holes_data = sdo_aia.get("coronal_holes")
         if not isinstance(coronal_holes_data, dict) or not coronal_holes_data.get("holes"):
             coronal_holes_data = self._synthetic_coronal_holes(activity, jd)
 
@@ -1098,7 +1042,8 @@ class SolarCoronaPhysicsModel:
             pfss_lines = 180
             pfss_lmax = 15
 
-        # Trigger PFSS cache (it will fetch GONG or use synthetic fallback appropriately)
+        # Compute the deterministic synthetic PFSS product. Runtime observed
+        # magnetograms remain disabled until their validation gates are promoted.
         pfss_field_lines = self._pfss_cache.get_or_compute(
             jd=jd,
             activity=activity,
@@ -1124,12 +1069,20 @@ class SolarCoronaPhysicsModel:
         pfss_public = dict(pfss_field_lines) if isinstance(pfss_field_lines, dict) else pfss_field_lines
         if isinstance(pfss_public, dict):
             pfss_public.pop("_wsa_result", None)
+            if assimilation["mode"] == "hybrid":
+                pfss_public["fallback_reason"] = "disabled_unvalidated"
+            else:
+                pfss_public.pop("fallback_reason", None)
 
         return {
-            "schema": {"name": "solar_physics_state", "version": 1},
+            "schema": {"name": "solar_physics_state", "version": 2},
             "model": self.model_name,
+            "epoch_jd_tdb": float(jd),
+            "wall_epoch_jd_tdb": float(response_wall_jd),
+            "jd_time_scale": "TDB",
+            # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
-            "wall_epoch_jd": float(wall_jd),
+            "wall_epoch_jd": float(response_wall_jd),
             "fidelity": fidelity_key,
             "solar_radius_km": SOLAR_RADIUS_KM,
             "solar_radius_au": SOLAR_RADIUS_AU,
@@ -1138,7 +1091,7 @@ class SolarCoronaPhysicsModel:
             "cycle_phase_rad": cycle_phase,
             "data_assimilation": assimilation,
             "surface": {
-                "differential_rotation_model": "snodgrass_1983_like",
+                "differential_rotation_model": "snodgrass_ulrich_1990",
                 "activity_cycle_model": "hathaway_2015_normalized",
                 "activity_cycle_params": {
                     "b_months": HATHAWAY_B,

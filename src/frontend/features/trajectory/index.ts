@@ -7,7 +7,63 @@ import {
 
 const DEFAULT_BACKEND_HOST = 'localhost';
 const DEFAULT_BACKEND_PORT = 8042;
-const REQUEST_TIMEOUT_MS = 2_500;
+const PLAN_REQUEST_TIMEOUT_MS = 10_000;
+const LAMBERT_REQUEST_TIMEOUT_MS = 8_000;
+const PORKCHOP_REQUEST_TIMEOUT_MS = 10_000;
+const MISSION_REQUEST_TIMEOUT_MS = 14_000;
+
+interface TrajectoryApiErrorDetail {
+  code?: unknown;
+  message?: unknown;
+  retryable?: unknown;
+  context?: unknown;
+}
+
+export class TrajectoryApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly retryable: boolean;
+  readonly retryAfter: string | null;
+  readonly context: Record<string, unknown>;
+
+  constructor({
+    operation,
+    status,
+    detail,
+    retryAfter
+  }: {
+    operation: string;
+    status: number;
+    detail?: TrajectoryApiErrorDetail;
+    retryAfter: string | null;
+  }) {
+    const code = typeof detail?.code === 'string' ? detail.code : 'trajectory_api_error';
+    const message =
+      typeof detail?.message === 'string'
+        ? detail.message
+        : `${operation} API error (${status})`;
+    super(message);
+    this.name = 'TrajectoryApiError';
+    this.status = status;
+    this.code = code;
+    this.retryable = detail?.retryable === true;
+    this.retryAfter = retryAfter;
+    this.context =
+      detail?.context != null && typeof detail.context === 'object' && !Array.isArray(detail.context)
+        ? (detail.context as Record<string, unknown>)
+        : {};
+  }
+}
+
+class TrajectoryConnectionError extends TypeError {
+  readonly originalError: unknown;
+
+  constructor(error: unknown) {
+    super('Trajectory backend could not be reached');
+    this.name = 'TrajectoryConnectionError';
+    this.originalError = error;
+  }
+}
 
 interface RouteLeg {
   startPosition: unknown;
@@ -73,6 +129,30 @@ function backendBaseUrl() {
   return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
 }
 
+async function trajectoryApiError(response: Response, operation: string): Promise<TrajectoryApiError> {
+  let detail: TrajectoryApiErrorDetail | undefined;
+  try {
+    const payload = (await response.json()) as { detail?: unknown };
+    if (payload?.detail != null && typeof payload.detail === 'object' && !Array.isArray(payload.detail)) {
+      detail = payload.detail as TrajectoryApiErrorDetail;
+    } else if (typeof payload?.detail === 'string') {
+      detail = { message: payload.detail };
+    }
+  } catch {
+    // A non-JSON proxy error is still an HTTP response, never an offline signal.
+  }
+  return new TrajectoryApiError({
+    operation,
+    status: response.status,
+    detail,
+    retryAfter: response.headers.get('Retry-After')
+  });
+}
+
+function isOfflineConnectionFailure(error: unknown): boolean {
+  return error instanceof TrajectoryConnectionError;
+}
+
 function asFiniteNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -116,27 +196,38 @@ function hydrateLeg(leg: RouteLeg | null) {
 
 async function requestBackendRoute(options: RouteOptions) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => controller.abort(), PLAN_REQUEST_TIMEOUT_MS);
+  const requestBody = JSON.stringify({
+    from_id: options.fromId,
+    to_id: options.toId,
+    departure_jd: options.departureJd,
+    objective: options.objective,
+    max_assists: options.maxAssists,
+    assist_pool: options.assistPool,
+    ephemeris_provider: options.ephemerisProvider ?? 'auto',
+    prograde: options.prograde ?? true
+  });
 
   try {
-    const response = await fetch(`${backendBaseUrl()}/trajectory/plan`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from_id: options.fromId,
-        to_id: options.toId,
-        departure_jd: options.departureJd,
-        objective: options.objective,
-        max_assists: options.maxAssists,
-        assist_pool: options.assistPool,
-        ephemeris_provider: options.ephemerisProvider ?? 'auto',
-        prograde: options.prograde ?? true
-      }),
-      signal: controller.signal
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${backendBaseUrl()}/trajectory/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+        signal: controller.signal
+      });
+    } catch (error) {
+      // Browsers do not agree on the exception class used for an aborted
+      // fetch. The signal is authoritative: a client deadline must never be
+      // reclassified as an offline condition that starts duplicate local work.
+      if (controller.signal.aborted) throw error;
+      if (error instanceof TypeError) throw new TrajectoryConnectionError(error);
+      throw error;
+    }
 
     if (!response.ok) {
-      throw new Error(`Trajectory API error (${response.status})`);
+      throw await trajectoryApiError(response, 'Trajectory');
     }
 
     const payload = await response.json();
@@ -153,7 +244,7 @@ async function requestBackendRoute(options: RouteOptions) {
 
 async function requestBackendLambert(options: LambertOptions) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => controller.abort(), LAMBERT_REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${backendBaseUrl()}/trajectory/lambert`, {
@@ -171,7 +262,7 @@ async function requestBackendLambert(options: LambertOptions) {
     });
 
     if (!response.ok) {
-      throw new Error(`Lambert API error (${response.status})`);
+      throw await trajectoryApiError(response, 'Lambert');
     }
 
     const payload = await response.json();
@@ -187,7 +278,7 @@ async function requestBackendLambert(options: LambertOptions) {
 
 async function requestBackendPorkchop(options: PorkchopOptions) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 3);
+  const timeoutId = window.setTimeout(() => controller.abort(), PORKCHOP_REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${backendBaseUrl()}/trajectory/porkchop`, {
@@ -209,7 +300,7 @@ async function requestBackendPorkchop(options: PorkchopOptions) {
     });
 
     if (!response.ok) {
-      throw new Error(`Porkchop API error (${response.status})`);
+      throw await trajectoryApiError(response, 'Porkchop');
     }
 
     return {
@@ -223,7 +314,7 @@ async function requestBackendPorkchop(options: PorkchopOptions) {
 
 async function requestMissionPlan(options: MissionOptions) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS * 4);
+  const timeoutId = window.setTimeout(() => controller.abort(), MISSION_REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${backendBaseUrl()}/mission/plan`, {
@@ -244,7 +335,7 @@ async function requestMissionPlan(options: MissionOptions) {
     });
 
     if (!response.ok) {
-      throw new Error(`Mission API error (${response.status})`);
+      throw await trajectoryApiError(response, 'Mission');
     }
 
     const payload = await response.json();
@@ -270,11 +361,17 @@ export async function planInterplanetaryRoute(
 ) {
   try {
     return await requestBackendRoute(options);
-  } catch {
+  } catch (error) {
+    const provider = (options.ephemerisProvider ?? 'auto').trim().toLowerCase();
+    if (provider !== 'auto' || !isOfflineConnectionFailure(error)) {
+      throw error;
+    }
     const localResult = planLocalRoute(model, bodyById, options);
     return {
       ...localResult,
-      source: 'local'
+      source: 'local',
+      degraded: true,
+      fallbackReason: 'backend_unreachable'
     };
   }
 }

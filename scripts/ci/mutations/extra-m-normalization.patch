@@ -1,0 +1,16 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -347,9 +347,9 @@ def decompose_spherical_harmonics(
+         condition = np.linalg.cond(weighted, p=2)
+         if not np.isfinite(condition) or condition > condition_limit:
+             raise ValueError(f"latitude design for m={m} has condition {condition:g} above limit {condition_limit:g}")
+-        # Factor 2 extracts real Fourier amplitudes for m>0; it is not an
+-        # extra Schmidt normalization applied to the recovered coefficients.
+-        factor = (1 if m == 0 else 2) / n_lon
++        # Historical defect: apply epsilon_m twice to already normalized modes.
++        epsilon_m = 1 if m == 0 else 2
++        factor = epsilon_m * (1 if m == 0 else 2) / n_lon
+         rhs = np.column_stack((br_map @ np.cos(m * grid.phi_rad),
+                                br_map @ np.sin(m * grid.phi_rad))) * factor
+         coefficients, _, rank, _ = np.linalg.lstsq(weighted, rhs * sqrt_weight[:, None], rcond=None)

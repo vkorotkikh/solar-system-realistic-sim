@@ -5,12 +5,20 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any, Dict, List, Sequence
 
-from trajectory import plan_interplanetary_route
+from trajectory import DEFAULT_ASSIST_POOL, plan_interplanetary_route
+from trajectory.budget import PlanningContext, PlanningError, default_planning_context
+from trajectory.contracts import validate_plan_request
 
+from .ephemeris_service import EphemerisService
 from .explainability import DecisionLog
 from .mining_service import MiningService
 from .risk_service import RiskService
-from .schemas import MissionRequestSchema, parse_mission_request
+from .schemas import (
+    MAX_MISSION_ASSIST_POOL_SIZE,
+    MAX_MISSION_VEHICLE_STAGES,
+    MissionRequestSchema,
+    parse_mission_request,
+)
 from .vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 
 
@@ -20,6 +28,19 @@ def _coerce_stage(stage: Dict[str, Any], fallback_name: str) -> StageDefinition:
         dry_mass_kg=float(stage.get("dry_mass_kg", 0.0)),
         propellant_mass_kg=float(stage.get("propellant_mass_kg", 0.0)),
         isp_s=float(stage.get("isp_s", 0.0)),
+    )
+
+
+def _search_is_inconclusive(search: Any) -> bool:
+    """Return whether a bounded search stopped before its configured frontier."""
+
+    if not isinstance(search, dict):
+        return False
+    reason = str(search.get("terminationReason", "")).strip()
+    return bool(
+        search.get("truncated")
+        or search.get("budgetExhausted")
+        or (reason and reason != "configured_frontier_completed")
     )
 
 
@@ -41,6 +62,8 @@ class TrajectoryAgent:
         ephemeris_provider: str,
         prograde: bool,
         decision_log: DecisionLog,
+        planning_context: PlanningContext | None = None,
+        ephemeris: EphemerisService | None = None,
     ) -> Dict[str, Any]:
         decision_log.add(
             agent=self.name,
@@ -62,9 +85,14 @@ class TrajectoryAgent:
             departure_jd=departure_jd,
             objective=objective,
             max_assists=max_assists,
-            assist_pool=list(assist_pool) if assist_pool is not None else None,
+            # The shared contract performs bounded, index-based consumption.
+            # Eagerly materializing an arbitrary Sequence here would restore an
+            # unbounded direct-Python-call path before validation runs.
+            assist_pool=assist_pool,
             ephemeris_provider=ephemeris_provider,
             prograde=prograde,
+            planning_context=planning_context,
+            ephemeris=ephemeris,
         )
 
 
@@ -103,6 +131,7 @@ class MiningAgent:
         *,
         outbound_propellant_kg: float,
         return_propellant_kg: float,
+        return_capacity_kg: float,
         handling_loss_fraction: float,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
@@ -110,6 +139,7 @@ class MiningAgent:
             mining_result,
             outbound_propellant_kg=outbound_propellant_kg,
             return_propellant_kg=return_propellant_kg,
+            return_capacity_kg=return_capacity_kg,
             handling_loss_fraction=handling_loss_fraction,
         )
         decision_log.add(
@@ -152,6 +182,10 @@ class LogisticsAgent:
         raw_stages = raw_vehicle.get("stages")
         if not isinstance(raw_stages, list) or not raw_stages:
             return default_vehicle()
+        if len(raw_stages) > MAX_MISSION_VEHICLE_STAGES:
+            raise ValueError(
+                f"vehicle.stages is limited to {MAX_MISSION_VEHICLE_STAGES} entries"
+            )
 
         stages = [_coerce_stage(item, f"stage_{idx + 1}") for idx, item in enumerate(raw_stages) if isinstance(item, dict)]
         if not stages:
@@ -167,14 +201,28 @@ class LogisticsAgent:
         outbound_delta_v_km_s: float,
         return_delta_v_km_s: float,
         reserve_fraction: float,
+        return_cargo_available_kg: float,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
-        budget = self._vehicle_service.evaluate_burn_budget(
+        burns = [outbound_delta_v_km_s, return_delta_v_km_s]
+        # The return burn carries the mined cargo: load as much as still closes.
+        cargo_kg = self._vehicle_service.max_closable_cargo_kg(
             vehicle,
             payload_mass_kg=payload_mass_kg,
-            burns_km_s=[outbound_delta_v_km_s, return_delta_v_km_s],
+            burns_km_s=burns,
+            cargo_burn_index=1,
+            available_cargo_kg=return_cargo_available_kg,
             reserve_fraction=reserve_fraction,
         )
+        budget = self.reclose(
+            vehicle,
+            payload_mass_kg=payload_mass_kg,
+            burns_km_s=burns,
+            reserve_fraction=reserve_fraction,
+            return_cargo_kg=cargo_kg or 0.0,
+        )
+        budget["returnCargoAvailableKg"] = max(0.0, float(return_cargo_available_kg))
+        budget["returnCargoKg"] = cargo_kg or 0.0
         decision_log.add(
             agent=self.name,
             action="evaluate_vehicle_budget",
@@ -186,6 +234,23 @@ class LogisticsAgent:
             },
         )
         return budget
+
+    def reclose(
+        self,
+        vehicle: VehicleDefinition,
+        *,
+        payload_mass_kg: float,
+        burns_km_s: List[float],
+        reserve_fraction: float,
+        return_cargo_kg: float,
+    ) -> Dict[str, Any]:
+        return self._vehicle_service.evaluate_burn_budget(
+            vehicle,
+            payload_mass_kg=payload_mass_kg,
+            burns_km_s=burns_km_s,
+            reserve_fraction=reserve_fraction,
+            cargo_added_kg=[0.0, return_cargo_kg],
+        )
 
 
 class VerifierAgent:
@@ -237,9 +302,70 @@ class MissionPlannerAgent:
         self._risk_service = RiskService()
         self._verifier_agent = VerifierAgent()
 
-    def plan(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def plan(
+        self,
+        payload: Dict[str, Any],
+        *,
+        planning_context: PlanningContext | None = None,
+    ) -> Dict[str, Any]:
+        context = planning_context or default_planning_context(timeout_seconds=11.0)
+        context.checkpoint()
         mission_request = parse_mission_request(payload)
         mission_inputs = mission_request.to_dict()
+        context.checkpoint()
+
+        # Validate both directions and derive their complete provider coverage
+        # before initializing SPICE, sampling state, or starting either search.
+        # This prevents an unsupported return target from consuming the entire
+        # outbound budget before it inevitably fails.
+        outbound_contract = validate_plan_request(
+            self._bodies,
+            from_id=mission_inputs["from_id"],
+            to_id=mission_inputs["target_id"],
+            departure_jd=mission_inputs["departure_jd"],
+            objective=mission_inputs["objective"],
+            max_assists=mission_inputs["max_assists"],
+            assist_pool=mission_inputs["assist_pool"],
+            default_assist_pool=DEFAULT_ASSIST_POOL,
+            max_assist_pool_size=MAX_MISSION_ASSIST_POOL_SIZE,
+        )
+        return_contract = validate_plan_request(
+            self._bodies,
+            from_id=mission_inputs["target_id"],
+            to_id=mission_inputs["return_id"],
+            departure_jd=mission_inputs["departure_jd"],
+            objective="min_distance",
+            max_assists=max(0, mission_inputs["max_assists"] - 1),
+            assist_pool=mission_inputs["assist_pool"],
+            default_assist_pool=DEFAULT_ASSIST_POOL,
+            max_assist_pool_size=MAX_MISSION_ASSIST_POOL_SIZE,
+        )
+        ephemeris = EphemerisService(
+            self._bodies,
+            provider=mission_inputs["ephemeris_provider"],
+            context=context,
+        )
+        required_assists = [
+            *(
+                outbound_contract.effective_assist_pool
+                if outbound_contract.max_assists > 0
+                else ()
+            ),
+            *(
+                return_contract.effective_assist_pool
+                if return_contract.max_assists > 0
+                else ()
+            ),
+        ]
+        ephemeris.preflight(
+            [
+                outbound_contract.from_id,
+                outbound_contract.to_id,
+                return_contract.to_id,
+                *required_assists,
+            ]
+        )
+        context.checkpoint()
 
         decision_log = DecisionLog()
         decision_log.add(
@@ -264,12 +390,19 @@ class MissionPlannerAgent:
             ephemeris_provider=mission_inputs["ephemeris_provider"],
             prograde=mission_inputs["prograde"],
             decision_log=decision_log,
+            planning_context=context,
+            ephemeris=ephemeris,
         )
+        # MGA may return a certified best-so-far route while also observing a
+        # deadline or cancellation. Mission orchestration must not reinterpret
+        # that partial child result as permission to continue expensive work.
+        context.checkpoint()
 
         outbound_candidates = [outbound_routes.get("best"), *(outbound_routes.get("alternatives") or [])]
         outbound_candidates = [candidate for candidate in outbound_candidates if isinstance(candidate, dict)]
 
         if not outbound_candidates:
+            outbound_search = outbound_routes.get("search", {})
             decision_log.add(
                 agent=self.name,
                 action="abort",
@@ -279,13 +412,49 @@ class MissionPlannerAgent:
                 "recommendation": None,
                 "alternatives": [],
                 "decisionLog": decision_log.to_list(),
-                "status": "no_trajectory",
+                "status": (
+                    "trajectory_search_inconclusive"
+                    if _search_is_inconclusive(outbound_search)
+                    else "no_trajectory"
+                ),
+                "trajectorySearch": {"outbound": outbound_search, "returns": []},
+                "planningContext": context.snapshot(),
             }
 
         vehicle = self._logistics_agent.build_vehicle(mission_request)
         candidates: List[Dict[str, Any]] = []
+        return_searches: List[Dict[str, Any]] = []
+        mission_termination_reason: str | None = None
+
+        def preserve_verified_or_raise(exc: PlanningError) -> bool:
+            nonlocal mission_termination_reason
+            has_verified = any(
+                bool(candidate.get("verification", {}).get("valid", False))
+                for candidate in candidates
+            )
+            if not has_verified:
+                return False
+            mission_termination_reason = context.termination_reason or exc.code
+            decision_log.add(
+                agent=self.name,
+                action="retain_verified_best_so_far",
+                reason="Mission owner reached a bounded termination after a verified candidate",
+                metrics={"terminationReason": mission_termination_reason},
+            )
+            return True
+
+        def candidate_checkpoint() -> bool:
+            try:
+                context.checkpoint()
+            except PlanningError as exc:
+                if preserve_verified_or_raise(exc):
+                    return False
+                raise
+            return True
 
         for idx, outbound in enumerate(outbound_candidates[:4]):
+            if not candidate_checkpoint():
+                break
             candidate_log = DecisionLog()
             candidate_log.extend(decision_log.to_list())
             candidate_log.add(
@@ -300,27 +469,46 @@ class MissionPlannerAgent:
             )
 
             return_departure_jd = float(outbound["legs"][-1]["arrivalJd"]) + float(mission_inputs["mining_days"])
-            return_routes = self._trajectory_agent.propose(
-                from_id=mission_inputs["target_id"],
-                to_id=mission_inputs["return_id"],
-                departure_jd=return_departure_jd,
-                objective="min_distance",
-                max_assists=max(0, mission_inputs["max_assists"] - 1),
-                assist_pool=mission_inputs["assist_pool"],
-                ephemeris_provider=mission_inputs["ephemeris_provider"],
-                prograde=mission_inputs["prograde"],
-                decision_log=candidate_log,
+            try:
+                return_routes = self._trajectory_agent.propose(
+                    from_id=mission_inputs["target_id"],
+                    to_id=mission_inputs["return_id"],
+                    departure_jd=return_departure_jd,
+                    objective="min_distance",
+                    max_assists=max(0, mission_inputs["max_assists"] - 1),
+                    assist_pool=mission_inputs["assist_pool"],
+                    ephemeris_provider=mission_inputs["ephemeris_provider"],
+                    prograde=mission_inputs["prograde"],
+                    decision_log=candidate_log,
+                    planning_context=context,
+                    ephemeris=ephemeris,
+                )
+            except PlanningError as exc:
+                if preserve_verified_or_raise(exc):
+                    break
+                raise
+            if not candidate_checkpoint():
+                break
+            return_searches.append(
+                {
+                    "candidateIndex": idx,
+                    "search": return_routes.get("search", {}),
+                }
             )
             return_route = return_routes.get("best")
             if not isinstance(return_route, dict):
                 continue
 
             transport_delay_days = float(outbound["totalTimeDays"]) + float(return_route["totalTimeDays"])
+            if not candidate_checkpoint():
+                break
             mining_result = self._mining_agent.evaluate(
                 mission_inputs=mission_inputs,
                 transport_delay_days=transport_delay_days,
                 decision_log=candidate_log,
             )
+            if not candidate_checkpoint():
+                break
 
             logistics = self._logistics_agent.evaluate(
                 vehicle=vehicle,
@@ -328,8 +516,13 @@ class MissionPlannerAgent:
                 outbound_delta_v_km_s=float(outbound["totalDeltaVKmS"]),
                 return_delta_v_km_s=float(return_route["totalDeltaVKmS"]),
                 reserve_fraction=mission_inputs["reserve_fraction"],
+                return_cargo_available_kg=MiningService.deliverable_cargo_kg(
+                    mining_result, mission_inputs["handling_loss_fraction"]
+                ),
                 decision_log=candidate_log,
             )
+            if not candidate_checkpoint():
+                break
 
             burns = logistics.get("burns") or []
             outbound_propellant = float(burns[0]["propellantUsedKg"]) if len(burns) > 0 else 0.0
@@ -339,24 +532,38 @@ class MissionPlannerAgent:
                 mining_result,
                 outbound_propellant_kg=outbound_propellant,
                 return_propellant_kg=return_propellant,
+                return_capacity_kg=float(logistics.get("returnCargoKg", 0.0)),
                 handling_loss_fraction=mission_inputs["handling_loss_fraction"],
                 decision_log=candidate_log,
             )
+            if not candidate_checkpoint():
+                break
 
             total_delta_v = float(outbound["totalDeltaVKmS"]) + float(return_route["totalDeltaVKmS"])
             total_time_days = float(outbound["totalTimeDays"]) + float(mission_inputs["mining_days"]) + float(return_route["totalTimeDays"])
             arrival_jd = float(return_route["legs"][-1]["arrivalJd"])
-            prop_margin = float(logistics.get("propellantMarginKg", 0.0))
+            burns_km_s = [float(outbound["totalDeltaVKmS"]), float(return_route["totalDeltaVKmS"])]
+
+            def reclose(dv_factor: float, cargo_kg: float, burns_km_s: List[float] = burns_km_s) -> Dict[str, Any]:
+                return self._logistics_agent.reclose(
+                    vehicle,
+                    payload_mass_kg=mission_inputs["payload_mass_kg"],
+                    burns_km_s=[burn * dv_factor for burn in burns_km_s],
+                    reserve_fraction=mission_inputs["reserve_fraction"],
+                    return_cargo_kg=cargo_kg,
+                )
 
             risk = self._risk_service.run_monte_carlo(
                 base_total_delta_v_km_s=total_delta_v,
                 base_total_time_days=total_time_days,
                 base_returned_payload_kg=float(closure["returnedPayloadKg"]),
                 base_arrival_jd=arrival_jd,
-                base_propellant_margin_kg=prop_margin,
+                reclose=reclose,
                 samples=mission_inputs["risk_samples"],
                 seed=mission_inputs["risk_seed"] + idx,
             )
+            if not candidate_checkpoint():
+                break
             candidate_log.add(
                 agent="RiskService",
                 action="run_monte_carlo",
@@ -389,6 +596,10 @@ class MissionPlannerAgent:
                     "name": vehicle.name,
                     "stages": [asdict(stage) for stage in vehicle.stages],
                 },
+                "trajectorySearch": {
+                    "outbound": outbound_routes.get("search", {}),
+                    "return": return_routes.get("search", {}),
+                },
                 "decisionLog": candidate_log.to_list(),
             }
 
@@ -399,15 +610,32 @@ class MissionPlannerAgent:
             )
             candidate["verification"] = verification
             candidate["decisionLog"] = candidate_log.to_list()
-
             candidates.append(candidate)
+            if not candidate_checkpoint():
+                break
 
+        if mission_termination_reason is None:
+            context.checkpoint()
         if not candidates:
+            trajectory_search = {
+                "outbound": outbound_routes.get("search", {}),
+                "returns": return_searches,
+            }
             return {
                 "recommendation": None,
                 "alternatives": [],
                 "decisionLog": decision_log.to_list(),
-                "status": "no_feasible_candidate",
+                "status": (
+                    "trajectory_search_inconclusive"
+                    if _search_is_inconclusive(trajectory_search["outbound"])
+                    or any(
+                        _search_is_inconclusive(item.get("search"))
+                        for item in return_searches
+                    )
+                    else "no_feasible_candidate"
+                ),
+                "trajectorySearch": trajectory_search,
+                "planningContext": context.snapshot(),
             }
 
         candidates.sort(
@@ -417,9 +645,42 @@ class MissionPlannerAgent:
             ),
             reverse=True,
         )
+        if mission_termination_reason is None:
+            context.checkpoint()
+
+        mission_search = {
+            "configuredCandidatesCompleted": mission_termination_reason is None,
+            "truncated": mission_termination_reason is not None,
+            "terminationReason": (
+                mission_termination_reason or "configured_candidates_completed"
+            ),
+            "candidateLimit": min(4, len(outbound_candidates)),
+            "candidatesEvaluated": len(candidates),
+        }
 
         best_candidate = candidates[0]
         if not bool(best_candidate.get("verification", {}).get("valid", False)):
+            trajectory_search = {
+                "outbound": outbound_routes.get("search", {}),
+                "returns": return_searches,
+            }
+            if _search_is_inconclusive(trajectory_search["outbound"]) or any(
+                _search_is_inconclusive(item.get("search"))
+                for item in return_searches
+            ):
+                return {
+                    "status": "trajectory_search_inconclusive",
+                    "recommendation": None,
+                    "alternatives": candidates[:4],
+                    "trajectorySearch": trajectory_search,
+                    "planningContext": context.snapshot(),
+                    "missionSearch": {
+                        **mission_search,
+                        "configuredCandidatesCompleted": False,
+                        "truncated": True,
+                        "terminationReason": "child_trajectory_search_inconclusive",
+                    },
+                }
             return {
                 "status": "no_verified_candidate",
                 "recommendation": None,
@@ -434,8 +695,12 @@ class MissionPlannerAgent:
                         "VerifierAgent",
                     ],
                 },
+                "planningContext": context.snapshot(),
+                "missionSearch": mission_search,
             }
 
+        if mission_termination_reason is None:
+            context.checkpoint()
         return {
             "status": "ok",
             "recommendation": best_candidate,
@@ -450,6 +715,8 @@ class MissionPlannerAgent:
                     "VerifierAgent",
                 ],
             },
+            "planningContext": context.snapshot(),
+            "missionSearch": mission_search,
         }
 
 

@@ -1,0 +1,16 @@
+diff --git a/backend/sim/pfss_tracing.py b/backend/sim/pfss_tracing.py
+--- a/backend/sim/pfss_tracing.py
++++ b/backend/sim/pfss_tracing.py
+@@ -131,9 +131,9 @@ def _boundary_intersections(starts, ends, r_ss):
+             accept = valid & (t >= -1e-14) & (t <= length + 1e-14) & crossing & (t < best)
+             best[accept] = np.clip(t[accept], 0, length[accept])
+             states[accept] = state
+-    points = ends.copy()
+-    hit = np.isfinite(best)
+-    points[hit] = starts[hit] + (best[hit] * scale[hit])[:, None] * d[hit]
++    # Historical defect: classify after an RK step without interpolating the crossing.
++    points = ends.copy()
+     fractions = np.full(len(starts), np.inf)
++    hit = np.isfinite(best)
+     np.divide(best, length, out=fractions, where=hit)
+     return states, fractions, points

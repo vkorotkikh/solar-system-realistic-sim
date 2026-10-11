@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import fixtureJson from '../../scripts/fixtures/planet-positions-horizons.json';
 import { createSolarSystemCatalog } from './catalog';
@@ -39,7 +40,7 @@ const propagate = propagateKeplerOrbit as unknown as PropagateFn;
 describe('planet positions vs JPL Horizons 1900-2100 snapshot', () => {
   it('ships a structurally valid, multi-epoch, provenanced fixture', () => {
     expect(validateFixture(fixture)).toEqual([]);
-    expect(Object.keys(fixture.bodies).length).toBe(8);
+    expect(Object.keys(fixture.bodies).length).toBe(9); // eight planets + Pluto
     // The single-epoch trap: a model anchored at J2000 that drifts passes one
     // epoch by construction. Six epochs over two centuries is the whole point.
     expect(fixture._epochs.length).toBeGreaterThanOrEqual(MIN_EPOCHS);
@@ -98,8 +99,28 @@ describe('planet positions vs JPL Horizons 1900-2100 snapshot', () => {
     });
   }
 
-  it('keeps the aggregate error over all 48 planet x epoch rows within budget', () => {
-    expect(allRows.length).toBe(48);
+  it('puts Earth at the geocentre, not the Earth-Moon barycentre', () => {
+    // Standish "Earth" is the EMB, 4,476-4,890 km and 11.8-13.0 m/s from Earth over these epochs.
+    // That offset hides inside the element set's own position error, so pin it with velocity:
+    // the barycentre is 11-14 m/s off Horizons 399 here, the geocentre 0.5-1.5 m/s.
+    const earth = byId.get('earth');
+    expect(earth?.orbit).toBeTruthy();
+    const position = new Vector3();
+    const velocity = new Vector3();
+    for (const truth of fixture.bodies.earth.states) {
+      propagateKeplerOrbit(earth!.orbit!, truth.jd - earth!.orbit!.epochJd, position, velocity);
+      const kmPerSecond = 149597870.7 / 86400;
+      const errMs = 1000 * Math.hypot(
+        velocity.x * kmPerSecond - truth.vx,
+        velocity.y * kmPerSecond - truth.vy,
+        velocity.z * kmPerSecond - truth.vz
+      );
+      expect(errMs, `Earth velocity at JD ${truth.jd}`).toBeLessThan(2);
+    }
+  });
+
+  it('keeps the aggregate error over all 54 planet x epoch rows within budget', () => {
+    expect(allRows.length).toBe(54);
     const totalKm = allRows.reduce((sum, r) => sum + r.errKm, 0);
     expect(
       totalKm,

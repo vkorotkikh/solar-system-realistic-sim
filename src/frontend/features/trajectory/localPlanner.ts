@@ -1,16 +1,10 @@
 import { Vector3 } from 'three';
-import { AU_M, AU_KM, DAY_SECONDS, G_SI, MU_SUN_AU3_DAY2, auPerDayToKmPerSec } from '../../../constants';
+import { MU_SUN_AU3_DAY2, auPerDayToKmPerSec } from '../../../constants';
 
-function muAu3Day2FromMassKg(massKg) {
-  const muSi = G_SI * massKg;
-  return (muSi * DAY_SECONDS * DAY_SECONDS) / (AU_M * AU_M * AU_M);
-}
-
-function safeAngleBetween(a, b) {
-  const denom = Math.max(1e-9, a.length() * b.length());
-  const cosTheta = Math.min(1, Math.max(-1, a.dot(b) / denom));
-  return Math.acos(cosTheta);
-}
+const DEFAULT_ASSIST_POOL = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn'];
+const MAX_LOCAL_ASSISTS = 3;
+const MAX_LOCAL_ASSIST_POOL_SIZE = 8;
+const MAX_LOCAL_ROUTE_TOPOLOGIES = 401;
 
 function computeHohmannLeg(model, fromId, toId, departureJd) {
   const fromAtDeparture = model.sampleBodyStateAt(fromId, departureJd);
@@ -42,9 +36,7 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
   const deltaVDepartureKmS = auPerDayToKmPerSec(Math.abs(vTransfer1 - vCircular1));
   const deltaVArrivalKmS = auPerDayToKmPerSec(Math.abs(vCircular2 - vTransfer2));
 
-  const averageVelocity = toState.position.clone().sub(fromState.position).divideScalar(tofDays);
-  const departureVelocityApprox = averageVelocity.clone();
-  const arrivalVelocityApprox = averageVelocity.clone();
+  const endpointChordAu = fromState.position.distanceTo(toState.position);
 
   return {
     fromId,
@@ -52,64 +44,16 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
     departureJd,
     arrivalJd,
     tofDays,
-    pathLengthAu: Math.PI * transferA,
+    // Keep the fallback contract aligned with backend Lambert legs. This is
+    // an endpoint chord used for deterministic ranking, not flown arc length.
+    pathLengthAu: endpointChordAu,
+    pathMetric: 'endpoint_chord',
+    approximateTransferArcLengthAu: Math.PI * transferA,
     transferSemiMajorAu: transferA,
     deltaVDepartureKmS,
     deltaVArrivalKmS,
     startPosition: fromState.position.clone(),
-    endPosition: toState.position.clone(),
-    departureVelocityApprox,
-    arrivalVelocityApprox
-  };
-}
-
-function evaluateAssist(model, body, incomingLeg, outgoingLeg) {
-  if (!body) {
-    return {
-      assistGainKmS: 0,
-      requiredTurnDeg: 0,
-      maxTurnDeg: 0,
-      feasible: false
-    };
-  }
-
-  if (!body.massKg || !body.radiusKm) {
-    return {
-      assistGainKmS: 0,
-      requiredTurnDeg: 0,
-      maxTurnDeg: 0,
-      feasible: true
-    };
-  }
-
-  const encounterJd = incomingLeg.arrivalJd;
-  const bodyState = model.sampleBodyStateAt(body.id, encounterJd);
-  const bodyVelocity = bodyState.velocity;
-
-  const vInfIn = incomingLeg.arrivalVelocityApprox.clone().sub(bodyVelocity);
-  const vInfOut = outgoingLeg.departureVelocityApprox.clone().sub(bodyVelocity);
-
-  const vInfMagnitudeAuDay = 0.5 * (vInfIn.length() + vInfOut.length());
-  const vInfMagnitudeKmS = auPerDayToKmPerSec(vInfMagnitudeAuDay);
-  const requiredTurn = safeAngleBetween(vInfIn, vInfOut);
-
-  const muBody = muAu3Day2FromMassKg(body.massKg);
-  const rpAu = (body.radiusKm + 300) / AU_KM;
-
-  let maxTurn = 0;
-  if (muBody > 0 && vInfMagnitudeAuDay > 1e-8) {
-    const denominator = 1 + (rpAu * vInfMagnitudeAuDay * vInfMagnitudeAuDay) / muBody;
-    maxTurn = 2 * Math.asin(Math.min(1, 1 / denominator));
-  }
-
-  const appliedTurn = Math.min(requiredTurn, maxTurn);
-  const assistGainKmS = 2 * vInfMagnitudeKmS * Math.sin(appliedTurn / 2);
-
-  return {
-    assistGainKmS,
-    requiredTurnDeg: (requiredTurn * 180) / Math.PI,
-    maxTurnDeg: (maxTurn * 180) / Math.PI,
-    feasible: requiredTurn <= maxTurn + 1e-6
+    endPosition: toState.position.clone()
   };
 }
 
@@ -124,6 +68,14 @@ function scoreRoute(route, objective) {
     );
   }
 
+  if (objective === 'min_time') {
+    return (
+      -route.totalTimeDays -
+      route.totalDeltaVKmS * 0.02 -
+      route.totalPathLengthAu * 0.01
+    );
+  }
+
   return (
     -route.totalPathLengthAu * 1.6 -
     route.totalDeltaVKmS * 0.4 -
@@ -133,28 +85,15 @@ function scoreRoute(route, objective) {
   );
 }
 
-function generateAssistRoutes(startId, endId, assistPool, maxAssists) {
-  const routes = [[startId, endId]];
-
-  function backtrack(path, remainingDepth) {
-    if (remainingDepth === 0) {
-      routes.push([...path, endId]);
-      return;
-    }
-
-    for (const candidate of assistPool) {
-      if (candidate === startId || candidate === endId || path.includes(candidate)) {
-        continue;
-      }
-      backtrack([...path, candidate], remainingDepth - 1);
-    }
+function estimateRouteCount(poolSize: number, maxAssists: number): number {
+  let count = 1;
+  let permutations = 1;
+  for (let depth = 1; depth <= maxAssists; depth += 1) {
+    permutations *= poolSize - depth + 1;
+    if (permutations <= 0) break;
+    count += permutations;
   }
-
-  for (let assistCount = 1; assistCount <= maxAssists; assistCount += 1) {
-    backtrack([startId], assistCount);
-  }
-
-  return routes;
+  return count;
 }
 
 export function planInterplanetaryRoute(model, bodyById, options) {
@@ -164,29 +103,96 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     departureJd,
     objective = 'min_distance',
     maxAssists = 1,
-    assistPool = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn']
+    assistPool = DEFAULT_ASSIST_POOL
   } = options;
 
-  if (!bodyById.has(fromId) || !bodyById.has(toId) || fromId === toId) {
+  const fromBody = bodyById.get(fromId);
+  const toBody = bodyById.get(toId);
+  if (
+    !fromBody ||
+    !toBody ||
+    fromId === toId ||
+    String(fromBody.type ?? '').toLowerCase() === 'moon' ||
+    String(toBody.type ?? '').toLowerCase() === 'moon'
+  ) {
     return {
       best: null,
       alternatives: []
     };
   }
 
-  const sanitizedAssistPool = Array.from(
-    new Set(
-      (Array.isArray(assistPool) ? assistPool : [])
-        .filter((candidate) => typeof candidate === 'string')
-        .map((candidate) => candidate.trim())
-        .filter((candidate) => candidate.length > 0 && candidate !== fromId && candidate !== toId && bodyById.has(candidate))
-    )
-  );
+  if (!['min_distance', 'min_time', 'max_assist'].includes(objective)) {
+    throw new RangeError('objective must be min_distance, min_time, or max_assist');
+  }
 
-  const routeBodies = generateAssistRoutes(fromId, toId, sanitizedAssistPool, maxAssists);
+  if (!Array.isArray(assistPool)) {
+    throw new TypeError('assistPool must be an array when provided');
+  }
+  if (assistPool.length > MAX_LOCAL_ASSIST_POOL_SIZE) {
+    throw new RangeError(`assistPool is limited to ${MAX_LOCAL_ASSIST_POOL_SIZE} entries`);
+  }
+
+  const normalizedAssistPool = assistPool.map((candidate) => {
+    if (typeof candidate !== 'string' || candidate.trim().length === 0) {
+      throw new TypeError('assistPool must contain non-empty body IDs');
+    }
+    return candidate.trim();
+  });
+  if (new Set(normalizedAssistPool).size !== normalizedAssistPool.length) {
+    throw new RangeError('assistPool must not contain duplicate body IDs');
+  }
+  for (const candidate of normalizedAssistPool) {
+    const body = bodyById.get(candidate);
+    if (!body) {
+      throw new RangeError(`Unknown assist body: ${candidate}`);
+    }
+    const massKg = Number(body.massKg);
+    const radiusKm = Number(body.radiusKm);
+    if (
+      body.type === 'moon' ||
+      body.orbit == null ||
+      !Number.isFinite(massKg) ||
+      massKg <= 0 ||
+      !Number.isFinite(radiusKm) ||
+      radiusKm <= 0
+    ) {
+      throw new RangeError(`Ineligible assist body: ${candidate}`);
+    }
+  }
+
+  const parsedMaxAssists = Number(maxAssists);
+  if (
+    !Number.isInteger(parsedMaxAssists) ||
+    parsedMaxAssists < 0 ||
+    parsedMaxAssists > MAX_LOCAL_ASSISTS
+  ) {
+    throw new RangeError(`maxAssists must be an integer from 0 through ${MAX_LOCAL_ASSISTS}`);
+  }
+  const boundedMaxAssists = parsedMaxAssists;
+  const sanitizedAssistPool = normalizedAssistPool
+    .filter((candidate) => candidate !== fromId && candidate !== toId)
+    .sort();
+  const estimatedRouteCount = estimateRouteCount(sanitizedAssistPool.length, boundedMaxAssists);
+  if (estimatedRouteCount > MAX_LOCAL_ROUTE_TOPOLOGIES) {
+    throw new RangeError(
+      `Local route topology estimate ${estimatedRouteCount} exceeds ${MAX_LOCAL_ROUTE_TOPOLOGIES}`
+    );
+  }
+
+  const assistedTopologiesRequested =
+    boundedMaxAssists > 0 && sanitizedAssistPool.length > 0;
+  // Hohmann fallback legs provide endpoint positions and scalar burn estimates,
+  // not physically valid endpoint velocity vectors. Until bounded Lambert
+  // endpoint velocities are available, evaluate only the direct topology.
+  const routeBodies = [[fromId, toId]];
   const evaluatedRoutes = [];
+  let evaluatedTopologies = 0;
 
   for (const bodyRoute of routeBodies) {
+    evaluatedTopologies += 1;
+    if (evaluatedTopologies > MAX_LOCAL_ROUTE_TOPOLOGIES) {
+      throw new RangeError('Local route topology budget exhausted');
+    }
     const legs = [];
     let currentDeparture = departureJd;
     let routeValid = true;
@@ -211,38 +217,25 @@ export function planInterplanetaryRoute(model, bodyById, options) {
       continue;
     }
 
-    let totalAssistGainKmS = 0;
-    let turnDeficitPenalty = 0;
-    const assists = [];
-
-    for (let i = 1; i < bodyRoute.length - 1; i += 1) {
-      const assistBodyId = bodyRoute[i];
-      const assistBody = bodyById.get(assistBodyId);
-      const assist = evaluateAssist(model, assistBody, legs[i - 1], legs[i]);
-
-      assists.push({
-        bodyId: assistBodyId,
-        ...assist
-      });
-
-      totalAssistGainKmS += assist.assistGainKmS;
-
-      if (!assist.feasible) {
-        const deficit = Math.max(0, assist.requiredTurnDeg - assist.maxTurnDeg);
-        turnDeficitPenalty += deficit / 20;
-      }
-    }
+    const totalAssistGainKmS = 0;
+    const turnDeficitPenalty = 0;
+    const assists: Array<{
+      bodyId: string;
+      feasible: boolean;
+      assistGainKmS: number;
+      requiredTurnDeg: number;
+      maxTurnDeg: number;
+    }> = [];
 
     const totalPathLengthAu = legs.reduce((sum, leg) => sum + leg.pathLengthAu, 0);
     const totalTimeDays = legs[legs.length - 1].arrivalJd - legs[0].departureJd;
 
-    let totalDeltaVKmS = 0;
-    for (let i = 0; i < legs.length; i += 1) {
-      totalDeltaVKmS += legs[i].deltaVDepartureKmS;
-      if (i === legs.length - 1) {
-        totalDeltaVKmS += legs[i].deltaVArrivalKmS;
-      }
-    }
+    // A certified unpowered flyby has no propulsive burn at an interior
+    // encounter. Charge only injection at the first endpoint and capture at
+    // the final endpoint; summing every leg departure would silently insert
+    // powered assists while labeling them unpowered.
+    const totalDeltaVKmS =
+      legs[0].deltaVDepartureKmS + legs[legs.length - 1].deltaVArrivalKmS;
 
     const route = {
       bodyRoute,
@@ -250,8 +243,11 @@ export function planInterplanetaryRoute(model, bodyById, options) {
       assists,
       objective,
       totalAssistGainKmS,
+      assistGainMetric: 'patched_conic_velocity_deflection',
       totalDeltaVKmS,
       totalPathLengthAu,
+      pathMetric: 'endpoint_chord_sum',
+      deltaVModel: 'endpoint_propulsive_burns_only',
       totalTimeDays,
       turnDeficitPenalty
     };
@@ -264,7 +260,27 @@ export function planInterplanetaryRoute(model, bodyById, options) {
 
   return {
     best: evaluatedRoutes[0] ?? null,
-    alternatives: evaluatedRoutes.slice(1, 6)
+    alternatives: evaluatedRoutes.slice(1, 6),
+    search: {
+      strategy: 'bounded_local_routes_v1',
+      configuredFrontierCompleted: !assistedTopologiesRequested,
+      // Assisted topologies are intentionally outside the local frontier until
+      // their endpoints can be solved with bounded Lambert calculations.
+      topologySpaceExhaustive: !assistedTopologiesRequested,
+      searchSpaceExhaustive: false,
+      optimalityGuaranteed: false,
+      truncated: false,
+      terminationReason: assistedTopologiesRequested
+        ? 'assisted_routes_disabled_without_lambert_endpoint_velocities'
+        : 'configured_frontier_completed',
+      estimatedRouteCount,
+      evaluatedTopologies,
+      limits: {
+        maxAssists: MAX_LOCAL_ASSISTS,
+        maxAssistPoolSize: MAX_LOCAL_ASSIST_POOL_SIZE,
+        maxRouteTopologies: MAX_LOCAL_ROUTE_TOPOLOGIES
+      }
+    }
   };
 }
 
@@ -319,7 +335,7 @@ export function describeRoute(route, bodyById) {
         .map((assist) => {
           const bodyName = bodyById.get(assist.bodyId)?.name ?? assist.bodyId;
           const feasibility = assist.feasible ? 'feasible' : 'turn-limited';
-          return `${bodyName}: +${assist.assistGainKmS.toFixed(2)} km/s (${feasibility}, req ${assist.requiredTurnDeg.toFixed(1)} deg, max ${assist.maxTurnDeg.toFixed(1)} deg)`;
+          return `${bodyName}: ${assist.assistGainKmS.toFixed(2)} km/s velocity deflection estimate (${feasibility}, req ${assist.requiredTurnDeg.toFixed(1)} deg, max ${assist.maxTurnDeg.toFixed(1)} deg)`;
         })
         .join('\n')
     : 'None';
@@ -328,9 +344,9 @@ export function describeRoute(route, bodyById) {
     `Route: ${routeNames}`,
     `Objective: ${route.objective}`,
     `Total time: ${route.totalTimeDays.toFixed(1)} days`,
-    `Total transfer path: ${route.totalPathLengthAu.toFixed(2)} AU`,
+    `Endpoint chord-distance metric: ${route.totalPathLengthAu.toFixed(2)} AU`,
     `Approx total delta-v: ${route.totalDeltaVKmS.toFixed(2)} km/s`,
-    `Estimated gravity-assist gain: ${route.totalAssistGainKmS.toFixed(2)} km/s`,
+    `Estimated gravity-assist velocity deflection: ${route.totalAssistGainKmS.toFixed(2)} km/s`,
     `Assist details:\n${assistLines}`
   ].join('\n');
 }

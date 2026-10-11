@@ -1462,6 +1462,7 @@ requestAnimationFrame(animate);
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
+  sunCtrl.disposeSolarDelivery();
   viewportResizeObserver?.disconnect();
   if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
 
