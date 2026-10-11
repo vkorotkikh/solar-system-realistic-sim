@@ -5,7 +5,7 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 ## Highlights
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and per-planet visual profiles
-- **424 moons** sourced from the NASA/JPL satellite mean-elements table
+- **424 moons** sourced from the NASA/JPL satellite mean-elements table (catalog and propagation only: the shipped UI keeps moons hidden, `showMoons` in `src/main.ts`, until the rendered set passes its accuracy gates)
 - **Physics-grounded Sun model** — 13-phase overhaul: Neckel & Labs limb darkening, Planck blackbody color, van de Hulst K-corona, prominences, flares, CMEs, PFSS magnetics, Parker spiral heliosphere, and SDO/AIA observation texture blending
 - **SMBH shockwave simulation** — AGN warp-wave engine with Sgr A* transient timeline, Fermi Bubble rendering, and exotic hypothesis modeling
 - **Adjustable simulation clock** with pause, reverse, time-warp, and jump-to-date
@@ -54,13 +54,19 @@ also requires `SOLAR_PHYSICS_API_KEYS` at startup.
 
 ## Backend (optional)
 
-The frontend runs standalone in **Local (Keplerian)** mode. For higher-fidelity physics, start the Python backend and switch simulation engines in the UI dropdown.
+The shipped frontend always propagates the planets in-browser (**Local
+(Keplerian)** model). The backend adds, over HTTP, the solar physics route
+that drives the Sun model and the trajectory, mission and benchmark APIs. It
+also serves a WebSocket N-body simulation engine, but the current entry UI
+has no engine selector or Connect control for it: that engine is reachable
+through the `SimulationClient` class and the WebSocket API below, not
+through the shipped page.
 
-| Engine | Description |
-|---|---|
-| Local (Keplerian) | No backend required; two-body element propagation in-browser |
-| REBOUND N-body | IAS15 adaptive integrator via FastAPI/WebSocket |
-| TudatPy | Conda-based engine; falls back to REBOUND if unavailable |
+| Engine | Description | Reachable from the shipped UI |
+|---|---|---|
+| Local (Keplerian) | No backend required; two-body element propagation in-browser | Yes (always on) |
+| REBOUND N-body | IAS15 adaptive integrator via FastAPI/WebSocket | No; API/library only |
+| TudatPy | Conda-based engine; falls back to REBOUND if unavailable | No; API/library only |
 
 ### Starting the backend
 
@@ -70,7 +76,10 @@ python -m pip install -r requirements.txt
 python -m uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers --ws-max-size 16384
 ```
 
-Then choose **REBOUND** or **TudatPy** in the frontend and click **Connect**.
+The frontend looks for the backend on the page's host at port 8042 (see
+`DEFAULT_BACKEND_PORT` in `src/main.ts`); there is no deployment override in
+the entry path. With the backend up, the Sun chip reports the solar model
+source and the planner panels use the trajectory APIs.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
 without a key and should stay bound to loopback. To expose the backend on a
@@ -178,7 +187,8 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │       ├── orbitRenderer.ts               # Orbit-line drawing
 │   │       └── lodManager.ts                  # Level-of-detail management
 │   ├── workers/
-│   │   └── asteroidWorker.ts                  # Off-thread asteroid processing
+│   │   ├── modelWorker.ts                     # Off-thread planet/moon propagation
+│   │   └── modelWorkerContract.ts             # Worker message contract (Float64 transport)
 │   └── assets/textures/                       # Planet day maps, normals, clouds, relief
 ├── backend/
 │   ├── server.py                              # FastAPI entry point
@@ -198,7 +208,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   ├── mission/                               # Multi-agent mission planner + services
 │   ├── benchmark/                             # Accuracy benchmarks + calibration protocol
 │   ├── data/                                  # Body definitions, nearby systems catalog
-│   └── tests/                                 # 14 pytest modules (contracts, regression, benchmarks)
+│   └── tests/                                 # 54 pytest modules (contracts, regression, benchmarks)
 ├── public/
 │   ├── data/asteroid-phase1/                  # Phase 1 asteroid catalog data files
 │   ├── textures/moons/                        # Moon texture assets
@@ -448,7 +458,11 @@ npm run typecheck
 
 ## Backend Tests
 
+The runtime requirements alone cannot collect the suite: Starlette's
+`TestClient` needs `httpx`, which `backend/requirements.txt` deliberately does
+not ship. Use the pinned test environment that CI uses (Python 3.12):
+
 ```bash
-cd backend
-pytest
+python -m pip install -r ci/backend-test-requirements.txt
+python -m pytest -q backend/tests
 ```
