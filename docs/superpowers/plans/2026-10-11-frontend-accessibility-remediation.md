@@ -14,13 +14,13 @@
 
 - Runtime stack remains TypeScript, Three 0.182.0, and Vite; no UI framework or production dependency is added.
 - Tests use Vitest 3.2.4 in Node and `@playwright/test` 1.64.0 as an exact development dependency. No happy-dom dependency.
-- New browser tooling runs on Node >=22.12.0; use Node 24 in the new frontend workflow and retain the existing lockfile's dependency versions except the explicit test addition.
+- Preserve the reviewed integration target's Node 22.23.2/npm 10.9.8 pins in local verification and frontend CI; retain locked dependency versions except explicit test additions.
 - Mobile panel breakpoint remains `(max-width: 1100px)`; independent desktop-open/mobile-open memory remains.
 - Product target for author-controlled interactive surfaces is at least 44 by 44 CSS px. Native picker option geometry is browser/OS-owned and is validated as such, not claimed to be author-sized.
 - Normal-width mobile drawers retain at least 24 CSS px of dimmed canvas; below 320 CSS px a full-width drawer is allowed to keep controls usable.
 - Browser Ctrl/Cmd keyboard zoom shortcuts remain unhandled by the new camera code. Existing canvas wheel/pinch behavior remains unchanged.
 - Every implementation commit includes its relevant regression and passes its targeted gates. Preserve default Vitest discovery; never stage audit evidence or generated browser reports.
-- No new TypeScript diagnostic identity or increased identity count is allowed relative to the pinned implementation base. Do not suppress new errors or import another branch's baseline.
+- No new TypeScript diagnostic identity or increased identity count is allowed relative to fresh diagnostics from the pinned integration target. Preserve its existing bucket ratchet without budget growth; add the stricter identity gate rather than copying an unrelated baseline.
 
 ## Review Focus
 
@@ -36,15 +36,19 @@
 
 This plan and companion review/spec are committed on `plan/frontend-accessibility-remediation-20261011`, based on `12dbfce43724798638a3c7c3d74af4606d91a747`. Worktree: `/home/nomad/ai/projects/worktrees/solar-ui-accessibility-20261011`. Continue implementation on this new branch after the planning handoff; no product changes have been made by the planning pass.
 
-The original checkout remains on the user's branch. Do not switch, reset, merge, or stage its untracked audit files. If the user selects a different integration base later, reconcile the solar-status UI and CI differences, rerun diagnostics, and update this baseline before implementation. `origin/main` is not this branch's ancestor at its tip; a future merge is separate work.
+The original checkout remains on the user's branch and advanced externally during review to `8ca1116d6e3a0b504086f9aabbbf293453ba02ce`. Do not switch, reset, merge into, or stage files from that original checkout. The delta has now been inspected: relevant HTML/CSS, camera and panel behavior are unchanged; the newer target adds solar delivery cleanup, corrected physics, a pinned toolchain, and science/backend CI with a bucket type ratchet. Do not transplant old engine or solar-controller code over those fixes.
 
-Current evidence: 13 Vitest files / 186 tests pass with audit evidence excluded; production build passes with existing chunk-size warning; strict tsc has 246 legacy errors across seven files. Browser launch fails for missing OS libraries, so browser results are not yet available. See the [review record](../reviews/2026-10-11-frontend-accessibility-final-review.md).
+Initial-base evidence: 13 Vitest files / 186 tests pass; strict tsc has 246 legacy errors. Reviewed integration-target evidence: 24 files / 368 tests pass with audit evidence excluded; existing `typecheck:ratchet` passes with 217/226 diagnostics; production build passes with its existing chunk-size warning. These checks used host Node 24.21.0/npm 11.19.0, not the new exact pins, so repeat them under the declared toolchain. Browser launch fails for missing OS libraries; rendered-browser/AT outcomes remain unverified. See the [review record](../reviews/2026-10-11-frontend-accessibility-final-review.md).
+
+### Integration checkpoint before Task 1
+
+- [ ] **Integrate the reviewed target, without following subsequent checkout changes.** In this clean planning worktree only, inspect `git diff HEAD...8ca1116d6e3a0b504086f9aabbbf293453ba02ce`, confirm all planning documentation commits are preserved, then merge that exact SHA with a dedicated merge commit. Record its parents and tree SHA. Run the pinned-toolchain baseline commands in Task 1 before any product edit. Preserve both histories; do not reset/rebase the original checkout or push. If conflicts exist, resolve only understood documentation/integration overlap; do not silently overwrite product changes. Any later target revision requires another explicit delta review, not an automatic moving-branch merge.
 
 ## File ownership and task dependencies
 
 | Task | Production/config files | Tests/evidence | Dependency |
 |---|---|---|---|
-| 1 | `package.json`, lockfile, `.gitignore`, `vitest.config.ts`, `playwright.config.ts`, `tsconfig.ui-tests.json`, `scripts/check-ui-types.mjs`, `tests/baselines/frontend-types.json` | `scripts/check-ui-types.test.mjs`, browser fixture + shell smoke | none |
+| 1 | `package.json`, lockfile, `.gitignore`, `vitest.config.ts`, `playwright.config.ts`, `tsconfig.ui-tests.json`, `scripts/check-ui-types.mjs`, `tests/baselines/frontend-types.json` | `scripts/check-ui-types.test.mjs`, browser fixture + shell smoke | integration checkpoint |
 | 2 | new `panelController.ts`, active `main.ts` panel section, minimal CSS focus-handoff hooks | `panelController.test.ts`, `panel.spec.ts` | 1 |
 | 3 | new `explorerController.ts`, `bodyPickerPresentation.ts`, existing `timeController.ts`, `main.ts`, HTML | `timeController.test.ts`, `explorer.spec.ts`, `live-regions.spec.ts` | 1, 2 |
 | 4 | CSS/HTML, `bodyPickerPresentation.ts` measured fallback, resize observation in `main.ts` | `reflow.spec.ts` | 2, 3 |
@@ -63,6 +67,7 @@ Tasks 2/3 and 4/5 have behavioral dependencies. Task 6's pure copy/dispatch test
 **Interfaces:**
 
 - Scripts: `test:browser` = `playwright test`; `test:types:ui` = `tsc -p tsconfig.ui-tests.json --noEmit`; `typecheck:ui-delta` = `node scripts/check-ui-types.mjs`.
+- Retain inherited `typecheck:ratchet`, its tests and `ci/typescript-error-baseline.json` unchanged. The additional identity gate detects replacement messages within the same file/code bucket; it does not replace scientific CI's contract. Every later reference to "type gates" includes this inherited gate as well as both new scripts.
 - `parseDiagnostics(output: string): Map<string, number>` keys normalize repository-relative path + TS code + diagnostic message (including continuations), ignoring line/column positions.
 - `compareDiagnostics(actual: Map<string, number>, baseline: Map<string, number>): string[]` rejects new identities or increased counts; disappearance is allowed. Compiler exit 0 with empty output means zero diagnostics. Launch failures, unparseable error output, or nonzero exit without parseable diagnostics fail closed.
 - Playwright project names: `chromium`, `firefox`, `webkit`. Actual-app smoke is Chromium-only; renderer-free production-DOM tests run in all three.
@@ -77,12 +82,12 @@ it('rejects replacement errors even when the total is unchanged', () => {
 });
 ```
 
-- [ ] **Step 1: Record baseline and install only the test prerequisites.** Verify the branch/base and Node floor, run `npm ci`, then `npm test -- --exclude 'agent-notes/**'`, `npm run typecheck`, and `npm run build`. Save the base diagnostic identities to the committed baseline JSON with base SHA and compiler version. Install `npm install --save-dev --save-exact @playwright/test@1.64.0` and `npx playwright install --with-deps chromium firefox webkit`. A failed browser install/launch is a prerequisite failure; record the error and resolve available in-scope setup before continuing browser claims.
+- [ ] **Step 1: Record baseline and install only the test prerequisites.** Verify the completed integration checkpoint and select Node 22.23.2/npm 10.9.8; run `npm ci`, then `npm test -- --exclude 'agent-notes/**'`, `npm run typecheck:ratchet`, `npm run typecheck`, and `npm run build`. Strict tsc remains an expected failing debt report, not a claimed pass. Save freshly collected diagnostic identities to the new committed baseline JSON with exact integration/tree SHA and compiler version; do not copy the old 246-error evidence or expand the inherited 226 bucket budget. Install `npm install --save-dev --save-exact @playwright/test@1.64.0` and `npx playwright install --with-deps chromium firefox webkit`. A failed browser install/launch is a prerequisite failure; record the error and resolve available in-scope setup before continuing browser claims.
 - [ ] **Step 2: Add diagnostic-comparison tests and run them red.** Cases: moving a legacy error's line passes; removing an error passes; adding a new error while removing another fails; increasing identical error count fails; multiline messages remain distinct; compiler exit 0 with empty output passes, while launch failure/nonzero empty output cannot pass. Run `npx vitest run scripts/check-ui-types.test.mjs`. Expect failure because the comparison functions do not exist.
 - [ ] **Step 3: Implement the type gate.** Export the two functions, execute the locked local TypeScript binary, compare against the recorded JSON, and reject compiler-version mismatch. Never auto-update the baseline. Add `tsconfig.ui-tests.json` for test configuration/browser fixtures only; keep global strictness and explicitly include required Vite/Node/test types. Reuse already-resolved compatible types or add an exact dev type dependency if required; record it in the lockfile. Product source remains checked by the delta gate.
 - [ ] **Step 4: Add the browser fixture and a meaningful passing baseline test.** Route only `/src/main.ts` to `import '/tests/browser/fixtures/ui-shell.ts'`; the fixture imports `/src/style.css`. Load the real `/index.html`. The initial shell test checks actual app heading, visible named panel-close button, labelled native search, and time slider at 1440×900. Do not require Controls to be visible when the desktop panel is open. Subsequent tasks import production factories into this fixture; do not duplicate HTML or feature handlers. Expose fixture-only state under `window.__uiFixture`; never add a production test-mode switch.
 - [ ] **Step 5: Configure test discovery/server isolation.** Extend `configDefaults.exclude` with `agent-notes/**`, `tests/browser/**`, `test-results/**`, `playwright-report/**`; keep Node as Vitest default and default include patterns. Playwright uses `testDir: './tests/browser'`, a managed Vite server on `127.0.0.1:4175 --strictPort`, `reuseExistingServer: false`, traces/screenshots on failure, and a single worker initially. Ignore generated browser outputs in Git. Browser viewport configuration supplies width/height; do not use `dev:ui --width` (its parser rejects widths under 640).
-- [ ] **Step 6: Verify and commit the foundation.** Run `npm test`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run test:browser -- shell.spec.ts`, `npm run build`, and `git diff --check`. Expect all configured gates green, with legacy tsc debt identified by the delta gate. Stage only Task 1 paths. Commit: `test(ui): add browser and type-regression foundations`.
+- [ ] **Step 6: Verify and commit the foundation.** Run `npm test`, `npm run typecheck:ratchet`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run test:browser -- shell.spec.ts`, `npm run build`, and `git diff --check`. Expect all configured gates green, with legacy tsc debt identified by the delta gate. Stage only Task 1 paths. Commit: `test(ui): add browser and type-regression foundations`.
 
 ## Task 2: Centralize panel modality and focus transitions
 
@@ -171,6 +176,8 @@ Also inspect horizontal bounds of individual labels/controls and scroll/clipping
 
 **Files:** create `viewportCameraController.ts`, its unit test and `tests/browser/camera.spec.ts`; modify HTML/CSS, main input/frame/cleanup, fixture.
 
+Preserve the inherited `sunCtrl.disposeSolarDelivery()` call while adding controller teardown; it releases the newer solar delivery lifecycle.
+
 **Interfaces:**
 
 - `CameraAction` is the ten literal values `orbit-left/right/up/down`, `pan-left/right/up/down`, `zoom-in/out` (expand these groups to literal strings in the type).
@@ -217,6 +224,8 @@ expect(getExperimentPresentation('h29')).toEqual({
 
 The browser callback spy must additionally record `['M87', 12, 0.5, { preset: 'SgrA_WarpWave_H29', hypothesis: 'h29' }]` for that crossed-source selection and record the same tuple without the hypothesis property after switching to compound.
 
+At the integration target observer-frame mode is a deliberate compatibility no-op: test forwarding/order only, never restore the older front-speed multiplier. Preserve newer physics constants, equilibrium-time units, front/channel synchronization and `smbhPhysics.test.ts`; no numerical snapshots from the old planning base.
+
 - [ ] **Step 1: Write and run red tests.** Assert initial compound and restored H29 presentation, H29→compound→H29, exact strings/classification and retained SVG. Browser clicks assert arguments for all four source timing/intensity pairs, preset/no preset, compound omission/H29 inclusion, and observer setting before trigger. Include H29 energy preset + compound, M87 energy preset + SagittariusA source, and H29 + default energy.
 - [ ] **Step 2: Implement presentation/binding and explicit energy copy.** Initialize status/data-model/button together; update label span only. Preserve engine payloads and source/preset values. Rename field/default/H29 option and add the exact independent-selection explanation. Remove old inline listeners after wiring the controller once; preserve stochastic binding. No engine/source-catalog changes.
 - [ ] **Step 3: Pin the actual precedence.** Instantiate the existing engine in a Node integration test with its supported null visualization callbacks and assert H29 energy preset gives `5e54` erg with compound unless the separate hypothesis is `h29`; crossed source presets keep the selected source. Dispose/stop any timers the engine starts. This supplements bound-click tests; it does not replace them with a pure-copy test.
@@ -229,15 +238,15 @@ The browser callback spy must additionally record `['M87', 12, 0.5, { preset: 'S
 **Interfaces:** actual-app test does not intercept `/src/main.ts` or install fixture state. CI uses the Task 1 scripts and committed diagnostic baseline.
 
 - [ ] **Step 1: Add app-entry smoke.** Launch the real application in Chromium with WebGL/software rendering supported by the runner. Control only external service/catalog responses for predictable fallback; do not intercept local assets or swallow page errors. Assert initial app readiness, real drawer focus/isolation, filtering and zero results, hypothesis copy and action, and camera +/- changing the visible Range readout after pausing. Use state/readout conditions with bounded timeouts; no fixed sleeps. Initialization/WebGL failures fail the smoke.
-- [ ] **Step 2: Run the complete automated release matrix.** Execute `npm test`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run build`, and `npm run test:browser`. Run `npm run typecheck` separately to report remaining global debt. Inspect failures before broadening retries; do not erase baseline or add skips to produce green output. Confirm product-only build contains no fixture entry or test globals.
-- [ ] **Step 3: Add frontend CI.** On pull requests/pushes affecting frontend/config/test files, use Node 24, `npm ci`, and `npx playwright install --with-deps chromium firefox webkit`; run the same unit/type/build/browser commands. Upload browser traces/screenshots on failure. If the integration base already has equivalent CI, integrate these gates there rather than duplicating workflows. Do not introduce backend/science changes.
+- [ ] **Step 2: Run the complete automated release matrix.** Execute `npm test`, `npm run typecheck:ratchet`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run build`, and `npm run test:browser`. Run `npm run typecheck` separately to report remaining global debt. Inspect failures before broadening retries; do not erase baseline or add skips to produce green output. Confirm product-only build contains no fixture entry or test globals.
+- [ ] **Step 3: Add frontend CI.** On pull requests/pushes affecting frontend/config/test files, use Node 22.23.2, assert npm 10.9.8, run `npm ci` and `npx playwright install --with-deps chromium firefox webkit`, then the same unit/type/build/browser commands. Upload browser traces/screenshots on failure. The inherited `.github/workflows/r3-r4-science.yml` covers science/backend/unit/build/bucket-ratchet checks but has no browser matrix; leave it intact. If a subsequently reviewed target gains equivalent browser CI, integrate the new gates there instead of duplicating them. Do not introduce backend/science changes.
 - [ ] **Step 4: Record manual evidence honestly.** For NVDA/Chrome and VoiceOver/Safari record versions, virtual-cursor isolation, focus return, keyboard/button/picker use, spoken search behavior and visible focus. Include real browser zoom/text resize, touch pinch and native picker behavior. Use explicit PASS/FAIL/NOT RUN; missing platforms remain pending release evidence. Do not equate a Playwright accessibility snapshot with spoken-screen-reader validation.
 - [ ] **Step 5: Request an independent whole-branch review.** Give the reviewer the base SHA, diff, spec, plan and verification record. Review original-findings coverage, unintended physics/payload changes, focus ordering, test fixture duplication, and CI scope. Resolve confirmed issues in their own green commits and rerun only affected gates plus the final combined suite when changes justify it.
 - [ ] **Step 6: Commit and hand off.** Run `git diff --check`, inspect staged paths, and commit `test(ui): gate accessibility regressions and record verification`. Record the final commit list, test counts, manual gaps and branch/worktree location. Leave the branch available for review; do not merge or push as an implied part of this local plan.
 
 ## Commit and completion policy
 
-The seven task commits are implementation milestones, additional to this planning branch's review/spec/plan commits. Commit after each verified slice; do not consolidate them into one final change. Failing red tests are observed locally and paired with their fix before the task commit. Stage explicit paths, never `git add .` in the user's original checkout. If an independent correction is needed after review, give it its own test-backed commit.
+The seven task commits are implementation milestones, additional to this planning branch's documentation commits and the explicit integration merge checkpoint. Commit after each verified slice; do not consolidate them into one final change. Failing red tests are observed locally and paired with their fix before the task commit. Stage explicit paths, never `git add .` in the user's original checkout. If an independent correction is needed after review, give it its own test-backed commit.
 
 The implementation is code-verified when the automated gates pass and all original findings have the specified evidence. Any NOT RUN manual accessibility item remains visible in the handoff and prevents a claim of complete AT/WCAG validation. Existing unrelated TypeScript errors do not authorize ignoring new diagnostics.
 

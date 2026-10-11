@@ -1,6 +1,6 @@
 # Frontend accessibility: final inspection and decision record
 
-Date: 2026-10-11. Review baseline: `12dbfce43724798638a3c7c3d74af4606d91a747` (`fix/solar-data-status-notice`). Planning branch: `plan/frontend-accessibility-remediation-20261011`.
+Date: 2026-10-11. Initial review/planning baseline: `12dbfce43724798638a3c7c3d74af4606d91a747` (`fix/solar-data-status-notice`). Late delta review target: `8ca1116d6e3a0b504086f9aabbbf293453ba02ce`. Planning branch: `plan/frontend-accessibility-remediation-20261011`.
 
 The original design is the Git blob `fc191df:docs/superpowers/specs/2026-10-07-frontend-accessibility-remediation-design.md`. The 2026-10-10 critique inspected `b291328`, a different branch. This review uses three independent specialist inspections plus primary-agent source verification. It refines the solution and plan; it does not claim that product fixes have shipped.
 
@@ -8,7 +8,7 @@ The original design is the Git blob `fc191df:docs/superpowers/specs/2026-10-07-f
 
 The eight original issues remain actionable. The previous design had two material weaknesses: tests could pass without proving rendered accessibility, and panel focus rules omitted entry into a remembered open mobile drawer. The revised solution also needs complete camera input behavior, a deliberate native-select policy, and copy that reflects actual experiment dispatch.
 
-Branch divergence is a prerequisite to record, not a reason to stop planning. The new branch starts from the user's current checkout. Before future integration into another base, rerun the baseline and review the affected UI and CI differences.
+Branch divergence is a prerequisite to record, not a reason to stop planning. The new branch starts from the user's checkout at the beginning of review. That checkout advanced externally before handoff; the late delta has been inspected and the plan now requires exact-target integration and a fresh pinned-toolchain baseline before coding. Neither the original checkout nor its audit notes were changed by this planning pass.
 
 ## Findings and dispositions
 
@@ -25,7 +25,7 @@ Branch divergence is a prerequisite to record, not a reason to stop planning. Th
 
 ### Corrections to the previous critique
 
-- This branch has no `typecheck:ratchet`, `ci/` directory, `.github/` workflow, or package engine pins. The earlier two-bucket ratchet result belongs to `b291328`. Do not copy it into this branch's acceptance report.
+- The initial `12dbfce` base has no `typecheck:ratchet`, `ci/` directory, `.github/` workflow, or package engine pins. The earlier two-bucket ratchet failure belongs to `b291328`; the late `8ca1116` target includes this infrastructure and its ratchet now passes. Do not mix these three baselines in an acceptance claim.
 - A 195 CSS-pixel layout viewport is a strict project regression case. It is not equivalent to mobile pinch zoom. Test real browser zoom and text resize separately. W3C's reflow benchmark is 320 CSS pixels for vertically scrolling content. [W3C reflow guidance](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html).
 - Approximately 44px targets are a product ergonomics goal. WCAG 2.2 AA's target-size criterion uses 24px with exceptions; existing 28px rows are not automatically an AA violation. Current options are author-styled, so a blanket native-control exception is also unjustified. [W3C target-size guidance](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
 - A canvas strip preserves visual context but cannot remain interactive while its sibling drawer is modal. That distinction must be reflected in the design and tests.
@@ -43,7 +43,7 @@ Keyboard-only camera support leaves users who operate by taps with drag/pinch-de
 
 Modifier combinations for browser zoom remain untouched. Camera math uses the current controls target and camera up axis; no copied target or private OrbitControls methods. Existing Follow recentering, damping, pointer input, source selection, energy values, and runtime hypothesis precedence remain regression constraints.
 
-## Current verification evidence
+## Initial-base verification evidence
 
 Read-only inspection and diagnostic execution occurred on the original checkout at the same `12dbfce` product baseline. Planning documents live in a separate worktree; dependency installation and product implementation have not occurred there.
 
@@ -56,6 +56,24 @@ Read-only inspection and diagnostic execution occurred on the original checkout 
 | Toolchain | Current shell Node 24.21.0/npm 11.19.0. Package manifest has no engine pin. Registry inspection found `@playwright/test` 1.64.0 requiring Node >=20. |
 
 TypeScript counts: `smbhPropagation.ts` 81; `agnShockwaveEngine.ts` 52; `milkyWay.ts` 40; `localPlanner.ts` 30; `src/main.ts` 18; `sunController.ts` 14; `lodManager.ts` 11. Compare normalized file/code/message diagnostics with the base; total count alone can hide a new error behind an unrelated reduction.
+
+## Late checkout advancement and integration-target evidence
+
+The original checkout advanced externally to `8ca1116` during final verification. This is a substantial merged delta, not a documentation-only change. Two specialists re-inspected its verification infrastructure and camera/experiment/solar changes; the primary review checked HTML/CSS, active main composition and the build. The isolated planning branch remains based on `12dbfce`; no merge or product edit was performed by this review.
+
+| Check at `8ca1116` | Result and limit |
+|---|---|
+| Unit suite | `npm test -- --exclude 'agent-notes/**'`: 24 files / 368 tests pass, including the existing ratchet and supervisor-config tests. |
+| Existing bucket ratchet | `npm run typecheck:ratchet` passes: 217 diagnostics within the inherited 226 budget. Strict tsc is still not clean. |
+| Production build | Passed with `npm run build -- --outDir /tmp/solar-ui-delta-build.5gijvB`; 46 modules, 935.73 kB main JS, existing chunk warning. |
+| Toolchain | Target pins Node 22.23.2/npm 10.9.8 in package/CI configuration. Review execution used host Node 24.21.0/npm 11.19.0; repeat under pins before implementation. |
+| Browser/AT | No new execution evidence; missing browser OS libraries and manual AT checks remain prerequisites/gaps. |
+
+Current strict counts: `agnShockwaveEngine.ts` 50; `smbhPropagation.ts` 81; `localPlanner.ts` 17; `lodManager.ts` 11; `milkyWay.ts` 40; `src/main.ts` 18. `sunController.ts` is now clean.
+
+HTML/CSS and relevant panel/camera input/frame logic are unchanged, so the eight findings and their behavioral designs remain applicable. Preserve the added `sunCtrl.disposeSolarDelivery()` teardown and corrected physics. The observer-frame setter is now a compatibility no-op; forwarding/order remains the UI contract. Its still-visible checkbox is an additional existing UX limitation outside the original eight, not a reason to restore incorrect propagation behavior.
+
+Keep the existing science/backend workflow and its bucket ratchet. A direct comparator probe confirmed that replacing a diagnostic message with another in the same file/code bucket passes that ratchet; the stricter identity gate therefore adds a real guarantee. Generate its baseline afresh after exact-target integration, without enlarging inherited budgets. The revised plan uses the target's exact Node/npm pins, adds only the missing browser workflow, and makes integration a separate checkpoint ahead of the seven implementation commits.
 
 ## Evidence limits and remaining human checks
 

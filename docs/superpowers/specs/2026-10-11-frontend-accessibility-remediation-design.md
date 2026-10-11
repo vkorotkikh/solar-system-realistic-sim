@@ -2,7 +2,7 @@
 
 Date: 2026-10-11. Status: implementation-planning specification; product changes are not implemented.
 
-Base: `12dbfce43724798638a3c7c3d74af4606d91a747`. Supersedes the design blob in `fc191df` for this work. See the [final review](../reviews/2026-10-11-frontend-accessibility-final-review.md) for evidence and corrections to the earlier critique.
+Planning branch base: `12dbfce43724798638a3c7c3d74af4606d91a747`. Reviewed implementation integration target: `8ca1116d6e3a0b504086f9aabbbf293453ba02ce`, which arrived in the original checkout during review. Integrate that exact target in the isolated branch before implementation; do not silently follow a moving branch. Supersedes the design blob in `fc191df` for this work. See the [final review](../reviews/2026-10-11-frontend-accessibility-final-review.md) for evidence and corrections to the earlier critique.
 
 ## Outcome and scope
 
@@ -14,13 +14,13 @@ Two explicit refinements are included: native tap controls provide alternatives 
 
 - Runtime stack remains TypeScript, Three 0.182.0, and Vite; no UI framework or production dependency is added.
 - Tests use Vitest 3.2.4 in Node and `@playwright/test` 1.64.0 as an exact development dependency. No happy-dom dependency.
-- New browser tooling runs on Node >=22.12.0; use Node 24 in the new frontend workflow and retain the existing lockfile's dependency versions except the explicit test addition.
+- Preserve the reviewed integration target's Node 22.23.2/npm 10.9.8 pins in local verification and frontend CI; retain locked dependency versions except explicit test additions.
 - Mobile panel breakpoint remains `(max-width: 1100px)`; independent desktop-open/mobile-open memory remains.
 - Product target for author-controlled interactive surfaces is at least 44 by 44 CSS px. Native picker option geometry is browser/OS-owned and is validated as such, not claimed to be author-sized.
 - Normal-width mobile drawers retain at least 24 CSS px of dimmed canvas; below 320 CSS px a full-width drawer is allowed to keep controls usable.
 - Browser Ctrl/Cmd keyboard zoom shortcuts remain unhandled by the new camera code. Existing canvas wheel/pinch behavior remains unchanged.
 - Every implementation commit includes its relevant regression and passes its targeted gates. Preserve default Vitest discovery; never stage audit evidence or generated browser reports.
-- No new TypeScript diagnostic identity or increased identity count is allowed relative to the pinned implementation base. Do not suppress new errors or import another branch's baseline.
+- No new TypeScript diagnostic identity or increased identity count is allowed relative to fresh diagnostics from the pinned integration target. Preserve its existing bucket ratchet without budget growth; add the stricter identity gate rather than copying an unrelated baseline.
 
 ## Responsive behavior
 
@@ -101,6 +101,8 @@ Synchronize on initialization and every hypothesis change, including a restored 
 
 The source selector controls source plus existing timing/intensity: SagittariusA (8,1.4), CentaurusA (9.5,1.1), Maffei1 (10.5,0.7), M87 (12,0.5). Preset changes energy only. Compound dispatch continues omitting `options.hypothesis`; H29 dispatch includes `hypothesis: 'h29'`. Preserve preset/source combinations, observer-frame setting before trigger, and stochastic-flaring binding. No source/hypothesis synchronization from preset names.
 
+At the reviewed integration target the observer-frame setter is deliberately a compatibility no-op. Preserve forwarding/call order, not the older propagation multiplier; do not assert that it changes physics. Its still-visible checkbox is a separate existing UX limitation, not one of the eight remediations. Preserve corrected Schwarzschild radii, heliosphere equilibrium seconds, front/channel arrival synchronization, and existing physics tests. Preserve `sunCtrl.disposeSolarDelivery()` when composing controller cleanup.
+
 ## Verification architecture and release evidence
 
 Vitest covers pure camera math/key classification, panel transition decisions, exact copy/dispatch arguments, and time setter counts. Playwright loads production `index.html` and CSS; its fixture intercepts only `/src/main.ts` to instantiate the production controllers with deterministic dependencies and real Three camera/OrbitControls, without WebGLRenderer. The fixture must not implement its own panel/search/experiment event handlers. Tests exercise native inputs through browser actions. Each factory is wired in `main.ts` in the same commit as its feature.
@@ -109,7 +111,7 @@ Retain a separate un-intercepted app smoke. It checks actual initialization, cam
 
 Use actual geometry, focus, accessible names, events, and mutations. Source-text CSS tests are not acceptance evidence. Capture traces/screenshots on failure. Manual NVDA/Chrome and VoiceOver/Safari records must include platform/version and pass/fail/not-run for virtual navigation, canvas instructions, native buttons/picker, spoken search output, and focus visibility. Missing AT platforms remain explicit release-validation gaps; automated code verification can finish without pretending those checks ran.
 
-The current TypeScript baseline is 246 errors. Compare diagnostics by normalized path/code/message and count, ignoring line shifts. New modules must be clean; moves from main must not transfer existing debt into extracted code. CI adds a narrowly scoped frontend workflow, because this base has none. Do not broaden this work into repairing unrelated physics diagnostics.
+The initial planning base had 246 TypeScript errors; the reviewed integration target has 217, and its existing bucket ratchet passes against a 226-error budget. Retain that gate and add comparison by normalized path/code/message and count, ignoring line shifts; a file/code bucket alone cannot detect replacement errors. Record the identity baseline afresh after integration. New modules must be clean; moves from main must not transfer existing debt into extracted code. Add a narrowly scoped frontend browser workflow alongside the existing science/backend workflow, which does not cover browser accessibility. Do not modify scientific gates or repair unrelated physics diagnostics.
 
 ## Acceptance and traceability
 
