@@ -137,6 +137,7 @@ def test_hard_timeout_kills_reaps_and_recovers_capacity(tmp_path: Path) -> None:
 
     runner = SupervisedProcessRunner(TARGET, max_workers=1, max_queue=0)
     started = tmp_path / "timed-out.pid"
+    hard_timeout_seconds = 5.0
     try:
         timed_out = runner.submit(
             {
@@ -145,12 +146,15 @@ def test_hard_timeout_kills_reaps_and_recovers_capacity(tmp_path: Path) -> None:
                 "started_path": str(started),
                 "result": _result(),
             },
-            timeout_seconds=0.15,
+            # Starting a fresh interpreter and importing the worker target can
+            # exceed a subsecond on a contended CI runner. Allow the PID
+            # handshake to complete while still timing out during the sleep.
+            timeout_seconds=hard_timeout_seconds,
         )
         child_pid = _wait_for_pid(started)
 
         with pytest.raises(ProcessTimedOut):
-            timed_out.result(timeout=3.0)
+            timed_out.result(timeout=hard_timeout_seconds + 2.0)
 
         assert not _pid_exists(child_pid)
         assert runner.snapshot()["active_processes"] == 0
