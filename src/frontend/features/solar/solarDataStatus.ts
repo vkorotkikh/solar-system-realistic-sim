@@ -1,8 +1,7 @@
 import {
   formatSeconds,
   type SolarPhysicsFailure,
-  type SolarPhysicsFailureKind,
-  type SolarPhysicsStatePayload
+  type SolarPhysicsFailureKind
 } from './solarPhysicsClient';
 
 /**
@@ -33,7 +32,13 @@ export interface SolarDataStatusInput {
   timeoutMs: number;
   backendBaseUrl: string;
   pageOrigin: string;
-  payload: SolarPhysicsStatePayload | null;
+  /** Only the forcing provenance is read; the client has already validated the full payload. */
+  payload: {
+    effective_forcing?: string;
+    forcing_status?: { observed_input_status?: string };
+  } | null;
+  /** Whether backend geometry (spots, loops, holes, spiral) is drawn, or only its activity level. */
+  geometryFromBackend: boolean;
   /** Channel of the AIA image currently drawn on the Sun, set only after it loaded. */
   displayedImageChannel: string | null;
   /** Channel of the most recent image load that failed, cleared by a successful load. */
@@ -82,18 +87,14 @@ function failureReason(failure: SolarPhysicsFailure, input: SolarDataStatusInput
   }
 }
 
-function describeForcing(payload: SolarPhysicsStatePayload | null): string {
-  const assimilation = payload?.data_assimilation;
-  const mode = typeof assimilation?.mode === 'string' ? assimilation.mode : null;
-  if (!mode || mode === 'synthetic') return 'synthetic forcing, no observations';
-  const forcing = `${mode.replace(/_/g, '-')} forcing`;
-  const blendWeight = Number(assimilation?.blend_weight);
-  if (assimilation?.applied === true && Number.isFinite(blendWeight)) {
-    return `${forcing}, observations blended ${Math.round(blendWeight * 100)}%`;
-  }
-  return assimilation?.live_data_available === true
-    ? `${forcing}, observations not applied`
-    : `${forcing}, observations unavailable`;
+function describeForcing(payload: SolarDataStatusInput['payload']): string {
+  const status = payload?.forcing_status?.observed_input_status;
+  const observations = !status || status === 'not_requested'
+    ? 'no observations'
+    : status === 'disabled_unvalidated'
+      ? 'observations disabled until validated'
+      : `observations ${status.replace(/_/g, ' ')}`;
+  return `${payload?.effective_forcing ?? 'synthetic'} forcing, ${observations}`;
 }
 
 function aiaLabel(channel: string): string {
@@ -182,7 +183,8 @@ export function describeSolarDataStatus(input: SolarDataStatusInput): SolarDataS
     const imageUnavailable = input.failedImageChannel !== null && input.displayedImageChannel === null;
     return {
       state: 'backend',
-      text: `Sun: backend solar model (${describeForcing(input.payload)}${describeObservationImage(input)})`
+      text: `Sun: ${input.geometryFromBackend ? 'backend solar model' : 'backend activity, procedural features'}`
+        + ` (${describeForcing(input.payload)}${describeObservationImage(input)})`
         + ` · updated ${formatUtcMinute(input.lastSuccessMs)}`,
       announcementKey: imageUnavailable ? 'backend:image-unavailable' : 'backend',
       announcement: imageUnavailable

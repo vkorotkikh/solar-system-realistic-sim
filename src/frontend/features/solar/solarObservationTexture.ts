@@ -41,10 +41,7 @@ interface AiaSourceLike {
 
 export interface SolarObservationPhysicsStateLike {
   data_assimilation?: {
-    mode?: unknown;
     applied?: unknown;
-    blend_weight?: unknown;
-    live_data_available?: unknown;
     observed_confidence?: unknown;
     sources?: {
       sdo_aia?: AiaSourceLike | null;

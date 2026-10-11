@@ -674,6 +674,12 @@ label,
   line-height: 1.35;
 }
 
+.switch-note {
+  display: block;
+  color: #9aa6a4;
+  font-size: 0.7rem;
+}
+
 .field-stack {
   display: grid;
   gap: 6px;

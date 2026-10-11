@@ -13,6 +13,7 @@ import {
 } from 'three';
 import { AU_M } from '../../../constants';
 import type { SolarPhysicsStatePayload } from './solarPhysicsClient';
+import { coronalToDisplay } from './solarDisplayScale';
 
 const CME_SPEED_KMS_MIN = 20;
 const CME_SPEED_KMS_MAX = 3500;
@@ -146,6 +147,8 @@ export interface CreateSolarFlareEventParams {
     velocityKms?: number;
     intensity?: number;
     angularWidthDeg?: number;
+    /** How far out the CME grows, in solar radii from the Sun's centre. */
+    peakExtentSolarRadii?: number;
 }
 
 export interface SolarFlareEventHandle {
@@ -171,7 +174,8 @@ export function createSolarFlareEvent({
     sunRadiusAu,
     velocityKms = 489,
     intensity = 0.5,
-    angularWidthDeg = 60
+    angularWidthDeg = 60,
+    peakExtentSolarRadii = 4.74
 }: CreateSolarFlareEventParams): SolarFlareEventHandle {
     const group = new Group();
 
@@ -223,9 +227,13 @@ export function createSolarFlareEvent({
     let _expired = false;
 
     const flashDurationSec = 15.0 + intensity * 20.0;
-    const cmeMaxDistanceAu = 0.3;
-    const velocityAuPerSec = cmeMaterial.uniforms.uVelocityAuPerSec.value as number;
-    const maxLifeTimeSec = (cmeMaxDistanceAu - sunRadiusAu) / Math.max(0.0001, velocityAuPerSec);
+    // The CME grows to its peak extent over the flare's flash, a time-lapse: at its real speed it
+    // would barely move on screen for hours and hold one of the manager's four event slots. The
+    // old fixed 0.3 AU limit sat inside the enlarged Sun (0.3755 AU), so every event expired on
+    // its first frame and no flare was ever visible at the default scale.
+    const cmeMaxDistanceAu = coronalToDisplay(Math.max(1, peakExtentSolarRadii), sunRadiusAu);
+    const maxLifeTimeSec = flashDurationSec;
+    cmeMaterial.uniforms.uVelocityAuPerSec.value = (cmeMaxDistanceAu - sunRadiusAu) / flashDurationSec;
 
     return {
         group,
@@ -407,7 +415,8 @@ export class SolarFlareManager {
             sunRadiusAu,
             velocityKms,
             intensity,
-            angularWidthDeg
+            angularWidthDeg,
+            peakExtentSolarRadii: peakExtent
         });
 
         this.events.push(flare);

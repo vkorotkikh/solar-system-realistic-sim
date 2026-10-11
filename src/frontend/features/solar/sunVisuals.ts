@@ -19,6 +19,7 @@ import {
   Texture,
   Vector4
 } from 'three';
+import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
@@ -27,6 +28,7 @@ const TWO_PI = Math.PI * 2;
 export const SUN_SURFACE_VERTEX_SHADER = `
 varying vec2 vUv;
 varying vec3 vWorldNormal;
+varying vec3 vSunNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -35,7 +37,10 @@ void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  vLatitude = asin(clamp(vWorldNormal.y, -1.0, 1.0));
+  // The mesh hangs from the Sun's spin group, whose local +Y is the true spin axis, so the
+  // object-space normal gives heliographic latitude; the world normal's y does not.
+  vSunNormal = normalize(normal);
+  vLatitude = asin(clamp(vSunNormal.y, -1.0, 1.0));
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
@@ -54,6 +59,7 @@ uniform vec4 flarePoints[3];
 
 varying vec2 vUv;
 varying vec3 vWorldNormal;
+varying vec3 vSunNormal;
 varying vec3 vWorldPosition;
 varying float vLatitude;
 
@@ -231,6 +237,7 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
+  vec3 sunNormal = normalize(vSunNormal); // body frame: latitude, spots and flares
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
   float mu = max(0.0, dot(normalDir, viewDir));
   
@@ -267,14 +274,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(normalDir, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -320,7 +327,7 @@ void main() {
     vec4 fParams = flarePoints[i]; // x=lon, y=lat, z=intensity
     if (fParams.z > 0.001) {
       vec3 fDir = vec3(cos(fParams.y) * cos(fParams.x), sin(fParams.y), cos(fParams.y) * sin(fParams.x));
-      float fDist = acos(clamp(dot(normalDir, fDir), -1.0, 1.0));
+      float fDist = acos(clamp(dot(sunNormal, fDir), -1.0, 1.0));
       float fRadius = 0.05 + fParams.z * 0.06;
       if (fDist < fRadius * 3.0) {
         float falloff = pow(1.0 - clamp(fDist / (fRadius * 3.0), 0.0, 1.0), 2.5);
@@ -342,11 +349,13 @@ void main() {
 export const SUN_CORONA_VERTEX_SHADER = `
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
+varying vec3 vSunNormal;
 
 void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vSunNormal = normalize(normal); // body frame, as in the surface shader
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
@@ -373,6 +382,7 @@ uniform float coronalHoleCount;
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
+varying vec3 vSunNormal;
 
 float hash13(vec3 p) {
   p = fract(p * 0.1031);
@@ -449,6 +459,7 @@ float demChannelResponse(float temperatureMK, float channelId) {
 
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
+  vec3 sunNormal = normalize(vSunNormal); // body frame: streamer belt and coronal holes
   vec3 viewDir = normalize(cameraPosition - vWorldPosition);
   float ndotv = clamp(abs(dot(normalDir, viewDir)), 0.0, 1.0);
   float limb = clamp(1.0 - ndotv, 0.0, 1.0);
@@ -481,11 +492,11 @@ void main() {
   // ─── Helmet Streamer Structure ─────────────────────────────────────────────
   // During solar minimum: bright equatorial streamer belt
   // During solar maximum: streamers at all latitudes
-  float streamerLat = abs(normalDir.y); // 0 at equator, 1 at poles
+  float streamerLat = abs(sunNormal.y); // 0 at equator, 1 at poles
   float streamerWidth = 0.15 + activity * 0.35; // narrow at min, broad at max
   float streamerBright = smoothstep(streamerWidth, max(streamerWidth - 0.1, 0.01), streamerLat);
   // Add streamer-specific turbulence (radially elongated)
-  float streamerTurb = fbm(vec3(normalDir.x * 3.0, normalDir.y * 0.5, normalDir.z * 3.0)
+  float streamerTurb = fbm(vec3(sunNormal.x * 3.0, sunNormal.y * 0.5, sunNormal.z * 3.0)
                           + vec3(time * 0.1, 0.0, -time * 0.08));
   alpha *= (1.0 + streamerBright * (0.8 + streamerTurb * 0.4));
 
@@ -493,8 +504,8 @@ void main() {
   // Data-driven when coronalHoleCount > 0, otherwise fallback to polar darkening
   float inHole = 0.0;
   if (coronalHoleCount > 0.5) {
-    float fragLon = atan(normalDir.z, normalDir.x);
-    float fragLat = asin(clamp(normalDir.y, -1.0, 1.0));
+    float fragLon = atan(sunNormal.z, sunNormal.x);
+    float fragLat = asin(clamp(sunNormal.y, -1.0, 1.0));
     for (int i = 0; i < 8; i++) {
       if (float(i) >= coronalHoleCount) break;
       vec4 hole = coronalHoles[i];
@@ -509,7 +520,7 @@ void main() {
     }
   } else {
     // Fallback: generic polar + equatorial hole pattern from coronalHoleActivity
-    float polarHole = abs(normalDir.y);
+    float polarHole = abs(sunNormal.y);
     float holeThreshold = 0.55 - coronalHoleActivity * 0.35;
     float polarFade = smoothstep(holeThreshold - 0.1, holeThreshold + 0.15, polarHole);
     float holeNoise = fbm(normalDir * 4.0 + vec3(time * 0.02));
@@ -1431,9 +1442,10 @@ export function updateSunCoronalLoopsFromBlendView(
       const radialScale = 1 + flow * (0.004 + brightness * 0.012) * envelope;
       const tangentOffset = wobble * (0.0009 + brightness * 0.003) * envelope;
 
-      array[base] = sampleX * sunRadiusAu * radialScale + tx * sunRadiusAu * tangentOffset;
-      array[base + 1] = sampleY * sunRadiusAu * radialScale + ty * sunRadiusAu * tangentOffset;
-      array[base + 2] = sampleZ * sunRadiusAu * radialScale + tz * sunRadiusAu * tangentOffset;
+      const displayRadius = coronalToDisplay(sampleLen, sunRadiusAu) * radialScale;
+      array[base] = nx * displayRadius + tx * sunRadiusAu * tangentOffset;
+      array[base + 1] = ny * displayRadius + ty * sunRadiusAu * tangentOffset;
+      array[base + 2] = nz * displayRadius + tz * sunRadiusAu * tangentOffset;
     }
     positionAttr.needsUpdate = true;
     geometry.setDrawRange(0, pointCount);
@@ -1526,6 +1538,9 @@ export function updateSunParkerSpiralFromPhysicsState(
       const y = Number(sample[1]);
       const z = Number(sample[2]);
       if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      // The heliosphere is drawn at true distances so the spiral crosses 1 AU at Earth's orbit;
+      // the part that would sit inside the enlarged Sun is clipped (owner decision D3).
+      if (Math.hypot(x, y, z) * SOLAR_RADIUS_AU < sunRadiusAu * 1.05) continue;
       arc.push([x, y, z]);
     }
     if (arc.length < 2) {
@@ -1543,9 +1558,9 @@ export function updateSunParkerSpiralFromPhysicsState(
     const array = positionAttr.array;
     for (let p = 0; p < pointCount; p += 1) {
       const base = p * 3;
-      array[base] = arc[p][0] * sunRadiusAu;
-      array[base + 1] = arc[p][1] * sunRadiusAu;
-      array[base + 2] = arc[p][2] * sunRadiusAu;
+      array[base] = arc[p][0] * SOLAR_RADIUS_AU;
+      array[base + 1] = arc[p][1] * SOLAR_RADIUS_AU;
+      array[base + 2] = arc[p][2] * SOLAR_RADIUS_AU;
     }
     positionAttr.needsUpdate = true;
     geometry.setDrawRange(0, pointCount);
@@ -1615,9 +1630,11 @@ export function updateSunEruptionLayerFromBlendView({
 
       const brightness = solarFeatureEntryBrightness(featureEntry, blendAlpha);
       const radialBoost = 1 + brightness * 0.065;
-      bursts.positions[base] = sampled[0] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 1] = sampled[1] * sunRadiusAu * radialBoost;
-      bursts.positions[base + 2] = sampled[2] * sunRadiusAu * radialBoost;
+      const sampledLen = Math.hypot(sampled[0], sampled[1], sampled[2]) || 1;
+      const displayScale = (coronalToDisplay(sampledLen, sunRadiusAu) / sampledLen) * radialBoost;
+      bursts.positions[base] = sampled[0] * displayScale;
+      bursts.positions[base + 1] = sampled[1] * displayScale;
+      bursts.positions[base + 2] = sampled[2] * displayScale;
     }
   } else {
     const plumeFactor = 0.45 + activity * 0.95;

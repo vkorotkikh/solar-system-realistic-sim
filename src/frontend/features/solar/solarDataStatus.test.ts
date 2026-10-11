@@ -36,7 +36,10 @@ function payload(overrides: Partial<SolarPhysicsStatePayload> = {}): SolarPhysic
 }
 
 const HYBRID_PAYLOAD = payload({
-  data_assimilation: { mode: 'hybrid', applied: true, blend_weight: 0.4178 }
+  forcing_status: {
+    ...BASE_PAYLOAD.forcing_status,
+    observed_input_status: 'disabled_unvalidated'
+  }
 });
 
 function input(overrides: Partial<SolarDataStatusInput> = {}): SolarDataStatusInput {
@@ -47,6 +50,7 @@ function input(overrides: Partial<SolarDataStatusInput> = {}): SolarDataStatusIn
     backendBaseUrl: 'http://localhost:8042',
     pageOrigin: 'http://localhost:4173',
     payload: null,
+    geometryFromBackend: true,
     displayedImageChannel: null,
     failedImageChannel: null,
     ...overrides,
@@ -119,9 +123,16 @@ describe('describeSolarDataStatus', () => {
     }));
     expect(status).toMatchObject({
       state: 'backend',
-      text: 'Sun: backend solar model (hybrid forcing, observations blended 42%; AIA 94 image) · updated 14:03 UTC',
+      text: 'Sun: backend solar model (synthetic forcing, observations disabled until validated; AIA 94 image) · updated 14:03 UTC',
       announcementKey: 'backend',
     });
+  });
+
+  it('says only the activity is from the backend while its geometry is not drawn', () => {
+    const status = describeSolarDataStatus(input({ lastSuccessMs: SUCCESS_MS, payload: HYBRID_PAYLOAD, geometryFromBackend: false }));
+    expect(status.text).toBe(
+      'Sun: backend activity, procedural features (synthetic forcing, observations disabled until validated) · updated 14:03 UTC'
+    );
   });
 
   it('keeps the drawn image and names a replacement that failed to load', () => {
@@ -132,7 +143,7 @@ describe('describeSolarDataStatus', () => {
       failedImageChannel: 'aia_171',
     }));
     expect(replacementFailed.text).toBe(
-      'Sun: backend solar model (hybrid forcing, observations blended 42%; AIA 304 image; AIA 171 image failed to load)'
+      'Sun: backend solar model (synthetic forcing, observations disabled until validated; AIA 304 image; AIA 171 image failed to load)'
         + ' · updated 14:03 UTC'
     );
 
@@ -141,29 +152,37 @@ describe('describeSolarDataStatus', () => {
       payload: HYBRID_PAYLOAD,
       failedImageChannel: 'aia_304',
     }));
-    expect(neverLoaded.text).toContain('observations blended 42%; AIA 304 image failed to load)');
+    expect(neverLoaded.text).toContain('observations disabled until validated; AIA 304 image failed to load)');
   });
 
-  it('says so when the backend ran without observations', () => {
-    const synthetic = describeSolarDataStatus(input({
-      lastSuccessMs: SUCCESS_MS,
-      payload: payload({ data_assimilation: { mode: 'synthetic', applied: false } }),
-    }));
-    expect(synthetic.text).toBe('Sun: backend solar model (synthetic forcing, no observations) · updated 14:03 UTC');
-
-    const unavailable = describeSolarDataStatus(input({
+  it('says what the backend did with observations', () => {
+    const notRequested = describeSolarDataStatus(input({
       lastSuccessMs: SUCCESS_MS,
       payload: payload({
-        data_assimilation: { mode: 'data_driven', applied: false, live_data_available: false }
+        forcing_status: {
+          ...BASE_PAYLOAD.forcing_status,
+          observed_input_status: 'not_requested'
+        }
       }),
     }));
-    expect(unavailable.text).toBe('Sun: backend solar model (data-driven forcing, observations unavailable) · updated 14:03 UTC');
+    expect(notRequested.text).toBe('Sun: backend solar model (synthetic forcing, no observations) · updated 14:03 UTC');
+
+    const otherStatus = describeSolarDataStatus(input({
+      lastSuccessMs: SUCCESS_MS,
+      payload: payload({
+        forcing_status: {
+          ...BASE_PAYLOAD.forcing_status,
+          observed_input_status: 'upstream_stale'
+        }
+      }),
+    }));
+    expect(otherStatus.text).toBe('Sun: backend solar model (synthetic forcing, observations upstream stale) · updated 14:03 UTC');
   });
 
   it('marks earlier backend state as stale while refreshes fail', () => {
     const status = describeSolarDataStatus(input({
       lastSuccessMs: SUCCESS_MS,
-      payload: payload({ activity_index: 0.4 }),
+      payload: HYBRID_PAYLOAD,
       lastFailure: failure('busy', 503),
     }));
     expect(status).toMatchObject({

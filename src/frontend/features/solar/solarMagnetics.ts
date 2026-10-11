@@ -9,6 +9,7 @@ import {
     LineBasicMaterial,
     Vector3
 } from 'three';
+import { coronalToDisplay } from './solarDisplayScale';
 
 // Potential Field Source Surface (PFSS) visualization generator
 // Traces magnetic field lines out to the source surface (2.5 R_sun)
@@ -249,9 +250,11 @@ export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: num
         const positions = new Float32Array(trace.arc.length * 3);
         for (let p = 0; p < trace.arc.length; p++) {
             const pt = trace.arc[p];
-            positions[p * 3] = pt[0] * sunRadiusAu;
-            positions[p * 3 + 1] = pt[1] * sunRadiusAu;
-            positions[p * 3 + 2] = pt[2] * sunRadiusAu;
+            const r = Math.hypot(pt[0], pt[1], pt[2]) || 1;
+            const scale = coronalToDisplay(r, sunRadiusAu) / r;
+            positions[p * 3] = pt[0] * scale;
+            positions[p * 3 + 1] = pt[1] * scale;
+            positions[p * 3 + 2] = pt[2] * scale;
         }
 
         const geometry = new BufferGeometry();

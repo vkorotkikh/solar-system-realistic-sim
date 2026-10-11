@@ -2,6 +2,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Camera, Texture, TextureLoader } from 'three';
 
 import { createSunController } from './sunController';
+import {
+  updateSunCoronalLoopsFromBlendView,
+  updateSunMaterialUniforms,
+  updateSunParkerSpiralFromPhysicsState,
+  updateSunspotUniforms
+} from './frontend/features/solar/sunVisuals';
+
+// Call-through spies: every test still draws with the real functions.
+vi.mock('./frontend/features/solar/sunVisuals', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./frontend/features/solar/sunVisuals')>();
+  return {
+    ...actual,
+    updateSunCoronalLoopsFromBlendView: vi.fn(actual.updateSunCoronalLoopsFromBlendView),
+    updateSunMaterialUniforms: vi.fn(actual.updateSunMaterialUniforms),
+    updateSunParkerSpiralFromPhysicsState: vi.fn(actual.updateSunParkerSpiralFromPhysicsState),
+    updateSunspotUniforms: vi.fn(actual.updateSunspotUniforms)
+  };
+});
 
 function responseWith(payload: unknown, status = 200): Response {
   return {
@@ -133,6 +151,39 @@ describe('sun controller solar delivery', () => {
       spatialUse: 'disabled',
       activeRenderChannel: null
     });
+    controller.disposeSolarDelivery();
+  });
+
+  it('keeps the white-light look in Auto and tints only for a chosen wavelength', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => (
+      String(input).includes('/solar/realtime') ? responseWith(realtimePayload(true)) : Promise.reject(new Error('offline'))
+    )));
+    const settle: Array<(texture: Texture) => void> = [];
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => { settle.push(onLoad); });
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    const lastUniforms = () => vi.mocked(updateSunMaterialUniforms).mock.lastCall?.[0];
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    settle[0]({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    controller.update(2_460_000.5, 1);
+    expect(controller.getSolarDeliveryStatus().observation.textureLoaded).toBe(true);
+    expect(lastUniforms()).toMatchObject({ activeChannel: undefined, coronaHue: undefined });
+
+    controller.setAiaChannelOverride('aia_193');
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    settle[1]({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    controller.update(2_460_000.5, 2);
+    expect(lastUniforms()?.activeChannel).toBe('aia_193');
+    expect(lastUniforms()?.coronaHue).toBeDefined();
     controller.disposeSolarDelivery();
   });
 
@@ -275,6 +326,110 @@ describe('sun controller solar delivery', () => {
         textureLoaded: false
       }
     });
+    controller.disposeSolarDelivery();
+  });
+
+  it('keeps backend geometry off-screen until its frame is validated, and says so', async () => {
+    const jdTdb = 2_460_000.5;
+    const physicsPayload = {
+      schema: { name: 'solar_physics_state', version: 2 },
+      epoch_jd_tdb: jdTdb,
+      wall_epoch_jd_tdb: jdTdb,
+      jd_time_scale: 'TDB',
+      forcing: 'hybrid',
+      effective_forcing: 'synthetic',
+      live_data_requested: true,
+      live_data_enabled: false,
+      fallback_reason: 'disabled_unvalidated',
+      forcing_status: {
+        requested: 'hybrid',
+        effective: 'synthetic',
+        observed_input_status: 'disabled_unvalidated',
+        runtime_eligible: false,
+        fallback_reason: 'disabled_unvalidated'
+      },
+      activity_index: 0.42,
+      corona: { features: [{ id: 'loop-1', kind: 'loop', brightness: 1, arc: [[1, 0, 0], [1.2, 0.3, 0], [1, 0.5, 0]] }] },
+      heliosphere: { parker_spiral: { lines: [{ id: 'arm-0', arc: [[1.1, 0, 0], [200, 40, 0], [400, 120, 0]], wind_speed_kms: 420 }] } }
+    };
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => (
+      String(input).includes('/solar/physics') ? responseWith(physicsPayload) : Promise.reject(new Error('offline'))
+    )));
+    const onSolarDataStatus = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: jdTdb },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load: vi.fn() } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.3755,
+      isMagneticFieldEnabled: () => false,
+      onSolarDataStatus
+    });
+    controller.maybeRefreshPhysics(Date.now(), true);
+    await vi.waitFor(() => expect(onSolarDataStatus.mock.lastCall?.[0]?.state).toBe('backend'));
+    controller.update(jdTdb, 1);
+
+    expect(vi.mocked(updateSunParkerSpiralFromPhysicsState).mock.lastCall?.[1]).toBeNull();
+    expect(vi.mocked(updateSunCoronalLoopsFromBlendView).mock.lastCall?.[1]).toBeNull();
+    expect(vi.mocked(updateSunspotUniforms).mock.lastCall?.[3]).toBeUndefined();
+    expect(onSolarDataStatus.mock.lastCall?.[0]?.text).toContain('Sun: backend activity, procedural features');
+    controller.disposeSolarDelivery();
+  });
+
+  it('draws the solar-cycle activity, not a quiet Sun, before any backend data', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_461_307.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load: vi.fn() } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false
+    });
+    const material = controller.createSunMaterial({} as Texture);
+
+    controller.update(2_461_307.5, 1);
+
+    // 2026-09-24 is near solar-cycle-25 maximum, so the cycle model is high (about 0.75);
+    // Number(null) used to pin the uniform at 0, a completely quiet Sun.
+    expect(material?.uniforms.activity.value).toBeGreaterThan(0.5);
+    expect(material?.uniforms.activity.value).toBeLessThan(1);
+    controller.disposeSolarDelivery();
+  });
+
+  it('republishes the Sun status chip when a loaded texture is revoked', async () => {
+    vi.stubGlobal('fetch', vi
+      .fn()
+      .mockResolvedValueOnce(responseWith(realtimePayload(true)))
+      .mockRejectedValueOnce(new Error('network offline')));
+    let settleTexture: ((texture: Texture) => void) | null = null;
+    const load = vi.fn((_url: string, onLoad: (texture: Texture) => void) => {
+      settleTexture = onLoad;
+    });
+    const onSolarDataStatus = vi.fn();
+    const controller = createSunController({
+      camera: {} as Camera,
+      simState: { julianDate: 2_460_000.5 },
+      backendBaseUrl: () => 'http://backend.test',
+      configureLoadedTexture: vi.fn((_texture: Texture) => undefined),
+      observationTextureLoader: { load } as unknown as TextureLoader,
+      getSunRadiusAu: () => 0.01,
+      isMagneticFieldEnabled: () => false,
+      onSolarDataStatus
+    });
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    (settleTexture as unknown as (texture: Texture) => void)({ dispose: vi.fn(), needsUpdate: false } as unknown as Texture);
+    const publishedBeforeRevoke = onSolarDataStatus.mock.calls.length;
+
+    controller.maybeRefreshRealtime(Date.now(), true);
+    await vi.waitFor(() => {
+      expect(controller.getSolarDeliveryStatus().observation.textureLoaded).toBe(false);
+    });
+
+    expect(onSolarDataStatus.mock.calls.length).toBeGreaterThan(publishedBeforeRevoke);
     controller.disposeSolarDelivery();
   });
 

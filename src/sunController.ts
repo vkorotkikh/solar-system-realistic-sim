@@ -46,6 +46,7 @@ import { SolarFlareManager } from './frontend/features/solar/solarFlares';
 import { createMagneticFieldLines, updateMagneticFieldLines } from './frontend/features/solar/solarMagnetics';
 import {
   clampUnit,
+  finiteOrNull,
   normalizeSolarFeatureSetFromState as normalizeSolarFeatureSetFromStateImpl,
   buildSolarFeatureBlendView as buildSolarFeatureBlendViewImpl,
   materializeSolarFeatureSetFromBlendView as materializeSolarFeatureSetFromBlendViewImpl,
@@ -83,6 +84,14 @@ export interface CreateSunControllerOptions {
 }
 
 const TWO_PI = Math.PI * 2;
+
+/**
+ * The backend builds its surface and coronal geometry in a z-up inertial frame the renderer does
+ * not convert yet (plan H4), so drawing it would put sunspots near the poles and rotate loops
+ * twice. Until then only the backend's activity level reaches the screen.
+ * ponytail: one switch for all backend geometry; split it per layer as each one is validated.
+ */
+export const BACKEND_GEOMETRY_VALIDATED = false;
 const CYCLE_25_START_JD = 2_458_849.5;
 const CYCLE_LENGTH_MONTHS = 132.0;
 const MEAN_MONTH_DAYS = 30.44;
@@ -196,6 +205,7 @@ export function createSunController({
       backendBaseUrl: backendBaseUrl(),
       pageOrigin: globalThis.location?.origin ?? '',
       payload: solarPhysicsState,
+      geometryFromBackend: BACKEND_GEOMETRY_VALIDATED,
       displayedImageChannel: solarObservationTexture ? solarObservationTextureChannel : null,
       failedImageChannel: solarObservationFailedChannel
     });
@@ -248,6 +258,7 @@ export function createSunController({
     if (revokedTexture && typeof revokedTexture.dispose === 'function') {
       revokedTexture.dispose();
     }
+    if (hadObservationBinding) publishSolarDataStatus();
   }
 
   function loadedObservationMatches(
@@ -318,7 +329,7 @@ export function createSunController({
     if (!force && sunMagneticFieldGroup && sunMagneticFieldSignature === nextSignature) return;
 
     const nextGroup = createMagneticFieldLines(getSunRadiusAu(), activity, {
-      physicsState: solarPhysicsState
+      physicsState: BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null
     });
     nextGroup.visible = isMagneticFieldEnabled();
     nextGroup.userData.bodyId = 'sun-magnetic-field';
@@ -477,12 +488,14 @@ export function createSunController({
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
     spinGroup.add(sunCoronalLoopGroup);
     const initialBlend = buildSolarFeatureBlendView(Date.now(), 220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, initialBlend, sunRadiusAu, 144);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, BACKEND_GEOMETRY_VALIDATED ? initialBlend : null, sunRadiusAu, 144);
 
     sunParkerSpiralGroup = new Group();
     sunParkerSpiralGroup.userData.bodyId = 'sun-parker-spiral';
     node.add(sunParkerSpiralGroup);
-    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, sunRadiusAu, 6, 120, 0, camera);
+    updateSunParkerSpiralFromPhysicsStateImpl(
+      sunParkerSpiralGroup, BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null, sunRadiusAu, 6, 120, 0, camera
+    );
 
     // Agn Shockwave Engine
     gwDisplayer = createGWVisualization(400); // Massive grid
@@ -526,11 +539,11 @@ export function createSunController({
     lastTimeSec = timeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
-    const blendedActivityRaw = Number(solarBlendView?.activityIndex);
-    const backendActivityRaw = Number(solarPhysicsState?.activity_index);
-    const activity = Number.isFinite(blendedActivityRaw)
-      ? clampUnit(blendedActivityRaw)
-      : (Number.isFinite(backendActivityRaw) ? clampUnit(backendActivityRaw) : fallbackActivity);
+    const activity = clampUnit(
+      finiteOrNull(solarBlendView?.activityIndex)
+        ?? finiteOrNull(solarPhysicsState?.activity_index)
+        ?? fallbackActivity
+    );
     const observationState = getRenderableObservationState(Date.now());
     const observationSelection = pickAiaObservationChannel(
       observationState,
@@ -541,7 +554,9 @@ export function createSunController({
       revokeSolarObservationTexture();
     }
     const observationTextureUsable = loadedObservationMatches(observationSelection);
-    const activeObservationChannel = observationTextureUsable
+    // Owner decision D4: in Auto the image still loads and is placed on the Sun, but the
+    // false-colour EUV tint applies only once the user picks a wavelength.
+    const activeObservationChannel = observationTextureUsable && userAiaChannelOverride
       ? observationSelection?.channel ?? null
       : null;
     const observationControls = deriveSunObservationControls(
@@ -549,7 +564,7 @@ export function createSunController({
       activity,
       activeObservationChannel,
       {
-        selectedChannel: observationSelection?.channel ?? activeObservationChannel,
+        selectedChannel: userAiaChannelOverride ? observationSelection?.channel ?? activeObservationChannel : null,
         selectedImageDate: observationSelection?.imageDate ?? null,
         hasObservationTexture: observationTextureUsable,
         spatialUseEligible: observationTextureUsable
@@ -557,6 +572,8 @@ export function createSunController({
     );
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
+    const geometryState = BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null;
+    const geometryBlendView = BACKEND_GEOMETRY_VALIDATED ? solarBlendView : null;
 
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
@@ -568,12 +585,12 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: solarPhysicsState?.coronal_holes ?? undefined
+      coronalHoleData: geometryState?.coronal_holes ?? undefined
     });
-    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, solarPhysicsState ?? undefined);
+    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, geometryState ?? undefined);
 
     if (solarFlareManager) {
-      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, solarPhysicsState, timeSec);
+      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, geometryState, timeSec);
       updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareManager.getActiveFlaresParams());
     }
 
@@ -584,8 +601,8 @@ export function createSunController({
       }
     }
 
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
-    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, sunRadiusAu, 6, 120, timeSec, camera);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
+    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryState, sunRadiusAu, 6, 120, timeSec, camera);
 
     const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + effectiveActivity * 0.045;
     setSunGlowScaleImpl(sunGlowSprite, sunRadiusAu, glowPulse);
@@ -596,7 +613,7 @@ export function createSunController({
 
     updateSunEruptionLayerFromBlendView({
       sunEruptionLayer,
-      blendView: solarBlendView,
+      blendView: geometryBlendView,
       sunRadiusAu,
       timeSec,
       activity: effectiveActivity
@@ -722,8 +739,10 @@ export function createSunController({
     }
     rebuildMagneticFieldLines(true);
     const bv = buildSolarFeatureBlendView(Date.now(), 220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, bv, r, 144);
-    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, solarPhysicsState, r, 6, 120, 0, camera);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, BACKEND_GEOMETRY_VALIDATED ? bv : null, r, 144);
+    updateSunParkerSpiralFromPhysicsStateImpl(
+      sunParkerSpiralGroup, BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null, r, 6, 120, 0, camera
+    );
   }
 
   function setAiaChannelOverride(channel: string) {
