@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>SCN-042 solar frame oracle</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style></head>
+<body><script type="module">
+import * as THREE from 'three';
+import reference from '/backend/tests/fixtures/solar_frames/cspice_solar_frame.json';
+import { solarSurfaceToEclipticMatrix, applySolarGeometryFrame } from '/src/frontend/features/solar/solarFrame.ts';
+import { createMagneticFieldLinesFromPFSS } from '/src/frontend/features/solar/solarMagnetics.ts';
+import { SOLAR_RADIUS_AU } from '/src/frontend/features/solar/solarDisplayScale.ts';
+import { SUN_SURFACE_VERTEX_SHADER } from '/src/frontend/features/solar/sunVisuals.ts';
+
+const spec = reference.camera;
+const renderer = new THREE.WebGLRenderer({antialias:false, preserveDrawingBuffer:true});
+renderer.setPixelRatio(1);
+renderer.setSize(spec.width, spec.height);
+renderer.setClearColor(0x000000);
+document.body.append(renderer.domElement);
+const gl = renderer.getContext();
+const debug = gl.getExtension('WEBGL_debug_renderer_info');
+window.solarFrameHardware = {
+  vendor: debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : null,
+  renderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : null,
+  version: gl.getParameter(gl.VERSION)
+};
+const camera = new THREE.PerspectiveCamera(spec.vertical_fov_deg, spec.width/spec.height, .1, 100);
+camera.position.fromArray(spec.position);
+camera.up.fromArray(spec.up);
+camera.lookAt(new THREE.Vector3(...spec.target));
+let previousScene;
+window.runSolarFrameCase = (index, mutant='none') => {
+  if(previousScene) previousScene.traverse(object => {
+    object.geometry?.dispose();
+    if(object.material) object.material.dispose();
+  });
+  const data = reference.cases[index];
+  const scene = new THREE.Scene();
+  const surface = new THREE.Mesh(new THREE.SphereGeometry(1,256,128),new THREE.ShaderMaterial({
+    vertexShader: SUN_SURFACE_VERTEX_SHADER,
+    fragmentShader: `varying vec3 vSunNormal; varying float vLatitude;
+      void main(){ gl_FragColor=vec4(vec3(vLatitude>0.0?160.0:40.0,
+        vSunNormal.x>0.0?160.0:40.0, -vSunNormal.z>0.0?160.0:40.0)/255.0,1.0); }`
+  }));
+  surface.matrixAutoUpdate=false;
+  surface.matrix.copy(solarSurfaceToEclipticMatrix(data.jd_tdb));
+  scene.add(surface);
+  const lines=data.samples.map(sample => {
+    const point=[...sample.input];
+    if(mutant==='handedness') point[1]*=-1;
+    return {state:'open',polarity:1,arc:[point.map(v=>v*1.005/1.03),point]};
+  });
+  const group=createMagneticFieldLinesFromPFSS({lines},SOLAR_RADIUS_AU,.5,
+    {inputFrame:data.input_frame,jdTdb:data.jd_tdb});
+  // Convert physical AU display geometry to the oracle's unit solar radius.
+  group.scale.setScalar(1/SOLAR_RADIUS_AU);
+  if(mutant==='double_spin') applySolarGeometryFrame(group,{inputFrame:'IAU_SUN',jdTdb:data.jd_tdb});
+  if(mutant==='legacy_axis') {
+    const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),
+      new THREE.Vector3(Math.sin(7.25*Math.PI/180),0,Math.cos(7.25*Math.PI/180)));
+    group.quaternion.copy(q);
+    surface.matrix.makeRotationFromQuaternion(q).multiply(new THREE.Matrix4().makeRotationY(
+      (data.jd_tdb-2451545)*2*Math.PI/25.38));
+  }
+  const actualLines=[...group.children];
+  actualLines.forEach((line,index)=>{
+    const pos=line.geometry.getAttribute('position');
+    const endpoint=[pos.getX(pos.count-1),pos.getY(pos.count-1),pos.getZ(pos.count-1)];
+    const rgb=data.samples[index].rgb;
+    const color=new THREE.Color(`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`);
+    const marker=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',
+      new THREE.Float32BufferAttribute(endpoint,3)),new THREE.PointsMaterial({
+        color,size:9,sizeAttenuation:false,depthTest:true,depthWrite:true,toneMapped:false
+      }));
+    // Exercise real PFSS geometry positions/orientation, but hide artistic line
+    // opacity/pulsing so ID pixels have a precise independent screen oracle.
+    line.visible=false;
+    group.add(marker);
+  });
+  scene.add(group);
+  renderer.render(scene,camera);
+  previousScene=scene;
+  return {index,mutant,webglError:gl.getError(),samples:data.samples.length};
+};
+window.solarFrameReady=true;
+</script></body></html>
