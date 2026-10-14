@@ -6,6 +6,7 @@ import { createViewportCameraController } from './frontend/app/viewportCameraCon
 import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
 import { createRendererRecovery } from './frontend/app/rendererRecovery';
+import { createFrameLifecycle, hasFiniteAvailableBodyState } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
 import {
@@ -236,7 +237,6 @@ function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-let animationFrame = 0;
 let stopVisualization = () => {};
 const recovery = createRendererRecovery({
   canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
@@ -824,6 +824,12 @@ function initializeModelWorker() {
         return;
       }
 
+      if (!hasFiniteAvailableBodyState(stateMessage.bodies, stateMessage.availability)) {
+        console.warn('[modelWorker] quarantined nonfinite available state');
+        disableModelWorkerIntegration();
+        return;
+      }
+
       lastModelWorkerAcceptedSequence = sequence;
 
       latestModelWorkerState = {
@@ -1000,9 +1006,14 @@ function updateModelState(deltaSeconds: number) {
   let snapshotApplied = false;
 
   if (modelWorkerEnabled && modelWorker && modelWorkerReady) {
-    dispatchModelWorkerTick(deltaSeconds);
-    if (latestModelWorkerState) {
-      snapshotApplied = applyLatestWorkerSnapshot();
+    try {
+      dispatchModelWorkerTick(deltaSeconds);
+      if (latestModelWorkerState) {
+        snapshotApplied = applyLatestWorkerSnapshot();
+      }
+    } catch (error) {
+      console.warn('[modelWorker] falling back after snapshot failure:', error);
+      disableModelWorkerIntegration();
     }
   }
 
@@ -1204,66 +1215,56 @@ renderer.render(scene, camera);
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
-let prevTimestamp = performance.now();
-
-function animate(timestamp: number) {
-  if (!recovery.available) return;
-  animationFrame = requestAnimationFrame(animate);
-  const deltaSeconds = Math.max(0, (timestamp - prevTimestamp) / 1_000);
-  prevTimestamp = timestamp;
-
-  timeController.advanceLocalTime(deltaSeconds);
-  updateModelState(deltaSeconds);
-  updateBodyRotations(simState.julianDate);
-
-  syncAsteroidBeltInputs();
-  kuiperBeltUpdater.update(simState.julianDate);
-
-  // Controller gates decorative motion; scientific inputs remain simulation JD.
-  sunCtrl.update(simState.julianDate, timestamp * 0.001);
-  applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState());
-  sunCtrl.maybeRefreshPhysics();
-
-  updateFollowTarget();
-  viewportCamera.applyPendingActions();
-
-  for (const mesh of bodyMeshes.values()) {
-    if (mesh.userData.isQuadtree) {
-      mesh.userData.quadtree.update();
-
-      const sunWorldPos = new Vector3(0, 0, 0);
-      const planetWorldPos = new Vector3();
-      mesh.getWorldPosition(planetWorldPos);
-      const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
-
-      const meshInverse = mesh.matrixWorld.clone().invert();
-      const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
-      mesh.userData.quadtree.setLightDirection(sunLocalDir);
-    }
-  }
-
-  backgroundStars.position.copy(camera.position);
-  controls.update();
-  updateCameraClipPlanes();
-  renderer.render(scene, camera);
-  timeController.updateHud();
-
-  if (dom.statusZoom) {
-    const dist = camera.position.distanceTo(controls.target);
-    dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
-  }
-}
+const frameLifecycle = createFrameLifecycle({
+  stages: [
+    { name: 'time', run: ({ deltaSeconds }) => timeController.advanceLocalTime(deltaSeconds) },
+    { name: 'model', run: ({ deltaSeconds }) => updateModelState(deltaSeconds) },
+    { name: 'rotations', run: () => updateBodyRotations(simState.julianDate) },
+    { name: 'asteroids', run: syncAsteroidBeltInputs },
+    { name: 'kuiper', run: () => { kuiperBeltUpdater.update(simState.julianDate); } },
+    // Controller gates decorative motion; scientific inputs remain simulation JD.
+    { name: 'sun', run: ({ timestamp }) => sunCtrl.update(simState.julianDate, timestamp * 0.001) },
+    { name: 'metric-display', run: () => applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState()) },
+    { name: 'solar-refresh', run: () => sunCtrl.maybeRefreshPhysics() },
+    { name: 'follow', run: updateFollowTarget },
+    { name: 'camera-actions', run: () => viewportCamera.applyPendingActions() },
+    ...[...bodyMeshes.entries()].filter(([, mesh]) => mesh.userData.isQuadtree).map(([bodyId, mesh]) => ({
+      name: `quadtree:${bodyId}`,
+      run: () => {
+        mesh.userData.quadtree.update();
+        const sunWorldPos = new Vector3(0, 0, 0);
+        const planetWorldPos = new Vector3();
+        mesh.getWorldPosition(planetWorldPos);
+        const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+        const meshInverse = mesh.matrixWorld.clone().invert();
+        const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+        mesh.userData.quadtree.setLightDirection(sunLocalDir);
+      }
+    })),
+    { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
+    { name: 'controls', run: () => { controls.update(); } },
+    { name: 'clip-planes', run: updateCameraClipPlanes },
+    { name: 'render', run: () => renderer.render(scene, camera) },
+    { name: 'hud', run: () => timeController.updateHud() },
+    { name: 'zoom-status', run: () => {
+      if (dom.statusZoom) {
+        const dist = camera.position.distanceTo(controls.target);
+        dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+      }
+    } }
+  ]
+});
 
 stopVisualization = () => {
-  cancelAnimationFrame(animationFrame); controls.enabled = false;
+  frameLifecycle.dispose(); controls.enabled = false;
   viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
 };
-animationFrame = requestAnimationFrame(animate);
+frameLifecycle.start();
 
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
-  cancelAnimationFrame(animationFrame);
+  frameLifecycle.dispose();
   window.removeEventListener('resize', resizeRenderer);
   refreshPanelLayout = () => {};
   explorer.dispose(); bodyPicker.dispose(); viewportCamera.dispose(); experiment.dispose(); controls.dispose();
