@@ -15,7 +15,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from catalog_sources import SOURCE_DIR, json_bytes, publish_directory, request_url
+from catalog_sources import SOURCE_DIR, SourceStore, json_bytes, publish_directory, request_url
 from fetch_jpl_sbdb import SBDB_API_URL, phase1_query_params
 import generate_moon_ephemeris as moon
 
@@ -43,6 +43,9 @@ def capture(directory: Path, kind: str) -> None:
         url = request_url(endpoint, params)
         key = hashlib.sha256(url.encode("ascii")).hexdigest()
         if key in manifest["responses"]:
+            # A manifest key alone is not a completed capture. Fail offline on
+            # missing/corrupt pins rather than silently reacquiring new science.
+            SourceStore(directory).read(endpoint, params)
             print(f"already pinned {key}", flush=True)
             continue
         print(f"capturing {url}", flush=True)
