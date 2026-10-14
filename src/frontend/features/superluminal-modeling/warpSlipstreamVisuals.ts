@@ -124,17 +124,26 @@ export function createWarpSlipstreamVisualization(size = 20) {
     const mesh = new Mesh(geometry, material);
     mesh.renderOrder = 2; // Render on top of GW grid
     mesh.frustumCulled = false;
+    mesh.visible = false;
 
     return {
         mesh,
 
         update(dtSec: number) {
-            material.uniforms.time.value += dtSec;
+            if (mesh.visible && Number.isFinite(dtSec) && dtSec > 0) material.uniforms.time.value += dtSec;
         },
 
         toggle(on: boolean) {
             material.uniforms.enabled.value = on ? 1.0 : 0.0;
             mesh.visible = on;
+        },
+
+        reset() {
+            mesh.visible = false;
+            material.uniforms.enabled.value = 0;
+            material.uniforms.time.value = 0;
+            material.uniforms.shockwaveDist.value = 9999;
+            material.uniforms.stretchAmplitude.value = 0;
         },
 
         /**
@@ -148,7 +157,7 @@ export function createWarpSlipstreamVisualization(size = 20) {
             const cmToAu = 1.0 / 1.496e13;
 
             if (state.positionCm !== undefined) {
-                material.uniforms.shockwaveDist.value = state.positionCm * cmToAu * 180.0; // scale to match GW front units
+                material.uniforms.shockwaveDist.value = state.positionCm * cmToAu;
             }
             if (state.thickness !== undefined) {
                 // scale up thickness for visibility
@@ -175,6 +184,8 @@ Result: Solar system stretches radially without pulling planets from their orbit
         },
 
         dispose() {
+            mesh.visible = false;
+            mesh.removeFromParent();
             geometry.dispose();
             material.dispose();
         }

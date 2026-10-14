@@ -609,6 +609,12 @@ export function createKuiperBeltRenderer(
   let companionMesh: InstancedMesh | undefined;
   let companionQuats: Float32Array | undefined;
   let companionScales: Float32Array | undefined;
+  const lastPositions = new Float32Array(count * 3).fill(NaN);
+  const lastCompanionPositions = new Float32Array(binCount * 3).fill(NaN);
+  // CPU writes and requested uploads, not a claim of measured GPU transfers.
+  const primaryWork = { matrixWrites: count, uploadRequests: 1, requestedUploadBytes: mesh.instanceMatrix.array.byteLength };
+  const companionWork = { matrixWrites: binCount, uploadRequests: binCount > 0 ? 1 : 0, requestedUploadBytes: binCount * 16 * 4 };
+  mesh.userData.kuiperBufferWork = primaryWork;
 
   if (binCount > 0) {
     const compGeometry = createIrregularGeometry(0, 0.30, rand);
@@ -657,14 +663,22 @@ export function createKuiperBeltRenderer(
 
     companionMesh.instanceColor = new InstancedBufferAttribute(compColors, 3);
     companionMesh.instanceMatrix.needsUpdate = true;
+    companionMesh.userData.kuiperBufferWork = companionWork;
   }
 
   return {
     mesh,
     companionMesh,
     updatePositions(positions: Float32Array) {
+      let dirty = false;
       for (let i = 0; i < count; i++) {
         const off = i * 3;
+        if (positions[off] === lastPositions[off]
+          && positions[off + 1] === lastPositions[off + 1]
+          && positions[off + 2] === lastPositions[off + 2]) continue;
+        lastPositions.set(positions.subarray(off, off + 3), off);
+        dirty = true;
+        primaryWork.matrixWrites++;
         const q = i * 4;
         const s = i * 3;
         _pos.set(positions[off], positions[off + 1], positions[off + 2]);
@@ -682,12 +696,23 @@ export function createKuiperBeltRenderer(
         _mat4.compose(_pos, _quat, _scale);
         mesh.setMatrixAt(i, _mat4);
       }
-      mesh.instanceMatrix.needsUpdate = true;
+      if (dirty) {
+        mesh.instanceMatrix.needsUpdate = true;
+        primaryWork.uploadRequests++;
+        primaryWork.requestedUploadBytes += mesh.instanceMatrix.array.byteLength;
+      }
     },
     updateBinaryPositions(companionPositions: Float32Array) {
       if (!companionMesh || !companionQuats || !companionScales) return;
+      let dirty = false;
       for (let j = 0; j < binCount; j++) {
         const off = j * 3;
+        if (companionPositions[off] === lastCompanionPositions[off]
+          && companionPositions[off + 1] === lastCompanionPositions[off + 1]
+          && companionPositions[off + 2] === lastCompanionPositions[off + 2]) continue;
+        lastCompanionPositions.set(companionPositions.subarray(off, off + 3), off);
+        dirty = true;
+        companionWork.matrixWrites++;
         const q = j * 4;
         const s = j * 3;
         _pos.set(companionPositions[off], companionPositions[off + 1], companionPositions[off + 2]);
@@ -705,7 +730,11 @@ export function createKuiperBeltRenderer(
         _mat4.compose(_pos, _quat, _scale);
         companionMesh.setMatrixAt(j, _mat4);
       }
-      companionMesh.instanceMatrix.needsUpdate = true;
+      if (dirty) {
+        companionMesh.instanceMatrix.needsUpdate = true;
+        companionWork.uploadRequests++;
+        companionWork.requestedUploadBytes += companionMesh.instanceMatrix.array.byteLength;
+      }
     },
     setJulianDate() { return; },
     setPerturberPositions() { return; },

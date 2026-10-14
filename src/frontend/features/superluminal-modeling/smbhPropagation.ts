@@ -17,7 +17,7 @@
 import {
     C_CM_S, G_CGS, YR_S, MYR_S, EV_ERG, E_CHARGE,
     ISM, HELIO, KPC_CM, AU_CM,
-    CHANNEL_DEFS, SOURCE_CATALOG
+    CHANNEL_DEFS, SOURCE_CATALOG, SGR_A
 } from './smbhPhysicsConstants';
 
 const H29_ENERGY_LOG_MIN = 40;
@@ -671,15 +671,17 @@ export function yearsToDisplaySeconds(years, scaleSec = 2.2, refYears = 1.0) {
  * @param {number} eMaxErg     - maximum flare energy
  * @returns {Array<{time: number, energy: number}>}
  */
-export function generateStochasticFlares(durationSec, ratePerSec = 0.3, alpha = 1.7, eMinErg = 1e37, eMaxErg = 1e43) {
-    const flares = [];
+export function generateStochasticFlares(durationSec: number, ratePerSec = 0.3, alpha = 1.7, eMinErg = 1e37, eMaxErg = 1e43, random = Math.random) {
+    const flares: Array<{ time: number; energy: number }> = [];
+    if (!Number.isFinite(durationSec) || !Number.isFinite(ratePerSec) || ratePerSec <= 0) return flares;
     let t = 0;
     while (t < durationSec) {
-        const dt = -Math.log(Math.random()) / ratePerSec;
+        const draw = random();
+        const dt = draw > 0 && draw < 1 ? -Math.log(draw) / ratePerSec : Infinity;
         t += dt;
         if (t >= durationSec) break;
 
-        const u = Math.random();
+        const u = random();
         const oneMinusAlpha = 1 - alpha;
         const energy = Math.pow(
             Math.pow(eMinErg, oneMinusAlpha) +

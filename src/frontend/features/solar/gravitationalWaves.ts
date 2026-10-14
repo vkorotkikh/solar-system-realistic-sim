@@ -34,6 +34,7 @@ interface GwVisualization {
     mesh: Mesh;
     update: (dtSec: number) => void;
     toggle: (on: boolean) => void;
+    reset: () => void;
     setParams: (params: GwParams) => void;
     getInfoText: () => string;
     dispose: () => void;
@@ -182,6 +183,7 @@ export function createGWVisualization(size = 10): GwVisualization {
     const mesh = new Mesh(geometry, material);
     mesh.renderOrder = 1;
     mesh.frustumCulled = false;
+    mesh.visible = false;
 
     return {
         mesh,
@@ -191,7 +193,7 @@ export function createGWVisualization(size = 10): GwVisualization {
          * @param {number} dtSec - delta time in seconds
          */
         update(dtSec: number) {
-            material.uniforms.time.value += dtSec;
+            if (mesh.visible && Number.isFinite(dtSec) && dtSec > 0) material.uniforms.time.value += dtSec;
         },
 
         /**
@@ -201,6 +203,15 @@ export function createGWVisualization(size = 10): GwVisualization {
         toggle(on: boolean) {
             material.uniforms.enabled.value = on ? 1.0 : 0.0;
             mesh.visible = on;
+        },
+
+        reset() {
+            mesh.visible = false;
+            material.uniforms.enabled.value = 0;
+            material.uniforms.time.value = 0;
+            material.uniforms.isAgnEvent.value = 0;
+            material.uniforms.strainAmplitude.value = 0;
+            material.uniforms.shockwaveDist.value = 9999;
         },
 
         /**
@@ -234,6 +245,8 @@ Detection band: 10-1000 Hz`;
         },
 
         dispose() {
+            mesh.visible = false;
+            mesh.removeFromParent();
             geometry.dispose();
             material.dispose();
         }

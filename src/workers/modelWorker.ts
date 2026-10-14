@@ -1,5 +1,3 @@
-import { Vector3 } from 'three';
-import { metricFrameDragPeak, evaluateLocalMetricShift } from '../frontend/features/superluminal-modeling/smbhPropagation';
 import { SolarSystemModel } from '../sim/solarSystemModel';
 import {
   type CatalogIndexContract,
@@ -13,10 +11,6 @@ import {
   type ModelWorkerStateMessage,
   type ModelWorkerTickMessage
 } from './modelWorkerContract';
-
-const WORKER_WARP_EXAGGERATION = 1e12;
-
-const vectorScratch = new Vector3();
 
 let model: SolarSystemModel | null = null;
 let contract: CatalogIndexContract | null = null;
@@ -104,40 +98,8 @@ if (isWorkerContext) {
       const startMs = performance.now();
       model.update(julianDate);
 
-      const deltaSeconds = Number.isFinite(simState?.deltaSeconds)
-        ? Number(simState.deltaSeconds)
-        : Number.isFinite(simState?.stepMs)
-          ? Number(simState.stepMs) / 1_000
-          : 0;
-      const metricState = simState?.metricState ?? null;
-      if (metricState && deltaSeconds > 0) {
-        const {
-          direction,
-          sourceDistanceCm,
-          timeSec,
-          energyErg,
-          smbhMassG = 1
-        } = metricState;
-        const safeTimeSec = Number(timeSec);
-        const safeEnergyErg = Number(energyErg);
-        const safeSourceDistanceCm = Number(sourceDistanceCm);
-        const safeMassG = Number.isFinite(Number(smbhMassG)) ? Number(smbhMassG) : 1;
-
-        if (Number.isFinite(safeTimeSec) && Number.isFinite(safeEnergyErg) && Number.isFinite(safeSourceDistanceCm)) {
-          vectorScratch.set(direction[0], direction[1], direction[2]);
-          if (vectorScratch.lengthSq() > 0) {
-            vectorScratch.normalize();
-            const peakData = metricFrameDragPeak(safeTimeSec, safeEnergyErg, safeMassG);
-            model.applyMetricKinematics(
-              vectorScratch,
-              deltaSeconds,
-              (distCm) => evaluateLocalMetricShift(distCm, peakData),
-              safeSourceDistanceCm,
-              WORKER_WARP_EXAGGERATION
-            );
-          }
-        }
-      }
+      // Worker payloads are canonical orbital state only. Legacy metricState
+      // inputs are deliberately ignored; presentation is applied to scene nodes.
 
       const packed = packModelState();
       if (!packed) return;

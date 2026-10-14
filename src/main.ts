@@ -39,7 +39,8 @@ import {
 import { parseMoonEphemerisArtifact } from './sim/moonEphemeris';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
-import { metricFrameDragPeak, evaluateLocalMetricShift } from './frontend/features/superluminal-modeling/smbhPropagation';
+import { applyMetricDisplayOffsets } from './frontend/features/superluminal-modeling/metricDisplay';
+import { resolveAgnSelection, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
@@ -67,7 +68,8 @@ import { createTextureManager } from './frontend/app/textureManager';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt } from './sim/asteroidBelt';
-import { generateKuiperBelt, propagateKBOPositions, propagateBinaryKBOPositions } from './sim/kuiperBelt';
+import { generateKuiperBelt } from './sim/kuiperBelt';
+import { createKuiperBeltUpdater } from './frontend/features/asteroids/kuiperBeltUpdater';
 import type { CatalogBody } from './sim/catalog';
 import {
   loadPhase1AsteroidCatalog,
@@ -134,7 +136,6 @@ const dom = {
   agnSource: elementById<HTMLSelectElement>('agn-source'),
   agnPreset: elementById<HTMLSelectElement>('agn-preset'),
   agnHypothesis: elementById<HTMLSelectElement>('agn-hypothesis'),
-  agnObserverFrame: elementById<HTMLInputElement>('agn-observer-frame'),
   agnStochastic: elementById<HTMLInputElement>('agn-stochastic'),
   experimentStatus: elementById<HTMLElement>('experiment-status'),
   triggerAgnShockwave: elementById<HTMLButtonElement>('trigger-agn-shockwave')
@@ -470,10 +471,6 @@ for (const body of catalog.bodies) {
 let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { includeNamed: true });
 const kuiperPop = generateKuiperBelt(5_000);
 
-const kuiperPositions = new Float32Array(kuiperPop.count * 3);
-const kuiperBinaryPositions = new Float32Array(kuiperPop.binaryCount * 3);
-const kuiperBinaryIndices: number[] = new Array(kuiperPop.binaryCount).fill(0);
-
 const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
 const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.massKg);
 const asteroidJupiterPositionAu = new Vector3();
@@ -481,6 +478,7 @@ const asteroidSaturnPositionAu = new Vector3();
 
 let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
 const kuiperBeltRenderer = createKuiperBeltRenderer(kuiperPop.kbos);
+const kuiperBeltUpdater = createKuiperBeltUpdater(kuiperPop, kuiperBeltRenderer);
 asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 
 solarSystemGroup.add(asteroidBeltRenderer.mesh);
@@ -573,12 +571,7 @@ function initPhaseOneAsteroids() {
   });
 }
 
-propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
-kuiperBeltRenderer.updatePositions(kuiperPositions);
-if (kuiperPop.binaryCount > 0) {
-  propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
-  kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
-}
+kuiperBeltUpdater.update(simState.julianDate);
 initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
@@ -844,44 +837,16 @@ function initializeModelWorker() {
 
 function updateModelLocally(deltaSeconds) {
   model.update(simState.julianDate);
-
-  const warpState = sunCtrl.getWarpState();
-  if (warpState && warpState.direction && Number.isFinite(deltaSeconds) && deltaSeconds > 0) {
-    const peakData = metricFrameDragPeak(warpState.timeSec, warpState.energyErg, warpState.smbhMassG);
-    model.applyMetricKinematics(
-      warpState.direction,
-      deltaSeconds,
-      (distCm) => evaluateLocalMetricShift(distCm, peakData),
-      warpState.sourceDistanceCm,
-      1e12
-    );
-  }
 }
 
 function dispatchModelWorkerTick(deltaSeconds) {
   if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
 
-  const warpState = sunCtrl.getWarpState();
-  const metricState = warpState && warpState.direction
-    ? {
-      direction: [
-        warpState.direction.x,
-        warpState.direction.y,
-        warpState.direction.z
-      ] as [number, number, number],
-      sourceDistanceCm: warpState.sourceDistanceCm,
-      energyErg: warpState.energyErg,
-      timeSec: warpState.timeSec,
-      smbhMassG: warpState.smbhMassG
-    }
-    : null;
-
   const tickMessage: ModelWorkerTickMessage = {
     type: 'tick',
     simState: {
       julianDate: simState.julianDate,
-      stepMs: deltaSeconds * 1000,
-      metricState
+      stepMs: deltaSeconds * 1000
     },
     sequence: ++modelWorkerSequence
   };
@@ -1327,12 +1292,30 @@ dom.canvas.addEventListener('dblclick', (e) => {
   }
 });
 
+function syncAgnSelection() {
+  const selection = resolveAgnSelection(dom.agnSource.value, {
+    preset: dom.agnPreset.value, hypothesis: dom.agnHypothesis.value
+  });
+  dom.agnSource.value = selection.sourceKey;
+  dom.agnHypothesis.value = selection.hypothesis;
+  const source = selection.source;
+  const speculative = selection.hypothesis === 'h29';
+  dom.experimentStatus.dataset.model = speculative ? 'speculative' : 'standard';
+  dom.experimentStatus.textContent = `${speculative
+    ? 'H29 selected: hypothetical metric display; canonical orbits unchanged.'
+    : 'Standard compound transport selected: compressed educational timeline.'} ${source?.jetModelNote ?? ''}`;
+}
+
+dom.agnPreset.addEventListener('change', syncAgnSelection);
+for (const control of [dom.agnSource, dom.agnHypothesis]) {
+  control.addEventListener('change', () => { dom.agnPreset.value = ''; syncAgnSelection(); });
+}
+
 dom.triggerAgnShockwave?.addEventListener('click', () => {
+  syncAgnSelection();
   const source = dom.agnSource?.value || 'SagittariusA';
   const preset = dom.agnPreset?.value || '';
-  const observerFrame = Boolean(dom.agnObserverFrame?.checked);
   const hypothesis = dom.agnHypothesis?.value || 'compound';
-  sunCtrl.setAgnObserverFrameMode(observerFrame);
 
   let impactTimeSec = 8.0;
   let intensity = 1.4;
@@ -1347,30 +1330,15 @@ dom.triggerAgnShockwave?.addEventListener('click', () => {
     intensity = 0.5;
   }
 
-  const options = {};
+  const options: AgnEventOptions = {};
   if (preset) options.preset = preset;
   if (hypothesis !== 'compound') options.hypothesis = hypothesis;
 
   sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
 });
 
-dom.agnObserverFrame.addEventListener('change', () => {
-  sunCtrl.setAgnObserverFrameMode(Boolean(dom.agnObserverFrame?.checked));
-});
-
 dom.agnStochastic.addEventListener('change', () => {
   sunCtrl.setAgnStochasticFlaring(Boolean(dom.agnStochastic?.checked));
-});
-
-dom.agnHypothesis.addEventListener('change', () => {
-  if (dom.agnHypothesis.value === 'h29') {
-    dom.experimentStatus.dataset.model = 'speculative';
-    dom.experimentStatus.textContent =
-      'H29 selected · speculative metric-frame-dragging visualization with amplified display effects.';
-  } else {
-    dom.experimentStatus.dataset.model = 'standard';
-    dom.experimentStatus.textContent = 'Standard compound transport model selected.';
-  }
 });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
@@ -1394,7 +1362,7 @@ for (const line of orbitLines) {
 for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
-sunCtrl.setAgnObserverFrameMode(Boolean((dom.agnObserverFrame as HTMLInputElement | null)?.checked));
+syncAgnSelection();
 
 resizeRenderer();
 renderer.render(scene, camera);
@@ -1413,19 +1381,11 @@ function animate(timestamp: number) {
   updateBodyRotations(simState.julianDate);
 
   syncAsteroidBeltInputs();
-  propagateKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions);
-  kuiperBeltRenderer.updatePositions(kuiperPositions);
-  if (kuiperPop.binaryCount > 0) {
-    propagateBinaryKBOPositions(kuiperPop.kbos, simState.julianDate, kuiperPositions, kuiperBinaryIndices, kuiperBinaryPositions);
-    kuiperBeltRenderer.updateBinaryPositions?.(kuiperBinaryPositions);
-  }
+  kuiperBeltUpdater.update(simState.julianDate);
 
-  // Solar visuals run on the WALL clock, not the simulation epoch. Feeding the
-  // epoch (~8.4e8 s) into sunController's `uniform float time` freezes every
-  // procedural effect: float32 ULP at that magnitude is 64 s, so a 1 s advance
-  // does not change the uniform. main's 56930fb paired this with a rate-bounded
-  // visual clock in sunVisuals.ts, which this tree does not carry.
+  // Controller gates decorative motion; scientific inputs remain simulation JD.
   sunCtrl.update(simState.julianDate, timestamp * 0.001);
+  applyMetricDisplayOffsets(model, bodyNodes, sunCtrl.getWarpState());
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();
