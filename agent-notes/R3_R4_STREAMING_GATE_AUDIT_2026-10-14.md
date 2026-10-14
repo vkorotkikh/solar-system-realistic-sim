@@ -240,3 +240,75 @@ Cicero's corrected commit; independent recheck; approval for the previously
 listed harmonic-test/three-mutation-patch write-scope extension; then actual
 final-byte hash generation and the complete standard `all` gate from a clean
 isolated worktree. The pending scalar-JD time-policy decision remains separate.
+
+## Independent verifier-hardening checkpoint
+
+Owner-approved scope extension implemented while the corrected PFSS production
+commit remains pending. This checkpoint does not accept the provisional azimuth
+behavior, rebind the final scientific manifest, or claim a standard `all` pass.
+
+### Runtime evidence contract
+
+- Preserve the exact-node collection, single-failure JUnit counts, no-skip/xfail,
+  offline socket guard, clean/tracked inputs, hash checks, historical fix ancestry,
+  detached baseline/mutant worktrees, and source-drift checks.
+- Capture the actual pytest exception through `pytest_runtest_makereport`, not
+  console output, traceback source, or JUnit text. Require clean setup/teardown and
+  a call-phase `AssertionError`; match the scientific marker only against that
+  exception's message.
+- Derive production line targets from the applied Git diff's new-side line
+  numbers. Each three-context-line diff hunk must have an added nonblank,
+  noncomment candidate line that actually executes during the required test call.
+  Import-time, setup-only, unchanged-line, and merely same-file execution do not
+  establish this evidence. Deletion-only/comment-only hunks fail closed rather
+  than guessing an unchanged execution anchor.
+- Preserve per-mutant `mutant-<id>.evidence.json` artifacts with node identity,
+  setup/call/teardown outcomes, actual exception type/message, changed line
+  targets, and executed lines. Reject missing/malformed/mismatched evidence,
+  an interrupted call tracer, or any unexecuted hunk. Ignore inherited mutation
+  requests so only the verifier supplies the runtime evidence configuration.
+- The runner-test synthetic calibration now executes a production function
+  during the test call instead of mutating an import-time constant. No scientific
+  fixture, threshold, production implementation, or scientific baseline test was
+  changed in this checkpoint.
+
+### Actual regression evidence
+
+Command, from the assigned PFSS review worktree:
+
+```sh
+uv run --python 3.12.13 --with-requirements ci/r3-r4-requirements.txt python -m pytest -q scripts/ci/tests/test_verify_r3_r4_runner.py scripts/ci/tests/test_verify_r3_r4_mutation_evidence.py
+```
+
+Result after hardening: **37 passed, zero skips, 12.41 seconds**. This includes
+18 existing runner contracts and 19 new end-to-end evidence controls. Each
+end-to-end control uses real pytest subprocesses and committed synthetic input
+repositories with detached baseline/mutant worktrees; no mocked assertion type
+or fabricated coverage output is used.
+
+Before implementing the verifier change, the new controls produced **14 failed,
+5 passed in 9.62 seconds**. They reproduced acceptance of marker-bearing
+`RuntimeError`, `ValueError`, and generic `Exception`; marker-only stdout,
+stderr, or source comments; assertions without changed-hunk execution;
+setup-only execution; partial multi-hunk execution; comment/deletion-only
+changes; and interrupted tracing. Positive structured-artifact checks also
+failed because the previous runner emitted no runtime evidence. Existing
+setup/teardown and runtime skip/xfail rejection continued to work.
+
+After hardening, positive controls prove a marked call assertion with actual
+production-line execution, including both separated changed hunks. Negative
+controls reject all of the above non-evidence cases. Existing runner tests
+continue to reject syntax/collection errors, wrong markers, skip/xfail baselines,
+dependency mismatches, dirty patch/manifest inputs, invalid historical commits,
+external/unpinned/malformed nodes, stale artifacts, and conftest poisoning.
+
+### Remaining work, explicitly not closed
+
+The production azimuth correction and final source commit still belong to
+Cicero. The harmonic streaming bridge, three approved equivalent mutation
+retargets, final `pfss_evaluation.py`/runner/test/patch hash bindings, independent
+final-source recheck, and standard clean-isolated-worktree `all` run remain
+pending that corrected commit. The scientific manifest is intentionally unchanged
+here, so its old verifier binding does not match this checkpoint. No acceptance
+or six-mutation final-gate claim is made. No tolerances, immutable oracle bytes,
+legacy harmonic assertions, or time policy were changed.
