@@ -4,6 +4,7 @@ import { Vector3 } from 'three';
 import rawMoons from '../data/moons.json';
 import generated from '../data/moonEphemerisChebyshev.json';
 import repairs from '../data/moonEphemerisRepairs.json';
+import native from '../data/moonEphemerisSpkRepairs.json';
 import oracle from '../../backend/tests/fixtures/all_moons_horizons_oracle.json';
 import spk75052 from '../../backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from '../../backend/tests/fixtures/daphnis_legacy_spk_capture.json';
@@ -14,7 +15,7 @@ import { candidateBodies } from './moonRepairTestInputs.mjs';
 
 // Optional local candidate gate does not rewrite or promote the shipped artifact.
 const parsed = parseMoonEphemerisArtifact({ ...repairs,
-  bodies: candidateBodies({ ...generated.bodies, ...repairs.bodies }, rawMoons) });
+  bodies: candidateBodies({ ...generated.bodies, ...repairs.bodies, ...native.bodies }, rawMoons) });
 const catalog = createSolarSystemCatalog({ moonEphemerides: parsed.bodies });
 const references = { ...oracle.bodies } as Record<string, {
   status: string; states?: { jd_tdb: number; position_au: number[]; velocity_au_per_day: number[] }[];

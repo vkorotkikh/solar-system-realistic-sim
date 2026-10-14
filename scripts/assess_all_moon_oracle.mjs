@@ -7,6 +7,7 @@ import { Vector3 } from 'three';
 import rawMoons from './src/data/moons.json';
 import rawEphemerides from './src/data/moonEphemerisChebyshev.json';
 import repairs from './src/data/moonEphemerisRepairs.json';
+import native from './src/data/moonEphemerisSpkRepairs.json';
 import oracle from './backend/tests/fixtures/all_moons_horizons_oracle.json';
 import spk75052 from './backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from './backend/tests/fixtures/daphnis_legacy_spk_capture.json';
@@ -15,7 +16,8 @@ import { parseMoonEphemerisArtifact } from './src/sim/moonEphemeris.ts';
 import { propagateKeplerOrbit, orbitPropagationQualityAt } from './src/sim/orbitMath.ts';
 const catalog = createSolarSystemCatalog({moonEphemerides: {
   ...parseMoonEphemerisArtifact(rawEphemerides).bodies,
-  ...parseMoonEphemerisArtifact(repairs).bodies
+  ...parseMoonEphemerisArtifact(repairs).bodies,
+  ...parseMoonEphemerisArtifact(native).bodies
 }});
 if (Object.keys(oracle.bodies).length !== rawMoons.length) throw new Error('Oracle capture is incomplete');
 const records = rawMoons.map(raw => {

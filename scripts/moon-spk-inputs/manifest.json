@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "target": 75052,
+  "center": 799,
+  "gzipSha256": "ac975f170c40b0231ac7073d16991be6fcc36175459abddf75ebe118e3f32095",
+  "originalRangeBytes": 1831968,
+  "completeKernelDownloaded": false,
+  "capturedAtUtc": "2026-10-14T06:28:48.455438+00:00",
+  "kernel": {
+    "url": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/ura184_part-2.bsp",
+    "byteLength": 2062529536,
+    "lastModified": "Fri, 26 Sep 2025 13:42:57 GMT",
+    "completeKernelDownloaded": false
+  }
+}

@@ -15,7 +15,8 @@ import json
 import math
 from pathlib import Path
 import re
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
 
 import numpy as np
 from numpy.polynomial.chebyshev import chebfit, chebval, chebvander, chebder
@@ -28,20 +29,53 @@ END = 2469807.5
 AU_KM = 149597870.7
 DAY = 86400.0
 CACHE = ROOT / 'node_modules/.cache/scn043'
-ARTIFACT = ROOT / 'src/data/moonEphemerisChebyshev.json'
+ARTIFACT = ROOT / 'src/data/moonEphemerisRepairs.json'
 ORACLE = ROOT / 'backend/tests/fixtures/all_moons_horizons_oracle.json'
 CATALOG = ROOT / 'src/data/moons.json'
 EXISTING = {'titan', 'iapetus', 'phoebe', 'cordelia'}
 
 
-def query_grid(target, start, end, step, cache):
+def fetch_result(params, cache, offline=False):
+    """Candidate acquisition is separate from the canonical offline SourceStore."""
+    encoded = urlencode(params)
+    path = cache / f'{hashlib.sha256(encoded.encode("ascii")).hexdigest()}.json'
+    if path.exists():
+        payload = json.loads(path.read_bytes())
+    elif offline:
+        raise FileNotFoundError(f'No captured candidate input: {path}')
+    else:
+        request = Request(original.HORIZONS_API_URL + '?' + encoded,
+                          headers={'User-Agent': 'solar-system-realistic-sim/1'})
+        with urlopen(request, timeout=30) as response:
+            payload = json.loads(response.read())
+        cache.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, separators=(',', ':')))
+    if payload.get('error'):
+        raise RuntimeError(f'Horizons rejected query: {payload["error"]}')
+    if payload.get('signature', {}).get('source') != 'NASA/JPL Horizons API':
+        raise RuntimeError('Unexpected Horizons signature')
+    result = payload.get('result', '')
+    if '$$SOE' not in result or '$$EOE' not in result:
+        raise RuntimeError('Missing provider element table')
+    return result
+
+
+def independent_training_rows(rows, reference):
+    reserved = {START, END, *(row['jd_tdb'] for row in reference['states'])}
+    return tuple(row for row in rows if row.jd not in reserved)
+
+
+def query_grid(target, start, end, step, cache, offline=False):
     rows = []
     source = None
     # Provider accounts for several output lines per ELEMENTS row.
     while start <= end + 1e-9:
         stop = min(end, start + step * 19999)
         params = original._query_params(target, start, stop, step)
-        response = original._parse_query(target, original._fetch_result(params, cache))
+        response = original._parse_query(target, fetch_result(params, cache, offline))
+        count = math.floor((stop-start)/step + 1e-9) + 1
+        if len(response.rows) != count or any(abs(row.jd-(start+i*step)) > 1e-9 for i, row in enumerate(response.rows)):
+            raise RuntimeError('Incomplete or unordered candidate source grid')
         if source is None:
             source = response
         elif source.ephemeris != response.ephemeris or source.central_gm_km3_s2 != response.central_gm_km3_s2:
@@ -243,8 +277,16 @@ def generate(moon, reference, args):
     # Neither source phase (x.125) nor held-out phase matches any old oracle JD.
     # Provider-limited Daphnis queries stop before the unavailable end interval.
     source_end = end-.125 if moon['name']=='Daphnis' else end+step+.125
-    source_rows, source_hash, gm = query_grid(target, START-step+.125, source_end, step,args.cache_dir/'responses')
-    held_rows, held_hash, _ = query_grid(target, START+.125+step/2,end-.125,step,args.cache_dir/'responses')
+    offline = getattr(args, 'offline', False)
+    captured_rows, captured_hash, gm = query_grid(target, START-step+.125, source_end, step,args.cache_dir/'responses',offline)
+    held_rows, held_hash, _ = query_grid(target, START+.125+step/2,end-.125,step,args.cache_dir/'responses',offline)
+    # A denser step can align the old .125 offset with oracle epochs. Remove
+    # those fitting rows explicitly, including both exact coverage endpoints.
+    source_rows = independent_training_rows(captured_rows, reference)
+    if {row.jd for row in source_rows} & {row.jd for row in held_rows}:
+        raise RuntimeError('Source and held-out grids overlap')
+    source_hash = original._combined_rows_digest(source_rows)
+    excluded_epochs = sorted({row.jd for row in captured_rows} - {row.jd for row in source_rows})
     truth = features(held_rows, moon['periodDays'])
     truth_pos, truth_vel = state_from_features(truth[:,1:])
     # Exact coverage endpoints are fetched independently rather than falsely
@@ -253,7 +295,7 @@ def generate(moon, reference, args):
     for field in ['START_TIME','STOP_TIME','STEP_SIZE']:
         del endpoint_params[field]
     endpoint_params.update(TLIST=f'{START} {end}',TLIST_TYPE='JD')
-    endpoints = original._parse_query(target,original._fetch_result(endpoint_params,args.cache_dir/'responses'))
+    endpoints = original._parse_query(target,fetch_result(endpoint_params,args.cache_dir/'responses',offline))
     endpoint_features = features(endpoints.rows,moon['periodDays'])
     endpoint_pos, endpoint_vel = state_from_features(endpoint_features[:,1:])
     times = np.concatenate((truth[:,0],endpoint_features[:,0]))
@@ -285,15 +327,17 @@ def generate(moon, reference, args):
             continue
         body.update(name=moon['name'], targetId=target.command, centralGmKm3S2=gm,
                     sourceRowsSha256=source_hash,heldOutRowsSha256=held_hash,
+                    capturedSourceRowsSha256=captured_hash,excludedTrainingEpochs=excluded_epochs,
                     sourceRowCount=len(source_rows), sourceGridStartJd=source_rows[0].jd,
                     sourceGridEndJd=source_rows[-1].jd)
         body['provenance']={'source':'NASA/JPL Horizons API','sourceEphemeris':source,
             'targetId':target.command,'centerId':target.center.split('@')[1],
             'frame':'ECLIPJ2000','timeScale':'TDB','generatedAt':datetime.now(timezone.utc).isoformat(),
             'generator':'scripts/repair_catalog_moon_ephemeris.py',
-            'query':json.dumps(original._query_params(target,source_rows[0].jd,source_rows[-1].jd,step),sort_keys=True)}
+            'query':json.dumps(original._query_params(target,captured_rows[0].jd,captured_rows[-1].jd,step),sort_keys=True)}
         body['validation']={'method':'Independent half-step ELEMENTS and exact endpoints, plus separate seven-epoch VECTORS; no oracle state fitted',
             'sampleCount':len(times),'heldOutSampleCount':len(held_rows),'coverageEndpointSampleCount':2,
+            'trainingDisjointFromValidation':True,
             'coverageEndpointErrors':[{'jdTdb':float(t),'positionErrorKm':float(p),'velocityErrorMPerS':float(v)} for t,p,v in zip(times[-2:],pe[-2:],ve[-2:])],
             'accuracyLimits':{'positionKm':target.max_position_error_km,'velocityMPerS':target.max_velocity_error_m_per_s},
             'positionErrorKm':stats(pe),'velocityErrorMPerS':stats(ve),
@@ -311,6 +355,7 @@ def main():
     parser.add_argument('--cache-dir',type=Path,default=CACHE)
     parser.add_argument('--step',type=float)
     parser.add_argument('--refit',action='store_true')
+    parser.add_argument('--offline',action='store_true',help='use only previously captured candidate responses')
     parser.add_argument('--promote',action='store_true',help='merge passing candidates, preserving existing bodies')
     parser.add_argument('--cached-only',action='store_true',help='checkpoint already-gated candidates without network queries')
     args=parser.parse_args()

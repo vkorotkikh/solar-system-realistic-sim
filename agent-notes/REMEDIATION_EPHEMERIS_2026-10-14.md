@@ -487,3 +487,66 @@ SPK type 17; the current live Horizons solution still lacks those two dates.
 75052's resumed sparse candidate fails 105.491875 km / 40.985527 m/s versus fixed
 57.844 km / 10 m/s caps. Resampling only already-captured source records does not
 repair it. These are unresolved model failures, not missing source identity.
+
+## Second resumed checkpoint: native 75052 and dense-grid independence
+
+First resumed checkpoint hash: `022d334f8b5ffc2043d13d7d046d51374c008501`.
+Its full backend run completed: **2669 passed, 1 skipped, 2 warnings, 280.14 s**.
+The skip remains native Tudat; the warnings are installed Starlette/httpx/anyio
+API deprecations. Command: pinned Python 3.12.13 requirements plus
+`--with spiceypy==8.3.0 python -m pytest -q backend/tests scripts/test_moon_repairs.py`.
+
+The 75052 conditioning defect is repaired with degree-8 carrier amplitudes over
+256-day nominal segments. A bounded comparison of degrees 4/6/8 and spans
+256/128/64 established that increasing polynomial degree had created poorly
+constrained fits across the sparse input windows. Source acquisition is unchanged:
+1,831,968 original SPK bytes, under the existing 4 MiB budget. The pinned gzip
+archive is 1,907,367 bytes including its range manifest. No new provider request
+or complete-kernel download was needed.
+
+An additional disjoint validation phase, 0.002 days after the original held-out
+samples, is evaluated only when both the target and Uranus-center coefficient
+records are already captured. Missing original records are rejected before
+CSPICE can read sparse-file holes or extrapolate. Both training/validation epoch
+separation and all original checksums are enforced.
+
+75052 final maxima: **9.955644 km / 6.430594 m/s** across held-out phases and exact
+endpoints; separate seven-epoch vector-oracle maxima **9.857927 km / 3.246425 m/s**.
+Unchanged limits: **57.844 km / 10 m/s**. The 270,686-byte native extension is
+`src/data/moonEphemerisSpkRepairs.json`. The generator uses pinned capture time,
+not rebuild wall time, and `--target 75052 --offline --check` is byte-identical.
+The lazy loader combines all three artifacts without key replacement.
+
+Amalthea and Methone were refitted from the already-captured three-hour grids
+AFTER removing the eight training epochs that coincide with the seven vector
+oracles or the final coverage endpoint. Their source hashes now describe the
+filtered training set; original capture hashes and excluded epochs remain
+explicit. Both independent fits pass their original caps. Candidate-only Nereid
+also passes. These three dense candidates are retained locally, not promoted or
+claimed to have pinned reconstruction inputs. Candidate metadata/digests are in
+`SCN043_RESUMED_BATCH_2026-10-14.json`.
+
+The candidate acquisition driver now owns its cache/network boundary, so it does
+not depend on the canonical generator's old online `_fetch_result` behavior.
+Its `--offline` mode fails on missing cache files; incomplete grids fail. Any
+explicit candidate promotion targets the repair extension, never the canonical
+four-body artifact. No general `catalog_sources.py` or capture code was modified.
+
+Fresh final gates after the native addition:
+
+- Full frontend: **430 passed, 413 skipped**, 33 files. Eleven delivered fitted
+  records are available; unpromoted repairs remain explicit skips.
+- Candidate runtime gate: **423 passed, 2 skipped** = 422 body records plus one
+  denominator-integrity check. Remaining records: Daphnis and S2023_S38.
+- Backend reference coverage plus all 12 new Python regression cases: **440
+  passed, zero skips, 3.22 s**, using real SpiceyPy 8.3.0.
+- Native generator offline whole-file check: byte-identical.
+- TypeScript ratchet: **217/226** unchanged legacy diagnostics.
+
+S2023_S38's failure is now localized: ten of the 4,568 captured source states have
+hyperbolic osculating elements (maximum e=1.196336782426656, negative semimajor
+axis), which the ellipse-only input conversion rejects. This does not imply the
+provider target is wrong or that the physical satellite is unavailable. A direct
+Cartesian/conic input path is required. Daphnis still needs explicit handling of
+the released legacy source's piecewise fits and discontinuities. Neither record
+has been removed or counted as a pass.

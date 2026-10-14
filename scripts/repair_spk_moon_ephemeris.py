@@ -7,8 +7,12 @@ Daphnis uses the complete tiny legacy type-17 kernel, with its quality explicit.
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import gzip
 import json
+import math
 from pathlib import Path
+import base64
+import struct
 import tempfile
 
 import numpy as np
@@ -21,6 +25,9 @@ import capture_daphnis_spk_oracle as daphnis
 CACHE=fit.CACHE
 GM={635:3.793120623436167e7,75052:5.793951256527211e6}
 GM_SOURCE='https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc'
+PINNED=fit.ROOT/'scripts/moon-spk-inputs'
+OUTPUT=fit.ROOT/'src/data/moonEphemerisSpkRepairs.json'
+OFFLINE=False
 
 
 def element_rows(states,mu):
@@ -41,6 +48,35 @@ def digest(rows):
     return hashlib.sha256(json.dumps(rows,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
+def evaluate_captured_epochs(captured,epochs):
+    """Evaluate new epochs only inside records whose original bytes are pinned."""
+    ranges={entry['offset']:entry for entry in captured['ranges']}
+    for jd in epochs:
+        et=(jd-fit.START)*fit.DAY
+        for target in [75052,799]:
+            segment=next((s for s in reversed(captured['segments'])
+                if s['target']==target and s['startEt']<=et<=s['endEt']),None)
+            if segment is None:
+                raise ValueError('Epoch outside captured descriptors')
+            directory=ranges.get((segment['lastWord']-4)*8)
+            if directory is None:
+                raise ValueError('Missing original type-2 directory')
+            initial,interval,size,count=struct.unpack('<dddd',base64.b64decode(directory['base64']))
+            index=min(int(count)-1,max(0,math.floor((et-initial)/interval)))
+            record=ranges.get((segment['firstWord']-1+index*int(size))*8)
+            if record is None or record['length']!=int(size)*8:
+                raise ValueError('Epoch requires uncaptured coefficient record')
+            midpoint,radius=struct.unpack_from('<dd',base64.b64decode(record['base64']))
+            if not radius>0 or not midpoint-radius<=et<=midpoint+radius:
+                raise ValueError('Epoch outside captured coefficient interval')
+    previous=uranus.JDS
+    try:
+        uranus.JDS=list(epochs)
+        return uranus.evaluate({**captured,'jds':list(epochs)})
+    finally:
+        uranus.JDS=previous
+
+
 def source_75052():
     step=16.
     centers=np.arange(fit.START-step+.125,fit.END+step,step)
@@ -51,23 +87,38 @@ def source_75052():
     cache=CACHE/'uranus_75052_fit_source_spk.json'
     uranus.JDS=epochs
     uranus.BYTE_BUDGET=4*1024*1024
-    if cache.exists():
+    pin=PINNED/'75052.json.gz'
+    if pin.exists():
+        manifest=json.loads((PINNED/'manifest.json').read_bytes())
+        raw=pin.read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=manifest['gzipSha256']:
+            raise ValueError('Pinned SPK input checksum mismatch')
+        captured=json.loads(gzip.decompress(raw))
+        if captured['jds']!=epochs: raise ValueError('Pinned native source epochs changed')
+    elif cache.exists():
         captured=json.loads(cache.read_text())
         if captured['jds']!=epochs: raise ValueError('Cached native source epochs changed')
     else:
+        if OFFLINE: raise FileNotFoundError('Missing pinned native fitting inputs')
         print('Capturing independent 75052 fitting windows:',len(epochs),'states; byte budget',uranus.BYTE_BUDGET,flush=True)
         captured=uranus.capture()
         cache.write_text(json.dumps(captured,separators=(',',':'))+'\n')
     print('75052 original SPK bytes:',captured['downloadedBytes'],flush=True)
-    rows=uranus.evaluate(captured)
+    rows=evaluate_captured_epochs(captured,epochs)
     mapped={row['jdTdb']:{'jd_tdb':row['jdTdb'],'position_au':row['positionAu'],'velocity_au_per_day':row['velocityAuDay']} for row in rows}
     reference=json.loads((fit.ROOT/'backend/tests/fixtures/uranus_75052_spk_capture.json').read_text())
     oracle=[{'jd_tdb':row['jdTdb'],'position_au':row['positionAu'],'velocity_au_per_day':row['velocityAuDay']} for row in reference['states']]
     endpoints=[oracle[0],mapped[fit.END]]
-    return [mapped[t] for t in train],[mapped[t] for t in held],endpoints,oracle,step,{
+    extra_epochs=[jd+.002 for jd in held]
+    assert not set(extra_epochs)&set(train+[row['jd_tdb'] for row in endpoints+oracle])
+    extra=[{'jd_tdb':row['jdTdb'],'position_au':row['positionAu'],'velocity_au_per_day':row['velocityAuDay']}
+           for row in evaluate_captured_epochs(captured,extra_epochs)]
+    return [mapped[t] for t in train],[mapped[t] for t in held]+extra,endpoints,oracle,step,{
         'source':'NASA/JPL NAIF SPK','sourceEphemeris':'URA184 part 2, native type 2',
+        'capturedAtUtc':captured['capturedAtUtc'],
         'query':json.dumps({'url':uranus.URL,'sourceWindowStepDays':step,'sourceOffsetsDays':[-.015,-.005,.005,.015],
                            'heldOutWindowOffsetDays':8.05,'downloadedBytes':captured['downloadedBytes'],
+                           'additionalHeldOutOffsetDays':.002,'additionalHeldOutSamples':len(extra),
                            'rangeManifestSha256':digest(captured['ranges']),'gmSource':GM_SOURCE},sort_keys=True)}
 
 
@@ -86,6 +137,7 @@ def source_daphnis():
     oracle=[known.get(row['jd_tdb'],row) for row in capture['states']]
     return training,withheld,endpoints,oracle,step,{
         'source':'NASA/JPL NAIF SPK','sourceEphemeris':'SAT393 Daphnis, legacy Cassini-fit type 17',
+        'capturedAtUtc':capture['retrieved_utc'],
         'query':json.dumps({'url':capture['url'],'sha256':capture['sha256'],'sourceGridStartJd':train[0],
                            'sourceGridEndJd':train[-1],'stepDays':step,'heldOutOffsetDays':step/2,
                            'sourceQuality':capture['source_quality'],'gmSource':GM_SOURCE},sort_keys=True)}
@@ -100,7 +152,13 @@ def generate(identifier):
     held_hash=digest(held)
     center='799' if identifier==75052 else '699'
     target=fit.original.Target(moon['name'].lower(),moon['name'],str(identifier),'500@'+center,moon['planet'],
-                              provenance['sourceEphemeris'],moon['periodDays'],step,512,12,min(500.,.001*moon['aKm']),10.)
+                              provenance['sourceEphemeris'],moon['periodDays'],step,512,
+                              8 if identifier==75052 else 12,min(500.,.001*moon['aKm']),10.)
+    # Sparse native windows cannot constrain degree-12 carrier amplitudes well.
+    # A degree-8 fit is independently gated, without changing scientific caps.
+    training_epochs={row['jd_tdb'] for row in training}
+    if training_epochs & {row['jd_tdb'] for row in held+endpoints+oracle}:
+        raise ValueError('Native fitting inputs overlap validation epochs')
     truth=held+endpoints
     times=np.array([row['jd_tdb'] for row in truth])
     p=np.array([row['position_au'] for row in truth])*fit.AU_KM
@@ -122,7 +180,7 @@ def generate(identifier):
         body.update(name=moon['name'],targetId=str(identifier),sourceRowsSha256=source_rows_hash,
                     heldOutRowsSha256=held_hash,sourceRowCount=len(training),centralGmKm3S2=GM[identifier])
         body['provenance']={**provenance,'targetId':str(identifier),'centerId':center,'frame':'ECLIPJ2000',
-            'timeScale':'TDB','generatedAt':datetime.now(timezone.utc).isoformat(),'generator':'scripts/repair_spk_moon_ephemeris.py'}
+            'timeScale':'TDB','generatedAt':provenance['capturedAtUtc'],'generator':'scripts/repair_spk_moon_ephemeris.py'}
         body['validation']={'method':'Disjoint native SPK input and held-out windows; exact endpoints and separate vector oracle; analytic trajectory derivatives',
             'sampleCount':len(truth),'heldOutSampleCount':len(held),'coverageEndpointSampleCount':2,
             'coverageEndpointErrors':[{'jdTdb':float(t),'positionErrorKm':float(e),'velocityErrorMPerS':float(ev)} for t,e,ev in zip(times[-2:],pe[-2:],ve[-2:])],
@@ -132,14 +190,34 @@ def generate(identifier):
             'boundaryContinuity':{'runtimeStateContinuous':True,'method':'analytic derivative of smooth cross-fade'}}
         (CACHE/f"{fit.quote(moon['name'].lower(),safe='')}.model.json").write_text(json.dumps(body,separators=(',',':'),allow_nan=False)+'\n')
         print('PASS',moon['name'],flush=True)
-        return
+        return body
     raise RuntimeError('Native fitting candidate failed the fixed position/velocity budgets')
 
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target',type=int,choices=[635,75052],required=True)
+    parser.add_argument('--offline',action='store_true')
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument('--write',action='store_true')
+    mode.add_argument('--check',action='store_true')
     args=parser.parse_args()
+    OFFLINE=args.offline
     CACHE.mkdir(parents=True,exist_ok=True)
     tempfile.tempdir=str(CACHE)
-    generate(args.target)
+    body=generate(args.target)
+    if args.write or args.check:
+        from generate_moon_repairs import encoded,publish
+        key=body['name'].lower()
+        artifact={'schemaVersion':2,'kind':'horizons-chebyshev-mixed-v2',
+            'coverageTimeScale':'TDB','referenceFrame':'Ecliptic of J2000.0 (ICRF)',
+            'featureOrder':list(fit.original.FEATURE_ORDER),'bodies':{key:body}}
+        raw=encoded(artifact)
+        if args.check:
+            if OUTPUT.read_bytes()!=raw: raise ValueError('Native repair artifact differs')
+            print('byte-identical',OUTPUT)
+        else:
+            if OUTPUT.exists() and set(json.loads(OUTPUT.read_bytes())['bodies'])!={key}:
+                raise ValueError('Refusing to replace a different native target set')
+            publish(OUTPUT,raw)
+            print('wrote',OUTPUT,len(raw),'bytes')
