@@ -405,6 +405,7 @@ class REBOUNDEngine(SimulationEngine):
         if self.sim is None:
             return
         target = self.sim.t + dt_days / DAYS_PER_YEAR
+        self._validate_supported_jd(target * DAYS_PER_YEAR + J2000_JD)
         self.sim.integrate(target)
 
     def get_state(self) -> Dict[str, Any]:
