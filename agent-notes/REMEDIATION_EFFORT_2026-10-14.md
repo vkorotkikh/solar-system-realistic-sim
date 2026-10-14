@@ -41,9 +41,12 @@ Prior PRs #7, #8, #9, and #11 are now merged. SCN-056's reviewed branch is integ
 - Choose conservative explicit contracts for sampling, step time, visual time, configuration, and remote permits; record rationale and test the chosen behavior.
 - Licensing policy is requested from the repository owner; attribution research may proceed.
 
-## Initial issue ledger
+## Original supplied issue ledger
 
-The original entry text is retained in MASTER_ISSUE_TRACKER_2026-10-11.md. Every ID remains represented; implementation evidence will be appended per workstream.
+This is the original supplied October 11 intake, not current landing status.
+The master now records subsequent main merges and construction-branch evidence.
+Every canonical ID appears exactly once below. Noncanonical disposition-table
+rows accidentally appended by the initial extraction have been removed.
 
 | ID | Intake state | Intake progress |
 |---|---|---|
@@ -130,21 +133,56 @@ The original entry text is retained in MASTER_ISSUE_TRACKER_2026-10-11.md. Every
 | SCN-081 | OPEN | — |
 | SCN-082 | OPEN | — |
 | SCN-083 | OPEN | — |
-| SCN-033 | Repairs moon-texture ingester import and safe `--help`. | Not merged. |
-| SCN-034 | Removes the external-output `relative_to` crash only. | Not merged; mutable-input/pinning scope remains even on branch. |
-| SCN-005 | Visible fallback/source status shipped; production delivery remains open. |  |
-| SCN-012 | Null undefined metrics and two fixed-state oracles; legacy 0/3 coverage remains. |  |
-| SCN-016 | Geocentric runtime Earth; scoped resolved. |  |
-| SCN-018 | Pluto secular model/gate; scoped resolved. |  |
-| SCN-021 | SMBH radius/unit root resolved; source direction/jet root promoted to `069`. |  |
-| SCN-022 | CPU Kepler root resolved; GLSL twin remains VERIFY. |  |
-| SCN-043 | Io/Europa/Triton corrected; full coverage remains partial. |  |
-| SCN-044 | Per-body/equatorial periapsis policy improved; search-quality oracle remains. |  |
-| SCN-045 | Multi-rev/hyperbolic/zero-rev work landed; exact-π and `064` remain. |  |
-| SCN-062 | Default-scale event lifetime fixed and tested. |  |
 
 ## Activity
 
 - 2026-10-14: Started from fetched remote main; isolated user main and untracked audit material.
 - 2026-10-14: Integrated the previously reviewed SCN-056 branch into the construction branch.
 
+## Integration checkpoint: b0b1030
+
+The master records 51 rows with committed `FIX_AVAILABLE_UNMERGED` evidence and
+10 overlapping `PARTIAL` qualifiers. Its primary counts still describe pinned
+main, not an unapproved claim that this branch has shipped. This is an active
+effort; all-item closure has not been achieved.
+
+| Gate | Executed result | Scope |
+|---|---|---|
+| Full integrated backend before catalog/native additions | 2,809 passed, 3 explicit coverage skips | The native gap has since been exercised separately; moon reference/accuracy follow-up remains. |
+| Frontend after catalog integration | 531 passed, 2 optional GPU skips | Earlier full optional-shader run passed 522 with no skips; rerun the expanded optional lane before release. |
+| Strict TypeScript | Zero errors after catalog integration | No relaxed compiler settings or baseline inflation. |
+| Pinned install/build/audit | npm ci, production build and audit pass; zero reported advisories | Node 22.23.2/npm 10.9.8; Vite 7.3.7/Vitest 5.0.4. |
+| Exact scientific CI lane | 6/6 baseline pass, all 6 mutants killed | b0b1030; unchanged assertions and offline guard; only reviewed PFSS input hashes refreshed. |
+| Native Tudat | 8 passed, no skips | Includes three real native propagation tests; see the dedicated native report. |
+| Hardware rendering | RTX 5090 asteroid, Earth/Mars and actual-app checks pass | Specific tested driver/renderer, not every GPU/platform. |
+| Real local network deployment | 64/64 authenticated requests, both Uvicorn workers exercised | Real reverse proxy/auth/CORS/liveness checks; not remote TLS or production-load certification. |
+| Catalog regeneration | Two independent offline builds, byte-identical artifacts | 17 actual pinned source responses, complete 100,000-row source comparison. |
+
+Artifact locations: `/tmp/solar-remediation-integrated-backend-20261014-b.log`,
+`/tmp/solar-catalog-integrated-frontend-20261014.log`,
+`/tmp/solar-native-tudat-expanded-20261014.log`, and
+`/tmp/solar-r3r4-integrated-20261014-b/summary.json`. Durable descriptions and
+reproduction commands are in the linked workstream reports, not only these
+temporary logs.
+
+## Active next wave and external dependencies
+
+- Solar: matched-input WSA/reference calibration and rendered solar frame oracle.
+- Ephemeris: actual repair of the demonstrated 424-moon model errors. Target
+  75052 now has identity-safe SPK samples; two Daphnis dates remain unavailable.
+- Events: independent AGN scene/screen frames and production shader corrections.
+- Runtime: independent runner/WebSocket review and kill/reap-owned Horizons I/O.
+- Accessibility: real zoom/WebKit follow-up, then five-minute dev and preview
+  delivery with unchanged production budgets.
+- Catalog follow-up: realtime schema/reconnect and isolated frame/lifecycle
+  children under SCN-049. Named Section 7 children must not disappear.
+- Owner: choose code/distribution licensing and resolve restricted or unknown
+  third-party asset permissions. No owner approval has been inferred.
+- Deployment: provide the actual frontend/backend origin and authentication
+  contract before remote deployment evidence can be collected.
+- Manual release evidence: NVDA/VoiceOver and physical-touch checks remain
+  distinct from DOM/browser automation; none is invented as a pass.
+
+SCN-063's initial mission report incorrectly described lost-capacity behavior
+as an accepted policy. The owner did not approve that tradeoff. It remains open
+pending the terminable-transport work, and the master is authoritative.

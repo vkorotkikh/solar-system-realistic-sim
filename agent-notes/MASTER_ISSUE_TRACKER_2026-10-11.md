@@ -13,7 +13,7 @@ See [the remediation effort](REMEDIATION_EFFORT_2026-10-14.md) for assignments,
 closure gates, tests, and remaining dependencies. Historical source snapshots
 below retain their original dates and are not current release certification.
 
-<!-- MASTER_TRACKER_COUNTS {"snapshot":"origin/main@f45c1f917398718e27d8f1a9fdfa8502592c21fd","canonical_total":83,"OPEN":45,"RESOLVED_SCOPED":23,"VERIFY":9,"DECISION_REQUIRED":6,"PARTIAL_qualifier":11,"FIX_AVAILABLE_UNMERGED_qualifier":4,"alias_rows":138} -->
+<!-- MASTER_TRACKER_COUNTS {"snapshot":"origin/main@f45c1f917398718e27d8f1a9fdfa8502592c21fd","integration_checkpoint":"b0b1030","canonical_total":83,"RESOLVED_SCOPED":23,"OPEN":45,"DECISION_REQUIRED":6,"VERIFY":9,"PARTIAL_qualifier":10,"FIX_AVAILABLE_UNMERGED_qualifier":51,"alias_rows":138} -->
 
 ## 1. Result
 
@@ -25,10 +25,12 @@ below retain their original dates and are not current release certification.
 | `DECISION_REQUIRED` | **6** | Code implements a policy or tradeoff whose intended product contract must be chosen explicitly. |
 | **Canonical total** | **83** | One row per root finding; aliases and split symptoms are not additional findings. |
 
-Eleven rows carry the overlapping `PARTIAL` progress qualifier. Four rows currently have
-an independently identified `FIX_AVAILABLE_UNMERGED`; these remain unclosed on
-`origin/main`. Counts describe landing status, while the remediation effort
-records additional work in progress. Dormant, optional, offline, and workspace-scoped findings are
+10 rows carry the overlapping `PARTIAL` progress qualifier. 51 rows now have
+committed `FIX_AVAILABLE_UNMERGED` evidence on the construction branch; these remain
+unclosed on `origin/main`. Primary-state counts describe the pinned main snapshot,
+while Progress and the finding text describe implementation through `b0b1030`.
+These are author/integration gates, not a claim that every item has independent
+review or complete external acceptance evidence. Dormant, optional, offline, and workspace-scoped findings are
 still counted when their current code mechanism is established, but those
 qualifiers are stated explicitly.
 
@@ -101,86 +103,86 @@ Filesystem mtimes caused by checkout or evidence restoration were ignored.
 | SCN-001 | P0 | RESOLVED_SCOPED | — | MIXED | PFSS harmonic basis/decomposition is normalized and analytic basis, orthogonality, quadrupole, and mutation gates pass. Preserve pole/derivative/boundary gates; observed calibration is `041/048`. |
 | SCN-002 | P1 | RESOLVED_SCOPED | — | OBS | Original NumPy endian/dtype FITS crash is fixed with a valid frozen fixture. Parser-to-solver float64 admission remains independently `051`. |
 | SCN-003 | P1 | RESOLVED_SCOPED | — | MIXED | GONG WCS, orientation, exact area weights, and weighted decomposition now have an explicit grid contract. Real observed accuracy remains `041/048`. |
-| SCN-004 | P1 | OPEN | — | OBS | Solar upstream bytes and body reads are bounded, but blocking DNS and header acquisition can exceed the total deadline. Require deadline-owned resolution/header/body cancellation and resource recovery. |
-| SCN-005 | P1 | OPEN | PARTIAL | MIXED | Solar source/fallback state is now visible, but production-budget dev/preview delivery remains unproved. The single five-minute browser delivery gate is owned here; `047` depends on it. |
+| SCN-004 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | Owned, killable DNS/header/body subprocess transport is implemented in `870de80`; stalled phases, interruption, framing, recovery and permit/resource cleanup pass. POSIX evidence in [solar report](REMEDIATION_SOLAR_2026-10-14.md); other platforms are not certified. |
+| SCN-005 | P1 | OPEN | PARTIAL | MIXED | Source/fallback presentation and owned acquisition are integrated. The five-minute production-budget dev/preview delivery gate is still running as a separate acceptance task; no sustained-delivery pass is inferred from unit tests. |
 | SCN-006 | P1 | RESOLVED_SCOPED | — | OBS | Default localhost and loopback-IP Vite preview origins pass the CORS contract. Actual deployed origins remain `048`. |
 | SCN-007 | P1 | RESOLVED_SCOPED | — | OBS | Solar admission now uses trusted identity policy and bounded stores; rotating untrusted headers no longer create unlimited identities. Preserve proxy/auth/cap/eviction tests. |
 | SCN-008 | P1 | RESOLVED_SCOPED | — | OBS | `/solar/physics` rejects extreme finite epochs and bounds JDTDB before compute. AIA historical-date coverage is separately `048`; playback escape is `053`. |
 | SCN-009 | P1 | RESOLVED_SCOPED | — | OBS | Unvalidated/stale observation assimilation fails closed rather than applying zero-confidence forcing. Enabling validated assimilation still requires an epoch/provenance oracle. |
-| SCN-010 | P1 | OPEN | — | OBS | A failed aggregate realtime snapshot is cached for the normal 300-second lifetime, delaying SWPC recovery. Distinguish failure/partial cache entries and retain bounded last-known-good behavior. |
+| SCN-010 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `870de80` separates failed/partial/complete cache states and retries failures after a bounded 4.5-second backoff; detached last-known-good data retains source age. Cache/recovery regressions and the integrated backend suite pass. |
 | SCN-011 | P2 | RESOLVED_SCOPED | — | OBS | AIA timestamps are canonicalized to UTC before the browser freshness calculation. Preserve cross-timezone tests. |
-| SCN-012 | P0 | OPEN | PARTIAL | OBS | Undefined benchmark metrics are now null and two published fixed-state references catch mutations, but the three legacy scenarios remain 0/3 comparable. Require reproducible nonzero coverage. |
-| SCN-013 | P1 | OPEN | — | OBS | Asteroid shader inputs subtract float32 absolute Julian dates, losing sub-day precision. Upload relative/split time and gate CPU-double versus GPU/readback behavior. |
-| SCN-014 | P1 | OPEN | — | OBS | ACBF's own 100,000-row round trip still reports 99,916 mismatches. Define field-specific quantization budgets and add a passing format contract without conflating it with artifact integrity. |
-| SCN-015 | P2 | DECISION_REQUIRED | — | CODE | The app displays the first 50,000 records of a diameter-descending catalog. Declare this largest-body policy or implement deterministic representative sampling and population gates. |
+| SCN-012 | P0 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56ac52a` supplies actual pinned Horizons endpoint states plus independently executed Izzo/Gooding/DOP853 references for all three legacy date pairs: 3/3 comparable. Historical GMAT/Orekit/Tudat totals remain incomparable, not relabeled as executed. See [mission evidence](REMEDIATION_MISSION_2026-10-14.md). |
+| SCN-013 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2dee43c` rebases GPU epoch/phase; `2bddea3` gates actual shader readback. `a568625` passes 125 hardware cases on RTX 5090, max position error 0.00002632 AU and retained minute-scale motion. [Hardware evidence](REMEDIATION_HARDWARE_2026-10-14.md). |
+| SCN-014 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `259601a` defines field-specific ACBF quantization budgets and passes the complete 100,000-row format contract. Artifact provenance and scientific fidelity remain separately gated by `046/082`. |
+| SCN-015 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | `71ba472` makes the largest-known-diameter prefix policy explicit and nonrepresentative. The exact 50,000/100,000 identity, uniqueness and distribution gate passes; catalog rows are not padded with procedural objects. [Catalog evidence](REMEDIATION_CATALOGS_2026-10-14.md). |
 | SCN-016 | P1 | RESOLVED_SCOPED | — | MIXED | Runtime Earth is now geocentric (`fea6f9d`); the raw source row remains EMB and fixture scope is narrow. Preserve target-3/399 identity gates. |
-| SCN-017 | P1 | OPEN | — | OBS | Planet velocity omits derivatives of secular elements and axes. Differentiate the full time-dependent model and gate derivative agreement across epochs/steps before external accuracy claims. |
+| SCN-017 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` differentiates all secular elements and changing basis axes; nine planets, five epochs, two step sizes and a full-rate synthetic case pass. Independent sampled accuracy remains scoped separately under `080`. |
 | SCN-018 | P2 | RESOLVED_SCOPED | — | MIXED | Pluto secular rates and a position/velocity gate were added by `fc32483`. Preserve the declared model interval and fidelity limitations. |
 | SCN-019 | P1 | RESOLVED_SCOPED | — | MIXED | Mined cargo now enters the chronological return-burn mass ledger and closure (`62a4f5d`). This does not close risk, reserve, or burn-definition roots `020/052/078`. |
-| SCN-020 | P1 | OPEN | PARTIAL | OBS | Every risk sample now re-closes deterministic feasibility, but reported propellant margin still counts fuel discarded with jettisoned stages. Margin must mean onboard usable fuel. |
+| SCN-020 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56ac52a` defines usable margin as attached-stage fuel excluding protected reserves. Onboard, reserved and discarded fuel are separately reported; exhausted risk samples have zero usable margin. Mission/reserve regressions pass. |
 | SCN-021 | P1 | RESOLVED_SCOPED | — | OBS | SMBH Schwarzschild radii and dependent unit conversions were corrected by `eef8945`. Direction/jet-data consistency is separately `069`. |
 | SCN-022 | P2 | RESOLVED_SCOPED | — | OBS | The JavaScript Kepler solver is safeguarded for all supported `e < 1` (`7a21468`). The GLSL twin remains a `049` verification child outside the shipped catalog domain. |
-| SCN-023 | P1 | OPEN | — | MIXED | H29 metric presentation still mutates canonical orbital state. Separate scientific state from display offsets and prove experiment on/off invariance. |
-| SCN-024 | P2 | OPEN | — | OBS | KBO propagation and buffer upload continue while simulation time is paused. Instrument per-buffer work and skip unchanged-state uploads. |
-| SCN-025 | P1 | OPEN | PARTIAL | OBS | TypeScript diagnostics improved and the ratchet passes, but strict typecheck still fails. Close only on strict zero without relaxed settings. |
+| SCN-023 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` isolates H29 display offsets from canonical orbital state and gates experiment on/off invariance. The merged UI retains the isolated composition path. |
+| SCN-024 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` separates KBO state and upload work and skips unchanged Julian dates. Pause/unchanged-state upload regressions pass in the integrated frontend suite. |
+| SCN-025 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `19d1b6f`, event/UI contracts and `94cf1d4` close strict TypeScript errors without relaxed settings. Pinned Node 22.23.2 strict typecheck passes at zero, including after catalog integration; strict CI step added. |
 | SCN-026 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 (`952de6a`, merge `6a9de62`) restricts Vitest discovery to product/script trees. Prior branch gate: 393 frontend/script tests and production build passed; preserve discovery exclusions. |
 | SCN-027 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 documents the pinned backend test environment and current invocation. Prior reviewed branch gates passed; full current integrated README-to-suite execution is recorded in the remediation effort. |
-| SCN-028 | P1 | OPEN | — | OBS | Eleven registry advisory entries remain without reachability/remediation closure. Update deliberately and rerun lockfile, test, type, build, and audit gates. |
+| SCN-028 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `94cf1d4` deliberately updates Vite/Vitest and compatible transitive dependencies. Pinned npm ci, production build, strict typecheck, frontend tests and npm audit pass with zero reported advisories. [Toolchain evidence](REMEDIATION_TOOLCHAIN_2026-10-14.md). |
 | SCN-029 | P1 | RESOLVED_SCOPED | — | MIXED | A tracked CI/backend/science mutation workflow exists and passes its scoped contract. Strict TS is `025`; broader browser/live/load gates are `047`. |
-| SCN-030 | P1 | OPEN | — | MIXED | Responsive reflow, modal focus, keyboard/tap camera control, stable announcements, and accurate experiment copy remain unimplemented. The October 11 R1–R8 artifacts are plans, not fixes. |
-| SCN-031 | P2 | OPEN | — | OBS | No-WebGL startup still yields no accessible recovery surface. Catch startup/context loss and verify a usable unavailable-state path. |
+| SCN-030 | P1 | OPEN | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | R1-R8 are implemented and integrated via `cae3c0f`; Chromium/Firefox automated matrices pass. Real zoom/WebKit follow-up is active; manual NVDA/VoiceOver and physical-touch evidence remains unclaimed. [Accessibility evidence](REMEDIATION_ACCESSIBILITY_2026-10-14.md). |
+| SCN-031 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2e2b31d` through `6c6f232` provide accessible no-WebGL/context-loss recovery, stop owned runtime work, and preserve keyboard restart. Actual-app software and RTX 5090 browser gates pass. |
 | SCN-032 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 aligns the README with shipped entry controls, moon display/propagation limitations, and maintenance safeguards. Review and 393-test/build gate passed. |
 | SCN-033 | P2 | RESOLVED_SCOPED | — | MIXED | PR #7 ships safe maintenance help/import paths, atomic catalog writes, explicit count-change admission, and shape/uniqueness/orbit validation. Nine updater regressions and full frontend/script gate passed. |
-| SCN-034 | P2 | OPEN | PARTIAL | MIXED | PR #7 fixes external-output paths; pinned source inputs and multi-artifact transactionality remain under this issue. Offline byte-identical reproduction remains independently `046`. |
-| SCN-035 | P1 | DECISION_REQUIRED | — | CODE | Repository distribution terms and asset/provider attribution remain incomplete. The owner must choose licensing policy and document per-source provenance. |
+| SCN-034 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | PR #7 path safety is retained. `71ba472` adds real pinned source acquisition, offline-by-default generators, atomic multi-artifact publication and failure-injection tests. Byte identity is separately recorded under `046`. |
+| SCN-035 | P1 | DECISION_REQUIRED | PARTIAL | MIXED | `14741bd` adds NOTICE and source/provenance evidence. Owner code-license choice remains unanswered; SILSO noncommercial terms and unresolved Deimos image permission prevent a blanket distribution claim. [Provenance report](REMEDIATION_PROVENANCE_2026-10-14.md). |
 | SCN-036 | P1 | RESOLVED_SCOPED | — | MIXED | Authenticated network profile and per-subject WebSocket admission are implemented. Multi-worker, long-lived, and exclusion fairness remain `047/048`. |
 | SCN-037 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | The remediation effort selects explicit fixed-step semantics: time_scale/target_fps days per tick, no wall-time catch-up promise. Runtime telemetry declares the policy. Slow-step regression passes in `a33ad93`; not merged. |
-| SCN-038 | P2 | DECISION_REQUIRED | — | CODE | Solar visuals use wall time during pause/reverse rather than simulation JD. Declare decorative versus simulation motion and gate pause/reverse/reduced-motion behavior. |
-| SCN-039 | P2 | DECISION_REQUIRED | — | CODE | Backend and viewport configuration has multiple partially consumed paths and a fixed port assumption. Select one deployment/configuration contract and test nondefaults. |
-| SCN-040 | P1 | OPEN | — | MIXED | Recent audit/tracker artifacts remain outside `origin/main`, so fresh clones omit them. Archive an intentionally selected, reviewed set without sweeping unrelated work. |
-| SCN-041 | P1 | VERIFY | — | MIXED | WSA-inspired formula/label and boundary mutants are corrected, but independent observed/reference speed-map calibration and topology coverage remain. |
-| SCN-042 | P1 | VERIFY | PARTIAL | MIXED | Hathaway normalization, rotation labeling, and Sun pole/presentation subparts were fixed; broad solar frame, projection, coordinate, and screen-space truth still needs separate oracles. |
-| SCN-043 | P1 | VERIFY | PARTIAL | MIXED | Io, Europa, and Triton were corrected, but the intended 424-body denominator, Dione/Rhea historical offsets, and broader moon accuracy remain unverified. Generic retrograde-node sign is promoted to `081`. |
-| SCN-044 | P2 | VERIFY | PARTIAL | MIXED | Per-body/equatorial flyby floors exist, but real-window/two-assist search quality, v-infinity continuity, and exhausted/inconclusive reporting need independent benchmarks. |
-| SCN-045 | P2 | VERIFY | PARTIAL | MIXED | Multi-revolution, hyperbolic, and zero-revolution handling improved, but exact-180° plane policy, near-zero geometry, and independent boundary coverage remain. Near-π wrong states are `064`. |
-| SCN-046 | P2 | VERIFY | — | MIXED | Current artifacts parse and hashes match, but pinned-input, offline, byte-identical regeneration remains unproved. `034` owns generator safety. |
-| SCN-047 | P1 | VERIFY | — | MIXED | Hardware GPU, browser, accessibility, multi-worker/load, startup, and sustained delivery release gates remain. It depends on `005` for the single production delivery gate. |
-| SCN-048 | P1 | VERIFY | — | MIXED | Live providers, actual deployment/proxy/auth behavior, and AIA date coverage remain unestablished. Do not convert network absence into a current upstream failure claim. |
-| SCN-049 | P2 | VERIFY | PARTIAL | MIXED | Historical low-priority/dormant catch-all: Sirius, tide axes, and Trojan phasing are fixed; unpromoted children remain named in Section 7 rather than silently discarded. |
-| SCN-050 | P2 | OPEN | PARTIAL | MIXED | Backend Hathaway normalization uses the true parameterized peak, but the active frontend fallback still clips an artificial plateau. Gate both implementations against one analytic shape. |
-| SCN-051 | P2 | OPEN | — | OBS | Parser-accepted float64 FITS can fail PFSS admission when reconstructed bytes no longer match the original hash. Round-trip every supported encoding while rejecting tampering. |
+| SCN-038 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` declares simulation-driven versus decorative solar motion and gates pause/reverse/reduced-motion behavior. Integrated UI adapters preserve live JD, pause and time-scale inputs. |
+| SCN-039 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | `cae3c0f` integrates a consumed runtime configuration contract: explicit VITE_BACKEND_ORIGIN or same-origin, no query redirects, nondefault backend ports, viewport sizes and drawing-buffer scale. Real-app configuration checks pass. |
+| SCN-040 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56e799a` archives an intentionally selected source set with original/archived hashes and current-status pointers. This effort and its reports are committed on the construction branch, not yet included in a clone of main. |
+| SCN-041 | P1 | VERIFY | PARTIAL | MIXED | `9a5499f` captures actual official WSA/PFSS and NOAA products and passes independent analytic topology/speed checks. Matched-input observed/reference calibration remains in progress; empirical WSA calibration is still explicitly unvalidated. |
+| SCN-042 | P1 | VERIFY | PARTIAL | MIXED | Existing pole/normalization fixes are preserved. Separate solar and AGN agents are implementing independent frame/projection/rendered gates; backend geometry remains disabled until its transform contract is validated. No broad screen-space certification yet. |
+| SCN-043 | P1 | VERIFY | PARTIAL | MIXED | `0272005` exposes substantial all-moon model errors rather than hiding them behind the 27-major-moon suite. `d19c9fa` adds identity-safe JPL SPK states for the last missing body. Two Daphnis dates still lack provider coverage; the 424-body model repair and accuracy gates remain active. |
+| SCN-044 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` adds a dated two-assist witness independently closed with Izzo/Gooding/DOP853, physical periapsis/continuity checks and an inconclusive-on-exhaustion gate. This is a feasible quality floor, not a global optimum or external ephemeris certification. |
+| SCN-045 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` declares rejection of exact collinearity without a supplied plane. Independent propagated-state gates cover rotated near-zero/near-pi/hyperbolic cases and both senses/branches for 1-3 revolutions. Existing `064` remains preserved. |
+| SCN-046 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `71ba472` pins 17 real provider responses. Two network-disabled asteroid builds and both generators' offline checks reproduce the new committed artifacts byte-for-byte; all 100,000 source periods/diameters/albedos are compared. Historical unpinned artifacts were replaced, not reverse-engineered. |
+| SCN-047 | P1 | VERIFY | PARTIAL | MIXED | RTX 5090 asteroid/planet/app gates, Chromium/Firefox automation and a real authenticated two-worker local proxy gate pass. Five-minute delivery, broader lifecycle/load work, manual AT/touch and remaining browser evidence are explicit follow-ups. [Hardware](REMEDIATION_HARDWARE_2026-10-14.md), [deployment](REMEDIATION_DEPLOYMENT_2026-10-14.md). |
+| SCN-048 | P1 | VERIFY | PARTIAL | MIXED | Actual provider captures and a local real-process authenticated proxy gate now exist. A deployed frontend/backend URL and authentication contract were requested from the owner; remote deployment/TLS and full AIA date coverage are not claimed. |
+| SCN-049 | P2 | VERIFY | PARTIAL | MIXED | GLSL precision, synthetic perturbation defaults, catalog loader cache/deadlines and explicit native SRP rejection have new evidence. Realtime schema/reconnect, frame lifecycle, operational writer/logging and other named Section 7 children remain individually tracked; no umbrella closure. |
+| SCN-050 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `870de80` normalizes the active frontend Hathaway curve at its analytic parameterized peak. Backend/frontend pass one independently generated high-precision reference, eliminating the clipped plateau. |
+| SCN-051 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `870de80` authenticates original retained FITS bytes, reparses them and compares science/grid/provenance instead of inverse-reconstructing lossy float pixels. All supported BITPIX encodings and tampering gates pass. |
 | SCN-052 | P1 | RESOLVED_SCOPED | — | MIXED | PR #8 (`44503ec`, merge `bb2e8ef`) fixes stage reserves against immutable initial propellant. Partition, unequal-stage/cargo/jettison regressions and full 2168-test backend gate passed. Discarded onboard margin remains `020`. |
 | SCN-053 | P1 | RESOLVED_SCOPED | — | MIXED | PR #9 (`9102c18`, merge `1fa45f0`) applies the REBOUND supported epoch contract before stepping. Focused regressions and full 2167-test backend gate passed. |
-| SCN-054 | P2 | OPEN | — | OBS | Kuiper binary initialization floors separation cubed and reverses primary/companion mass weighting; preserve each subclaim and gate physical relative-orbit invariants plus serialization. |
-| SCN-055 | P2 | OPEN | — | OBS | Tudat energy subtracts Sun-in-SSB and planet-in-heliocentric coordinates, so translation changes energy. Reconstruct one declared origin/frame and rerun with real Tudat. |
+| SCN-054 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` repairs separation scaling and companion mass weighting, validates inputs and preserves tight-binary serialized separation/velocity. Vis-viva, angular momentum and barycenter tests pass; massless Kuiper particles still do not model a sustained mutual binary. |
+| SCN-055 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` reconstructs a common SSB origin; `6f7ec2a` supplies actual TudatPy 1.0 translation/energy evidence. The quantity remains a point-mass diagnostic excluding harmonic potential, not exact extended-force energy. [Native report](REMEDIATION_NATIVE_TUDAT_2026-10-14.md). |
 | SCN-056 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | Reviewed commit `2605f25` enforces family registration through both public EPO runners; included in the remediation integration branch. Prior full 2165-test backend gate passed. Not yet on origin/main; smoke truth remains `079`. |
-| SCN-057 | P2 | OPEN | — | OBS | Dormant force callbacks access a REBOUND simulation pointer as a direct object and raise. Use the supported callback API and gate actual acceleration before activation. |
-| SCN-058 | P1 | OPEN | — | OBS | Earth/Mars LOD merge destroys children but leaves a detached parent mesh pointer, producing zero far meshes. Repeated near/far cycles must preserve coverage and bounded ownership. |
-| SCN-059 | P1 | OPEN | — | OBS | Physical-scale toggling does not update Earth/Mars quadtrees. Gate effective radii, displacement, LOD thresholds, and camera framing in both scale modes. |
-| SCN-060 | P2 | OPEN | — | OBS | Nonrecursive raycasting and missing child identity prevent Earth/Mars double-click selection. Use deliberate pick proxies or ancestor identity across LOD/scale states. |
-| SCN-061 | P1 | OPEN | — | MIXED | Planet shader projects the face-local plane before applying face translations, placing vertices hundreds of radii away. Apply face coordinates before spherical projection and gate seams/centres/corners. |
+| SCN-057 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` fixes REBOUND pointer dereference and caller-owned beta assignment. Actual REBOUND SRP/tide/combined callback acceleration gates pass; dormant callbacks are not silently activated. |
+| SCN-058 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `9221a61` restores parent ownership during Earth/Mars LOD merges and gates repeated bounded near/far coverage. Software and actual RTX 5090 rendered checks pass. |
+| SCN-059 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `9221a61` propagates scale changes through Earth/Mars radius, displacement, LOD and camera framing. Actual software/hardware geometry gates cover both scale modes. |
+| SCN-060 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `9221a61` adds deliberate mean-sphere picking proxies and body identity across LOD/scale states. Selection regressions pass without depending on detached patch hierarchy. |
+| SCN-061 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `9221a61` applies face placement before spherical projection and adds pole-safe normals/skirts. CPU, production shader and actual hardware screen gates cover centers/corners/seams and relief/flat modes. |
 | SCN-062 | P2 | RESOLVED_SCOPED | — | MIXED | `b5387c2` gives default-scale flare/CME events a positive lifetime with tests. Other stochastic and coordinate behavior is `065/042`. |
-| SCN-063 | P2 | DECISION_REQUIRED | — | OBS | A stalled Horizons read retains the sole remote permit, bounding abandoned work but temporarily removing capacity. Explicitly accept that tradeoff or provide terminable transport ownership; never release permits while work survives unbounded. |
+| SCN-063 | P2 | DECISION_REQUIRED | PARTIAL | MIXED | No owner acceptance of permanent permit loss was obtained. The earlier mission report's acceptance wording is not authoritative; a dedicated agent is implementing kill/reap-owned Horizons transport while preserving redirect and budget rules. |
 | SCN-064 | P1 | RESOLVED_SCOPED | — | MIXED | PR #11 (`3927ab7`, merge `f45c1f9`) stabilizes near-collinear angle/state recovery. Independent endpoint regressions and full 2177-test backend gate passed; broader solver coverage remains `045`. |
-| SCN-065 | P2 | OPEN | — | CODE | Continuous stochastic AGN flaring advances only while a foreground event is active. Advance background state independently and deterministically test bursts with no active event. |
-| SCN-066 | P2 | OPEN | — | CODE | AGN preset/observer controls do not select the behavior their labels promise: H29 changes energy without selecting H29, while observer projection calls a no-op. Align copy, dispatch, and status or remove the controls. |
-| SCN-067 | P2 | OPEN | — | MIXED | Disabled AGN grids remain visible/submitted with `frustumCulled=false`, and the warp grid lacks a reset path. Start hidden, enable only per event, reset both, and gate lifecycle/submission. Wrong-plane semantics remain `042`. |
-| SCN-068 | P2 | OPEN | — | CODE | Latent `metricFrameDragPeak` default references unimported `SGR_A`, producing TS2304 and a potential no-third-argument runtime error. Import it or remove the default and add a direct test. |
-| SCN-069 | P2 | OPEN | — | MIXED | SMBH scene directions differ 33–92° from source coordinates and M87's declared intrinsic beta cannot produce its declared apparent speed. Use a cited frame and mutually consistent or explicitly hypothetical data. |
-| SCN-070 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | Commit `a33ad93` returns command_failed without permanently latching runtime_error, preserves fatal engine failure, and rejects misleading resume. Live-runner recovery regressions pass; not merged. |
-| SCN-071 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | Commit `a33ad93` bounds ASGI send/accept/close and output-idle lifetime, guards runner start/initial delivery, and awaits socket/runner cleanup before releasing admission. Stalled handshake/send and slot-reuse gates pass; 59 focused runtime tests; not merged. |
-| SCN-072 | P2 | OPEN | — | MIXED | Trajectory/mission routes accept unsupported finite epochs and can leak low-level failures as plain HTTP 500. Enforce one interval and stable structured 4xx errors across all planning routes. |
-| SCN-073 | P2 | OPEN | — | CODE | Horizons transport follows default cross-host or HTTPS-downgrade redirects. Disable automatic redirects and validate every hop against an HTTPS host/port allow-list. |
-| SCN-074 | P2 | OPEN | — | MIXED | Thirteen REBOUND fallback bodies are initialized by long invalid back-propagation from their element epochs, previously measuring median 11.9 million km error. Initialize at declared epochs and gate per-body accuracy/fidelity. |
-| SCN-075 | P1 | OPEN | — | MIXED | Synthetic PFSS maps redraw time-bucketed random bipoles unrelated to persistent active regions, causing discontinuity and inconsistent physics layers. Share seeds/rotation/lifetime/Hale polarity and gate continuity/spatial agreement. |
-| SCN-076 | P2 | OPEN | — | CODE | Dormant Poynting–Robertson drag omits the inward radial term and cancels for radial motion. Correct and reference-test circular/radial/eccentric cases before wiring, or remove the advertised capability. |
-| SCN-077 | P2 | OPEN | — | CODE | Optional Tudat execution reseeds every chunk from SPICE, nullifying accumulated J2/J4 effects, and omits `jd_time_scale`. Preserve continuous state, emit TDB metadata, and test across chunks in a Tudat environment. |
-| SCN-078 | P1 | OPEN | — | MIXED | Mission logistics treats planet-relative heliocentric v-infinity sums as spacecraft propulsive burns. Derive declared parking/capture burns or prohibit the field's use in rocket-equation closure and gate independent patched-conic cases. |
-| SCN-079 | P2 | OPEN | — | MIXED | EPO smoke verification reads the wrong result nesting, uses an unsupported objective, and exits zero with 0/30 passes. Fix all three and require known pass/fail episodes with nonzero failure exit. |
-| SCN-080 | P2 | OPEN | — | MIXED | Backend `kepler/auto` ephemeris advances fixed J2000 elements without secular rates and publishes no error interval. Share a gated model or ephemeris and add independent multi-epoch accuracy bounds. |
-| SCN-081 | P2 | OPEN | — | MIXED | Generic moon-node precession assigns the same negative sign to 286 of 287 current retrograde moons, although nodal direction reverses with inclination convention. Carry signed source rates or derive direction and gate representative prograde/retrograde cases. |
-| SCN-082 | P2 | OPEN | — | MIXED | The “verified” Phase-1 asteroid catalog uses synthetic taxonomy/albedo and coarse periods; its hash proves integrity, not scientific fidelity. Preserve unknowns, use precise periods, and label/gate provenance separately. |
-| SCN-083 | P2 | OPEN | — | MIXED | Planet pole construction and signed spin periods double-encode retrograde behavior for Venus/Uranus/Pluto and misorient axes. Store cited IAU poles, encode direction once, and gate signed angular-velocity vectors. |
+| SCN-065 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` advances background AGN stochastic state independently of foreground events. Deterministic no-active-event burst regressions pass. |
+| SCN-066 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` aligns preset/source/model resolution and removes the no-op observer control. `cae3c0f` preserves one authoritative experiment controller; dispatch, restored H29 and selection-reset tests pass. |
+| SCN-067 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` starts both AGN grids hidden, enables them only during events and resets visibility/state. Lifecycle/submission tests pass; frame-plane correctness remains separately `042`. |
+| SCN-068 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` repairs the default SMBH reference and adds a direct no-third-argument regression. Strict TypeScript now passes as well. |
+| SCN-069 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` uses cited source coordinates and an explicit ECLIPJ2000 transform. M87 apparent/intrinsic jet parameters are consistent or clearly illustrative. Source/frame tests pass; rendered projection follows under `042`. |
+| SCN-070 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `a33ad93` separates recoverable typed command errors from fatal engine state and proves resumed stepping. Independent runtime review and deeper soak follow-up are active. |
+| SCN-071 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `a33ad93` bounds accept/send/close/idle waits and owns cleanup across startup/send failures. Focused and integrated backend gates pass; independent runtime lifecycle review is active. |
+| SCN-072 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` applies the inclusive 1990-2050 TDB planning interval to direct, grid-derived and mission-dwell epochs, returning structured 422 errors. `3ef4310` updates an obsolete overflow fixture to the earlier epoch rejection without weakening production validation. |
+| SCN-073 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` disables automatic redirects and validates every explicitly charged hop against HTTPS, exact host and port rules. Actual urllib rejection/relative redirect/loop/budget gates pass; owned transport follow-up preserves these checks. |
+| SCN-074 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` initializes all 13 identified fallback bodies at their declared epochs before integrating to the requested epoch. Four independent Horizons epochs gate each body; sampled bounds and approximate fidelity survive serialization. |
+| SCN-075 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `870de80` shares immutable active-region seeds, rotation, smooth lifetimes and birth-cycle Hale polarity across synthetic PFSS and coronal layers. Continuity and spatial agreement pass; these are not measured observed regions. |
+| SCN-076 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` restores inward radial PR drag and independently gates circular, inward/outward radial and eccentric component/power cases. This does not activate the dormant callback. |
+| SCN-077 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `6f7ec2a` executes the repaired adapter on real TudatPy 1.0: continuous forward/backward chunks, one initial SPICE seed, TDB metadata and an observable 422 m ten-day harmonic effect. Native compatibility, Saturn gravity and honest Pluto-system metadata are covered. |
+| SCN-078 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56ac52a` replaces v-infinity sums in mass closure with four declared circular parking/capture burns and chronological cargo loading. Independent patched-conic energy gates pass; finite thrust, plane changes and surface operations are explicitly out of scope. |
+| SCN-079 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` fixes verifier nesting, supported objective and nonzero failure exits. Known-pass/known-fail real episodes pass their contract. The default demo remains 0/30 feasible and correctly exits 1; it is not falsely reported as a successful mission campaign. |
+| SCN-080 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` shares secular coefficients and complete state derivatives across backend/frontend. Nine targets at five independent Horizons epochs pass declared sampled caps; supported interval, target identity and approximate fidelity are explicit, not continuous precision guarantees. |
+| SCN-081 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2005a1f` derives generic nodal direction from the native inclination convention, preserving measured overrides. All generic signs and independent Carme/Himalia representative rate captures pass; full moon accuracy remains `043`. |
+| SCN-082 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `71ba472` preserves unknown taxonomy/albedo, source precision and real diameters, fixes the radius/diameter coefficient, and labels integrity separately from fidelity. Full-artifact source comparison passes. |
+| SCN-083 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `9221a61` uses cited IAU J2000 poles and encodes spin direction once. Signed angular-velocity regressions cover Venus/Uranus/Pluto; this is not a true-of-date PCK orientation model. |
 
 ## 5. Candidate-fix reconciliation (2026-10-14)
 
@@ -386,9 +388,10 @@ or they are acceptance/debt questions rather than one atomic product defect.
 
 ## 9. Root-cause boundaries that must survive future merges
 
-- `SCN-004` concerns acquisition deadline ownership; `SCN-063` is a
-  deliberate single-permit availability tradeoff. Neither is the old
-  API-wide trajectory-starvation report.
+- `SCN-004` concerns solar acquisition deadline ownership; `SCN-063` is
+  Horizons transport ownership and permit recovery. Permanent capacity loss
+  has not been approved as an owner policy. Neither is the old API-wide
+  trajectory-starvation report.
 - `SCN-008` is `/solar/physics` admission; `SCN-053` is playback stepping;
   `SCN-072` is planning-route epoch/error handling.
 - `SCN-012` measures benchmark truth. `SCN-045` defines solver capability,
@@ -451,11 +454,15 @@ or they are acceptance/debt questions rather than one atomic product defect.
   of 209,061,472 km. Other current dispositions use the structured `68c3f85`
   evidence, exact fixing commits, and/or unchanged-source checks; they are not
   blanket subsystem certifications.
-- `SCN-051` is a synthetic offline parser-to-solver contract; `055` used
-  injected states without executing Tudat; `057` is dormant; and `063` is a
-  controlled local availability experiment. Those scopes must remain visible.
-- No live provider, production deployment, hardware GPU, complete screen-reader
-  matrix, all-424-moon oracle, or real Tudat run was added by this merge.
+- Original `SCN-051` evidence was a synthetic parser-to-solver contract;
+  `055/077` initially used injected states but now also have real native Tudat
+  evidence in the linked report. `057` remains dormant in production. `063`
+  requires resource-ownership evidence, not an assumed acceptance of lost capacity.
+- The original October 11 reconciliation added no live-provider, hardware or
+  native-runtime evidence. The current effort adds timestamped real-provider
+  captures, actual RTX 5090 gates, a local multi-worker proxy gate and native
+  Tudat execution. Actual remote deployment, a complete manual screen-reader
+  matrix and a passing all-424-moon accuracy oracle are still not claimed.
 - Remote network freshness was not reasserted. This report is pinned to the
   local `origin/main` ref named at the top, not an inaccessible newer server
   state.
