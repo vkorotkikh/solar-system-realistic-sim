@@ -247,7 +247,11 @@ def test_validated_provider_snapshot_crosses_pfss_boundary_without_reorientation
         snapshot.provenance.native_header_sha256
     )
     assert set(result["magnetogram_provenance"]) == {
+        # The immutable original FITS is internal admission evidence. Its hash
+        # remains public; emitting all pixels would duplicate the artifact in
+        # every cached solution response.
         field.name for field in fields(gong.GongProvenance)
+        if field.name != "native_fits_bytes"
     }
     assert set(result["magnetogram_provenance"]["wcs"]) == {
         field.name for field in fields(gong.GongWcsMetadata)

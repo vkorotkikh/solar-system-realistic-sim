@@ -82,13 +82,15 @@ def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
     assert sum(v >= 1.0 - 1e-12 for v in values) <= 1
 
 
-def test_hale_leading_polarity_flips_between_adjacent_cycles() -> None:
+def test_hale_leading_polarity_of_new_emergences_flips_between_adjacent_cycles() -> None:
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
     cycle_days = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
     north_region = next(region for region in model.active_regions if region.hemisphere_sign > 0)
 
-    _, _, _, _, lead_cycle_25 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + 12.0)
-    _, _, _, _, lead_cycle_26 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + cycle_days + 12.0)
+    # Sample well inside each cycle: a living old-cycle region retains its
+    # birth polarity across minimum rather than reversing instantaneously.
+    _, _, _, _, lead_cycle_25 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + 300.0)
+    _, _, _, _, lead_cycle_26 = model._region_polarity_dirs(north_region, CYCLE_25_START_JD + cycle_days + 300.0)
 
     assert lead_cycle_25 == -lead_cycle_26
 

@@ -108,14 +108,29 @@ function hathawayRaw(tMonths: number, b = HATHAWAY_B, c = HATHAWAY_C): number {
   return ratio3 / denom;
 }
 
-function hathawayNormalized(tMonths: number): number {
-  const tPeak = HATHAWAY_B * Math.sqrt(1.5);
-  const peak = hathawayRaw(tPeak);
-  if (peak <= 1e-12) return 0;
-  return Math.max(0, Math.min(1, hathawayRaw(tMonths) / peak));
+function hathawayPeakMonths(b: number, c: number): number {
+  // For s=(t/b)^2 the stationary point satisfies exp(s)*(3-2*s)=3*c.
+  // The textbook b*sqrt(1.5) is valid only for c=0, not our c=0.71.
+  let lo = 0.5;
+  let hi = 1.5;
+  for (let iteration = 0; iteration < 60; iteration += 1) {
+    const mid = (lo + hi) / 2;
+    if (Math.exp(mid) * (3 - 2 * mid) > 3 * c) lo = mid;
+    else hi = mid;
+  }
+  return b * Math.sqrt((lo + hi) / 2);
 }
 
-function fallbackSolarActivityFromJulianDate(julianDate: number): number {
+const HATHAWAY_PEAK_MONTHS = hathawayPeakMonths(HATHAWAY_B, HATHAWAY_C);
+
+export function hathawayNormalized(tMonths: number, b = HATHAWAY_B, c = HATHAWAY_C): number {
+  const tPeak = b === HATHAWAY_B && c === HATHAWAY_C ? HATHAWAY_PEAK_MONTHS : hathawayPeakMonths(b, c);
+  const peak = hathawayRaw(tPeak, b, c);
+  if (peak <= 1e-12) return 0;
+  return Math.max(0, Math.min(1, hathawayRaw(tMonths, b, c) / peak));
+}
+
+export function fallbackSolarActivityFromJulianDate(julianDate: number): number {
   const cycleDays = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS;
   const cycleOffsetDays = ((julianDate - CYCLE_25_START_JD) % cycleDays + cycleDays) % cycleDays;
   const tMonths = cycleOffsetDays / MEAN_MONTH_DAYS;

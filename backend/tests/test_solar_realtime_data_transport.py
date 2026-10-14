@@ -12,6 +12,14 @@ import sim.solar_realtime_data as solar_realtime_data
 from sim.solar_realtime_data import SolarRealtimeDataProvider, SolarRealtimeFetchError
 
 
+@pytest.fixture(autouse=True)
+def in_memory_transport(monkeypatch):
+    """These tests isolate parsing; real process/I/O gates live in test_solar_http_deadline."""
+    def open_response(_self, request, *, timeout_s):
+        return urllib.request.build_opener().open(request, timeout=timeout_s)
+    monkeypatch.setattr(SolarRealtimeDataProvider, "_open_response", open_response)
+
+
 class _Headers:
     """Small ordered header bag that preserves physical duplicate fields."""
 

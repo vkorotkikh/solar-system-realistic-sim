@@ -18,6 +18,7 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
 from .solar_time import jd_tdb_to_utc_datetime
+from .solar_http_transport import DeadlineHttpResponse, SolarHttpError
 
 
 _INVALID_SWPC_JSON_INTEGER = object()
@@ -222,6 +223,9 @@ class SolarRealtimeDataProvider:
         )
         self._silso_cache: _SilsoCacheEntry | None = None
         self._silso_failure: _FetchFailureDescriptor | None = None
+        self._swpc_last_good: OrderedDict[
+            tuple[str, str, float | None], tuple[float, dict[str, Any], dict[str, Any]]
+        ] = OrderedDict()
 
     @contextmanager
     def _acquisition_scope(self) -> Iterator[float]:
@@ -377,16 +381,24 @@ class SolarRealtimeDataProvider:
         *,
         now_utc: datetime,
     ) -> float:
-        """Bound snapshot reuse by the remaining lifetime of accepted SWPC data."""
+        """Retry degraded snapshots promptly, without extending source freshness."""
 
         source_status = snapshot.get("source_status")
+        statuses = source_status.values() if isinstance(source_status, Mapping) else ()
+        degraded = any(
+            isinstance(status, Mapping)
+            and status.get("runtime_eligible") is not False
+            and (status.get("ok") is not True or status.get("refresh_ok") is False)
+            for status in statuses
+        )
+        lifetime = min(self.cache_ttl_s, self.singleflight_error_backoff_s) if degraded else self.cache_ttl_s
         swpc_status = (
             source_status.get("swpc")
             if isinstance(source_status, Mapping)
             else None
         )
         if not isinstance(swpc_status, Mapping) or swpc_status.get("ok") is not True:
-            return self.cache_ttl_s
+            return lifetime
         times = self._snapshot_swpc_times(snapshot)
         if times is None:
             # An allegedly usable SWPC snapshot without parseable component
@@ -404,7 +416,44 @@ class SolarRealtimeDataProvider:
         if minimum_age_s < -self.SWPC_MAX_FUTURE_OFFSET_S:
             return 0.0
         remaining_s = self.SWPC_MAX_SAMPLE_AGE_S - maximum_age_s
-        return max(0.0, min(self.cache_ttl_s, remaining_s))
+        return max(0.0, min(lifetime, remaining_s))
+
+    def _retain_or_restore_swpc(self, key: Any, snapshot: dict[str, Any], now: float, now_utc: datetime) -> None:
+        """Retain only a fresh SWPC component, bounded by epoch, count and age.
+
+        Caller owns _lock. Failed attempts never reset the retained lifetime.
+        SILSO already owns its separate LKG policy; AIA identities are not mixed.
+        """
+        for expired in [k for k, entry in self._swpc_last_good.items() if entry[0] <= now]:
+            self._swpc_last_good.pop(expired, None)
+        statuses = snapshot.get("source_status", {})
+        status = statuses.get("swpc", {})
+        swpc = snapshot.get("swpc")
+        times = self._snapshot_swpc_times(snapshot)
+        if status.get("ok") is True and isinstance(swpc, dict) and times is not None:
+            ages = [(now_utc - stamp).total_seconds() for stamp in times]
+            remaining = self.SWPC_MAX_SAMPLE_AGE_S - max(ages)
+            if remaining > 0 and min(ages) >= -self.SWPC_MAX_FUTURE_OFFSET_S:
+                self._swpc_last_good[key] = (
+                    now + min(remaining, self.SWPC_MAX_SAMPLE_AGE_S),
+                    copy.deepcopy(swpc), copy.deepcopy(status),
+                )
+                self._swpc_last_good.move_to_end(key)
+                while len(self._swpc_last_good) > self.snapshot_cache_max_entries:
+                    self._swpc_last_good.popitem(last=False)
+        elif status.get("ok") is False and key in self._swpc_last_good:
+            _, swpc, previous_status = self._swpc_last_good[key]
+            snapshot["swpc"] = copy.deepcopy(swpc)
+            statuses["swpc"] = {
+                **copy.deepcopy(previous_status),
+                "acquisition": "last_known_good",
+                "refresh_ok": False,
+                "refresh_error": status.get("error", "SWPC refresh unavailable"),
+            }
+            snapshot["combined_activity_proxy"] = swpc.get("activity_proxy")
+        eligible = [s for s in statuses.values() if isinstance(s, Mapping) and s.get("runtime_eligible") is not False]
+        good = sum(s.get("ok") is True and s.get("refresh_ok") is not False for s in eligible)
+        snapshot["cache_state"] = "complete" if good == len(eligible) else "partial" if good else "failed"
 
     def _snapshot_for_delivery(
         self,
@@ -629,14 +678,13 @@ class SolarRealtimeDataProvider:
 
         def fetch_and_cache_snapshot() -> dict[str, Any]:
             snapshot = self._fetch_snapshot(requested_jd_tdb)
-            self._remaining_provider_budget()
+            # Source operations own cancellation. Preserve their bounded partial
+            # result even if the last source exhausted the acquisition deadline.
             completed_monotonic = time.monotonic()
             completed_utc = self._utc_now().astimezone(timezone.utc)
-            cache_lifetime_s = self._snapshot_cache_lifetime_s(
-                snapshot,
-                now_utc=completed_utc,
-            )
             with self._lock:
+                self._retain_or_restore_swpc(key, snapshot, completed_monotonic, completed_utc)
+                cache_lifetime_s = self._snapshot_cache_lifetime_s(snapshot, now_utc=completed_utc)
                 # Publish before the single-flight leader releases its entry so a
                 # request arriving at completion cannot start a duplicate refresh.
                 self._snapshot_cache[key] = (
@@ -1030,13 +1078,10 @@ class SolarRealtimeDataProvider:
         *,
         timeout_s: float,
     ) -> Any:
-        opener = urllib.request.build_opener(_NoRedirectHandler())
         try:
-            return opener.open(request, timeout=max(timeout_s, 1e-6))
-        except urllib.error.HTTPError as exc:
-            # HTTPError is also a readable response. Redirects and non-2xx
-            # statuses are handled uniformly below, without automatic hops.
-            return exc
+            return DeadlineHttpResponse(request, timeout_s)
+        except SolarHttpError as exc:
+            raise SolarRealtimeFetchError(exc.code, exc.detail) from None
 
     @staticmethod
     def _remaining_acquisition_time(deadline_monotonic: float) -> float:
@@ -1330,7 +1375,10 @@ class SolarRealtimeDataProvider:
                     read_once = getattr(response, "read1", None)
                     if not callable(read_once):
                         read_once = response.read
-                    chunk = read_once(read_size)
+                    try:
+                        chunk = read_once(read_size)
+                    except SolarHttpError as exc:
+                        raise SolarRealtimeFetchError(exc.code, exc.detail) from None
                     self._remaining_acquisition_time(deadline_monotonic)
                     if not isinstance(chunk, bytes):
                         raise SolarRealtimeFetchError(
