@@ -47,7 +47,6 @@ import {
   createSolarSystemCatalog,
   type MoonEphemerisMap
 } from './sim/catalog';
-import { parseMoonEphemerisArtifact } from './sim/moonEphemeris';
 import { propagateKeplerOrbit } from './sim/orbitMath';
 import { SolarSystemModel } from './sim/solarSystemModel';
 import { applyMetricDisplayOffsets } from './frontend/features/superluminal-modeling/metricDisplay';
@@ -179,11 +178,9 @@ async function startSimulation() {
 // catalog records available for provenance/search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
-const moonEphemerides: MoonEphemerisMap | undefined = showMoons
-  ? parseMoonEphemerisArtifact(
-      (await import('./data/moonEphemerisChebyshev.json')).default
-    ).bodies
-  : undefined;
+  const moonEphemerides: MoonEphemerisMap | undefined = showMoons
+    ? await (await import('./sim/loadMoonEphemerides')).loadMoonEphemerides()
+    : undefined;
 const catalog = createSolarSystemCatalog({ moonEphemerides });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
