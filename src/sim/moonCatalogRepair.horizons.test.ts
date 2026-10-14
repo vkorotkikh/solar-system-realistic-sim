@@ -5,6 +5,8 @@ import rawMoons from '../data/moons.json';
 import generated from '../data/moonEphemerisChebyshev.json';
 import repairs from '../data/moonEphemerisRepairs.json';
 import native from '../data/moonEphemerisSpkRepairs.json';
+import daphnis from '../data/moonEphemerisDaphnis.json';
+import s2023s38 from '../data/moonEphemerisS2023S38.json';
 import oracle from '../../backend/tests/fixtures/all_moons_horizons_oracle.json';
 import spk75052 from '../../backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from '../../backend/tests/fixtures/daphnis_legacy_spk_capture.json';
@@ -15,7 +17,8 @@ import { candidateBodies } from './moonRepairTestInputs.mjs';
 
 // Optional local candidate gate does not rewrite or promote the shipped artifact.
 const parsed = parseMoonEphemerisArtifact({ ...repairs,
-  bodies: candidateBodies({ ...generated.bodies, ...repairs.bodies, ...native.bodies }, rawMoons) });
+  bodies: candidateBodies({ ...generated.bodies, ...repairs.bodies, ...native.bodies,
+    ...daphnis.bodies, ...s2023s38.bodies }, rawMoons) });
 const catalog = createSolarSystemCatalog({ moonEphemerides: parsed.bodies });
 const references = { ...oracle.bodies } as Record<string, {
   status: string; states?: { jd_tdb: number; position_au: number[]; velocity_au_per_day: number[] }[];
@@ -46,7 +49,7 @@ describe('SCN-043 independent catalog repair gates', () => {
     const state = !available ? 'provider unavailable' : !fit ? 'repair pending, oracle available' : 'independent accuracy';
     it.skipIf(!fit || !available)(`${moon.planet}/${moon.name}: ${state}`, () => {
       const body = catalog.bodies.find(b => b.type === 'moon' && b.name === moon.name && b.parentId === moon.planet.toLowerCase())!;
-      const newlyRepaired = ['scripts/repair_catalog_moon_ephemeris.py', 'scripts/repair_spk_moon_ephemeris.py'].includes(fit.provenance.generator);
+      const newlyRepaired = !(moon.name.toLowerCase() in generated.bodies);
       const positionLimit = newlyRepaired ? Math.min(500, .001 * moon.aKm) : fit.validation.accuracyLimits.positionKm;
       const velocityLimit = newlyRepaired ? 10 : fit.validation.accuracyLimits.velocityMPerS;
       if (newlyRepaired) {

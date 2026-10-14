@@ -112,12 +112,22 @@ def fit_model(target, rows, end, segment_days):
             'sourceStepDays': target.source_step_days, 'segments': segments}
 
 
-def fit_cartesian_model(target, rows, end, segment_days):
+def fit_cartesian_model(target, rows, end, segment_days, breakpoints=()):
     source = features(rows, target.nominal_period_days)
     position, velocity = state_from_features(source[:, 1:])
     rate, base = np.polyfit(source[:, 0]-START, source[:, 8], 1)
+    return fit_cartesian_states(target, source[:, 0], position, velocity, end,
+                                segment_days, rate, base, breakpoints)
+
+
+def fit_cartesian_states(target, times, position, velocity, end, segment_days,
+                         rate=0., base=0., breakpoints=(), segment_edges=None):
+    """Fit geometric states without assuming an elliptic osculating conic.
+
+    Native source handoffs delimit independent arcs. No fit or continuity blend
+    may mix samples from opposite sides of a declared provider discontinuity.
+    """
     harmonics = 3 if target.nominal_period_days < 100 else 0
-    times = source[:, 0]
     phase = np.deg2rad(base+rate*(times-START))
     omega = np.deg2rad(rate)
     carriers = [np.ones(len(times))]
@@ -127,13 +137,36 @@ def fit_cartesian_model(target, rows, end, segment_days):
         carrier_rates.extend([-k*omega*np.sin(k*phase), k*omega*np.cos(k*phase)])
     degree = target.degree
     derivative_coeff = chebder(np.eye(degree+1),axis=0)
-    edges = np.linspace(START,end,math.ceil((end-START)/segment_days)+1)
+    arcs = [START, *breakpoints, end]
+    if any(b <= a for a,b in zip(arcs[:-1],arcs[1:])):
+        raise ValueError('Source discontinuities must be ordered inside coverage')
+    edges = np.concatenate([np.linspace(a,b,math.ceil((b-a)/segment_days)+1)[:-1]
+                            for a,b in zip(arcs[:-1],arcs[1:])] + [np.array([end])])
+    if segment_edges is not None:
+        edges = np.asarray(segment_edges,dtype=float)
+        if (edges[0]!=START or edges[-1]!=end or not np.isfinite(edges).all() or
+                np.any(np.diff(edges)<=0) or not set(breakpoints).issubset(edges)):
+            raise ValueError('Invalid explicit Cartesian segment boundaries')
     segments = []
     for a,b in zip(edges[:-1],edges[1:]):
         mask = (times >= a-target.source_step_days) & (times <= b+target.source_step_days)
+        if breakpoints:
+            arc = np.searchsorted(arcs, a, side='right')-1
+            if arc > 0: mask &= times >= arcs[arc]
+            if arc < len(arcs)-2: mask &= times < arcs[arc+1]
+        if segment_edges is not None:
+            # Nonuniform sources still bracket every fitted arc. In a sparse
+            # interval two geometric states constrain a cubic Hermite curve;
+            # subdividing must not turn that into an unsupported linear fit.
+            lo=max(0,int(np.searchsorted(times,a,side='right'))-1)
+            hi=min(len(times)-1,int(np.searchsorted(times,b,side='left')))
+            mask[lo:hi+1]=True
+        local_degree = min(degree,2*int(np.count_nonzero(mask))-1) if segment_edges is not None else degree
+        if local_degree < 1: raise RuntimeError('Insufficient independent Cartesian source samples')
+        local_derivative = derivative_coeff if local_degree==degree else chebder(np.eye(local_degree+1),axis=0)
         x = 2*(times[mask]-a)/(b-a)-1
-        basis = chebvander(x,degree)
-        derivative = chebvander(x,degree-1) @ derivative_coeff * (2/(b-a))
+        basis = chebvander(x,local_degree)
+        derivative = chebvander(x,local_degree-1) @ local_derivative * (2/(b-a))
         aa = np.concatenate([basis*c[mask,None] for c in carriers],axis=1)
         dd = np.concatenate([derivative*c[mask,None]+basis*d[mask,None] for c,d in zip(carriers,carrier_rates)],axis=1)
         weight = target.source_step_days
@@ -146,11 +179,13 @@ def fit_cartesian_model(target, rows, end, segment_days):
         # cancellation-prone coefficients; independent state gates still decide
         # whether the resulting trajectory is acceptable.
         coefficients,_,rank,_ = np.linalg.lstsq(matrix,rhs,rcond=1e-10)
-        coefficients = coefficients.reshape(1+2*harmonics,degree+1,3).transpose(0,2,1).reshape(-1,degree+1)
+        coefficients = coefficients.reshape(1+2*harmonics,local_degree+1,3).transpose(0,2,1).reshape(-1,local_degree+1)
         segments.append({'startJd':float(a),'endJd':float(b),'coefficients':coefficients.tolist()})
-    return {'kind':'horizons-chebyshev-cartesian-v1','carrierHarmonics':harmonics,
+    body = {'kind':'horizons-chebyshev-cartesian-v1','carrierHarmonics':harmonics,
             'coverageStartJd':START,'coverageEndJd':end,'meanLongitudeBaseDeg':float(base),
             'meanLongitudeRateDegPerDay':float(rate),'sourceStepDays':target.source_step_days,'segments':segments}
+    if breakpoints: body['sourceDiscontinuities'] = list(breakpoints)
+    return body
 
 
 def cartesian_prediction(body,times):
@@ -179,6 +214,7 @@ def cartesian_prediction(body,times):
     half=body['sourceStepDays']/2
     for index in range(1,len(segments)):
         boundary=starts[index]
+        if boundary in body.get('sourceDiscontinuities',[]): continue
         mask=np.abs(times-boundary)<half
         if not np.any(mask): continue
         u=(times[mask]-boundary+half)/(2*half)
