@@ -32,11 +32,14 @@ def test_mission_planner_agent_emits_recommendation_and_logs() -> None:
             "storage_loss_rate_per_day": 0.0,
             "handling_loss_fraction": 0.0,
             "risk_failure_probability_threshold": 1.0,
+            # Keep this orchestration fixture feasible with a stable 6% reserve;
+            # reserve-boundary behavior is covered by dedicated vehicle tests.
+            "reserve_fraction": 0.06,
             "vehicle": {
                 "name": "validation_vehicle",
                 "stages": [
-                    {"name": "stage_1", "dry_mass_kg": 100.0, "propellant_mass_kg": 1_000_000.0, "isp_s": 1_000.0},
-                    {"name": "stage_2", "dry_mass_kg": 100.0, "propellant_mass_kg": 1_000_000.0, "isp_s": 1_000.0},
+                    {"name": "stage_1", "dry_mass_kg": 100.0, "propellant_mass_kg": 1_000_000.0, "isp_s": 1_100.0},
+                    {"name": "stage_2", "dry_mass_kg": 100.0, "propellant_mass_kg": 1_000_000.0, "isp_s": 1_100.0},
                 ],
             },
         }

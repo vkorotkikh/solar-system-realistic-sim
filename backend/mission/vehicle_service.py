@@ -83,7 +83,8 @@ class VehicleService:
                 burn_stage_names.append(stage["name"])
 
                 stage_prop_remaining = stage["propellant_mass_kg"] - stage["propellant_used_kg"]
-                stage_prop_usable = stage_prop_remaining * (1.0 - reserve_fraction)
+                stage_reserve_mass = stage["propellant_mass_kg"] * reserve_fraction
+                stage_prop_usable = max(0.0, stage_prop_remaining - stage_reserve_mass)
                 if stage_prop_usable <= 1e-9:
                     mass_kg -= stage["dry_mass_kg"] + max(0.0, stage_prop_remaining)
                     stage["jettisoned"] = True
