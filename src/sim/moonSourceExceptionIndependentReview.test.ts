@@ -1,4 +1,4 @@
-/** Independent runtime/source review. Expected rejection failures are not skips. */
+/** Reads a tracked SPK-derived fixture without Python-first artifacts. Rejection failures are not skips. */
 import { createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,8 @@ import { Vector3 } from 'three';
 import { parseMoonEphemerisArtifact, propagateMoonEphemeris } from './moonEphemeris';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const EVIDENCE = resolve(ROOT, 'artifacts/moon-source-independent-review');
+const EVIDENCE = resolve(ROOT, process.env.SOLAR_MOON_REVIEW_EVIDENCE_DIR ?? 'artifacts/moon-source-independent-review');
+const NATIVE_ORACLE = 'backend/tests/fixtures/daphnis_independent_spk_review_oracle.json';
 const AU_KM = 149597870.7;
 const DAY = 86400;
 const readJson = (path: string) => JSON.parse(readFileSync(resolve(ROOT, path), 'utf8'));
@@ -55,7 +56,7 @@ function measure(key: BodyKey, rows: NativeRow[], artifact = artifacts[key]) {
 
 describe('independent original-source runtime acceptance', () => {
   it('Daphnis: direct original-SPK states, fresh dates, both handoff sides, and exact right-hand epochs', () => {
-    const oracle = readJson('artifacts/moon-source-independent-review/native-oracle.json');
+    const oracle = readJson(NATIVE_ORACLE);
     const capture = readJson('backend/tests/fixtures/daphnis_legacy_spk_capture.json');
     expect(oracle.kernelSha256).toBe(capture.sha256);
     expect(oracle.freshRandomEpochs).toBe(192);
@@ -121,7 +122,7 @@ describe('source-exception parser rejection regressions', () => {
     const artifact = structuredClone(artifacts.daphnis);
     delete artifact.bodies.daphnis.sourceDiscontinuities;
     artifact.bodies.daphnis.validation.boundaryContinuity.runtimeStateContinuous = true;
-    const oracle = readJson('artifacts/moon-source-independent-review/native-oracle.json');
+    const oracle = readJson(NATIVE_ORACLE);
     const rows = oracle.rows.filter((row: NativeRow) => row.jdTdb === 2455197.5);
     expect(rows).toHaveLength(1);
     let accepted = false;
