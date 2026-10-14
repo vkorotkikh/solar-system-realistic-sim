@@ -505,9 +505,11 @@ def _transfer_angle(r1: Sequence[float], r2: Sequence[float], *, prograde: bool)
         return 0.0
 
     cos_theta = max(-1.0, min(1.0, sum(r1[idx] * r2[idx] for idx in range(3)) / (r1_mag * r2_mag)))
-    theta = math.acos(cos_theta)
-
     cross = vector_cross(r1, r2)
+    sin_theta = min(1.0, vector_length(cross) / (r1_mag * r2_mag))
+    # Unlike acos(cos(theta)), atan2 retains the cross product's absolute angle precision near pi.
+    theta = math.atan2(sin_theta, cos_theta)
+
     z_cross = cross[2]
     if prograde:
         if z_cross < 0.0:
@@ -783,8 +785,19 @@ def solve_lambert_universal(
         return None
 
     theta = _transfer_angle(r1_values, r2_values, prograde=prograde)
-    denominator = max(1e-15, 1.0 - math.cos(theta))
-    A = math.sin(theta) * math.sqrt((r1_mag * r2_mag) / denominator)
+    cross_sine = vector_length(vector_cross(r1_values, r2_values)) / (r1_mag * r2_mag)
+    if cross_sine == 0.0:
+        return None
+    # sin(theta) / sqrt(1 - cos(theta)) = +/-sqrt(1 + cos(theta)).  Evaluate
+    # sqrt(1 + cos(theta)) as ||u1 + u2|| / sqrt(2): unlike either scalar subtraction, the
+    # vector sum stays accurate near pi, and unlike the quotient it has a finite limit near zero.
+    a_magnitude = math.sqrt(0.5 * r1_mag * r2_mag) * vector_length(
+        [
+            r1_values[idx] / r1_mag + r2_values[idx] / r2_mag
+            for idx in range(3)
+        ]
+    )
+    A = -a_magnitude if theta > math.pi else a_magnitude
     if abs(A) < 1e-12:
         return None
 
