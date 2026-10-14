@@ -156,3 +156,44 @@ not assert a fresh full-project suite pass. No focused final failures remain.
 Changed paths: `src/frontend/features/asteroids/beltRenderer.ts`, the new
 `beltRenderer.residuals.test.ts`, `scripts/asteroid-residual-oracle.mjs`,
 `scripts/verify-asteroid-residuals.mjs`, and this single evidence note.
+
+## Actual RTX 5090 follow-up (2026-10-14)
+
+Parent cleared the exclusive headful window after Volta stopped its browsers and
+servers. Both unchanged gates exited 0 on:
+
+`ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)`
+
+- Residual gate: 189 direct solver cases and 175 packed-phase cases passed, zero
+  failed cases. Maximum direct/packed root error: 2.8156413920223713 binary32
+  ULP (unchanged budget 8 ULP). Maximum relative equation residual:
+  4.0776410129261367e-7 (unchanged budget 8e-7).
+- Independent oracle: all six 80-digit anchors passed; maximum relative oracle
+  error 2.0725271387142226e-10. Vertex highp reported 23 fraction bits.
+- Inert compatibility planet setters passed, including unusable planet inputs;
+  their actual GPU positions were identical to the unperturbed position.
+- Unmodified legacy gate: all 125 cases passed; maximum position error
+  0.000020808723961399955 AU (unchanged budget 0.00005 AU), retained one-minute
+  motion 0.000010983439610493146 AU.
+- Two preliminary hardware-required launches selected llvmpipe and exited 1.
+  Their numerical passes were NOT counted as hardware passes. The established
+  WSL Mesa D3D12 environment below selected the actual RTX 5090.
+
+Commands, from this assigned asteroid worktree with its isolated Vite server on
+127.0.0.1:5197:
+
+```sh
+export PATH=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH
+export GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+export LD_LIBRARY_PATH=/usr/lib/wsl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export WEBGL_BROWSER=/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome
+export GPU_TEST_ORIGIN=http://127.0.0.1:5197
+node scripts/verify-asteroid-residuals.mjs --hardware
+PLAYWRIGHT_MODULE="$PWD/scripts/hardware-playwright.mjs" node scripts/verify-asteroid-gpu.mjs
+```
+
+Both browser processes closed via the gates; the owned Vite server was stopped
+before releasing the window. This closes the previously pending asteroid
+hardware numerical evidence for this adapter/driver, not a performance, N-body,
+full-scene, or cross-platform gate. No production code or budgets changed in
+this evidence-only follow-up.
