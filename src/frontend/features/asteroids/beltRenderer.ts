@@ -408,6 +408,7 @@ export function createAsteroidBeltRenderer(
 ): BeltRendererHandle {
   const rand = mulberry32(seed);
   const count = asteroids.length;
+  let disposed = false;
 
   const geometry = createIrregularGeometry(1, 0.20, rand);
   const { material, uniforms } = createOrbitMaterial();
@@ -538,6 +539,10 @@ export function createAsteroidBeltRenderer(
       mesh.visible = v;
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
+      // Instance buffers belong to InstancedMesh, not BufferGeometry.
+      mesh.dispose();
       geometry.dispose();
       material.dispose();
     }
@@ -550,6 +555,7 @@ export function createKuiperBeltRenderer(
 ): BeltRendererHandle {
   const rand = mulberry32(seed);
   const count = kbos.length;
+  let disposed = false;
 
   const geometry = createIrregularGeometry(0, 0.25, rand);
   const material = new MeshStandardMaterial({
@@ -748,9 +754,13 @@ export function createKuiperBeltRenderer(
       if (companionMesh) companionMesh.visible = v;
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
+      mesh.dispose();
       geometry.dispose();
       material.dispose();
       if (companionMesh) {
+        companionMesh.dispose();
         companionMesh.geometry.dispose();
         (companionMesh.material as MeshStandardMaterial).dispose();
       }

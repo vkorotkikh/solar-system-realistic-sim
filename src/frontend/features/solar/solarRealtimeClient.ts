@@ -721,6 +721,11 @@ export class SolarRealtimeClient {
     errorBackoffMs = SOLAR_REALTIME_ERROR_BACKOFF_MS,
     staleAfterMs
   }: SolarRealtimeClientOptions) {
+    for (const value of [pollIntervalMs, timeoutMs, errorBackoffMs, staleAfterMs]) {
+      if (value !== undefined && !Number.isFinite(value)) {
+        throw new RangeError('Solar realtime timing options must be finite');
+      }
+    }
     this.baseUrl = baseUrl;
     this.pollIntervalMs = clamp(Number(pollIntervalMs), 30_000, 600_000);
     this.timeoutMs = clamp(Number(timeoutMs), 500, 20_000);
@@ -843,28 +848,31 @@ export class SolarRealtimeClient {
       this.requestGeneration === generation &&
       this.abortController === controller;
 
-    const base = `${this.baseUrl() ?? ''}`.trim().replace(/\/+$/, '');
-    const url = `${base}/solar/realtime`;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let rejectOnAbort: (() => void) | null = null;
 
     try {
+      const cancelled = new Promise<never>((_resolve, reject) => {
+        rejectOnAbort = () => reject(new Error('Solar realtime request cancelled'));
+        controller.signal.addEventListener('abort', rejectOnAbort, { once: true });
+      });
       const timeout = new Promise<never>((_resolve, reject) => {
         timeoutHandle = setTimeout(() => {
-          controller.abort();
           reject(new Error(`Solar realtime request timed out after ${this.timeoutMs} ms`));
+          controller.abort();
         }, this.timeoutMs);
       });
-      const response = await Promise.race([
-        fetch(url, { cache: 'no-store', signal: controller.signal }),
-        timeout
-      ]);
+      // Bound the complete asynchronous delivery, including body decoding.
+      // Abort alone cannot settle a non-cooperating fetch/body implementation.
+      const delivery = (async () => {
+        const base = `${this.baseUrl() ?? ''}`.trim().replace(/\/+$/, '');
+        const response = await fetch(`${base}/solar/realtime`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error(`Solar realtime request failed (${response.status})`);
+        const rawPayload = await response.json();
+        return validateSolarRealtimePayload(rawPayload);
+      })();
+      const payload = await Promise.race([delivery, timeout, cancelled]);
       if (!ownsRequest()) return false;
-      if (!response.ok) {
-        throw new Error(`Solar realtime request failed (${response.status})`);
-      }
-      const rawPayload = await response.json();
-      if (!ownsRequest()) return false;
-      const payload = validateSolarRealtimePayload(rawPayload);
       const completedMs = Date.now();
       this.latest = payload;
       this.lastLatencyMs = Math.max(0, completedMs - attemptStartedMs);
@@ -885,6 +893,7 @@ export class SolarRealtimeClient {
       return false;
     } finally {
       if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+      if (rejectOnAbort !== null) controller.signal.removeEventListener('abort', rejectOnAbort);
       if (ownsRequest()) {
         this.abortController = null;
         this.inFlight = false;
