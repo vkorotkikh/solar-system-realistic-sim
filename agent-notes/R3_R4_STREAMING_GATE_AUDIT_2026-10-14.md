@@ -139,3 +139,104 @@ ffb80397b796e93dba2415eca65a3726a70da65367e7e3e36f475a18c0025b7b
 
 These hashes bind diagnostic output only. They are not scientific baseline
 input replacements, final release evidence, or a completed canonical closure.
+
+## Provisional review of Cicero's held repair
+
+Parent integration is reported at
+`e62516025ba750793271fec6f8b2d68d8b638fce`; the repaired source is not committed
+there. The registered solar worktree was inspected read-only at
+`/home/nomad/ai/projects/worktrees/solar-remediation-20261014-solar`, whose
+committed HEAD was `5247e4b99f4ebfe2a39e168043ec74a9a29b093d`. Its pending
+production changes were confined to `pfss_evaluation.py` and
+`pfss_magnetogram.py`. The repair note and generated measurements in that
+worktree were not modified or treated as independently reproduced evidence.
+
+No direct agent-messaging tool is exposed in this review session. This report
+is the local handoff for Cicero and the parent; direct message delivery is not
+claimed.
+
+The two pending source files were read into one in-memory snapshot and executed
+against the independent review environment. Bytecode and pytest cache writing
+were disabled; no source edits, commits, or test artifacts were written into
+Cicero's worktree. Observed snapshot hashes, **not final manifest bindings**:
+
+```text
+backend/sim/pfss_evaluation.py
+fc5260b5ce7f74a58a4a0bc87fa651e6973f2064638ff99b896c3d571bf86948
+
+backend/sim/pfss_magnetogram.py
+902dca1f33025596bf4b66ea725ece142fb914a2c9db021a1bacde3aa6f50628
+```
+
+The snapshot normalizes coordinate dtypes, rejects non-finite colatitude,
+retains resolved `sin(theta)`, uses exact angular endpoint limits, and uses
+`atan2(hypot(x,y),z)` for Cartesian colatitude. Scalar field evaluation is
+unified onto the streaming evaluator at every degree.
+
+Independent provisional run of the review, streaming, spectral, and harmonic
+files: **370 passed, zero skipped, in 3.88 seconds**. This is a result for the
+in-memory uncommitted snapshot, not acceptance of a final production commit.
+The parent-reported full-backend, three-epoch, and cold-response measurements
+were not rerun or promoted to independent evidence by this review.
+
+### Confirmed unresolved infinite-azimuth regression
+
+For scalar `PFSSField.evaluate(1.0, 0.7, phi)` and a unit axial dipole:
+
+| Degrees | Input phi | Integrated behavior | Held snapshot behavior |
+| --- | --- | --- | --- |
+| 1, 15, 64 | +infinity or -infinity | `ValueError` | Non-finite output |
+| 90 | +infinity or -infinity | Non-finite output | Non-finite output |
+
+Thus scalar unification extends the pre-existing streaming azimuth gap to
+previously rejecting low-degree scalar paths. The 370 passing tests do not
+cover this regression. Correction remains with Cicero, pending the explicit
+owner decision and then dedicated regression verification. No azimuth or time
+policy correction was implemented here, and no final acceptance is claimed.
+
+### Exact provisional rebinding plan
+
+The intended immutable-fixture extension was executed in memory, without
+changing the test file, oracle fixture, production source, or thresholds.
+For each of its 135 non-monopole modes, a unit-coefficient streaming field was
+evaluated at the photosphere and the fixture's colatitudes. Br was compared
+with the frozen Schmidt values; Btheta was divided by the independently known
+nonzero tangential radial factor before comparing theta derivatives. The
+existing inequalities were unchanged: `5e-13 * max(1, abs(reference))` for
+values and `1e-8` absolute for derivatives. The original legacy check must
+remain, including its monopole coverage; the PFSS monopole is explicitly
+excluded rather than silently interpreted as a field mode.
+
+All 135 streaming mode checks passed provisionally. Maximum observed errors
+were `1.2975731600306517e-15` for values and `1.837419105754634e-14` for theta
+derivatives. This demonstrates that the proposed reachability extension does
+not need a tolerance relaxation or a regenerated fixture.
+
+Final mutation targets after approval and source freeze:
+
+| Mutation | Production function / expression to bind |
+| --- | --- |
+| `old-legendre-recurrence` | `pfss_evaluation.py`, `StreamingPFSS.__init__`, historical erroneous a/b recurrence coefficients |
+| `uniform-theta-area-weights` | `magnetogram_grid.py`, `MagnetogramGrid.area_weights`, unchanged semantic mutation |
+| `extra-m-normalization` | `pfss_magnetogram.py`, `decompose_spherical_harmonics`, extra epsilon-m in Fourier amplitude extraction |
+| `corrupt-source-surface-factor` | `pfss_evaluation.py`, `StreamingPFSS._chunk`, `-(radial - reflected)` changed to `-(radial + reflected)` |
+| `omit-exact-boundary-crossing` | `pfss_tracing.py`, `_boundary_intersections`, unchanged semantic mutation |
+| `wsa-vector-magnitude-expansion` | `pfss_magnetogram.py`, `compute_wsa_velocity_map`, unchanged semantic mutation |
+
+The held patch removes the old scalar radial-factor loop entirely, so neither
+old source-surface hunk should be retained as a purported production target.
+The existing independent source-surface baseline already exercises the correct
+streaming batch path. Constructor execution alone still does not make the old
+immutable-harmonic baseline a streaming evaluation test.
+
+The verifier change should retain all existing gate guards and additionally
+bind each kill to a call-phase assertion, its actual exception marker, and
+execution in the changed production hunk/function. The reproduced marker-only
+RuntimeError control must be rejected, not counted as a kill. No patches,
+verifier code, manifest entries, or test assertions have yet been changed.
+
+Remaining prerequisites: owner approval for the infinite-azimuth correction;
+Cicero's corrected commit; independent recheck; approval for the previously
+listed harmonic-test/three-mutation-patch write-scope extension; then actual
+final-byte hash generation and the complete standard `all` gate from a clean
+isolated worktree. The pending scalar-JD time-policy decision remains separate.
