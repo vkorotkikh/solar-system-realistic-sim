@@ -60,6 +60,8 @@ WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
 WSA_RADIAL_FIELD_FLOOR = 1e-15
 
 def _clamp(value: float, lower: float, upper: float) -> float:
+    if not all(math.isfinite(item) for item in (value, lower, upper)):
+        raise ValueError("clamp inputs must be finite")
     return min(upper, max(lower, value))
 
 
@@ -94,8 +96,14 @@ def synthetic_magnetogram(
     amplitudes, plus the same persistent active regions used by coronal features.
     Defaults to equal-area sine-latitude centers. An explicit grid supplies
     both coordinates and dimensions, overriding n_lat and n_lon.
+    Activity and JDTDB must be finite; finite activity saturates to [0, 1].
     """
-    activity = _clamp(float(activity), 0.0, 1.0)
+    activity = float(activity)
+    if not math.isfinite(activity):
+        raise ValueError("activity must be finite")
+    if not math.isfinite(jd):
+        raise ValueError("jd must be finite")
+    activity = _clamp(activity, 0.0, 1.0)
     if grid is None:
         grid = equal_area_sine_latitude_grid(n_lat, n_lon)
     theta = np.arccos(grid.mu)

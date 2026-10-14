@@ -39,6 +39,8 @@ def utc_now_to_julian_date() -> float:
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
+    if not all(math.isfinite(item) for item in (value, lower, upper)):
+        raise ValueError("clamp inputs must be finite")
     return min(upper, max(lower, value))
 
 
@@ -124,6 +126,8 @@ def _slerp(
 
 
 def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     if t_months <= 0.0:
         return 0.0
     ratio = t_months / max(1e-6, b)
@@ -137,6 +141,8 @@ def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C)
 
 @lru_cache(maxsize=8)
 def _hathaway_peak_months(b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # d/dx [x^3 / (exp(x^2) - c)] = 0 with x = t/b  <=>  exp(s) * (3 - 2s) = 3c, s = x^2.
     # The left side falls monotonically from 2*e^0.5 (> 3c for c < 1) at s = 0.5 to 0 at s = 1.5,
     # so bisect there. Only c = 0 gives the textbook b*sqrt(3/2); c = 0.71 peaks at 58.4 months.
@@ -154,6 +160,8 @@ HATHAWAY_PEAK_MONTHS = _hathaway_peak_months()
 
 
 def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # Normalise by the true maximum. Dividing by the value at b*sqrt(3/2) (the c = 0 peak)
     # overshot 1 by 3.4% and the clamp flattened the top of every cycle.
     t_peak = _hathaway_peak_months(b, c)
