@@ -54,7 +54,9 @@ are preserved in `cases.json` and the original `playwright-results.json`.
 - Foreground timestamp bounding, quarantine of a corrupted real worker response,
   and persistent-stage failure isolation all passed on the actual app.
 - Native 200%/400% zoom retained per-tab isolation, focus/modal behavior, and
-  accessible keyboard stops. Screenshots are included in `artifacts.tar.gz`.
+  accessible keyboard stops. Four PNG screenshots are preserved inline as base64
+  attachment `body` values in `cases.json` and `playwright-results.json`, not in
+  `artifacts.tar.gz`.
 
 This is functional acceptance evidence, not a new 2-second startup-performance
 pass. The pending full-content-first versus early-procedural policy was untouched.
@@ -141,9 +143,11 @@ environment was `DISPLAY=:0`, `WAYLAND_DISPLAY=wayland-0`, and
 - `environment.json`: revision, Node, executable paths, and display environment.
 - `exit-code.txt`: recorded process exit status.
 - `playwright.config.ts`, `vite.config.mjs`, `webkit-wrapper.sh`: exact adapters.
-- `artifacts.tar.gz`: original `results/` tree, including native zoom screenshots.
+- `artifacts.tar.gz`: 444-byte archive containing empty result directories and
+  `.last-run.json` only; it contains no screenshots.
 - `SHA256SUMS`: checksums for the archived evidence files.
 
-JSON attachment paths retain the original isolated-export location. The archive
-preserves their `results/` relative paths, while inline JSON attachment bodies
-remain in the original report. Earlier 87-pass evidence remains unchanged.
+The four PNGs are preserved inline in both JSON reports. Their base64 attachment
+`body` lengths are 193164, 190968, 177300, and 292384 characters. Decode those
+values to reconstruct the screenshots; the empty archived result directories are
+not image captures. Earlier 87-pass evidence remains unchanged.

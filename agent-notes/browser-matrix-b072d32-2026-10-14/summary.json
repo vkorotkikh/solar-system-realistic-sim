@@ -281,5 +281,5 @@
   "scope": "Functional browser regression gate; no startup-policy change or new 2-second startup performance claim.",
   "softwareWebGL": true,
   "nativeDisplay": ":0",
-  "artifacts": "artifacts.tar.gz contains the original Playwright results/ tree; original attachment paths in the JSON point into the retained isolated export."
+  "artifacts": "artifacts.tar.gz is a 444-byte archive containing only empty result directories and .last-run.json, with no screenshots. Four PNG screenshots are preserved inline as base64 body attachments in cases.json and playwright-results.json; their encoded body lengths are 193164, 190968, 177300, and 292384 characters."
 }
