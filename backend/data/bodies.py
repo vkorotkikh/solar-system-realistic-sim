@@ -682,3 +682,9 @@ KUIPER_BELT_OBJECTS = [
 ]
 
 ALL_BODIES = SOLAR_SYSTEM_BODIES + ASTEROID_BELT_OBJECTS + KUIPER_BELT_OBJECTS
+
+# Keep the local mission ephemeris on the same gated secular coefficients as
+# the frontend. REBOUND major-body initialization still uses its Cartesian data.
+from .secular_planets import attach_secular_model
+
+attach_secular_model(SOLAR_SYSTEM_BODIES)

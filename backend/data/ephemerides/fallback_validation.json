@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "reference_fixture": "backend/tests/fixtures/fallback_horizons_remediation.json",
+  "supported_jd_tdb_range": [
+    2447892.5,
+    2469807.5
+  ],
+  "validation_jd_tdb": [
+    2447892.5,
+    2461000.5,
+    2461327.5,
+    2469807.5
+  ],
+  "accuracy_scope": "sampled_epochs_not_continuous_bound",
+  "bodies": {
+    "hebe": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 2.425469295605402,
+        "e": 0.2022300641713704,
+        "i_deg": 14.73615054649163,
+        "ascending_node_deg": 138.6147295218171,
+        "arg_periapsis_deg": 239.6962153510471,
+        "mean_anomaly_deg": 352.5636680689065,
+        "period_days": 1379.723618278942
+      },
+      "sampled_position_error_cap_km": 1000,
+      "sampled_velocity_error_cap_m_s": 0.05
+    },
+    "flora": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 2.201307162677431,
+        "e": 0.1563337133955282,
+        "i_deg": 5.890326395333704,
+        "ascending_node_deg": 110.8433741767689,
+        "arg_periapsis_deg": 285.4267388865241,
+        "mean_anomaly_deg": 198.9007844696565,
+        "period_days": 1192.942186357289
+      },
+      "sampled_position_error_cap_km": 800,
+      "sampled_velocity_error_cap_m_s": 0.04
+    },
+    "metis": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 2.3865665442279,
+        "e": 0.1225644945880542,
+        "i_deg": 5.577707856670986,
+        "ascending_node_deg": 68.86978123290572,
+        "arg_periapsis_deg": 5.895913019112819,
+        "mean_anomaly_deg": 199.1964699805467,
+        "period_days": 1346.662445922346
+      },
+      "sampled_position_error_cap_km": 5000,
+      "sampled_velocity_error_cap_m_s": 0.25
+    },
+    "amphitrite": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 2.554121108737986,
+        "e": 0.07335027403054248,
+        "i_deg": 6.077438247546309,
+        "ascending_node_deg": 356.2547012430243,
+        "arg_periapsis_deg": 61.90579763914975,
+        "mean_anomaly_deg": 145.1081740584724,
+        "period_days": 1490.941681968144
+      },
+      "sampled_position_error_cap_km": 1500,
+      "sampled_velocity_error_cap_m_s": 0.07
+    },
+    "euphrosyne": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 3.161505296070994,
+        "e": 0.2159206687541511,
+        "i_deg": 26.3122353347305,
+        "ascending_node_deg": 30.79587827581202,
+        "arg_periapsis_deg": 61.97076102357662,
+        "mean_anomaly_deg": 147.8931223815032,
+        "period_days": 2053.238019240071
+      },
+      "sampled_position_error_cap_km": 1500,
+      "sampled_velocity_error_cap_m_s": 0.04
+    },
+    "cybele": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 3.407667304335468,
+        "e": 0.1277298484525094,
+        "i_deg": 3.564948573195629,
+        "ascending_node_deg": 155.0988086384028,
+        "arg_periapsis_deg": 104.1394103577884,
+        "mean_anomaly_deg": 272.6326811780436,
+        "period_days": 2297.651769051524
+      },
+      "sampled_position_error_cap_km": 1600,
+      "sampled_velocity_error_cap_m_s": 0.06
+    },
+    "sylvia": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 3.484518782251748,
+        "e": 0.09433757216253168,
+        "i_deg": 10.87247390257978,
+        "ascending_node_deg": 73.01146029932147,
+        "arg_periapsis_deg": 265.8265584696771,
+        "mean_anomaly_deg": 94.95962367758351,
+        "period_days": 2375.815118103395
+      },
+      "sampled_position_error_cap_km": 160,
+      "sampled_velocity_error_cap_m_s": 0.003
+    },
+    "camilla": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 3.493091091231003,
+        "e": 0.0664513680975773,
+        "i_deg": 9.998659770883721,
+        "ascending_node_deg": 172.5062650612664,
+        "arg_periapsis_deg": 303.7382556571125,
+        "mean_anomaly_deg": 332.5445461614998,
+        "period_days": 2384.587667433313
+      },
+      "sampled_position_error_cap_km": 160,
+      "sampled_velocity_error_cap_m_s": 0.005
+    },
+    "varuna": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 43.17823437208563,
+        "e": 0.05254516459334936,
+        "i_deg": 17.13812404484431,
+        "ascending_node_deg": 97.21030234100793,
+        "arg_periapsis_deg": 273.2206220996139,
+        "mean_anomaly_deg": 115.0289798413239,
+        "period_days": 103632.4453155141
+      },
+      "sampled_position_error_cap_km": 400,
+      "sampled_velocity_error_cap_m_s": 0.0005
+    },
+    "ixion": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 39.35053706213409,
+        "e": 0.2442328489971719,
+        "i_deg": 19.67041190191546,
+        "ascending_node_deg": 71.09295825377649,
+        "arg_periapsis_deg": 300.6585723831106,
+        "mean_anomaly_deg": 294.2004612799266,
+        "period_days": 90162.18397151395
+      },
+      "sampled_position_error_cap_km": 600,
+      "sampled_velocity_error_cap_m_s": 0.001
+    },
+    "salacia": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 42.11465003230769,
+        "e": 0.1033787261230713,
+        "i_deg": 23.92712613400163,
+        "ascending_node_deg": 280.2626295339988,
+        "arg_periapsis_deg": 309.4776964357308,
+        "mean_anomaly_deg": 133.4611617235804,
+        "period_days": 99827.04623325469
+      },
+      "sampled_position_error_cap_km": 30,
+      "sampled_velocity_error_cap_m_s": 0.0004
+    },
+    "varda": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 45.53806201400563,
+        "e": 0.1430078809328084,
+        "i_deg": 21.51403329578455,
+        "ascending_node_deg": 184.1214782264865,
+        "arg_periapsis_deg": 184.9743325694585,
+        "mean_anomaly_deg": 276.5587616814524,
+        "period_days": 112243.2525750103
+      },
+      "sampled_position_error_cap_km": 30,
+      "sampled_velocity_error_cap_m_s": 0.0004
+    },
+    "ms4": {
+      "catalog_orbit": {
+        "epoch_jd": 2461000.5,
+        "a_au": 41.59530825444364,
+        "e": 0.1486943469086431,
+        "i_deg": 17.70394926111006,
+        "ascending_node_deg": 216.1862229438626,
+        "arg_periapsis_deg": 215.2160852937352,
+        "mean_anomaly_deg": 229.8810349241941,
+        "period_days": 97986.20719954059
+      },
+      "sampled_position_error_cap_km": 200,
+      "sampled_velocity_error_cap_m_s": 0.0004
+    }
+  }
+}

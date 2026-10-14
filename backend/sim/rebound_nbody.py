@@ -11,6 +11,7 @@ J2000-ecliptic positions in AU and velocities in AU/day.
 """
 
 import math
+import json
 import threading
 from collections import OrderedDict
 from pathlib import Path
@@ -51,6 +52,9 @@ MAX_CHECKPOINTS = 8
 # tested rather than accepting an arbitrarily expensive or unvalidated seek.
 SUPPORTED_JD_MIN_TDB = 2_447_892.5  # 1990-01-01 TDB
 SUPPORTED_JD_MAX_TDB = 2_469_807.5  # 2050-01-01 TDB
+_FALLBACK_VALIDATION = json.loads(
+    (Path(__file__).resolve().parents[1] / "data/ephemerides/fallback_validation.json").read_text()
+)
 
 
 class SeekCancelledError(RuntimeError):
@@ -96,6 +100,7 @@ class REBOUNDEngine(SimulationEngine):
         self._cartesian_body_ids: List[str] = []
         self._element_fallback_body_ids: List[str] = []
         self._internal_gravity_body_ids: List[str] = []
+        self._body_ephemeris_quality: Dict[str, Dict[str, Any]] = {}
 
     @property
     def engine_name(self) -> str:
@@ -204,6 +209,7 @@ class REBOUNDEngine(SimulationEngine):
                         self._element_fallback_body_ids
                     ),
                     "approximate_elements_are_massless": True,
+                    "body_ephemeris_quality": self._body_ephemeris_quality,
                     "internal_gravity_body_ids": list(
                         self._internal_gravity_body_ids
                     ),
@@ -302,6 +308,8 @@ class REBOUNDEngine(SimulationEngine):
         new_body_ids: List[str] = []
         cartesian_body_ids: List[str] = []
         element_fallback_body_ids: List[str] = []
+        epoch_groups: Dict[float, List[tuple[int, Dict]]] = {}
+        body_quality: Dict[str, Dict[str, Any]] = {}
         for body in bodies:
             body_id = str(body["id"])
             state = initial_conditions.bodies.get(body_id)
@@ -318,6 +326,13 @@ class REBOUNDEngine(SimulationEngine):
                 )
                 new_body_ids.append(body_id)
                 cartesian_body_ids.append(body_id)
+                body_quality[body_id] = {
+                    "fidelity": self.fidelity_level,
+                    "initial_epoch_jd_tdb": initial_conditions.epoch_jd_tdb,
+                    "input_frame": "ssb_ecliptic_j2000",
+                    "initialization": "jpl_cartesian_state",
+                    "validated_jd_tdb_range": [SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB],
+                }
             elif body["type"] == "star":
                 mass_msun = body["mass_kg"] / MSUN_KG
                 new_sim.add(m=mass_msun)
@@ -326,15 +341,35 @@ class REBOUNDEngine(SimulationEngine):
             elif body.get("orbit"):
                 orbit = body["orbit"]
                 mean_anomaly_deg = orbit["mean_anomaly_deg"]
-                epoch_jd = orbit.get("epoch_jd")
-                if epoch_jd is not None and orbit.get("period_days"):
-                    # Every particle must describe the same canonical instant.
-                    # Integrating to requested_start_jd happens exactly once below.
-                    delta_days = initial_conditions.epoch_jd_tdb - epoch_jd
-                    mean_anomaly_deg = (
-                        mean_anomaly_deg
-                        + 360.0 * (delta_days / orbit["period_days"])
-                    ) % 360.0
+                epoch_jd = self._validate_supported_jd(
+                    orbit.get("epoch_jd", initial_conditions.epoch_jd_tdb))
+                body_quality[body_id] = {
+                    "fidelity": "approximate",
+                    "initial_epoch_jd_tdb": epoch_jd,
+                    "epoch_provenance": "declared" if "epoch_jd" in orbit else "catalog_assumed_j2000",
+                    "input_frame": "heliocentric_ecliptic_j2000",
+                    "initialization": "osculating_elements_at_source_epoch_then_nbody",
+                    "accuracy_status": "not_independently_bounded",
+                    "position_error_bound_km": None,
+                    "massless": True,
+                }
+                validation = _FALLBACK_VALIDATION["bodies"].get(body_id)
+                complete_active_model = set(initial_conditions.bodies).issubset(
+                    set(body_ids_in) | set(INTERNAL_GRAVITY_BODY_IDS))
+                if (validation is not None and orbit == validation["catalog_orbit"]
+                        and self._integrator == "ias15" and complete_active_model):
+                    body_quality[body_id].update({
+                        "accuracy_status": "independent_horizons_sampled_epoch_gate",
+                        "accuracy_scope": _FALLBACK_VALIDATION["accuracy_scope"],
+                        "reference_fixture": _FALLBACK_VALIDATION["reference_fixture"],
+                        "reference_quality": "independent_jpl_horizons_geometric_vectors",
+                        "validation_jd_tdb": list(_FALLBACK_VALIDATION["validation_jd_tdb"]),
+                        "validated_jd_tdb_range": list(_FALLBACK_VALIDATION["supported_jd_tdb_range"]),
+                        "sampled_position_error_cap_km": validation["sampled_position_error_cap_km"],
+                        "sampled_velocity_error_cap_m_s": validation["sampled_velocity_error_cap_m_s"],
+                    })
+                if epoch_jd != initial_conditions.epoch_jd_tdb:
+                    epoch_groups.setdefault(epoch_jd, []).append((len(new_body_ids), orbit))
 
                 new_sim.add(
                     # These catalog elements do not carry the same reproducible
@@ -372,6 +407,39 @@ class REBOUNDEngine(SimulationEngine):
         # Horizons input is SSB-relative.  The exported contract intentionally
         # uses the center of mass of the particles actually integrated here.
         new_sim.move_to_com()
+        # Seed each group at its ACTUAL element epoch in the evolved active
+        # system. Carry it to J2000 with the same N-body forces, not a many-year
+        # fixed-element phase advance. Massless particles cannot disturb the
+        # validated major-body solution. Their public order remains unchanged.
+        for epoch_jd, entries in epoch_groups.items():
+            epoch_sim = new_sim.copy()
+            epoch_sim.integrate((epoch_jd - initial_conditions.epoch_jd_tdb) / DAYS_PER_YEAR)
+            for index, orbit in entries:
+                particle = rebound.Particle(
+                    simulation=epoch_sim, primary=epoch_sim.particles[0], m=0,
+                    a=orbit["a_au"], e=orbit["e"], inc=math.radians(orbit["i_deg"]),
+                    Omega=math.radians(orbit["ascending_node_deg"]),
+                    omega=math.radians(orbit["arg_periapsis_deg"]),
+                    M=math.radians(orbit["mean_anomaly_deg"]),
+                )
+                target_particle = epoch_sim.particles[index]
+                for component in ("x", "y", "z", "vx", "vy", "vz"):
+                    setattr(target_particle, component, getattr(particle, component))
+            # Reset adaptive predictor memory after replacing particle states.
+            seeded_sim = rebound.Simulation()
+            seeded_sim.units = ("yr", "AU", "Msun")
+            seeded_sim.G = epoch_sim.G
+            seeded_sim.integrator = self._integrator
+            seeded_sim.t = epoch_sim.t
+            seeded_sim.dt = epoch_sim.dt
+            for particle in epoch_sim.particles:
+                seeded_sim.add(particle)
+            epoch_sim = seeded_sim
+            epoch_sim.integrate(0.0)
+            for index, _ in entries:
+                for component in ("x", "y", "z", "vx", "vy", "vz"):
+                    setattr(new_sim.particles[index], component,
+                            getattr(epoch_sim.particles[index], component))
         initial_energy = new_sim.energy()
         initial_checkpoint = None
         copy_fn = getattr(new_sim, "copy", None)
@@ -395,6 +463,7 @@ class REBOUNDEngine(SimulationEngine):
         self._cartesian_body_ids = cartesian_body_ids
         self._element_fallback_body_ids = element_fallback_body_ids
         self._internal_gravity_body_ids = internal_gravity_body_ids
+        self._body_ephemeris_quality = body_quality
         self._initial_energy = initial_energy
         self._checkpoints = OrderedDict()
         if initial_checkpoint is not None:
@@ -420,6 +489,8 @@ class REBOUNDEngine(SimulationEngine):
         for i, body_id in enumerate(self.body_ids):
             p = self.sim.particles[i]
             bodies[body_id] = {
+                "ephemeris_quality": dict(self._body_ephemeris_quality.get(body_id, {
+                    "fidelity": "approximate", "accuracy_status": "not_independently_bounded"})),
                 "pos": [round(p.x, 10), round(p.y, 10), round(p.z, 10)],
                 "vel": [
                     round(p.vx / DAYS_PER_YEAR, 10),

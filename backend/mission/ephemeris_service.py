@@ -157,6 +157,7 @@ class EphemerisSample:
     contract: EphemerisStateContract = field(default=TRAJECTORY_STATE_CONTRACT)
     target_definition: str = "body_center"
     provider_revision: str | None = None
+    model_metadata: Dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -897,6 +898,14 @@ class EphemerisService:
                 body_id=body_id,
                 jd=jd,
             )
+        model = orbit.get("ephemeris_model")
+        if model is not None:
+            lower, upper = model["supported_jd_tdb_range"]
+            if not lower <= jd <= upper:
+                raise EphemerisTargetUnsupported(
+                    f"Body `{body_id}` is outside the gated local ephemeris interval [{lower}, {upper}] JDTDB",
+                    provider="kepler", body_id=body_id, jd=jd,
+                )
         try:
             state = sample_body_state_from_elements(body, jd)
             return EphemerisSample(
@@ -905,8 +914,16 @@ class EphemerisService:
                 position_au=state["position"],
                 velocity_au_day=state["velocity"],
                 source="kepler",
+                # Retain the planner's accepted catalog-reference contract;
+                # model_metadata records the physical barycenter it denotes.
                 target_definition="catalog_orbit_reference",
                 provider_revision="catalog_elements",
+                model_metadata=dict(model) if model else {
+                    "quality": "approximate_fixed_elements",
+                    "initial_epoch_jd_tdb": orbit.get("epoch_jd", J2000_JD),
+                    "supported_jd_tdb_range": None,
+                    "accuracy_scope": "unvalidated_no_error_bound",
+                },
             )
         except EphemerisError:
             raise
