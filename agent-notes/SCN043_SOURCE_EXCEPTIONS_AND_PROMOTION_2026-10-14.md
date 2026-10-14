@@ -140,3 +140,40 @@ The `rawResponseSha256` fields hash captured JSON cache envelopes, not HTTP tran
 encoding. All source rows are independently derived from those provider tables,
 not from fitted coefficients. Original API query strings, headers, and normalized
 row hashes are retained as distinct evidence.
+
+## Ready implementation commit and exact changed paths
+
+Implementation: `acc9cebb51f6e9f9bc787d6cc98373c6861bd568`, following the already
+integrated clean-checkout fix `ce41f546c041633f439fe6a446d9345ac21067ca`.
+The S2023_S38 pinned input directory, including manifest and README, is
+**6,098,101 bytes**. Daphnis reuses the previously pinned original SPK; it requires
+no new provider acquisition. The following 26 paths comprise this checkpoint:
+
+```text
+agent-notes/SCN043_EXCEPTION_ARTIFACT_FOOTPRINT_2026-10-14.json
+agent-notes/SCN043_LAZY_PROMOTION_FOOTPRINT_2026-10-14.json
+agent-notes/SCN043_SOURCE_EXCEPTIONS_AND_PROMOTION_2026-10-14.md
+backend/tests/fixtures/moon_exception_validation.json
+scripts/generate_moon_exception_validation.py
+scripts/generate_s2023_s38_ephemeris.py
+scripts/moon-vector-inputs/s2023_s38/README.md
+scripts/moon-vector-inputs/s2023_s38/audit.f64.gz
+scripts/moon-vector-inputs/s2023_s38/dense_held.f64.gz
+scripts/moon-vector-inputs/s2023_s38/dense_source.f64.gz
+scripts/moon-vector-inputs/s2023_s38/endpoints.f64.gz
+scripts/moon-vector-inputs/s2023_s38/held.f64.gz
+scripts/moon-vector-inputs/s2023_s38/hyperbolic.f64.gz
+scripts/moon-vector-inputs/s2023_s38/manifest.json
+scripts/moon-vector-inputs/s2023_s38/source.f64.gz
+scripts/repair_catalog_moon_ephemeris.py
+scripts/repair_spk_moon_ephemeris.py
+scripts/test_moon_source_exceptions.py
+src/data/moonEphemerisDaphnis.json
+src/data/moonEphemerisS2023S38.json
+src/sim/loadMoonEphemerides.test.ts
+src/sim/loadMoonEphemerides.ts
+src/sim/moonCartesianEphemeris.test.ts
+src/sim/moonCatalogRepair.horizons.test.ts
+src/sim/moonEphemeris.ts
+src/sim/moonSourceExceptions.test.ts
+```
