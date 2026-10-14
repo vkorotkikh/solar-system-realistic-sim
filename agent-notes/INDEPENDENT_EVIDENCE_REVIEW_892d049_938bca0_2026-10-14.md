@@ -163,3 +163,34 @@ cache access when epoch coverage fails. Spatial eligibility remains false.
 No production AIA helper change was needed within the assigned scope. Frozen
 captures, scientific thresholds, other providers, solar_physics, controllers,
 Moon artifacts, and the canonical master register were not modified.
+
+## Follow-up: live AIA cache handoff resolved
+
+The live-cache handoff above is now implemented in the evidence-review worktree.
+Every successful AIA delivery revalidates all five channel timestamps, including
+cache hits and tile requests. A live cache entry expires at the oldest channel's
+six-hour coverage limit. A wall-clock jump cannot bypass the delivery guard, and
+malformed channel collections fail closed without reaching binary acquisition.
+Malformed acquisitions retain bounded retry backoff rather than creating a hot
+loop. Acquisition errors are preserved rather than replaced by delivery errors.
+
+The symmetric, inclusive +/-21600-second request window and whole-second request
+normalization are unchanged. Explicit dated requests retain their own epoch
+coverage regardless of today's date; their wall-clock freshness is recomputed on
+every delivery. Historical data is not reclassified as live, spatial eligibility
+remains false, and AIA metadata still supplies no activity/calibration inference.
+Delivery changes are made on a deep copy, not on retained cache payloads.
+
+Validation:
+
+- New `backend/tests/test_solar_aia_live_cache.py`: 14 passing cases. Running the
+  same suite against the pre-fix `6b443d7` provider module gives 12 failures and
+  two passes, with no skips. This baseline execution was in-memory only.
+- Combined AIA live-cache/epoch, realtime cache/transport/recovery, and security
+  suites: **231 passed, zero skipped**, two existing dependency deprecations.
+- The dated-cache identity assertion now compares channels and request epoch,
+  while explicitly requiring freshness to advance rather than remain frozen.
+- No other providers, solar physics, controller, main, or moon files changed.
+
+The scalar-JD leap-boundary handoff remains open pending the explicitly requested
+precision-policy decision; this cache fix does not alter `solar_time.py`.

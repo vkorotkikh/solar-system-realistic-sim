@@ -384,6 +384,7 @@ class SolarRealtimeDataProvider:
         snapshot: Mapping[str, Any],
         *,
         now_utc: datetime,
+        requested_jd_tdb: float | None = None,
     ) -> float:
         """Retry degraded snapshots promptly, without extending source freshness."""
 
@@ -396,6 +397,15 @@ class SolarRealtimeDataProvider:
             for status in statuses
         )
         lifetime = min(self.cache_ttl_s, self.singleflight_error_backoff_s) if degraded else self.cache_ttl_s
+        aia_status = source_status.get("sdo_aia") if isinstance(source_status, Mapping) else None
+        if requested_jd_tdb is None and isinstance(aia_status, Mapping) and aia_status.get("ok") is True:
+            timestamps = self._aia_channel_times(snapshot.get("sdo_aia"))
+            if timestamps is None:
+                return min(lifetime, self.singleflight_error_backoff_s)
+            ages = [(now_utc - stamp).total_seconds() for stamp in timestamps]
+            if min(ages) < -self.AIA_MAX_EPOCH_OFFSET_S:
+                return min(lifetime, self.singleflight_error_backoff_s)
+            lifetime = min(lifetime, max(0.0, self.AIA_MAX_EPOCH_OFFSET_S - max(ages)))
         swpc_status = (
             source_status.get("swpc")
             if isinstance(source_status, Mapping)
@@ -459,15 +469,91 @@ class SolarRealtimeDataProvider:
         good = sum(s.get("ok") is True and s.get("refresh_ok") is not False for s in eligible)
         snapshot["cache_state"] = "complete" if good == len(eligible) else "partial" if good else "failed"
 
+    def _aia_channel_times(self, aia: Any) -> list[datetime] | None:
+        """Require a complete, dated AIA bundle before cache reuse."""
+        if not isinstance(aia, Mapping):
+            return None
+        channels = aia.get("channels")
+        if not isinstance(channels, Mapping) or set(channels) != set(self.AIA_SOURCE_IDS):
+            return None
+        timestamps = []
+        for entry in channels.values():
+            if not isinstance(entry, Mapping):
+                return None
+            stamp = self._parse_helioviewer_image_date(entry.get("image_date"))
+            if stamp is None:
+                return None
+            timestamps.append(stamp)
+        return timestamps or None
+
+    def _refresh_aia_delivery(
+        self,
+        snapshot: dict[str, Any],
+        *,
+        now_utc: datetime,
+        requested_jd_tdb: float | None,
+    ) -> None:
+        """Validate every channel against this request, independently of age."""
+        statuses = snapshot.get("source_status")
+        if not isinstance(statuses, Mapping):
+            return
+        prior_status = statuses.get("sdo_aia")
+        if not isinstance(prior_status, Mapping) or prior_status.get("ok") is not True:
+            # Preserve acquisition failures, including their typed epoch reason.
+            return
+        aia = snapshot.get("sdo_aia")
+        timestamps = self._aia_channel_times(aia)
+        reason = "invalid_aia_metadata" if timestamps is None else None
+        if timestamps is not None:
+            request_date = (
+                now_utc if requested_jd_tdb is None
+                else jd_tdb_to_utc_datetime(requested_jd_tdb)
+            ).astimezone(timezone.utc).replace(microsecond=0)
+            if any(abs((stamp - request_date).total_seconds()) > self.AIA_MAX_EPOCH_OFFSET_S
+                   for stamp in timestamps):
+                reason = "aia_epoch_unavailable"
+
+        status = dict(prior_status)
+        status["delivered_at_utc"] = self._canonical_utc_time_tag(now_utc)
+        if reason is not None:
+            snapshot["sdo_aia"] = None
+            status.update({
+                "ok": False, "updated": None, "reason": reason,
+                "error": (
+                    "aia_epoch_unavailable: AIA channels do not cover the requested epoch "
+                    f"within {self.AIA_MAX_EPOCH_OFFSET_S:.0f} seconds"
+                    if reason == "aia_epoch_unavailable"
+                    else "invalid_aia_metadata: cached AIA channel dates are invalid"
+                ),
+            })
+            remaining_ok = any(
+                name != "sdo_aia" and isinstance(value, Mapping)
+                and value.get("runtime_eligible") is not False and value.get("ok") is True
+                for name, value in statuses.items()
+            )
+            snapshot["cache_state"] = "partial" if remaining_ok else "failed"
+        else:
+            latest = max(timestamps)
+            freshness_s = max(0.0, (now_utc - latest).total_seconds())
+            aia["latest_image_date_utc"] = self._canonical_utc_time_tag(latest)
+            aia["freshness_s"] = freshness_s
+            aia["freshness_proxy"] = _clamp(1.0 - freshness_s / self.AIA_MAX_EPOCH_OFFSET_S, 0.0, 1.0)
+            status["updated"] = aia["latest_image_date_utc"]
+        snapshot["source_status"] = {**statuses, "sdo_aia": status}
+
     def _snapshot_for_delivery(
         self,
         snapshot: dict[str, Any],
         *,
         now_utc: datetime,
+        requested_jd_tdb: float | None = None,
     ) -> dict[str, Any]:
         """Return a delivery-time view whose source ages cannot freeze in cache."""
 
         snapshot = copy.deepcopy(snapshot)
+        self._refresh_aia_delivery(
+            snapshot, now_utc=now_utc, requested_jd_tdb=requested_jd_tdb,
+        )
         silso = snapshot.get("silso")
         if isinstance(silso, dict):
             observation_date_text = silso.get("date")
@@ -677,6 +763,7 @@ class SolarRealtimeDataProvider:
                     return self._snapshot_for_delivery(
                         snapshot,
                         now_utc=self._utc_now().astimezone(timezone.utc),
+                        requested_jd_tdb=requested_jd_tdb,
                     )
                 self._snapshot_cache.pop(key, None)
 
@@ -688,7 +775,9 @@ class SolarRealtimeDataProvider:
             completed_utc = self._utc_now().astimezone(timezone.utc)
             with self._lock:
                 self._retain_or_restore_swpc(key, snapshot, completed_monotonic, completed_utc)
-                cache_lifetime_s = self._snapshot_cache_lifetime_s(snapshot, now_utc=completed_utc)
+                cache_lifetime_s = self._snapshot_cache_lifetime_s(
+                    snapshot, now_utc=completed_utc, requested_jd_tdb=requested_jd_tdb,
+                )
                 # Publish before the single-flight leader releases its entry so a
                 # request arriving at completion cannot start a duplicate refresh.
                 self._snapshot_cache[key] = (
@@ -717,6 +806,7 @@ class SolarRealtimeDataProvider:
         return self._snapshot_for_delivery(
             snapshot,
             now_utc=self._utc_now().astimezone(timezone.utc),
+            requested_jd_tdb=requested_jd_tdb,
         )
 
     def latest_aia_tile(
