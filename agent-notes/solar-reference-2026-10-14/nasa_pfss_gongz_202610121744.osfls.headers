@@ -1,0 +1,15 @@
+HTTP/1.1 200 OK
+Date: Wed, 14 Oct 2026 05:28:07 GMT
+Server: Apache
+Strict-Transport-Security: max-age=63072000; includeSubdomains; preload
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+Strict-Transport-Security: max-age=63072000; includeSubdomains; preload
+Last-Modified: Tue, 13 Oct 2026 02:39:10 GMT
+ETag: "2bb04-65dafb82e0f97"
+Accept-Ranges: bytes
+Content-Length: 178948
+Access-Control-Allow-Methods: GET
+

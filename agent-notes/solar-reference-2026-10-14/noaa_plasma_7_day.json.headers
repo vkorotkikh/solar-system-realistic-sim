@@ -1,0 +1,12 @@
+HTTP/2 404 
+content-type: text/html; charset=iso-8859-1
+content-length: 196
+date: Wed, 14 Oct 2026 05:27:00 GMT
+strict-transport-security: max-age=31536000
+server: Apache
+x-cache: Error from cloudfront
+via: 1.1 7206d1acb8b68d70814f67b8ecea4004.cloudfront.net (CloudFront)
+x-amz-cf-pop: PHL51-P3
+x-amz-cf-id: pfFDQcTlBYBIF5pmw7xeMic6K0SxdItI_GBNqDS-f6LMoA-JzEQsAA==
+age: 29
+
