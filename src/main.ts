@@ -44,6 +44,7 @@ import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
+import { planetViewDistances } from './frontend/features/planetary/planetView';
 import {
   buildCatalogIndexContract,
   buildModelWorkerCatalog,
@@ -596,7 +597,8 @@ function focusBody(bodyId: string, hardSnap = false) {
   const radius = bodyBaseRadiusAu(body);
   const preferredDistance = body.type === 'star'
     ? (simState.useRealisticScale ? 0.14 : 2.6)
-    : Math.max(radius * 20, 0.01);
+    : planetViewDistances(radius).focus;
+  controls.minDistance = body.type === 'star' ? 0.0002 : planetViewDistances(radius).minimum;
 
   if (offset.lengthSq() < 1e-9) offset.set(0, -preferredDistance, preferredDistance * 0.6);
 
@@ -713,10 +715,7 @@ function applyScaleMode() {
     const mesh = bodyMeshes.get(body.id);
     if (!mesh) continue;
     if (mesh.userData.isQuadtree) {
-      // Quadtrees rebuild geometry based on camera distance, scale doesn't apply directly via mesh.scale
-      // Instead, the new radius logic dictates standard size.
-      // For a robust implementation, the whole quadtree should likely be re-instanced or resize via uniforms
-      // For simplicity, we assume quadtree LODs aren't strictly changed scaling post-init.
+      mesh.userData.quadtree.setRadius(bodyBaseRadiusAu(body));
     } else {
       mesh.scale.setScalar(bodyBaseRadiusAu(body));
     }
@@ -1311,6 +1310,8 @@ dom.canvas.addEventListener('dblclick', (e) => {
   const raycaster = new Raycaster();
   raycaster.setFromCamera(new Vector2(ndcX, ndcY), camera);
   const targets = [...bodyMeshes.values()].filter((m) => m.visible);
+  // Quadtree groups supply mean-sphere pick proxies; their GPU-displaced plane
+  // children are deliberately excluded from CPU triangle raycasting.
   const hits = raycaster.intersectObjects(targets, false);
   if (hits.length > 0) {
     const bodyId = hits[0].object?.userData?.bodyId;

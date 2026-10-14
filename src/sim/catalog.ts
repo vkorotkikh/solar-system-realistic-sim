@@ -10,6 +10,7 @@ import {
 } from '../data/planets';
 import type { MoonChebyshevEphemeris } from './moonEphemeris';
 import type { KeplerOrbit } from './orbitMath';
+import { planetaryRotationFields, type IauPlanetRotation } from '../data/planetaryRotation';
 
 export interface RawMoonRecord {
   id: number;
@@ -65,6 +66,9 @@ export interface CatalogBody {
   reference?: string;
   orbitFrameSource?: string;
   orbitEphemerisSource?: string;
+  iauRotation?: IauPlanetRotation;
+  axialObliquityDeg?: number;
+  /** Scene pole colatitude in ecliptic J2000; not orbital obliquity. */
   axialTiltDeg?: number;
   spinAxisLongitudeDeg?: number;
   rotationPhaseDeg?: number;
@@ -684,6 +688,10 @@ export function createSolarSystemCatalog(
     usedIds.add(planet.id);
     bodies.push({
       ...planet,
+      // Keep raw orbital obliquities (also used by moon frame code) separate
+      // from the scene's pole colatitude and longitude.
+      axialObliquityDeg: planet.axialTiltDeg,
+      ...planetaryRotationFields(planet.id),
       parentId: 'sun',
       isMajor: true,
       equatorialRadiusKm,
