@@ -162,6 +162,10 @@ class SolarRealtimeDataProvider:
     AIA_IMAGE_ID_MAX_DIGITS = 20
     AIA_IMAGE_NAME_MAX_BYTES = 128
     AIA_IMAGE_DATE_MAX_BYTES = 32
+    # Nearest-image HTTP success does not establish coverage of the requested
+    # epoch. Use the existing six-hour AIA eligibility window symmetrically;
+    # wall-clock freshness below is a separate live-assimilation condition.
+    AIA_MAX_EPOCH_OFFSET_S = 6.0 * 3_600.0
 
     # Redirects may move only within the source's explicitly trusted host set.
     # In particular, an upstream response cannot turn this server into an SSRF
@@ -2450,7 +2454,8 @@ class SolarRealtimeDataProvider:
         return f"{self.HELIOVIEWER_TILE_URL}?{query}"
 
     def _fetch_helioviewer_closest(self, source_id: int, date_utc: datetime) -> dict[str, Any]:
-        date_tag = date_utc.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        request_date = date_utc.astimezone(timezone.utc).replace(microsecond=0)
+        date_tag = request_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         query = urllib.parse.urlencode(
             {
                 "date": date_tag,
@@ -2463,6 +2468,14 @@ class SolarRealtimeDataProvider:
             raise RuntimeError("Helioviewer closest-image response is not an object")
         image_id_text = self._normalize_aia_image_id(payload.get("id"))
         image_date = self._canonical_aia_image_date(payload.get("date"))
+        observed_date = self._parse_helioviewer_image_date(image_date)
+        assert observed_date is not None  # Guaranteed by canonical validation.
+        if abs((observed_date - request_date).total_seconds()) > self.AIA_MAX_EPOCH_OFFSET_S:
+            raise SolarRealtimeFetchError(
+                "aia_epoch_unavailable",
+                "Solar realtime Helioviewer image does not cover the requested epoch "
+                f"within {self.AIA_MAX_EPOCH_OFFSET_S:.0f} seconds",
+            )
         image_name = self._validated_aia_metadata_text(
             payload.get("name"),
             field_name="name",

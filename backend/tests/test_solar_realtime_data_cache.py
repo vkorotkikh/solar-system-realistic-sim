@@ -1184,9 +1184,22 @@ def test_aia_tile_reuses_snapshot_deadline_before_binary_work(
     assert work == ["metadata"]
 
 
+def _freeze_aia_metadata_epoch(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Metadata-shape tests use one fixed observing epoch, not an increasingly
+    # stale image paired with the machine's live clock.
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:
+            instant = datetime(2026, 9, 27, 12, 34, 56, tzinfo=timezone.utc)
+            return instant.astimezone(tz) if tz is not None else instant.replace(tzinfo=None)
+
+    monkeypatch.setattr(solar_realtime_data, "datetime", FixedDatetime)
+
+
 def test_aia_metadata_is_canonicalized_before_snapshot_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _freeze_aia_metadata_epoch(monkeypatch)
     provider = SolarRealtimeDataProvider()
 
     def unavailable() -> dict[str, Any]:
@@ -1252,6 +1265,7 @@ def test_unsafe_aia_metadata_is_rejected_before_snapshot_cache(
     field: str,
     unsafe_value: str,
 ) -> None:
+    _freeze_aia_metadata_epoch(monkeypatch)
     provider = SolarRealtimeDataProvider()
 
     def unavailable() -> dict[str, Any]:
@@ -1301,7 +1315,9 @@ def test_aia_channel_declares_viewport_artifact_as_nonspatial(
         },
     )
 
-    channel = provider._fetch_helioviewer_closest(11, datetime.now(timezone.utc))
+    channel = provider._fetch_helioviewer_closest(
+        11, datetime(2026, 9, 26, 14, 59, tzinfo=timezone.utc)
+    )
 
     assert channel["artifact"] == {
         "schema": {"name": "helioviewer_viewport_tile", "version": 1},
