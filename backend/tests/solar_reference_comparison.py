@@ -64,8 +64,19 @@ def fits_images(raw):
     return result
 
 
-def load_reference():
-    images = fits_images(_artifact("nasa_wsa_gongz_202610121744.fits", FITS_SHA))
+def load_reference(*, fits_path=None, lines_path=None,
+                   fits_sha256=FITS_SHA, lines_sha256=LINES_SHA):
+    """Use the same provider parser for the baseline or a hash-pinned pair.
+
+    Both alternate paths must be supplied. Their hashes are always checked;
+    omitting alternate hashes therefore cannot silently trust new input bytes.
+    """
+    alternate = fits_path is not None or lines_path is not None
+    if alternate and (fits_path is None or lines_path is None):
+        raise ValueError("Both alternate reference paths are required")
+    fits_name = Path(fits_path).resolve() if alternate else "nasa_wsa_gongz_202610121744.fits"
+    lines_name = Path(lines_path).resolve() if alternate else "nasa_pfss_gongz_202610121744.osfls"
+    images = fits_images(_artifact(fits_name, fits_sha256))
     header, maps = images[0]
     coefficient_header, coefficients = images[3]
     if header["PROVERS"] != "WSA_V6.2" or coefficient_header["UNITS"] != "microTesla":
@@ -75,14 +86,24 @@ def load_reference():
     # Provider HDU has [g/h, m, l], Schmidt/no-CS, in microtesla.
     # Our PFSSField accepts [l,m] photospheric radial coefficients in Gauss.
     coefficients = coefficients.transpose(0, 2, 1) * 0.01
-    raw = _artifact("nasa_pfss_gongz_202610121744.osfls", LINES_SHA)
+    if not np.all(np.isfinite(coefficients)):
+        raise ValueError("Non-finite provider coefficients")
+    raw = _artifact(lines_name, lines_sha256)
     # Producer: OpenSpace commit e8d4f88d7ad83da2124585c7c201383bb9deb219,
     # modules/fieldlinessequence/util/fieldlinesstate.cpp::loadStateFromOsfls.
     # Binary v0 uses little-endian packed int/double/uint8/uint64 here.
-    version, epoch, model, morph, n_lines, n_points, n_extra, name_bytes = struct.unpack_from("<idiBQQQQ", raw)
-    if (version, model, morph, n_lines, n_points, n_extra) != (0, 3, 0, 622, 10869, 1):
-        raise ValueError("Unexpected independent field-line header")
     offset = struct.calcsize("<idiBQQQQ")
+    if len(raw) < offset:
+        raise ValueError("Truncated independent field-line header")
+    version, epoch, model, morph, n_lines, n_points, n_extra, name_bytes = struct.unpack_from("<idiBQQQQ", raw)
+    if (version, model, morph, n_extra) != (0, 3, 0, 1):
+        raise ValueError("Unexpected independent field-line header")
+    if not alternate and (n_lines, n_points) != (622, 10869):
+        raise ValueError("Unexpected baseline field-line counts")
+    if not (1 <= n_lines <= 10000 and 2 * n_lines <= n_points <= 1000000):
+        raise ValueError("Independent field-line counts outside bounded format")
+    if not np.isfinite(epoch) or offset + 8 * n_lines + 16 * n_points + name_bytes != len(raw):
+        raise ValueError("Invalid independent field-line size or epoch")
     starts = np.frombuffer(raw, dtype="<i4", count=n_lines, offset=offset).astype(int)
     offset += 4 * n_lines
     counts = np.frombuffer(raw, dtype="<u4", count=n_lines, offset=offset).astype(int)
@@ -109,8 +130,14 @@ def _stats(values):
             "p90_deg": float(np.quantile(values, .9)), "max_deg": float(np.max(values))}
 
 
-def comparison():
-    header, coefficients, points, starts, counts, labels, epoch = load_reference()
+def comparison(*, degree=15, fits_path=None, lines_path=None,
+               fits_sha256=FITS_SHA, lines_sha256=LINES_SHA):
+    if degree not in (15, 30, 64, 90):
+        raise ValueError("Comparison degree must be 15, 30, 64, or 90")
+    header, coefficients, points, starts, counts, labels, epoch = load_reference(
+        fits_path=fits_path, lines_path=lines_path,
+        fits_sha256=fits_sha256, lines_sha256=lines_sha256,
+    )
     rss = float(header["RADSS"])
     # At most five deterministic segment samples per line, covering every line.
     indices = np.unique(np.concatenate([
@@ -125,19 +152,20 @@ def comparison():
     tangent /= lengths[:, None]
     radii = np.linalg.norm(midpoints, axis=1)
     angular = {}
-    for degree in (15, 30, 64):
-        g, h = coefficients[:, :degree+1, :degree+1]
-        field = PFSSField(g, h, degree, rss)
+    for trial_degree in dict.fromkeys((15, 30, 64, degree)):
+        g, h = coefficients[:, :trial_degree+1, :trial_degree+1]
+        field = PFSSField(g, h, trial_degree, rss)
         values = np.column_stack(field.evaluate_cartesian_batch(*midpoints.T))
         norms = np.linalg.norm(values, axis=1)
         if np.any(norms <= 1e-12):
             raise ValueError("Weak comparison field; no silent sample exclusion")
         cosines = np.abs(np.sum(values*tangent, axis=1) / norms)
         errors = np.rad2deg(np.arccos(np.clip(cosines, 0, 1)))
-        angular[str(degree)] = {"all": _stats(errors),
+        angular[str(trial_degree)] = {"all": _stats(errors),
+                               "radius_lt_1_2": _stats(errors[radii < 1.2]),
                                "radius_ge_1_2": _stats(errors[radii >= 1.2]),
                                "radius_ge_1_5": _stats(errors[radii >= 1.5])}
-        if degree == 15:
+        if trial_degree == degree:
             runtime_field = field
     # A fixed frame-error mutant, not an orientation fitted to improve agreement.
     rotated = midpoints[:, [1, 0, 2]].copy()
@@ -170,23 +198,24 @@ def comparison():
         cosines = np.sum(provider_end * actual_end, axis=1) / (np.linalg.norm(provider_end, axis=1)
                     * np.linalg.norm(actual_end, axis=1))
         topology["open_endpoint_error"] = _stats(np.rad2deg(np.arccos(np.clip(cosines, -1, 1))))
-    passed = (angular["15"]["all"]["median_deg"] <= BUDGET["tangent_median_deg"]
-              and angular["15"]["all"]["p90_deg"] <= BUDGET["tangent_p90_deg"]
+    passed = (angular[str(degree)]["all"]["median_deg"] <= BUDGET["tangent_median_deg"]
+              and angular[str(degree)]["all"]["p90_deg"] <= BUDGET["tangent_p90_deg"]
               and topology["balanced_accuracy"] >= BUDGET["balanced_topology_accuracy"]
               and topology["determinate_fraction"] >= BUDGET["determinate_fraction"])
-    return {"schema": "solar-independent-pfss-comparison-v1", "fits_sha256": FITS_SHA,
-            "lines_sha256": LINES_SHA, "provider": header["PROVERS"],
+    return {"schema": "solar-independent-pfss-comparison-v1", "fits_sha256": fits_sha256,
+            "lines_sha256": lines_sha256, "provider": header["PROVERS"],
             "input_map": header["FILELIST"], "provider_degree": 90,
             "source_surface_radii": rss, "provider_line_epoch_seconds": epoch,
             "coefficient_units_conversion": "microtesla * 0.01 -> Gauss",
             "frame": "provider-native Cartesian shared by coefficient and PFSS line products; no inertial frame assertion",
             "tangent_samples": len(indices), "tangent": angular,
-            "wrong_frame_90deg_control": _stats(bad_angle), "topology_degree15": topology,
+            "selected_degree": degree,
+            "wrong_frame_90deg_control": _stats(bad_angle), f"topology_degree{degree}": topology,
             "accuracy_budget": BUDGET, "accuracy_budget_passed": passed,
             "empirical_speed_calibrated": False,
-            "speed_comparison": "Not available: captured FITS has no speed plane; ACE forecast/observation windows do not overlap.",
+            "speed_comparison": "Not evaluated here: captured FITS has no speed plane; this PFSS-only comparison does not establish or invalidate external-model ACE overlap.",
             "coverage_limits": ["One GONG-Z epoch, not solar-cycle-wide coverage.",
-                                "Runtime degree 15 is lower than provider degree 90; degree 30/64 are convergence diagnostics, not enabled runtime settings.",
+                                "The grid runtime still defaults to degree 15; degree 90 uses the explicit native spectral entry point, not a global grid-cap increase.",
                                 "Field-line tangents are finite-segment provider samples, not exact point derivatives.",
                                 "No SCS 5-Rs map is compared directly to a 2.51-Rs PFSS surface."]}
 
@@ -195,8 +224,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
     parser.add_argument("--require-accuracy", action="store_true")
+    parser.add_argument("--degree", type=int, choices=(15, 30, 64, 90), default=15)
+    parser.add_argument("--fits", type=Path)
+    parser.add_argument("--lines", type=Path)
+    parser.add_argument("--fits-sha256", default=FITS_SHA)
+    parser.add_argument("--lines-sha256", default=LINES_SHA)
     options = parser.parse_args()
-    report = comparison()
+    report = comparison(degree=options.degree, fits_path=options.fits,
+                        lines_path=options.lines, fits_sha256=options.fits_sha256,
+                        lines_sha256=options.lines_sha256)
     encoded = json.dumps(report, indent=2, allow_nan=False) + "\n"
     if options.output:
         options.output.write_text(encoded)

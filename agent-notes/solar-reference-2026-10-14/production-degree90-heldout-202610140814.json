@@ -1,0 +1,164 @@
+{
+  "schema": "solar-independent-pfss-comparison-v1",
+  "fits_sha256": "5a65bf897a8f493abc4c570f8eb2c7cd4ad154e2eabf59ae95e9419afce647fd",
+  "lines_sha256": "77ac5d4d212d5c65f22c4448ef09f347bf8cc41d7cb596a9b1c91ce30822a2e8",
+  "provider": "WSA_V6.2",
+  "input_map": "mrzql261014t0814c2316_058",
+  "provider_degree": 90,
+  "source_surface_radii": 2.51,
+  "provider_line_epoch_seconds": 845237640.0000036,
+  "coefficient_units_conversion": "microtesla * 0.01 -> Gauss",
+  "frame": "provider-native Cartesian shared by coefficient and PFSS line products; no inertial frame assertion",
+  "tangent_samples": 3070,
+  "tangent": {
+    "15": {
+      "all": {
+        "count": 3070,
+        "median_deg": 18.76361042736833,
+        "p90_deg": 56.321007162264316,
+        "max_deg": 89.96755119000441
+      },
+      "radius_lt_1_2": {
+        "count": 2488,
+        "median_deg": 23.821966718726024,
+        "p90_deg": 60.43119707150374,
+        "max_deg": 89.96755119000441
+      },
+      "radius_ge_1_2": {
+        "count": 582,
+        "median_deg": 0.22258361250770992,
+        "p90_deg": 3.2840805363794003,
+        "max_deg": 29.745337228923944
+      },
+      "radius_ge_1_5": {
+        "count": 293,
+        "median_deg": 0.043175953635848384,
+        "p90_deg": 0.2205743758111763,
+        "max_deg": 0.6982487228611193
+      }
+    },
+    "30": {
+      "all": {
+        "count": 3070,
+        "median_deg": 8.013345483796996,
+        "p90_deg": 35.42926634846974,
+        "max_deg": 89.7213192409987
+      },
+      "radius_lt_1_2": {
+        "count": 2488,
+        "median_deg": 11.37468111626609,
+        "p90_deg": 39.0154903420083,
+        "max_deg": 89.7213192409987
+      },
+      "radius_ge_1_2": {
+        "count": 582,
+        "median_deg": 0.11336920610622656,
+        "p90_deg": 0.3553701919203136,
+        "max_deg": 1.5939271063546137
+      },
+      "radius_ge_1_5": {
+        "count": 293,
+        "median_deg": 0.039993932513494035,
+        "p90_deg": 0.17634335881810273,
+        "max_deg": 0.39260665170889963
+      }
+    },
+    "64": {
+      "all": {
+        "count": 3070,
+        "median_deg": 2.254745731758129,
+        "p90_deg": 12.787535558164544,
+        "max_deg": 85.66327018407819
+      },
+      "radius_lt_1_2": {
+        "count": 2488,
+        "median_deg": 3.4584127416333246,
+        "p90_deg": 14.758518589742932,
+        "max_deg": 85.66327018407819
+      },
+      "radius_ge_1_2": {
+        "count": 582,
+        "median_deg": 0.10654957518750878,
+        "p90_deg": 0.34974654025079305,
+        "max_deg": 1.611032003924701
+      },
+      "radius_ge_1_5": {
+        "count": 293,
+        "median_deg": 0.03999411799908734,
+        "p90_deg": 0.17621583849673797,
+        "max_deg": 0.39317662051830066
+      }
+    },
+    "90": {
+      "all": {
+        "count": 3070,
+        "median_deg": 0.8573774625591314,
+        "p90_deg": 5.800553225138168,
+        "max_deg": 76.48605372633573
+      },
+      "radius_lt_1_2": {
+        "count": 2488,
+        "median_deg": 1.3501942577320953,
+        "p90_deg": 6.717440806960321,
+        "max_deg": 76.48605372633573
+      },
+      "radius_ge_1_2": {
+        "count": 582,
+        "median_deg": 0.10654957518750878,
+        "p90_deg": 0.3497467665532543,
+        "max_deg": 1.61100107003011
+      },
+      "radius_ge_1_5": {
+        "count": 293,
+        "median_deg": 0.03999411799908734,
+        "p90_deg": 0.17621583850087477,
+        "max_deg": 0.39317662033012335
+      }
+    }
+  },
+  "selected_degree": 90,
+  "wrong_frame_90deg_control": {
+    "count": 3070,
+    "median_deg": 57.48744906520092,
+    "p90_deg": 83.87348863410011,
+    "max_deg": 89.98756559117646
+  },
+  "topology_degree90": {
+    "lines": 626,
+    "reference_open": 73,
+    "reference_closed": 553,
+    "indeterminate": 0,
+    "determinate_fraction": 1.0,
+    "open_recall": 0.9863013698630136,
+    "closed_recall": 1.0,
+    "balanced_accuracy": 0.9931506849315068,
+    "confusion": {
+      "open_as_closed": 1,
+      "closed_as_open": 0
+    },
+    "max_steps": 600,
+    "step_size_solar_radii": 0.01,
+    "open_endpoint_error": {
+      "count": 72,
+      "median_deg": 0.15099999323913244,
+      "p90_deg": 1.0621266109504361,
+      "max_deg": 7.842557957343357
+    }
+  },
+  "accuracy_budget": {
+    "tangent_median_deg": 2.0,
+    "tangent_p90_deg": 10.0,
+    "balanced_topology_accuracy": 0.95,
+    "determinate_fraction": 0.99
+  },
+  "accuracy_budget_passed": true,
+  "empirical_speed_calibrated": false,
+  "speed_comparison": "Not evaluated here: captured FITS has no speed plane; this PFSS-only comparison does not establish or invalidate external-model ACE overlap.",
+  "coverage_limits": [
+    "One GONG-Z epoch, not solar-cycle-wide coverage.",
+    "The grid runtime still defaults to degree 15; degree 90 uses the explicit native spectral entry point, not a global grid-cap increase.",
+    "Field-line tangents are finite-segment provider samples, not exact point derivatives.",
+    "No SCS 5-Rs map is compared directly to a 2.51-Rs PFSS surface."
+  ],
+  "comparison_wall_seconds": 9.375229583999953
+}
