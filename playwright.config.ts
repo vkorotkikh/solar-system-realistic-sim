@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 const port = Number(process.env.UI_TEST_PORT || 4175);
 export default defineConfig({
   testDir: './tests/browser',
+  outputDir: `test-results/${port}`,
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,

@@ -55,9 +55,9 @@ try {
     } else if (arg === '--open') {
       config.open = true;
     } else if (arg === '--width') {
-      config.width = parsePositiveNumber('width', next(), 640, 10_000);
+      config.width = parsePositiveNumber('width', next(), 160, 10_000);
     } else if (arg === '--height') {
-      config.height = parsePositiveNumber('height', next(), 360, 10_000);
+      config.height = parsePositiveNumber('height', next(), 160, 10_000);
     } else if (arg === '--render-scale') {
       config.renderScale = parsePositiveNumber('render-scale', next(), 0.5, 3.0);
     } else if (arg === '--max-pixel-ratio') {
@@ -82,7 +82,7 @@ if (config.height !== null) env.VITE_UI_HEIGHT = String(config.height);
 if (config.renderScale !== null) env.VITE_RENDER_SCALE = String(config.renderScale);
 if (config.maxPixelRatio !== null) env.VITE_MAX_PIXEL_RATIO = String(config.maxPixelRatio);
 
-const viteArgs = ['vite', '--host', config.host, '--port', String(config.port)];
+const viteArgs = ['vite', '--host', config.host, '--port', String(config.port), '--strictPort'];
 if (config.open) {
   viteArgs.push('--open');
 }

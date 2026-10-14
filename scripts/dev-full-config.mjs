@@ -106,6 +106,7 @@ export function buildFrontendArgs(config) {
     'vite',
     '--host', config.host,
     '--port', String(config.frontendPort),
+    '--strictPort',
   ];
   if (config.open) args.push('--open');
   return args;
@@ -113,4 +114,12 @@ export function buildFrontendArgs(config) {
 
 export function displayHost(host) {
   return host.includes(':') ? `[${host}]` : host;
+}
+
+export function buildFrontendEnv(config, env = process.env) {
+  if (env.VITE_BACKEND_ORIGIN?.trim()) return { ...env };
+  if (['0.0.0.0', '::', '[::]'].includes(config.host)) {
+    throw new Error('Set VITE_BACKEND_ORIGIN to the browser-reachable HTTP(S) origin when binding a wildcard host');
+  }
+  return { ...env, VITE_BACKEND_ORIGIN: `http://${displayHost(config.host)}:${config.backendPort}` };
 }
