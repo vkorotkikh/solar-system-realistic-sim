@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CURATED_MOON_TEXTURE_CATALOG } from '../src/frontend/features/planetary/moonTextureCatalog.js';
+// The catalog is a TypeScript module; Node 22.6+/24 loads it directly by
+// stripping types. The old `.js` import pointed at a file that does not exist.
+import { CURATED_MOON_TEXTURE_CATALOG } from '../src/frontend/features/planetary/moonTextureCatalog.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,18 @@ const repoRoot = path.resolve(__dirname, '..');
 const outputDir = path.join(repoRoot, 'public', 'textures', 'moons');
 const manifestPath = path.join(outputDir, 'moon_texture_attribution.json');
 const force = process.argv.includes('--force');
+
+const USAGE = `Usage: node scripts/ingest-moon-textures.mjs [--force] [--help]
+
+Downloads the curated moon textures into public/textures/moons and rewrites
+moon_texture_attribution.json. Existing files are kept unless --force is given.
+--help prints this message and exits without downloading or writing anything.
+`;
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  process.stdout.write(USAGE);
+  process.exit(0);
+}
 
 function sha256Hex(buffer) {
   return createHash('sha256').update(buffer).digest('hex');

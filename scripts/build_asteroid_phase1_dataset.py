@@ -420,13 +420,25 @@ def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -
         json.dumps(records[:10], indent=2), encoding="utf-8"
     )
 
-    print(f"[phase1] Built: {bin_path.relative_to(PROJECT_ROOT)} ({len(records):,} records)")
+    print(f"[phase1] Built: {_display_path(bin_path)} ({len(records):,} records)")
     if warnings:
         for warning in warnings:
             print(f"[phase1] warning: {warning}")
-    print(f"[phase1] Metadata: {meta_path.relative_to(PROJECT_ROOT)}")
+    print(f"[phase1] Metadata: {_display_path(meta_path)}")
     print(f"[phase1] Taxonomy counts: {taxonomy_counts}")
     print(f"[phase1] Orbit class sample: {dict(list(class_counts.items())[:10])}")
+
+
+def _display_path(path: Path) -> str:
+    """Repository-relative when the output sits inside the checkout, absolute otherwise.
+
+    `relative_to` raised ValueError for an external --output-dir, after the
+    artifacts had already been written (tracker SCN-034).
+    """
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def main() -> None:
