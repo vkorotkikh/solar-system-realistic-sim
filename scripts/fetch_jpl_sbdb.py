@@ -36,7 +36,15 @@ BODIES_PY_PATH = PROJECT_ROOT / "backend" / "data" / "bodies.py"
 PLANETS_JS_PATH = PROJECT_ROOT / "src" / "data" / "planets.js"
 
 SBDB_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb_query.api"
-SBDB_FIELDS = "spkid,full_name,H,diameter,e,a,i,om,w,ma,per,epoch,class,spec_B,spec_T"
+SBDB_FIELDS = "spkid,full_name,H,diameter,albedo,e,a,i,om,w,ma,per,epoch,class,spec_B,spec_T"
+
+
+def phase1_query_params() -> dict[str, str]:
+    return {
+        "fields": SBDB_FIELDS, "sb-kind": "a", "sb-class": "MBA,IMB,OMB",
+        "sort": "-diameter,spkid", "limit": "100000", "full-prec": "true",
+        "sb-cdata": json.dumps({"AND": ["a|GE|2", "a|LE|3.5", "diameter|GT|0"]}, separators=(",", ":")),
+    }
 
 # ── Taxonomy color mapping ──
 
@@ -137,7 +145,7 @@ def fetch_sbdb(
     cache_name: str = "sbdb_query",
 ) -> list[dict]:
     """Query JPL SBDB Query API."""
-    cache_path = CACHE_DIR / f"{cache_name}.json"
+    cache_path = CACHE_DIR / f"{cache_name}_full_precision_albedo.json"
 
     def _fetch():
         params: dict = {
@@ -145,10 +153,10 @@ def fetch_sbdb(
             "sb-kind": sb_kind,
             "sort": sort,
             "limit": str(limit),
-            "full-prec": "false",
+            "full-prec": "true",
         }
         if sb_class:
-            params["sb-class"] = sb_class
+            params["sb-class"] = sb_class.replace(":", ",")
         if sb_group:
             params["sb-group"] = sb_group
         print(f"  Querying JPL SBDB (kind={sb_kind}, class={sb_class or 'all'}, limit={limit})...")

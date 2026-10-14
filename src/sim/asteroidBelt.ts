@@ -10,13 +10,14 @@ export enum AsteroidTaxonomy {
   C = 0,  // Carbonaceous — 75 % of belt, dark, outer-belt dominated
   S = 1,  // Silicaceous  — 17 %, stony, inner-belt
   M = 2,  // Metallic     — 8 %, iron-nickel
+  Unknown = 255, // Missing or not assignable to a coarse visual family.
 }
 
 export interface AsteroidDef {
   orbit: KeplerOrbit;
   taxonomy: AsteroidTaxonomy;
   diameterKm: number;
-  albedo: number;
+  albedo: number | null;
   /** packed sRGB 0xRRGGBB */
   color: number;
   irregularity: number;
@@ -147,6 +148,7 @@ export function generateAsteroidBelt(
   const seen = new Set<string>();
 
   const identityKey = (entry: AsteroidDef): string => {
+    if (entry.sourceId) return `source:${entry.sourceId}`;
     const o = entry.orbit;
     return `${(o.aAu ?? 0).toFixed(7)}|${(o.e ?? 0).toFixed(7)}|${(o.iDeg ?? 0).toFixed(5)}|${(o.meanAnomalyDeg ?? 0).toFixed(4)}`;
   };
@@ -157,6 +159,12 @@ export function generateAsteroidBelt(
     if (seen.has(key)) continue;
     seen.add(key);
     asteroids.push(entry);
+  }
+
+  // An explicitly supplied catalog is already a largest-first prefix. Keep
+  // its order and measured population; never pad it with invented catalog rows.
+  if (options.deterministicAsteroids !== undefined && !includeNamed) {
+    return { count: asteroids.length, asteroids };
   }
 
   if (includeNamed) {
