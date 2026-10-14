@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MeshStandardMaterial, ShaderLib, type WebGLRenderer } from 'three';
+import { MeshStandardMaterial, ShaderLib, type WebGLRenderer, type WebGLProgramParametersWithUniforms } from 'three';
 import { createAsteroidBeltRenderer } from './beltRenderer';
 import { NAMED_ASTEROIDS } from '../../../sim/asteroidBelt';
 
@@ -9,7 +9,7 @@ describe('SCN-013 relative GPU orbital time', () => {
       const asteroid = NAMED_ASTEROIDS[0];
       const renderer = createAsteroidBeltRenderer([asteroid]);
       const shader = { vertexShader: ShaderLib.standard.vertexShader, fragmentShader: '', uniforms: {} };
-      (renderer.mesh.material as MeshStandardMaterial).onBeforeCompile(shader, {} as WebGLRenderer);
+      (renderer.mesh.material as MeshStandardMaterial).onBeforeCompile(shader as WebGLProgramParametersWithUniforms, {} as WebGLRenderer);
       const uniforms = shader.uniforms as Record<string, { value: number }>;
       renderer.setJulianDate(jd);
       const first = Math.fround(uniforms.uElapsedDays.value);
@@ -24,9 +24,12 @@ describe('SCN-013 relative GPU orbital time', () => {
 
   it('rebases orbital phase continuously when the time window changes or reverses', () => {
     const asteroid = NAMED_ASTEROIDS[0];
+    if (asteroid.orbit.meanAnomalyDeg == null || asteroid.orbit.periodDays == null) {
+      throw new Error('Named fixture must supply an anomaly and period');
+    }
     const renderer = createAsteroidBeltRenderer([asteroid]);
     const shader = { vertexShader: ShaderLib.standard.vertexShader, fragmentShader: '', uniforms: {} };
-    (renderer.mesh.material as MeshStandardMaterial).onBeforeCompile(shader, {} as WebGLRenderer);
+    (renderer.mesh.material as MeshStandardMaterial).onBeforeCompile(shader as WebGLProgramParametersWithUniforms, {} as WebGLRenderer);
     const uniforms = shader.uniforms as Record<string, { value: number }>;
     for (const jd of [2461327.999, 2461328.001, 2461327.999, 2451545.123]) {
       renderer.setJulianDate(jd);

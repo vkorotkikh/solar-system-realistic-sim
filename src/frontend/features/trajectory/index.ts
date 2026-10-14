@@ -4,6 +4,7 @@ import {
   describeRoute,
   planInterplanetaryRoute as planLocalRoute
 } from './localPlanner';
+import type { PlannerModel, PlannerBody } from './localPlanner';
 
 const DEFAULT_BACKEND_HOST = 'localhost';
 const DEFAULT_BACKEND_PORT = 8042;
@@ -356,7 +357,7 @@ async function requestMissionPlan(options: MissionOptions) {
 
 export async function planInterplanetaryRoute(
   model: unknown,
-  bodyById: Map<string, unknown>,
+  bodyById: ReadonlyMap<string, PlannerBody>,
   options: RouteOptions
 ) {
   try {
@@ -366,7 +367,11 @@ export async function planInterplanetaryRoute(
     if (provider !== 'auto' || !isOfflineConnectionFailure(error)) {
       throw error;
     }
-    const localResult = planLocalRoute(model, bodyById, options);
+    if (model == null || typeof model !== 'object'
+      || !('sampleBodyStateAt' in model) || typeof model.sampleBodyStateAt !== 'function') {
+      throw new TypeError('Local trajectory fallback requires a body-state sampling model');
+    }
+    const localResult = planLocalRoute(model as PlannerModel, bodyById, options);
     return {
       ...localResult,
       source: 'local',

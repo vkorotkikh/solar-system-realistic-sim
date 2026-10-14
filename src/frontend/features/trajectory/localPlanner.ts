@@ -6,7 +6,48 @@ const MAX_LOCAL_ASSISTS = 3;
 const MAX_LOCAL_ASSIST_POOL_SIZE = 8;
 const MAX_LOCAL_ROUTE_TOPOLOGIES = 401;
 
-function computeHohmannLeg(model, fromId, toId, departureJd) {
+export interface PlannerModel {
+  sampleBodyStateAt(bodyId: string, julianDate: number): { position: Vector3 };
+}
+export interface PlannerBody {
+  type?: string;
+  name?: string;
+  massKg?: number | null;
+  radiusKm?: number | null;
+  orbit?: unknown;
+}
+interface LocalPlannerOptions {
+  fromId: string;
+  toId: string;
+  departureJd: number;
+  objective?: string;
+  maxAssists?: unknown;
+  assistPool?: unknown;
+}
+interface LocalAssist {
+  bodyId: string;
+  feasible: boolean;
+  assistGainKmS: number;
+  requiredTurnDeg: number;
+  maxTurnDeg: number;
+}
+interface LocalRoute {
+  bodyRoute: string[];
+  legs: ReturnType<typeof computeHohmannLeg>[];
+  assists: LocalAssist[];
+  objective: string;
+  totalAssistGainKmS: number;
+  assistGainMetric: string;
+  totalDeltaVKmS: number;
+  totalPathLengthAu: number;
+  pathMetric: string;
+  deltaVModel: string;
+  totalTimeDays: number;
+  turnDeficitPenalty: number;
+  score: number;
+}
+
+function computeHohmannLeg(model: PlannerModel, fromId: string, toId: string, departureJd: number) {
   const fromAtDeparture = model.sampleBodyStateAt(fromId, departureJd);
   const toAtDeparture = model.sampleBodyStateAt(toId, departureJd);
 
@@ -57,7 +98,7 @@ function computeHohmannLeg(model, fromId, toId, departureJd) {
   };
 }
 
-function scoreRoute(route, objective) {
+function scoreRoute(route: LocalRoute, objective: string) {
   if (objective === 'max_assist') {
     return (
       route.totalAssistGainKmS * 4 -
@@ -96,7 +137,7 @@ function estimateRouteCount(poolSize: number, maxAssists: number): number {
   return count;
 }
 
-export function planInterplanetaryRoute(model, bodyById, options) {
+export function planInterplanetaryRoute(model: PlannerModel, bodyById: ReadonlyMap<string, PlannerBody>, options: LocalPlannerOptions) {
   const {
     fromId,
     toId,
@@ -132,7 +173,7 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     throw new RangeError(`assistPool is limited to ${MAX_LOCAL_ASSIST_POOL_SIZE} entries`);
   }
 
-  const normalizedAssistPool = assistPool.map((candidate) => {
+  const normalizedAssistPool = assistPool.map((candidate: unknown) => {
     if (typeof candidate !== 'string' || candidate.trim().length === 0) {
       throw new TypeError('assistPool must contain non-empty body IDs');
     }
@@ -237,7 +278,7 @@ export function planInterplanetaryRoute(model, bodyById, options) {
     const totalDeltaVKmS =
       legs[0].deltaVDepartureKmS + legs[legs.length - 1].deltaVArrivalKmS;
 
-    const route = {
+    const route: LocalRoute = {
       bodyRoute,
       legs,
       assists,
@@ -249,7 +290,8 @@ export function planInterplanetaryRoute(model, bodyById, options) {
       pathMetric: 'endpoint_chord_sum',
       deltaVModel: 'endpoint_propulsive_burns_only',
       totalTimeDays,
-      turnDeficitPenalty
+      turnDeficitPenalty,
+      score: 0,
     };
 
     route.score = scoreRoute(route, objective);
@@ -284,7 +326,7 @@ export function planInterplanetaryRoute(model, bodyById, options) {
   };
 }
 
-export function buildTransferCurvePoints(leg, segments = 72) {
+export function buildTransferCurvePoints(leg: { startPosition: Vector3; endPosition: Vector3 }, segments = 72) {
   const start = leg.startPosition;
   const end = leg.endPosition;
   const distance = start.distanceTo(end);
@@ -324,7 +366,7 @@ export function buildTransferCurvePoints(leg, segments = 72) {
   return points;
 }
 
-export function describeRoute(route, bodyById) {
+export function describeRoute(route: Pick<LocalRoute, 'bodyRoute' | 'assists' | 'objective' | 'totalTimeDays' | 'totalPathLengthAu' | 'totalDeltaVKmS' | 'totalAssistGainKmS'> | null | undefined, bodyById: ReadonlyMap<string, PlannerBody>) {
   if (!route) {
     return 'No feasible route could be evaluated for the selected settings.';
   }
