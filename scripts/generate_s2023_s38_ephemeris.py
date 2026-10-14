@@ -29,15 +29,19 @@ GRIDS={'source':np.arange(fit.START-STEP+.0625,fit.END+STEP,STEP),
        'hyperbolic':np.array([2451805.125])}
 
 
-def parse_vectors(result, epochs):
-    preamble=result.split('$$SOE')[0]
+def validate_provider_header(preamble):
     required=[r'Target body name:\s*S2023_S38 \(65273\)\s*\{source: sat455_merged_DE440\}',
               r'Center body name:\s*Saturn \(699\)\s*\{source: sat455_merged_DE440\}',
               r'Center-site name:\s*BODY CENTER',r'Output units\s*:\s*KM-S',
               r'Output type\s*:\s*GEOMETRIC cartesian states',
               r'Reference frame\s*:\s*Ecliptic of J2000.0',r'JDTDB,']
-    if any(re.search(pattern,preamble) is None for pattern in required):
+    if not isinstance(preamble,str) or any(re.search(pattern,preamble) is None for pattern in required):
         raise ValueError('Vector source identity, center, geometry, frame or units changed')
+
+
+def parse_vectors(result, epochs):
+    preamble=result.split('$$SOE')[0]
+    validate_provider_header(preamble)
     lines=result.split('$$SOE')[1].split('$$EOE')[0].strip().splitlines()
     rows=[]
     for line in lines:
@@ -144,6 +148,10 @@ def capture_audit():
 
 def inputs(require_dense=True,require_audit=True):
     manifest=json.loads((INPUTS/'manifest.json').read_bytes())
+    if (manifest.get('schemaVersion') != 1 or
+            manifest.get('encoding') != 'little-endian float64, row-major jdTdb,xKm,yKm,zKm,vxKmS,vyKmS,vzKmS' or
+            manifest.get('normalization') != 'Lossless parsed provider values, not original HTTP bytes'):
+        raise ValueError('Unsupported pinned vector schema or encoding')
     if (manifest['targetId'],manifest['centerId'],manifest['frame'],manifest['timeScale'],manifest['sourceEphemeris']) != (
             '65273','699','ECLIPJ2000','TDB','sat455_merged_DE440'):
         raise ValueError('Pinned vector identity changed')
@@ -161,13 +169,42 @@ def inputs(require_dense=True,require_audit=True):
             raise ValueError('Pinned vector epochs changed')
         cursor=0
         for request in entry['requests']:
-            count=request['rowCount']; batch=values[cursor:cursor+count]
+            count=request['rowCount']
+            if type(count) is not int or count <= 0 or cursor+count > len(values):
+                raise ValueError('Invalid pinned request row count')
+            batch=values[cursor:cursor+count]
+            validate_provider_header(request.get('providerHeader'))
+            if (not isinstance(request.get('rawResponseSha256'),str) or
+                    re.fullmatch('[a-f0-9]{64}',request['rawResponseSha256']) is None or
+                    type(request.get('rawResponseBytes')) is not int or request['rawResponseBytes'] <= 0):
+                raise ValueError('Invalid retained provider-envelope provenance')
             if (dict(parse_qsl(request['encodedQuery']))!=request['query'] or
                     sha(request['encodedQuery'].encode('ascii'))!=request['cacheKey'] or
                     sha(batch.tobytes())!=request['rowsSha256']):
                 raise ValueError('Pinned request or normalized chunk identity changed')
             if any(request['query'].get(k)!=v for k,v in PARAMS.items()):
                 raise ValueError('Pinned geometric vector query changed')
+            query=request['query']
+            try:
+                if 'TLIST' in query:
+                    if query.get('TLIST_TYPE') != 'JD' or any(k in query for k in ['START_TIME','STOP_TIME','STEP_SIZE']):
+                        raise ValueError('Ambiguous pinned epoch request')
+                    requested=np.array([float(v) for v in query['TLIST'].split()])
+                else:
+                    if not query['START_TIME'].startswith('JD') or not query['STOP_TIME'].startswith('JD'):
+                        raise ValueError('Pinned epochs must use explicit Julian dates')
+                    start=float(query['START_TIME'][2:]); stop=float(query['STOP_TIME'][2:])
+                    amount,unit=query['STEP_SIZE'].split()
+                    step=float(amount)*{'m':1/1440,'h':1/24,'d':1}[unit]
+                    if not np.isfinite(step) or step <= 0:
+                        raise ValueError('Invalid pinned request step')
+                    requested=start+np.arange(count)*step
+                    if requested[-1] != stop:
+                        raise ValueError('Pinned request stop does not match its row count')
+                if not np.array_equal(batch[:,0],requested):
+                    raise ValueError('Pinned request epochs contradict its normalized vector chunk')
+            except (KeyError,TypeError,OverflowError) as error:
+                raise ValueError('Malformed pinned epoch request') from error
             cursor+=count
         if cursor!=len(values): raise ValueError('Missing pinned source chunk')
         result[purpose]=values
