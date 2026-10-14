@@ -30,20 +30,25 @@ export function createFrameLifecycle({
   let disposed = false;
   let frameId: number | null = null;
   let previousTimestamp: number | null = null;
+  let generation = 0;
   const failingStages = new Set<FrameStage>();
 
   function schedule() {
-    if (running && !visibility.hidden && frameId === null) frameId = requestFrame(animate);
+    if (running && !visibility.hidden && frameId === null) {
+      const owner = generation;
+      frameId = requestFrame(timestamp => animate(timestamp, owner));
+    }
   }
 
   function cancelPending() {
+    generation++;
     if (frameId !== null) cancelFrame(frameId);
     frameId = null;
     previousTimestamp = null;
   }
 
-  function animate(timestamp: number) {
-    if (!running || visibility.hidden) return;
+  function animate(timestamp: number, owner: number) {
+    if (owner !== generation || !running || visibility.hidden) return;
     frameId = null;
     schedule();
     if (!Number.isFinite(timestamp)) {
@@ -55,7 +60,7 @@ export function createFrameLifecycle({
     previousTimestamp = timestamp;
 
     for (const stage of stages) {
-      if (!running || visibility.hidden) break;
+      if (owner !== generation || !running || visibility.hidden) break;
       try {
         stage.run({ timestamp, deltaSeconds });
         failingStages.delete(stage);
