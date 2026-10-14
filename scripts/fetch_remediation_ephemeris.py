@@ -48,7 +48,10 @@ def capture(command, epochs, center='500@10'):
         assert target.startswith(command[:-1] + ' '), target
     else:
         # Inner barycentres can resolve to their only physical body (199, 299).
-        target_id = re.search(r'\((\d+)\)', target).group(1)
+        match = re.search(r'\((\d+)\)', target)
+        if match is None:
+            raise RuntimeError(f'Requested major-body target {command} resolved to a different object: {target}')
+        target_id = match.group(1)
         assert target_id in {command, {'1': '199', '2': '299'}.get(command)}, target
     rows = list(csv.reader(io.StringIO(result.split('$$SOE')[1].split('$$EOE')[0].strip())))
     states = [{'jd_tdb': float(row[0]), 'position_au': list(map(float, row[2:5])),

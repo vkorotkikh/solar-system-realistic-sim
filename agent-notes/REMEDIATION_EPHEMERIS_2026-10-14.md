@@ -146,3 +146,39 @@ Typecheck ratchet passed at **217/226 allowed legacy diagnostics**, no bucket ex
 1. Controller integrates this checkpoint while preserving mission allowlist/redirect ownership, then runs full gates with the pinned Node runtime.
 2. Supply native Tudat and demonstrate mixed-origin energy translation invariance, forward/backward chunk continuity, TDB wire metadata, and non-reset accumulated J2/J4 effects. SCN-055/077 stay open until then.
 3. Commit the separate all-424 independent reference coverage and exhaustive error assessment, explicitly retaining provider gaps and failed accuracy outcomes. Address newly exposed moon fidelity defects in that next scope rather than calling capture completion an accuracy pass.
+
+## Separate SCN-043 oracle follow-up
+
+Integration checkpoint: `2005a1f`. The following evidence is intentionally a separate follow-up, not a prerequisite for cherry-picking the completed scoped repairs above.
+
+The all-catalog capture is complete as an availability accounting exercise: **424 catalog records, 422 complete seven-epoch captures, one five-epoch partial capture, and one unavailable target**. Thus independent vectors exist for **423/424 bodies**, not 424/424. Requested JDs TDB are 2451545.0, 2451575.0, 2451725.0, 2451910.25, 2453371.25, 2460676.5, and 2461327.5. All successful queries explicitly request parent-center geometric states in ecliptic J2000, AU/AU-day, TDB; each capture includes query, response headers, source solution, API signature, UTC retrieval timestamp, and response SHA256.
+
+- Daphnis (635): five older epochs captured from `sat415_merged_DE437`; the live provider explicitly rejects dates after 2018-JAN-17. The 2025/2026 samples remain missing, with the original error retained. No extrapolated model output is substituted for truth.
+- S/2025 U 1 (catalog `S2025_U_1`, 75052): live Horizons returns asteroid `75052 (1999 UM50)`, source JPL#50, instead of the satellite. The target guard rejects it. The live major-body listing omits 75052; alternate provisional-name and 728 probes did not identify the moon. The catalog ID is supported by [JPL's satellite ephemeris table](https://ssd.jpl.nasa.gov/sats/ephem/sep.html), but that does not make the wrong live response valid evidence.
+- An independent SPK route exists: [NAIF's published SPK inventory](https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/aa_summaries.txt) lists 75052 and Uranus-center 799 relative to barycenter 7 in `ura184_part-2.bsp`, covering 1900-2100. A live HEAD request reports 2,062,529,536 bytes for that kernel; the unsplit SSD kernel is 4,442,362,880 bytes. SpiceyPy is absent from the tested uv environment. No multi-gigabyte download or optional runtime installation was started. Native extraction from this identified kernel is a concrete next action, not an already captured/passing result.
+
+The reproducible all-catalog diagnostic uses the actual frontend catalog with its shipped fitted-moon artifact. **2,959 independently referenced samples were compared, zero model-unavailable samples among the captured epochs.** This is comparison coverage, not acceptable accuracy:
+
+| Descriptive metric | Result |
+| --- | ---: |
+| Bodies with at least one sampled position error greater than one catalog semimajor axis | 190 |
+| Bodies with at least one sampled position error greater than 10% of one semimajor axis | 399 |
+| Largest sampled absolute error: S2021_N1 | 101,163,777.712 km |
+| Neso maximum sampled error | 71,542,416.717 km |
+| Psamathe maximum sampled error | 67,435,154.172 km |
+
+These are descriptive severity counters, not invented scientific acceptance thresholds. The detailed machine-readable assessment retains all 424 records, per-epoch position and velocity errors, the runtime model-quality label, and explicit reference gaps. **SCN-043 remains OPEN for missing reference coverage and substantial demonstrated model-fidelity defects.** The 27-major-moon fixture suite is not used to claim all-moon validity.
+
+Follow-up files: `scripts/capture_all_moon_oracle.py`, `scripts/assess_all_moon_oracle.mjs`, `backend/tests/fixtures/all_moons_horizons_oracle.json`, `backend/tests/test_all_moon_oracle_coverage.py`, `agent-notes/EPHEMERIS_ALL_MOON_ASSESSMENT_2026-10-14.json`. The shared capture helper now reports a wrong-target response explicitly instead of leaking a regex AttributeError; successful target validation is unchanged.
+
+Executed follow-up commands:
+
+```sh
+python scripts/capture_all_moon_oracle.py
+node scripts/assess_all_moon_oracle.mjs > agent-notes/EPHEMERIS_ALL_MOON_ASSESSMENT_2026-10-14.json
+PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC uv run --python 3.12 --with-requirements ci/backend-test-requirements.txt python -m pytest -q backend/tests/test_all_moon_oracle_coverage.py --tb=short
+```
+
+Reference-integrity result: **425 passed, 2 skipped, 0.18 s**. The two full-span skips are Daphnis and S/2025 U 1. Additional passing tests check Daphnis's partial provenance and rejection of the wrong asteroid; those checks do not turn either missing reference into a successful capture. No model-accuracy pass is claimed by this test file.
+
+Next SCN-043 actions: obtain the identified native SPK state for 75052, seek an authoritative current Daphnis solution or restrict its declared interval, establish scientifically justified per-body/per-interval error budgets, and repair the demonstrated phase/frame/mean-element fidelity failures before claiming all-moon accuracy. The completed capture and exhaustive diagnostic make those failures visible without extending this checkpoint into an unbounded 424-body model redesign.
