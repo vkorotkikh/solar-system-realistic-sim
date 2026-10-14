@@ -1,0 +1,57 @@
+{
+  "schema": "solar-pfss-cold-response-v1",
+  "request": {
+    "epoch_jd_tdb": 2461326.238888889,
+    "fidelity": "high",
+    "max_features": 256,
+    "forcing": "synthetic",
+    "live_data": false
+  },
+  "fixture_injected": true,
+  "observed_route_enabled": false,
+  "timeout_seconds": 18.0,
+  "max_result_bytes": 2097152,
+  "evaluation_batch_positions": 1024,
+  "reported_shared_cpu_contention": true,
+  "load_average_before": [
+    0.89892578125,
+    1.16845703125,
+    2.54931640625
+  ],
+  "memory_policy": "Existing bounded evaluation/WSA/JSON/wire limits; no numeric RSS cap is configured.",
+  "complete_response_seconds": 12.244045306000316,
+  "http_body_bytes": 860593,
+  "child": {
+    "native_spectral_fixture": true,
+    "solver_calls": 1,
+    "reference_decode_seconds": 0.002422330999706901,
+    "degree": 90,
+    "source_surface_radii": 2.51,
+    "solver_seconds": 11.909305136999592,
+    "display_lines": 120,
+    "wsa_grid": "36x72",
+    "target_seconds": 12.09306550500014,
+    "wire_bytes": 860754,
+    "child_peak_rss_kib": 89668,
+    "through_encoding_seconds": 12.101890100000219
+  },
+  "budget_passed": true,
+  "runner_after_shutdown": {
+    "start_method": "spawn",
+    "max_workers": 1,
+    "max_queue": 0,
+    "capacity": 1,
+    "in_flight": 0,
+    "active_processes": 0,
+    "active_pids": [],
+    "closed": true,
+    "broken": false,
+    "broken_reason": null,
+    "quarantined_jobs": 0
+  },
+  "load_average_after": [
+    0.9150390625,
+    1.16259765625,
+    2.5322265625
+  ]
+}
