@@ -92,7 +92,7 @@ def test_auto_is_network_free_and_pins_kepler(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(EphemerisService, "_sample_spice", forbidden)
     monkeypatch.setattr(EphemerisService, "_sample_horizons", forbidden)
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
 
     service = EphemerisService(
         ALL_BODIES,
@@ -314,7 +314,7 @@ def test_horizons_uses_strict_query_bounded_timeout_and_context_budget(
         captured["timeout"] = timeout
         return _Response(_horizons_payload())
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -364,7 +364,7 @@ def test_all_providers_require_exact_planning_context_before_work(
     class DerivedPlanningContext(PlanningContext):
         pass
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     invalid_contexts = (
         None,
         DuckContext(),
@@ -402,7 +402,7 @@ def test_horizons_external_request_budget_stops_unique_epoch_loop(
             route_prefixes=0,
         ),
     )
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -437,7 +437,7 @@ def test_identical_horizons_requests_across_sessions_are_single_flight(
         assert release.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     contexts = [PlanningContext.with_timeout(2.0) for _ in range(20)]
     services = [
         EphemerisService(ALL_BODIES, provider="horizons", context=context)
@@ -486,7 +486,7 @@ def test_single_flight_follower_obeys_its_own_deadline(
         assert release.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     owner = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -532,7 +532,7 @@ def test_horizons_outage_cooldown_allows_only_one_half_open_probe(
 
     monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S", 0.03)
     monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_MAX_COOLDOWN_S", 0.06)
-    monkeypatch.setattr(module.urllib.request, "urlopen", recovering_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", recovering_urlopen)
     first = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -611,7 +611,7 @@ def test_single_flight_owner_cancellation_allows_waiter_to_retry(
             assert release_first.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     owner_context = PlanningContext.with_timeout(1.0)
     waiter_context = PlanningContext.with_timeout(1.0)
     owner = EphemerisService(ALL_BODIES, provider="horizons", context=owner_context)
@@ -664,7 +664,7 @@ def test_horizons_control_failure_is_not_cached(
         calls += 1
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     exhausted_context = PlanningContext.with_timeout(
         1.0,
         limits=PlanningLimits(
@@ -707,7 +707,7 @@ def test_horizons_success_cache_is_bounded_and_uses_full_contract_key(
         return _Response(_horizons_payload(jd=float(query["TLIST"][0])))
 
     monkeypatch.setattr(module, "HORIZONS_SUCCESS_CACHE_MAXSIZE", 2)
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     epochs = (2_460_440.5, 2_460_441.5, 2_460_442.5)
     for jd in epochs:
         service = EphemerisService(
@@ -754,7 +754,7 @@ def test_horizons_slow_transport_stops_waiting_at_absolute_deadline(
         return _Response(_horizons_payload())
 
     monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
-    monkeypatch.setattr(module.urllib.request, "urlopen", slow_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", slow_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -811,7 +811,7 @@ def test_horizons_transport_is_globally_serialized(
                 active -= 1
 
     monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     services = [
         EphemerisService(
             ALL_BODIES,
@@ -862,7 +862,7 @@ def test_horizons_refuses_display_name_fallback_without_network(
         calls += 1
         raise AssertionError("unsupported target reached the network")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -884,7 +884,7 @@ def test_provider_preflight_rejects_any_unsupported_target_before_network(
         calls += 1
         raise AssertionError("an incomplete target set reached Horizons")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -1040,7 +1040,7 @@ def test_horizons_rejects_incompatible_protocol_and_opens_request_circuit(
         calls += 1
         return _Response(payload)
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -1064,7 +1064,7 @@ def test_horizons_timeout_opens_request_circuit_after_one_attempt(
         calls += 1
         raise socket.timeout("fixture timeout")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", timed_out)
+    monkeypatch.setattr(module, "_horizons_urlopen", timed_out)
     context = PlanningContext.with_timeout(1.0)
     service = EphemerisService(
         ALL_BODIES,

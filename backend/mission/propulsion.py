@@ -12,6 +12,22 @@ import math
 from typing import Any, Sequence
 
 from .orbital import G_SI
+from trajectory.contracts import TrajectoryRequestRejected
+
+
+def validate_parking_bodies(bodies: Sequence[dict[str, Any]], body_ids: Sequence[str]) -> None:
+    catalog = {body["id"]: body for body in bodies}
+    for body_id in body_ids:
+        body = catalog.get(body_id, {})
+        try:
+            mass, radius = float(body["mass_kg"]), float(body["radius_km"])
+            valid = math.isfinite(mass) and math.isfinite(radius) and mass > 0 and radius > 0
+        except (KeyError, ValueError, TypeError):
+            valid = False
+        if not valid:
+            raise TrajectoryRequestRejected("mission_propulsion_body_unsupported",
+                "Circular parking/capture requires a finite positive body mass and radius",
+                context={"bodyId": body_id})
 
 
 def circular_parking_burn_km_s(v_infinity_km_s: float, mu_km3_s2: float, radius_km: float) -> float:

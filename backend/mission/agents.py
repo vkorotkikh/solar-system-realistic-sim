@@ -7,13 +7,13 @@ from typing import Any, Dict, List, Sequence
 
 from trajectory import DEFAULT_ASSIST_POOL, plan_interplanetary_route
 from trajectory.budget import PlanningContext, PlanningError, default_planning_context
-from trajectory.contracts import validate_plan_request
+from trajectory.contracts import validate_plan_request, validate_planning_epoch
 
 from .ephemeris_service import EphemerisService
 from .explainability import DecisionLog
 from .mining_service import MiningService
 from .risk_service import RiskService
-from .propulsion import mission_burn_schedule
+from .propulsion import mission_burn_schedule, validate_parking_bodies
 from .schemas import (
     MAX_MISSION_ASSIST_POOL_SIZE,
     MAX_MISSION_VEHICLE_STAGES,
@@ -313,6 +313,8 @@ class MissionPlannerAgent:
         context.checkpoint()
         mission_request = parse_mission_request(payload)
         mission_inputs = mission_request.to_dict()
+        validate_planning_epoch(mission_inputs["departure_jd"], "departure_jd")
+        validate_planning_epoch(mission_inputs["departure_jd"] + mission_inputs["mining_days"], "earliest_return_departure_jd")
         context.checkpoint()
 
         # Validate both directions and derive their complete provider coverage
@@ -341,6 +343,7 @@ class MissionPlannerAgent:
             default_assist_pool=DEFAULT_ASSIST_POOL,
             max_assist_pool_size=MAX_MISSION_ASSIST_POOL_SIZE,
         )
+        validate_parking_bodies(self._bodies, [outbound_contract.from_id, outbound_contract.to_id, return_contract.to_id])
         ephemeris = EphemerisService(
             self._bodies,
             provider=mission_inputs["ephemeris_provider"],

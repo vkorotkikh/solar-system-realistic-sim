@@ -149,6 +149,9 @@ from trajectory.contracts import (
     eligible_endpoint_body_ids,
     estimate_route_count,
     validate_plan_request,
+    validate_planning_epoch,
+    PLANNING_JD_MIN,
+    PLANNING_JD_MAX,
 )
 from trajectory.lambert import (
     MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
@@ -2365,6 +2368,8 @@ def _validate_trajectory_endpoint_pair(
 
 
 def _validate_mission_trajectory_payload(payload: MissionPlanRequest) -> None:
+    validate_planning_epoch(payload.departure_jd, "departure_jd")
+    validate_planning_epoch(payload.departure_jd + payload.mining_days, "earliest_return_departure_jd")
     target_id = payload.target_id or payload.to_id or "psyche"
     return_id = payload.return_id or payload.from_id
     _ensure_bodies_known(
@@ -2503,6 +2508,9 @@ def _run_mission_plan(
 
 
 def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
+    _validate_planning_epochs_http(departure_start_jd=payload.departure_start_jd,
+                                  departure_end_jd=payload.departure_end_jd,
+                                  latest_arrival_jd=payload.departure_end_jd + payload.tof_max_days)
     departure_start = float(payload.departure_start_jd)
     departure_end = float(payload.departure_end_jd)
     tof_min = float(payload.tof_min_days)
@@ -3500,6 +3508,8 @@ def trajectory_capabilities():
     state_contract = TRAJECTORY_STATE_CONTRACT
     return {
         "schema": {"name": "trajectory_capabilities", "version": 2},
+        "supportedEpoch": {"minimumJdTdb": PLANNING_JD_MIN, "maximumJdTdb": PLANNING_JD_MAX},
+        "lambertPlanePolicy": "exactly collinear endpoints rejected; no implicit plane chosen",
         "objectives": list(TRAJECTORY_OBJECTIVES),
         "default_objective": "min_distance",
         "max_assists": 3,
@@ -3709,6 +3719,14 @@ def trajectory_capabilities():
     }
 
 
+def _validate_planning_epochs_http(**epochs: float) -> None:
+    try:
+        for field, value in epochs.items():
+            validate_planning_epoch(value, field)
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
+
+
 @app.post("/trajectory/plan")
 async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
     if payload.from_id == payload.to_id:
@@ -3815,6 +3833,7 @@ async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
 
 @app.post("/trajectory/lambert")
 async def trajectory_lambert(request: Request, payload: TrajectoryLambertRequest):
+    _validate_planning_epochs_http(departure_jd=payload.departure_jd, arrival_jd=payload.arrival_jd)
     if payload.from_id == payload.to_id:
         raise _trajectory_http_exception(
             400,
@@ -4001,6 +4020,7 @@ async def trajectory_porkchop(request: Request, payload: TrajectoryPorkchopReque
 @app.get("/mission/capabilities")
 def mission_capabilities():
     return {
+        "supportedEpoch": {"minimumJdTdb": PLANNING_JD_MIN, "maximumJdTdb": PLANNING_JD_MAX},
         "propulsion": {"model": "circular_parking_patched_conic", "defaultParkingAltitudeKm": 200.0,
                        "cargoDelivery": "target_parking_orbit", "surfaceOperationsIncluded": False},
         "schema": {"name": "mission_capabilities", "version": 2},

@@ -109,7 +109,7 @@ MINING_MISSION_FAMILY = _make_family(
     _default_asteroid_targets(),
     from_id="earth",
     return_id="earth",
-    objective="min_delta_v",
+    objective="min_distance",
     max_assists=1,
     payload_mass_kg=6_500,
     risk_failure_probability_threshold=0.55,

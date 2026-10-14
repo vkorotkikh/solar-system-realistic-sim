@@ -7,6 +7,14 @@ from mission.agents import MissionPlannerAgent
 from mission.risk_service import RiskService
 from mission.vehicle_service import StageDefinition, VehicleDefinition, VehicleService
 from data.bodies import ALL_BODIES
+from trajectory.contracts import TrajectoryRequestRejected
+
+
+def test_missing_body_mass_rejects_parking_model_without_inventing_mu():
+    with pytest.raises(TrajectoryRequestRejected) as exc:
+        MissionPlannerAgent(ALL_BODIES).plan(dict(target_id="flora",max_assists=0))
+    assert exc.value.code == "mission_propulsion_body_unsupported"
+    assert exc.value.context["bodyId"] == "flora"
 
 
 @pytest.mark.parametrize("burns", [[0.0], [2.0], [3.0], [100.0]])
