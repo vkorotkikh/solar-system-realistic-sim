@@ -253,13 +253,14 @@ export function createSunController({
     }
   }
 
-  function buildSolarFeatureBlendView(nowMs = Date.now(), featureLimit = 220) {
+  function buildSolarFeatureBlendView(featureLimit = 220) {
     const bv = buildSolarFeatureBlendViewImpl({
       currentFeatureSet: solarPhysicsFeatureSetCurrent,
       targetFeatureSet: solarPhysicsFeatureSetTarget,
       blendStartMs: solarPhysicsBlendStartMs,
       blendDurationMs: solarPhysicsBlendDurationMs,
-      nowMs,
+      // Snapshot interpolation is decorative, not transport/freshness time.
+      nowMs: decorativeTimeSec * 1000,
       featureLimit
     });
     solarPhysicsFeatureSetCurrent = bv.nextCurrentFeatureSet;
@@ -537,7 +538,7 @@ export function createSunController({
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
     node.add(sunCoronalLoopGroup);
     applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
-    const initialBlend = buildSolarFeatureBlendView(Date.now(), 220);
+    const initialBlend = buildSolarFeatureBlendView(220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? initialBlend : null, sunRadiusAu, 144);
 
     sunParkerSpiralGroup = new Group();
@@ -607,7 +608,7 @@ export function createSunController({
     decorativeTimeSec += dtSec;
     const timeSec = decorativeTimeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
-    const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
+    const solarBlendView = buildSolarFeatureBlendView(480);
     const activity = clampUnit(
       finiteOrNull(solarBlendView?.activityIndex)
         ?? finiteOrNull(solarPhysicsState?.activity_index)
@@ -747,16 +748,16 @@ export function createSunController({
             if (!solarPhysicsFeatureSetCurrent) {
               solarPhysicsFeatureSetCurrent = normalized;
               solarPhysicsFeatureSetTarget = null;
-              solarPhysicsBlendStartMs = Date.now();
+              solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
             } else {
               if (solarPhysicsFeatureSetTarget) {
-                const inFlightBlend = buildSolarFeatureBlendView(Date.now(), 220);
+                const inFlightBlend = buildSolarFeatureBlendView(220);
                 const blendedSnapshot = materializeSolarFeatureSetFromBlendView(inFlightBlend);
                 solarPhysicsFeatureSetCurrent = blendedSnapshot ?? solarPhysicsFeatureSetTarget;
                 solarPhysicsFeatureSetTarget = null;
               }
               solarPhysicsFeatureSetTarget = normalized;
-              solarPhysicsBlendStartMs = Date.now();
+              solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
               const pollMs = Number(status['pollIntervalMs']);
               solarPhysicsBlendDurationMs = Math.max(
                 520,
@@ -767,7 +768,10 @@ export function createSunController({
               );
             }
           }
-          rebuildMagneticFieldLines(false, solarPhysicsState?.activity_index);
+          // A newly admitted solution may replace geometry at the same epoch.
+          // Epoch/activity summaries are not a content identity, and solution
+          // IDs are not required by the layer contract. Honor each snapshot.
+          rebuildMagneticFieldLines(!!solarLayerFrames.pfss, solarPhysicsState?.activity_index);
         }
         const clientNextRefreshMs = Number(status['nextRefreshMs']);
         solarPhysicsNextRefreshMs = Number.isFinite(clientNextRefreshMs)
@@ -813,7 +817,7 @@ export function createSunController({
       sunTransitionRegionMesh.scale.setScalar(r * trScale);
     }
     rebuildMagneticFieldLines(true);
-    const bv = buildSolarFeatureBlendView(Date.now(), 220);
+    const bv = buildSolarFeatureBlendView(220);
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? bv : null, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(
       sunParkerSpiralGroup, geometryStateFor('parker'), r, 6, 120, 0, camera

@@ -19,7 +19,7 @@ function frameContract(value: unknown, epoch: number): SolarFrameContext | null 
       || f.jd_time_scale !== 'TDB' || f.origin !== 'SUN_CENTER' || f.north_axis !== '+Z'
       || f.handedness !== 'right' || f.length_unit !== 'solar_radius'
       || f.direction_unit !== 'unit_vector' || f.rotation_state !== 'already_evolved'
-      || f.rendering_eligible === false
+      || (f.rendering_eligible !== undefined && f.rendering_eligible !== true)
       || f.source_kind !== 'synthetic' || f.calibration_status !== 'unvalidated') return null;
   return { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: epoch };
 }
@@ -56,6 +56,7 @@ export function validatedSolarLayerFrames(state: SolarPhysicsStatePayload | null
     } else if (layer === 'parker') {
       if (!arcs(record(state.heliosphere?.parker_spiral)?.lines)) continue;
     } else if (layer === 'coronal_holes') {
+      if (record(state.coronal_holes)?.source !== 'synthetic') continue;
       const holes = state.coronal_holes?.holes;
       if (!Array.isArray(holes) || !holes.every(value => {
         const h = record(value);
