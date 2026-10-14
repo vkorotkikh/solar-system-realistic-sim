@@ -182,3 +182,45 @@ PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUME
 Reference-integrity result: **425 passed, 2 skipped, 0.18 s**. The two full-span skips are Daphnis and S/2025 U 1. Additional passing tests check Daphnis's partial provenance and rejection of the wrong asteroid; those checks do not turn either missing reference into a successful capture. No model-accuracy pass is claimed by this test file.
 
 Next SCN-043 actions: obtain the identified native SPK state for 75052, seek an authoritative current Daphnis solution or restrict its declared interval, establish scientifically justified per-body/per-interval error budgets, and repair the demonstrated phase/frame/mean-element fidelity failures before claiming all-moon accuracy. The completed capture and exhaustive diagnostic make those failures visible without extending this checkpoint into an unbounded 424-body model redesign.
+
+## SCN-043 repair checkpoint 1: actual trajectory repairs
+
+SCN-043 ownership continued after the oracle-only checkpoint. The large errors are model defects, not external blockers. Six new trajectories are now repaired and independently gated: Phobos, Carme, Mimas, Dione, Neso and S2021_N1. Including the four pre-existing fitted moons, this checkpoint has **10/424 fitted, tested bodies**; **413 captured bodies remain model-repair work**, and one body remains provider-unavailable in this worktree's fixture. Daphnis's missing current epochs remain separately explicit. No all-moon closure is claimed.
+
+The preregistered limits are recorded in `agent-notes/SCN043_REPAIR_PLAN_2026-10-14.md`: each new fit must satisfy position <= min(500 km, 0.001 * catalog semimajor axis) and velocity <= 10 m/s. Limits were not increased after failures. The original four models and their existing budgets remain unchanged; their pinned metadata was copied exactly from catalog commit `71ba472` before promotion.
+
+Root causes and repairs:
+
+- Rounded mean periods cannot retain orbital phase: Phobos goes from 9.367 km error at J2000 to 5794.692 km after 30 days in the original model. Parent-relative numerical-source fitting eliminates the phase drift rather than changing its label.
+- Several Saturnian mean-element phases are already wrong at the declared epoch; Mimas and Dione now use actual numerical trajectories rather than assuming those descriptive phases are osculating states.
+- Irregular bodies require varying eccentricity, plane, apsis and phase. Carme, Neso and S2021_N1 no longer advance one mean ellipse for decades.
+- An initial attempt to interpolate osculating features failed for several bodies: fast terms that cancel in the physical Cartesian state become large errors when separately approximated. The repaired representation fits Cartesian states directly; fast moons can use a Fourier phase carrier with slowly varying Chebyshev amplitudes. Both carrier and amplitudes, including segment cross-fades, are analytically differentiated for velocity.
+
+The existing artifact parser now accepts an explicit version-2 mixed collection with legacy element models and `horizons-chebyshev-cartesian-v1` bodies. It validates each model's feature count and carrier harmonics without weakening the legacy provenance/error gates. Runtime states remain parent-relative geometric ecliptic J2000, TDB, AU/AU-day; no fitted trajectory is extrapolated outside its declared interval.
+
+| New repaired body | Fresh held-out samples | Maximum held-out+endpoint position error km | Maximum held-out+endpoint velocity error m/s | Maximum separate seven-epoch position error km |
+| --- | ---: | ---: | ---: | ---: |
+| Phobos | 36525 | 4.031136 | 2.227770 | 3.733115 |
+| Carme | 4566 | 300.808418 | 2.520198 | 193.329961 |
+| Mimas | 36525 | 26.809321 | 2.556723 | 16.762563 |
+| Dione | 36525 | 283.217335 | 7.752763 | 271.913654 |
+| Neso | 4566 | 410.593733 | 1.878466 | 91.833144 |
+| S2021_N1 | 4566 | 115.472695 | 1.028873 | 91.833144 |
+
+Every source grid uses fractional-day phase x.125, disjoint from all seven earlier vector-oracle epochs. Half-step numerical-source states and both exact coverage endpoints are independently retrieved and checked, with source/held-out hashes retained in each model. The model interval is J2000 through 2050-01-01. The seven-epoch vector oracle is not used as fitting input. Neso's seven-epoch maximum decreases from 71,542,416.717 km to 91.834 km; S2021_N1 decreases from 101,163,777.712 km to 91.834 km. A candidate failing the fixed budget, such as Styx in this pilot, is not promoted.
+
+All-424 re-assessment is retained as `agent-notes/SCN043_CHECKPOINT1_ASSESSMENT_2026-10-14.json`: the number of bodies above one semimajor axis decreases from 190 to **185**, and those above 10% decrease from 399 to **393**. Remaining errors are still real repair work.
+
+Executed runtime gates:
+
+```sh
+npx vitest run src/sim/moonCartesianEphemeris.test.ts src/sim/moonCatalogRepair.horizons.test.ts src/sim/moonEphemeris.test.ts src/sim/moonFrames.horizons.test.ts src/sim/catalog.test.ts src/sim/solarSystemModel.test.ts src/sim/sourceFrameOrbit.test.ts src/sim/secularRemediation.test.ts --reporter=dot
+npm run typecheck:ratchet
+node scripts/assess_all_moon_oracle.mjs > agent-notes/SCN043_CHECKPOINT1_ASSESSMENT_2026-10-14.json
+```
+
+Results: **80 passed, 414 explicitly skipped across 8 files**, 0.581 s. Those 414 skips consist of 413 oracle-available bodies pending repair and one unavailable provider target; they are not scientific successes. The new all-catalog regression retains all 424 test cases and checks actual position/velocity for every promoted body. Four analytic Cartesian tests cover polynomial derivatives, fast carrier phase and derivatives, cross-fade derivative terms, and no mutation/extrapolation on failure. The typecheck ratchet passes at 217/226 pre-existing diagnostics.
+
+Generation uses the standard pinned Python 3.12 uv/backend environment prefix and `python scripts/repair_catalog_moon_ephemeris.py --bodies Phobos,Mimas,Dione,Carme,Neso,S2021_N1 --promote`. The separate driver leaves `scripts/update-moons-data.mjs` and the general generator's transactionality untouched. The full remaining-body batch is in progress; only passing, independently tested candidates will be checkpointed.
+
+Controller coordination: the controller owns 75052 SPK byte-range extraction and reports native Tudat 1.0 installation with adapter corrections and four passing gates. These controller results were not rerun or claimed as local evidence here; accumulated J2/J4 evidence remains controller-owned. No duplicate 75052 retrieval or optional Tudat installation was performed in this worktree.
