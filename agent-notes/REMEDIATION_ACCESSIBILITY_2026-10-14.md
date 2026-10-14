@@ -76,13 +76,31 @@ Local raw logs are intentionally ignored under `artifacts/accessibility/`: `unit
 
 Playwright 1.64.0 downloaded Chromium build 1248 (Chrome 156.0.8078.4), Firefox and WebKit into this worktree's ignored browser directory. Existing shared Chromium builds 1243/1234 were discovered but not used for the final matrix. Chromium and Firefox launch; WebKit cannot launch because libraries including GTK4, Graphene, GStreamer components, libavif16 and others are absent. CI retains all three projects and installs dependencies with `playwright install --with-deps`; no local skip was added.
 
-Chromium app tests explicitly use headless ANGLE/SwiftShader. A separate bounded headful WSLg probe launched Chromium without software-rendering flags, created WebGL2, and queried `WEBGL_debug_renderer_info`. Its actual unmasked renderer was:
+The initial Chromium app tests explicitly used headless ANGLE/SwiftShader. A separate bounded headful WSLg probe launched Chromium without software-rendering flags, created WebGL2, and queried `WEBGL_debug_renderer_info`. Its actual unmasked renderer was:
 
 ```text
 ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
 ```
 
-The probe therefore provides software-rendering evidence only despite exposed NVIDIA devices. No RTX hardware rendering, shader precision, real-device touch/pinch or screen-reader speech is claimed. Controller-reported asteroid GPU results are not reproduced or counted as this domain's evidence.
+That initial probe provides software-rendering evidence only. A subsequent explicit WSLg/D3D12 run verified actual NVIDIA hardware rendering, as recorded below. Shader precision, real-device touch/pinch and screen-reader speech are not claimed. Controller-reported asteroid GPU results are not reproduced or counted as this domain's evidence.
+
+### Actual NVIDIA hardware follow-up
+
+The production-app browser tests subsequently passed **3/3 in 19.7 seconds** on headful Chromium 156 with the pinned Node 22.23.2/npm 10.9.8 toolchain. The application canvas reported this unmasked renderer:
+
+```text
+ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)
+```
+
+The tests exercised actual app composition with a nondefault backend origin and viewport, a forced no-WebGL constructor failure with accessible reload and usable drawer, and actual `WEBGL_lose_context` loss with keyboard-accessible recovery. This is hardware-backed UI/recovery evidence, not a scientific shader-accuracy gate or comprehensive GPU/platform certification. The no-WebGL case deliberately has no rendering context.
+
+Exact command, from the assigned accessibility worktree:
+
+```sh
+GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib UI_HARDWARE_WEBGL=1 PLAYWRIGHT_BROWSERS_PATH=$PWD/artifacts/accessibility/browsers UI_TEST_PORT=4178 PATH=/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/.bin:$PATH npm run test:browser -- app-smoke.spec.ts --project=chromium
+```
+
+Evidence: `artifacts/accessibility/app-smoke-hardware.txt` and the Playwright `webgl-renderer` attachment. `UI_HARDWARE_WEBGL=1` selects headful Chromium with `--no-sandbox --ignore-gpu-blocklist --use-gl=angle --use-angle=gl`; the application test asserts a D3D12/NVIDIA RTX renderer, so a silent SwiftShader fallback fails. Default browser CI remains explicitly headless SwiftShader. `npm run test:types:ui` and `git diff --check` also passed after this browser-config/test update. No dependency versions changed in this follow-up.
 
 ## Dependency handoff to supply-chain owner
 
@@ -96,9 +114,9 @@ The controller is integrating events commit `32da51b` and planets commit `9221a6
 2. Keep the extracted `createExperimentController` as the sole binding owner. It receives `engineSelectionResolver(agnEngine)`, which selects the events module's `resolveAgnSelection` when present. Do not retain the old inline `syncAgnSelection` listeners or call as a second binding. Resolver mode preserves named preset source/model precedence, clears presets on explicit selections and reports source notes. The observer checkbox/DOM requirement/calls stay removed. The unit test explicitly distinguishes the baseline and integrated engine contracts; the browser resolver-port test covers restored H29, named-preset synchronization and explicit-selection reset. Integrated real-engine app behavior still requires the controller's combined gates.
 3. Keep solar-state live getters for `paused` and `timeScaleDaysPerSec` as well as Julian date; dropping them would break the integrated decorative-motion policy. Keep `sunCtrl.disposeSolarDelivery()` in cleanup and context-loss handling.
 4. Preserve planet/trajectory owner fixes. This patch does not edit those engines. Re-run the combined unit/type/build/browser gates after conflict resolution; diagnostic counts above describe this assigned branch, not the controller's newer integrated tree.
-5. Run WebKit on a host with its required OS libraries. Manual NVDA/Chrome and VoiceOver/Safari checks remain NOT RUN, including virtual-cursor isolation, actual spoken search output, canvas descriptions and native-picker behavior. Real browser 200%/400% zoom and OS text resizing remain NOT RUN; the automated CSS 200% text fixture is separate evidence. Physical touch pinch and true GPU-driver contexts remain NOT RUN.
+5. Run WebKit on a host with its required OS libraries. Manual NVDA/Chrome and VoiceOver/Safari checks remain NOT RUN, including virtual-cursor isolation, actual spoken search output, canvas descriptions and native-picker behavior. Real browser 200%/400% zoom and OS text resizing remain NOT RUN; the automated CSS 200% text fixture is separate evidence. Physical touch pinch remains NOT RUN. Actual RTX 5090/D3D12 application rendering and context-loss recovery passed in the hardware follow-up above; other hardware/platform combinations remain unverified.
 
-These gaps prevent a claim of complete AT/WCAG or hardware validation; they do not represent unimplemented core UI/controller fixes. No backend scientific tests were run because this patch changes no backend or scientific engine. The controller owns integrated full gates and final canonical-register updates.
+These gaps prevent a claim of complete AT/WCAG or cross-platform hardware validation; they do not represent unimplemented core UI/controller fixes. Hardware evidence is limited to the explicitly identified RTX 5090/D3D12 browser configuration above. No backend scientific tests were run because this patch changes no backend or scientific engine. The controller owns integrated full gates and final canonical-register updates.
 
 ## Precise provenance
 

@@ -6,6 +6,15 @@ test('actual app composes camera, drawer, search and experiment with a nondefaul
   test.setTimeout(90_000);const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));const requests:string[]=[];page.on('request',request=>requests.push(request.url()));await controlExternalRequests(page);
   await page.goto('/?uiWidth=500&uiHeight=700&renderScale=0.5&maxPixelRatio=1');
   await expect(page.locator('#status-zoom')).not.toHaveText('Range · —',{timeout:60_000});
+  const graphics = await page.locator('#space-canvas').evaluate((canvas:HTMLCanvasElement)=>{
+    const gl=canvas.getContext('webgl2');
+    const debug=gl?.getExtension('WEBGL_debug_renderer_info');
+    return { renderer:gl&&debug?String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)):null, userAgent:navigator.userAgent };
+  });
+  console.log('Actual application WebGL:', JSON.stringify(graphics));
+  await test.info().attach('webgl-renderer',{body:JSON.stringify(graphics,null,2),contentType:'application/json'});
+  if(process.env.UI_HARDWARE_WEBGL==='1') expect(graphics.renderer).toMatch(/D3D12.*NVIDIA GeForce RTX/i);
+  else expect(graphics.renderer).toContain('SwiftShader');
   await expect(page.locator('#renderer-unavailable')).toBeHidden();await page.locator('#toggle-play').click();
   const dimensions=await page.locator('#space-canvas').evaluate((canvas:HTMLCanvasElement)=>({width:canvas.width,height:canvas.height,viewWidth:canvas.clientWidth,viewHeight:canvas.clientHeight}));expect(dimensions.viewWidth).toBe(500);expect(dimensions.viewHeight).toBe(700);expect(dimensions.width).toBe(250);expect(dimensions.height).toBe(350);
   const before=await page.locator('#status-zoom').textContent();await page.locator('#space-canvas').focus();await page.keyboard.press('+');await expect(page.locator('#status-zoom')).not.toHaveText(before!);
