@@ -18,27 +18,27 @@ def test_benchmark_uses_strict_reference_integrity() -> None:
     assert summary["referenceIntegrityOk"] is True
     assert summary["requiredTools"] == ["gmat", "orekit", "tudat"]
     assert summary["scenarioCount"] >= 1
-    assert summary["comparableScenarioCount"] == 0
-    assert summary["incomparableCount"] == summary["scenarioCount"]
-    assert summary["solvedCount"] == 0
-    assert summary["validationCoverage"] == pytest.approx(0.0)
-    # Nothing was compared, so there is no error and no pass rate -- not a perfect 0.0 / 0%.
-    assert summary["meanAbsErrorKmS"] is None
-    assert summary["passRate"] is None
+    assert summary["comparableScenarioCount"] == 3
+    assert summary["incomparableCount"] == 0
+    assert summary["solvedCount"] == 3
+    assert summary["validationCoverage"] == pytest.approx(1.0)
+    assert summary["meanAbsErrorKmS"] < 1e-4
+    assert summary["passRate"] == 1.0
     fixed = summary["fixedStateReferences"]
     assert fixed["count"] >= 2
     assert fixed["passCount"] == fixed["count"]
     assert fixed["maxAbsErrorKmS"] < 1e-4
     report = benchmark_accuracy.render_accuracy_report_markdown(summary)
-    assert "Mean |delta-v error|: n/a" in report
+    assert "Mean |delta-v error|: 0.000" in report
     assert f"passed: {fixed['count']}/{fixed['count']}" in report
 
     for row in summary["rows"]:
-        reference = row.get("reference", {})
+        assert row["reference"]["calibrationTier"] == "independent_fixed_state"
+        reference = row["reference"]["legacyCalibration"]
         assert reference.get("calibrationTier") == "strict"
         assert reference.get("requiredToolsPresent") is True
         assert reference.get("artifactChecksPassed") is True
-        assert row["status"] == "incomparable_reference"
+        assert row["status"] == "ok"
         tools = reference.get("tools", {})
         assert set(tools.keys()) == {"gmat", "orekit", "tudat"}
         comparison = reference.get("comparisonContract", {})

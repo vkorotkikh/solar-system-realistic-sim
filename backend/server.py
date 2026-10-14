@@ -2885,6 +2885,7 @@ class MissionPlanRequest(StrictRequestModel):
     assist_pool: list[StrictStr] | None = None
     ephemeris_provider: StrictStr = "auto"
     payload_mass_kg: FiniteFloat = Field(default=6_500.0, gt=0.0)
+    parking_altitude_km: FiniteFloat = Field(default=200.0, gt=0.0)
     reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=1.0)
     handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=1.0)
     risk_samples: int = Field(default=240, ge=1)
@@ -4000,6 +4001,8 @@ async def trajectory_porkchop(request: Request, payload: TrajectoryPorkchopReque
 @app.get("/mission/capabilities")
 def mission_capabilities():
     return {
+        "propulsion": {"model": "circular_parking_patched_conic", "defaultParkingAltitudeKm": 200.0,
+                       "cargoDelivery": "target_parking_orbit", "surfaceOperationsIncluded": False},
         "schema": {"name": "mission_capabilities", "version": 2},
         "agents": [
             "MissionPlannerAgent",
