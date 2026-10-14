@@ -89,6 +89,28 @@ def test_near_antiparallel_velocity_propagates_to_both_endpoints(degrees: float)
     assert miss_km < 50.0, f"{degrees} deg: propagated endpoint miss {miss_km:.3f} km"
 
 
-def test_exactly_antiparallel_endpoints_are_still_refused() -> None:
+def test_near_zero_transfer_recovers_a_state_that_reaches_the_endpoint() -> None:
+    # This is below the old 1-cos(theta) floor boundary. Its nonzero cross product still defines
+    # a transfer plane, so stable recovery is preferable to rejecting a valid Lambert geometry.
+    theta = 1e-8
+    tof_days = 100.0
+    expected_endpoint = [math.cos(theta), math.sin(theta), 0.0]
+    solution = solve_lambert_universal(
+        [1.0, 0.0, 0.0],
+        expected_endpoint,
+        tof_days,
+        tol_days=1e-10,
+        min_periapsis_au=0.0,
+    )
+
+    assert solution is not None
+    assert solution["rootResidualDays"] < 1e-8
+    propagated_endpoint = _propagate_two_body(solution["v1"], tof_days)
+    miss_km = math.dist(propagated_endpoint, expected_endpoint) * AU_KM
+    assert miss_km < 50.0, f"near-zero propagated endpoint miss {miss_km:.3f} km"
+
+
+def test_exactly_collinear_endpoints_are_still_refused() -> None:
     # Collinear inputs do not determine a transfer plane (capability SCN-045), so None stays the contract.
+    assert solve_lambert_universal([1.0, 0.0, 0.0], [1.0, 0.0, 0.0], 100.0) is None
     assert solve_lambert_universal([1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], math.pi / N) is None

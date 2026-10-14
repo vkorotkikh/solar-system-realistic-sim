@@ -786,18 +786,18 @@ def solve_lambert_universal(
 
     theta = _transfer_angle(r1_values, r2_values, prograde=prograde)
     cross_sine = vector_length(vector_cross(r1_values, r2_values)) / (r1_mag * r2_mag)
-    signed_sine = -cross_sine if theta > math.pi else cross_sine
-    # Recover A from the vectors themselves. Calling sin(theta) would discard the precision that
-    # atan2 preserved near pi, while the unit-chord identity remains stable near both 0 and pi.
-    denominator = max(
-        1e-15,
-        0.5
-        * sum(
-            (r1_values[idx] / r1_mag - r2_values[idx] / r2_mag) ** 2
+    if cross_sine == 0.0:
+        return None
+    # sin(theta) / sqrt(1 - cos(theta)) = +/-sqrt(1 + cos(theta)).  Evaluate
+    # sqrt(1 + cos(theta)) as ||u1 + u2|| / sqrt(2): unlike either scalar subtraction, the
+    # vector sum stays accurate near pi, and unlike the quotient it has a finite limit near zero.
+    a_magnitude = math.sqrt(0.5 * r1_mag * r2_mag) * vector_length(
+        [
+            r1_values[idx] / r1_mag + r2_values[idx] / r2_mag
             for idx in range(3)
-        ),
+        ]
     )
-    A = signed_sine * math.sqrt((r1_mag * r2_mag) / denominator)
+    A = -a_magnitude if theta > math.pi else a_magnitude
     if abs(A) < 1e-12:
         return None
 
