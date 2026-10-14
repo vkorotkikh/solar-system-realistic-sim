@@ -47,6 +47,14 @@ def fake_report(_bodies, *, output_path, **_kwargs):
     ("127.0.0.1", {"host": "localhost@evil.example"}),
     ("127.0.0.1", {"host": "localhost:99999"}),
     ("127.0.0.1", {"host": "localhost/path"}),
+    ("127.0.0.1", {"host": "@localhost"}),
+    ("127.0.0.1", {"host": ":@localhost"}),
+    ("127.0.0.1", {"host": "localhost:"}),
+    ("127.0.0.1", {"host": "localhost?"}),
+    ("127.0.0.1", {"host": "localhost#"}),
+    ("127.0.0.1", {"host": "[::1]attacker.example"}),
+    ("127.0.0.1", {"host": "[::1]attacker.example:8042"}),
+    ("127.0.0.1", {"host": "[::1]:"}),
     ("127.0.0.1", {"host": "localhost", "forwarded": "for=198.51.100.8"}),
     ("127.0.0.1", {"host": "localhost", "x-forwarded-for": "198.51.100.8"}),
     ("127.0.0.1", {"host": "localhost", "x-forwarded-host": "public.example"}),
@@ -67,7 +75,10 @@ def test_local_writer_requires_direct_loopback_peer_and_unambiguous_host(monkeyp
     assert calls == []
 
 
-@pytest.mark.parametrize("host", ["localhost", "LOCALHOST:8042", "127.0.0.1:8042", "[::1]:8042"])
+@pytest.mark.parametrize("host", [
+    "localhost", "LOCALHOST:8042", "127.0.0.1:8042", "127.23.45.67:08042",
+    "[::1]:8042", "[::1]", "[0:0:0:0:0:0:0:1]:65535",
+])
 def test_local_writer_allows_literal_loopback_and_returns_only_logical_path(monkeypatch, host):
     monkeypatch.setattr(server, "generate_accuracy_report", fake_report)
     response = client("::1" if host.startswith("[") else "127.0.0.1", host).post(
@@ -75,6 +86,12 @@ def test_local_writer_allows_literal_loopback_and_returns_only_logical_path(monk
     assert response.status_code == 200, response.text
     assert not Path(response.json()["reportPath"]).is_absolute()
     assert response.json()["reportPath"].endswith("nested/result.md")
+
+
+def test_malformed_local_writer_host_is_rejected_before_body_validation():
+    response = client(host="[::1]attacker.example").post(REPORT_ROUTE, content=b"{")
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "benchmark_writer_local_only"
 
 
 def test_local_writer_allows_explicitly_configured_browser_origin(monkeypatch):
@@ -282,7 +299,7 @@ def test_websocket_initialization_error_is_safe_and_logged(monkeypatch, caplog):
     assert any(record.name == "solar.operational" for record in caplog.records)
 
 
-@pytest.mark.parametrize("failure_site", ["start", "receive_task"])
+@pytest.mark.parametrize("failure_site", ["start", "receive_task", "send_task", "both_tasks"])
 def test_unexpected_websocket_session_failure_reports_then_closes_and_cleans(monkeypatch, failure_site):
     stopped = threading.Event()
     send_task_cleaned = threading.Event()
@@ -305,9 +322,13 @@ def test_unexpected_websocket_session_failure_reports_then_closes_and_cleans(mon
         async def close(self, **kwargs):
             self.closes.append(kwargs)
     async def receive_failure(*args, **kwargs):
-        raise RuntimeError(SECRET)
+        if failure_site in {"receive_task", "both_tasks"}:
+            raise RuntimeError(SECRET)
+        await asyncio.Event().wait()
     async def sender(*args, **kwargs):
         try:
+            if failure_site in {"send_task", "both_tasks"}:
+                raise RuntimeError(SECRET)
             await asyncio.Event().wait()
         finally:
             send_task_cleaned.set()
@@ -318,10 +339,88 @@ def test_unexpected_websocket_session_failure_reports_then_closes_and_cleans(mon
     monkeypatch.setattr(server, "_ws_receive_loop", receive_failure)
     monkeypatch.setattr(server, "_ws_send_loop", sender)
     socket = Socket()
-    asyncio.run(server._serve_simulation_websocket(socket))
+    async def exercise():
+        unhandled = []
+        asyncio.get_running_loop().set_exception_handler(lambda _loop, context: unhandled.append(context))
+        await server._serve_simulation_websocket(socket)
+        gc.collect()
+        await asyncio.sleep(0)
+        assert not unhandled, [context.get("message") for context in unhandled]
+    asyncio.run(exercise())
     assert stopped.is_set()
-    if failure_site == "receive_task":
+    if failure_site != "start":
         assert send_task_cleaned.is_set()
     assert socket.closes == [{"code": 1011, "reason": "Simulation session failed"}]
     assert socket.messages[-1]["code"] == "websocket_session_failed"
     assert SECRET not in json.dumps(socket.messages)
+
+
+@pytest.mark.parametrize("failure_site", ["readiness", "constructor", "initialize", "metadata", "unavailable"])
+@pytest.mark.parametrize("transport", ["ok", "send_raise", "send_stall", "close_raise", "close_stall"])
+def test_websocket_startup_failure_has_safe_terminal_attempts_and_recovers_lease(monkeypatch, caplog, failure_site, transport):
+    def fail(*args, **kwargs):
+        raise RuntimeError(SECRET * 1000)
+
+    engine = Engine()
+    if failure_site in {"initialize", "metadata"}:
+        monkeypatch.setattr(engine, "initialize" if failure_site == "initialize" else "get_state", fail)
+    monkeypatch.setattr(server, "_rebound_readiness", fail if failure_site == "readiness" else lambda: {
+        "available": failure_site != "unavailable", "error": SECRET * 1000,
+    })
+    monkeypatch.setattr(server, "_tudatpy_available", lambda: False)
+    monkeypatch.setattr(server, "REBOUNDEngine", fail if failure_site == "constructor" else lambda **kwargs: engine)
+    monkeypatch.setattr(server, "WS_SIM_SEND_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+
+    class Socket:
+        query_params = {"engine": "rebound"}
+        scope = {"type": "websocket", "query_string": b"engine=rebound", "headers": []}
+
+        def __init__(self):
+            self.messages = []
+            self.closes = []
+
+        async def accept(self):
+            assert server._ws_sim_active_connections == 1
+
+        async def send_text(self, text):
+            assert server._ws_sim_active_connections == 1
+            self.messages.append(json.loads(text))
+            if transport == "send_raise":
+                raise RuntimeError(SECRET)
+            if transport == "send_stall":
+                await asyncio.Event().wait()
+
+        async def close(self, **kwargs):
+            assert server._ws_sim_active_connections == 1
+            self.closes.append(kwargs)
+            if transport == "close_raise":
+                raise RuntimeError(SECRET)
+            if transport == "close_stall":
+                await asyncio.Event().wait()
+
+    socket = Socket()
+    async def exercise():
+        unhandled = []
+        asyncio.get_running_loop().set_exception_handler(lambda _loop, context: unhandled.append(context))
+        await asyncio.wait_for(server.simulation_websocket(socket), 1)
+        gc.collect()
+        await asyncio.sleep(0)
+        assert not unhandled, [context.get("message") for context in unhandled]
+
+    with caplog.at_level(logging.WARNING):
+        asyncio.run(exercise())
+    assert len(socket.messages) == 1
+    assert socket.messages[0]["code"] == ("engine_unavailable" if failure_site == "unavailable" else "engine_init_failed")
+    assert len(socket.messages[0]["message"]) < 200
+    assert SECRET not in json.dumps(socket.messages)
+    assert SECRET not in caplog.text
+    assert socket.closes == [{"code": 1013 if failure_site == "unavailable" else 1011}]
+    assert server._ws_sim_active_connections == 0
+    assert not server._ws_sim_active_leases
+    assert not server._ws_sim_active_connections_by_subject
+    assert server._ws_sim_connection_guard.acquire(False)
+    server._ws_sim_connection_guard.release()

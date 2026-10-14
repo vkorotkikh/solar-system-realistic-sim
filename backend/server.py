@@ -37,6 +37,7 @@ import logging
 import math
 import queue
 import os
+import re
 import threading
 import time
 from collections import Counter, OrderedDict, deque
@@ -1536,7 +1537,9 @@ def _local_benchmark_writer_rejection(
     peer = scope.get("client")
     peer_ip = _parse_ip_address(str(peer[0])) if peer else None
     local_host = False
-    if valid and host and not any(ord(char) <= 32 or ord(char) == 127 for char in host):
+    if valid and host and re.fullmatch(
+        r"(?:localhost|[0-9.]+|\[[0-9a-f:]+\])(?::[0-9]+)?", host, re.IGNORECASE,
+    ):
         try:
             authority = urlsplit("//" + host)
             hostname = authority.hostname or ""
@@ -4732,6 +4735,26 @@ async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
     await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
 
 
+async def _ws_fail(
+    websocket: WebSocket, *, code: str, message: str, close_code: int,
+    reason: str | None = None,
+) -> None:
+    """Attempt both terminal writes with separate deadlines and safe logging."""
+    try:
+        await _ws_send_text(websocket, json.dumps({
+            "type": "error", "code": code, "message": message,
+        }))
+    except Exception as exc:
+        _log_operational_failure("websocket_error_send_failed", exc)
+    try:
+        close_options: dict[str, Any] = {"code": close_code}
+        if reason is not None:
+            close_options["reason"] = reason
+        await _ws_close(websocket, **close_options)
+    except Exception as exc:
+        _log_operational_failure("websocket_error_close_failed", exc)
+
+
 async def _ws_cleanup_runner(runner: SimulationRunner, tasks: list[asyncio.Task]) -> None:
     """Retain session ownership through repeated cancellation until cleanup ends."""
     async def cleanup() -> None:
@@ -4964,61 +4987,48 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    rebound_status = _rebound_readiness()
-    rebound_ready = bool(rebound_status.get("available", False))
-    tudatpy_ready = _tudatpy_available()
-
     engine: Optional[SimulationEngine] = None
-    if engine_requested == "tudatpy":
-        if tudatpy_ready and TudatPyEngine is not None:
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-        elif rebound_ready:
-            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
-            engine = REBOUNDEngine(integrator=integrator)
-    elif engine_requested == "rebound":
-        if rebound_ready:
-            engine = REBOUNDEngine(integrator=integrator)
-        elif tudatpy_ready and TudatPyEngine is not None:
-            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-    else:
-        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
-        if rebound_ready:
-            engine = REBOUNDEngine(integrator=integrator)
-        elif tudatpy_ready and TudatPyEngine is not None:
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-
-    if engine is None:
-        rebound_reason = rebound_status.get("error") or "unavailable"
-        await _ws_send_text(websocket, json.dumps({
-            "type": "error",
-            "code": "engine_unavailable",
-            "message": (
-                "No simulation engines are available. "
-                f"REBOUND readiness failed: {rebound_reason}"
-            ),
-        }))
-        await _ws_close(websocket, code=1013)
-        return
-
     try:
-        engine.initialize(ALL_BODIES)
-        # Capture handshake metadata before transferring engine ownership to
-        # the simulation thread. Native engine reads are not thread-safe.
-        initial_state = engine.get_state()
-        initial_body_ids = engine.list_body_ids()
-        initial_jd = engine.get_julian_date()
+        rebound_status = _rebound_readiness()
+        rebound_ready = bool(rebound_status.get("available", False))
+        tudatpy_ready = _tudatpy_available()
+        if engine_requested == "tudatpy":
+            if tudatpy_ready and TudatPyEngine is not None:
+                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+                engine = TudatPyEngine(enable_j2=enable_j2)
+            elif rebound_ready:
+                warnings.append("Engine `tudatpy` unavailable; using `rebound`")
+                engine = REBOUNDEngine(integrator=integrator)
+        elif engine_requested == "rebound":
+            if rebound_ready:
+                engine = REBOUNDEngine(integrator=integrator)
+            elif tudatpy_ready and TudatPyEngine is not None:
+                warnings.append("Engine `rebound` unavailable; using `tudatpy`")
+                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+                engine = TudatPyEngine(enable_j2=enable_j2)
+        else:
+            warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
+            if rebound_ready:
+                engine = REBOUNDEngine(integrator=integrator)
+            elif tudatpy_ready and TudatPyEngine is not None:
+                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
+                engine = TudatPyEngine(enable_j2=enable_j2)
+        if engine is not None:
+            engine.initialize(ALL_BODIES)
+            # Capture handshake metadata before transferring engine ownership to
+            # the simulation thread. Native engine reads are not thread-safe.
+            initial_state = engine.get_state()
+            initial_body_ids = engine.list_body_ids()
+            initial_jd = engine.get_julian_date()
     except Exception as exc:
         _log_operational_failure("engine_init_failed", exc)
-        await _ws_send_text(websocket, json.dumps({
-            "type": "error",
-            "code": "engine_init_failed",
-            "message": "Simulation engine initialization failed.",
-        }))
-        await _ws_close(websocket, code=1011)
+        await _ws_fail(websocket, code="engine_init_failed",
+                       message="Simulation engine initialization failed.", close_code=1011)
+        return
+
+    if engine is None:
+        await _ws_fail(websocket, code="engine_unavailable",
+                       message="No simulation engines are available.", close_code=1013)
         return
 
     target_fps_raw = websocket.query_params.get("fps", "60")
@@ -5084,17 +5094,9 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     if session_failed:
         # The stream sender is gone before terminal delivery. Both attempts
         # have transport deadlines; a broken socket must not skip cleanup.
-        try:
-            await _ws_send_text(websocket, json.dumps({
-                "type": "error", "code": "websocket_session_failed",
-                "message": "Simulation session failed.",
-            }))
-        except Exception:
-            pass
-        try:
-            await _ws_close(websocket, code=1011, reason="Simulation session failed")
-        except Exception:
-            pass
+        await _ws_fail(websocket, code="websocket_session_failed",
+                       message="Simulation session failed.", close_code=1011,
+                       reason="Simulation session failed")
 
 
 @app.websocket("/ws/sim")
