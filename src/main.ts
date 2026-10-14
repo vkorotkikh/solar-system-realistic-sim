@@ -371,7 +371,10 @@ function createBodyNode(body: CatalogBody) {
     Math.sin(axialTiltRad) * Math.sin(spinAxisLongitudeRad),
     Math.cos(axialTiltRad)
   ).normalize();
-  spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
+  // SunController owns the Sun's complete NAIF/IAU orientation and prime meridian.
+  if (body.id !== 'sun') {
+    spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
+  }
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
@@ -748,6 +751,11 @@ function updateBodyRotations(julianDate: number) {
   for (const body of catalog.bodies) {
     const spinGroup = bodySpinGroups.get(body.id);
     if (!spinGroup) continue;
+    // Do not superimpose the catalog's scalar spin on already-oriented solar layers.
+    if (body.id === 'sun') {
+      sunCtrl.updateSurfaceFrame(julianDate);
+      continue;
+    }
     for (const child of spinGroup.children) {
       if (child.userData.lockBodySpin) continue;
       const rotH = child.userData.rotationPeriodHours ?? body.rotationPeriodHours;
