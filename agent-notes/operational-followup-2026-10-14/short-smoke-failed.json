@@ -1,0 +1,83 @@
+{
+  "scope": "local real two-worker network profile; no remote deployment claim",
+  "passed": false,
+  "baseline": {
+    "22659": {
+      "pid": 22659,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    },
+    "22660": {
+      "pid": 22660,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 2,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    }
+  },
+  "report_writer": {
+    "unauthenticated": 401,
+    "create": 200,
+    "overwrite_guard": 409,
+    "nul": 422,
+    "report_sha256": "aae4a01f6ad0b34bb9685fd2dbf2b7de47e8ecdbe087defa5e797d6e1c2fda0b"
+  },
+  "persistent_worker_pids": [
+    22659,
+    22660
+  ],
+  "kuiper": {
+    "keys": [
+      "binary_model",
+      "binary_pairs",
+      "position_units",
+      "positions",
+      "velocities",
+      "velocity_units"
+    ],
+    "positions": 3578,
+    "velocities": 3578,
+    "binary_pairs": 578,
+    "position_units": "AU",
+    "velocity_units": "AU/yr",
+    "sha256": "06a6b177684536b7ad2d754c85bd8d8412515e9e6df49e0167a39b5ef7658d15"
+  },
+  "soak": {
+    "elapsed_seconds": 7.245339454000032,
+    "requested_seconds": 5.0,
+    "frames": [
+      46,
+      80
+    ],
+    "last_jd": [
+      2451603.4,
+      2451577.2
+    ],
+    "churn_cycles": 3,
+    "http_requests": 3,
+    "max_http_seconds": 0.01084578600000441,
+    "samples": 3
+  },
+  "failure": {
+    "type": "AssertionError",
+    "message": ""
+  },
+  "process_returncode": 0,
+  "log_errors": []
+}
