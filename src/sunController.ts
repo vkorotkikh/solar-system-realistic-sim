@@ -1,4 +1,9 @@
 import { Group } from 'three';
+import { applySolarGeometryFrame, solarSurfaceToEclipticMatrix } from './frontend/features/solar/solarFrame';
+import {
+  validatedSolarLayerFrames, solarFeaturesInSurfaceFrame, solarFlareParamsInSurfaceFrame,
+  solarHolesInSurfaceFrame, type SolarLayerFrames, type SolarGeometryLayer
+} from './frontend/features/solar/solarGeometryContract';
 import type {
   BufferGeometry,
   Camera,
@@ -86,10 +91,8 @@ export interface CreateSunControllerOptions {
 const TWO_PI = Math.PI * 2;
 
 /**
- * The backend builds its surface and coronal geometry in a z-up inertial frame the renderer does
- * not convert yet (plan H4), so drawing it would put sunspots near the poles and rotate loops
- * twice. Until then only the backend's activity level reaches the screen.
- * ponytail: one switch for all backend geometry; split it per layer as each one is validated.
+ * No global bypass: independently admitted synthetic layers use explicit frame contracts.
+ * Untagged and observed-native geometry remains disabled, including legacy callers.
  */
 export const BACKEND_GEOMETRY_VALIDATED = false;
 const CYCLE_25_START_JD = 2_458_849.5;
@@ -166,6 +169,8 @@ export function createSunController({
   let sunSurfaceMaterial: ShaderMaterial | null = null;
   let sunCoronaMaterial: ShaderMaterial | null = null;
   let sunVisualNode: Object3D | null = null;
+  let sunSpinGroup: Group | null = null;
+  let solarLayerFrames: SolarLayerFrames = {};
   let sunGlowSprite: Sprite | null = null;
   let sunEruptionLayer: Points | null = null;
   let sunChromosphereLayer: Points | null = null;
@@ -222,7 +227,7 @@ export function createSunController({
       backendBaseUrl: backendBaseUrl(),
       pageOrigin: globalThis.location?.origin ?? '',
       payload: solarPhysicsState,
-      geometryFromBackend: BACKEND_GEOMETRY_VALIDATED,
+      geometryFromBackend: Object.keys(solarLayerFrames).length > 0,
       displayedImageChannel: solarObservationTexture ? solarObservationTextureChannel : null,
       failedImageChannel: solarObservationFailedChannel
     });
@@ -232,6 +237,21 @@ export function createSunController({
   publishSolarDataStatus();
 
   // ── internal helpers ─────────────────────────────────────────────────────
+
+  function geometryStateFor(layer: SolarGeometryLayer) {
+    return solarLayerFrames[layer] ? solarPhysicsState : null;
+  }
+
+  function updateSurfaceFrame(jdTdb: number) {
+    if (!sunSpinGroup) return;
+    sunSpinGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(jdTdb));
+    sunSpinGroup.userData.solarFrameOwner = 'sunController';
+    for (const child of sunSpinGroup.children) {
+      if (child.userData.lockBodySpin) continue;
+      child.userData.lockBodySpin = true;
+      child.quaternion.identity();
+    }
+  }
 
   function buildSolarFeatureBlendView(nowMs = Date.now(), featureLimit = 220) {
     const bv = buildSolarFeatureBlendViewImpl({
@@ -252,7 +272,10 @@ export function createSunController({
     physicsState: SolarPhysicsStatePayload | null,
     featureLimit = 220
   ) {
-    return normalizeSolarFeatureSetFromStateImpl(physicsState, simState.julianDate, featureLimit);
+    return normalizeSolarFeatureSetFromStateImpl(
+      solarLayerFrames.loops || solarLayerFrames.cme ? physicsState : null,
+      simState.julianDate, featureLimit
+    );
   }
 
   function materializeSolarFeatureSetFromBlendView(blendView: SolarFeatureBlendView) {
@@ -312,7 +335,7 @@ export function createSunController({
         .map((feature: Record<string, unknown>) => `${feature?.id ?? 'feature'}:${Number(feature?.brightness ?? 0).toFixed(2)}`)
         .join('|')
       : 'synthetic';
-    return `${quantizedActivity}:${pfssSignature}:${topFeatures}`;
+    return `${quantizedActivity}:${pfssSignature}:${topFeatures}:${solarPhysicsState?.epoch_jd_tdb}:${!!solarLayerFrames.pfss}`;
   }
 
   function disposeMagneticFieldGroup(group: Object3D | null) {
@@ -346,8 +369,13 @@ export function createSunController({
     if (!force && sunMagneticFieldGroup && sunMagneticFieldSignature === nextSignature) return;
 
     const nextGroup = createMagneticFieldLines(getSunRadiusAu(), activity, {
-      physicsState: BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null
+      physicsState: geometryStateFor('pfss')
     });
+    applySolarGeometryFrame(nextGroup, solarLayerFrames.pfss ?? {
+      inputFrame: 'IAU_SUN', jdTdb: simState.julianDate
+    });
+    nextGroup.userData.solarLayer = 'pfss';
+    nextGroup.userData.solarGeometrySource = solarLayerFrames.pfss ? 'backend_synthetic_uncalibrated' : 'procedural';
     nextGroup.visible = isMagneticFieldEnabled();
     nextGroup.userData.bodyId = 'sun-magnetic-field';
 
@@ -460,6 +488,7 @@ export function createSunController({
     meshRotationOffsetRad?: number;
   }) {
     sunVisualNode = node;
+    sunSpinGroup = spinGroup;
     const sunRadiusAu = getSunRadiusAu();
 
     sunGlowSprite = createSunGlow(sunRadiusAu);
@@ -474,7 +503,8 @@ export function createSunController({
     sunEruptionLayer = createSunEruptionLayer(sunRadiusAu);
     sunEruptionLayer.userData.rotationPeriodHours = sunBody.rotationPeriodHours ?? null;
     sunEruptionLayer.userData.rotationOffsetRad = meshRotationOffsetRad;
-    spinGroup.add(sunEruptionLayer);
+    node.add(sunEruptionLayer);
+    applySolarGeometryFrame(sunEruptionLayer, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
     setSunEruptionBaseRadiusImpl(sunEruptionLayer, sunRadiusAu);
 
     sunChromosphereLayer = createChromosphereLayer(sunRadiusAu, 8000);
@@ -487,7 +517,9 @@ export function createSunController({
 
     sunFlareGroup = new Group();
     sunFlareGroup.userData.bodyId = 'sun-flares';
-    spinGroup.add(sunFlareGroup);
+    node.add(sunFlareGroup);
+    sunFlareGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(J2000_JD));
+    sunFlareGroup.userData.lockBodySpin = true;
     solarFlareManager = new SolarFlareManager(sunFlareGroup);
 
     rebuildMagneticFieldLines(true, 0.5);
@@ -503,16 +535,19 @@ export function createSunController({
 
     sunCoronalLoopGroup = new Group();
     sunCoronalLoopGroup.userData.bodyId = 'sun-coronal-loops';
-    spinGroup.add(sunCoronalLoopGroup);
+    node.add(sunCoronalLoopGroup);
+    applySolarGeometryFrame(sunCoronalLoopGroup, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
     const initialBlend = buildSolarFeatureBlendView(Date.now(), 220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, BACKEND_GEOMETRY_VALIDATED ? initialBlend : null, sunRadiusAu, 144);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? initialBlend : null, sunRadiusAu, 144);
 
     sunParkerSpiralGroup = new Group();
     sunParkerSpiralGroup.userData.bodyId = 'sun-parker-spiral';
     node.add(sunParkerSpiralGroup);
+    applySolarGeometryFrame(sunParkerSpiralGroup, { inputFrame: 'SOLAR_EQUATORIAL_J2000', jdTdb: simState.julianDate });
     updateSunParkerSpiralFromPhysicsStateImpl(
-      sunParkerSpiralGroup, BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null, sunRadiusAu, 6, 120, 0, camera
+      sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, 0, camera
     );
+    updateSurfaceFrame(simState.julianDate);
 
     // Agn Shockwave Engine
     gwDisplayer = createGWVisualization(400); // Massive grid
@@ -556,6 +591,7 @@ export function createSunController({
 
   function update(julianDate: number, realtimeSeconds: number) {
     if (solarDeliveryDisposed) return;
+    updateSurfaceFrame(julianDate);
     const wallSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
     const rawDt = Math.max(0, wallSec - (lastTimeSec ?? wallSec));
     const forward = lastJulianDate !== null && julianDate > lastJulianDate;
@@ -605,8 +641,9 @@ export function createSunController({
     );
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
-    const geometryState = BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null;
-    const geometryBlendView = BACKEND_GEOMETRY_VALIDATED ? solarBlendView : null;
+    const geometryBlendView = solarLayerFrames.loops ? solarBlendView : null;
+    const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots, julianDate);
+    const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme, J2000_JD);
 
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
@@ -618,16 +655,17 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: geometryState?.coronal_holes ?? undefined
+      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), julianDate)
     });
-    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, geometryState ?? undefined);
+    updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
 
     if (solarFlareManager) {
-      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, geometryState, timeSec);
-      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareManager.getActiveFlaresParams());
+      solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
+      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams(), julianDate));
     }
 
     if (sunMagneticFieldGroup) {
+      if (!solarLayerFrames.pfss) applySolarGeometryFrame(sunMagneticFieldGroup, { inputFrame: 'IAU_SUN', jdTdb: julianDate });
       sunMagneticFieldGroup.visible = isMagneticFieldEnabled();
       if (sunMagneticFieldGroup.visible) {
         updateMagneticFieldLines(sunMagneticFieldGroup, timeSec, effectiveActivity);
@@ -635,7 +673,7 @@ export function createSunController({
     }
 
     updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, geometryBlendView, sunRadiusAu, 144, timeSec, activeObservationChannel);
-    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryState, sunRadiusAu, 6, 120, timeSec, camera);
+    updateSunParkerSpiralFromPhysicsStateImpl(sunParkerSpiralGroup, geometryStateFor('parker'), sunRadiusAu, 6, 120, timeSec, camera);
 
     const glowPulse = 1 + Math.sin(timeSec * 1.7) * 0.035 + effectiveActivity * 0.045;
     setSunGlowScaleImpl(sunGlowSprite, sunRadiusAu, glowPulse);
@@ -646,7 +684,7 @@ export function createSunController({
 
     updateSunEruptionLayerFromBlendView({
       sunEruptionLayer,
-      blendView: geometryBlendView,
+      blendView: solarLayerFrames.cme ? solarBlendView : null,
       sunRadiusAu,
       timeSec,
       activity: effectiveActivity
@@ -696,8 +734,15 @@ export function createSunController({
         const status = solarPhysicsClient.status();
         if (updated) {
           solarPhysicsState = solarPhysicsClient.latestState();
+          const previousCmeFrame = solarLayerFrames.cme;
+          solarLayerFrames = validatedSolarLayerFrames(solarPhysicsState);
+          if (previousCmeFrame && !solarLayerFrames.cme) solarFlareManager?.dispose();
           maybeRefreshObservationTexture(nowMs, force);
           const normalized = normalizeSolarFeatureSetFromState(solarPhysicsState, 480);
+          if (!normalized) {
+            solarPhysicsFeatureSetCurrent = null;
+            solarPhysicsFeatureSetTarget = null;
+          }
           if (normalized) {
             if (!solarPhysicsFeatureSetCurrent) {
               solarPhysicsFeatureSetCurrent = normalized;
@@ -769,9 +814,9 @@ export function createSunController({
     }
     rebuildMagneticFieldLines(true);
     const bv = buildSolarFeatureBlendView(Date.now(), 220);
-    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, BACKEND_GEOMETRY_VALIDATED ? bv : null, r, 144);
+    updateSunCoronalLoopsFromBlendViewImpl(sunCoronalLoopGroup, solarLayerFrames.loops ? bv : null, r, 144);
     updateSunParkerSpiralFromPhysicsStateImpl(
-      sunParkerSpiralGroup, BACKEND_GEOMETRY_VALIDATED ? solarPhysicsState : null, r, 6, 120, 0, camera
+      sunParkerSpiralGroup, geometryStateFor('parker'), r, 6, 120, 0, camera
     );
   }
 
@@ -802,6 +847,12 @@ export function createSunController({
     return {
       disposed: solarDeliveryDisposed,
       physics: solarPhysicsClient.status(),
+      geometry: {
+        layers: { ...solarLayerFrames },
+        source: 'synthetic_visualization',
+        calibrated: false,
+        snapshotEpochJdTdb: solarPhysicsState?.epoch_jd_tdb ?? null
+      },
       realtime: realtimeStatus,
       observation: {
         channel: selection?.channel ?? null,
@@ -838,6 +889,7 @@ export function createSunController({
     createSunMaterial,
     initSunVisuals,
     update,
+    updateSurfaceFrame,
     maybeRefreshPhysics,
     maybeRefreshRealtime,
     onScaleChange,

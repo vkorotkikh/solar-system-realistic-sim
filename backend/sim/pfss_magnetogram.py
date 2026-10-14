@@ -31,6 +31,7 @@ from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
+from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
@@ -1396,6 +1397,11 @@ class PFSSCache:
             provenance_payload = None
         result.update({
             "source": snapshot.source_kind,
+            "geometry_frame": (
+                synthetic_geometry_frame(snapshot.snapshot_id.jd_tdb)
+                if snapshot.source_kind == "synthetic"
+                else unresolved_observed_geometry_frame()
+            ),
             "fallback_reason": fallback_reason,
             "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
             "snapshot_sha256": snapshot.snapshot_id.sha256,
