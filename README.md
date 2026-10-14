@@ -36,6 +36,12 @@ npm run dev
 
 Open the local Vite URL shown in the terminal.
 
+This standalone command runs the browser simulation without starting the optional
+backend. Backend requests default to the page's own origin (for example,
+`http://localhost:5173`), not port 8042; unavailable services leave the local
+simulation running with explicitly reported fallback data. For both processes,
+use `npm run dev:full`, or set the explicit backend origin as shown below.
+
 ### CLI resolution overrides
 
 ```bash
@@ -51,6 +57,8 @@ npm run dev:full
 The unified launcher binds both processes to `127.0.0.1`. A non-loopback
 `--host` is rejected unless `SOLAR_SECURITY_PROFILE=network`; the backend then
 also requires `SOLAR_PHYSICS_API_KEYS` at startup.
+The launcher supplies `VITE_BACKEND_ORIGIN` from the selected backend host/port
+unless you explicitly set it yourself.
 
 ## Backend (optional)
 
@@ -76,10 +84,23 @@ python -m pip install -r requirements.txt
 python -m uvicorn server:app --host 127.0.0.1 --port 8042 --reload --no-proxy-headers --ws-max-size 16384
 ```
 
-The frontend looks for the backend on the page's host at port 8042 (see
-`DEFAULT_BACKEND_PORT` in `src/main.ts`); there is no deployment override in
-the entry path. With the backend up, the Sun chip reports the solar model
-source and the planner panels use the trajectory APIs.
+In a second terminal at the repository root, explicitly point standalone Vite
+at that backend:
+
+```bash
+VITE_BACKEND_ORIGIN=http://127.0.0.1:8042 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+`VITE_BACKEND_ORIGIN` must be an HTTP(S) origin without a path, query, credentials
+or fragment. Nondefault backend ports are supported. Cross-origin deployments
+must allow the exact frontend origin through backend `SOLAR_CORS_ALLOWED_ORIGINS`;
+setting the frontend variable does not widen the backend CORS policy. For a
+same-origin reverse-proxy deployment, leave the variable unset and route backend
+API paths on the frontend origin. Vite embeds the variable at build time, so set
+it for `npm run build` too when deploying a separate backend origin. See
+[Frontend configuration](docs/frontend-configuration.md) for the full contract.
+With the backend available, the Sun chip reports its solar model source and the
+planner panels use the trajectory APIs.
 
 The default `SOLAR_SECURITY_PROFILE=local` keeps solar endpoints available
 without a key and should stay bound to loopback. To expose the backend on a

@@ -114,9 +114,70 @@ The controller is integrating events commit `32da51b` and planets commit `9221a6
 2. Keep the extracted `createExperimentController` as the sole binding owner. It receives `engineSelectionResolver(agnEngine)`, which selects the events module's `resolveAgnSelection` when present. Do not retain the old inline `syncAgnSelection` listeners or call as a second binding. Resolver mode preserves named preset source/model precedence, clears presets on explicit selections and reports source notes. The observer checkbox/DOM requirement/calls stay removed. The unit test explicitly distinguishes the baseline and integrated engine contracts; the browser resolver-port test covers restored H29, named-preset synchronization and explicit-selection reset. Integrated real-engine app behavior still requires the controller's combined gates.
 3. Keep solar-state live getters for `paused` and `timeScaleDaysPerSec` as well as Julian date; dropping them would break the integrated decorative-motion policy. Keep `sunCtrl.disposeSolarDelivery()` in cleanup and context-loss handling.
 4. Preserve planet/trajectory owner fixes. This patch does not edit those engines. Re-run the combined unit/type/build/browser gates after conflict resolution; diagnostic counts above describe this assigned branch, not the controller's newer integrated tree.
-5. Run WebKit on a host with its required OS libraries. Manual NVDA/Chrome and VoiceOver/Safari checks remain NOT RUN, including virtual-cursor isolation, actual spoken search output, canvas descriptions and native-picker behavior. Real browser 200%/400% zoom and OS text resizing remain NOT RUN; the automated CSS 200% text fixture is separate evidence. Physical touch pinch remains NOT RUN. Actual RTX 5090/D3D12 application rendering and context-loss recovery passed in the hardware follow-up above; other hardware/platform combinations remain unverified.
+5. Run WebKit on a host with its required OS libraries; the bounded local-runtime investigation below remains blocked at page creation. Manual NVDA/Chrome and VoiceOver/Safari checks remain NOT RUN, including virtual-cursor isolation, actual spoken search output, canvas descriptions and native-picker behavior. Genuine Chromium 200%/400% tab zoom now passes as recorded below; OS text resizing remains NOT RUN, and the automated CSS 200% text fixture is separate evidence. Physical touch pinch remains NOT RUN. Actual RTX 5090/D3D12 application rendering and context-loss recovery passed in the hardware follow-up above; other hardware/platform combinations remain unverified.
 
 These gaps prevent a claim of complete AT/WCAG or cross-platform hardware validation; they do not represent unimplemented core UI/controller fixes. Hardware evidence is limited to the explicitly identified RTX 5090/D3D12 browser configuration above. No backend scientific tests were run because this patch changes no backend or scientific engine. The controller owns integrated full gates and final canonical-register updates.
+
+## SCN-047 follow-up: genuine browser zoom and setup documentation
+
+Status: **genuine Chromium 200% and 400% tab-zoom acceptance PASS**, with the native-listbox qualification below. This closes the missing native Chromium zoom evidence, not all screen-reader, OS text-scaling, browser-engine or physical-device coverage. The work is based on accessibility commit `6c6f232`; the controller's newer integrated application and dependency upgrades require their own combined rerun.
+
+Changed files in this follow-up: `tests/browser/tab-zoom.spec.ts`, `tests/browser/tab-zoom.ts`, `tests/browser/fixtures/tab-zoom-extension/manifest.json`, `tests/browser/fixtures/tab-zoom-extension/worker.js`, `README.md`, and this report. No application, package, lockfile, physics or provider-delivery changes. README now distinguishes standalone same-origin requests from `dev:full` and gives `VITE_BACKEND_ORIGIN=http://127.0.0.1:8042 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort`, exact-origin CORS guidance, and the build-time deployment contract.
+
+### Native zoom mechanism and assertions
+
+An isolated Manifest V3 extension invokes `chrome.tabs.setZoomSettings` in automatic/per-tab mode and `chrome.tabs.setZoom`. It has only loopback host permissions, no content scripts and no CSS mutation. Each test creates and removes its own profile under the test output directory. Chromium uses a real 1280x960 browser window with `viewport: null`; no viewport resizing, device-metrics override, CSS zoom, root-font mutation or pinch/page-scale API implements the zoom. The API readback, DPR ratio, CSS viewport, unchanged outer window, unchanged root font/CSS zoom and visual-viewport scale independently guard the evidence. A same-origin sibling tab remains at zoom 1.
+
+| State | CSS viewport | DPR | Visual scale | Root font | Document scroll width |
+|---|---|---|---|---|---|
+| 100% baseline/reset | 1280x873 | 1 | 1 | 16px | 1280 |
+| Native 200% | 640x436 | 2 | 1 | 16px | 640 |
+| Native 400% | 320x218 | 4 | 1 | 16px | 320 |
+
+Both scales assert actual production-app reflow without horizontal overflow, focus transfer when zoom crosses the responsive breakpoint, keyboard opening of the named modal, background inertness, all 25 enabled keyboard stops including the final experiment action, forward/reverse Tab wrap, native range-key changes, Escape return focus, canvas arrow-key focus without document scrolling, and restored desktop state at 100%. Negative controls reject viewport-only, CSS and pinch substitutions. Page errors must be absent. External services are deterministic unavailable responses: these tests do not count as provider delivery or scientific evidence.
+
+Native-listbox qualification: at 200%, Chromium's selected-row scrolling leaves the 274px multi-row body picker's bottom border at y=437.695 CSS px, versus integer `innerHeight=436` and visual viewport height 436.5. This persisted over two animation frames. The selected row/focus remain visible; the gate therefore requires at least a complete 44px visible row plus successful native `End`/`Home` selection of both endpoints, rather than claiming the entire scrollable list border is visible. Ordinary controls retain full horizontal and vertical bounds checks. This is not an AAA fully-unobscured-focus or blanket WCAG conformance claim. Initial harness failures from exact floating-point equality (`3.9999999999999996` at 400%) and indexing a shrinking closed-disclosure locator were diagnosed and corrected; no application workaround was introduced.
+
+### Exact final gates and artifacts
+
+Toolchain: Node **22.23.2**, npm **10.9.8**, Playwright **1.64.0**, bundled Chromium **156.0.8078.4 / build 1248**. This assigned branch still has Vite **7.3.1** and Vitest **3.2.4**; the controller owns the upgraded dependency checkpoint. No overlapping upgrades were performed.
+
+From the assigned worktree, establish the pinned executable path and local browser directory:
+
+```sh
+export PATH=/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/.bin:$PATH
+export PLAYWRIGHT_BROWSERS_PATH=$PWD/artifacts/accessibility/browsers
+```
+
+| Exact command after those exports | Result |
+|---|---|
+| `GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib UI_HARDWARE_WEBGL=1 UI_ZOOM_HEADFUL=1 UI_TEST_PORT=4183 npm run test:browser -- tab-zoom.spec.ts --project=chromium` | 3/3 PASS, 23.4s |
+| `UI_TEST_PORT=4184 npm run test:browser -- tab-zoom.spec.ts --project=chromium` | 3/3 PASS, 1.1m; headless SwiftShader, not hardware evidence |
+| `GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib UI_HARDWARE_WEBGL=1 UI_ZOOM_HEADFUL=1 PLAYWRIGHT_HTML_OUTPUT_DIR=$PWD/artifacts/accessibility/native-zoom-report PLAYWRIGHT_HTML_OPEN=never UI_TEST_PORT=4185 npm run test:browser -- tab-zoom.spec.ts --project=chromium --reporter=list,html` | 3/3 PASS, 20.7s; retained HTML report, native captures and JSON attachments |
+| `npm run test:types:ui` | PASS |
+| `npm test` | 35 files / 426 tests PASS, 1.78s |
+| `git diff --check` | PASS |
+
+Both headful zoom cases independently asserted this actual application renderer: `ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)`. Default headless cases recorded `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)`. Native screenshots use CDP `Page.captureScreenshot` without a viewport-derived clip; the HTML reporter retains passing attachments, unlike the default console-only reporter. Logs: `artifacts/accessibility/tab-zoom-hardware-acceptance.txt`, `tab-zoom-software.txt`, `tab-zoom-hardware-report.txt`, and `unit-zoom-followup.txt`. Retained report: `artifacts/accessibility/native-zoom-report/index.html`. The three extension-specific tests explicitly skip non-Chromium projects; that is not Firefox/Safari native-zoom evidence.
+
+### Bounded WebKit investigation and remaining tools
+
+Ubuntu 24.04.4/WSL has Playwright WebKit build 2370 binaries but lacks required runtime libraries. Without sudo, apt install/update, system changes or package.json changes, 24 Ubuntu archive packages were downloaded and extracted only to ignored `artifacts/accessibility/webkit-local/`: **21,551,398 archive bytes**, approximately **50 MiB** extracted. Exact versions and archive hashes are retained in `packages.tsv` and `SHA256SUMS` there; downloads are logged in `download.txt`, `download-transitive.txt` and `download-absl.txt`.
+
+The bundled MiniBrowser wrapper overwrites `LD_LIBRARY_PATH`, so a local WPE wrapper supplied the existing bundle's `lib`/`sys/lib` plus the extracted `root/usr/lib/x86_64-linux-gnu`, along with `WEBKIT_EXEC_PATH` and `WEBKIT_INJECTED_BUNDLE_PATH`. Linked dependencies then resolved, but a bounded startup probe failed at page creation: `Couldn't open libGLESv2.so.2: libGLESv2.so.2: cannot open shared object file: No such file or directory`. GTK/headful prerequisites are also not completed. Bypassing Playwright's broad host preflight with `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1` did not make the runtime usable and is not treated as passing evidence.
+
+The attempted existing fixture matrix command was `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 UI_TEST_PORT=4181 npm run test:browser -- --config artifacts/accessibility/webkit-local.config.ts` after the exports above. It was stopped after repeated `browserContext.newPage` failures: **4 failed, 1 interrupted, 22 not run, 0 passed**. Failing cases were mobile drawer isolation, 195px reflow, camera keyboard/tap parity, and Follow/Free-cam behavior; none reached application assertions. The pointer-drag test was interrupted. Log: `artifacts/accessibility/webkit-local-gate.txt`. Local wrapper/config remain ignored diagnostic artifacts, not a replacement for normal CI dependencies. Further WebKit work is deferred behind SCN-005 by controller direction; next step is a bounded local GLES runtime resolution and successful blank-page startup before retrying UI tests.
+
+Availability checks found Windows PowerShell via WSL but no `orca`, `nvda`, `nvda.exe`, `espeak-ng` or `speech-dispatcher` on PATH; this is not an inventory of all Windows installations. No NVDA/Chrome, VoiceOver/Safari, spoken-announcement, OS text-resize or physical touch/pinch session was performed. A Linux Playwright WebKit run would not itself prove Safari/VoiceOver coverage. The controller's Tudat and integrated full-suite results are not duplicated or counted as this domain's evidence.
+
+Next action: integrate this scoped checkpoint, then assign an explicit fresh delivery worktree from the latest `remediation/canonical-register-20261014` after dependency/catalog integration. SCN-005 will use the combined app for five-minute dev AND production-preview delivery evidence with unchanged request/default budgets; no provider gate was started on this old accessibility base.
+
+### Follow-up primary references
+
+- [Chrome tabs API: setZoom and setZoomSettings](https://developer.chrome.com/docs/extensions/reference/api/tabs#method-setZoom): native browser zoom, automatic handling and per-tab isolation.
+- [Playwright Chrome extensions](https://playwright.dev/docs/chrome-extensions): isolated persistent contexts, Manifest V3 workers and bundled Chromium channel.
+- [W3C Focus Not Obscured (Minimum) explanation](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html): distinguish a usable partially visible native listbox from a fully hidden focused control; no blanket conformance inference.
+- [Chrome DevTools Protocol Page](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-captureScreenshot): native surface capture, separate from zoom implementation.
 
 ## Precise provenance
 
