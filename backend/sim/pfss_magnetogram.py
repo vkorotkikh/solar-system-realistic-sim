@@ -30,6 +30,7 @@ from astropy.time import Time, TimeDelta
 from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
+from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
@@ -85,11 +86,12 @@ def synthetic_magnetogram(
     n_lon: int = 360,
     *,
     grid: MagnetogramGrid | None = None,
+    active_regions: tuple[ActiveRegionSeed, ...] | None = None,
 ) -> np.ndarray:
     """Generate a synthetic photospheric Br map from activity index.
 
     Produces a dipole + quadrupole + octupole field with activity-dependent
-    amplitudes, plus noise-seeded active regions at butterfly-law latitudes.
+    amplitudes, plus the same persistent active regions used by coronal features.
     Defaults to equal-area sine-latitude centers. An explicit grid supplies
     both coordinates and dimensions, overriding n_lat and n_lon.
     """
@@ -119,40 +121,17 @@ def synthetic_magnetogram(
     g30 = 1.5 * activity**2
     br += g30 * (5.0 * cos_theta**3 - 3.0 * cos_theta) * 0.5
 
-    # Active regions: bipolar pairs at butterfly-diagram latitudes
-    rng = np.random.RandomState(int(jd * 100) % 99991)
-    n_regions = int(2 + activity * 14)
-    for _ in range(n_regions):
-        # Spörer's law: latitudes ~5-35° (lower at higher activity)
-        lat_deg = rng.uniform(5, 35 - 15 * activity) * (1 if rng.random() > 0.5 else -1)
-        lon_deg = rng.uniform(0, 360)
-        lat_rad = math.radians(lat_deg)
-        lon_rad = math.radians(lon_deg)
-        strength = rng.uniform(20, 100) * activity  # Gauss
-        width = math.radians(rng.uniform(5, 15))
-        separation = math.radians(rng.uniform(3, 8))
-
-        # Positive spot
-        d_pos = np.arccos(
-            _clamp_arr(
-                np.sin(lat_rad + separation / 2) * np.sin(np.pi / 2 - theta_grid) +
-                np.cos(lat_rad + separation / 2) * np.cos(np.pi / 2 - theta_grid) *
-                np.cos(phi_grid - lon_rad),
-                -1.0, 1.0
-            )
-        )
-        br += strength * np.exp(-(d_pos / width)**2)
-
-        # Negative spot
-        d_neg = np.arccos(
-            _clamp_arr(
-                np.sin(lat_rad - separation / 2) * np.sin(np.pi / 2 - theta_grid) +
-                np.cos(lat_rad - separation / 2) * np.cos(np.pi / 2 - theta_grid) *
-                np.cos(phi_grid - (lon_rad + separation)),
-                -1.0, 1.0
-            )
-        )
-        br -= strength * np.exp(-(d_neg / width)**2)
+    vectors = np.stack((sin_theta * np.cos(phi_grid), sin_theta * np.sin(phi_grid), cos_theta), axis=-1)
+    for region in build_active_regions() if active_regions is None else active_regions:
+        envelope, _, _ = region_lifetime(region, jd)
+        if envelope <= 0 or activity <= 0:
+            continue
+        _, negative, positive, _, _ = region_polarity_dirs(region, jd)
+        strength = 80.0 * region.strength * activity * envelope
+        width = max(math.radians(2), region.separation_rad * .7)
+        for direction, sign in ((positive, 1), (negative, -1)):
+            distance = np.arccos(np.clip(np.sum(vectors * direction, axis=-1), -1, 1))
+            br += sign * strength * np.exp(-(distance / width)**2)
 
     return br
 
@@ -964,7 +943,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-equal-area-v1"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v2"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
@@ -1220,6 +1199,9 @@ def _serialize_observed_provenance(
         }
 
     payload = asdict(provenance)
+    # The original artifact is admission evidence, not a multi-megabyte API
+    # payload. Its expanded_fits_sha256 is already public provenance.
+    payload.pop("native_fits_bytes")
     payload["native_header_bytes"] = encoded_bytes(provenance.native_header_bytes)
     payload["wcs"]["normalized_header_bytes"] = encoded_bytes(
         provenance.wcs.normalized_header_bytes
@@ -1244,7 +1226,8 @@ class PFSSCache:
     or values observed by concurrent waiters.
     """
 
-    def __init__(self, max_entries: int = 3, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S):
+    def __init__(self, max_entries: int = 3, inflight_wait_s: float = DEFAULT_INFLIGHT_WAIT_S, *, active_regions: tuple[ActiveRegionSeed, ...] | None = None):
+        self._active_regions = build_active_regions() if active_regions is None else tuple(active_regions)
         self._lock = threading.Lock()
         self._cache: OrderedDict[PFSSSolutionKey, dict[str, Any]] = OrderedDict()
         self._inflight: dict[PFSSSolutionKey, dict[str, Any]] = {}
@@ -1463,10 +1446,9 @@ class PFSSCache:
             state["event"].set()
         return resolved
 
-    @staticmethod
-    def _build_synthetic_snapshot(jd: float, activity: float) -> _ResolvedMagnetogram:
+    def _build_synthetic_snapshot(self, jd: float, activity: float) -> _ResolvedMagnetogram:
         grid = equal_area_sine_latitude_grid(180, 360)
-        br_map = synthetic_magnetogram(activity, jd, grid=grid)
+        br_map = synthetic_magnetogram(activity, jd, grid=grid, active_regions=self._active_regions)
         grid_hash = gong._grid_sha256(grid)
         content_hash = _domain_sha256(
             b"SYNTHETIC_MAGNETOGRAM_CONTENT_V1\0",
@@ -1596,6 +1578,11 @@ class PFSSCache:
             != provenance.native_header_sha256
             or not gong._HEX_SHA256_RE.fullmatch(provenance.expanded_fits_sha256)
             or not gong._HEX_SHA256_RE.fullmatch(provenance.compressed_sha256)
+            or not isinstance(provenance.native_fits_bytes, bytes)
+            or not provenance.native_fits_bytes
+            or len(provenance.native_fits_bytes) > limits.max_expanded_fits_bytes
+            or hashlib.sha256(provenance.native_fits_bytes).hexdigest()
+            != provenance.expanded_fits_sha256
         ):
             raise ValueError("snapshot artifact hashes are inconsistent")
         try:
@@ -1615,13 +1602,9 @@ class PFSSCache:
             expected_wcs, header_grid = gong._validate_wcs(
                 native_header, header_metadata.long0_deg
             )
-            reconstructed_fits = PFSSCache._reconstructed_expanded_fits(
-                native_header,
-                provenance.native_header_bytes,
-                field,
-                provenance.flux.removed_mean_g,
-                provenance.gauss_conversion_factor,
-            )
+            reconstructed_fits = provenance.native_fits_bytes
+            if gong._native_header_bytes(reconstructed_fits, limits.max_header_bytes) != extracted_header:
+                raise ValueError("native artifact and header disagree")
         except (UnicodeDecodeError, TypeError, ValueError) as exc:
             raise ValueError("snapshot native header provenance is inconsistent") from exc
         if (
@@ -1767,67 +1750,6 @@ class PFSSCache:
         if reparsed.snapshot_id != sid or reparsed.provenance != provenance:
             raise ValueError("snapshot disagrees with reconstructed FITS")
         return field
-
-    @staticmethod
-    def _reconstructed_expanded_fits(
-        header: Any,
-        native_header_bytes: bytes,
-        field: np.ndarray,
-        removed_mean_g: float,
-        gauss_conversion_factor: float,
-    ) -> bytes:
-        """Reconstruct the frozen single-HDU FITS artifact from parsed science."""
-        if int(header.get("NAXIS", -1)) != 2:
-            raise ValueError("snapshot FITS must contain a two-dimensional image")
-        shape = (int(header.get("NAXIS2", -1)), int(header.get("NAXIS1", -1)))
-        if shape != field.shape or shape != (180, 360):
-            raise ValueError("snapshot FITS dimensions disagree with science pixels")
-        bitpix = int(header["BITPIX"])
-        dtype_by_bitpix = {
-            8: np.dtype(">u1"),
-            16: np.dtype(">i2"),
-            32: np.dtype(">i4"),
-            64: np.dtype(">i8"),
-            -32: np.dtype(">f4"),
-            -64: np.dtype(">f8"),
-        }
-        if bitpix not in dtype_by_bitpix:
-            raise ValueError("snapshot FITS BITPIX is unsupported")
-        bscale = float(header.get("BSCALE", 1.0))
-        bzero = float(header.get("BZERO", 0.0))
-        if (
-            not math.isfinite(bscale)
-            or bscale == 0.0
-            or not math.isfinite(bzero)
-            or not math.isfinite(gauss_conversion_factor)
-            or gauss_conversion_factor == 0.0
-        ):
-            raise ValueError("snapshot FITS scaling is invalid")
-        scaled = (np.asarray(field, dtype=np.float64) + removed_mean_g) / (
-            gauss_conversion_factor
-        )
-        raw = (scaled - bzero) / bscale
-        dtype = dtype_by_bitpix[bitpix]
-        if bitpix > 0:
-            rounded = np.rint(raw)
-            limits = np.iinfo(dtype)
-            if (
-                not np.all(np.isfinite(raw))
-                or np.any(rounded < limits.min)
-                or np.any(rounded > limits.max)
-                or not np.allclose(raw, rounded, rtol=0.0, atol=1e-9)
-            ):
-                raise ValueError("snapshot pixels disagree with integer FITS storage")
-            raw = rounded
-        data_bytes = np.asarray(raw, dtype=dtype, order="C").tobytes(order="C")
-        expected_data_bytes = shape[0] * shape[1] * (abs(bitpix) // 8)
-        if len(data_bytes) != expected_data_bytes:
-            raise ValueError("snapshot FITS data size is inconsistent")
-        data_bytes += b"\0" * ((-len(data_bytes)) % 2880)
-        expanded = native_header_bytes + data_bytes
-        if len(expanded) > gong.GongParseLimits().max_expanded_fits_bytes:
-            raise ValueError("snapshot FITS exceeds the expanded byte limit")
-        return expanded
 
     @staticmethod
     def _validate_observed_flux(

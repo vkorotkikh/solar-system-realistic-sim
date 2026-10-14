@@ -1,0 +1,4 @@
+nasa_wsa_ace.json	https://ccmc.gsfc.nasa.gov/wsa-dashboard/api/get_solarwind_simple?start_date=2026-10-10&end_date=2026-10-14&input_map=AGONG&sat=ACE	independent_model_forecast	2026-10-14T05:27:29Z
+noaa_rtsw_wind_1m.json	https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json	operational_in_situ_observations	2026-10-14T05:28:07Z
+nasa_wsa_gongz_202610121744.fits	https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/WSA_OUT/GONG_Z/2026/10/wsa_202610121744R000_gongz.fits	independent_model_coronal_map	2026-10-14T05:28:07Z
+nasa_pfss_gongz_202610121744.osfls	https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/fieldlines/GONG_Z/trace_pfss_intoout/2026/10/2026-10-12T17-44-00.000.osfls	independent_model_field_lines	2026-10-14T05:28:07Z

@@ -7,6 +7,10 @@ from random import Random
 from typing import Any
 
 from .solar_time import current_jd_tdb
+from .solar_active_regions import (
+    ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
+    region_lifetime, region_polarity_dirs,
+)
 
 AU_KM = 149_597_870.7
 SOLAR_RADIUS_KM = 695_700.0
@@ -86,11 +90,7 @@ def _orthonormal_basis(base: tuple[float, float, float]) -> tuple[tuple[float, f
 
 
 def _differential_rotation_rad_day(lat_rad: float) -> float:
-    sin_lat = math.sin(lat_rad)
-    sin2 = sin_lat * sin_lat
-    # Snodgrass & Ulrich (1990) sidereal photospheric Doppler profile (deg/day).
-    deg_per_day = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2
-    return deg_per_day * math.pi / 180.0
+    return differential_rotation_rad_day(lat_rad)
 
 
 def _slerp(
@@ -182,19 +182,6 @@ def _solar_cycle_number(jd: float) -> int:
 
 
 @dataclass(frozen=True)
-class ActiveRegionSeed:
-    idx: int
-    center_lat_rad: float
-    center_lon_rad: float
-    tilt_rad: float
-    separation_rad: float
-    strength: float
-    hemisphere_sign: float
-    hale_cycle25_leading_polarity: float
-    flux_imbalance: float
-
-
-@dataclass(frozen=True)
 class FluxTubeSeed:
     idx: int
     region_idx: int
@@ -242,45 +229,10 @@ class SolarCoronaPhysicsModel:
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
         from sim.pfss_magnetogram import PFSSCache
-        self._pfss_cache = PFSSCache()
+        self._pfss_cache = PFSSCache(active_regions=tuple(self.active_regions))
 
     def _build_active_regions(self) -> list[ActiveRegionSeed]:
-        rng = Random(self.seed * 31 + 7)
-        out: list[ActiveRegionSeed] = []
-        region_count = max(24, self.base_tube_count // 4)
-
-        for idx in range(region_count):
-            hemisphere = -1.0 if rng.random() < 0.5 else 1.0
-            core_lat_deg = rng.uniform(7.0, 34.0)
-            low_lat_deg = rng.uniform(3.0, 18.0)
-            blend = rng.random() ** 1.8
-            lat_deg = hemisphere * (core_lat_deg * (1.0 - blend) + low_lat_deg * blend)
-            lon_deg = rng.uniform(0.0, 360.0)
-
-            # Joy's law: tilt rises with latitude, plus observational scatter.
-            tilt_mean_deg = 0.5 * abs(lat_deg)
-            tilt_deg = hemisphere * (tilt_mean_deg + rng.uniform(-15.0, 15.0))
-            strength = _clamp(rng.betavariate(2.2, 3.0) * 1.22, 0.06, 1.0)
-            separation_deg = _clamp(2.0 + strength * 7.0 + rng.uniform(-0.9, 0.9), 2.0, 10.0)
-            # Cycle 25 is odd: north leading is negative, south leading is positive.
-            hale_cycle25_leading = -1.0 if hemisphere > 0.0 else 1.0
-            flux_imbalance = rng.uniform(-0.18, 0.18)
-
-            out.append(
-                ActiveRegionSeed(
-                    idx=idx,
-                    center_lat_rad=math.radians(lat_deg),
-                    center_lon_rad=math.radians(lon_deg),
-                    tilt_rad=math.radians(tilt_deg),
-                    separation_rad=math.radians(separation_deg),
-                    strength=strength,
-                    hemisphere_sign=hemisphere,
-                    hale_cycle25_leading_polarity=hale_cycle25_leading,
-                    flux_imbalance=flux_imbalance,
-                )
-            )
-
-        return out
+        return list(build_active_regions(self.seed, self.base_tube_count))
 
     def _build_flux_tube_seeds(self) -> list[FluxTubeSeed]:
         rng = Random(self.seed)
@@ -463,7 +415,8 @@ class SolarCoronaPhysicsModel:
         eruption_gate = 0.0
         if tube.family == "cme":
             eruption_gate = _clamp((rapid - 0.7) / 0.3, 0.0, 1.0) * _clamp((micro - 0.6) / 0.4, 0.0, 1.0)
-        return emergence, eruption_gate
+        lifetime, _, _ = region_lifetime(self.active_regions[tube.region_idx], jd)
+        return emergence * lifetime, eruption_gate * lifetime
 
     def _feature_score(
         self,
@@ -478,7 +431,8 @@ class SolarCoronaPhysicsModel:
         cme_boost = 1.3 if tube.family == "cme" else 1.0
         plume_boost = 1.08 if tube.family == "plume" else 1.0
         base = tube.strength * region.strength * (0.3 + 0.7 * activity) * (0.2 + 0.8 * emergence)
-        return base * cme_boost * plume_boost + eruption_gate * (0.2 + 1.4 * tube.strength) * activity
+        lifetime, _, _ = region_lifetime(region, jd)
+        return (base * cme_boost * plume_boost + eruption_gate * (0.2 + 1.4 * tube.strength) * activity) * lifetime
 
     def _region_polarity_dirs(
         self,
@@ -491,22 +445,7 @@ class SolarCoronaPhysicsModel:
         tuple[float, float, float],
         float,
     ]:
-        lat = region.center_lat_rad
-        lon = (region.center_lon_rad + _differential_rotation_rad_day(lat) * (jd - J2000_JD)) % (2.0 * math.pi)
-        center = _normalize(_vector_from_lat_lon(lat, lon))
-
-        east = _normalize((-math.sin(lon), math.cos(lon), 0.0))
-        north = _normalize((-math.sin(lat) * math.cos(lon), -math.sin(lat) * math.sin(lon), math.cos(lat)))
-        axis = _normalize(_add(_scale(east, math.cos(region.tilt_rad)), _scale(north, math.sin(region.tilt_rad))))
-
-        half_sep = max(0.005, region.separation_rad * 0.5)
-        offset = math.tan(half_sep)
-        positive = _normalize(_add(center, _scale(axis, offset)))
-        negative = _normalize(_add(center, _scale(axis, -offset)))
-        cycle_number = _solar_cycle_number(jd)
-        north_leading_sign = -1.0 if cycle_number % 2 == 1 else 1.0
-        leading_polarity_sign = north_leading_sign * region.hemisphere_sign
-        return center, negative, positive, axis, leading_polarity_sign
+        return region_polarity_dirs(region, jd)
 
     @staticmethod
     def _jitter_direction(
@@ -530,6 +469,7 @@ class SolarCoronaPhysicsModel:
         activity: float,
         emergence: float,
         eruption_gate: float,
+        lifetime_envelope: float = 1.0,
     ) -> tuple[float, float, float, float, float]:
         # Magnetic field strength in gauss.
         field = 18.0 + 410.0 * region.strength * (0.32 + 0.68 * activity) * (0.3 + 0.7 * emergence)
@@ -539,7 +479,7 @@ class SolarCoronaPhysicsModel:
             field *= 0.78
         else:
             field *= 1.0 + 0.55 * eruption_gate
-        field = _clamp(field, 12.0, 650.0)
+        field = _clamp(field, 12.0, 650.0) * lifetime_envelope
 
         # RTV-like coupling: T ~ B^(2/7)
         temperature_mk = 1.7 * ((field / 100.0) ** (2.0 / 7.0)) * (0.82 + 0.38 * emergence + 0.24 * activity)
@@ -576,6 +516,7 @@ class SolarCoronaPhysicsModel:
     ) -> dict[str, Any]:
         del wall_jd
         region = self.active_regions[tube.region_idx]
+        lifetime_envelope, region_birth, lifetime_days = region_lifetime(region, jd)
         _, negative_dir, positive_dir, pair_axis, leading_polarity_sign = self._region_polarity_dirs(region, jd)
 
         if tube.polarity_sign >= 0:
@@ -623,6 +564,7 @@ class SolarCoronaPhysicsModel:
             activity,
             emergence,
             eruption_gate,
+            lifetime_envelope=lifetime_envelope,
         )
 
         if family == "cme":
@@ -709,11 +651,16 @@ class SolarCoronaPhysicsModel:
             1.0,
         )
 
+        brightness *= lifetime_envelope
+
         return {
             "id": f"tube-{tube.idx:04d}",
             "kind": family,
             "region_id": region.idx,
             "active_region_id": f"ar-{region.idx:03d}",
+            "region_birth_jd_tdb": region_birth,
+            "region_lifetime_days": lifetime_days,
+            "region_lifetime_envelope": lifetime_envelope,
             "source_polarity": source_polarity,
             "source_role": source_role,
             "leading_polarity_sign": leading_polarity_sign,
@@ -985,6 +932,8 @@ class SolarCoronaPhysicsModel:
 
         scored: list[tuple[float, FluxTubeSeed, float, float]] = []
         for tube in self.seeds:
+            if region_lifetime(self.active_regions[tube.region_idx], jd)[0] <= 0:
+                continue
             emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
             score = self._feature_score(tube, jd, jd, activity)
             scored.append((score, tube, emergence, eruption_gate))
