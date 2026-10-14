@@ -28,6 +28,7 @@ GM_SOURCE='https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc'
 PINNED=fit.ROOT/'scripts/moon-spk-inputs'
 OUTPUT=fit.ROOT/'src/data/moonEphemerisSpkRepairs.json'
 OFFLINE=False
+DAPHNIS_HANDOFFS=(2455197.5,2457388.5)
 
 
 def element_rows(states,mu):
@@ -130,6 +131,9 @@ def source_daphnis():
     held=np.arange(fit.START+.375,fit.END-.125,step).tolist()
     training=daphnis.evaluate(capture,train)
     withheld=daphnis.evaluate(capture,held)
+    probes=[jd+offset for jd in DAPHNIS_HANDOFFS
+            for offset in [-.75,-.5,-.25,-.1,-.01,-1e-4,-1e-6,0.,1e-6,1e-4,.01,.1,.25,.5,.75]]
+    withheld.extend(daphnis.evaluate(capture,probes))
     endpoints=daphnis.evaluate(capture,[fit.START,fit.END])
     original=json.loads(fit.ORACLE.read_text())
     old=next(row for row in original['bodies'].values() if row['name']=='Daphnis')
@@ -168,7 +172,8 @@ def generate(identifier):
     op=np.array([row['position_au'] for row in oracle])*fit.AU_KM
     ov=np.array([row['velocity_au_per_day'] for row in oracle])*fit.AU_KM/fit.DAY
     for span in [512.,256.,128.,64.,32.]:
-        try: body=fit.fit_cartesian_model(target,rows,fit.END,span)
+        try: body=fit.fit_cartesian_model(target,rows,fit.END,span,
+                                         DAPHNIS_HANDOFFS if identifier==635 else ())
         except RuntimeError as error:
             print(moon['name'],span,str(error),flush=True); continue
         predicted_p,predicted_v=fit.predict(body,times)
@@ -189,6 +194,21 @@ def generate(identifier):
             'positionErrorKm':fit.stats(pe),'velocityErrorMPerS':fit.stats(ve),
             'vectorOracle':{'sampleCount':len(oracle),'positionErrorKm':fit.stats(ope),'velocityErrorMPerS':fit.stats(ove)},
             'boundaryContinuity':{'runtimeStateContinuous':True,'method':'analytic derivative of smooth cross-fade'}}
+        if identifier==635:
+            body['sourceDomain']={
+                'kind':'piecewise legacy Cassini imaging fit, not a current numerical solution',
+                'observationsThrough':'2016-07-16','kernelRelease':'2016-10-11',
+                'descriptorCoverageJd':[2433276.5,2469816.5],
+                'modelCoverageJd':[fit.START,fit.END],
+                'handoffMeaning':'provider fit changes, not physical impulses; right-hand state at shared epoch'}
+            body['validation']['boundaryContinuity']={
+                'runtimeStateContinuous':False,
+                'method':'smooth within each native arc; no blending across native fit changes',
+                'sourceDiscontinuities':[
+                    {'jdTdb':2455197.5,'positionJumpKm':647.5196515539692,
+                     'velocityJumpMPerS':79.7746497162883,'selection':'right-hand'},
+                    {'jdTdb':2457388.5,'positionJumpKm':168.444650880279,
+                     'velocityJumpMPerS':20.760364651107984,'selection':'right-hand'}]}
         print('PASS',moon['name'],flush=True)
         return body
     raise RuntimeError('Native fitting candidate failed the fixed position/velocity budgets')
@@ -198,12 +218,14 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target',type=int,choices=[635,75052],required=True)
     parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--output',type=Path,default=OUTPUT)
     parser.add_argument('--cache-candidate',action='store_true',
                         help='Explicitly publish the generated candidate in the local cache')
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--write',action='store_true')
     mode.add_argument('--check',action='store_true')
     args=parser.parse_args()
+    OUTPUT=args.output
     OFFLINE=args.offline
     body=generate(args.target)
     if args.cache_candidate:

@@ -54,6 +54,8 @@ export interface MoonChebyshevEphemeris {
   meanLongitudeRateDegPerDay: number;
   /** Cartesian Fourier carrier: 0 is a direct XYZ polynomial; n adds n cos/sin pairs. */
   carrierHarmonics?: number;
+  /** Dated provider fit changes, not physical impulses. Right-hand state wins. */
+  sourceDiscontinuities?: number[];
   /** Spacing of the source-element grid; also the continuity blend width. */
   sourceStepDays: number;
   segments: MoonEphemerisSegment[];
@@ -277,11 +279,24 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     ) {
       throw new Error(`${context}.validation exceeds its declared accuracy limit`);
     }
-    if (
-      !isRecord(validation.boundaryContinuity) ||
-      validation.boundaryContinuity.runtimeStateContinuous !== true
-    ) {
+    const handoffs = untypedBody.sourceDiscontinuities;
+    if (handoffs !== undefined && (!cartesian || !Array.isArray(handoffs) || handoffs.length === 0 ||
+        handoffs.some((jd, index) => typeof jd !== 'number' || !Number.isFinite(jd) ||
+          jd <= coverageStartJd || jd >= coverageEndJd || (index > 0 && jd <= handoffs[index - 1])))) {
+      throw new Error(`${context}.sourceDiscontinuities must be ordered internal Cartesian handoffs`);
+    }
+    if (!isRecord(validation.boundaryContinuity) ||
+        validation.boundaryContinuity.runtimeStateContinuous !== (handoffs === undefined)) {
       throw new Error(`${context}.validation does not certify runtime state continuity`);
+    }
+    if (Array.isArray(handoffs)) {
+      const evidence = validation.boundaryContinuity.sourceDiscontinuities;
+      if (!Array.isArray(evidence) || evidence.length !== handoffs.length || evidence.some((item, index) =>
+          !isRecord(item) || item.jdTdb !== handoffs[index] || item.selection !== 'right-hand' ||
+          typeof item.positionJumpKm !== 'number' || !Number.isFinite(item.positionJumpKm) || item.positionJumpKm < 0 ||
+          typeof item.velocityJumpMPerS !== 'number' || !Number.isFinite(item.velocityJumpMPerS) || item.velocityJumpMPerS < 0)) {
+        throw new Error(`${context}.validation must identify each native source handoff`);
+      }
     }
 
     if (!Array.isArray(untypedBody.segments) || untypedBody.segments.length === 0) {
@@ -316,6 +331,11 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     }
     if (Math.abs(expectedStart - coverageEndJd) > 1e-9) {
       throw new Error(`${context}.segments do not cover the declared end date`);
+    }
+    const validatedSegments = untypedBody.segments;
+    if (Array.isArray(handoffs) && handoffs.some(jd =>
+        !validatedSegments.some((segment: unknown) => isRecord(segment) && segment.startJd === jd))) {
+      throw new Error(`${context}.sourceDiscontinuities must coincide with segment boundaries`);
     }
   }
 
@@ -638,6 +658,7 @@ function propagateCartesianEphemeris(
   let left = -1;
   if (half > 0 && index > 0 && jd < segment.startJd + half) left = index - 1;
   else if (half > 0 && index + 1 < ephemeris.segments.length && jd > segment.endJd - half) left = index;
+  if (left >= 0 && ephemeris.sourceDiscontinuities?.includes(ephemeris.segments[left].endJd)) left = -1;
   if (left >= 0) {
     const boundary = ephemeris.segments[left].endJd;
     const a = cartesianSegmentState(ephemeris, ephemeris.segments[left], jd);
