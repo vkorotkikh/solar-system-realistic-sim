@@ -25,6 +25,7 @@ import {
 interface GwParams {
     frequency?: number;
     strain?: number;
+    /** Unit bearing TO the source in the grid's Sun-centered ecliptic frame. */
     direction?: Vector3;
     isAgnEvent?: number;
     shockwaveDist?: number;
@@ -44,14 +45,14 @@ const GW_VERTEX_SHADER = `
 uniform float time;
 uniform float frequency;       // Hz
 uniform float strainAmplitude; // exaggerated strain
-uniform vec3 propagationDir;   // wave propagation direction
+uniform vec3 propagationDir;   // local source bearing; incoming motion is opposite
 uniform float enabled;         // 0.0 = off, 1.0 = on
 uniform float isAgnEvent;      // AGN shockwave mode
 uniform float shockwaveDist;   // Current distance of shockwave from origin
 
 varying vec2 vUv;
 varying float vDistortion;
-varying vec3 vWorldPosition;
+varying vec3 vGridPosition;    // undeformed local ecliptic position, NOT world space
 
 void main() {
   vUv = uv;
@@ -64,7 +65,9 @@ void main() {
   
   // If AGN event, compute shockwave front
   if (isAgnEvent > 0.5) {
-      float distBehind = axisPos - shockwaveDist;
+      // The front distance decreases toward the Sun. The passed side faces
+      // the source, so a negative behind-coordinate means axisPos > distance.
+      float distBehind = shockwaveDist - axisPos;
       if (distBehind < 0.0) {
           // Sharp compression at the front, exponential decay behind
           float envelope = exp(distBehind * 0.4);
@@ -77,19 +80,19 @@ void main() {
   
   vec3 displaced = position;
   displaced.x *= (1.0 + hPlus);
-  displaced.z *= (1.0 - hPlus);
+  displaced.y *= (1.0 - hPlus);
   
-  // Add some vertical FTL turbulence
-  if (isAgnEvent > 0.5 && axisPos < shockwaveDist) {
-      float distBehind = axisPos - shockwaveDist;
+  // Illustrative out-of-ecliptic ripple, not a physical GW polarization tensor.
+  if (isAgnEvent > 0.5 && axisPos > shockwaveDist) {
+      float distBehind = shockwaveDist - axisPos;
       float envelope = exp(distBehind * 0.5);
-      displaced.y += sin(position.x * 2.0 + position.z * 1.5 + time * 12.0) * envelope * 2.5 * strainAmplitude;
+      displaced.z += sin(position.x * 2.0 + position.y * 1.5 + time * 12.0) * envelope * 2.5 * strainAmplitude;
   }
   
   vDistortion = abs(hPlus);
   
   vec4 worldPos = modelMatrix * vec4(displaced, 1.0);
-  vWorldPosition = worldPos.xyz;
+  vGridPosition = position;
   
   gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
@@ -105,7 +108,7 @@ uniform float time;
 
 varying vec2 vUv;
 varying float vDistortion;
-varying vec3 vWorldPosition;
+varying vec3 vGridPosition;
 
 // Simple random function
 float hash12(vec2 p) {
@@ -128,15 +131,15 @@ void main() {
   
   // AGN Tsunami gamma-ray glowing front
   if (isAgnEvent > 0.5) {
-      float axisPos = dot(vWorldPosition, propagationDir);
-      float distBehind = axisPos - shockwaveDist;
+      float axisPos = dot(vGridPosition, propagationDir);
+      float distBehind = shockwaveDist - axisPos;
       
       float agnGlow = 0.0;
       if (distBehind < 0.0 && distBehind > -3.0) {
           agnGlow = pow(1.0 - (abs(distBehind) / 3.0), 2.0);
       }
       
-      float streaks = hash12(vWorldPosition.xz + vec2(time));
+      float streaks = hash12(vGridPosition.xy + vec2(time));
       agnGlow *= 0.7 + 0.3 * streaks;
       
       if (agnGlow > 0.01) {
@@ -159,7 +162,8 @@ void main() {
  */
 export function createGWVisualization(size = 10): GwVisualization {
     const geometry = new PlaneGeometry(size, size, 384, 384);
-    geometry.rotateX(-Math.PI / 2); // Lay flat on ecliptic plane
+    // PlaneGeometry already lies in XY, the canonical J2000 ecliptic (+Z north).
+    // Parent transforms affect presentation only; phase/glow share this local frame.
 
     const material = new ShaderMaterial({
         vertexShader: GW_VERTEX_SHADER,
@@ -168,7 +172,7 @@ export function createGWVisualization(size = 10): GwVisualization {
             time: { value: 0 },
             frequency: { value: 50 },           // Hz (LIGO band)
             strainAmplitude: { value: 0.05 },     // Hugely exaggerated (real: 10⁻²¹)
-            propagationDir: { value: new Vector3(0, 1, 0) }, // From "above" ecliptic
+            propagationDir: { value: new Vector3(0, 1, 0) }, // Local ecliptic source bearing
             enabled: { value: 0 },               // Off by default
             isAgnEvent: { value: 0.0 },          // AGN mode off
             shockwaveDist: { value: 9999.0 },
