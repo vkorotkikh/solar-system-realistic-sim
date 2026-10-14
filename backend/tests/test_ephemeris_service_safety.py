@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import socket
 import threading
@@ -33,18 +34,15 @@ from trajectory.budget import (
 )
 
 
-class _Response:
+class _Response(io.BytesIO):
+    status = 200
+    headers = {}
+
     def __init__(self, payload: bytes):
-        self._payload = payload
+        super().__init__(payload)
 
-    def __enter__(self) -> "_Response":
-        return self
-
-    def __exit__(self, *_args: object) -> None:
-        return None
-
-    def read(self, limit: int = -1) -> bytes:
-        return self._payload if limit < 0 else self._payload[:limit]
+    def geturl(self) -> str:
+        return module.HORIZONS_API_URL
 
 
 @pytest.fixture(autouse=True)

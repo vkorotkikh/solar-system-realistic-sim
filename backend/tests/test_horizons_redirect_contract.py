@@ -1,5 +1,6 @@
 """SCN-073: exercise the actual urllib redirect boundary with a controlled HTTPS wire."""
 import io
+import urllib.error
 import urllib.request
 from email.message import Message
 from urllib.response import addinfourl
@@ -10,6 +11,19 @@ from mission import ephemeris_service as ephemeris
 from mission.ephemeris_service import EphemerisProtocolError, EphemerisService
 from data.bodies import ALL_BODIES
 from trajectory.budget import PlanningContext, PlanningLimits, PlanningBudgetExceeded
+from sim.solar_http_transport import _NoRedirect
+
+
+@pytest.fixture(autouse=True)
+def controlled_in_process_wire(monkeypatch):
+    # Keep these urllib-boundary cases while the dedicated owned-transport
+    # suite exercises the same policy through actual isolated child processes.
+    def open_response(request, *, timeout):
+        try:
+            return urllib.request.build_opener(_NoRedirect()).open(request, timeout=timeout)
+        except urllib.error.HTTPError as exc:
+            return exc
+    monkeypatch.setattr(ephemeris, "_horizons_urlopen", open_response)
 
 
 @pytest.mark.parametrize("location", ["http://ssd.jpl.nasa.gov/unsafe", "https://evil.example/steal",
