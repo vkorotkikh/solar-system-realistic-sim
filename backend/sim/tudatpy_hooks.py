@@ -12,16 +12,16 @@ New chunks are computed automatically as the simulation time advances.
 Force models (all configurable via constructor flags):
   - Point-mass N-body gravity (all major bodies mutual)
   - Spherical harmonics J2/J4 for Earth, Jupiter, Saturn
-  - Solar radiation pressure (off by default — for spacecraft sims)
+  - Solar radiation pressure is not implemented; requesting it fails explicitly.
 
 Propagator:
   - RK4 fixed-step at 5-minute intervals (reliable, stable)
-  - State output at 10-minute intervals for smooth interpolation
+  - State history at integrator output points, with linear interpolation
 
 Fidelity label: "normal" — sits between local Keplerian ("low") and
-REBOUND IAS15 ("high").  The J2 and SRP models capture effects that
-pure point-mass N-body misses, particularly for inner-planet precession
-and spacecraft trajectory fidelity.
+REBOUND IAS15 ("high"). This is a model label, not an independently measured
+accuracy guarantee. Energy is a point-mass diagnostic and excludes harmonic
+potential terms; SRP and spacecraft propagation are not implemented here.
 
 Serialized state vectors are normalized at this adapter boundary to the
 same contract as REBOUND: barycentric J2000-ecliptic positions in AU and
@@ -77,13 +77,24 @@ def _load_tudatpy() -> bool:
     if _TUDATPY_AVAILABLE:
         return True
     try:
-        from tudatpy.kernel.interface import spice as _s
-        from tudatpy.kernel import numerical_simulation as _ns
-        from tudatpy.kernel.numerical_simulation import (
-            environment_setup as _es,
-            propagation_setup as _ps,
-            propagation as _p,
-        )
+        try:
+            # Tudat 1.0 exposes propagation through dynamics; kernel's legacy
+            # numerical_simulation namespace is no longer a supported import.
+            from tudatpy.interface import spice as _s
+            from tudatpy.dynamics import simulator as _ns
+            from tudatpy.dynamics import (
+                environment_setup as _es,
+                propagation_setup as _ps,
+                propagation as _p,
+            )
+        except ImportError:
+            from tudatpy.kernel.interface import spice as _s
+            from tudatpy.kernel import numerical_simulation as _ns
+            from tudatpy.kernel.numerical_simulation import (
+                environment_setup as _es,
+                propagation_setup as _ps,
+                propagation as _p,
+            )
         _spice = _s
         _numerical_simulation = _ns
         _environment_setup = _es
@@ -114,6 +125,22 @@ _ID_TO_SPICE: Dict[str, str] = {
 
 # Bodies for which we request spherical-harmonic gravity (J2/J4)
 _SH_GRAVITY_BODIES = {"Earth", "Jupiter", "Saturn"}
+
+# Iess et al. (2019), Table 1, DOI 10.1126/science.aat2965.
+# The coefficient reference radius is 60330 km, NOT the 60268 km visual radius.
+# https://atmos.nmsu.edu/data_and_services/atmospheres_data/Cassini/logs/Iess-Science-2019.pdf
+SATURN_HARMONIC_RADIUS_M = 60_330_000.0
+SATURN_J2 = 16290.573e-6
+SATURN_J4 = -935.314e-6
+
+
+def _saturn_harmonic_coefficients():
+    """Fully normalized C(n,0) = -J(n)/sqrt(2n+1); J2/J4 only."""
+    cosine = np.zeros((5, 5), dtype=float)
+    cosine[0, 0] = 1.0
+    cosine[2, 0] = -SATURN_J2 / math.sqrt(5)
+    cosine[4, 0] = -SATURN_J4 / 3
+    return cosine, np.zeros_like(cosine)
 
 
 def _jd_to_seconds(jd: float) -> float:
@@ -178,6 +205,13 @@ class TudatPyEngine(SimulationEngine):
         j2_max_order: int = 4,
         enable_srp: bool = False,
     ) -> None:
+        if enable_srp:
+            raise NotImplementedError("Tudat adapter solar radiation pressure is not implemented")
+        if (isinstance(j2_max_degree, bool) or not isinstance(j2_max_degree, int)
+                or not 0 <= j2_max_degree <= 4
+                or isinstance(j2_max_order, bool) or not isinstance(j2_max_order, int)
+                or not 0 <= j2_max_order <= j2_max_degree):
+            raise ValueError("Tudat adapter supports harmonic degree 0..4 and order 0..degree")
         self._enable_j2 = enable_j2
         self._j2_degree = j2_max_degree
         self._j2_order = j2_max_order
@@ -251,6 +285,29 @@ class TudatPyEngine(SimulationEngine):
         body_settings = _environment_setup.get_default_body_settings(
             self._spice_names, "SSB", "J2000"
         )
+        if "Pluto" in self._spice_names:
+            # The standard planetary kernel contains target 9, not Pluto's
+            # center (999). Tudat's default ephemeris already uses that system
+            # barycenter, but its default gravity requests missing BODY999_GM.
+            # Make both choices explicit and expose the approximation on wire.
+            body_settings.get("Pluto").ephemeris_settings = (
+                _environment_setup.ephemeris.direct_spice("SSB", "J2000", "Pluto Barycenter")
+            )
+            body_settings.get("Pluto").gravity_field_settings = (
+                _environment_setup.gravity_field.central(
+                    _spice.get_body_gravitational_parameter("Pluto Barycenter")
+                )
+            )
+        if self._enable_j2 and "Saturn" in self._spice_names:
+            # Tudat supplies only a point-mass default for Saturn. Explicitly
+            # install the cited zonals before requesting harmonic acceleration.
+            cosine, sine = _saturn_harmonic_coefficients()
+            body_settings.get("Saturn").gravity_field_settings = (
+                _environment_setup.gravity_field.spherical_harmonic(
+                    _spice.get_body_gravitational_parameter("Saturn"),
+                    SATURN_HARMONIC_RADIUS_M, cosine, sine, "IAU_Saturn"
+                )
+            )
         self._body_system = _environment_setup.create_system_of_bodies(
             body_settings
         )
@@ -370,6 +427,14 @@ class TudatPyEngine(SimulationEngine):
                 "pos": [round(float(v), 10) for v in pos_au],
                 "vel": [round(float(v), 10) for v in vel_aud],
             }
+            if spice_name == "Pluto":
+                bodies_out[body_id]["ephemeris_quality"] = {
+                    "fidelity": "approximate",
+                    "model_target": "pluto_system_barycenter",
+                    "initial_spice_target": 9,
+                    "body_center": False,
+                    "scope": "point-mass system, not resolved Pluto-Charon dynamics",
+                }
 
         return {
             "type": "state_update",
