@@ -70,7 +70,7 @@ def test_direct_horizons_preflights_both_targets_before_any_network(monkeypatch)
         calls += 1
         raise AssertionError("unsupported direct transfer reached Horizons")
 
-    monkeypatch.setattr(ephemeris_module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(ephemeris_module, "_horizons_urlopen", forbidden)
 
     with pytest.raises(EphemerisTargetUnsupported, match="psyche"):
         solve_direct_lambert(

@@ -29,7 +29,7 @@ from .budget import (
     PlanningContext,
     PlanningError,
 )
-from .contracts import MAX_BODY_ID_LENGTH
+from .contracts import MAX_BODY_ID_LENGTH, TrajectoryRequestRejected, validate_planning_epoch
 
 
 LAMBERT_ROOT_TOLERANCE_DAYS = 1.0e-4
@@ -47,7 +47,7 @@ MIN_PORKCHOP_DEPARTURE_STEP_DAYS = 0.5
 MIN_PORKCHOP_TOF_STEP_DAYS = 5.0
 
 
-class TrajectoryInputError(ValueError):
+class TrajectoryInputError(TrajectoryRequestRejected):
     """Pure request-validation failure carrying a stable machine code."""
 
     def __init__(
@@ -57,13 +57,18 @@ class TrajectoryInputError(ValueError):
         *,
         context: Dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(message)
-        self.code = str(code)
-        self.context = dict(context or {})
+        super().__init__(code, message, context=context)
 
 
 class PorkchopScanCancelled(RuntimeError):
     """Raised when a request owner cancels an in-progress grid scan."""
+
+
+def _supported_epoch(value: float, field: str) -> float:
+    try:
+        return validate_planning_epoch(value, field)
+    except TrajectoryRequestRejected as exc:
+        raise TrajectoryInputError(exc.code, str(exc), context=exc.context) from exc
 
 
 def _bounded_vector3(vector: Any, label: str) -> tuple[float, float, float]:
@@ -153,6 +158,8 @@ def validate_direct_lambert_request(
     normalized_from, normalized_to = _validated_body_pair(from_id, to_id)
     departure = _finite_time_value("departure_jd", departure_jd)
     arrival = _finite_time_value("arrival_jd", arrival_jd)
+    _supported_epoch(departure, "departure_jd")
+    _supported_epoch(arrival, "arrival_jd")
     tof = arrival - departure
     if tof <= 0.0 or not math.isfinite(tof):
         raise TrajectoryInputError(
@@ -174,6 +181,8 @@ def _validate_lambert_leg_request(
     departure = _finite_time_value("departure_jd", departure_jd)
     tof = _finite_time_value("tof_days", tof_days)
     arrival = departure + tof
+    _supported_epoch(departure, "departure_jd")
+    _supported_epoch(arrival, "arrival_jd")
     if tof <= 0.0 or not math.isfinite(arrival) or arrival <= departure:
         raise TrajectoryInputError(
             "trajectory_invalid_time_range",
@@ -209,6 +218,9 @@ def validate_porkchop_request(
         }.items()
     }
     departure_window = values["departure_end_jd"] - values["departure_start_jd"]
+    _supported_epoch(values["departure_start_jd"], "departure_start_jd")
+    _supported_epoch(values["departure_end_jd"], "departure_end_jd")
+    _supported_epoch(values["departure_end_jd"] + values["tof_max_days"], "latest_arrival_jd")
     if not math.isfinite(departure_window):
         raise TrajectoryInputError(
             "trajectory_invalid_time_range",
@@ -725,6 +737,9 @@ def solve_lambert_universal(
     `branch`: "low" (smaller z; Izzo 2015's low path) or "high". N = 0 ignores `branch`.
     An arc that passes periapsis inside `min_periapsis_au` (default: the Sun's radius, matching
     the default `mu`) is no solution.
+    Exactly collinear endpoints (including exactly 180 degrees) return None:
+    they do not specify a unique transfer plane, and this API accepts no plane
+    normal. Near-collinear nonzero cross products define their own plane.
     Cross-checked against lamberthub's izzo2015 for M = 0..3, both branches, prograde and
     retrograde: 148 common solutions agree to 1.2e-7 m/s and neither finds one the other misses.
     """

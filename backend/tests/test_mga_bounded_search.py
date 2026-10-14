@@ -940,7 +940,7 @@ def test_real_kepler_assist_is_independently_revalidated() -> None:
     routes = [route for route in [result["best"], *result["alternatives"]] if route]
     for route in routes:
         assert route["pathMetric"] == "endpoint_chord_sum"
-        assert route["deltaVModel"] == "endpoint_propulsive_burns_only"
+        assert route["deltaVModel"] == "endpoint_v_infinity_sum_not_propulsive_burns"
         assert route["assistGainMetric"] == "patched_conic_velocity_deflection"
     assisted = next(route for route in routes if route["routeClass"] == "gravity_assist")
     body_by_id = {body["id"]: body for body in ALL_BODIES}
@@ -1296,7 +1296,7 @@ def test_auto_search_never_calls_horizons_or_urlopen(monkeypatch, max_assists: i
         raise AssertionError("auto planning must remain network-free")
 
     monkeypatch.setattr(EphemerisService, "_sample_horizons", forbidden_horizons)
-    monkeypatch.setattr(ephemeris_module.urllib.request, "urlopen", forbidden_urlopen)
+    monkeypatch.setattr(ephemeris_module, "_horizons_urlopen", forbidden_urlopen)
 
     result = plan_interplanetary_route(
         ALL_BODIES,

@@ -970,7 +970,7 @@ def _complete_route(partial: _Partial, objective: str) -> Dict[str, Any]:
         + float(partial.legs[-1]["deltaVArrivalKmS"]),
         "totalPathLengthAu": partial.total_path_length_au,
         "pathMetric": "endpoint_chord_sum",
-        "deltaVModel": "endpoint_propulsive_burns_only",
+        "deltaVModel": "endpoint_v_infinity_sum_not_propulsive_burns",
         "assistGainMetric": "patched_conic_velocity_deflection",
         "totalTimeDays": float(partial.current_jd - partial.legs[0]["departureJd"]),
         "turnDeficitPenalty": 0.0,

@@ -159,7 +159,8 @@ def test_mission_retains_verified_candidate_when_later_return_exhausts_budget() 
     def route(from_id: str, to_id: str, arrival_jd: float, delta_v: float) -> dict:
         return {
             "bodyRoute": [from_id, to_id],
-            "legs": [{"arrivalJd": arrival_jd}],
+            "legs": [{"departureJd": arrival_jd - 100.0, "arrivalJd": arrival_jd,
+                      "deltaVDepartureKmS": delta_v / 2, "deltaVArrivalKmS": delta_v / 2}],
             "totalDeltaVKmS": delta_v,
             "totalTimeDays": 100.0,
         }
@@ -431,7 +432,8 @@ def test_invalid_candidate_plus_incomplete_later_search_is_inconclusive() -> Non
     def route(arrival_jd: float, delta_v: float) -> dict:
         return {
             "bodyRoute": ["earth", "mars"],
-            "legs": [{"arrivalJd": arrival_jd}],
+            "legs": [{"departureJd": arrival_jd - 100.0, "arrivalJd": arrival_jd,
+                      "deltaVDepartureKmS": delta_v / 2, "deltaVArrivalKmS": delta_v / 2}],
             "totalDeltaVKmS": delta_v,
             "totalTimeDays": 100.0,
         }

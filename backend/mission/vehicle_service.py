@@ -139,6 +139,9 @@ class VehicleService:
 
         total_propellant_initial = sum(stage.propellant_mass_kg for stage in vehicle.stages)
         total_propellant_used = sum(stage["propellant_used_kg"] for stage in stages)
+        onboard = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if not s["jettisoned"])
+        protected = sum(s["propellant_mass_kg"] * reserve_fraction for s in stages if not s["jettisoned"])
+        discarded = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if s["jettisoned"])
 
         return {
             "feasible": feasible,
@@ -153,7 +156,11 @@ class VehicleService:
             "totalUnmetDeltaV_km_s": total_unmet_dv,
             "totalPropellantInitialKg": total_propellant_initial,
             "totalPropellantUsedKg": total_propellant_used,
-            "propellantMarginKg": max(0.0, total_propellant_initial - total_propellant_used),
+            "propellantMarginKg": max(0.0, onboard - protected),
+            "propellantMarginDefinition": "onboard_usable_excluding_protected_reserves",
+            "propellantOnboardKg": onboard,
+            "propellantReserveOnboardKg": protected,
+            "propellantDiscardedKg": discarded,
             "finalMassKg": mass_kg,
             "stageTelemetry": stages,
         }

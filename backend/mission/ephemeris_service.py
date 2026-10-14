@@ -32,6 +32,7 @@ HORIZONS_MAX_TIMEOUT_S = 2.5
 HORIZONS_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 HORIZONS_USER_AGENT = "solar-system-realistic-sim/trajectory-ephemeris"
 HORIZONS_CONCURRENCY_LIMIT = 1
+HORIZONS_MAX_REDIRECTS = 3
 HORIZONS_WAIT_POLL_S = 0.05
 HORIZONS_SUCCESS_CACHE_MAXSIZE = 4_096
 HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S = 30.0
@@ -130,6 +131,29 @@ class EphemerisUpstreamRateLimited(EphemerisError):
 class EphemerisProtocolError(EphemerisError):
     default_code = "ephemeris_protocol_error"
     default_retryable = False
+
+
+class _NoHorizonsRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Let HTTPError expose the redirect to the bounded owner. The default
+        # handler silently follows cross-host and HTTPS-downgrade redirects.
+        return None
+
+
+def _horizons_urlopen(request: urllib.request.Request, *, timeout: float):
+    return urllib.request.build_opener(_NoHorizonsRedirect()).open(request, timeout=timeout)
+
+
+def _validate_horizons_url(url: str) -> None:
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        valid = (parsed.scheme == "https" and parsed.hostname == "ssd.jpl.nasa.gov"
+                 and parsed.port in (None, 443) and parsed.username is None
+                 and parsed.password is None and not parsed.fragment)
+    except ValueError:
+        valid = False
+    if not valid:
+        raise EphemerisProtocolError("Horizons URL violates the HTTPS host/port allow-list", provider="horizons")
 
 
 class EphemerisTargetUnsupported(EphemerisError):
@@ -1190,6 +1214,7 @@ class EphemerisService:
         transport and prevents it from multiplying across reconnects.
         """
 
+        _validate_horizons_url(request.full_url)
         absolute_deadline = time.monotonic() + max(0.0, float(timeout_s))
         acquired = False
         while not acquired:
@@ -1229,9 +1254,29 @@ class EphemerisService:
 
             def transport() -> None:
                 try:
-                    socket_timeout = max(0.001, absolute_deadline - time.monotonic())
-                    with urllib.request.urlopen(request, timeout=socket_timeout) as response:
-                        outcome["raw"] = response.read(HORIZONS_MAX_RESPONSE_BYTES + 1)
+                    current = request
+                    for hop in range(HORIZONS_MAX_REDIRECTS + 1):
+                        self._context_checkpoint()
+                        _validate_horizons_url(current.full_url)
+                        remaining = absolute_deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise EphemerisUpstreamTimeout("Horizons redirect deadline exceeded", provider="horizons")
+                        if hop:
+                            self._context_reserve(external_requests=1)
+                        try:
+                            with _horizons_urlopen(current, timeout=max(0.001, remaining)) as response:
+                                outcome["raw"] = response.read(HORIZONS_MAX_RESPONSE_BYTES + 1)
+                            break
+                        except urllib.error.HTTPError as exc:
+                            if exc.code not in (301, 302, 303, 307, 308):
+                                raise
+                            location = exc.headers.get("Location")
+                            exc.close()
+                            if not location or hop >= HORIZONS_MAX_REDIRECTS:
+                                raise EphemerisProtocolError("Horizons redirect limit or missing Location", provider="horizons") from exc
+                            target = urllib.parse.urljoin(current.full_url, location)
+                            _validate_horizons_url(target)
+                            current = urllib.request.Request(target, headers={"User-Agent": HORIZONS_USER_AGENT})
                 except BaseException as exc:  # Preserve exact transport classification upstream.
                     outcome["error"] = exc
                 finally:
