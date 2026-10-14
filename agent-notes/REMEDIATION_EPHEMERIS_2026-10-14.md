@@ -550,3 +550,92 @@ provider target is wrong or that the physical satellite is unavailable. A direct
 Cartesian/conic input path is required. Daphnis still needs explicit handling of
 the released legacy source's piecewise fits and discontinuities. Neither record
 has been removed or counted as a pass.
+
+## Early handoff against parent 84ac256
+
+The parent advanced independently to `84ac256`, including catalog source
+permission/pin validation `7253b5a`. Fresh checks used an isolated export of that
+exact revision inside this assigned worktree, without writing the parent tree:
+
+- Parent `generate_moon_ephemeris.py --offline --check` against this branch's
+  canonical artifact: byte-identical. Parent's committed artifact itself also
+  matches all 4,118,909 bytes and the previously recorded SHA256.
+- Parent `scripts/test_catalog_generation.py`: 20 passed in 5.80 seconds.
+- Six-body extension rebuilt with parent `84ac256`'s actual generator helpers and
+  `catalog_sources.py` import interface: byte-identical. No general source-store
+  changes, permission exceptions, or altered pin validation were required.
+
+Exact code integration order (stop after the fourth for the reproducible ten-body
+checkpoint; the fifth adds the independently tested native eleventh model):
+
+1. `bf66bd4ba26fb815243b99065621c544e224e19a`
+2. `d6ddbb87d4ebaf5109c517ee6e5edfaea3d1a3bb`
+3. `28ccf2988f674d577d7c96471f02c8cdcd116fc6`
+4. `022d334f8b5ffc2043d13d7d046d51374c008501`
+5. `c207531b2f08bf38b3f146bf29145ad98d083b66`
+
+Do not replay `708d56c1f2a18ab167d1dea4b78f46b3ea09957d`; parent's `d19c9fa`
+already supplies its 75052 capture counterpart. The sequence has not been
+cherry-picked into the parent by this agent. The final canonical artifact must
+retain SHA256 `9331771c6ae51983c21efcea2bb07191055c2d7891db5f702006487f54e0b9f4`.
+
+Measured delivered data sizes (raw JSON / gzip level 9, not a Vite bundle):
+
+- Canonical four: 4,118,909 / 1,716,630 bytes, unchanged.
+- Six-body extension: 737,611 / 345,064 bytes.
+- Native 75052 extension: 270,686 / 130,791 bytes.
+- Pinned six-body inputs including README/manifest: 13,066,245 bytes.
+- Pinned native inputs including manifest: 1,907,875 bytes.
+
+Current accuracy accounting remains 424 qualified referenced records; 422
+records pass the optional candidate runtime gate. Eleven fitted records are now
+committed, with 411 further passing candidate records unpromoted and two still
+unrepaired (Daphnis, S2023_S38). Duplicate Puck remains in the denominator. The
+candidate gate has 423 passes INCLUDING its single denominator test, not 423
+accurate moon records. No skip is counted as a pass.
+
+`src/sim/loadMoonEphemerides.ts` is the provided lazy loader. Integrators of a
+moon-enabled consumer should call `await loadMoonEphemerides()` in its existing
+conditional moon-loading branch. This agent has not edited `src/main.ts` or
+other agents' frontend write sets.
+
+Changed paths in the two new implementation checkpoints, relative to 28ccf29:
+agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md
+agent-notes/SCN043_RESUMED_BATCH_2026-10-14.json
+scripts/assess_all_moon_oracle.mjs
+scripts/generate_moon_repairs.py
+scripts/moon-repair-inputs/README.md
+scripts/moon-repair-inputs/carme.endpoints.f64.gz
+scripts/moon-repair-inputs/carme.held.f64.gz
+scripts/moon-repair-inputs/carme.source.f64.gz
+scripts/moon-repair-inputs/dione.endpoints.f64.gz
+scripts/moon-repair-inputs/dione.held.f64.gz
+scripts/moon-repair-inputs/dione.source.f64.gz
+scripts/moon-repair-inputs/manifest.json
+scripts/moon-repair-inputs/mimas.endpoints.f64.gz
+scripts/moon-repair-inputs/mimas.held.f64.gz
+scripts/moon-repair-inputs/mimas.source.f64.gz
+scripts/moon-repair-inputs/neso.endpoints.f64.gz
+scripts/moon-repair-inputs/neso.held.f64.gz
+scripts/moon-repair-inputs/neso.source.f64.gz
+scripts/moon-repair-inputs/phobos.endpoints.f64.gz
+scripts/moon-repair-inputs/phobos.held.f64.gz
+scripts/moon-repair-inputs/phobos.source.f64.gz
+scripts/moon-repair-inputs/s2021_n1.endpoints.f64.gz
+scripts/moon-repair-inputs/s2021_n1.held.f64.gz
+scripts/moon-repair-inputs/s2021_n1.source.f64.gz
+scripts/moon-spk-inputs/75052.json.gz
+scripts/moon-spk-inputs/manifest.json
+scripts/repair_catalog_moon_ephemeris.py
+scripts/repair_spk_moon_ephemeris.py
+scripts/test_moon_candidate_inputs.py
+scripts/test_moon_repairs.py
+scripts/test_moon_spk_repairs.py
+src/data/moonEphemerisChebyshev.json
+src/data/moonEphemerisRepairs.json
+src/data/moonEphemerisSpkRepairs.json
+src/sim/loadMoonEphemerides.test.ts
+src/sim/loadMoonEphemerides.ts
+src/sim/moonCatalogIdentity.horizons.test.ts
+src/sim/moonCatalogRepair.horizons.test.ts
+src/sim/moonRepairTestInputs.mjs
