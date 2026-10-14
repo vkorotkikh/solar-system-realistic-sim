@@ -7,6 +7,7 @@ from random import Random
 from typing import Any
 
 from .solar_time import current_jd_tdb
+from .solar_frames import synthetic_geometry_frame
 from .solar_active_regions import (
     ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
     region_lifetime, region_polarity_dirs,
@@ -1037,6 +1038,11 @@ class SolarCoronaPhysicsModel:
             "epoch_jd_tdb": float(jd),
             "wall_epoch_jd_tdb": float(response_wall_jd),
             "jd_time_scale": "TDB",
+            "geometry_frames": {
+                **{layer: synthetic_geometry_frame(jd) for layer in
+                   ("loops", "spots", "parker", "cme", "coronal_holes")},
+                "pfss": pfss_public.get("geometry_frame") if isinstance(pfss_public, dict) else None,
+            },
             # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
             "wall_epoch_jd": float(response_wall_jd),

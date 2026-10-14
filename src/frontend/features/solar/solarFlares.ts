@@ -43,7 +43,7 @@ function directionToLatLon(direction: DirectionSample | null): { latitudeRad: nu
     if (!direction) return null;
     return {
         latitudeRad: Math.asin(Math.max(-1, Math.min(1, direction.y))),
-        longitudeRad: Math.atan2(direction.z, direction.x)
+        longitudeRad: Math.atan2(-direction.z, direction.x)
     };
 }
 
