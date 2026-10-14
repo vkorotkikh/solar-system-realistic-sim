@@ -8,12 +8,16 @@ import {
 import {
   isSourceFrameKeplerOrbit,
   propagateSourceFrameOrbit,
+  resolveSourceFrameOrbitAtElapsedDays,
   type SourceFrameBasis
 } from './sourceFrameOrbit';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
 const JULIAN_CENTURY_DAYS = 36_525;
+const ECLIPTIC_BASIS: SourceFrameBasis = {
+  x: { x: 1, y: 0, z: 0 }, y: { x: 0, y: 1, z: 0 }, z: { x: 0, y: 0, z: 1 }
+};
 
 export interface KeplerOrbit {
   aAu: number;
@@ -214,55 +218,22 @@ export function resolveKeplerOrbitAtElapsedDays(
   orbit: KeplerOrbit,
   elapsedDays: number
 ): ResolvedKeplerOrbit {
-  const centuriesSinceEpoch = elapsedDays / JULIAN_CENTURY_DAYS;
-  const secularRates = orbit.secularRates;
-  const baseA = Math.max(1e-9, orbit.aAu);
-  const a = Math.max(1e-9, baseA + (secularRates?.aAuPerCentury ?? 0) * centuriesSinceEpoch);
-  const e = clampEccentricity((orbit.e ?? 0) + (secularRates?.ePerCentury ?? 0) * centuriesSinceEpoch);
-  const iRad = degToRad((orbit.iDeg ?? 0) + (secularRates?.iDegPerCentury ?? 0) * centuriesSinceEpoch);
-  const ascendingNodeRad = degToRad(
-    (orbit.ascendingNodeDeg ?? 0) + (secularRates?.ascendingNodeDegPerCentury ?? 0) * centuriesSinceEpoch
-  );
-  const argPeriapsisRad = degToRad(
-    (orbit.argPeriapsisDeg ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0) * centuriesSinceEpoch
-  );
-
-  const basePeriodDays = Math.max(1e-9, orbit.periodDays);
-  // periodDays keeps its established meaning (sidereal period, drifted with a) because orbit-line
-  // drawing, the UI readout and the satellite code all consume it. It no longer drives the mean
-  // anomaly for bodies that carry a tabulated mean-longitude rate.
-  const periodDays = basePeriodDays * Math.pow(a / baseA, 1.5);
-  const meanLongitudeRate = secularRates?.meanLongitudeDegPerCentury;
-  // d(varpi)/dt, the rate Omega and argPeriapsis were just precessed at above. Both branches owe
-  // it back to the mean anomaly (see THE APSIDAL INVARIANT on KeplerOrbitSecularRates). It is
-  // exactly 0 -- not merely small -- for a body carrying no secular rates at all.
-  const varpiDegPerCentury =
-    (secularRates?.ascendingNodeDegPerCentury ?? 0) + (secularRates?.argPeriapsisDegPerCentury ?? 0);
-  let meanMotionRadPerDay: number;
-  let meanAnomalyRad: number;
-
-  if (meanLongitudeRate === undefined) {
-    // No tabulated Ldot. dL/dt then comes from periodDays, but only if periodDays is the period of
-    // the mean LONGITUDE; if it is the period of the mean ANOMALY, 2*pi/periodDays is already
-    // dM/dt and subtracting varpidot would introduce the very error the invariant forbids, with
-    // the sign reversed. `periodIsMeanLongitudePeriod` records which one the source table means.
-    //
-    // varpiRadPerDay is the literal 0 whenever the flag is unset, and x - 0 === x in IEEE-754, so
-    // every body that does not opt in keeps the previous arithmetic bit for bit.
-    const varpiRadPerDay = secularRates?.periodIsMeanLongitudePeriod
-      ? degToRad(varpiDegPerCentury) / JULIAN_CENTURY_DAYS
-      : 0;
-    meanMotionRadPerDay = TWO_PI / periodDays - varpiRadPerDay;
-    meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotionRadPerDay * elapsedDays);
-  } else {
-    // Standish: M = L - varpi, so dM/dt = Ldot - varpidot.
-    const meanAnomalyDegPerCentury = meanLongitudeRate - varpiDegPerCentury;
-    meanMotionRadPerDay = degToRad(meanAnomalyDegPerCentury) / JULIAN_CENTURY_DAYS;
-    // Reduce in degrees before converting, so a multi-century advance keeps full precision.
-    const meanAnomalyDeg =
-      ((orbit.meanAnomalyDeg ?? 0) + meanAnomalyDegPerCentury * centuriesSinceEpoch) % 360;
-    meanAnomalyRad = normalizeRadians(degToRad(meanAnomalyDeg));
+  if (orbit.secularRates) {
+    return resolveSourceFrameOrbitAtElapsedDays(
+      { ...orbit, sourceFrameBasis: orbit.sourceFrameBasis ?? ECLIPTIC_BASIS }, elapsedDays
+    );
   }
+  const centuriesSinceEpoch = elapsedDays / JULIAN_CENTURY_DAYS;
+  // Secular models use the shared resolver above. Keep this fixed-element path
+  // and its clamping/arithmetic for existing asteroid and Kuiper callers.
+  const a = Math.max(1e-9, orbit.aAu);
+  const e = clampEccentricity(orbit.e ?? 0);
+  const iRad = degToRad(orbit.iDeg ?? 0);
+  const ascendingNodeRad = degToRad(orbit.ascendingNodeDeg ?? 0);
+  const argPeriapsisRad = degToRad(orbit.argPeriapsisDeg ?? 0);
+  const periodDays = Math.max(1e-9, orbit.periodDays);
+  const meanMotionRadPerDay = TWO_PI / periodDays;
+  const meanAnomalyRad = normalizeRadians(degToRad(orbit.meanAnomalyDeg ?? 0) + meanMotionRadPerDay * elapsedDays);
   return {
     aAu: a,
     e,
@@ -342,6 +313,14 @@ function propagateOwnOrbit(
   // state, rather than adding them to already-converted ecliptic angles.
   if (isSourceFrameKeplerOrbit(orbit)) {
     propagateSourceFrameOrbit(orbit, elapsedDays, outPosition, outVelocity);
+    return true;
+  }
+
+  // The same precessing-ellipse model applies to planets, with identity source
+  // axes. Reuse its full product-rule derivative (a, e and all three rotations)
+  // and the integral of n(t) when a drifts without a tabulated longitude rate.
+  if (orbit.secularRates) {
+    propagateSourceFrameOrbit({ ...orbit, sourceFrameBasis: ECLIPTIC_BASIS }, elapsedDays, outPosition, outVelocity);
     return true;
   }
 

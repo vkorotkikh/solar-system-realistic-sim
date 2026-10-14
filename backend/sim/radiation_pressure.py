@@ -103,11 +103,10 @@ def poynting_robertson_drag(x_au, y_au, z_au, vx_ms, vy_ms, vz_ms, beta):
     """
     Compute Poynting-Robertson drag acceleration.
     
-    This is the tangential component of radiation force due to aberration.
-    Causes orbital decay over thousands of years for dust particles.
-    
-    Timescale from 1 AU: τ_PR ≈ 700 r²/(β) years
-    For 10 μm grain at 1 AU: ~10,000 years to spiral into the Sun
+    Velocity-dependent part of Burns, Lamy & Soter (1979), equation (5).
+    Excludes the static outward SRP term, which srp_acceleration supplies.
+    Both position and velocity must be relative to the radiation source.
+    Reference implementation: REBOUNDx src/radiation_forces.c, equation (5).
     
     Parameters:
         x_au, y_au, z_au: heliocentric position [AU]
@@ -132,12 +131,13 @@ def poynting_robertson_drag(x_au, y_au, z_au, vx_ms, vy_ms, vz_ms, beta):
     # Radial velocity component
     vr = vx_ms * rx + vy_ms * ry + vz_ms * rz
     
-    # a_PR = (β GM☉ / r² c) × [(vr/r)r̂ - v⃗]
+    # a_PR = -(beta GM / r^2 c) [vr r_hat + v]. Radial drag is
+    # -2 factor vr; projecting out vr instead would erase radial drag entirely.
     factor = beta * G_CONST * M_SUN / (r2 * C_LIGHT)
     
-    ax = factor * (vr * rx - vx_ms)
-    ay = factor * (vr * ry - vy_ms)
-    az = factor * (vr * rz - vz_ms)
+    ax = -factor * (vr * rx + vx_ms)
+    ay = -factor * (vr * ry + vy_ms)
+    az = -factor * (vr * rz + vz_ms)
     
     return (ax, ay, az)
 
@@ -175,21 +175,27 @@ def yarkovsky_da_dt(diameter_m, density_kg_m3, albedo, semi_major_au, obliquity_
     return drift_au_per_myr
 
 
-def rebound_radiation_pressure_callback(reb_sim):
+def rebound_radiation_pressure_callback(reb_sim, *, beta_by_index=None):
     """
     REBOUND additional_forces callback for solar radiation pressure.
     
     To use:
-        reb_sim.additional_forces = rebound_radiation_pressure_callback
-        # Set beta on individual particles:
-        reb_sim.particles[1].params['beta'] = 0.001
-    
-    Particles without a 'beta' attribute are unaffected.
+        from functools import partial
+        sim.additional_forces = partial(
+            rebound_radiation_pressure_callback, beta_by_index={1: 0.001})
+
+    REBOUND passes a ctypes simulation pointer. Ordinary particle Python
+    attributes do not survive fresh C-array views, and .params requires
+    REBOUNDx. The caller-owned map uses stable indices; rebuild it after any
+    particle removal/reordering. Unlisted particles are unaffected. SRP only;
+    PR drag is not wired into this callback.
     """
+    reb_sim = reb_sim.contents
+    beta_by_index = {} if beta_by_index is None else beta_by_index
     sun = reb_sim.particles[0]
     for i in range(1, reb_sim.N):
         p = reb_sim.particles[i]
-        beta = getattr(p, 'beta', 0.0)
+        beta = beta_by_index.get(i, 0.0)
         if beta == 0.0:
             continue
         

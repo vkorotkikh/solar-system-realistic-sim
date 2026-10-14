@@ -1,7 +1,7 @@
 """
 TudatPy simulation engine — normal-fidelity extended force models.
 
-STATUS: COMPLETE IMPLEMENTATION — requires TudatPy installed via conda:
+STATUS: OPTIONAL ADAPTER — native-runtime validation requires TudatPy via conda:
     conda install -c tudat-team tudatpy
 
 Architecture: Uses chunked propagation with interpolation for real-time
@@ -25,7 +25,7 @@ and spacecraft trajectory fidelity.
 
 Serialized state vectors are normalized at this adapter boundary to the
 same contract as REBOUND: barycentric J2000-ecliptic positions in AU and
-velocities in AU/year. Tudat's internal SI/mixed-central-body state remains
+velocities in AU/day and Julian dates in TDB. Tudat's internal SI/mixed-central-body state remains
 unchanged.
 """
 
@@ -50,6 +50,7 @@ STATE_POSITION_FRAME = "barycentric"
 STATE_VELOCITY_FRAME = "barycentric"
 STATE_POSITION_UNITS = "AU"
 STATE_VELOCITY_UNITS = "AU/day"
+STATE_JD_TIME_SCALE = "TDB"
 J2000_JD = 2_451_545.0
 GM_SUN_SI = 1.32712440018e20   # m^3 s^-2
 J2000_OBLIQUITY_RAD = math.radians(23.439291111)
@@ -128,10 +129,11 @@ def _state_vector_contract() -> Dict[str, Any]:
     return {
         "schema_version": 1,
         "reference_frame": "barycentric_ecliptic_j2000",
-        "origin": "system_barycenter",
+        "origin": "solar_system_barycenter",
         "orientation": "ecliptic_j2000",
         "position_unit": "AU",
         "velocity_unit": "AU/day",
+        "jd_time_scale": STATE_JD_TIME_SCALE,
     }
 
 
@@ -286,6 +288,10 @@ class TudatPyEngine(SimulationEngine):
         )
 
         # 6 ── Pre-propagate first chunk ───────────────────────────────
+        # A new initialization owns a new continuous trajectory.
+        self._chunk_epochs = None
+        self._chunk_states = None
+        self._current_state = None
         start_s = _jd_to_seconds(start_jd)
         self._propagate_chunk(start_s)
         self._current_state = self._interpolate_at(start_s)
@@ -300,13 +306,7 @@ class TudatPyEngine(SimulationEngine):
         )
 
     def step(self, dt_days: float) -> None:
-        self._jd += dt_days
-        target_s = _jd_to_seconds(self._jd)
-
-        if target_s > self._chunk_end_s or target_s < self._chunk_start_s:
-            self._propagate_chunk(target_s)
-
-        self._current_state = self._interpolate_at(target_s)
+        self.set_julian_date(self._jd + dt_days)
 
     def get_state(self) -> Dict[str, Any]:
         force_models = {
@@ -323,6 +323,7 @@ class TudatPyEngine(SimulationEngine):
                 "engine": self.engine_name,
                 "fidelity": self.fidelity_level,
                 "jd": self._jd,
+                "jd_time_scale": STATE_JD_TIME_SCALE,
                 "state_vector_contract": _state_vector_contract(),
                 "position_frame": STATE_POSITION_FRAME,
                 "velocity_frame": STATE_VELOCITY_FRAME,
@@ -374,6 +375,7 @@ class TudatPyEngine(SimulationEngine):
             "type": "state_update",
             "engine": self.engine_name,
             "jd": self._jd,
+            "jd_time_scale": STATE_JD_TIME_SCALE,
             "fidelity": self.fidelity_level,
             "state_vector_contract": _state_vector_contract(),
             # Declared explicitly: consumers (e.g. the Kuiper engine) scale by these
@@ -392,7 +394,8 @@ class TudatPyEngine(SimulationEngine):
         return self._jd
 
     def set_julian_date(self, jd: float) -> None:
-        self._jd = jd
+        if not math.isfinite(jd):
+            raise ValueError("Julian date must be finite JDTDB")
         target_s = _jd_to_seconds(jd)
         if (
             self._chunk_epochs is None
@@ -401,13 +404,22 @@ class TudatPyEngine(SimulationEngine):
         ):
             self._propagate_chunk(target_s)
         self._current_state = self._interpolate_at(target_s)
+        self._jd = jd
 
     def get_energy(self) -> float:
-        """Approximate total energy from current state (point-mass only)."""
+        """Point-mass energy in SI, SSB/J2000 (excludes harmonic potential)."""
         if self._current_state is None:
             return 0.0
 
-        state = self._current_state
+        # The Sun is SSB-relative; every other six-vector is Sun-relative.
+        # Reconstruct a single inertial origin for BOTH kinetic and potential
+        # energy. Translating the SSB coordinates must not alter separations.
+        state = self._current_state.reshape((-1, 6)).copy()
+        sun_index = self._spice_names.index("Sun")
+        sun_state = state[sun_index].copy()
+        for i, name in enumerate(self._spice_names):
+            if name != "Sun":
+                state[i] += sun_state
         n = len(self._body_ids)
         G_SI = 6.67430e-11
 
@@ -423,12 +435,10 @@ class TudatPyEngine(SimulationEngine):
         ke = 0.0
         pe = 0.0
         for i in range(n):
-            si = i * 6
-            v = state[si + 3: si + 6]
+            v = state[i, 3:]
             ke += 0.5 * masses[i] * float(np.dot(v, v))
             for j in range(i + 1, n):
-                sj = j * 6
-                dr = state[si: si + 3] - state[sj: sj + 3]
+                dr = state[i, :3] - state[j, :3]
                 dist = float(np.linalg.norm(dr))
                 if dist > 0:
                     pe -= G_SI * masses[i] * masses[j] / dist
@@ -539,29 +549,34 @@ class TudatPyEngine(SimulationEngine):
     # ── Private: chunk propagation ────────────────────────────────────
 
     def _propagate_chunk(self, center_epoch_s: float) -> None:
-        """
-        Pre-propagate a window of *CHUNK_DAYS* starting slightly before
-        *center_epoch_s* so that small backward interpolation steps still
-        land inside the chunk.
-        """
+        """Extend the trajectory from its integrated boundary, in either direction."""
         chunk_s = self.CHUNK_DAYS * DAY_S
-        start_s = center_epoch_s - chunk_s * 0.05
-        end_s = center_epoch_s + chunk_s
-
-        # Initial state from SPICE at chunk start
-        initial_state = _propagation.get_initial_state_of_bodies(
-            bodies_to_propagate=list(self._spice_names),
-            central_bodies=self._central_bodies,
-            body_system=self._body_system,
-            initial_time=start_s,
-        )
+        direction = 1
+        if self._chunk_epochs is None or self._chunk_states is None:
+            start_s = center_epoch_s
+            initial_state = _propagation.get_initial_state_of_bodies(
+                bodies_to_propagate=list(self._spice_names),
+                central_bodies=self._central_bodies,
+                body_system=self._body_system,
+                initial_time=start_s,
+            )
+        elif center_epoch_s < self._chunk_start_s:
+            direction = -1
+            start_s = self._chunk_start_s
+            initial_state = self._chunk_states[0].copy()
+        else:
+            start_s = self._chunk_end_s
+            initial_state = self._chunk_states[-1].copy()
+        end_s = (max(center_epoch_s, start_s + chunk_s) if direction > 0
+                 else min(center_epoch_s, start_s - chunk_s))
 
         # Termination
-        termination = _propagation_setup.propagator.time_termination(end_s)
+        termination = _propagation_setup.propagator.time_termination(
+            end_s, terminate_exactly_on_final_condition=True)
 
         # Integrator — RK4 fixed step
         integrator = _propagation_setup.integrator.runge_kutta_4(
-            self.INTEGRATOR_STEP_S
+            direction * self.INTEGRATOR_STEP_S
         )
 
         # Translational propagator

@@ -463,7 +463,13 @@ const MEASURED_ORBITS: Record<
 > = {
   Io: { periodDays: 1.769138, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
   Europa: { periodDays: 3.551181, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
-  Triton: { periodDays: 5.876715, nodeDegPerCentury: 53.126 }
+  Triton: { periodDays: 5.876715, nodeDegPerCentury: 53.126 },
+  // Mean-anomaly slope fitted to 183 JPL Horizons/JUP347 ELEMENTS samples,
+  // 2000-2030 at 60-day cadence: 0.4901747981374377 deg/day. The table's
+  // 719.2806-day value plus a wrong node sign concealed a phase error.
+  // Capture: backend/tests/fixtures/carme_elements_horizons_capture.json.
+  // This remains a coarse mean-element model; position budgets are unchanged.
+  Carme: { periodDays: 734.431883009745 }
 };
 
 function precessionRateDegreesPerCentury(
@@ -496,7 +502,7 @@ function precessionRateDegreesPerCentury(
 
 export function resolveMoonSecularRates(
   moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'> &
-    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris' | 'name'>>
+    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris' | 'name' | 'inclinationDeg'>>
 ): KeplerOrbit['secularRates'] | undefined {
   const measured = moon.name === undefined ? undefined : MEASURED_ORBITS[moon.name];
   const argRate = precessionRateDegreesPerCentury(
@@ -504,8 +510,15 @@ export function resolveMoonSecularRates(
     measured?.apsisRegresses ? -1 : 1,
     moon.periodDays
   );
-  const nodeRate =
-    measured?.nodeDegPerCentury ?? precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1, moon.periodDays);
+  // The JPL table gives period magnitudes and inclinations in its native
+  // reference plane. The quadrupole nodal rate is proportional to -cos(i):
+  // regression for prograde, advance for retrograde, zero for a polar orbit.
+  // This is a mean-element fallback, not an accurate satellite ephemeris.
+  // Preserve signed measured rates (Triton) ahead of this generic convention.
+  const cosineInclination = Math.cos((moon.inclinationDeg ?? 0) * DEG_TO_RAD);
+  const nodeDirection = Math.abs(cosineInclination) < 1e-12 ? 0 : -Math.sign(cosineInclination);
+  const nodeRate = measured?.nodeDegPerCentury ??
+    precessionRateDegreesPerCentury(moon.nodePrecessionYears, nodeDirection, moon.periodDays);
 
   if (argRate === undefined && nodeRate === undefined) {
     return undefined;

@@ -36,7 +36,7 @@ def normalize_state_update(
     jd_fallback: float,
 ) -> Dict[str, Any]:
     bodies_in = state.get("bodies", {}) if isinstance(state, dict) else {}
-    bodies_out: Dict[str, Dict[str, List[float]]] = {}
+    bodies_out: Dict[str, Dict[str, Any]] = {}
 
     if isinstance(bodies_in, dict):
         for body_id, body_state in bodies_in.items():
@@ -48,6 +48,9 @@ def normalize_state_update(
                 "pos": _vec3(body_state.get("pos")),
                 "vel": _vec3(body_state.get("vel")),
             }
+            quality = body_state.get("ephemeris_quality")
+            if isinstance(quality, dict):
+                bodies_out[body_id]["ephemeris_quality"] = dict(quality)
 
     force_models = state.get("force_models") if isinstance(state.get("force_models"), dict) else {}
     position_frame = _text_field(state.get("position_frame")) if isinstance(state, dict) else ""

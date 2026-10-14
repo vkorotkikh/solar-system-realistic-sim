@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "model_id": "jpl_secular_elements_v1",
+  "source_url": "https://ssd.jpl.nasa.gov/planets/approx_pos.html",
+  "coefficient_provenance": "Table 1 (eight planets); Pluto preserves the legacy JPL coefficients already in the frontend catalog. Current JPL web table omits Pluto; its accuracy is separately gated by Horizons target 9.",
+  "fit_jd_tdb_range": [
+    2378496.5,
+    2469807.5
+  ],
+  "supported_jd_tdb_range": [
+    2415020.5,
+    2469807.5
+  ],
+  "validation_jd_tdb": [
+    2415020.5,
+    2433282.5,
+    2451545,
+    2460676.5,
+    2469807.5
+  ],
+  "accuracy_scope": "sampled_epochs_not_continuous_bound",
+  "reference_fixture": "backend/tests/fixtures/secular_horizons_remediation.json",
+  "position_caps_km": {
+    "mercury": 6000,
+    "venus": 25000,
+    "earth": 10000,
+    "mars": 150000,
+    "jupiter": 2500000,
+    "saturn": 13000000,
+    "uranus": 4000000,
+    "neptune": 4000000,
+    "pluto": 1600000
+  },
+  "rates": {
+    "mercury": {
+      "aAuPerCentury": 3.7e-7,
+      "ePerCentury": 0.00001906,
+      "iDegPerCentury": -0.00594749,
+      "ascendingNodeDegPerCentury": -0.12534081,
+      "argPeriapsisDegPerCentury": 0.2858177,
+      "meanLongitudeDegPerCentury": 149472.67411175
+    },
+    "venus": {
+      "aAuPerCentury": 0.0000039,
+      "ePerCentury": -0.00004107,
+      "iDegPerCentury": -0.0007889,
+      "ascendingNodeDegPerCentury": -0.27769418,
+      "argPeriapsisDegPerCentury": 0.28037747,
+      "meanLongitudeDegPerCentury": 58517.81538729
+    },
+    "earth": {
+      "aAuPerCentury": 0.00000562,
+      "ePerCentury": -0.00004392,
+      "iDegPerCentury": -0.01294668,
+      "ascendingNodeDegPerCentury": 0,
+      "argPeriapsisDegPerCentury": 0.32327364,
+      "meanLongitudeDegPerCentury": 35999.37244981
+    },
+    "mars": {
+      "aAuPerCentury": 0.00001847,
+      "ePerCentury": 0.00007882,
+      "iDegPerCentury": -0.00813131,
+      "ascendingNodeDegPerCentury": -0.29257343,
+      "argPeriapsisDegPerCentury": 0.73698431,
+      "meanLongitudeDegPerCentury": 19140.30268499
+    },
+    "jupiter": {
+      "aAuPerCentury": -0.00011607,
+      "ePerCentury": -0.00013253,
+      "iDegPerCentury": -0.00183714,
+      "ascendingNodeDegPerCentury": 0.20469106,
+      "argPeriapsisDegPerCentury": 0.00783562,
+      "meanLongitudeDegPerCentury": 3034.74612775
+    },
+    "saturn": {
+      "aAuPerCentury": -0.0012506,
+      "ePerCentury": -0.00050991,
+      "iDegPerCentury": 0.00193609,
+      "ascendingNodeDegPerCentury": -0.28867794,
+      "argPeriapsisDegPerCentury": -0.13029422,
+      "meanLongitudeDegPerCentury": 1222.49362201
+    },
+    "uranus": {
+      "aAuPerCentury": -0.00196176,
+      "ePerCentury": -0.00004397,
+      "iDegPerCentury": -0.00242939,
+      "ascendingNodeDegPerCentury": 0.04240589,
+      "argPeriapsisDegPerCentury": 0.36564692,
+      "meanLongitudeDegPerCentury": 428.48202785
+    },
+    "neptune": {
+      "aAuPerCentury": 0.00026291,
+      "ePerCentury": 0.00005105,
+      "iDegPerCentury": 0.00035372,
+      "ascendingNodeDegPerCentury": -0.00508664,
+      "argPeriapsisDegPerCentury": -0.317328,
+      "meanLongitudeDegPerCentury": 218.45945325
+    },
+    "pluto": {
+      "aAuPerCentury": -0.00031596,
+      "ePerCentury": 0.0000517,
+      "iDegPerCentury": 0.00004818,
+      "ascendingNodeDegPerCentury": -0.01183482,
+      "argPeriapsisDegPerCentury": -0.0287946,
+      "meanLongitudeDegPerCentury": 145.20780515
+    }
+  }
+}

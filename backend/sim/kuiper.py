@@ -124,6 +124,10 @@ class KuiperBeltEngine:
         inclination_rad: float,
         mass_ratio: float,
     ) -> tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]:
+        if not math.isfinite(separation_au) or separation_au <= 0:
+            raise ValueError("binary semimajor axis must be finite and positive")
+        if not math.isfinite(mass_ratio) or mass_ratio <= 0:
+            raise ValueError("companion/primary mass ratio must be finite and positive")
         radial = cls._normalize(base_pos)
         vel_proj = cls._dot(base_vel, radial)
         tangential_vec = (
@@ -154,7 +158,7 @@ class KuiperBeltEngine:
         y_orb = separation_au * sqrt_term * sin_e
 
         mu = 4.0 * math.pi * math.pi * cls.NOMINAL_BINARY_TOTAL_MASS_MSUN
-        mean_motion = math.sqrt(mu / max(1e-12, separation_au ** 3))
+        mean_motion = math.sqrt(mu / separation_au ** 3)
         denom = max(1e-12, 1.0 - eccentricity * cos_e)
         vx_orb = -separation_au * mean_motion * sin_e / denom
         vy_orb = separation_au * mean_motion * sqrt_term * cos_e / denom
@@ -170,7 +174,8 @@ class KuiperBeltEngine:
             radial[2] * vx_orb + tilted_tangent[2] * vy_orb,
         )
 
-        companion_fraction = 1.0 / (1.0 + max(0.05, mass_ratio))
+        # q = m_companion / m_primary. The primary has the smaller offset.
+        companion_fraction = mass_ratio / (1.0 + mass_ratio)
         primary_fraction = 1.0 - companion_fraction
         primary_offset = (
             -rel_pos[0] * companion_fraction,
@@ -454,17 +459,20 @@ class KuiperBeltEngine:
         for i in range(self._massive_count, self.sim.N):
             p = self.sim.particles[i]
             positions.append([
-                round(p.x, 5),
-                round(p.y, 5),
-                round(p.z, 5),
+                round(p.x, 10),
+                round(p.y, 10),
+                round(p.z, 10),
             ])
             velocities.append([
-                round(p.vx, 8),
-                round(p.vy, 8),
-                round(p.vz, 8),
+                round(p.vx, 12),
+                round(p.vy, 12),
+                round(p.vz, 12),
             ])
         return {
             "positions": positions,
             "velocities": velocities,
             "binary_pairs": self._binary_pairs,
+            "position_units": "AU",
+            "velocity_units": NATIVE_VELOCITY_UNITS,
+            "binary_model": "osculating_initial_state_only_massless_no_mutual_gravity",
         }
