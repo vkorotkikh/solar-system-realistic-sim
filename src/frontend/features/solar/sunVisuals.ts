@@ -1376,7 +1376,10 @@ export function updateSunCoronalLoopsFromBlendView(
   activeChannel: string | null = null
 ) {
   if (!sunCoronalLoopGroup) return;
-  const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
+  const rawBlendAlpha = blendView?.blendAlpha;
+  const blendAlpha = clampUnit(
+    typeof rawBlendAlpha === 'number' && Number.isFinite(rawBlendAlpha) ? rawBlendAlpha : 1
+  );
   const sourceEntries = Array.isArray(blendView?.entries) ? blendView.entries : [];
   const loopEntries = sourceEntries.slice(0, maxLoops);
 
