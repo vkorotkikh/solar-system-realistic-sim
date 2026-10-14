@@ -86,3 +86,14 @@ screen-space component oracle, but active scene integration remains required.
   licensing/asset permission requirements remain explicit dependencies.
 
 The canonical master, not a stale earlier workstream headline, controls status.
+
+## Subsequent wave-three checkpoint
+
+The continuing effort is recorded in
+[REMEDIATION_WAVE3_2026-10-14.md](REMEDIATION_WAVE3_2026-10-14.md). It adds the
+actual AIA date-coverage regression and fix (`938bca0`), frozen ACE observation
+overlap (`892d049`), finite solar helper policy (`953eeb4`) and operational
+trust/ownership corrections (`d8c75b4`). The five-minute two-worker operational
+soak passed, but remote deployment and the other named scientific/manual
+requirements remain explicit. Earlier test counts above retain their original
+commit scope and are not substituted for the later integrated results.
