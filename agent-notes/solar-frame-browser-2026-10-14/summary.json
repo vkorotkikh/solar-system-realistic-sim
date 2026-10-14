@@ -1,0 +1,81 @@
+{
+  "hardware": {
+    "vendor": "Google Inc. (Microsoft Corporation)",
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "browser_version": "153.0.8010.12",
+  "playwright_version": "1.64.0",
+  "screenshot_mtime_utc": "2026-10-14T06:01:21.345Z",
+  "cases": 6,
+  "marker_instances": 156,
+  "robust_visible": 30,
+  "robust_hidden": 58,
+  "partial_billboard_instances": 68,
+  "max_projection_error_pixels": 0.627887944668582,
+  "rms_projection_error_pixels": 0.4704579358542899,
+  "surface_pixel_probes": 235,
+  "legacy_pole_error_deg": 1.7920090430006765,
+  "negative_controls": [
+    {
+      "mode": "legacy_axis",
+      "marker_failures": 37,
+      "surface_failures": 42,
+      "detected": true
+    },
+    {
+      "mode": "double_spin",
+      "marker_failures": 29,
+      "surface_failures": 0,
+      "detected": true
+    },
+    {
+      "mode": "handedness",
+      "marker_failures": 19,
+      "surface_failures": 0,
+      "detected": true
+    }
+  ],
+  "console_errors": [],
+  "passed": true,
+  "screenshots": [
+    {
+      "file": "case-0.png",
+      "sha256": "258b91d01353b973fe8b56a2cf49d0b5f991852278e724afd2e3bb7cd3d94764"
+    },
+    {
+      "file": "case-1.png",
+      "sha256": "258b91d01353b973fe8b56a2cf49d0b5f991852278e724afd2e3bb7cd3d94764"
+    },
+    {
+      "file": "case-2.png",
+      "sha256": "ff1b5a3661c57a4daecc0ab5e03b533baaa1251876e7f6384a1a4255f36a0682"
+    },
+    {
+      "file": "case-3.png",
+      "sha256": "e151bcb1a1b9b856bb23d09209721fb04cd8951ebb19b47978e7b6f3e2d02df9"
+    },
+    {
+      "file": "case-4.png",
+      "sha256": "1a794226b18029ae37a353eaeffd2754fa6568e86992940e3d10e2f4a05ed9b5"
+    },
+    {
+      "file": "case-5.png",
+      "sha256": "4dd4cb49fa6acd04c8d18e50ba73f0d447a5575a1c189e66f88fd25ef0159d0a"
+    },
+    {
+      "file": "negative-legacy_axis.png",
+      "sha256": "35fd4a9634f280609a74d7a14df5a2f81bd447a5dc28ae88676aabf411fc36d0"
+    },
+    {
+      "file": "negative-double_spin.png",
+      "sha256": "ff1b5a3661c57a4daecc0ab5e03b533baaa1251876e7f6384a1a4255f36a0682"
+    },
+    {
+      "file": "negative-handedness.png",
+      "sha256": "27d0ee41a90135fb097d732365a7e8fc6fffc98d8b282803d019c78ae7e22338"
+    }
+  ],
+  "full_footprint_passes": 156,
+  "max_footprint_centroid_error_pixels": 1
+}

@@ -1,0 +1,3615 @@
+{
+  "schema": "solar-hardware-screen-oracle-v1",
+  "browser_executable": "/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome",
+  "playwright_version": "1.64.0",
+  "headless": false,
+  "pixel_budget": 1.0,
+  "cases": [
+    {
+      "index": 0,
+      "jd_tdb": 2451545.0,
+      "input_frame": "IAU_SUN",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 24,
+          "centroid": [
+            362.9166666666667,
+            455.5833333333333
+          ],
+          "error_pixels": 3.2692804879764443,
+          "expected_footprint_pixels": 24,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 39,
+          "centroid": [
+            450.03846153846155,
+            452.7307692307692
+          ],
+          "error_pixels": 1.9103525052426633,
+          "expected_footprint_pixels": 39,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            551.55,
+            347.55
+          ],
+          "error_pixels": 0.5827063657460502,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 42,
+          "centroid": [
+            551.5714285714286,
+            246.0
+          ],
+          "error_pixels": 1.960117529714089,
+          "expected_footprint_pixels": 42,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            246.3987341772152,
+            354.5886075949367
+          ],
+          "error_pixels": 0.32400112556264477,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            328.5,
+            428.5
+          ],
+          "error_pixels": 0.6592218180379983,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            459.5,
+            425.5
+          ],
+          "error_pixels": 0.3033644038749441,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            500.5,
+            260.5
+          ],
+          "error_pixels": 0.6095965670845169,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            501.5,
+            187.5
+          ],
+          "error_pixels": 0.5461772337045381,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            437.5,
+            141.5
+          ],
+          "error_pixels": 0.3269682665244427,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            348.4113924050633,
+            145.3987341772152
+          ],
+          "error_pixels": 0.4404254072334006,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            281.35897435897436,
+            195.35897435897436
+          ],
+          "error_pixels": 0.20103574128827797,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            266.5
+          ],
+          "error_pixels": 0.4546305239766886,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            335.5,
+            318.5
+          ],
+          "error_pixels": 0.30904017925176797,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            432.5,
+            316.5
+          ],
+          "error_pixels": 0.627887944668582,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 1.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 42,
+      "surface_failures": [],
+      "passed": true
+    },
+    {
+      "index": 1,
+      "jd_tdb": 2451545.0,
+      "input_frame": "SOLAR_EQUATORIAL_J2000",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 24,
+          "centroid": [
+            362.9166666666667,
+            455.5833333333333
+          ],
+          "error_pixels": 3.2692804879764443,
+          "expected_footprint_pixels": 24,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 39,
+          "centroid": [
+            450.03846153846155,
+            452.7307692307692
+          ],
+          "error_pixels": 1.9103525052426633,
+          "expected_footprint_pixels": 39,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            551.55,
+            347.55
+          ],
+          "error_pixels": 0.5827063657460502,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 42,
+          "centroid": [
+            551.5714285714286,
+            246.0
+          ],
+          "error_pixels": 1.960117529714089,
+          "expected_footprint_pixels": 42,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            246.3987341772152,
+            354.5886075949367
+          ],
+          "error_pixels": 0.32400112556264477,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            328.5,
+            428.5
+          ],
+          "error_pixels": 0.6592218180379983,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            459.5,
+            425.5
+          ],
+          "error_pixels": 0.3033644038749441,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            500.5,
+            260.5
+          ],
+          "error_pixels": 0.6095965670845169,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            501.5,
+            187.5
+          ],
+          "error_pixels": 0.5461772337045381,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            437.5,
+            141.5
+          ],
+          "error_pixels": 0.3269682665244427,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            348.4113924050633,
+            145.3987341772152
+          ],
+          "error_pixels": 0.4404254072334006,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            281.35897435897436,
+            195.35897435897436
+          ],
+          "error_pixels": 0.20103574128827797,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            266.5
+          ],
+          "error_pixels": 0.4546305239766886,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            335.5,
+            318.5
+          ],
+          "error_pixels": 0.30904017925176797,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            432.5,
+            316.5
+          ],
+          "error_pixels": 0.627887944668582,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 1.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 42,
+      "surface_failures": [],
+      "passed": true
+    },
+    {
+      "index": 2,
+      "jd_tdb": 2451552.0,
+      "input_frame": "IAU_SUN",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 32,
+          "centroid": [
+            380.1875,
+            459.1875
+          ],
+          "error_pixels": 2.3746318061713154,
+          "expected_footprint_pixels": 32,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 36,
+          "centroid": [
+            467.22222222222223,
+            445.8333333333333
+          ],
+          "error_pixels": 2.566424494186335,
+          "expected_footprint_pixels": 35,
+          "footprint_centroid_error_pixels": 0.062229510425101345,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 3,
+          "centroid": [
+            243.5,
+            272.5
+          ],
+          "error_pixels": 4.515910477542224,
+          "expected_footprint_pixels": 3,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 77,
+          "centroid": [
+            256.3051948051948,
+            373.66883116883116
+          ],
+          "error_pixels": 0.3324859195614351,
+          "expected_footprint_pixels": 77,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            434.5
+          ],
+          "error_pixels": 0.3449939089135411,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            484.5,
+            414.5
+          ],
+          "error_pixels": 0.34592129255884346,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            559.5,
+            325.5
+          ],
+          "error_pixels": 0.5476143685210451,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 4,
+          "centroid": [
+            541.25,
+            226.25
+          ],
+          "error_pixels": 4.7605038834279,
+          "expected_footprint_pixels": 4,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            419.5,
+            138.5
+          ],
+          "error_pixels": 0.47980051258390627,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            331.38461538461536,
+            152.34615384615384
+          ],
+          "error_pixels": 0.30533874293534324,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            209.5
+          ],
+          "error_pixels": 0.46950846400081697,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            281.5,
+            280.5
+          ],
+          "error_pixels": 0.04502919005485482,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            323.5
+          ],
+          "error_pixels": 0.5083423901017982,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            450.5,
+            307.5
+          ],
+          "error_pixels": 0.4979154378198857,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            507.5,
+            244.5
+          ],
+          "error_pixels": 0.5975770371051663,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            492.55,
+            175.45
+          ],
+          "error_pixels": 0.517021086070808,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 37,
+      "surface_failures": [],
+      "passed": true
+    },
+    {
+      "index": 3,
+      "jd_tdb": 2451552.0,
+      "input_frame": "SOLAR_EQUATORIAL_J2000",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 24,
+          "centroid": [
+            362.9166666666667,
+            455.5833333333333
+          ],
+          "error_pixels": 3.2692804879764443,
+          "expected_footprint_pixels": 24,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 39,
+          "centroid": [
+            450.03846153846155,
+            452.7307692307692
+          ],
+          "error_pixels": 1.9103525052426633,
+          "expected_footprint_pixels": 39,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            551.55,
+            347.55
+          ],
+          "error_pixels": 0.5827063657460502,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 42,
+          "centroid": [
+            551.5714285714286,
+            246.0
+          ],
+          "error_pixels": 1.960117529714089,
+          "expected_footprint_pixels": 42,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            246.3987341772152,
+            354.5886075949367
+          ],
+          "error_pixels": 0.32400112556264477,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            328.5,
+            428.5
+          ],
+          "error_pixels": 0.6592218180379983,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            459.5,
+            425.5
+          ],
+          "error_pixels": 0.3033644038749441,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            500.5,
+            260.5
+          ],
+          "error_pixels": 0.6095965670845169,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            501.5,
+            187.5
+          ],
+          "error_pixels": 0.5461772337045381,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            437.5,
+            141.5
+          ],
+          "error_pixels": 0.3269682665244427,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            348.4113924050633,
+            145.3987341772152
+          ],
+          "error_pixels": 0.4404254072334006,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            281.35897435897436,
+            195.35897435897436
+          ],
+          "error_pixels": 0.20103574128827797,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            266.5
+          ],
+          "error_pixels": 0.4546305239766886,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            335.5,
+            318.5
+          ],
+          "error_pixels": 0.30904017925176797,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            432.5,
+            316.5
+          ],
+          "error_pixels": 0.627887944668582,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 1.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 39,
+      "surface_failures": [],
+      "passed": true
+    },
+    {
+      "index": 4,
+      "jd_tdb": 2461326.238888889,
+      "input_frame": "IAU_SUN",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 31,
+          "centroid": [
+            374.1774193548387,
+            458.241935483871
+          ],
+          "error_pixels": 2.6954181854086827,
+          "expected_footprint_pixels": 31,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 40,
+          "centroid": [
+            461.1,
+            448.65
+          ],
+          "error_pixels": 2.403555322671201,
+          "expected_footprint_pixels": 40,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            252.3987341772152,
+            367.5886075949367
+          ],
+          "error_pixels": 0.5565617216949305,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            345.5,
+            432.5
+          ],
+          "error_pixels": 0.30627302856609306,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            476.5,
+            418.5
+          ],
+          "error_pixels": 0.3383806014535808,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            557.5,
+            333.5
+          ],
+          "error_pixels": 0.016883886378261017,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 19,
+          "centroid": [
+            545.6052631578947,
+            234.07894736842104
+          ],
+          "error_pixels": 3.479333843088699,
+          "expected_footprint_pixels": 18,
+          "footprint_centroid_error_pixels": 0.06570820191300998,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            337.4113924050633,
+            149.3987341772152
+          ],
+          "error_pixels": 0.07174990450550968,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            276.3987341772152,
+            204.41139240506328
+          ],
+          "error_pixels": 0.21008762021308305,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            278.5,
+            275.5
+          ],
+          "error_pixels": 0.2746823395189192,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            347.5,
+            321.5
+          ],
+          "error_pixels": 0.5054889811343846,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            444.5,
+            311.5
+          ],
+          "error_pixels": 0.5015692282830724,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            505.5,
+            250.5
+          ],
+          "error_pixels": 0.24075972146151076,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            495.55,
+            179.45
+          ],
+          "error_pixels": 0.1222299500839727,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            426.5,
+            139.5
+          ],
+          "error_pixels": 0.4307027718011548,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 37,
+      "surface_failures": [],
+      "passed": true
+    },
+    {
+      "index": 5,
+      "jd_tdb": 2461326.238888889,
+      "input_frame": "SOLAR_EQUATORIAL_J2000",
+      "webgl_error": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 24,
+          "centroid": [
+            362.9166666666667,
+            455.5833333333333
+          ],
+          "error_pixels": 3.2692804879764443,
+          "expected_footprint_pixels": 24,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 39,
+          "centroid": [
+            450.03846153846155,
+            452.7307692307692
+          ],
+          "error_pixels": 1.9103525052426633,
+          "expected_footprint_pixels": 39,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            551.55,
+            347.55
+          ],
+          "error_pixels": 0.5827063657460502,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 42,
+          "centroid": [
+            551.5714285714286,
+            246.0
+          ],
+          "error_pixels": 1.960117529714089,
+          "expected_footprint_pixels": 42,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            246.3987341772152,
+            354.5886075949367
+          ],
+          "error_pixels": 0.32400112556264477,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            328.5,
+            428.5
+          ],
+          "error_pixels": 0.6592218180379983,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            459.5,
+            425.5
+          ],
+          "error_pixels": 0.3033644038749441,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            500.5,
+            260.5
+          ],
+          "error_pixels": 0.6095965670845169,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            501.5,
+            187.5
+          ],
+          "error_pixels": 0.5461772337045381,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            437.5,
+            141.5
+          ],
+          "error_pixels": 0.3269682665244427,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 79,
+          "centroid": [
+            348.4113924050633,
+            145.3987341772152
+          ],
+          "error_pixels": 0.4404254072334006,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            281.35897435897436,
+            195.35897435897436
+          ],
+          "error_pixels": 0.20103574128827797,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            266.5
+          ],
+          "error_pixels": 0.4546305239766886,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            335.5,
+            318.5
+          ],
+          "error_pixels": 0.30904017925176797,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            432.5,
+            316.5
+          ],
+          "error_pixels": 0.627887944668582,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 1.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [],
+      "surface_probes": 38,
+      "surface_failures": [],
+      "passed": true
+    }
+  ],
+  "negative_controls": [
+    {
+      "mode": "legacy_axis",
+      "index": 0,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            412.5,
+            438.5
+          ],
+          "error_pixels": 106.70021475979763,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            431.5,
+            367.5
+          ],
+          "error_pixels": 88.32535516943747,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            486.5,
+            288.5
+          ],
+          "error_pixels": 33.01041165164925,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            540.5,
+            255.5
+          ],
+          "error_pixels": 170.0117211936177,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            562.5,
+            283.5
+          ],
+          "error_pixels": 254.44634126654404,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 24,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            440.5,
+            458.5
+          ],
+          "error_pixels": 12.207475596532708,
+          "expected_footprint_pixels": 39,
+          "footprint_centroid_error_pixels": 11.147478288355144,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            289.5,
+            408.5
+          ],
+          "error_pixels": 269.4979658719669,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 269.04480110197255,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            309.5,
+            306.5
+          ],
+          "error_pixels": 247.6158751042023,
+          "expected_footprint_pixels": 42,
+          "footprint_centroid_error_pixels": 249.5171868441375,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            387.5,
+            196.5
+          ],
+          "error_pixels": 77.80743578439768,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 79,
+          "centroid": [
+            468.5886075949367,
+            155.3987341772152
+          ],
+          "error_pixels": 126.25789772376231,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 79,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 74,
+          "centroid": [
+            238.1216216216216,
+            316.5945945945946
+          ],
+          "error_pixels": 268.83479260661613,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 268.3076908759781,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            249.5,
+            245.5
+          ],
+          "error_pixels": 258.0869851736071,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 258.58847615468096,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            302.35897435897436,
+            172.35897435897436
+          ],
+          "error_pixels": 138.69165997425486,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 138.6195264376422,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 57,
+          "centroid": [
+            360.2543859649123,
+            143.2017543859649
+          ],
+          "error_pixels": 11.764584605562455,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 12.045049466971355,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 78,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 81,
+          "footprint_passed": false
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            528.5,
+            384.5
+          ],
+          "error_pixels": 114.51174475080633,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        }
+      ],
+      "failures": [
+        "lon0_lat-45: independent footprint",
+        "lon0_lat-45: occlusion",
+        "lon45_lat-45: independent footprint",
+        "lon45_lat-45: occlusion",
+        "lon90_lat-45: independent footprint",
+        "lon90_lat-45: occlusion",
+        "lon135_lat-45: independent footprint",
+        "lon135_lat-45: occlusion",
+        "lon180_lat-45: independent footprint",
+        "lon180_lat-45: occlusion",
+        "lon270_lat-45: independent footprint",
+        "lon315_lat-45: independent footprint",
+        "lon0_lat0: independent footprint",
+        "lon45_lat0: independent footprint",
+        "lon90_lat0: independent footprint",
+        "lon90_lat0: occlusion",
+        "lon135_lat0: independent footprint",
+        "lon135_lat0: occlusion",
+        "lon225_lat0: independent footprint",
+        "lon270_lat0: independent footprint",
+        "lon315_lat0: independent footprint",
+        "lon0_lat45: independent footprint",
+        "lon0_lat45: projection",
+        "lon45_lat45: independent footprint",
+        "lon90_lat45: independent footprint",
+        "lon135_lat45: independent footprint",
+        "lon180_lat45: independent footprint",
+        "lon225_lat45: independent footprint",
+        "lon225_lat45: projection",
+        "lon270_lat45: independent footprint",
+        "lon270_lat45: projection",
+        "lon315_lat45: independent footprint",
+        "lon315_lat45: projection",
+        "north: independent footprint",
+        "north: projection",
+        "south: independent footprint",
+        "south: occlusion"
+      ],
+      "surface_probes": 42,
+      "surface_failures": [
+        {
+          "pixel": [
+            317,
+            180
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            217
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            217
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            254
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            291
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            365
+          ],
+          "actual": [
+            240,
+            30,
+            25
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            402
+          ],
+          "actual": [
+            40,
+            160,
+            40
+          ],
+          "expected": [
+            40,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        }
+      ],
+      "passed": false
+    },
+    {
+      "mode": "double_spin",
+      "index": 3,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 32,
+          "centroid": [
+            380.1875,
+            459.1875
+          ],
+          "error_pixels": 141.7075793276637,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 36,
+          "centroid": [
+            467.22222222222223,
+            445.8333333333333
+          ],
+          "error_pixels": 165.45725695039275,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 24,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 39,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 80,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 42,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 3,
+          "centroid": [
+            243.5,
+            272.5
+          ],
+          "error_pixels": 237.86790975635537,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 77,
+          "centroid": [
+            256.3051948051948,
+            373.66883116883116
+          ],
+          "error_pixels": 206.47255834963494,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            434.5
+          ],
+          "error_pixels": 203.60607387210132,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            484.5,
+            414.5
+          ],
+          "error_pixels": 245.8468180917261,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 245.5230900064715,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            559.5,
+            325.5
+          ],
+          "error_pixels": 252.2926452048281,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 252.9229131573492,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 4,
+          "centroid": [
+            541.25,
+            226.25
+          ],
+          "error_pixels": 215.21471880463852,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 215.36857941677565,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            419.5,
+            138.5
+          ],
+          "error_pixels": 146.35042598130573,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 146.44111444536333,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            331.38461538461536,
+            152.34615384615384
+          ],
+          "error_pixels": 173.3442985019372,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 173.70963410890178,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            209.5
+          ],
+          "error_pixels": 177.55626220436557,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 177.53872816937718,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            281.5,
+            280.5
+          ],
+          "error_pixels": 151.20261622935234,
+          "expected_footprint_pixels": 79,
+          "footprint_centroid_error_pixels": 150.76301423261316,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            323.5
+          ],
+          "error_pixels": 147.74512660940857,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 147.54569490213925,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            450.5,
+            307.5
+          ],
+          "error_pixels": 181.26006885728285,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 181.6865432551349,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            507.5,
+            244.5
+          ],
+          "error_pixels": 186.97142262021868,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 187.2431574183687,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 80,
+          "centroid": [
+            492.55,
+            175.45
+          ],
+          "error_pixels": 152.990200413501,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 152.38111759663664,
+          "footprint_passed": false
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [
+        "lon180_lat-45: independent footprint",
+        "lon180_lat-45: occlusion",
+        "lon225_lat-45: independent footprint",
+        "lon225_lat-45: occlusion",
+        "lon270_lat-45: independent footprint",
+        "lon315_lat-45: independent footprint",
+        "lon0_lat0: independent footprint",
+        "lon45_lat0: independent footprint",
+        "lon90_lat0: independent footprint",
+        "lon90_lat0: occlusion",
+        "lon135_lat0: independent footprint",
+        "lon135_lat0: occlusion",
+        "lon180_lat0: independent footprint",
+        "lon180_lat0: occlusion",
+        "lon225_lat0: independent footprint",
+        "lon270_lat0: independent footprint",
+        "lon315_lat0: independent footprint",
+        "lon0_lat45: independent footprint",
+        "lon0_lat45: projection",
+        "lon45_lat45: independent footprint",
+        "lon90_lat45: independent footprint",
+        "lon135_lat45: independent footprint",
+        "lon180_lat45: independent footprint",
+        "lon225_lat45: independent footprint",
+        "lon225_lat45: projection",
+        "lon270_lat45: independent footprint",
+        "lon270_lat45: projection",
+        "lon315_lat45: independent footprint",
+        "lon315_lat45: projection"
+      ],
+      "surface_probes": 39,
+      "surface_failures": [],
+      "passed": false
+    },
+    {
+      "mode": "handedness",
+      "index": 2,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon90_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon135_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 36,
+          "centroid": [
+            467.22222222222223,
+            445.8333333333333
+          ],
+          "error_pixels": 155.6499264966085,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 32,
+          "centroid": [
+            380.1875,
+            459.1875
+          ],
+          "error_pixels": 2.3746318061713154,
+          "expected_footprint_pixels": 32,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat-45",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 35,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon315_lat-45",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon0_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat0",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 4,
+          "centroid": [
+            541.25,
+            226.25
+          ],
+          "error_pixels": 219.25758583944463,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            559.5,
+            325.5
+          ],
+          "error_pixels": 316.37539848904674,
+          "expected_footprint_pixels": 3,
+          "footprint_centroid_error_pixels": 320.41379495895615,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            484.5,
+            414.5
+          ],
+          "error_pixels": 232.06508030696793,
+          "expected_footprint_pixels": 77,
+          "footprint_centroid_error_pixels": 231.8190101480345,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            434.5
+          ],
+          "error_pixels": 0.3449939089135411,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 77,
+          "centroid": [
+            256.3051948051948,
+            373.66883116883116
+          ],
+          "error_pixels": 232.01396220501377,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 231.8190101480345,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat0",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 3,
+          "centroid": [
+            243.5,
+            272.5
+          ],
+          "error_pixels": 320.7590360056413,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 320.41379495895615,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat0",
+          "visible": false,
+          "robust_visibility": false,
+          "pixels": 0,
+          "expected_footprint_pixels": 4,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon0_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            419.5,
+            138.5
+          ],
+          "error_pixels": 0.47980051258390627,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon45_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 80,
+          "centroid": [
+            492.55,
+            175.45
+          ],
+          "error_pixels": 162.79739426784477,
+          "expected_footprint_pixels": 78,
+          "footprint_centroid_error_pixels": 162.81298752042312,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon90_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 81,
+          "centroid": [
+            507.5,
+            244.5
+          ],
+          "error_pixels": 236.1603979092599,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 236.60304309116566,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon135_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            450.5,
+            307.5
+          ],
+          "error_pixels": 171.18616377066783,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 171.14321488157222,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon180_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            354.5,
+            323.5
+          ],
+          "error_pixels": 0.5083423901017982,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "lon225_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            281.5,
+            280.5
+          ],
+          "error_pixels": 171.27714237653365,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 171.14321488157222,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon270_lat45",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            273.5,
+            209.5
+          ],
+          "error_pixels": 236.2928848533604,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 236.60304309116566,
+          "footprint_passed": false
+        },
+        {
+          "name": "lon315_lat45",
+          "visible": true,
+          "robust_visibility": false,
+          "pixels": 78,
+          "centroid": [
+            331.38461538461536,
+            152.34615384615384
+          ],
+          "error_pixels": 162.44465577220066,
+          "expected_footprint_pixels": 80,
+          "footprint_centroid_error_pixels": 162.81298752042312,
+          "footprint_passed": false
+        },
+        {
+          "name": "north",
+          "visible": true,
+          "robust_visibility": true,
+          "pixels": 81,
+          "centroid": [
+            383.5,
+            194.5
+          ],
+          "error_pixels": 0.37898372277118786,
+          "expected_footprint_pixels": 81,
+          "footprint_centroid_error_pixels": 0.0,
+          "footprint_passed": true
+        },
+        {
+          "name": "south",
+          "visible": false,
+          "robust_visibility": true,
+          "pixels": 0,
+          "expected_footprint_pixels": 0,
+          "footprint_passed": true
+        }
+      ],
+      "failures": [
+        "lon135_lat-45: independent footprint",
+        "lon135_lat-45: occlusion",
+        "lon225_lat-45: independent footprint",
+        "lon45_lat0: independent footprint",
+        "lon45_lat0: occlusion",
+        "lon90_lat0: independent footprint",
+        "lon135_lat0: independent footprint",
+        "lon225_lat0: independent footprint",
+        "lon270_lat0: independent footprint",
+        "lon315_lat0: independent footprint",
+        "lon45_lat45: independent footprint",
+        "lon90_lat45: independent footprint",
+        "lon135_lat45: independent footprint",
+        "lon135_lat45: projection",
+        "lon225_lat45: independent footprint",
+        "lon225_lat45: projection",
+        "lon270_lat45: independent footprint",
+        "lon270_lat45: projection",
+        "lon315_lat45: independent footprint"
+      ],
+      "surface_probes": 37,
+      "surface_failures": [],
+      "passed": false
+    }
+  ],
+  "hardware": {
+    "vendor": "Google Inc. (Microsoft Corporation)",
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "browser_version": "153.0.8010.12",
+  "console_errors": [],
+  "passed": true
+}

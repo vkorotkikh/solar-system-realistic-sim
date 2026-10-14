@@ -10,6 +10,7 @@ import {
     Vector3
 } from 'three';
 import { coronalToDisplay } from './solarDisplayScale';
+import { applySolarGeometryFrame, type SolarFrameContext } from './solarFrame';
 
 // Potential Field Source Surface (PFSS) visualization generator
 // Traces magnetic field lines out to the source surface (2.5 R_sun)
@@ -229,8 +230,9 @@ function traceFieldLine(
     return { points, isOpen, polarity };
 }
 
-export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: number, activity: number): Group {
+export function createMagneticFieldLinesFromPFSS(pfssData: any, sunRadiusAu: number, activity: number, frame?: SolarFrameContext): Group {
     const group = new Group();
+    if (frame) applySolarGeometryFrame(group, frame);
 
     if (!pfssData || !Array.isArray(pfssData.lines)) {
         return group;
