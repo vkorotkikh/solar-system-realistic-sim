@@ -55,7 +55,7 @@ import {
 } from './frontend/features/solar/solarFeatureBlending';
 import { createGWVisualization } from './frontend/features/solar/gravitationalWaves';
 import { createWarpSlipstreamVisualization } from './frontend/features/superluminal-modeling/warpSlipstreamVisuals';
-import { createAgnShockwaveEngine } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
+import { createAgnShockwaveEngine, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import {
   buildAiaProxyTextureUrl,
   deriveSunObservationControls,
@@ -184,6 +184,8 @@ export function createSunController({
   let userAiaChannelOverride: string | null = null;
   let solarObservationFailedChannel: string | null = null;
   let lastTimeSec: number | null = null;
+  let lastJulianDate: number | null = null;
+  let decorativeTimeSec = 0;
 
   const solarPhysicsClient = new SolarPhysicsClient({
     baseUrl: backendBaseUrl,
@@ -523,20 +525,36 @@ export function createSunController({
           solarFlareManager.spawnRandomFlare(intensity * 1.5, currentSunRadiusAu);
           solarFlareManager.spawnRandomFlare(intensity * 2.0, currentSunRadiusAu);
         }
-      },
-      triggerWarpWaveImpact: (energyErg: number, smbhMassG: number) => {
-        // The Warp wave hit (silent - no UI flares, just metric stretch)
-        console.log(`[H29] Warp Wave Impacted! ${energyErg / 1e50}e50 erg`);
-        if (warpDisplayer) warpDisplayer.toggle(true);
       }
-    });
+    }, { onReset: () => warpDisplayer?.reset() });
+  }
+
+  function syncAgnVisuals() {
+    const warp = agnEngine?.getWarpState() ?? null;
+    if (warp) {
+      warpDisplayer?.setWarpState(warp);
+      warpDisplayer?.toggle(true);
+    } else {
+      warpDisplayer?.reset();
+    }
   }
 
   function update(julianDate: number, realtimeSeconds: number) {
-    const timeSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
-    const rawDt = Math.max(0, timeSec - (lastTimeSec ?? timeSec));
-    const dtSec = Math.min(0.25, rawDt);
-    lastTimeSec = timeSec;
+    if (solarDeliveryDisposed) return;
+    const wallSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
+    const rawDt = Math.max(0, wallSec - (lastTimeSec ?? wallSec));
+    const forward = lastJulianDate !== null && julianDate > lastJulianDate;
+    const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const motionEnabled = forward && simState.paused !== true
+      && Number(simState.timeScaleDaysPerSec ?? 1) > 0 && !reducedMotion;
+    // SCN-038: physical inputs use JD; these procedural visuals and compressed
+    // AGN timelines are decorative. Freeze during pause/reverse/reduced motion,
+    // discard wall-clock catch-up, and keep shader time near zero for precision.
+    const dtSec = motionEnabled ? Math.min(0.1, rawDt) : 0;
+    lastTimeSec = wallSec;
+    lastJulianDate = julianDate;
+    decorativeTimeSec += dtSec;
+    const timeSec = decorativeTimeSec;
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(Date.now(), 480);
     const activity = clampUnit(
@@ -632,17 +650,14 @@ export function createSunController({
       activeChannel: activeObservationChannel ?? undefined
     });
 
+    // The background schedule must advance even with no foreground event.
+    agnEngine?.update(dtSec);
+    syncAgnVisuals();
     if (gwDisplayer && gwDisplayer.mesh.visible) {
       gwDisplayer.update(dtSec);
     }
     if (warpDisplayer && warpDisplayer.mesh.visible) {
       warpDisplayer.update(dtSec);
-    }
-    if (agnEngine && agnEngine.isActive()) {
-      agnEngine.update(dtSec);
-      if (warpDisplayer) {
-        warpDisplayer.setWarpState(agnEngine.getWarpState());
-      }
     }
   }
 
@@ -799,6 +814,9 @@ export function createSunController({
     solarRealtimeClient.dispose();
     revokeSolarObservationTexture();
     solarObservationTextureLoadInFlight = false;
+    agnEngine?.dispose();
+    gwDisplayer?.dispose();
+    warpDisplayer?.dispose();
   }
 
   return {
@@ -811,18 +829,18 @@ export function createSunController({
     setAiaChannelOverride,
     getSolarDeliveryStatus,
     disposeSolarDelivery,
-    setAgnObserverFrameMode: (enabled: boolean) => {
-      if (agnEngine?.setObserverFrameMode) agnEngine.setObserverFrameMode(enabled);
-    },
     triggerAgnShockwave: (
       source: string,
       impactTimeSec: number,
       intensity: number,
-      options: Record<string, unknown>
+      options: AgnEventOptions
     ) => {
+      if (solarDeliveryDisposed) return;
       if (agnEngine) agnEngine.triggerEvent(source, impactTimeSec, intensity, options);
+      syncAgnVisuals();
     },
     setAgnStochasticFlaring: (enabled: boolean) => {
+      if (solarDeliveryDisposed) return;
       if (agnEngine?.setStochasticFlaring) agnEngine.setStochasticFlaring(enabled);
     },
     getAgnPhysics: () => agnEngine?.getPhysics?.() ?? null,
@@ -832,7 +850,8 @@ export function createSunController({
     get magneticFieldGroup() { return sunMagneticFieldGroup; },
     get surfaceMaterial() { return sunSurfaceMaterial; },
 
-    // Expose warp engine state for solar systemic orbital perturbation
+    resetAgnEvent: () => { agnEngine?.reset(); syncAgnVisuals(); },
+    // Expose display-only warp state; never an orbital perturbation.
     getWarpState: () => agnEngine?.getWarpState?.() ?? null,
     getWarpInfoText: () => warpDisplayer?.getInfoText?.() ?? null
   };

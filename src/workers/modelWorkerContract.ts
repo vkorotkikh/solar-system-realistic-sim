@@ -53,6 +53,7 @@ export interface ModelWorkerSimState {
   julianDate: number;
   deltaSeconds?: number;
   stepMs?: number;
+  /** @deprecated Accepted for compatibility, ignored by the canonical worker. */
   metricState?: ModelWorkerMetricState | null;
 }
 
