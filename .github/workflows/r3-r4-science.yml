@@ -57,6 +57,9 @@ jobs:
       - name: Prevent growth of the strict TypeScript backlog
         run: npm run typecheck:ratchet
 
+      - name: Require zero strict TypeScript errors
+        run: npm run typecheck
+
       - name: Exercise runner and workflow fail-closed contracts
         run: >-
           python -m pytest --noconftest -q
