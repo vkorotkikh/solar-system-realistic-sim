@@ -5,7 +5,7 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 ## Highlights
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and per-planet visual profiles
-- **424 moons** sourced from the NASA/JPL satellite mean-elements table (catalog and propagation only: the shipped UI keeps moons hidden, `showMoons` in `src/main.ts`, until the rendered set passes its accuracy gates)
+- **424-moon source catalog** from the NASA/JPL satellite mean-elements table, retained for provenance and offline tooling; the shipped entry does not load moon ephemerides, render moons, or send moons to the model worker (`showMoons` in `src/main.ts` is fixed to `false`)
 - **Physics-grounded Sun model** — 13-phase overhaul: Neckel & Labs limb darkening, Planck blackbody color, van de Hulst K-corona, prominences, flares, CMEs, PFSS magnetics, Parker spiral heliosphere, and SDO/AIA observation texture blending
 - **SMBH shockwave simulation** — AGN warp-wave engine with Sgr A* transient timeline, Fermi Bubble rendering, and exotic hypothesis modeling
 - **Adjustable simulation clock** with pause, reverse, time-warp, and jump-to-date
@@ -187,7 +187,7 @@ curl http://127.0.0.1:8042/solar/realtime
 │   │       ├── orbitRenderer.ts               # Orbit-line drawing
 │   │       └── lodManager.ts                  # Level-of-detail management
 │   ├── workers/
-│   │   ├── modelWorker.ts                     # Off-thread planet/moon propagation
+│   │   ├── modelWorker.ts                     # Off-thread body propagation (shipped entry sends planets only)
 │   │   └── modelWorkerContract.ts             # Worker message contract (Float64 transport)
 │   └── assets/textures/                       # Planet day maps, normals, clouds, relief
 ├── backend/
@@ -237,7 +237,7 @@ Pause/resume, reverse/forward time, adjustable warp speed, and jump to present d
 
 ### Display options
 
-- Orbit lines, labels, moons, asteroid belt, Kuiper belt, Oort cloud
+- Orbit lines, labels, asteroid belt, Kuiper belt, Oort cloud
 - Milky Way appearance: standard, enhanced, or 2MASS survey-texture mode
 - Realism locators (gold/orange labels + down-arrow + halo for tiny bodies)
 - Gravity vectors (combined gravitational acceleration per massive body)
@@ -250,7 +250,7 @@ Search all bodies by name and focus or follow any selected object with smooth ca
 ### Planet visuals
 
 - **Earth**: 4K day map, 2K normal map, cloud shell, near-real-time cloud mosaic ingest (NASA GIBS), synthetic terrain displacement, distance-based surface LOD, LEO/GEO guide rings
-- **Moon**: albedo + relief maps with LOD
+- **Moon assets (dormant)**: albedo + relief maps and LOD code are present, but the shipped entry does not load or render them
 - **Mars**: USGS albedo + MOLA relief textures
 - **Mercury, Venus, Jupiter, Saturn, Uranus, Neptune**: 2K day textures
 - **Saturn**: ring system
@@ -341,12 +341,10 @@ Navigate to Alpha Centauri, Barnard's Star, Sirius, and other nearby systems ren
   `set_julian_date` commands must include the matching scale instead of silently
   treating browser/Unix UTC dates as ephemeris time.
 - The 424-moon inventory and approximate fallback elements come from the JPL SSD satellite
-  mean-element tables. Those descriptive elements are not treated as osculating ephemerides.
-- Non-ecliptic fallback moons precess entirely in their native Laplace/parent-equatorial frame;
-  the resulting parent-relative Cartesian state is then rotated to ecliptic J2000.
-- Titan, Iapetus, Phoebe, and Cordelia use a committed parent-relative fit to JPL Horizons
-  osculating states over JDTDB 2451545.0–2469807.5 (2000–2050). The artifact records target,
-  center, frame, time scale, source hashes, held-out accuracy, and exact-endpoint validation.
+  mean-element tables. The repository retains native-frame fallback propagation and committed
+  parent-relative JPL Horizons fits for Titan, Iapetus, Phoebe, and Cordelia as offline data and
+  validation machinery. The shipped entry does not load those ephemerides or propagate/render
+  moon states.
 - Planet entries include axial-tilt, spin-period, and ecliptic pole-longitude metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data, with optional Gaia DR3 enrichment.
 
@@ -404,9 +402,9 @@ npm run phase1:asteroid-dataset
 - Earth satellite layer uses TLE-derived Kepler propagation with optional J2 secular perturbations (RAAN, argument of periapsis, mean anomaly rates).
 - Real-time Earth cloud mode uses daily products from NASA GIBS; this is near-real-time visualization, not NWP assimilation.
 - Gravity vectors are computed from currently modeled massive bodies; objects without mass data are excluded.
-- Fitted moon ephemerides are authoritative only inside their declared 2000–2050 JDTDB coverage;
-  the runtime refuses to replace those four states with known-bad mean-element positions outside
-  that interval. Other moons retain a labelled, visualization-grade mean-element fallback.
+- The retained fitted moon ephemerides are validated only inside their declared 2000–2050 JDTDB
+  coverage. They and the visualization-grade mean-element fallbacks are not activated by the
+  current shipped entry because moon state propagation and rendering are disabled there.
 - Asteroid close-up refinement uses massless test particles under Sun/Jupiter/Saturn perturbations.
 - Backend gravity-assist planning uses Lambert legs with hard-constrained flyby turn feasibility; frontend fallback remains patched-conic.
 - Transfer arcs in the UI are drawn as smooth visual curves, not numerically integrated finite-burn trajectories.

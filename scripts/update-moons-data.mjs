@@ -4,29 +4,45 @@ import { fileURLToPath } from 'node:url';
 
 const SOURCE_URL = 'https://ssd.jpl.nasa.gov/sats/elem/';
 const EXPECTED_COLUMNS = 20;
+const EXPECTED_CATALOG_RECORDS = 424;
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_OUTPUT = path.join(ROOT_DIR, 'src', 'data', 'moons.json');
+const REQUIRED_STRING_FIELDS = [
+  'planet', 'name', 'iauCode', 'ephemeris', 'frame', 'epochTdb', 'reference'
+];
+const REQUIRED_NUMBER_FIELDS = [
+  'aKm', 'e', 'argPeriapsisDeg', 'meanAnomalyDeg', 'inclinationDeg',
+  'ascendingNodeDeg', 'periodDays'
+];
+const NULLABLE_NUMBER_FIELDS = [
+  'apsisPrecessionYears', 'nodePrecessionYears', 'poleRaDeg',
+  'poleDecDeg', 'poleTiltDeg'
+];
 
-const USAGE = `Usage: node scripts/update-moons-data.mjs [--dry-run] [--out <path>] [--help]
+const USAGE = `Usage: node scripts/update-moons-data.mjs [--dry-run] [--out <path>] [--allow-count-change] [--help]
 
 Fetches the JPL SSD satellite mean-elements table (${SOURCE_URL}) and writes
 the moon catalog. Without --out the tracked catalog src/data/moons.json is
-replaced; the write is atomic (temp file + rename) and refused when the
-upstream table yields no records.
+replaced. Writes are atomic and require the shipped count of
+${EXPECTED_CATALOG_RECORDS} records, valid record fields, and unique IDs.
 
-  --dry-run   fetch and parse, report the record count, write nothing
-  --out PATH  write to PATH instead of the tracked catalog
-  --help      print this message and exit without fetching
+  --dry-run             fetch, validate, and report the record count; write nothing
+  --out PATH            write to PATH instead of the tracked catalog
+  --allow-count-change  permit an intentional count other than ${EXPECTED_CATALOG_RECORDS};
+                        field and unique-ID validation still applies
+  --help                print this message and exit without fetching
 `;
 
 export function parseArgs(argv) {
-  const options = { dryRun: false, out: DEFAULT_OUTPUT, help: false };
+  const options = { dryRun: false, out: DEFAULT_OUTPUT, allowCountChange: false, help: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
+    } else if (arg === '--allow-count-change') {
+      options.allowCountChange = true;
     } else if (arg === '--out') {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) {
@@ -111,7 +127,55 @@ export function parseSatelliteTable(html) {
   return records;
 }
 
-export async function writeCatalogAtomically(outputPath, records) {
+export function validateMoonCatalog(records, { allowCountChange = false } = {}) {
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new Error('Moon catalog must contain a nonempty array of records');
+  }
+  if (!allowCountChange && records.length !== EXPECTED_CATALOG_RECORDS) {
+    throw new Error(
+      `Expected ${EXPECTED_CATALOG_RECORDS} records but received ${records.length}; ` +
+      'verify the upstream table and use --allow-count-change only for an intentional count change'
+    );
+  }
+
+  const ids = new Set();
+  records.forEach((record, index) => {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new Error(`Moon record ${index} must be an object`);
+    }
+    if (!Number.isSafeInteger(record.id) || record.id < 0) {
+      throw new Error(`Moon record ${index} field id must be a nonnegative integer`);
+    }
+    if (ids.has(record.id)) {
+      throw new Error(`Duplicate moon id ${record.id} at record ${index}`);
+    }
+    ids.add(record.id);
+
+    for (const field of REQUIRED_STRING_FIELDS) {
+      if (typeof record[field] !== 'string' || record[field].trim() === '') {
+        throw new Error(`Moon record ${index} field ${field} must be a nonempty string`);
+      }
+    }
+    for (const field of REQUIRED_NUMBER_FIELDS) {
+      if (typeof record[field] !== 'number' || !Number.isFinite(record[field])) {
+        throw new Error(`Moon record ${index} field ${field} must be a finite number`);
+      }
+    }
+    for (const field of NULLABLE_NUMBER_FIELDS) {
+      if (record[field] !== null && (typeof record[field] !== 'number' || !Number.isFinite(record[field]))) {
+        throw new Error(`Moon record ${index} field ${field} must be a finite number or null`);
+      }
+    }
+    if (record.aKm <= 0 || record.e < 0 || record.e >= 1 || record.periodDays <= 0) {
+      throw new Error(`Moon record ${index} has implausible orbital values`);
+    }
+  });
+
+  return records;
+}
+
+export async function writeCatalogAtomically(outputPath, records, options = {}) {
+  validateMoonCatalog(records, options);
   await mkdir(path.dirname(outputPath), { recursive: true });
   const tempPath = `${outputPath}.${process.pid}.tmp`;
   await writeFile(tempPath, `${JSON.stringify(records, null, 2)}\n`, 'utf8');
@@ -132,11 +196,12 @@ async function main() {
   const records = parseSatelliteTable(await response.text());
 
   if (options.dryRun) {
+    validateMoonCatalog(records, { allowCountChange: options.allowCountChange });
     console.log(`Dry run: parsed ${records.length} satellite records; nothing written`);
     return;
   }
 
-  await writeCatalogAtomically(options.out, records);
+  await writeCatalogAtomically(options.out, records, { allowCountChange: options.allowCountChange });
   console.log(`Saved ${records.length} satellite records to ${options.out}`);
 }
 
