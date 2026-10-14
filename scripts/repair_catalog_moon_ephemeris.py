@@ -15,6 +15,7 @@ import json
 import math
 from pathlib import Path
 import re
+from urllib.parse import quote
 
 import numpy as np
 from numpy.polynomial.chebyshev import chebfit, chebval, chebvander, chebder
@@ -104,9 +105,13 @@ def fit_cartesian_model(target, rows, end, segment_days):
         weight = target.source_step_days
         matrix = np.concatenate((aa,dd*weight))
         rhs = np.concatenate((position[mask],velocity[mask]*DAY*weight))
-        coefficients,_,rank,_ = np.linalg.lstsq(matrix,rhs,rcond=None)
-        if rank < matrix.shape[1]:
+        if matrix.shape[0] < matrix.shape[1]:
             raise RuntimeError('Underdetermined Cartesian carrier fit; denser source required')
+        # On shorter arcs, polynomial amplitudes and nearby Fourier sidebands
+        # can span the same numerical directions. Truncated SVD suppresses
+        # cancellation-prone coefficients; independent state gates still decide
+        # whether the resulting trajectory is acceptable.
+        coefficients,_,rank,_ = np.linalg.lstsq(matrix,rhs,rcond=1e-10)
         coefficients = coefficients.reshape(1+2*harmonics,degree+1,3).transpose(0,2,1).reshape(-1,degree+1)
         segments.append({'startJd':float(a),'endJd':float(b),'coefficients':coefficients.tolist()})
     return {'kind':'horizons-chebyshev-cartesian-v1','carrierHarmonics':harmonics,
@@ -225,7 +230,7 @@ def stats(errors):
 
 def generate(moon, reference, args):
     key = moon['name'].lower()
-    destination = args.cache_dir / f'{key}.model.json'
+    destination = args.cache_dir / f'{quote(key, safe="")}.model.json'
     if destination.exists() and not args.refit:
         return json.loads(destination.read_text())
     target_header = reference['headers']['Target body name'].split(':',1)[1].strip()
@@ -259,7 +264,7 @@ def generate(moon, reference, args):
     oracle_vel = np.array([r['velocity_au_per_day'] for r in reference['states']])*AU_KM/DAY
     best = None
     for span in [512.,256.,128.,64.,32.,16.]:
-        if span < step*16:
+        if span < step*target.degree/2:
             continue
         try:
             body = fit_cartesian_model(target,source_rows,end,span)
@@ -307,6 +312,7 @@ def main():
     parser.add_argument('--step',type=float)
     parser.add_argument('--refit',action='store_true')
     parser.add_argument('--promote',action='store_true',help='merge passing candidates, preserving existing bodies')
+    parser.add_argument('--cached-only',action='store_true',help='checkpoint already-gated candidates without network queries')
     args=parser.parse_args()
     args.cache_dir.mkdir(parents=True,exist_ok=True)
     requested={s.strip().lower() for s in args.bodies.split(',')}
@@ -319,6 +325,13 @@ def main():
         if key in EXISTING or ('all' not in requested and key not in requested):
             continue
         ref=oracle['bodies'][str(moon['id'])]
+        if args.cached_only:
+            path=args.cache_dir/f'{quote(key, safe="")}.model.json'
+            if path.exists():
+                candidates[key]=json.loads(path.read_text())
+            else:
+                failures.append({'name':moon['name'],'status':'repair_pending','error':'No passing cached model'})
+            continue
         if ref['status']=='unavailable':
             failures.append({'name':moon['name'],'status':'provider_unavailable','error':ref['error']})
             continue
