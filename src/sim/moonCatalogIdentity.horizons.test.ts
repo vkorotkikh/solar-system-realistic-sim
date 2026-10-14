@@ -1,14 +1,13 @@
-import { createHash } from 'node:crypto';
-import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
-import artifact from '../data/moonEphemerisChebyshev.json';
+import artifact from '../data/moonEphemerisRepairs.json';
 import moons from '../data/moons.json';
 import oracle from '../../backend/tests/fixtures/all_moons_horizons_oracle.json';
 import capture from '../../backend/tests/fixtures/neptune_moon_identity_capture.json';
 import { createSolarSystemCatalog } from './catalog';
 import { parseMoonEphemerisArtifact } from './moonEphemeris';
 import { propagateKeplerOrbit } from './orbitMath';
+import { decodedCapture } from './moonRepairTestInputs.mjs';
 
 const fitted = parseMoonEphemerisArtifact(artifact).bodies;
 const catalog = createSolarSystemCatalog({ moonEphemerides: fitted });
@@ -18,8 +17,8 @@ describe('independent Neptune moon identities', () => {
   it('keeps target identities, source hashes, coefficients, and runtime objects distinct', () => {
     const neso = fitted.neso;
     const other = fitted.s2021_n1;
-    expect(neso.targetId).toBe('813');
-    expect(other.targetId).toBe('85052');
+    expect(neso.provenance.targetId).toBe('813');
+    expect(other.provenance.targetId).toBe('85052');
     expect(neso.sourceRowsSha256).not.toBe(other.sourceRowsSha256);
     expect(neso.heldOutRowsSha256).not.toBe(other.heldOutRowsSha256);
     expect(JSON.stringify(neso.segments)).not.toBe(JSON.stringify(other.segments));
@@ -33,9 +32,9 @@ describe('independent Neptune moon identities', () => {
   for (const [name, targetId] of identities) {
     it(`${name}: fresh provider bytes match its own oracle and runtime assignment`, () => {
       const recorded = capture.moonQueries[name];
-      const raw = gunzipSync(Buffer.from(recorded.resultUtf8GzipBase64, 'base64'));
-      expect(createHash('sha256').update(raw).digest('hex')).toBe(recorded.resultUtf8Sha256);
-      const text = raw.toString('utf8');
+      const decoded = decodedCapture(recorded.resultUtf8GzipBase64);
+      expect(decoded.sha256).toBe(recorded.resultUtf8Sha256);
+      const text = decoded.text;
       expect(recorded.query.COMMAND).toBe(targetId);
       expect(recorded.query.CENTER).toBe('500@899');
       expect(text).toContain(`${name} (${targetId})`);

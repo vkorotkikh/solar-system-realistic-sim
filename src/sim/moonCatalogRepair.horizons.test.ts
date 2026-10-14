@@ -1,29 +1,20 @@
 /** All-424 accounting. Explicit repair-pending skips are NOT scientific passes. */
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { Vector3 } from 'three';
 import rawMoons from '../data/moons.json';
 import generated from '../data/moonEphemerisChebyshev.json';
+import repairs from '../data/moonEphemerisRepairs.json';
 import oracle from '../../backend/tests/fixtures/all_moons_horizons_oracle.json';
 import spk75052 from '../../backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from '../../backend/tests/fixtures/daphnis_legacy_spk_capture.json';
 import { createSolarSystemCatalog } from './catalog';
 import { parseMoonEphemerisArtifact } from './moonEphemeris';
 import { propagateKeplerOrbit } from './orbitMath';
+import { candidateBodies } from './moonRepairTestInputs.mjs';
 
 // Optional local candidate gate does not rewrite or promote the shipped artifact.
-const candidateBodies: Record<string, unknown> = { ...generated.bodies };
-const candidateDirectory = process.env.SCN043_CANDIDATE_DIR;
-if (candidateDirectory) {
-  for (const moon of rawMoons) {
-    const key = moon.name.toLowerCase();
-    const path = [join(candidateDirectory, `${encodeURIComponent(key)}.model.json`),
-      join(candidateDirectory, `${key}.model.json`)].find(existsSync);
-    if (path) candidateBodies[key] = JSON.parse(readFileSync(path, 'utf8'));
-  }
-}
-const parsed = parseMoonEphemerisArtifact({ ...generated, bodies: candidateBodies });
+const parsed = parseMoonEphemerisArtifact({ ...repairs,
+  bodies: candidateBodies({ ...generated.bodies, ...repairs.bodies }, rawMoons) });
 const catalog = createSolarSystemCatalog({ moonEphemerides: parsed.bodies });
 const references = { ...oracle.bodies } as Record<string, {
   status: string; states?: { jd_tdb: number; position_au: number[]; velocity_au_per_day: number[] }[];
@@ -58,7 +49,12 @@ describe('SCN-043 independent catalog repair gates', () => {
       const positionLimit = newlyRepaired ? Math.min(500, .001 * moon.aKm) : fit.validation.accuracyLimits.positionKm;
       const velocityLimit = newlyRepaired ? 10 : fit.validation.accuracyLimits.velocityMPerS;
       if (newlyRepaired) {
-        expect(fit.validation.accuracyLimits).toEqual({positionKm: positionLimit, velocityMPerS: velocityLimit});
+        // Duplicate Puck records share NAIF 715 and a model with the stricter cap.
+        expect(fit.provenance.targetId).toBe(String(moon.iauCode));
+        expect(fit.validation.accuracyLimits.positionKm).toBeGreaterThan(0);
+        expect(fit.validation.accuracyLimits.positionKm).toBeLessThanOrEqual(positionLimit);
+        expect(fit.validation.accuracyLimits.velocityMPerS).toBeGreaterThan(0);
+        expect(fit.validation.accuracyLimits.velocityMPerS).toBeLessThanOrEqual(velocityLimit);
       }
       for (const truth of reference.states!) {
         expect(truth.jd_tdb).toBeGreaterThanOrEqual(fit.coverageStartJd);
@@ -67,8 +63,8 @@ describe('SCN-043 independent catalog repair gates', () => {
         expect(propagateKeplerOrbit(body.orbit!, truth.jd_tdb - body.orbit!.epochJd, p, v)).toBe(true);
         const positionError = p.distanceTo(new Vector3(...truth.position_au)) * AU_KM;
         const velocityError = v.distanceTo(new Vector3(...truth.velocity_au_per_day)) * AU_KM * 1000 / 86400;
-        expect(positionError, `${moon.name} JD ${truth.jd_tdb} km`).toBeLessThanOrEqual(positionLimit);
-        expect(velocityError, `${moon.name} JD ${truth.jd_tdb} m/s`).toBeLessThanOrEqual(velocityLimit);
+        expect(positionError, `${moon.name} JD ${truth.jd_tdb} km`).toBeLessThanOrEqual(Math.min(positionLimit, fit.validation.accuracyLimits.positionKm));
+        expect(velocityError, `${moon.name} JD ${truth.jd_tdb} m/s`).toBeLessThanOrEqual(Math.min(velocityLimit, fit.validation.accuracyLimits.velocityMPerS));
       }
     });
   }
