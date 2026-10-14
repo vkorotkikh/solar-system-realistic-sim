@@ -823,6 +823,12 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_SEND_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "WS_SIM_SEND_TIMEOUT_SECONDS", 5.0, min_value=0.1, max_value=30.0,
+)
+WS_SIM_IDLE_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "WS_SIM_IDLE_TIMEOUT_SECONDS", 30.0, min_value=1.0, max_value=300.0,
+)
 WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT = 16 * 1_024
 WS_SIM_COMMAND_MAX_BYTES = _load_bounded_env_int(
     "WS_SIM_COMMAND_MAX_BYTES",
@@ -4225,7 +4231,12 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
 # ── Simulation Runner (background thread) ────────────────────────────────────
 
 class SimulationRunner:
-    """Manages a simulation engine in a background thread at target FPS."""
+    """Fixed-step simulation: overruns slow wall-time progress, without catch-up.
+
+    Each completed tick advances time_scale / target_fps days. This preserves
+    deterministic integration increments under load; days/sec is nominal at
+    the requested frame rate, rather than a wall-clock synchronization promise.
+    """
 
     def __init__(self, engine: SimulationEngine, target_fps: int = 60):
         self.engine = engine
@@ -4251,6 +4262,8 @@ class SimulationRunner:
         cancel_pending = getattr(self.engine, "cancel_pending_operation", None)
         if callable(cancel_pending):
             cancel_pending()
+        if self._thread.ident is None:
+            return True
         self._thread.join(timeout=3)
         return not self._thread.is_alive()
 
@@ -4334,9 +4347,11 @@ class SimulationRunner:
                 except Exception as exc:
                     if not self.running:
                         break
-                    self._runtime_error = f"Command handling failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+                    self._push_error(
+                        f"Command handling failed: {exc}",
+                        action=cmd.get("type", "") if isinstance(cmd, dict) else "",
+                        code="command_failed",
+                    )
 
             if not self.running:
                 break
@@ -4388,6 +4403,8 @@ class SimulationRunner:
                 energy_error=self.engine.get_energy_error(),
                 backend={
                     "target_fps": self.target_fps,
+                    "clock_policy": "fixed_step",
+                    "step_days": self.time_scale * frame_time,
                     "command_queue_depth": self.command_queue.qsize(),
                     "response_queue_depth": self.response_queue.qsize(),
                     "kuiper_active": self.kuiper.active,
@@ -4438,6 +4455,13 @@ class SimulationRunner:
             self.paused = True
 
         elif action == "resume":
+            if self._runtime_error is not None:
+                self._push_error(
+                    "The simulation engine failed; reconnect to initialize a new engine",
+                    action=action,
+                    code="engine_unavailable",
+                )
+                return
             self.paused = False
 
         elif action == "set_julian_date":
@@ -4555,6 +4579,14 @@ class SimulationRunner:
 
 # ── WebSocket task helpers ────────────────────────────────────────────────────
 
+async def _ws_send_text(websocket: WebSocket, text: str) -> None:
+    """Cancel an ASGI send that stops making progress within its deadline."""
+    await asyncio.wait_for(websocket.send_text(text), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
+    await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
+
 def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
     if not isinstance(message, dict):
         return None, "Payload must be a JSON object"
@@ -4594,7 +4626,7 @@ async def _send_ws_command_error(
     *,
     code: str,
 ) -> None:
-    await websocket.send_text(json.dumps({
+    await _ws_send_text(websocket, json.dumps({
         "type": "error",
         "message": message,
         "code": code,
@@ -4603,7 +4635,7 @@ async def _send_ws_command_error(
 
 async def _close_ws_command_too_large(websocket: WebSocket) -> None:
     reason = f"Command frame exceeds {WS_SIM_COMMAND_MAX_BYTES} bytes"
-    await websocket.close(code=1009, reason=reason)
+    await _ws_close(websocket, code=1009, reason=reason)
     raise WebSocketDisconnect(code=1009, reason=reason)
 
 
@@ -4669,7 +4701,7 @@ async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
             )
             continue
         if not runner.send_command(command):
-            await websocket.send_text(json.dumps({
+            await _ws_send_text(websocket, json.dumps({
                 "type": "error",
                 "message": "Command queue is full; retry shortly",
                 "code": "queue_overflow",
@@ -4681,11 +4713,13 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
     last_jd: Optional[float] = None
     idle_frames = 0
     idle_send_interval = max(1, int(stream_hz // 3))
+    last_output = time.monotonic()
 
     while True:
         resp = runner.get_response()
         while resp is not None:
-            await websocket.send_text(json.dumps(resp))
+            await _ws_send_text(websocket, json.dumps(resp))
+            last_output = time.monotonic()
             resp = runner.get_response()
 
         state = runner.get_latest_state()
@@ -4699,11 +4733,16 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
                 or idle_frames >= idle_send_interval
             )
             if should_send:
-                await websocket.send_text(json.dumps(state))
+                await _ws_send_text(websocket, json.dumps(state))
+                last_output = time.monotonic()
                 last_jd = jd
                 idle_frames = 0
             else:
                 idle_frames += 1
+
+        if time.monotonic() - last_output >= WS_SIM_IDLE_TIMEOUT_SECONDS:
+            await _ws_close(websocket, code=1013, reason="Simulation output idle deadline exceeded")
+            raise WebSocketDisconnect(code=1013)
 
         await asyncio.sleep(interval)
 
@@ -4767,7 +4806,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
     if engine is None:
         rebound_reason = rebound_status.get("error") or "unavailable"
-        await websocket.send_text(json.dumps({
+        await _ws_send_text(websocket, json.dumps({
             "type": "error",
             "code": "engine_unavailable",
             "message": (
@@ -4775,18 +4814,18 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
                 f"REBOUND readiness failed: {rebound_reason}"
             ),
         }))
-        await websocket.close(code=1013)
+        await _ws_close(websocket, code=1013)
         return
 
     try:
         engine.initialize(ALL_BODIES)
     except Exception as exc:
-        await websocket.send_text(json.dumps({
+        await _ws_send_text(websocket, json.dumps({
             "type": "error",
             "code": "engine_init_failed",
             "message": str(exc),
         }))
-        await websocket.close(code=1011)
+        await _ws_close(websocket, code=1011)
         return
 
     initial_state = engine.get_state()
@@ -4803,10 +4842,12 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         stream_hz = float(target_fps)
 
     runner = SimulationRunner(engine, target_fps=target_fps)
-    runner.start()
+    tasks: list[asyncio.Task] = []
+    try:
+        runner.start()
 
-    # Notify client of connection
-    await websocket.send_text(json.dumps({
+        # Initial delivery is owned by the same cleanup scope as streaming.
+        await _ws_send_text(websocket, json.dumps({
         "type": "connected",
         "protocol_version": WS_PROTOCOL_VERSION,
         "protocol_version_requested": protocol_requested,
@@ -4819,16 +4860,16 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "jd": engine.get_julian_date(),
         "jd_time_scale": initial_state.get("jd_time_scale"),
         "fps": target_fps,
+        "clock_policy": "fixed_step",
         "stream_hz": stream_hz,
         "warnings": warnings,
-    }))
-
-    try:
+        }))
         receive_task = asyncio.create_task(_ws_receive_loop(websocket, runner))
         send_task = asyncio.create_task(_ws_send_loop(websocket, runner, stream_hz=stream_hz))
+        tasks = [receive_task, send_task]
         done, pending = await asyncio.wait(
             {receive_task, send_task},
-            return_when=asyncio.FIRST_EXCEPTION,
+            return_when=asyncio.FIRST_COMPLETED,
         )
 
         for task in pending:
@@ -4850,7 +4891,12 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     except Exception as exc:
         print(f"[ws/sim] error: {exc}")
     finally:
-        if not runner.stop():
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if not await asyncio.to_thread(runner.stop):
             # Keep the owning connection/admission permit alive until the
             # actual worker exits; a three-second join timeout is not proof of
             # cleanup.
@@ -4861,7 +4907,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 async def simulation_websocket(websocket: WebSocket):
     authenticated_subject: str | None = None
     if not _websocket_query_has_safe_shape(websocket):
-        await websocket.close(
+        await _ws_close(websocket, 
             code=1008,
             reason="WebSocket query credentials are not allowed",
         )
@@ -4869,7 +4915,7 @@ async def simulation_websocket(websocket: WebSocket):
     if SOLAR_SECURITY_CONFIG.profile == "network":
         authenticated_subject = _network_websocket_subject(websocket)
         if authenticated_subject is None:
-            await websocket.close(
+            await _ws_close(websocket, 
                 code=1008,
                 reason="WebSocket authentication is required",
             )
@@ -4877,15 +4923,15 @@ async def simulation_websocket(websocket: WebSocket):
         state = websocket.scope.setdefault("state", {})
         state["authenticated_subject"] = authenticated_subject
     if not _websocket_origin_allowed(websocket):
-        await websocket.close(code=1008, reason="WebSocket origin is not allowed")
+        await _ws_close(websocket, code=1008, reason="WebSocket origin is not allowed")
         return
     admission_lease = _try_acquire_ws_sim_slot(authenticated_subject)
     if admission_lease is None:
-        await websocket.close(code=1013, reason="Simulation capacity is exhausted")
+        await _ws_close(websocket, code=1013, reason="Simulation capacity is exhausted")
         return
 
     try:
-        await websocket.accept()
+        await asyncio.wait_for(websocket.accept(), WS_SIM_SEND_TIMEOUT_SECONDS)
         await _serve_simulation_websocket(websocket)
     finally:
         _release_ws_sim_slot(admission_lease)
