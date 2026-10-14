@@ -9,12 +9,23 @@ interface ServerBodyState {
   pos: [number, number, number];
 }
 
+/** Current SimulationRunner payload; metadata is retained, not reinterpreted. */
+export interface ServerKuiperSnapshot {
+  positions: number[][];
+  velocities?: number[][];
+  binary_pairs?: [number, number][];
+  position_units?: string;
+  velocity_units?: string;
+  binary_model?: string;
+  [key: string]: unknown;
+}
+
 export interface ServerStateUpdateMessage {
   type: 'state_update';
   jd: number;
   jd_time_scale?: 'TDB' | string;
   bodies: Record<string, ServerBodyState>;
-  kuiper?: number[][];
+  kuiper?: ServerKuiperSnapshot | number[][] | null;
 }
 
 interface ConnectedMessage {
@@ -61,6 +72,24 @@ function isPosition(value: unknown): boolean {
     && value.every(component => typeof component === 'number' && Number.isFinite(component));
 }
 
+function isKuiperPayload(value: unknown): boolean {
+  if (value === null) return true;
+  if (Array.isArray(value)) return value.every(isPosition); // Legacy positions-only wire format.
+  if (!isRecord(value) || !Array.isArray(value.positions) || !value.positions.every(isPosition)) return false;
+  const count = value.positions.length;
+  if (value.velocities !== undefined && (!Array.isArray(value.velocities)
+    || value.velocities.length !== count || !value.velocities.every(isPosition))) return false;
+  if (value.binary_pairs !== undefined && (!Array.isArray(value.binary_pairs)
+    || !value.binary_pairs.every(pair => Array.isArray(pair) && pair.length === 2
+      && pair.every(index => Number.isInteger(index) && index >= 0 && index < count)
+      && pair[0] !== pair[1]))) return false;
+  // The renderer consumes AU positions. Velocities/physics labels are metadata,
+  // not inputs to an implicit conversion or a claim of mutual binary gravity.
+  return (value.position_units === undefined || value.position_units === 'AU')
+    && (value.velocity_units === undefined || typeof value.velocity_units === 'string')
+    && (value.binary_model === undefined || typeof value.binary_model === 'string');
+}
+
 function decodeMessage(data: string): IncomingMessage {
   const message: unknown = JSON.parse(data);
   if (!isRecord(message)) throw new Error('WebSocket message must be an object');
@@ -68,7 +97,7 @@ function decodeMessage(data: string): IncomingMessage {
     if (typeof message.jd !== 'number' || !Number.isFinite(message.jd)
       || !isRecord(message.bodies)
       || !Object.values(message.bodies).every(body => isRecord(body) && isPosition(body.pos))
-      || (message.kuiper !== undefined && (!Array.isArray(message.kuiper) || !message.kuiper.every(isPosition)))) {
+      || (message.kuiper !== undefined && !isKuiperPayload(message.kuiper))) {
       throw new Error('Invalid WebSocket state_update: expected finite epoch and 3D positions');
     }
   } else if (message.type === 'connected') {
@@ -117,6 +146,8 @@ export class SimulationClient {
   latestState: ServerStateUpdateMessage | null;
 
   latestKuiper: number[][] | null;
+
+  latestKuiperSnapshot: ServerKuiperSnapshot | null = null;
 
   private kuiperActive: boolean;
 
@@ -216,7 +247,12 @@ export class SimulationClient {
       this.markFresh();
       if (msg.type === 'state_update') {
         this.latestState = msg;
-        if (msg.kuiper) this.latestKuiper = msg.kuiper;
+        // The backend emits Kuiper only every fifth frame. Omission preserves
+        // the last complete snapshot, including velocities and binary metadata.
+        if (msg.kuiper !== undefined) {
+          this.latestKuiperSnapshot = Array.isArray(msg.kuiper) ? { positions: msg.kuiper } : msg.kuiper;
+          this.latestKuiper = this.latestKuiperSnapshot?.positions ?? null;
+        }
         return;
       }
       this.handleConnectedMessage(msg);
@@ -304,6 +340,7 @@ export class SimulationClient {
       if (this.connected) {
         this.latestState = null;
         this.latestKuiper = null;
+        this.latestKuiperSnapshot = null;
         this.setStatus('stale');
         this.staleTimerId = window.setTimeout(() => {
           this.reportFailure('WebSocket valid-message timeout');
@@ -333,6 +370,7 @@ export class SimulationClient {
     this.serverReady = false;
     this.latestState = null;
     this.latestKuiper = null;
+    this.latestKuiperSnapshot = null;
     this.kuiperActive = false;
     if (!this.ws) return;
     this.ws.onopen = null;
@@ -397,5 +435,6 @@ export class SimulationClient {
       this.kuiperActive = false;
     }
     this.latestKuiper = null;
+    this.latestKuiperSnapshot = null;
   }
 }
