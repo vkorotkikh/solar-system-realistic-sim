@@ -62,6 +62,8 @@ class EpisodeRunner:
         )
 
     def run_family(self, family: EpisodeFamily) -> EpisodeFamilyMetrics:
+        if family.policy is not None:
+            self.verifier.register_policy(family.name, family.policy)
         metrics = EpisodeFamilyMetrics(family=family.name)
         for episode in family.episodes:
             metrics.add(self.run_episode(episode))
@@ -69,9 +71,6 @@ class EpisodeRunner:
 
     def run_families(self, families: list[EpisodeFamily]) -> EpisodeRunMetrics:
         metrics = EpisodeRunMetrics()
-        for family in families:
-            if family.policy is not None:
-                self.verifier.register_policy(family.name, family.policy)
         for family in families:
             family_metrics = self.run_family(family)
             for record in family_metrics.records:
