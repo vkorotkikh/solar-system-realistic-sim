@@ -13,16 +13,28 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE = ROOT / "agent-notes/solar-reference-2026-10-14"
 CAPTURE = ROOT / "agent-notes/solar-wind-overlap-2026-10-14"
 
 
-def epoch(value: str) -> datetime:
+def epoch(value: str, *, cadence_hours: int = 1) -> datetime:
     # Both producer APIs document UTC; their raw JSON omits the suffix.
+    # fromisoformat also accepts date-only/basic/week-date representations.
+    # Those do not establish an exact product timestamp and must not be padded
+    # into apparently observed midnight samples.
+    if not isinstance(value, str) or re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+        r"(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})?", value
+    ) is None:
+        raise ValueError("expected a complete ISO UTC timestamp")
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    parsed = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    if parsed.hour % cadence_hours or parsed.minute or parsed.second or parsed.microsecond:
+        raise ValueError(f"expected a {cadence_hours}-hour UTC timestamp")
+    return parsed
 
 
 def valid_speed(value: object) -> bool:
@@ -34,7 +46,8 @@ def compare(forecast: dict, observations: list[dict]) -> dict:
         raise ValueError("expected the declared AGONG/ACE forecast product")
     observed = {}
     for row in observations:
-        if row.get("dsflag") != 0 or not valid_speed(row.get("speed")):
+        # JSON booleans and floating zeros are not the documented integer flag.
+        if type(row.get("dsflag")) is not int or row["dsflag"] != 0 or not valid_speed(row.get("speed")):
             continue
         time = epoch(row["time_tag"])
         if time in observed:
@@ -44,7 +57,7 @@ def compare(forecast: dict, observations: list[dict]) -> dict:
     seen = set()
     usable = 0
     for row in forecast["solarwind"]:
-        time = epoch(row["time"])
+        time = epoch(row["time"], cadence_hours=6)
         if time in seen:
             raise ValueError("duplicate forecast timestamp")
         seen.add(time)
