@@ -54,12 +54,24 @@ const ANGLE_SCALE_U16 = 65535;
 const ECENTRICITY_SCALE_U16 = 65535;
 const ALBEDO_SCALE_U16 = 65535;
 
-const PERIOD_EPSILON_DAYS = 1e-4;
-const A_EPSILON_AU = 1e-6;
-const ECC_EPSILON = 1 / ECENTRICITY_SCALE_U16;
-const ANGLE_EPSILON_DEG = 360 / ANGLE_SCALE_U16;
-const DIAMETER_EPSILON_KM = 1e-5;
-const ALBEDO_EPSILON = 1 / ALBEDO_SCALE_U16;
+// ACBF v1 is a quantized format, not a lossless scientific ephemeris.
+// Float32 round-to-nearest error is at most half an ULP of the source binade.
+// u16 round-to-nearest error is at most half the physical interval / 65535.
+export const ACBF_QUANTIZATION = Object.freeze({
+  eccentricity: 0.5 / ECENTRICITY_SCALE_U16,
+  inclinationDeg: 90 / ANGLE_SCALE_U16,
+  angleDeg: 180 / ANGLE_SCALE_U16,
+  albedo: 0.5 / ALBEDO_SCALE_U16,
+});
+
+function float32HalfUlp(value: number): number {
+  return Math.max(2 ** -150, 2 ** (Math.floor(Math.log2(Math.abs(value))) - 24));
+}
+
+function circularAngleError(a: number, b: number): number {
+  const delta = Math.abs(normalizeAngle360(a) - normalizeAngle360(b));
+  return Math.min(delta, 360 - delta);
+}
 
 function throwIfInvalidBuffer(buffer: ArrayBuffer, expectedBytes: number): void {
   if (buffer.byteLength < expectedBytes) {
@@ -299,20 +311,28 @@ function generateDeterministicRecords(count: number, seed = 0x13579bdf): PackedA
   return records;
 }
 
-function compareRecords(a: PackedAsteroidRecord, b: PackedAsteroidRecord): number[] {
-  const mismatches: number[] = [];
-  if (a.sourceId !== b.sourceId) mismatches.push(1);
-  if (Math.abs(a.epochJd - b.epochJd) > PERIOD_EPSILON_DAYS) mismatches.push(1);
-  if (Math.abs(a.aAu - b.aAu) > A_EPSILON_AU) mismatches.push(1);
-  if (Math.abs(a.e - b.e) > ECC_EPSILON) mismatches.push(1);
-  if (Math.abs(a.iDeg - b.iDeg) > ANGLE_EPSILON_DEG) mismatches.push(1);
-  if (Math.abs(a.ascendingNodeDeg - b.ascendingNodeDeg) > ANGLE_EPSILON_DEG) mismatches.push(1);
-  if (Math.abs(a.argPeriapsisDeg - b.argPeriapsisDeg) > ANGLE_EPSILON_DEG) mismatches.push(1);
-  if (Math.abs(a.meanAnomalyDeg - b.meanAnomalyDeg) > ANGLE_EPSILON_DEG) mismatches.push(1);
-  if (Math.abs(a.periodDays - b.periodDays) > PERIOD_EPSILON_DAYS) mismatches.push(1);
-  if (Math.abs(a.diameterKm - b.diameterKm) > DIAMETER_EPSILON_KM) mismatches.push(1);
-  if (Math.abs(a.albedo - b.albedo) > ALBEDO_EPSILON) mismatches.push(1);
-  if (a.taxonomyIndex !== b.taxonomyIndex) mismatches.push(1);
+export function asteroidRecordQuantizationFailures(
+  a: PackedAsteroidRecord, b: PackedAsteroidRecord,
+): (keyof PackedAsteroidRecord)[] {
+  const mismatches: (keyof PackedAsteroidRecord)[] = [];
+  const check = (field: keyof PackedAsteroidRecord, budget: number, circular = false) => {
+    const error = circular ? circularAngleError(a[field], b[field]) : Math.abs(a[field] - b[field]);
+    const doubleRounding = Number.EPSILON * Math.max(1, Math.abs(a[field]), Math.abs(b[field]));
+    if (!Number.isFinite(a[field]) || !Number.isFinite(b[field]) || error > budget + doubleRounding) {
+      mismatches.push(field);
+    }
+  };
+  check('sourceId', 0);
+  check('taxonomyIndex', 0);
+  for (const field of ['epochJd', 'aAu', 'periodDays', 'diameterKm'] as const) {
+    check(field, float32HalfUlp(a[field]));
+  }
+  check('e', ACBF_QUANTIZATION.eccentricity);
+  check('iDeg', ACBF_QUANTIZATION.inclinationDeg);
+  check('ascendingNodeDeg', ACBF_QUANTIZATION.angleDeg, true);
+  check('argPeriapsisDeg', ACBF_QUANTIZATION.angleDeg, true);
+  check('meanAnomalyDeg', ACBF_QUANTIZATION.angleDeg, true);
+  check('albedo', ACBF_QUANTIZATION.albedo);
   return mismatches;
 }
 
@@ -343,9 +363,9 @@ export function validatePackedCatalogRoundTrip(count: number): RoundTripTestResu
     const deltaAU = Math.abs(sourceRecord.aAu - decoded.aAu);
     const deltaE = Math.abs(sourceRecord.e - decoded.e);
     const deltaI = Math.abs(sourceRecord.iDeg - decoded.iDeg);
-    const deltaAsc = Math.abs(sourceRecord.ascendingNodeDeg - decoded.ascendingNodeDeg);
-    const deltaArg = Math.abs(sourceRecord.argPeriapsisDeg - decoded.argPeriapsisDeg);
-    const deltaM = Math.abs(sourceRecord.meanAnomalyDeg - decoded.meanAnomalyDeg);
+    const deltaAsc = circularAngleError(sourceRecord.ascendingNodeDeg, decoded.ascendingNodeDeg);
+    const deltaArg = circularAngleError(sourceRecord.argPeriapsisDeg, decoded.argPeriapsisDeg);
+    const deltaM = circularAngleError(sourceRecord.meanAnomalyDeg, decoded.meanAnomalyDeg);
     const deltaP = Math.abs(sourceRecord.periodDays - decoded.periodDays);
     const deltaD = Math.abs(sourceRecord.diameterKm - decoded.diameterKm);
     const deltaAlb = Math.abs(sourceRecord.albedo - decoded.albedo);
@@ -361,7 +381,7 @@ export function validatePackedCatalogRoundTrip(count: number): RoundTripTestResu
       deltaAlb
     ];
     if (errors[0] + errors[1] + errors[2] + errors[3] + errors[4] + errors[5] + errors[6] > 0) {
-      mismatched += compareRecords(sourceRecord, decoded).length > 0 ? 1 : 0;
+      mismatched += asteroidRecordQuantizationFailures(sourceRecord, decoded).length > 0 ? 1 : 0;
     }
     if (deltaEpoch > maxEpochError) maxEpochError = deltaEpoch;
     if (deltaAU > maxAUError) maxAUError = deltaAU;
