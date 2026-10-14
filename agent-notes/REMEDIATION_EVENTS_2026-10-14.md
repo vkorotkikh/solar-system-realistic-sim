@@ -4,6 +4,8 @@ Worktree: `/home/nomad/ai/projects/worktrees/solar-remediation-20261014-events`.
 Scope: AGN/event engines, display isolation, KBO paused work, source directions and jet consistency.
 No subagents, push, merge, master-tracker edits, backend edits, planet quadtree edits, or solar source/PFSS edits.
 
+Latest follow-up: both `agnShockwaveEngine.ts` and `smbhPropagation.ts` have zero strict diagnostics. The separate SCN-025 follow-up below was verified with the pinned Node 22.23.2/npm 10.9.8 toolchain and 51 passing focused tests. Initial event remediation is commit `32da51b`.
+
 ## Issue status
 
 | Requirement | Status and evidence | Fixed files |
@@ -16,7 +18,7 @@ No subagents, push, merge, master-tracker edits, backend edits, planet quadtree 
 | SCN-067 | Fixed and lifecycle tested. Both grids start hidden, skip animation while hidden, expose reset paths, and are reset at event replacement/end/reset/disposal. Warp visibility follows H29 state. Event cleanup is synchronous with the event clock, replacing the unmanaged wall timer. Disposal hides and detaches meshes. The warp front's extra factor of 180 was removed so its distance conversion agrees with the engine. SCN-042 plane geometry remains outside scope. | `src/frontend/features/solar/gravitationalWaves.ts`, `src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts`, `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`, `src/sunController.ts` |
 | SCN-068 | Fixed and directly tested. `metricFrameDragPeak(1, 1e54)` no longer throws and equals the explicit Sgr A* mass invocation. Missing `SGR_A` import/TS2304 removed. | `src/frontend/features/superluminal-modeling/smbhPropagation.ts` |
 | SCN-069 | Fixed with cited catalog inputs and explicit model assumptions. A single coordinate table supplies both catalog and engine directions in the canonical mean-ecliptic J2000 frame. Independent inverse-rotation tests recover all four cited RA/Dec values. M87 intrinsic beta is derived from an explicitly illustrative 6.3 c apparent speed and assumed 15-degree inclination, not claimed as a measured bulk speed. Cen A intrinsic knot speeds are derived consistently from its cited apparent speeds at an assumed 15 degrees. Sgr A* and Maffei jet parameters remain hypothetical. | `src/frontend/features/superluminal-modeling/sourceCoordinates.ts`, `src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts`, `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`, event status in `src/main.ts` |
-| SCN-025, events contribution | Explicit engine contracts added for sources, presets/options, renderer/responder callbacks, physics/display timelines/channels and stochastic arrays. Engine strict diagnostics reduced from 50 to zero. No added `any`, suppression or compiler relaxation. Full repository strict compilation still has legacy errors outside this cleanup; this is not a full SCN-025 closure. | `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`, stochastic array in `src/frontend/features/superluminal-modeling/smbhPropagation.ts` |
+| SCN-025, events contribution | Both owned modules are now strict-clean. Initial engine cleanup removed 50 diagnostics; the separate follow-up removes the 79 propagation diagnostics still present after `32da51b` (which had already removed two of the original 81). Shared source, discriminated channel, scenario, H29 metadata, metric peak, stochastic flare and complete timeline interfaces replace implicit types. No added `any`, suppression, excludes or compiler relaxation. Full repository strict-zero still requires integration with the other owners. | `src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts`, `src/frontend/features/superluminal-modeling/smbhPropagation.ts`, `src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts`, `src/frontend/features/superluminal-modeling/smbhTypes.ts` |
 
 ## Motion and scientific-state decisions
 
@@ -26,7 +28,7 @@ No subagents, push, merge, master-tracker edits, backend edits, planet quadtree 
 - Source direction means the line from the Sun toward the source, not the jet orientation. Source ICRS coordinates are rotated into the same fixed ecliptic axes as canonical positions. No observer parallax, aberration, of-date precession, or source proper-motion correction is claimed.
 - Removing the observer-frame switch preserves the already integrated radial-front timing fix. Transverse apparent speed does not rescale a radial front's arrival at the observer.
 
-## Reproduction and exact validation
+## Initial remediation reproduction and validation (32da51b)
 
 The initial focused run, before production repairs, failed all 19 tests for the intended defects: mutated canonical/worker coordinates, repeated buffer dirties, ineffective presets, missing default mass import, lost stochastic-window time, initially visible grids, timer-dependent cleanup, wrong source directions, inconsistent beta and wall-clock motion during pause. The controller background-flare test emitted zero flares before the fix.
 
@@ -94,3 +96,42 @@ Sources consulted 2026-10-14. Values below are catalog inputs or explicitly labe
 - SCN-042 wrong-plane geometry is expressly unmodified. Source vectors use canonical ecliptic axes, but this report does not claim that separate grid-plane issue is closed.
 - H29 remains a hypothetical educational display. No optional provider capture, observational validation of H29, or missing runtime/hardware check is marked passing.
 - No code blocker remains in the assigned event requirements. Pinned-runtime reproduction, browser observation and full integration are outstanding controller checks.
+
+## Separate SCN-025 propagation follow-up
+
+The pinned runtime is available and was used for this follow-up: Node v22.23.2 and npm 10.9.8 from `/tmp/solar-remediation-toolchain-20261014/node_modules/`. No dependency installation was needed.
+
+Changes:
+
+- `smbhTypes.ts` defines the source inputs, scenario options, complete multi-messenger timeline, channel propagation variants, H29 metadata, metric peak and stochastic flare interfaces.
+- `smbhPropagation.ts` has explicit numerical inputs/returns and structured inputs/outputs. Energy-dependent channels require `referenceEnergyEV` through the discriminated channel type. Existing scientific equations, fallback values and runtime schedules are unchanged.
+- `smbhPhysicsConstants.ts` checks source and channel catalogs with `satisfies`, preserving their inferred catalog details while validating the model contracts.
+- `agnShockwaveEngine.ts` consumes the shared physics/channel/flare interfaces. It remains at zero strict diagnostics.
+- `smbhPropagation.types.test.ts` checks public type signatures and exercises custom sources without optional field/jet estimates, both scenarios and non-default numerical parameters.
+- `sunController.events.test.ts` installs the deterministic RNG before engine construction. The initial pinned run exposed this pre-existing test-fixture ordering problem: `advances background flares with no foreground event` observed four callbacks instead of one because the engine had already captured the original random function. The fix is in the fixture; runtime behavior was not altered.
+
+Strict diagnostic evidence: immediately before this follow-up, the engine had 0 and propagation had 79 errors. Afterward both have 0. Full worktree strict diagnostics fall from 163 to 84. Those 84 errors are outside these owned modules and reflect this worktree's pre-integration versions of other owners' files; full `npm run typecheck` still exits 2 here. No file exclusion or settings change was used.
+
+Exact pinned-toolchain focused test command:
+
+```sh
+PATH=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH /tmp/solar-remediation-toolchain-20261014/node_modules/node/bin/node /tmp/solar-remediation-toolchain-20261014/node_modules/npm/bin/npm-cli.js test -- src/frontend/features/superluminal-modeling src/frontend/features/asteroids/kuiperPaused.test.ts src/sunController.events.test.ts src/sunController.test.ts src/sim/solarSystemModel.test.ts src/workers/modelWorker.events.test.ts src/workers/modelWorkerContract.test.ts
+```
+
+Result: exit 0, **51 passed / 10 files**, 1.42 seconds. The first pinned run before repairing the RNG fixture was 50 passed / 1 failed; no failure is omitted from this report.
+
+Explicit strict compilation of both owned modules, their dependencies and the new type-contract tests, with the repository's strict compiler settings:
+
+```sh
+/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin/node node_modules/typescript/bin/tsc --strict --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2022,DOM,DOM.Iterable --types vite/client --isolatedModules --resolveJsonModule src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts src/frontend/features/superluminal-modeling/smbhPropagation.ts src/frontend/features/superluminal-modeling/smbhPropagation.types.test.ts
+```
+
+Result: **exit 0, zero diagnostics**. This targeted compiler invocation validates the new compile-time assertions; Vitest alone does not typecheck them.
+
+```sh
+PATH=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH /tmp/solar-remediation-toolchain-20261014/node_modules/node/bin/node /tmp/solar-remediation-toolchain-20261014/node_modules/npm/bin/npm-cli.js run typecheck:ratchet
+```
+
+Result: exit 0, **84/226 legacy diagnostics**, no new or enlarged diagnostic buckets. `git diff --check` also exits 0.
+
+Next action: controller integrates this separate follow-up after `32da51b` alongside the other strict-cleanup branches, then runs the repository-wide strict-zero gate. No `main.ts` edit is included in this follow-up. No code blocker remains for either owned module. Browser/GPU captures and full integration gates remain unperformed here; this type-only production change does not add scientific claims or replace the provenance above.
