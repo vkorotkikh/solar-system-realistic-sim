@@ -1,7 +1,7 @@
 """The report writer must never silently destroy an existing file.
 
-`POST /benchmark/accuracy/report` is unauthenticated and writes into a
-directory of hand-written notes, so overwriting is opt-in only.
+`POST /benchmark/accuracy/report` writes into a directory of hand-written
+notes. Network authentication or direct-loopback trust does not imply overwrite.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from benchmark import generate_accuracy_report
 from data.bodies import ALL_BODIES
 from server import app
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000))
 
 SENTINEL = "# hand-written note\n\nDo not destroy me.\n"
 

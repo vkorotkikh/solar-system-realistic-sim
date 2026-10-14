@@ -6,7 +6,7 @@ import server
 from mission import MissionPlannerAgent
 from server import app
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000))
 
 
 def test_set_julian_date_requires_the_engine_time_scale() -> None:

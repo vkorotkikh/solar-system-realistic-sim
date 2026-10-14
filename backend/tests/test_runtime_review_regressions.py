@@ -91,7 +91,7 @@ def test_failed_mutating_seek_latches_before_another_step_or_resume():
     assert engine.seeks == [2451546.0]
     assert engine.steps == [], "a partially mutated engine must not keep integrating"
     assert runner.paused
-    assert "checkpoint restore" in runner._runtime_error
+    assert runner._runtime_error == "Epoch seek failed."
     assert runner.get_response()["code"] == "runtime_error"
     assert runner.get_response()["code"] == "engine_unavailable"
 
@@ -149,7 +149,7 @@ def test_kuiper_snapshot_failure_is_fatal_in_the_same_published_frame():
     runner._loop()
     state = runner.get_latest_state()
     assert state["paused"] is True
-    assert "particle snapshot unavailable" in state["backend"]["runtime_error"]
+    assert state["backend"]["runtime_error"] == "Kuiper state failed."
 
 
 def test_stop_still_joins_when_engine_cancellation_hook_raises():
@@ -396,7 +396,7 @@ def test_initial_snapshot_failure_is_a_structured_init_error(monkeypatch, failur
     configure_session(monkeypatch, engine)
     asyncio.run(server.simulation_websocket(Socket()))
     assert messages[0]["code"] == "engine_init_failed"
-    assert failure in messages[0]["message"]
+    assert messages[0]["message"] == "Simulation engine initialization failed."
     assert closed == [1011]
     assert server._ws_sim_active_connections == 0
 
@@ -494,7 +494,7 @@ def test_real_rebound_websocket_recovers_only_read_only_command_failures(monkeyp
     else:
         assert errors == ["runtime_error", "engine_unavailable"]
         assert state["paused"] is True
-        assert "native seek" in state["backend"]["runtime_error"]
+        assert state["backend"]["runtime_error"] == "Epoch seek failed."
         assert invalid_steps == []
 
 

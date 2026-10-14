@@ -33,6 +33,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import logging
 import math
 import queue
 import os
@@ -722,7 +723,7 @@ class _NetworkAuthenticationMiddleware:
 
     async def __call__(self, scope, receive, send) -> None:
         active_config = SOLAR_SECURITY_CONFIG
-        if scope.get("type") != "http" or active_config.profile != "network":
+        if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
 
@@ -730,6 +731,14 @@ class _NetworkAuthenticationMiddleware:
             str(scope.get("method", "")).upper(),
             scope_route_path(scope),
         )
+        if active_config.profile != "network":
+            if route == ("POST", "/benchmark/accuracy/report"):
+                rejection = _local_benchmark_writer_rejection(scope, active_config)
+                if rejection is not None:
+                    await rejection(scope, receive, send)
+                    return
+            await self.app(scope, receive, send)
+            return
         if route in NETWORK_PUBLIC_HTTP_ROUTES:
             await self.app(scope, receive, send)
             return
@@ -1514,6 +1523,55 @@ def _bounded_unique_scope_header(
         return False, None
 
 
+def _local_benchmark_writer_rejection(
+    scope: Mapping[str, Any], config: SolarSecurityConfig,
+) -> JSONResponse | None:
+    """Local writes require a direct loopback peer AND a loopback Host.
+
+    Forwarding headers cannot grant trust. Proxied deployments must select the
+    authenticated network profile, even when their proxy connects via loopback.
+    Run uvicorn with --no-proxy-headers so scope.client remains the socket peer.
+    """
+    valid, host = _bounded_unique_scope_header(scope, b"host", max_bytes=255)
+    peer = scope.get("client")
+    peer_ip = _parse_ip_address(str(peer[0])) if peer else None
+    local_host = False
+    if valid and host and not any(ord(char) <= 32 or ord(char) == 127 for char in host):
+        try:
+            authority = urlsplit("//" + host)
+            hostname = authority.hostname or ""
+            address = _parse_ip_address(hostname)
+            local_host = (
+                not any((authority.username, authority.password, authority.path,
+                         authority.query, authority.fragment))
+                and "%" not in host
+                and (authority.port is None or 1 <= authority.port <= 65535)
+                and (hostname == "localhost" or bool(address and address.is_loopback))
+            )
+        except ValueError:
+            pass
+    forwarded = any(
+        bytes(name).lower() == b"forwarded" or bytes(name).lower().startswith(b"x-forwarded-")
+        for name, _value in scope.get("headers", ())
+    )
+    origin_valid, origin = _bounded_unique_scope_header(scope, b"origin", max_bytes=2048)
+    trusted_origin = origin_valid and (origin is None or origin in config.cors_allowed_origins)
+    # CORS alone controls browser response access, not whether a cross-origin
+    # simple POST causes a write. Check Origin before entering the writer.
+    if not (peer_ip and peer_ip.is_loopback and local_host and trusted_origin) or forwarded:
+        return JSONResponse(status_code=403, headers={"Cache-Control": "private, no-store"}, content={
+            "detail": {"code": "benchmark_writer_local_only", "retryable": False,
+                       "message": "Local report writes require a direct loopback peer, Host, and trusted browser Origin; proxies require the authenticated network profile."},
+        })
+    if config.authentication_required and _authenticated_api_subject_from_scope(scope, config=config) is None:
+        return JSONResponse(status_code=401, headers={
+            "WWW-Authenticate": 'Bearer realm="solar-system-backend"',
+            "Cache-Control": "private, no-store",
+        }, content={"detail": {"code": "authentication_required", "retryable": False,
+                               "message": "Authentication is required for report writes."}})
+    return None
+
+
 def _bounded_unique_request_header(
     request: Request,
     name: bytes,
@@ -2022,6 +2080,14 @@ def _network_websocket_subject(websocket: WebSocket) -> str | None:
     )
 
 
+def _log_operational_failure(event: str, error: BaseException) -> None:
+    # Do not serialize exception messages, URLs, credentials or local paths.
+    # Event identifiers are fixed call-site constants, not request data.
+    logging.getLogger("solar.operational").warning(json.dumps({
+        "event": event, "exception_type": type(error).__name__[:80], "pid": os.getpid(),
+    }, sort_keys=True))
+
+
 def _release_guard_when_work_finishes(
     future: "Future[Any]",
     guard: threading.BoundedSemaphore,
@@ -2067,14 +2133,29 @@ async def _run_owned_thread(
         partial(_release_guard_when_work_finishes, guard=guard)
     )
     future = asyncio.wrap_future(worker_future)
+    detached = False
+
+    def observe_completion(completed: asyncio.Future) -> None:
+        # shield leaves this asyncio Future alive after its caller leaves.
+        # Observing only the concurrent Future does not consume its exception.
+        if not completed.cancelled():
+            error = completed.exception()
+            if error is not None and detached:
+                _log_operational_failure("detached_worker_failed", error)
+
+    future.add_done_callback(observe_completion)
     try:
         return await asyncio.wait_for(
             asyncio.shield(future),
             timeout=timeout_seconds,
         )
     except (asyncio.TimeoutError, asyncio.CancelledError):
+        detached = True
         if owner_cancel_event is not None:
             owner_cancel_event.set()
+        # cancel() succeeds only before execution starts. Its done callback
+        # releases queued-work admission; a live worker keeps its permit.
+        worker_future.cancel()
         raise
 
 
@@ -2779,26 +2860,26 @@ def _ensure_bodies_known(*body_ids: tuple[str, str]) -> None:
 
 def _resolve_benchmark_report_path(output_path: str | None, default_filename: str) -> Path:
     requested = output_path if output_path is not None else default_filename
-    candidate = Path(requested)
-
-    if candidate.is_absolute():
-        resolved = candidate.resolve(strict=False)
-    else:
-        if candidate.parts and candidate.parts[0] == BENCHMARK_REPORTS_DIR.name:
-            resolved = (PROJECT_ROOT / candidate).resolve(strict=False)
-        else:
-            resolved = (BENCHMARK_REPORTS_DIR / candidate).resolve(strict=False)
-
     try:
+        candidate = Path(requested)
+        if candidate.is_absolute():
+            resolved = candidate.resolve(strict=False)
+        else:
+            if candidate.parts and candidate.parts[0] == BENCHMARK_REPORTS_DIR.name:
+                resolved = (PROJECT_ROOT / candidate).resolve(strict=False)
+            else:
+                resolved = (BENCHMARK_REPORTS_DIR / candidate).resolve(strict=False)
         resolved.relative_to(BENCHMARK_REPORTS_DIR)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"`output_path` must resolve under `{BENCHMARK_REPORTS_DIR}`",
+    except (ValueError, OSError, RuntimeError) as exc:
+        raise _trajectory_http_exception(
+            400, "invalid_report_path",
+            "`output_path` must resolve under the configured reports directory.",
         ) from exc
 
     if resolved.suffix.lower() != ".md":
-        raise HTTPException(status_code=400, detail="`output_path` must use a `.md` extension")
+        raise _trajectory_http_exception(
+            400, "invalid_report_path", "`output_path` must use a `.md` extension",
+        )
 
     return resolved
 
@@ -2953,6 +3034,8 @@ class AccuracyReportRequest(StrictRequestModel):
     def _validate_output_path(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if len(value) > 4096 or any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError("must contain at most 4096 characters and no control characters")
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("must be a non-empty string when provided")
@@ -4144,7 +4227,10 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
     try:
         provider = _normalize_ephemeris_provider(ephemeris_provider)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"`ephemeris_provider` {exc}") from exc
+        raise _trajectory_http_exception(
+            400, "invalid_ephemeris_provider",
+            "`ephemeris_provider` must be auto, spice, horizons, or kepler.",
+        ) from exc
 
     _enforce_trajectory_remote_search_policy(provider, "benchmark")
     if not _acquire_nonblocking(_benchmark_concurrent_guard):
@@ -4181,8 +4267,6 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
         raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
     except EphemerisError as exc:
         raise _ephemeris_http_exception(exc) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except asyncio.TimeoutError as exc:
         planning_context.cancel("endpoint_timeout")
         raise _trajectory_http_exception(
@@ -4190,6 +4274,11 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
             "benchmark_deadline_exceeded",
             "Trajectory benchmark exceeded its endpoint deadline.",
             context=planning_context.snapshot(),
+        ) from exc
+    except Exception as exc:
+        _log_operational_failure("benchmark_failed", exc)
+        raise _trajectory_http_exception(
+            500, "benchmark_failed", "The benchmark could not be completed.",
         ) from exc
 
 
@@ -4216,7 +4305,7 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
     )
 
     try:
-        return await _run_request_owned_thread(
+        result = await _run_request_owned_thread(
             request,
             generate_accuracy_report,
             ALL_BODIES,
@@ -4229,8 +4318,13 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
             owner_context=planning_context,
         )
+        # Public paths are logical report names, not server filesystem layout.
+        return {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
     except FileExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _trajectory_http_exception(
+            409, "benchmark_report_exists",
+            "Report already exists; set `allow_overwrite` to true to replace it.",
+        ) from exc
     except PlanningDeadlineExceeded as exc:
         raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
     except PlanningBudgetExceeded as exc:
@@ -4239,8 +4333,6 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
         raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
     except EphemerisError as exc:
         raise _ephemeris_http_exception(exc) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except asyncio.TimeoutError as exc:
         planning_context.cancel("endpoint_timeout")
         raise _trajectory_http_exception(
@@ -4248,6 +4340,11 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             "benchmark_deadline_exceeded",
             "Trajectory benchmark report exceeded its endpoint deadline.",
             context=planning_context.snapshot(),
+        ) from exc
+    except Exception as exc:
+        _log_operational_failure("benchmark_report_failed", exc)
+        raise _trajectory_http_exception(
+            500, "benchmark_report_failed", "The benchmark report could not be generated.",
         ) from exc
 
 
@@ -4288,7 +4385,8 @@ class SimulationRunner:
                 cancel_pending()
             except Exception as exc:
                 # A failed cancellation hook is not proof that its worker died.
-                self._latch_runtime_error(f"Engine cancellation failed: {exc}")
+                _log_operational_failure("engine_cancellation_failed", exc)
+                self._latch_runtime_error("Engine cancellation failed.")
         if self._thread.ident is None:
             return True
         self._thread.join(timeout=3)
@@ -4364,7 +4462,8 @@ class SimulationRunner:
         except Exception as exc:
             # Telemetry/normalization can fail too. Never leave a dead worker
             # advertising its last healthy snapshot as current simulation data.
-            self._latch_runtime_error(f"Simulation worker failed: {exc}")
+            _log_operational_failure("simulation_worker_failed", exc)
+            self._latch_runtime_error("Simulation worker failed.")
             with self._state_lock:
                 self._latest_state = None
         finally:
@@ -4392,8 +4491,9 @@ class SimulationRunner:
                 except Exception as exc:
                     if not self.running:
                         break
+                    _log_operational_failure("command_failed", exc)
                     self._push_error(
-                        f"Command handling failed: {exc}",
+                        "Command handling failed.",
                         action=cmd.get("type", "") if isinstance(cmd, dict) else "",
                         code="command_failed",
                     )
@@ -4416,7 +4516,8 @@ class SimulationRunner:
                     if self.kuiper.active:
                         self.kuiper.step(dt_days)
                 except Exception as exc:
-                    self._latch_runtime_error(f"Simulation step failed: {exc}")
+                    _log_operational_failure("simulation_step_failed", exc)
+                    self._latch_runtime_error("Simulation step failed.")
 
             # ── Build state ───────────────────────────────────────────
             raw_state = self.engine.get_state()
@@ -4431,7 +4532,8 @@ class SimulationRunner:
                 try:
                     kuiper_particles = self.kuiper.get_state()
                 except Exception as exc:
-                    self._latch_runtime_error(f"Kuiper state failed: {exc}")
+                    _log_operational_failure("kuiper_state_failed", exc)
+                    self._latch_runtime_error("Kuiper state failed.")
 
             state = attach_runtime_telemetry(
                 normalized_state,
@@ -4530,7 +4632,8 @@ class SimulationRunner:
                     # before failing. Unlike request validation/read-only
                     # commands, it has no atomic rollback guarantee.
                     if self.running:
-                        self._latch_runtime_error(f"Epoch seek failed: {exc}")
+                        _log_operational_failure("epoch_seek_failed", exc)
+                        self._latch_runtime_error("Epoch seek failed.")
                     return
             if self.kuiper.active:
                 self.kuiper.deactivate()
@@ -4909,10 +5012,11 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         initial_body_ids = engine.list_body_ids()
         initial_jd = engine.get_julian_date()
     except Exception as exc:
+        _log_operational_failure("engine_init_failed", exc)
         await _ws_send_text(websocket, json.dumps({
             "type": "error",
             "code": "engine_init_failed",
-            "message": str(exc),
+            "message": "Simulation engine initialization failed.",
         }))
         await _ws_close(websocket, code=1011)
         return
@@ -4930,6 +5034,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
     runner = SimulationRunner(engine, target_fps=target_fps)
     tasks: list[asyncio.Task] = []
+    session_failed = False
     try:
         runner.start()
 
@@ -4971,9 +5076,25 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     except Exception as exc:
-        print(f"[ws/sim] error: {exc}")
+        _log_operational_failure("websocket_session_failed", exc)
+        session_failed = True
     finally:
         await _ws_cleanup_runner(runner, tasks)
+
+    if session_failed:
+        # The stream sender is gone before terminal delivery. Both attempts
+        # have transport deadlines; a broken socket must not skip cleanup.
+        try:
+            await _ws_send_text(websocket, json.dumps({
+                "type": "error", "code": "websocket_session_failed",
+                "message": "Simulation session failed.",
+            }))
+        except Exception:
+            pass
+        try:
+            await _ws_close(websocket, code=1011, reason="Simulation session failed")
+        except Exception:
+            pass
 
 
 @app.websocket("/ws/sim")

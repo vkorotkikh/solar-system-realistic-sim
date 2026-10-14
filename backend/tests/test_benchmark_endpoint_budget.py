@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import server
 
 
-client = TestClient(server.app, raise_server_exceptions=False)
+client = TestClient(server.app, base_url="http://localhost", client=("127.0.0.1", 50000), raise_server_exceptions=False)
 
 
 def _minimal_summary(context) -> dict:
