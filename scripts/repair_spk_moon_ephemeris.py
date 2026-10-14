@@ -102,6 +102,7 @@ def source_75052():
         if OFFLINE: raise FileNotFoundError('Missing pinned native fitting inputs')
         print('Capturing independent 75052 fitting windows:',len(epochs),'states; byte budget',uranus.BYTE_BUDGET,flush=True)
         captured=uranus.capture()
+        cache.parent.mkdir(parents=True,exist_ok=True)
         cache.write_text(json.dumps(captured,separators=(',',':'))+'\n')
     print('75052 original SPK bytes:',captured['downloadedBytes'],flush=True)
     rows=evaluate_captured_epochs(captured,epochs)
@@ -188,7 +189,6 @@ def generate(identifier):
             'positionErrorKm':fit.stats(pe),'velocityErrorMPerS':fit.stats(ve),
             'vectorOracle':{'sampleCount':len(oracle),'positionErrorKm':fit.stats(ope),'velocityErrorMPerS':fit.stats(ove)},
             'boundaryContinuity':{'runtimeStateContinuous':True,'method':'analytic derivative of smooth cross-fade'}}
-        (CACHE/f"{fit.quote(moon['name'].lower(),safe='')}.model.json").write_text(json.dumps(body,separators=(',',':'),allow_nan=False)+'\n')
         print('PASS',moon['name'],flush=True)
         return body
     raise RuntimeError('Native fitting candidate failed the fixed position/velocity budgets')
@@ -198,14 +198,17 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target',type=int,choices=[635,75052],required=True)
     parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--cache-candidate',action='store_true',
+                        help='Explicitly publish the generated candidate in the local cache')
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--write',action='store_true')
     mode.add_argument('--check',action='store_true')
     args=parser.parse_args()
     OFFLINE=args.offline
-    CACHE.mkdir(parents=True,exist_ok=True)
-    tempfile.tempdir=str(CACHE)
     body=generate(args.target)
+    if args.cache_candidate:
+        from generate_moon_repairs import encoded,publish
+        publish(CACHE/f"{fit.quote(body['name'].lower(),safe='')}.model.json",encoded(body))
     if args.write or args.check:
         from generate_moon_repairs import encoded,publish
         key=body['name'].lower()
