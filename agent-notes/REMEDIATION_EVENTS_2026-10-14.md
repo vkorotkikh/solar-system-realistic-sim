@@ -135,3 +135,97 @@ PATH=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH /tmp/
 Result: exit 0, **84/226 legacy diagnostics**, no new or enlarged diagnostic buckets. `git diff --check` also exits 0.
 
 Next action: controller integrates this separate follow-up after `32da51b` alongside the other strict-cleanup branches, then runs the repository-wide strict-zero gate. No `main.ts` edit is included in this follow-up. No code blocker remains for either owned module. Browser/GPU captures and full integration gates remain unperformed here; this type-only production change does not add scientific claims or replace the provenance above.
+
+## SCN-042 follow-up: independent frame / projection / hardware shader oracle
+
+This section supersedes the earlier statement that SCN-042 was outside the completed event remediation. The follow-up is based on `17b9d694ddc69caae4d948348477905884248534`; it is a separate commit after the strict SMBH contracts change. No app UI, `main.ts`, controller hardware-probe scripts, asteroid shaders, planetary geometry, backend, master tracker, or general solar/PFSS source was edited.
+
+### Status and root cause
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| SCN-042 canonical ecliptic grid plane | FIXED, numerical + hardware verified | Both factories previously rotated the already-XY `PlaneGeometry` into XZ. Both now retain XY with +Z north. GPU top-view coverage changed from zero pixels to 20,480 GW / 26,176 H29 pixels. |
+| SCN-042 deformation axes | FIXED, hardware verified | GW plus-strain acts on X/Y, illustrative ripple on Z; H29 normal displacement acts on Z. GPU GW extents are 212 x 172 pixels at h=0.1 versus 192 x 192 unperturbed. H29 +1 Z produces -12.5 screen pixels versus the independent -12.8 pixel expectation (raster tolerance <1 pixel). |
+| SCN-042 GW local/world inconsistency | FIXED, hardware verified | Vertex deformation and fragment phase/glow/noise now use the same undeformed local grid coordinates. Moving the parent and camera together previously changed 17.5018% of pixels by >8/255; corrected result is 0.483704%, below the predeclared 0.5% bound. RGB byte MAE falls from 12.5137 to 0.0823975 (bound <0.25). H29 invariance is exact for this fixture. |
+| SCN-042 incoming-front sign | FIXED, hardware verified | The engine's vector is a bearing TO the source, while front distance decreases. The passed side is `dot(localPosition, bearing) > frontDistance`. GW wake/deformation and glow now agree on that sign. Four source-facing glow centroids are +0.6210 to +0.6381 scene units. |
+| SCN-042 cited sky -> scene -> screen oracle | IMPLEMENTED, numerical + hardware verified | Four offline catalog fixtures; independent spherical-coordinate conversion and analytic camera projection; actual GPU marker centroids in top/oblique views. Eight projections have <=0.619175 pixel error against a <1 pixel bound. |
+| SCN-067 lifecycle regression preservation | VERIFIED in follow-up | Both reset grids produce zero lit pixels and zero renderer draw calls in the real browser. |
+| SCN-025 strict typing preservation | VERIFIED in follow-up | Targeted strict compilation includes both owned model/engine files, the new oracle test, and browser TypeScript; exit 0, no diagnostics. No compiler settings, exclusions, or suppressions added. |
+
+The coordinate contract is Sun-centered local J2000 ecliptic: X toward the reference equinox, XY the ecliptic, Z north. Source bearings and front distances are expressed in this same local frame. Parent transforms are presentation transforms only, applied after local deformation. GW grid stretches/ripples and the H29 profile remain exaggerated illustrative graphics, NOT a solved transverse-traceless polarization field, a ray-traced lensing solution, evidence for physical warp propagation, or modifications to canonical orbital state. Existing H29 hypothesis labeling is preserved.
+
+### Fixed and added files
+
+- `src/frontend/features/solar/gravitationalWaves.ts`: XY plane, correct deformation axes, undeformed local varying shared with fragment shader, source-bearing/front-side contract.
+- `src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts`: XY plane, +Z illustrative normal displacement, explicit local source-bearing comments.
+- `src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts`: six numerical/frame tests against literal offline expectations.
+- `scripts/fixtures/agn-sky-j2000.json`: fixed source vectors and two-camera screen coordinates with catalog provenance.
+- `scripts/oracles/generate-agn-sky-fixtures.mjs`: manual, offline fixture generator; imports neither application code nor Three.js. It is NOT run by tests and does not silently update expectations.
+- `scripts/oracles/agn-frame-browser.ts` and `scripts/oracles/agn-frame.html`: isolated fixture exercising the actual production shaders and event-engine source bearings. Reads rendered GPU pixels, not shader source strings or mocked render calls.
+- `scripts/verify-agn-frame-browser.mjs`: dedicated browser profile, isolated random Vite port, actual GPU renderer check, pass/fail exit code, JSON and screenshot artifacts; no dependency/settings changes.
+- `agent-notes/artifacts/events-scn042/{before,after}/{result.json,capture.png}`: persisted baseline and corrected GPU evidence.
+
+### Precise source provenance and independent expectations
+
+References accessed 2026-10-14. Catalog coordinates are input measurements, not output from the production conversion helper:
+
+- [SIMBAD Sagittarius A*](https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Sagittarius+A%2A): ICRS ep=J2000 RA 17h45m40.03599s, Dec -29d00m28.1699s; radio coordinate reference `2011AJ....142...35P`.
+- [SIMBAD Centaurus A / NGC5128](https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NGC5128): ICRS ep=J2000 RA 13h25m27.61521044s, Dec -43d01m08.8050291s; radio reference `2020A&A...644A.159C`.
+- [SIMBAD M87](https://simbad.cds.unistra.fr/simbad/sim-id?Ident=M87): ICRS ep=J2000 RA 12h30m49.42338414s, Dec +12d23m28.0436859s; radio reference `2020A&A...644A.159C`.
+- [NED-1D V2.1](https://ned.ipac.caltech.edu/level5/NED1D/ned1d.html): Maffei 1 host-galaxy J2000 RA 02h36m35.5s, Dec +59d39m18.6s, table columns 8/9. Full-page retrieval failed in the browsing tool; the indexed primary-source table returned these exact coordinates in its Maffei 1 rows. This is host-galaxy precision, not a newly measured SMBH astrometric position.
+- [JPL Horizons reference-frame definitions](https://ssd.jpl.nasa.gov/horizons/manual.html#frames): fixed J2000 IAU76/80 ecliptic obliquity 84381.448 arcsec. No IAU2006/of-date precession, proper motion, aberration, parallax, or apparent-place corrections are claimed.
+- [Three.js WebGLRenderer API](https://threejs.org/docs/pages/WebGLRenderer.html): the browser gate renders real production materials to a WebGL target and reads its pixels through `readRenderTargetPixels`.
+
+Independence: the application rotates Cartesian equatorial components; the fixture generator instead solves ecliptic longitude/latitude using spherical trigonometry, then reconstructs a unit direction. Screen expectations use an explicit analytic camera basis rather than `Vector3.project`, renderer uniforms, or production helpers. The top orthographic camera is at (0,0,20), bounds +/-8; the 60-degree perspective camera is at (0,-12,9), Z-up, looking at the origin, with right=(1,0,0), up=(0,0.6,0.8), back=(0,-0.8,0.6). Viewport is 256 x 256 at DPR 1 and markers lie at four times the unit bearing. Numerical tolerances constrain implementation agreement, not catalog astrometric uncertainty.
+
+### Exact validation commands and results
+
+All commands ran only in `/home/nomad/ai/projects/worktrees/solar-remediation-20261014-events` with pinned Node v22.23.2. No browser or package reinstall was needed.
+
+```sh
+NODE=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin/node
+$NODE scripts/oracles/generate-agn-sky-fixtures.mjs
+$NODE node_modules/vitest/vitest.mjs run src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts
+AGN_ORACLE_OUTPUT=agent-notes/artifacts/events-scn042/before $NODE scripts/verify-agn-frame-browser.mjs
+```
+
+Before production repairs: numerical 4 passed / 2 failed, both failures proving Z=-6 instead of 0 in the grid geometry. GPU 13 passed / 9 failed, exit 1: both plane checks, GW strain axes, all four incoming-front checks, GW local/world invariance, and H29 normal-axis check. Sky projections, hardware identification, lifecycle reset, H29 rigid-transform invariance, and GL/browser-error checks already passed. The four incoming-front baseline cases were occluded by the edge-on wrong plane; their signed assertion also protects the corrected incoming-direction contract, but this baseline alone does not independently isolate the sign error.
+
+```sh
+$NODE node_modules/vitest/vitest.mjs run src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts
+AGN_ORACLE_OUTPUT=agent-notes/artifacts/events-scn042/after $NODE scripts/verify-agn-frame-browser.mjs
+```
+
+After repairs: numerical 6/6 passed in 1.74 seconds; GPU 22/22 checks passed, exit 0, no browser/shader errors, GL error 0. Actual renderer independently queried through `WEBGL_debug_renderer_info`:
+
+```text
+ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)
+WebGL 2.0 (OpenGL ES 3.0 Chromium)
+Chromium 153.0.8010.12; headless=false; DPR=1
+```
+
+The runner imports `/tmp/solar-remediation-toolchain-20261014/node_modules/playwright/index.mjs`, launches `/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome` with `--no-sandbox --ignore-gpu-blocklist --use-gl=angle --use-angle=gl`, preserves the surrounding environment, and supplies `GALLIUM_DRIVER=d3d12`, `MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA`, and `/usr/lib/wsl/lib` prepended to `LD_LIBRARY_PATH`. Missing browser, software renderer, or a renderer not matching the default RTX 5090 expectation fails rather than skips. Paths/expected GPU can be explicitly overridden with `AGN_PLAYWRIGHT_MODULE`, `AGN_CHROMIUM_EXECUTABLE`, and `AGN_EXPECT_GPU` on another qualified host.
+
+The first diagnostic invocation discovered that Vite normalizes configured port 0 to 5173. That baseline used 5173, never controller port 5189. The final runner explicitly chooses a random port in 20000..59999 with strict binding; corrected capture used 35935. Each browser/server was closed after its run. An earlier SSR-only factory diagnostic exited 0 but emitted a Vite dependency-scan shutdown warning; this was not counted as a passing browser gate. The actual dedicated browser gate supplies its own dependency-scan entry and reported no browser errors.
+
+Capture times are 2026-10-14T05:33:30.124Z (before) and 2026-10-14T05:35:49.759Z (after). Both JSON files name baseline HEAD `17b9d69`; the corrected capture tested the uncommitted SCN-042 patch committed alongside these artifacts, not an already-existing `17b9d69` fix. Screenshot SHA-256 values:
+
+```text
+before: 53c74cee79ff3d57c68d915a0681b9d5cade65415e08ea79ff013a2d72c206d1
+after:  af8504c9a56734072a63e9daea10c5392c5f91cd68d8f6033f84e473b3adbaa8
+```
+
+```sh
+$NODE node_modules/typescript/bin/tsc --strict --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2022,DOM,DOM.Iterable --types vite/client --isolatedModules --resolveJsonModule src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts src/frontend/features/superluminal-modeling/smbhPropagation.ts src/frontend/features/superluminal-modeling/agnFrameOracle.test.ts src/frontend/features/superluminal-modeling/smbhPropagation.types.test.ts scripts/oracles/agn-frame-browser.ts
+$NODE node_modules/vitest/vitest.mjs run src/frontend/features/superluminal-modeling src/frontend/features/asteroids/kuiperPaused.test.ts src/sunController.events.test.ts src/sunController.test.ts src/sim/solarSystemModel.test.ts src/workers/modelWorker.events.test.ts src/workers/modelWorkerContract.test.ts
+```
+
+Targeted strict compilation: exit 0, zero diagnostics. Focused event/canonical-state/KBO regression suite: **57 tests across 11 files passed**, exit 0, duration 1.97 seconds. This preserves the previously tested H29 on/off canonical-state invariance and paused KBO behavior. No backend, full integrated frontend suite, whole-project strict-zero gate, or build was rerun in this follow-up; the controller owns integration gates and other branches are not merged into this worktree.
+
+### Limits, unresolved requirements, and next actions
+
+- No external blocker remains for this scoped SCN-042 repair. Real RTX 5090 evidence is now present; the earlier report's missing-browser limitation does not apply to this follow-up.
+- This is an isolated production-shader/event-bearing render gate, not an app UI interaction test, full application camera/controls capture, physical-accuracy validation of illustrative GW/H29 amplitudes, performance benchmark, or multi-GPU portability claim. Accessibility and the controller retain their respective UI and full-app hardware-probe ownership.
+- The rigid-transform tolerance is declared in the harness. Small nonzero GW differences are measured, not hidden; hash/noise interpolation remains sensitive to floating-point rasterization. This capture qualifies only the recorded driver/browser combination.
+- Primary catalog references and JPL frame convention are preserved; no new apparent-speed, source-distance, or H29 scientific evidence is asserted.
+- Next action: controller cherry-picks/merges this separate scoped commit after `17b9d69`, then runs its integrated gates. No push or merge performed by this agent.
