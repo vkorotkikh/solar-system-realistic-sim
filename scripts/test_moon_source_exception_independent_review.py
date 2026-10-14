@@ -1,14 +1,18 @@
 """Independent source/selection review. Rejection failures remain real failures.
 
-Run offline with the pinned backend requirements plus SpiceyPy 8.3.0, then run
-src/sim/moonSourceExceptionIndependentReview.test.ts. No browser or acquisition.
-Only review evidence and pytest temporary files are written.
+The required native lane sets SOLAR_MOON_REVIEW_REQUIRE_NATIVE=1 and runs offline
+with the pinned backend requirements plus SpiceyPy 8.3.0. Optional collection
+without SpiceyPy skips explicitly, never as a scientific pass. Vitest independently
+reads a committed SPK-derived fixture and needs no Python-first artifact.
+Only review evidence and pytest temporary files are written. Set
+SOLAR_MOON_REVIEW_EVIDENCE_DIR to retain an earlier evidence directory unchanged.
 """
 import base64
 import copy
 import gzip
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import socket
@@ -17,7 +21,14 @@ from urllib.parse import parse_qsl, urlencode
 
 import numpy as np
 import pytest
-import spiceypy as spice
+
+if os.environ.get("SOLAR_MOON_REVIEW_REQUIRE_NATIVE") == "1":
+    import spiceypy as spice
+else:
+    spice = pytest.importorskip(
+        "spiceypy",
+        reason="optional native review requires SpiceyPy; skipped is not a scientific pass",
+    )
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -25,7 +36,10 @@ import generate_s2023_s38_ephemeris as vectors
 import repair_spk_moon_ephemeris as native
 from generate_moon_repairs import encoded
 
-EVIDENCE = ROOT / "artifacts/moon-source-independent-review"
+EVIDENCE = Path(os.environ.get(
+    "SOLAR_MOON_REVIEW_EVIDENCE_DIR", str(ROOT / "artifacts/moon-source-independent-review")
+))
+NATIVE_ORACLE = ROOT / "backend/tests/fixtures/daphnis_independent_spk_review_oracle.json"
 AU_KM = 149597870.7
 DAY = 86400.0
 START, END = 2451545.0, 2469807.5
@@ -128,6 +142,11 @@ def original_native(tmp_path_factory):
 
 def test_original_native_descriptors_and_legacy_qualification(original_native):
     oracle, raw, capture = original_native
+    fixture_bytes = NATIVE_ORACLE.read_bytes()
+    assert json.loads(fixture_bytes) == oracle
+    assert fixture_bytes == (json.dumps(oracle, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    assert len(oracle["rows"]) == 212 and oracle["freshRandomEpochs"] == 192
+    assert oracle["kernelSha256"] == capture["sha256"] == digest(raw)
     body = json.loads((ROOT / "src/data/moonEphemerisDaphnis.json").read_bytes())["bodies"]["daphnis"]
     assert body["sourceDiscontinuities"] == [row["jdTdb"] for row in oracle["handoffs"]]
     assert body["sourceDomain"]["descriptorCoverageJd"] == oracle["descriptorCoverageJd"]
