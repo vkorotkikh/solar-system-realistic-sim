@@ -17,7 +17,14 @@
 
 import moonCatalog from '../data/moons.json';
 
-const MOON_IDENTITIES = new Map(moonCatalog.map(moon => [moon.name.toLowerCase(), moon]));
+let moonIdentities: Map<string, (typeof moonCatalog)[number]> | undefined;
+
+// Keep catalog validation behind the parser. Propagation-only workers must not
+// retain the catalog merely because they import this module's numerical helpers.
+function moonIdentityFor(bodyId: string) {
+  moonIdentities ??= new Map(moonCatalog.map(moon => [moon.name.toLowerCase(), moon]));
+  return moonIdentities.get(bodyId);
+}
 const PARENT_CENTERS: Record<string, string> = {
   Earth: '399', Mars: '499', Jupiter: '599', Saturn: '699', Uranus: '799', Neptune: '899', Pluto: '999'
 };
@@ -205,7 +212,7 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     if (provenance.frame !== 'ECLIPJ2000' || provenance.timeScale !== 'TDB') {
       throw new Error(`${context} has an incompatible frame or time scale`);
     }
-    const identity = MOON_IDENTITIES.get(bodyId);
+    const identity = moonIdentityFor(bodyId);
     if ((identity && (provenance.targetId !== String(identity.iauCode) ||
         provenance.centerId !== PARENT_CENTERS[identity.planet])) ||
         (untypedBody.targetId !== undefined && untypedBody.targetId !== provenance.targetId)) {
