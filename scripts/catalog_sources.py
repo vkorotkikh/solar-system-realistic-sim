@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import tempfile
 from pathlib import Path
 from urllib.parse import urlencode
@@ -50,14 +51,16 @@ class SourceStore:
 
 
 def publish_file(path: Path, content: bytes) -> None:
-    """One fsynced file, atomically replaced; failure leaves the old file intact."""
+    """Atomically replace a fsynced artifact, retaining mode; new public files are 0644."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() and not path.is_symlink() else 0o644
     with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", delete=False) as stream:
         temporary = Path(stream.name)
         try:
             stream.write(content)
             stream.flush()
+            os.chmod(temporary, mode)
             os.fsync(stream.fileno())
         except BaseException:
             temporary.unlink(missing_ok=True)
