@@ -757,8 +757,8 @@ def generate_accuracy_report(
     path = Path(output_path)
 
     # Refuse to clobber an existing report unless the caller explicitly opts in.
-    # This endpoint is unauthenticated, and its target directory holds
-    # hand-written notes; silently replacing a file there destroys user data.
+    # Its target directory holds hand-written notes; authentication or local
+    # trust does not authorize silently replacing those files.
     # Check before benchmarking so a rejected call costs no work. Include
     # dangling symlinks, which Path.exists() alone deliberately ignores.
     if not allow_overwrite and (path.exists() or path.is_symlink()):
