@@ -349,3 +349,66 @@ For controller native Pluto work: gm_de440.tpc gives BODY999_GM =
 869.6138177608748 km^3/s^2, separately from BODY9_GM = 975.5 km^3/s^2.
 Supplying the correct GM does not supply a missing 999 body-center SPK segment;
 do not silently substitute the Pluto-system barycenter trajectory.
+
+## Neso / S2021_N1 independent identity review checkpoint
+
+Concern: both reported seven-epoch maxima round to 91.833144 km. Verified without
+changing either saved reference or either fitted trajectory:
+
+- Neso is catalog 416 / JPL 813; S2021_N1 is catalog 418 / JPL 85052. Actual source
+  and fresh VECTORS response headers identify these distinct targets, both
+  relative to Neptune 899, ECLIPJ2000, TDB, geometric states.
+- Fresh live seven-epoch VECTORS queries for both targets exactly reproduce their
+  own prior oracle arrays. Their reference arrays, raw response hashes, source
+  and held-out row hashes, coefficient arrays, and runtime catalog IDs differ.
+- Actual runtime lookup attaches Neso to fitted `neso` and S2021_N1 to fitted
+  `s2021_n1`; direct runtime propagation passes all fourteen fresh-reference
+  comparisons under the original 500 km / 10 m/s limits.
+- Unrounded maxima: Neso 91.833143799535 km; S2021_N1 91.83314385889636 km.
+  Their residual vectors agree within 0.000003 km across these epochs.
+- A separate real Horizons capture of Neptune 899 relative to barycenter 8,
+  projected through the same linear fitting basis, reproduces the shared error
+  to within 0.050429 km and 0.000632 m/s. This supports attribution to unresolved
+  common fast parent-center motion rather than swapped moon identities. It is
+  an attribution diagnostic, not a relaxation of scientific tolerances, and
+  does not claim exact equivalence of every underlying provider kernel.
+- Pinned provider result UTF-8 bytes are gzip/base64 encoded with SHA-256 in
+  backend/tests/fixtures/neptune_moon_identity_capture.json (422,010 bytes).
+  Original HTTP-response hashes are recorded separately; result-text hashes
+  are the offline-reproducible hashes. No existing reference values changed.
+
+Commands and results:
+
+- `PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC uv run --python 3.12 --with-requirements ci/backend-test-requirements.txt python scripts/verify_neptune_moon_identity.py`
+  Passed distinct identity, fresh/original reference equality, byte integrity,
+  and separate parent-motion attribution checks.
+- `npx vitest run src/sim/moonCatalogIdentity.horizons.test.ts --reporter=dot`
+  Three passed, including runtime object identity and fourteen independent state
+  comparisons. No new trajectory coefficients were produced by these tests.
+- Exact raw source/held-out response chunks were located for all six shipped
+  repairs and parsed with target/center/frame validation. Recomputed combined
+  row hashes match all twelve sourceRowsSha256 / heldOutRowsSha256 fields.
+  Manifest: SCN043_SIX_BODY_SOURCE_AUDIT_2026-10-14.json.
+
+Measured six-body source-pinning sizes, including held-out and endpoint evidence:
+24 raw API-response blobs = 83,965,226 bytes; independently gzip-compressed blobs
+= 27,266,758 bytes. Lossless little-endian float64 normalization of the exact eight
+ElementRow fields totals 15,780,288 bytes raw / 12,982,334 bytes gzip, excluding the
+small query/header/hash manifest. These compact inputs were measured, not yet
+committed or claimed as an implemented offline generator. The response text and
+normalized-row digests remain distinct provenance concepts.
+
+Reproduction plan before integrating the six additions: restore the canonical
+four-body artifact byte-for-byte to the catalog agent's output; keep the six
+repairs in a separate versioned extension artifact; pin lossless numeric inputs
+plus original response hashes, verified headers, query grids, capture provenance,
+and held-out records; make the extension generator deterministic with an offline
+byte-comparison gate. Preserve the four-body generator's complete-file check.
+The six-body extension is approximately 0.51 MB, unlike the full cached set's
+62,461,728-byte JSON / 29,098,129-byte gzip payload. No full-payload promotion is
+approved or performed in this checkpoint.
+
+Remaining work is running: bounded 75052 native fitting capture; denser 3-hour
+source/held-out cadence for Amalthea and Methone, then 2-day Nereid cadence.
+S2023_S38's non-elliptic provider states and Daphnis's source discontinuities still
+need explicit model treatment. All 424 catalog records remain in the denominator.
