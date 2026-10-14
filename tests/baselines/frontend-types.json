@@ -1,0 +1,567 @@
+{
+  "commit": "5be8696db4008bc969d09c3cbd258ba911580a07",
+  "tree": "923f84007b3268036e0b20e3ee190852f92df21a",
+  "typescript": "5.9.3",
+  "diagnostics": [
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'deg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'channel' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'gwDisplayer' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'solarResponder' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7034|Variable 'currentTimeline' implicitly has type 'any' in some locations where its type cannot be determined.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7034|Variable 'currentPhysics' implicitly has type 'any' in some locations where its type cannot be determined.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7034|Variable 'shutdownTimer' implicitly has type 'any' in some locations where its type cannot be determined.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7034|Variable 'stochasticFlares' implicitly has type 'any[]' in some locations where its type cannot be determined.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005|Variable 'shutdownTimer' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ gw: number; em: number; neutrino: number; uhecr: number; cr_tsunami: number; alfven: number; metric_slipstream: number; blast: number; }'.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'elapsedFraction' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'physics' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'impactTimeSec' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'ch' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'c' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'mx' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'hypothesis' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'scenario' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7053|Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Readonly<{ SagittariusA: Readonly<{ key: \"SagittariusA\"; label: \"Sagittarius A*\"; galaxy: \"Milky Way\"; type: \"quiescent SMBH\"; massMsun: 4154000; massG: number; distanceKpc: 8.178; distanceCm: number; distanceLy: 26673; ... 16 more ...; direction: number[]; }>; CentaurusA: Readonly<...>; Maffei1: Readonly<...>; M87:...'.\n  No index signature with a parameter of type 'string' was found on type 'Readonly<{ SagittariusA: Readonly<{ key: \"SagittariusA\"; label: \"Sagittarius A*\"; galaxy: \"Milky Way\"; type: \"quiescent SMBH\"; massMsun: 4154000; massG: number; distanceKpc: 8.178; distanceCm: number; distanceLy: 26673; ... 16 more ...; direction: number[]; }>; CentaurusA: Readonly<...>; Maffei1: Readonly<...>; M87:...'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'preset' does not exist on type '{}'.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Readonly<{ SgrA_CurrentFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; SgrA_SuperFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; ... 6 more ...; SgrA_WarpWave_H29: { ...; }; }>'.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'energyErg' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'thetaObsDeg' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS2339|Property 'sourceHypothesis' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7053|Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ SagittariusA: Vector3; CentaurusA: Vector3; Maffei1: Vector3; M87: Vector3; }'.\n  No index signature with a parameter of type 'string' was found on type '{ SagittariusA: Vector3; CentaurusA: Vector3; Maffei1: Vector3; M87: Vector3; }'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter '_enabled' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'enabled' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7006|Parameter 'dtSec' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005|Variable 'stochasticFlares' implicitly has an 'any[]' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005|Variable 'currentTimeline' implicitly has an 'any' type.",
+      4
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts|TS7005|Variable 'currentPhysics' implicitly has an 'any' type.",
+      6
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'value' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'input' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'energyErg' implicitly has an 'any' type.",
+      8
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'source' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'thetaObsRad' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'lightTravelTimeSec' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'arrivalTimeSec' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'propagation' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'h29' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ lightspeed: number; near_ballistic: number; diffusive: number; alfven: number; sedov_taylor: number; }'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2304|Cannot find name 'SGR_A'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'densityCgs' implicitly has an 'any' type.",
+      8
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'timeSec' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'distanceCm' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'energyEV' implicitly has an 'any' type.",
+      4
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'chargeZ' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'bFieldG' implicitly has an 'any' type.",
+      6
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'betaShock' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'bFieldMicroG' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'radiusKpc' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'nCrOverNi' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'ionDensityCgs' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'vDriftCmS' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'vAlfvenCmS' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'temperatureK' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'beta' implicitly has an 'any' type.",
+      5
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'thetaRad' implicitly has an 'any' type.",
+      4
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'lorentzGamma' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'pressureFactor' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'blastVelocityCmS' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'hPeak' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'energyGW_erg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'strain' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'baselineCm' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'pathLengthCm' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2339|Property 'scenario' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2339|Property 'mode' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2339|Property 'hypothesis' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS2339|Property 'model' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'years' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/superluminal-modeling/smbhPropagation.ts|TS7006|Parameter 'durationSec' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'model' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'fromId' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'toId' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'departureJd' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'route' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'objective' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'bodyById' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'options' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS2339|Property 'score' does not exist on type '{ bodyRoute: any[]; legs: { fromId: any; toId: any; departureJd: any; arrivalJd: any; tofDays: number; pathLengthAu: any; pathMetric: string; approximateTransferArcLengthAu: number; transferSemiMajorAu: number; deltaVDepartureKmS: number; deltaVArrivalKmS: number; startPosition: any; endPosition: any; }[]; ... 9 mor...'.",
+      3
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'leg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'bodyId' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/features/trajectory/localPlanner.ts|TS7006|Parameter 'assist' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'bodyId' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'profile' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'lodGeometries' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'currentLevel' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'surfaceMesh' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'bodyNodes' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'camera' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS7031|Binding element 'tempVector' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/lodManager.ts|TS2339|Property 'geometry' does not exist on type 'never'.",
+      3
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'bvValue' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'raDeg' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'decDeg' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'xg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'yg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'zg' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'xEq' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'yEq' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'zEq' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'xEcl' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'yEcl' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'zEcl' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'radius' implicitly has an 'any' type.",
+      4
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'lRad' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'bRad' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'ax' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'ay' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'az' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'bx' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'by' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'bz' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'angle' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'a' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'b' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'distance' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'sigma' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'starsCatalog' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS2345|Argument of type 'number' is not assignable to parameter of type 'never'.",
+      2
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7006|Parameter 'surveyTexture' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7031|Binding element 'scene' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7031|Binding element 'starsCatalog' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS7031|Binding element 'surveyTexture' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/frontend/rendering/milkyWay.ts|TS2349|This expression is not callable.\n  Type 'never' has no call signatures.",
+      1
+    ],
+    [
+      "src/main.ts|TS7006|Parameter 'body' implicitly has an 'any' type.",
+      2
+    ],
+    [
+      "src/main.ts|TS7006|Parameter 'angle' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/main.ts|TS18049|'massKg' is possibly 'null' or 'undefined'.",
+      2
+    ],
+    [
+      "src/main.ts|TS7034|Variable 'sunTexture' implicitly has type 'any' in some locations where its type cannot be determined.",
+      1
+    ],
+    [
+      "src/main.ts|TS2322|Type 'SimulationStateStore' is not assignable to type '{ [key: string]: unknown; julianDate: number; }'.\n  Index signature for type 'string' is missing in type 'SimulationStateStore'.",
+      1
+    ],
+    [
+      "src/main.ts|TS2322|Type 'ShaderMaterial | MeshBasicMaterial' is not assignable to type 'MeshStandardMaterial | MeshBasicMaterial'.\n  Type 'ShaderMaterial' is not assignable to type 'MeshStandardMaterial | MeshBasicMaterial'.\n    Type 'ShaderMaterial' is missing the following properties from type 'MeshBasicMaterial': isMeshBasicMaterial, color, map, lightMap, and 12 more.",
+      1
+    ],
+    [
+      "src/main.ts|TS7005|Variable 'sunTexture' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/main.ts|TS7053|Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ mercury: string; venus: string; earth: string; mars: string; jupiter: string; saturn: string; uranus: string; neptune: string; pluto: string; }'.\n  No index signature with a parameter of type 'string' was found on type '{ mercury: string; venus: string; earth: string; mars: string; jupiter: string; saturn: string; uranus: string; neptune: string; pluto: string; }'.",
+      1
+    ],
+    [
+      "src/main.ts|TS7006|Parameter 'population' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/main.ts|TS7006|Parameter 'julianDate' implicitly has an 'any' type.",
+      1
+    ],
+    [
+      "src/main.ts|TS7006|Parameter 'deltaSeconds' implicitly has an 'any' type.",
+      3
+    ],
+    [
+      "src/main.ts|TS2322|Type 'SolarCatalog' is not assignable to type 'SceneCatalogLike'.\n  Types of property 'bodies' are incompatible.\n    Type 'CatalogBody[]' is not assignable to type 'SceneBodyLike[]'.\n      Type 'CatalogBody' is not assignable to type 'SceneBodyLike'.\n        Types of property 'orbit' are incompatible.\n          Type 'KeplerOrbit | null' is not assignable to type '{ [key: string]: unknown; epochJd: number; } | null | undefined'.\n            Type 'KeplerOrbit' is not assignable to type '{ [key: string]: unknown; epochJd: number; }'.\n              Index signature for type 'string' is missing in type 'KeplerOrbit'.",
+      1
+    ],
+    [
+      "src/main.ts|TS2339|Property 'preset' does not exist on type '{}'.",
+      1
+    ],
+    [
+      "src/main.ts|TS2339|Property 'hypothesis' does not exist on type '{}'.",
+      1
+    ]
+  ]
+}

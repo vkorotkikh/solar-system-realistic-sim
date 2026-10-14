@@ -1,0 +1,31 @@
+name: Frontend accessibility
+on:
+  pull_request:
+    paths: ['src/**', 'index.html', 'package*.json', '*config*.ts', 'tsconfig*.json', 'scripts/**', 'tests/browser/**', 'tests/baselines/**', '.github/workflows/frontend-ui.yml']
+  push:
+    paths: ['src/**', 'index.html', 'package*.json', '*config*.ts', 'tsconfig*.json', 'scripts/**', 'tests/browser/**', 'tests/baselines/**', '.github/workflows/frontend-ui.yml']
+jobs:
+  ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          cache: npm
+      - run: npm install --global npm@10.9.8
+      - run: node -e "if(process.version !== 'v22.23.2') process.exit(1)" && test "$(npm --version)" = 10.9.8
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm test
+      - run: npm run typecheck:ratchet && npm run typecheck:ui-delta && npm run test:types:ui
+      - run: npm run build
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-browser-failures
+          path: |
+            test-results/
+            playwright-report/

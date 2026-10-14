@@ -37,7 +37,7 @@
         <p class="subtitle">Real-time heliocentric model and solar observation workspace.</p>
         <div class="session-state">
           <span class="session-state__signal" aria-hidden="true"></span>
-          <span>Live simulation</span>
+          <span id="session-label">Live simulation</span>
           <span class="session-state__frame">J2000 frame</span>
         </div>
       </header>
@@ -213,13 +213,14 @@
                   autocomplete="off"
                   placeholder="Search Sun, Earth, Pluto…"
                   aria-controls="body-list"
-                  aria-describedby="body-match-count"
+                  aria-describedby="body-search-help"
                 />
               </div>
             </div>
+            <p id="body-search-help" class="control-help">Filter major bodies by name or type. Escape clears the search.</p>
             <div class="list-heading">
               <label for="body-list">Major bodies</label>
-              <output id="body-match-count" aria-live="polite">10 bodies</output>
+              <output id="body-match-count" aria-live="polite" aria-atomic="true">10 bodies</output>
             </div>
             <select id="body-list" size="6" aria-describedby="body-list-help"></select>
             <p id="body-list-help" class="control-help">Select a target, then choose a camera action.</p>
@@ -246,7 +247,8 @@
               </button>
             </div>
 
-            <section id="body-info" class="body-card" aria-labelledby="body-info-name" aria-live="polite">
+            <p id="body-empty-state" class="control-help" hidden>No matching bodies. Clear the search to restore the list.</p>
+            <section id="body-info" class="body-card" aria-labelledby="body-info-name">
               <div class="body-card__header">
                 <div>
                   <p class="body-card__eyebrow">Selected target</p>
@@ -301,12 +303,12 @@
               </select>
             </div>
             <div class="field-stack">
-              <label for="agn-preset">Event preset</label>
-              <select id="agn-preset">
-                <option value="" selected>Custom · default energy</option>
+              <label for="agn-preset">Energy preset</label>
+              <select id="agn-preset" aria-describedby="energy-preset-help">
+                <option value="" selected>Default energy (10⁵⁶ erg)</option>
                 <option value="SgrA_CurrentFlare">Sgr A* typical flare (10³⁹ erg)</option>
                 <option value="SgrA_SuperFlare">Sgr A* super-flare (10⁴³ erg)</option>
-                <option value="SgrA_WarpWave_H29">H29 metric-frame-dragging slipstream</option>
+                <option value="SgrA_WarpWave_H29">H29 reference energy (5×10⁵⁴ erg)</option>
                 <option value="SgrA_FermiBubble_Inner">Fermi Bubble event (10⁵⁶ erg)</option>
                 <option value="SgrA_FermiBubble_Outer">eROSITA Bubble (10⁵⁷ erg)</option>
                 <option value="CenA_CurrentJet">Cen A active jet (10⁵⁶ erg)</option>
@@ -316,6 +318,7 @@
               </select>
             </div>
             <div class="field-stack">
+              <p id="energy-preset-help" class="control-help">Energy presets do not change the SMBH source or propagation model.</p>
               <label for="agn-hypothesis">Propagation model</label>
               <select id="agn-hypothesis" aria-describedby="experiment-status">
                 <option value="compound" selected>Standard compound shockwave</option>
@@ -349,7 +352,9 @@
     <main id="viewport-shell" aria-label="Interactive solar system visualization">
       <canvas
         id="space-canvas"
-        aria-label="Three-dimensional solar system model. Drag to orbit, scroll or pinch to zoom, and double-click a body to follow it."
+        tabindex="0"
+        aria-label="Solar system visualization"
+        aria-describedby="camera-keyboard-help camera-follow-help"
       ></canvas>
 
       <div class="viewport-toolbar">
@@ -372,11 +377,36 @@
         </div>
       </div>
 
-      <p class="interaction-hint" aria-hidden="true">
-        <span><kbd>Drag</kbd> orbit</span>
-        <span><kbd>Scroll</kbd> zoom</span>
-        <span><kbd>Double-click</kbd> follow body</span>
+      <details id="camera-tools">
+        <summary>Camera controls</summary>
+        <fieldset><legend>Orbit</legend><div class="camera-tool-grid">
+          <button class="button button--secondary" type="button" data-camera-action="orbit-left">Orbit left</button>
+          <button class="button button--secondary" type="button" data-camera-action="orbit-right">Orbit right</button>
+          <button class="button button--secondary" type="button" data-camera-action="orbit-up">Orbit up</button>
+          <button class="button button--secondary" type="button" data-camera-action="orbit-down">Orbit down</button>
+        </div></fieldset>
+        <fieldset><legend>Pan</legend><div class="camera-tool-grid">
+          <button class="button button--secondary" type="button" data-camera-action="pan-left">Pan left</button>
+          <button class="button button--secondary" type="button" data-camera-action="pan-right">Pan right</button>
+          <button class="button button--secondary" type="button" data-camera-action="pan-up">Pan up</button>
+          <button class="button button--secondary" type="button" data-camera-action="pan-down">Pan down</button>
+        </div></fieldset>
+        <fieldset><legend>Zoom</legend><div class="camera-tool-grid">
+          <button class="button button--secondary" type="button" data-camera-action="zoom-in">Zoom in</button>
+          <button class="button button--secondary" type="button" data-camera-action="zoom-out">Zoom out</button>
+        </div></fieldset>
+        <p id="camera-follow-help" class="control-help">Following keeps the body centered. Choose Free cam to keep a pan offset.</p>
+      </details>
+      <p id="camera-keyboard-help" class="keyboard-help">Arrow keys orbit. Shift + Arrow keys pan. Plus and minus zoom. Tab leaves the visualization.</p>
+      <p class="interaction-hint">
+        <span class="pointer-hint">Drag to orbit · Scroll to zoom · Double-click to follow a body</span>
+        <span class="touch-hint">Drag to orbit · Pinch to zoom · Choose a body in Explorer</span>
       </p>
+      <section id="renderer-unavailable" aria-labelledby="renderer-unavailable-title" hidden>
+        <h2 id="renderer-unavailable-title">Visualization unavailable</h2>
+        <p role="alert" aria-atomic="true"></p>
+        <button id="renderer-retry" type="button" class="button button--primary">Reload visualization</button>
+      </section>
 
       <div id="status-bar" aria-label="Simulation status">
         <span id="status-focus" data-camera-mode="focus">Focused · Sun</span>

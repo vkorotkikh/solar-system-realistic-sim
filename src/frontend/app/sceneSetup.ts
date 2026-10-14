@@ -10,18 +10,10 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+import { renderPixelRatio, type RuntimeUiConfig } from './runtimeConfig';
+export { createRuntimeUiConfig } from './runtimeConfig';
+
 type OrbitControlsInstance = InstanceType<typeof OrbitControls>;
-
-interface RuntimeNumberEnv {
-  [key: string]: string | undefined;
-}
-
-interface RuntimeUiConfig {
-  uiWidth: number | null;
-  uiHeight: number | null;
-  renderScale: number | null;
-  maxPixelRatio: number | null;
-}
 
 interface SceneSetupParams {
   canvas: HTMLCanvasElement;
@@ -53,59 +45,6 @@ interface SceneLighting {
   sunLight: PointLight;
 }
 
-interface RuntimeConfigCreateArgs {
-  search?: string;
-  env?: RuntimeNumberEnv;
-}
-
-function clampRuntimeNumber(value: number, min: number, max: number): number | null {
-  if (!Number.isFinite(value)) return null;
-  return Math.min(max, Math.max(min, value));
-}
-
-function readRuntimeNumber(
-  searchParams: URLSearchParams,
-  paramKey: string,
-  envKey: string,
-  fallback: number | null,
-  min: number,
-  max: number,
-  envSource?: RuntimeNumberEnv
-): number | null {
-  const fromQuery = searchParams.get(paramKey);
-  if (fromQuery !== null && fromQuery.trim() !== '') {
-    const parsed = Number(fromQuery);
-    const clamped = clampRuntimeNumber(parsed, min, max);
-    if (clamped !== null) return clamped;
-  }
-
-  const fromEnv = envSource?.[envKey];
-  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
-    const parsed = Number(fromEnv);
-    const clamped = clampRuntimeNumber(parsed, min, max);
-    if (clamped !== null) return clamped;
-  }
-
-  return fallback;
-}
-
-export function createRuntimeUiConfig({
-  search = window.location.search,
-  env = import.meta.env as RuntimeNumberEnv
-}: RuntimeConfigCreateArgs = {}): RuntimeUiConfig {
-  const params = new URLSearchParams(search);
-  const uiWidth = readRuntimeNumber(params, 'uiWidth', 'VITE_UI_WIDTH', null, 640, 10_000, env);
-  const uiHeight = readRuntimeNumber(params, 'uiHeight', 'VITE_UI_HEIGHT', null, 360, 10_000, env);
-  const renderScale = readRuntimeNumber(params, 'renderScale', 'VITE_RENDER_SCALE', 1, 0.5, 3, env);
-  const maxPixelRatio = readRuntimeNumber(params, 'maxPixelRatio', 'VITE_MAX_PIXEL_RATIO', 2, 1, 4, env);
-  return {
-    uiWidth,
-    uiHeight,
-    renderScale,
-    maxPixelRatio
-  };
-}
-
 export function applyViewportSizeOverride({
   viewportShell,
   runtimeUiConfig
@@ -114,9 +53,8 @@ export function applyViewportSizeOverride({
   runtimeUiConfig: RuntimeUiConfig;
 }): void {
   if (!viewportShell) return;
-  if (!runtimeUiConfig.uiWidth || !runtimeUiConfig.uiHeight) return;
-  viewportShell.style.width = `${runtimeUiConfig.uiWidth}px`;
-  viewportShell.style.height = `${runtimeUiConfig.uiHeight}px`;
+  if (runtimeUiConfig.uiWidth) viewportShell.style.width = `${runtimeUiConfig.uiWidth}px`;
+  if (runtimeUiConfig.uiHeight) viewportShell.style.height = `${runtimeUiConfig.uiHeight}px`;
   viewportShell.style.maxWidth = '100%';
   viewportShell.style.maxHeight = '100vh';
   viewportShell.style.margin = '0 auto';
@@ -157,7 +95,7 @@ export function createSceneSetup({
     antialias: true,
     alpha: false
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio ?? 2));
+  renderer.setPixelRatio(renderPixelRatio(runtimeUiConfig, window.devicePixelRatio));
 
   const scene = new Scene();
   scene.background = new Color(backgroundColor);

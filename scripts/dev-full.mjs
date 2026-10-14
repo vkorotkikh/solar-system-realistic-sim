@@ -19,6 +19,7 @@ import { existsSync } from 'node:fs';
 import {
   buildBackendArgs,
   buildFrontendArgs,
+  buildFrontendEnv,
   displayHost,
   parseDevFullConfig,
 } from './dev-full-config.mjs';
@@ -55,8 +56,10 @@ Options:
 }
 
 let config;
+let frontendEnv;
 try {
   config = parseDevFullConfig(process.argv.slice(2), process.env);
+  if (!config.help) frontendEnv = buildFrontendEnv(config);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   printHelp();
@@ -130,4 +133,4 @@ if (config.backend) {
 }
 
 const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-spawnTagged('frontend', COLORS.cyan, npxCmd, buildFrontendArgs(config), { cwd: ROOT });
+spawnTagged('frontend', COLORS.cyan, npxCmd, buildFrontendArgs(config), { cwd: ROOT, env: frontendEnv });

@@ -1,4 +1,13 @@
 import './style.css';
+import { createPanelController } from './frontend/app/panelController';
+import { createExplorerController } from './frontend/app/explorerController';
+import { createBodyPickerPresentation } from './frontend/app/bodyPickerPresentation';
+import { createViewportCameraController } from './frontend/app/viewportCameraController';
+import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
+import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
+import { createRendererRecovery } from './frontend/app/rendererRecovery';
+import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
+import { renderPixelRatio } from './frontend/app/runtimeConfig';
 import {
   BufferGeometry,
   CanvasTexture,
@@ -15,6 +24,7 @@ import {
   Raycaster,
   RepeatWrapping,
   SphereGeometry,
+  type ShaderMaterial,
   Sprite,
   SpriteMaterial,
   Vector2,
@@ -68,7 +78,7 @@ import {
 import { createTextureManager } from './frontend/app/textureManager';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
-import { generateAsteroidBelt } from './sim/asteroidBelt';
+import { generateAsteroidBelt, type AsteroidBeltPopulation } from './sim/asteroidBelt';
 import { generateKuiperBelt } from './sim/kuiperBelt';
 import { createKuiperBeltUpdater } from './frontend/features/asteroids/kuiperBeltUpdater';
 import type { CatalogBody } from './sim/catalog';
@@ -98,6 +108,10 @@ function elementById<T extends HTMLElement>(id: string): T {
 
 const dom = {
   app: elementById<HTMLElement>('app'),
+  emptyState: elementById<HTMLElement>('body-empty-state'),
+  cameraTools: elementById<HTMLDetailsElement>('camera-tools'),
+  rendererUnavailable: elementById<HTMLElement>('renderer-unavailable'),
+  rendererRetry: elementById<HTMLButtonElement>('renderer-retry'),
   controlPanel: elementById<HTMLElement>('control-panel'),
   panelToggle: elementById<HTMLButtonElement>('panel-toggle'),
   panelClose: elementById<HTMLButtonElement>('panel-close'),
@@ -144,6 +158,20 @@ const dom = {
 
 renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatus());
 
+let refreshPanelLayout = () => {};
+const panelController = createPanelController({
+  app: dom.app, panel: dom.controlPanel, viewport: dom.viewportShell,
+  toggle: dom.panelToggle, close: dom.panelClose, backdrop: dom.panelBackdrop,
+  breakpoint: window.matchMedia('(max-width: 1100px)'), onLayoutChange: () => refreshPanelLayout()
+});
+window.addEventListener('beforeunload', () => panelController.dispose());
+for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-disclosure')) {
+  const summary = disclosure.querySelector('summary');
+  const sync = () => summary?.setAttribute('aria-expanded', String(disclosure.open));
+  disclosure.addEventListener('toggle', sync); sync();
+}
+
+async function startSimulation() {
 // ── Data & State ─────────────────────────────────────────────────────────────
 
 // Moon rendering is not currently exposed by the shipped UI. Keep those 424
@@ -161,6 +189,8 @@ const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.b
 });
 const propagatedBodies = modelWorkerCatalog.bodies.map((body) => catalog.bodies[body.sourceIndex]);
 const model = new SolarSystemModel({ bodies: propagatedBodies });
+// The scene updater consumes identity and hierarchy, not orbital parameters.
+const sceneCatalog = { bodies: catalog.bodies.map(({ id, parentId, type }) => ({ id, parentId, type })) };
 const modelWorkerIndexContract: CatalogIndexContract = buildCatalogIndexContract(modelWorkerCatalog);
 const modelWorkerParentIndexByIndex = modelWorkerIndexContract.parentIndexByIndex;
 const modelWorkerSourceIndexByIndex = modelWorkerIndexContract.sourceIndexByIndex;
@@ -190,38 +220,48 @@ const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
 const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
-const DEFAULT_BACKEND_HOST = 'localhost';
-const DEFAULT_BACKEND_PORT = 8042;
-
-function backendBaseUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-  const host = window.location.hostname || DEFAULT_BACKEND_HOST;
-  return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
-}
-
-function bodyBaseRadiusAu(body) {
+function bodyBaseRadiusAu(body: CatalogBody) {
   return simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
 }
 
-function normalizeRadians(angle) {
+function normalizeRadians(angle: number) {
   const wrapped = angle % TWO_PI;
   return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
 }
 
 function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
-  if (!Number.isFinite(massKg) || massKg <= 0) return 0;
+  if (typeof massKg !== 'number' || !Number.isFinite(massKg) || massKg <= 0) return 0;
   return (G_SI * massKg * DAY_SECONDS * DAY_SECONDS) / (AU_M * AU_M * AU_M);
 }
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-const runtimeUiConfig = createRuntimeUiConfig();
-const { renderer, scene, camera, controls } = createSceneSetup({
-  canvas: dom.canvas,
-  runtimeUiConfig,
-  initialZoomSensitivity: simState.zoomSensitivity,
-  solarSystemMaxDistanceAu: 200
+let animationFrame = 0;
+let stopVisualization = () => {};
+const recovery = createRendererRecovery({
+  canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
+  create: () => {
+    const runtimeUiConfig = createRuntimeUiConfig();
+    applyViewportSizeOverride({ viewportShell: dom.viewportShell, runtimeUiConfig });
+    return { runtimeUiConfig, ...createSceneSetup({
+      canvas: dom.canvas, runtimeUiConfig, initialZoomSensitivity: simState.zoomSensitivity, solarSystemMaxDistanceAu: 200
+    }) };
+  },
+  onUnavailable: () => {
+    stopVisualization();
+    if (dom.controlPanel.contains(document.activeElement)) dom.panelClose.focus();
+    for (const control of dom.controlPanel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('.panel-scroll input, .panel-scroll button, .panel-scroll select')) control.disabled = true;
+    dom.cameraTools.hidden = true;
+    elementById<HTMLElement>('session-label').textContent = 'Visualization unavailable';
+    dom.statusFocus.textContent = 'Simulation stopped';
+    dom.statusSolar.textContent = 'Sun data unavailable while visualization is stopped';
+  }
 });
+window.addEventListener('beforeunload', () => recovery.dispose());
+if (!recovery.value) return;
+const { renderer, scene, camera, controls, runtimeUiConfig } = recovery.value;
+const backendBaseUrl = () => runtimeUiConfig.backendOrigin;
+const viewportCamera = createViewportCameraController({ canvas: dom.canvas, actionRoot: dom.cameraTools, camera, controls });
 addDefaultLighting(scene);
 
 const solarSystemGroup = new Group();
@@ -242,14 +282,14 @@ const geometryCache = {
   moon: new SphereGeometry(1, 8, 6)
 };
 
-const PLANET_COLORS = {
+const PLANET_COLORS: Record<string, string> = {
   mercury: '#a0917c', venus: '#d4b980', earth: '#4a7abf',
   mars: '#b5653a', jupiter: '#c4a87c', saturn: '#d4c894',
   uranus: '#8cc8d4', neptune: '#4466b0', pluto: '#c8b89a'
 };
 
 const sunTextureCanvas = generatePlanetTexture('sun');
-let sunTexture = null;
+let sunTexture: CanvasTexture | null = null;
 if (sunTextureCanvas) {
   sunTexture = new CanvasTexture(sunTextureCanvas);
   configureLoadedTexture(sunTexture);
@@ -266,7 +306,12 @@ const solarDataAnnouncer = new SolarDataAnnouncer(dom.statusSolarAnnouncer);
 
 const sunCtrl = createSunController({
   camera,
-  simState,
+  simState: {
+    get julianDate() { return simState.julianDate; },
+    get paused() { return simState.paused; },
+    get timeScaleDaysPerSec() { return simState.timeScaleDaysPerSec; },
+    get useRealisticScale() { return simState.useRealisticScale; }
+  },
   backendBaseUrl,
   configureLoadedTexture,
   observationTextureLoader: solarObservationTextureLoader,
@@ -330,7 +375,7 @@ function createBodyNode(body: CatalogBody) {
   node.add(spinGroup);
   bodySpinGroups.set(body.id, spinGroup);
 
-  let material: MeshBasicMaterial | MeshStandardMaterial;
+  let material: MeshBasicMaterial | MeshStandardMaterial | ShaderMaterial;
   let geometry: SphereGeometry;
   let mesh;
 
@@ -394,7 +439,7 @@ function createBodyNode(body: CatalogBody) {
 
 // ── Orbit Lines ──────────────────────────────────────────────────────────────
 
-function createOrbitLine(body) {
+function createOrbitLine(body: CatalogBody) {
   if (!body.orbit || body.type === 'star') return null;
   const segments = body.type === 'moon' ? 64 : 128;
   const positions = new Float32Array(segments * 3);
@@ -488,7 +533,7 @@ if (kuiperBeltRenderer.companionMesh) {
   solarSystemGroup.add(kuiperBeltRenderer.companionMesh);
 }
 
-function refreshAsteroidBeltRenderer(population) {
+function refreshAsteroidBeltRenderer(population: AsteroidBeltPopulation) {
   solarSystemGroup.remove(asteroidBeltRenderer.mesh);
   asteroidBeltRenderer.dispose();
   asteroidPop = population;
@@ -664,39 +709,15 @@ function updateBodyInfoPanel(bodyId: string) {
 const majorBodies = catalog.bodies.filter((b) =>
   b.type === 'star' || b.type === 'planet' || b.type === 'dwarf'
 );
-let preferredBodyId = 'sun';
-
+const explorer = createExplorerController({
+  dom, bodies: majorBodies, onInspect: updateBodyInfoPanel,
+  onFocus: (bodyId) => { simState.followBodyId = null; focusBody(bodyId, true); updateCameraMode('focus', bodyId); },
+  onFollow: (bodyId) => { simState.followBodyId = bodyId; focusBody(bodyId, true); updateCameraMode('follow', bodyId); },
+  onFree: () => { simState.followBodyId = null; updateCameraMode('free'); }
+});
+const bodyPicker = createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') });
 function refillBodyList() {
-  const query = dom.bodySearch.value.trim().toLocaleLowerCase();
-  const visibleBodies = query
-    ? majorBodies.filter((body) => (
-      `${body.name} ${body.id} ${body.type}`.toLocaleLowerCase().includes(query)
-    ))
-    : majorBodies;
-
-  const options = document.createDocumentFragment();
-  for (const body of visibleBodies) {
-    const option = document.createElement('option');
-    option.value = body.id;
-    option.textContent = `${body.name} · ${body.type.charAt(0).toUpperCase()}${body.type.slice(1)}`;
-    option.selected = body.id === preferredBodyId;
-    options.appendChild(option);
-  }
-
-  dom.bodyList.replaceChildren(options);
-  if (visibleBodies.some((body) => body.id === preferredBodyId)) {
-    dom.bodyList.value = preferredBodyId;
-  } else if (visibleBodies.length > 0) {
-    dom.bodyList.value = visibleBodies[0].id;
-  }
-
-  const matchCount = visibleBodies.length;
-  dom.bodyMatchCount.textContent = `${matchCount} ${matchCount === 1 ? 'body' : 'bodies'}`;
-  dom.bodyList.disabled = matchCount === 0;
-  dom.focusBody.disabled = matchCount === 0;
-  dom.followBody.disabled = matchCount === 0;
-  if (matchCount > 0) updateBodyInfoPanel(dom.bodyList.value);
-
+  explorer.refresh(); bodyPicker.refresh();
   const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
   dom.statusBodies.textContent = `Bodies · ${totalBodies.toLocaleString()}`;
 }
@@ -722,7 +743,7 @@ function applyScaleMode() {
 
 // ── Body Rotations ───────────────────────────────────────────────────────────
 
-function updateBodyRotations(julianDate) {
+function updateBodyRotations(julianDate: number) {
   const elapsedSeconds = (julianDate - J2000_JD) * 86_400;
   for (const body of catalog.bodies) {
     const spinGroup = bodySpinGroups.get(body.id);
@@ -834,11 +855,11 @@ function initializeModelWorker() {
   modelWorkerEnabled = true;
 }
 
-function updateModelLocally(deltaSeconds) {
+function updateModelLocally(deltaSeconds: number) {
   model.update(simState.julianDate);
 }
 
-function dispatchModelWorkerTick(deltaSeconds) {
+function dispatchModelWorkerTick(deltaSeconds: number) {
   if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
 
   const tickMessage: ModelWorkerTickMessage = {
@@ -975,7 +996,7 @@ function applyLatestWorkerSnapshot() {
   return true;
 }
 
-function updateModelState(deltaSeconds) {
+function updateModelState(deltaSeconds: number) {
   let snapshotApplied = false;
 
   if (modelWorkerEnabled && modelWorker && modelWorkerReady) {
@@ -1001,7 +1022,7 @@ function updateSceneBodiesFromWorkerSnapshot() {
 
 function applyModelSceneAndStateFallback() {
   updateSceneBodiesFromModel({
-    catalog,
+    catalog: sceneCatalog,
     model,
     bodyNodes,
     showMoons
@@ -1044,8 +1065,9 @@ function resizeRenderer() {
   const w = dom.canvas.clientWidth;
   const h = dom.canvas.clientHeight;
   if (w <= 0 || h <= 0) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, runtimeUiConfig.maxPixelRatio ?? 2));
-  if (dom.canvas.width !== w || dom.canvas.height !== h) {
+  const pixelRatio = renderPixelRatio(runtimeUiConfig, window.devicePixelRatio);
+  renderer.setPixelRatio(pixelRatio);
+  if (dom.canvas.width !== Math.floor(w * pixelRatio) || dom.canvas.height !== Math.floor(h * pixelRatio) || camera.aspect !== w / h) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -1067,105 +1089,9 @@ const viewportResizeObserver = typeof ResizeObserver === 'undefined'
   ? null
   : new ResizeObserver(queueRendererResize);
 viewportResizeObserver?.observe(dom.viewportShell);
+viewportResizeObserver?.observe(dom.canvas);
 
-// ── Panel & Disclosure UI ───────────────────────────────────────────────────
-
-const panelBreakpoint = window.matchMedia('(max-width: 1100px)');
-let desktopPanelOpen = true;
-let mobilePanelOpen = false;
-
-function isPanelOpen() {
-  return panelBreakpoint.matches ? mobilePanelOpen : desktopPanelOpen;
-}
-
-function focusablePanelElements() {
-  const selector = [
-    'button:not([disabled])',
-    'input:not([disabled])',
-    'select:not([disabled])',
-    'summary',
-    '[tabindex]:not([tabindex="-1"])'
-  ].join(',');
-  return [...dom.controlPanel.querySelectorAll<HTMLElement>(selector)]
-    .filter((element) => element.getClientRects().length > 0);
-}
-
-function applyPanelState({ moveFocus = false } = {}) {
-  const open = isPanelOpen();
-  dom.app.classList.toggle('panel-is-open', open);
-  dom.app.classList.toggle('panel-is-closed', !open);
-  dom.controlPanel.inert = !open;
-  dom.controlPanel.setAttribute('aria-hidden', String(!open));
-  dom.panelToggle.setAttribute('aria-expanded', String(open));
-  dom.panelClose.setAttribute('aria-expanded', String(open));
-  dom.panelClose.setAttribute(
-    'aria-label',
-    panelBreakpoint.matches ? 'Close simulation controls' : 'Collapse simulation controls'
-  );
-
-  if (moveFocus) {
-    if (open) {
-      dom.panelClose.focus({ preventScroll: true });
-    } else {
-      dom.panelToggle.focus({ preventScroll: true });
-    }
-  }
-  resizeRenderer();
-  queueRendererResize();
-}
-
-function setPanelOpen(open: boolean, moveFocus = true) {
-  if (panelBreakpoint.matches) {
-    mobilePanelOpen = open;
-  } else {
-    desktopPanelOpen = open;
-  }
-  applyPanelState({ moveFocus });
-}
-
-dom.panelToggle.addEventListener('click', () => setPanelOpen(true));
-dom.panelClose.addEventListener('click', () => setPanelOpen(false));
-dom.panelBackdrop.addEventListener('click', () => {
-  if (panelBreakpoint.matches) setPanelOpen(false);
-});
-
-panelBreakpoint.addEventListener('change', () => {
-  applyPanelState();
-});
-
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && isPanelOpen()) {
-    event.preventDefault();
-    setPanelOpen(false);
-    return;
-  }
-
-  if (event.key !== 'Tab' || !panelBreakpoint.matches || !isPanelOpen()) return;
-  const focusable = focusablePanelElements();
-  if (!focusable.length) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const active = document.activeElement;
-
-  if (event.shiftKey && (active === first || !dom.controlPanel.contains(active))) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (active === last || !dom.controlPanel.contains(active))) {
-    event.preventDefault();
-    first.focus();
-  }
-});
-
-for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-disclosure')) {
-  const summary = disclosure.querySelector<HTMLElement>('summary');
-  const syncDisclosureState = () => {
-    summary?.setAttribute('aria-expanded', String(disclosure.open));
-  };
-  disclosure.addEventListener('toggle', syncDisclosureState);
-  syncDisclosureState();
-}
-
-applyPanelState();
+refreshPanelLayout = () => { resizeRenderer(); queueRendererResize(); bodyPicker.refresh(); };
 
 // ── UI Events ────────────────────────────────────────────────────────────────
 
@@ -1224,50 +1150,6 @@ dom.zoomSensitivity.addEventListener('input', () => {
   }
 });
 
-dom.bodySearch.addEventListener('input', () => {
-  refillBodyList();
-});
-
-dom.bodySearch.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && dom.bodySearch.value) {
-    event.stopPropagation();
-    dom.bodySearch.value = '';
-    refillBodyList();
-  }
-});
-
-dom.focusBody.addEventListener('click', () => {
-  const bodyId = dom.bodyList.value;
-  if (bodyId) {
-    preferredBodyId = bodyId;
-    simState.followBodyId = null;
-    focusBody(bodyId, true);
-    updateBodyInfoPanel(bodyId);
-    updateCameraMode('focus', bodyId);
-  }
-});
-
-dom.followBody.addEventListener('click', () => {
-  const bodyId = dom.bodyList.value;
-  if (bodyId) {
-    preferredBodyId = bodyId;
-    simState.followBodyId = bodyId;
-    focusBody(bodyId, true);
-    updateBodyInfoPanel(bodyId);
-    updateCameraMode('follow', bodyId);
-  }
-});
-
-dom.clearFollow.addEventListener('click', () => {
-  simState.followBodyId = null;
-  updateCameraMode('free');
-});
-
-dom.bodyList.addEventListener('change', () => {
-  preferredBodyId = dom.bodyList.value;
-  updateBodyInfoPanel(dom.bodyList.value);
-});
-
 dom.canvas.addEventListener('dblclick', (e) => {
   const rect = dom.canvas.getBoundingClientRect();
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1281,7 +1163,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
   if (hits.length > 0) {
     const bodyId = hits[0].object?.userData?.bodyId;
     if (bodyId) {
-      preferredBodyId = bodyId;
+      explorer.setPreferredBody(bodyId);
       simState.followBodyId = bodyId;
       focusBody(bodyId, true);
       updateBodyInfoPanel(bodyId);
@@ -1293,54 +1175,7 @@ dom.canvas.addEventListener('dblclick', (e) => {
   }
 });
 
-function syncAgnSelection() {
-  const selection = resolveAgnSelection(dom.agnSource.value, {
-    preset: dom.agnPreset.value, hypothesis: dom.agnHypothesis.value
-  });
-  dom.agnSource.value = selection.sourceKey;
-  dom.agnHypothesis.value = selection.hypothesis;
-  const source = selection.source;
-  const speculative = selection.hypothesis === 'h29';
-  dom.experimentStatus.dataset.model = speculative ? 'speculative' : 'standard';
-  dom.experimentStatus.textContent = `${speculative
-    ? 'H29 selected: hypothetical metric display; canonical orbits unchanged.'
-    : 'Standard compound transport selected: compressed educational timeline.'} ${source?.jetModelNote ?? ''}`;
-}
-
-dom.agnPreset.addEventListener('change', syncAgnSelection);
-for (const control of [dom.agnSource, dom.agnHypothesis]) {
-  control.addEventListener('change', () => { dom.agnPreset.value = ''; syncAgnSelection(); });
-}
-
-dom.triggerAgnShockwave?.addEventListener('click', () => {
-  syncAgnSelection();
-  const source = dom.agnSource?.value || 'SagittariusA';
-  const preset = dom.agnPreset?.value || '';
-  const hypothesis = dom.agnHypothesis?.value || 'compound';
-
-  let impactTimeSec = 8.0;
-  let intensity = 1.4;
-  if (source === 'CentaurusA') {
-    impactTimeSec = 9.5;
-    intensity = 1.1;
-  } else if (source === 'Maffei1') {
-    impactTimeSec = 10.5;
-    intensity = 0.7;
-  } else if (source === 'M87') {
-    impactTimeSec = 12.0;
-    intensity = 0.5;
-  }
-
-  const options: AgnEventOptions = {};
-  if (preset) options.preset = preset;
-  if (hypothesis !== 'compound') options.hypothesis = hypothesis;
-
-  sunCtrl.triggerAgnShockwave(source, impactTimeSec, intensity, options);
-});
-
-dom.agnStochastic.addEventListener('change', () => {
-  sunCtrl.setAgnStochasticFlaring(Boolean(dom.agnStochastic?.checked));
-});
+const experiment = createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) });
 
 // ── Initialize ───────────────────────────────────────────────────────────────
 
@@ -1363,7 +1198,6 @@ for (const line of orbitLines) {
 for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as HTMLInputElement | null)?.checked);
 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
-syncAgnSelection();
 
 resizeRenderer();
 renderer.render(scene, camera);
@@ -1373,7 +1207,8 @@ renderer.render(scene, camera);
 let prevTimestamp = performance.now();
 
 function animate(timestamp: number) {
-  requestAnimationFrame(animate);
+  if (!recovery.available) return;
+  animationFrame = requestAnimationFrame(animate);
   const deltaSeconds = Math.max(0, (timestamp - prevTimestamp) / 1_000);
   prevTimestamp = timestamp;
 
@@ -1390,6 +1225,7 @@ function animate(timestamp: number) {
   sunCtrl.maybeRefreshPhysics();
 
   updateFollowTarget();
+  viewportCamera.applyPendingActions();
 
   for (const mesh of bodyMeshes.values()) {
     if (mesh.userData.isQuadtree) {
@@ -1418,11 +1254,19 @@ function animate(timestamp: number) {
   }
 }
 
-requestAnimationFrame(animate);
+stopVisualization = () => {
+  cancelAnimationFrame(animationFrame); controls.enabled = false;
+  viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
+};
+animationFrame = requestAnimationFrame(animate);
 
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
+  cancelAnimationFrame(animationFrame);
+  window.removeEventListener('resize', resizeRenderer);
+  refreshPanelLayout = () => {};
+  explorer.dispose(); bodyPicker.dispose(); viewportCamera.dispose(); experiment.dispose(); controls.dispose();
   sunCtrl.disposeSolarDelivery();
   viewportResizeObserver?.disconnect();
   if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
@@ -1471,3 +1315,7 @@ window.addEventListener('beforeunload', () => {
   if (sunTexture) sunTexture.dispose();
   renderer.dispose();
 });
+
+}
+
+void startSimulation();
