@@ -4261,7 +4261,11 @@ class SimulationRunner:
         self.running = False
         cancel_pending = getattr(self.engine, "cancel_pending_operation", None)
         if callable(cancel_pending):
-            cancel_pending()
+            try:
+                cancel_pending()
+            except Exception as exc:
+                # A failed cancellation hook is not proof that its worker died.
+                self._latch_runtime_error(f"Engine cancellation failed: {exc}")
         if self._thread.ident is None:
             return True
         self._thread.join(timeout=3)
@@ -4325,7 +4329,25 @@ class SimulationRunner:
             payload["action"] = action
         self._push_response(payload)
 
+    def _latch_runtime_error(self, message: str) -> None:
+        self.paused = True
+        if self._runtime_error is None:
+            self._runtime_error = message
+            self._push_error(message, code="runtime_error")
+
     def _loop(self):
+        try:
+            self._run_frames()
+        except Exception as exc:
+            # Telemetry/normalization can fail too. Never leave a dead worker
+            # advertising its last healthy snapshot as current simulation data.
+            self._latch_runtime_error(f"Simulation worker failed: {exc}")
+            with self._state_lock:
+                self._latest_state = None
+        finally:
+            self.running = False
+
+    def _run_frames(self):
         frame_time = 1.0 / self.target_fps
 
         while self.running:
@@ -4371,31 +4393,23 @@ class SimulationRunner:
                     if self.kuiper.active:
                         self.kuiper.step(dt_days)
                 except Exception as exc:
-                    self._runtime_error = f"Simulation step failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+                    self._latch_runtime_error(f"Simulation step failed: {exc}")
 
             # ── Build state ───────────────────────────────────────────
-            try:
-                raw_state = self.engine.get_state()
-            except Exception as exc:
-                self._runtime_error = f"State generation failed: {exc}"
-                self.paused = True
-                self._push_error(self._runtime_error, code="runtime_error")
-                raw_state = {
-                    "type": "state_update",
-                    "engine": self.engine.engine_name,
-                    "fidelity": self.engine.fidelity_level,
-                    "jd": self.engine.get_julian_date(),
-                    "force_models": {},
-                    "bodies": {},
-                }
+            raw_state = self.engine.get_state()
             normalized_state = normalize_state_update(
                 raw_state,
                 engine_name=self.engine.engine_name,
                 fidelity=self.engine.fidelity_level,
                 jd_fallback=self.engine.get_julian_date(),
             )
+            kuiper_particles = None
+            if self.kuiper.active and self.kuiper.should_send():
+                try:
+                    kuiper_particles = self.kuiper.get_state()
+                except Exception as exc:
+                    self._latch_runtime_error(f"Kuiper state failed: {exc}")
+
             state = attach_runtime_telemetry(
                 normalized_state,
                 paused=self.paused,
@@ -4413,15 +4427,8 @@ class SimulationRunner:
                 },
             )
 
-            if self.kuiper.active and self.kuiper.should_send():
-                try:
-                    kuiper_particles = self.kuiper.get_state()
-                    if kuiper_particles:
-                        state["kuiper"] = kuiper_particles
-                except Exception as exc:
-                    self._runtime_error = f"Kuiper state failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+            if kuiper_particles:
+                state["kuiper"] = kuiper_particles
 
             with self._state_lock:
                 self._latest_state = state
@@ -4443,6 +4450,16 @@ class SimulationRunner:
             self._push_error("Command requires a non-empty string `type` field")
             return
 
+        if self._runtime_error is not None and action in {
+            "resume", "set_julian_date", "activate_kuiper", "get_orbital_elements",
+        }:
+            self._push_error(
+                "The simulation engine failed; reconnect to initialize a new engine",
+                action=action,
+                code="engine_unavailable",
+            )
+            return
+
         if action == "set_time_scale":
             days_per_sec = self._coerce_finite_float(cmd.get("days_per_sec"))
             if days_per_sec is None:
@@ -4455,13 +4472,6 @@ class SimulationRunner:
             self.paused = True
 
         elif action == "resume":
-            if self._runtime_error is not None:
-                self._push_error(
-                    "The simulation engine failed; reconnect to initialize a new engine",
-                    action=action,
-                    code="engine_unavailable",
-                )
-                return
             self.paused = False
 
         elif action == "set_julian_date":
@@ -4490,7 +4500,15 @@ class SimulationRunner:
                     )
                     return
             if abs(self.engine.get_julian_date() - jd) > 1e-12:
-                self.engine.set_julian_date(jd)
+                try:
+                    self.engine.set_julian_date(jd)
+                except Exception as exc:
+                    # Seeking may restore checkpoints or mutate native state
+                    # before failing. Unlike request validation/read-only
+                    # commands, it has no atomic rollback guarantee.
+                    if self.running:
+                        self._latch_runtime_error(f"Epoch seek failed: {exc}")
+                    return
             if self.kuiper.active:
                 self.kuiper.deactivate()
 
@@ -4586,6 +4604,35 @@ async def _ws_send_text(websocket: WebSocket, text: str) -> None:
 
 async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
     await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+async def _ws_cleanup_runner(runner: SimulationRunner, tasks: list[asyncio.Task]) -> None:
+    """Retain session ownership through repeated cancellation until cleanup ends."""
+    async def cleanup() -> None:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        try:
+            if not await asyncio.to_thread(runner.stop):
+                # A join timeout cannot release admission for a surviving worker.
+                await asyncio.to_thread(runner.wait_until_stopped)
+        finally:
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+    cleanup_task = asyncio.create_task(cleanup())
+    cancellation: asyncio.CancelledError | None = None
+    while not cleanup_task.done():
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError as exc:
+            cancellation = exc
+    cleanup_task.result()
+    if cancellation is not None:
+        # AnyIO cancellation scopes identify their own exception by its
+        # provenance. Replacing it breaks normal Starlette session teardown.
+        raise cancellation
+
 
 def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
     if not isinstance(message, dict):
@@ -4713,17 +4760,32 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
     last_jd: Optional[float] = None
     idle_frames = 0
     idle_send_interval = max(1, int(stream_hz // 3))
-    last_output = time.monotonic()
+    last_progress = time.monotonic()
+    last_snapshot: dict | None = None
 
     while True:
-        resp = runner.get_response()
-        while resp is not None:
-            await _ws_send_text(websocket, json.dumps(resp))
-            last_output = time.monotonic()
+        # A producer can refill a bounded queue while it is drained. Bound the
+        # drain itself so command errors cannot starve state/liveness checks.
+        response_deadline = time.monotonic() + interval
+        for _ in range(MAX_COMMANDS_PER_FRAME):
             resp = runner.get_response()
+            if resp is None:
+                break
+            await _ws_send_text(websocket, json.dumps(resp))
+            if time.monotonic() >= response_deadline:
+                break
+
+        if not getattr(runner, "running", True):
+            await _ws_close(websocket, code=1011, reason="Simulation worker stopped")
+            raise WebSocketDisconnect(code=1011)
 
         state = runner.get_latest_state()
         if state:
+            # The runner publishes a new immutable snapshot each tick, even
+            # while paused. Re-sending an old snapshot is not worker progress.
+            if state is not last_snapshot:
+                last_progress = time.monotonic()
+                last_snapshot = state
             jd = float(state.get("jd", 0.0))
             has_kuiper_payload = "kuiper" in state
             should_send = (
@@ -4734,13 +4796,12 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
             )
             if should_send:
                 await _ws_send_text(websocket, json.dumps(state))
-                last_output = time.monotonic()
                 last_jd = jd
                 idle_frames = 0
             else:
                 idle_frames += 1
 
-        if time.monotonic() - last_output >= WS_SIM_IDLE_TIMEOUT_SECONDS:
+        if time.monotonic() - last_progress >= WS_SIM_IDLE_TIMEOUT_SECONDS:
             await _ws_close(websocket, code=1013, reason="Simulation output idle deadline exceeded")
             raise WebSocketDisconnect(code=1013)
 
@@ -4819,6 +4880,11 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
 
     try:
         engine.initialize(ALL_BODIES)
+        # Capture handshake metadata before transferring engine ownership to
+        # the simulation thread. Native engine reads are not thread-safe.
+        initial_state = engine.get_state()
+        initial_body_ids = engine.list_body_ids()
+        initial_jd = engine.get_julian_date()
     except Exception as exc:
         await _ws_send_text(websocket, json.dumps({
             "type": "error",
@@ -4827,8 +4893,6 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         }))
         await _ws_close(websocket, code=1011)
         return
-
-    initial_state = engine.get_state()
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
@@ -4856,8 +4920,8 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "integrator": integrator,
         "integrator_requested": integrator_requested,
         "fidelity": engine.fidelity_level,
-        "bodies": engine.list_body_ids(),
-        "jd": engine.get_julian_date(),
+        "bodies": initial_body_ids,
+        "jd": initial_jd,
         "jd_time_scale": initial_state.get("jd_time_scale"),
         "fps": target_fps,
         "clock_policy": "fixed_step",
@@ -4867,15 +4931,10 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         receive_task = asyncio.create_task(_ws_receive_loop(websocket, runner))
         send_task = asyncio.create_task(_ws_send_loop(websocket, runner, stream_hz=stream_hz))
         tasks = [receive_task, send_task]
-        done, pending = await asyncio.wait(
+        done, _pending = await asyncio.wait(
             {receive_task, send_task},
             return_when=asyncio.FIRST_COMPLETED,
         )
-
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
 
         for task in done:
             if task.cancelled():
@@ -4891,16 +4950,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     except Exception as exc:
         print(f"[ws/sim] error: {exc}")
     finally:
-        for task in tasks:
-            if not task.done():
-                task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        if not await asyncio.to_thread(runner.stop):
-            # Keep the owning connection/admission permit alive until the
-            # actual worker exits; a three-second join timeout is not proof of
-            # cleanup.
-            await asyncio.to_thread(runner.wait_until_stopped)
+        await _ws_cleanup_runner(runner, tasks)
 
 
 @app.websocket("/ws/sim")
