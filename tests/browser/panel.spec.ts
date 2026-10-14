@@ -23,6 +23,60 @@ for (const desktopOpen of [false,true]) for (const mobileOpen of [false,true]) {
     await expect(page.locator('#app')).not.toHaveAttribute('data-panel-focus-transition','');
   });
 }
+test('stale retained media queries cannot overwrite remembered state or lose modal focus', async ({page}) => {
+  await page.addInitScript(() => {
+    const matchMedia = window.matchMedia.bind(window);
+    let held = false;
+    window.matchMedia = query => {
+      const media = matchMedia(query);
+      if (!held && query === '(max-width: 1100px)') {
+        held = true;
+        const initialMatches = media.matches;
+        // Reproduce a retained query whose state/change delivery lags layout.
+        Object.defineProperty(media, 'matches', { get: () => initialMatches });
+        media.addEventListener('change', event => event.stopImmediatePropagation());
+      }
+      return media;
+    };
+  });
+  await loadShell(page);
+  await page.evaluate(() => window.__uiFixture.setPanelOpen(false));
+  await page.setViewportSize({width:1100,height:800});
+  await page.evaluate(() => window.__uiFixture.setPanelOpen(true));
+  await expect(page.locator('#control-panel')).toHaveAttribute('aria-modal','true');
+  await expect(page.locator('#panel-close')).toBeFocused();
+  await expect(page.locator('#viewport-shell')).toHaveAttribute('aria-hidden','true');
+  await page.setViewportSize({width:1101,height:800});
+  await expect(page.locator('#panel-toggle')).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('#panel-toggle')).toBeFocused();
+  await expect(page.locator('#control-panel')).not.toHaveAttribute('aria-modal','true');
+  await expect(page.locator('#viewport-shell')).not.toHaveAttribute('aria-hidden','true');
+  await page.setViewportSize({width:1100,height:800});
+  await expect(page.locator('#panel-toggle')).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('#panel-close')).toBeFocused();
+  await expect(page.locator('#control-panel')).toHaveAttribute('aria-modal','true');
+  await expect(page.locator('#viewport-shell')).toHaveAttribute('aria-hidden','true');
+});
+test('disposed panels do not restore modality or move focus on later resizes', async ({page}) => {
+  await loadShell(page);
+  await page.evaluate(() => window.__uiFixture.dispose());
+  const snapshot = () => page.evaluate(() => ({
+    appClass: document.getElementById('app')!.className,
+    panelAttributes: document.getElementById('control-panel')!.getAttributeNames().sort()
+      .map(name => [name, document.getElementById('control-panel')!.getAttribute(name)]),
+    viewportHidden: document.getElementById('viewport-shell')!.getAttribute('aria-hidden'),
+    viewportInert: document.getElementById('viewport-shell')!.inert,
+    focused: document.activeElement?.id,
+  }));
+  const before = await snapshot();
+  for (const width of [1100,1101]) {
+    await page.setViewportSize({width,height:800});
+    await page.evaluate(() => new Promise<void>(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    }));
+    expect(await snapshot()).toEqual(before);
+  }
+});
 test('modal Tab trap, search Escape precedence, backdrop and close use real focus',async({page})=>{
   await page.setViewportSize({width:390,height:844});await loadShell(page);await page.locator('#panel-toggle').click();
   await expect(page.getByRole('dialog',{name:'Sun Model Lab'})).toBeVisible();
