@@ -29,7 +29,9 @@ there when integrating this checkpoint. No master tracker or observation helper 
 - TypeScript ratchet: exit 0, **217/226** baseline diagnostics, no bucket regression.
   Strict typecheck is not green: 217 legacy diagnostics remain outside this change.
 - `git diff --check`: exit 0.
-- The full backend suite was launched separately and remains pending at this checkpoint.
+- Follow-up full backend suite: **2,358 passed, zero skipped**, exit 0, 227.10 seconds.
+  Two existing Starlette/httpx/AnyIO deprecation warnings remain. This is the
+  assigned branch's suite, not the parent's broader integrated test count.
 
 The production-controller regression uses the independent CSPICE matrices at display
 epochs 2451545, 2451552, and 2461326.238888889. It checks pole and prime meridian,
