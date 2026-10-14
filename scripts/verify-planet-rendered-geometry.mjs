@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'vite';
 
 const executable = process.env.PLANET_TEST_CHROMIUM;
+const hardware = process.env.PLANET_TEST_HARDWARE === '1';
 if (!executable) throw new Error('Set PLANET_TEST_CHROMIUM to a Chromium executable; unavailable browsers are not a passing gate.');
 await mkdir('node_modules/.cache', { recursive: true });
 const profile = await mkdtemp('node_modules/.cache/planet-chromium-');
@@ -14,8 +15,11 @@ try {
   await server.listen();
   const address = server.httpServer.address();
   browser = spawn(executable, [
-    '--headless', '--no-sandbox', '--disable-dev-shm-usage', '--use-gl=angle',
-    '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--remote-debugging-port=0',
+    ...(!hardware ? ['--headless'] : []),
+    '--no-sandbox', '--disable-dev-shm-usage', '--use-gl=angle',
+    ...(hardware ? ['--use-angle=gl', '--ignore-gpu-blocklist']
+      : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
+    '--remote-debugging-port=0',
     `--user-data-dir=${profile}`, 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   const endpoint = await new Promise((resolve, reject) => {
@@ -71,6 +75,21 @@ try {
   }, sessionId);
   if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
   if (errors.length) throw new Error(errors.join('\n'));
+  const rendererResult = await send('Runtime.evaluate', {
+    expression: `(() => {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      if (!gl) throw new Error('WebGL2 is unavailable');
+      const extension = gl.getExtension('WEBGL_debug_renderer_info');
+      if (!extension) throw new Error('WebGL renderer identity is unavailable');
+      return gl.getParameter(extension.UNMASKED_RENDERER_WEBGL);
+    })()`, returnByValue: true,
+  }, sessionId);
+  if (rendererResult.exceptionDetails) throw new Error(JSON.stringify(rendererResult.exceptionDetails));
+  const renderer = rendererResult.result.value;
+  if (hardware && /swiftshader|llvmpipe|softpipe|software/i.test(renderer)) {
+    throw new Error(`Hardware gate obtained a software renderer: ${renderer}`);
+  }
+  console.log(JSON.stringify({ renderer, hardwareRequested: hardware }));
   console.log(JSON.stringify(result.result.value, null, 2));
 } finally {
   socket?.close();
