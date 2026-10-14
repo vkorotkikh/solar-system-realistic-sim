@@ -224,3 +224,128 @@ Results: **80 passed, 414 explicitly skipped across 8 files**, 0.581 s. Those 41
 Generation uses the standard pinned Python 3.12 uv/backend environment prefix and `python scripts/repair_catalog_moon_ephemeris.py --bodies Phobos,Mimas,Dione,Carme,Neso,S2021_N1 --promote`. The separate driver leaves `scripts/update-moons-data.mjs` and the general generator's transactionality untouched. The full remaining-body batch is in progress; only passing, independently tested candidates will be checkpointed.
 
 Controller coordination: the controller owns 75052 SPK byte-range extraction and reports native Tudat 1.0 installation with adapter corrections and four passing gates. These controller results were not rerun or claimed as local evidence here; accumulated J2/J4 evidence remains controller-owned. No duplicate 75052 retrieval or optional Tudat installation was performed in this worktree.
+
+## SCN-043 reference and resource checkpoint (2026-10-14, follow-up)
+
+Status: OPEN. No full-catalog artifact promotion in this checkpoint. The six
+previously committed trajectory repairs remain the only newly shipped models.
+The following candidate work is not a claim that all moons are verified.
+
+### Independent references
+
+- Controller reference commit d19c9fa is incorporated locally as 708d56c. NAIF
+  75052/799 type-2 states are used instead of the rejected Horizons asteroid
+  response. The wrong-asteroid rejection regression remains intact.
+- Added a complete 9,216-byte released SAT393 Daphnis kernel, SHA-256 and original
+  bytes, with a native CSPICE offline reproducer. It supplies the missing two
+  epochs, while live Horizons states remain preferred for the other five.
+- All 424 catalog records now have seven reference states: 2,968 comparisons.
+  One record uses a legacy analytical reference supplement. This does not mean
+  all 424 have current numerical provider coverage or accurate runtime models.
+- Daphnis source is three Cassini-fit precessing ellipses (SPK type 17), released
+  2016-10-11, with imaging through 2016-07-16. It is NOT a current 2025/2026
+  observational solution. The original live Horizons post-2018 gap is preserved.
+- Direct native evaluation across descriptor boundaries shows 647.519000 km /
+  80.128024 m/s discontinuity at JD 2455197.5 and 168.444002 km / 21.113538 m/s
+  at JD 2457388.5. The worst continuous-fit residuals occur at these boundaries.
+  A continuous trajectory cannot uniformly meet the unchanged 136.505 km budget
+  on both sides of the first jump. No Daphnis model was promoted and no tolerance
+  was increased. This needs an explicitly piecewise source contract or a better
+  independent continuous source, not an accuracy-label change.
+
+### Candidate repairs and denominator
+
+- The original all-catalog batch finished in 23.21 minutes, reporting 401 cached
+  passing model keys and 18 unresolved records. Follow-up fitting against cached
+  inputs repaired additional numerical-conditioning and segment-resolution
+  failures. Detailed frozen counts, per-record maxima, payload sizes, and remaining
+  names are in SCN043_CANDIDATE_FOOTPRINT_2026-10-14.json.
+- The snapshot covers 418/424 catalog records with existing or cached passing
+  candidates. Catalog Puck entries 378 and 388 both identify NAIF 715; the
+  denominator is intentionally NOT collapsed. There are 417 distinct model keys.
+- Remaining model work: Amalthea, Methone, Daphnis, S2023_S38, S2025_U_1 (75052),
+  and Nereid. These are not relabeled as unavailable external references.
+- Fixed fitting-side issues: percent-encoded cache filenames for names containing
+  slashes; truncated-SVD handling of redundant carrier/amplitude directions;
+  structurally underdetermined fits still fail; shorter eligible segments expose
+  rapidly varying trajectories. Every candidate must still meet position
+  <= min(500 km, 0.001 * catalog aKm), velocity <= 10 m/s, disjoint half-step
+  validation, exact endpoints, and seven separate vector-oracle epochs.
+- 75052 disjoint fitting-input acquisition is ongoing, separately from the
+  already-successful seven-epoch oracle. It is bounded to 4 MiB original SPK
+  bytes, using clustered windows and explicit target/parent segment evaluation.
+  It has NOT yet produced a passing model. No additional optional Tudat work
+  was attempted; native Tudat remains with the controller.
+
+### Integration contract and storage decision
+
+- All four original body records were compared with catalog commit 71ba472 and
+  are byte-equivalent under the same JSON serialization. Their coefficients,
+  provenance, and existing accuracy budgets are unchanged.
+- However bf66bd4 changed the whole artifact target set/schema. The catalog
+  agent's four-body offline generator checks the entire serialized file. It
+  would therefore reject the combined artifact even though the four records are
+  unchanged. Full promotion is paused; this integration defect remains OPEN.
+- The local branch's older generator rejects --offline at argument parsing. That
+  result is not misrepresented as a test of the controller's integrated newer
+  generator. No edits were made to either catalog generator.
+- Measured payload sizes in the companion JSON are DATA ONLY, not a built Vite
+  bundle. They include current passing candidates plus the four original fits.
+  The acquisition cache holds approximately 2.67 GB of raw provider responses;
+  none of those responses or broad candidate payloads is added to this commit.
+  Cache response count is not an exact request count; retries were not measured.
+- Recommended next architecture: retain the four-body generated artifact exactly,
+  deliver separately versioned lazy/per-system repair assets, and pin a bounded
+  fitting-input archive with a checksum manifest. An external versioned archive
+  versus repository-resident inputs is a user/controller decision before adding
+  hundreds of MB of sources or tens of MB of frontend payload. Existing raw
+  caches, hashes and passing coefficients are retained locally for that decision.
+- Candidate reproducibility is NOT closed: current wall-clock generatedAt and
+  untracked provider caches must be replaced by pinned capture provenance and
+  deterministic offline reconstruction before release.
+
+### Exact focused checks
+
+- `PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC uv run --python 3.12 --with-requirements ci/backend-test-requirements.txt --with spiceypy==8.3.0 python -m pytest -q backend/tests/test_all_moon_oracle_coverage.py`
+  Result: 428 passed in 0.27 s, including real native Daphnis boundary evidence.
+  These are reference-integrity tests, not 428 trajectory-accuracy certifications.
+- `PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC uv run --python 3.12 --with-requirements ci/backend-test-requirements.txt --with spiceypy==8.3.0 python scripts/capture_daphnis_spk_oracle.py`
+  Result: seven offline native states reproduced from the embedded original kernel.
+- `npx vitest run src/sim/moonCatalogRepair.horizons.test.ts src/sim/moonCartesianEphemeris.test.ts --reporter=dot`
+  Result: 15 passed, 414 explicitly repair-pending skips, two files passed.
+- `SCN043_CANDIDATE_DIR=node_modules/.cache/scn043 npx vitest run src/sim/moonCatalogRepair.horizons.test.ts --reporter=dot`
+  Result: 418 passed, 1 failed, 6 skipped. One passing test is denominator
+  integrity; 417 record-level accuracy cases passed. The failure is a test
+  metadata-equality assertion for duplicate Puck: the shared fit's stricter
+  86.004 km limit differs from the second record's 86.007 km budget. Its
+  trajectory comparison is not reached for that record. No observed candidate
+  accuracy exceedance is hidden by this result; the gate remains FAILED until
+  the assertion is repaired. The assertion defect was reported to the controller.
+- `node scripts/assess_all_moon_oracle.mjs`
+  Result on the SHIPPED ten-model artifact: 424 referenced records, 2,968 compared
+  states, zero unavailable samples, one legacy-reference supplement, 186 records
+  above one catalog semimajor axis and 394 above 0.1 semimajor axis. These counts
+  include newly available 75052/Daphnis samples and are not a regression against
+  the prior smaller reference denominator. Cached candidates are not silently
+  substituted by this diagnostic.
+
+### Files and references
+
+Changed reference tests/diagnostic: backend/tests/test_all_moon_oracle_coverage.py,
+src/sim/moonCatalogRepair.horizons.test.ts, scripts/assess_all_moon_oracle.mjs.
+Added native reference/reproducer: backend/tests/fixtures/daphnis_legacy_spk_capture.json,
+scripts/capture_daphnis_spk_oracle.py. Candidate-only fitting work:
+scripts/repair_catalog_moon_ephemeris.py, scripts/repair_spk_moon_ephemeris.py.
+No catalog data, canonical artifact, mission files, planet poles, or master
+tracker were edited in this follow-up checkpoint.
+
+- https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/sat393_daphnis.bsp
+- https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/aa_summaries.txt
+- https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/ura184_part-2.bsp
+- https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc
+- https://ssd.jpl.nasa.gov/sats/elem/ (published means are not an ephemeris)
+
+For controller native Pluto work: gm_de440.tpc gives BODY999_GM =
+869.6138177608748 km^3/s^2, separately from BODY9_GM = 975.5 km^3/s^2.
+Supplying the correct GM does not supply a missing 999 body-center SPK segment;
+do not silently substitute the Pluto-system barycenter trajectory.

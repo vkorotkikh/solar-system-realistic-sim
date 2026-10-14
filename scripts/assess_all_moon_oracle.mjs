@@ -7,17 +7,31 @@ import { Vector3 } from 'three';
 import rawMoons from './src/data/moons.json';
 import rawEphemerides from './src/data/moonEphemerisChebyshev.json';
 import oracle from './backend/tests/fixtures/all_moons_horizons_oracle.json';
+import spk75052 from './backend/tests/fixtures/uranus_75052_spk_capture.json';
+import daphnisLegacy from './backend/tests/fixtures/daphnis_legacy_spk_capture.json';
 import { createSolarSystemCatalog } from './src/sim/catalog.ts';
 import { parseMoonEphemerisArtifact } from './src/sim/moonEphemeris.ts';
 import { propagateKeplerOrbit, orbitPropagationQualityAt } from './src/sim/orbitMath.ts';
 const catalog = createSolarSystemCatalog({moonEphemerides: parseMoonEphemerisArtifact(rawEphemerides).bodies});
 if (Object.keys(oracle.bodies).length !== rawMoons.length) throw new Error('Oracle capture is incomplete');
 const records = rawMoons.map(raw => {
-  const reference = oracle.bodies[String(raw.id)];
+  let reference = String(raw.iauCode) === '75052' ? {
+    status: 'captured', provider: 'NASA/JPL NAIF SPK',
+    states: spk75052.states.map(s => ({jd_tdb:s.jdTdb, position_au:s.positionAu, velocity_au_per_day:s.velocityAuDay}))
+  } : oracle.bodies[String(raw.id)];
+  if (String(raw.iauCode) === '635') {
+    const live = reference;
+    reference = {status: 'captured', provider: 'Horizons plus legacy SAT393 SPK',
+      quality: daphnisLegacy.source_quality, liveProviderMissingJdTdb: live.missing_jd_tdb,
+      states: daphnisLegacy.states.map(row => live.states.find(s => s.jd_tdb === row.jd_tdb) ?? row)};
+  }
   const body = catalog.bodies.find(b => b.type === 'moon' && b.name === raw.name && b.parentId === raw.planet.toLowerCase());
   if (!body?.orbit) throw new Error('Missing catalog orbit: ' + raw.name);
   const record = {catalogId: raw.id, name: raw.name, parent: raw.planet, targetId: raw.iauCode,
-    referenceStatus: reference.status, catalogSemimajorAxisKm: raw.aKm, samples: []};
+    referenceStatus: reference.status, referenceProvider: reference.provider ?? 'NASA/JPL Horizons',
+    referenceQuality: reference.quality ?? 'provider_numerical_ephemeris',
+    liveProviderMissingJdTdb: reference.liveProviderMissingJdTdb,
+    catalogSemimajorAxisKm: raw.aKm, samples: []};
   if (reference.status === 'partial') {
     record.referenceError = reference.error;
     record.missingJdTdb = reference.missing_jd_tdb;
@@ -54,7 +68,10 @@ console.log(JSON.stringify({schemaVersion:1,
   expectedCatalogCount:rawMoons.length,
   capturedBodies:records.filter(r=>r.referenceStatus==='captured').length,
   partiallyCapturedBodies:records.filter(r=>r.referenceStatus==='partial').length,
+  bodiesWithAnyReference:records.filter(r=>['captured','partial'].includes(r.referenceStatus)).length,
+  unavailableReferenceBodies:records.filter(r=>!['captured','partial'].includes(r.referenceStatus)).length,
   referenceGaps:records.filter(r=>r.referenceStatus!=='captured').length,
+  bodiesUsingLegacyReferenceSupplement:records.filter(r=>r.liveProviderMissingJdTdb?.length).length,
   comparedSamples:samples.filter(s=>s.status==='compared').length,
   modelUnavailableSamples:samples.filter(s=>s.status==='model_unavailable').length,
   // Descriptive severity counters, not chosen acceptance tolerances.
