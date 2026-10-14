@@ -18,7 +18,8 @@
 // FUNDAMENTAL CONSTANTS (CGS unless noted)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { SOURCE_COORDINATES, sourceEclipticDirection, intrinsicBetaForApparentSpeed } from './sourceCoordinates';
+import { SOURCE_COORDINATES, sourceEclipticDirection, intrinsicBetaForApparentSpeed, type SourceKey } from './sourceCoordinates';
+import type { ChannelDefinition, SmbhSource } from './smbhTypes';
 
 export const C_CM_S = 2.998e10;
 export const C_KM_S = 2.998e5;
@@ -185,7 +186,7 @@ export const SOURCE_CATALOG = Object.freeze({
     CentaurusA: CEN_A,
     Maffei1: MAFFEI_1,
     M87: M87
-});
+} satisfies Record<SourceKey, SmbhSource>);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERSTELLAR MEDIUM PARAMETERS
@@ -392,7 +393,7 @@ export const CHANNEL_DEFS = Object.freeze([
         energyFraction: 0.44,
         description: 'BM ultrarelativistic → Sedov-Taylor. The Fermi Bubbles ARE this.'
     }
-]);
+] satisfies ChannelDefinition[]);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NANOGRAV GW BACKGROUND

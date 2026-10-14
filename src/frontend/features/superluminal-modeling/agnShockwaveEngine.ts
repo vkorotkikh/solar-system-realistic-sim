@@ -23,9 +23,8 @@ import {
 } from './smbhPropagation';
 import type { SourceKey } from './sourceCoordinates';
 import type { createGWVisualization } from '../solar/gravitationalWaves';
+import type { MessengerChannel as Channel, MultiMessengerTimeline as Physics, StochasticFlare } from './smbhTypes';
 
-type Physics = ReturnType<typeof computeMultiMessengerTimeline>;
-type Channel = Physics['channels'][number];
 type DisplayChannel = Channel & { arrivalDisplaySec: number };
 type Source = (typeof SOURCE_CATALOG)[SourceKey];
 type GwDisplayer = Pick<ReturnType<typeof createGWVisualization>, 'toggle' | 'setParams'>
@@ -162,7 +161,7 @@ export function createAgnShockwaveEngine(
     let currentThetaRad = toRadians(35);
 
     let stochasticActive = false;
-    let stochasticFlares: ReturnType<typeof generateStochasticFlares> = [];
+    let stochasticFlares: StochasticFlare[] = [];
     let stochasticElapsed = 0;
     let stochasticIndex = 0;
     const stochasticWindowSec = 120;

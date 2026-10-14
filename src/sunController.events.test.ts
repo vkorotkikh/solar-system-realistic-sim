@@ -48,8 +48,9 @@ function fixture() {
 
 describe('sun event integration (SCN-038/065/067)', () => {
   it('advances background flares with no foreground event', () => {
-    const { controller, tick } = fixture();
+    // The engine captures its random source at construction, before enabling H6.
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const { controller, tick } = fixture();
     controller.setAgnStochasticFlaring(true);
     for (let i = 0; i < 30; i++) tick();
     expect(controller.getAgnTimeline()).toBeNull();
