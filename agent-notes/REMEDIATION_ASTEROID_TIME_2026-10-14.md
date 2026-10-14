@@ -12,6 +12,23 @@ iterations with a bracket, including high eccentricity. The uncalibrated
 age-squared pseudo-perturbation is disabled by default; this renderer declares
 Keplerian propagation rather than an N-body integration.
 
-An actual WebGL transform-feedback readback gate is required in addition to the
-CPU/attribute tests. Its outcome and renderer identity will be added here;
-headless software WebGL is not evidence of hardware performance.
+`scripts/verify-asteroid-gpu.mjs` compiles the actual production orbital shader
+and reads back transform-feedback positions against an independent CPU double
+bisection oracle. It passed 125 cases spanning 1900-2100, eccentricities through
+0.999999, anomaly boundaries, and window boundaries. Maximum observed position
+error was 0.000020815 AU against the declared 0.00005 AU encoding/shader budget;
+one-minute motion was 0.0000095962 AU, without float-JD quantization jumps.
+
+The first GPU run exposed an additional trigonometric accuracy discrepancy:
+0.000474 AU on a circular orbit. Range-reduced polynomial sine/cosine evaluation
+removed the dependency on the driver's loose transcendental accuracy. These
+polynomials and the safeguarded solver are exercised by the same readback gate.
+
+Renderer: ANGLE/Vulkan SwiftShader (Subzero). This is actual shader execution
+and readback, but is software rendering and does not establish hardware GPU
+performance under SCN-047. Playwright API: https://playwright.dev/docs/api/class-browsertype.
+
+Run with a Vite server at `GPU_TEST_ORIGIN` (default localhost:5189), Playwright
+available as a package or `PLAYWRIGHT_MODULE`, and optional `WEBGL_BROWSER`.
+The script fails when WebGL is unavailable; it never converts a skipped gate
+into a pass.

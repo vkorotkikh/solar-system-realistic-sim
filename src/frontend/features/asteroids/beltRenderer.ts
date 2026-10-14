@@ -78,17 +78,40 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
     vec3 vOrbitOffset;
 
+    // Range-reduced Taylor polynomials keep orbital coordinates independent of
+    // implementation-defined GPU transcendental accuracy (including SwiftShader).
+    float orbitSin(float angle) {
+      float x = mod(angle + 3.141592653589793, TWO_PI) - 3.141592653589793;
+      if (x > 1.570796326794897) x = 3.141592653589793 - x;
+      if (x < -1.570796326794897) x = -3.141592653589793 - x;
+      float y = x * x;
+      return x * (1.0 + y * (-0.166666666666667 + y * (0.008333333333333
+        + y * (-0.000198412698413 + y * (0.000002755731922
+        + y * (-0.000000025052108 + y * 0.000000000160590))))));
+    }
+
+    float orbitCos(float angle) {
+      float x = mod(angle + 3.141592653589793, TWO_PI) - 3.141592653589793;
+      float signValue = 1.0;
+      if (x > 1.570796326794897) { x = 3.141592653589793 - x; signValue = -1.0; }
+      if (x < -1.570796326794897) { x = -3.141592653589793 - x; signValue = -1.0; }
+      float y = x * x;
+      return signValue * (1.0 + y * (-0.5 + y * (0.041666666666667
+        + y * (-0.001388888888889 + y * (0.000024801587302
+        + y * (-0.000000275573192 + y * 0.000000002087676))))));
+    }
+
     float solveKepler(float meanAnomaly, float eccentricity) {
       if (meanAnomaly == 0.0) return 0.0;
       float lower = 0.0;
       float upper = TWO_PI;
       float eccentricAnomaly = eccentricity < 0.8 ? meanAnomaly : 3.141592653589793;
       for (int i = 0; i < 32; i++) {
-        float f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly;
+        float f = eccentricAnomaly - eccentricity * orbitSin(eccentricAnomaly) - meanAnomaly;
         if (f == 0.0) return eccentricAnomaly;
         if (f > 0.0) upper = eccentricAnomaly;
         else lower = eccentricAnomaly;
-        float fPrime = 1.0 - eccentricity * cos(eccentricAnomaly);
+        float fPrime = 1.0 - eccentricity * orbitCos(eccentricAnomaly);
         float candidate = eccentricAnomaly - f / max(fPrime, 1e-7);
         if (candidate <= lower || candidate >= upper) candidate = 0.5 * (lower + upper);
         if (abs(candidate - eccentricAnomaly) < 1e-6) return candidate;
@@ -144,17 +167,17 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
     float sqrtTerm = sqrt(max(1.0 - e * e, 1e-6));
     vec3 orbital = vec3(
-      a * (cos(eccentricAnomaly) - e),
-      a * sqrtTerm * sin(eccentricAnomaly),
+      a * (orbitCos(eccentricAnomaly) - e),
+      a * sqrtTerm * orbitSin(eccentricAnomaly),
       0.0
     );
 
-    float cosOmega = cos(omegaNode);
-    float sinOmega = sin(omegaNode);
-    float cosArg = cos(argPeriapsis);
-    float sinArg = sin(argPeriapsis);
-    float cosI = cos(i);
-    float sinI = sin(i);
+    float cosOmega = orbitCos(omegaNode);
+    float sinOmega = orbitSin(omegaNode);
+    float cosArg = orbitCos(argPeriapsis);
+    float sinArg = orbitSin(argPeriapsis);
+    float cosI = orbitCos(i);
+    float sinI = orbitSin(i);
     vec3 orbitPosition = vec3(
       orbital.x * (cosOmega * cosArg - sinOmega * sinArg * cosI) + orbital.y * (-cosOmega * sinArg - sinOmega * cosArg * cosI),
       orbital.x * (sinOmega * cosArg + cosOmega * sinArg * cosI) + orbital.y * (-sinOmega * sinArg + cosOmega * cosArg * cosI),
