@@ -129,6 +129,8 @@ export class SimulationClient {
 
   private ws: WebSocket | null;
 
+  private socketGeneration = 0;
+
   private connected: boolean;
 
   private reconnectTimerId: number | null;
@@ -150,6 +152,10 @@ export class SimulationClient {
   latestKuiperSnapshot: ServerKuiperSnapshot | null = null;
 
   private kuiperActive: boolean;
+
+  // Preserve legacy unsolicited snapshots until the caller explicitly revokes
+  // the subscription. In-flight deliveries cannot undo that revocation.
+  private kuiperRevoked = false;
 
   private kuiperRequest: { type: 'activate_kuiper'; center: number[]; spread: number } | null = null;
 
@@ -201,7 +207,9 @@ export class SimulationClient {
 
   private openSocket(options: ConnectOptions, reconnecting: boolean): void {
     this.disconnectSocket();
+    const generation = this.socketGeneration;
     this.setStatus(reconnecting ? 'reconnecting' : 'connecting');
+    if (generation !== this.socketGeneration || this.manualDisconnect) return;
 
     const backend = options.backend ?? 'rebound';
     const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
@@ -214,20 +222,21 @@ export class SimulationClient {
       }));
     } catch (error) {
       this.reportFailure(error instanceof Error ? error.message : String(error));
-      this.scheduleReconnect();
+      if (generation === this.socketGeneration) this.scheduleReconnect();
       return;
     }
     this.ws = socket;
     this.staleTimerId = window.setTimeout(() => {
+      if (this.ws !== socket) return;
       this.reportFailure('WebSocket connection timed out');
-      this.handleSocketEnded();
+      if (this.ws === socket) this.handleSocketEnded();
     }, RECONNECT_AFTER_MS);
 
     socket.onopen = () => {
       if (this.ws !== socket) return;
       this.connected = true;
       this.armStaleTimer();
-      if (this.onConnected) this.onConnected();
+      this.notifyObserver(() => this.onConnected?.());
     };
 
     socket.onmessage = (event: MessageEvent) => {
@@ -245,21 +254,23 @@ export class SimulationClient {
         return;
       }
       this.markFresh();
+      if (this.ws !== socket) return;
       if (msg.type === 'state_update') {
         this.latestState = msg;
         // The backend emits Kuiper only every fifth frame. Omission preserves
         // the last complete snapshot, including velocities and binary metadata.
-        if (msg.kuiper !== undefined) {
+        if (!this.kuiperRevoked && msg.kuiper !== undefined) {
           this.latestKuiperSnapshot = Array.isArray(msg.kuiper) ? { positions: msg.kuiper } : msg.kuiper;
           this.latestKuiper = this.latestKuiperSnapshot?.positions ?? null;
         }
         return;
       }
       this.handleConnectedMessage(msg);
+      if (this.ws !== socket) return;
       if (!this.serverReady) {
         this.serverReady = true;
-        if (this.onServerReady) this.onServerReady(this);
-        this.replayKuiperRequest();
+        this.notifyObserver(() => this.onServerReady?.(this));
+        if (this.ws === socket) this.replayKuiperRequest();
       }
     };
 
@@ -271,15 +282,17 @@ export class SimulationClient {
     socket.onerror = () => {
       if (this.ws !== socket) return;
       this.reportFailure('WebSocket transport error');
-      this.handleSocketEnded();
+      if (this.ws === socket) this.handleSocketEnded();
     };
   }
 
   private handleConnectedMessage(message: ConnectedMessage): void {
+    const socket = this.ws;
     if (Array.isArray(message.warnings)) {
       for (const warning of message.warnings) {
         if (typeof warning === 'string' && this.onProtocolWarning) {
-          this.onProtocolWarning(warning);
+          this.notifyObserver(() => this.onProtocolWarning?.(warning));
+          if (this.ws !== socket) return;
         }
       }
     }
@@ -288,6 +301,7 @@ export class SimulationClient {
   private handleSocketEnded(): void {
     const hadSocket = this.ws !== null;
     this.disconnectSocket();
+    const generation = this.socketGeneration;
     this.connected = false;
     this.latestState = null;
 
@@ -295,7 +309,8 @@ export class SimulationClient {
       return;
     }
 
-    if (this.onDisconnected) this.onDisconnected();
+    this.notifyObserver(() => this.onDisconnected?.());
+    if (generation !== this.socketGeneration) return;
 
     if (this.manualDisconnect || !this.lastConnectOptions) {
       this.setStatus('offline');
@@ -309,7 +324,9 @@ export class SimulationClient {
     if (this.manualDisconnect || this.reconnectTimerId !== null || !this.lastConnectOptions) return;
 
     this.reconnectAttempt += 1;
+    const generation = this.socketGeneration;
     this.setStatus('reconnecting');
+    if (generation !== this.socketGeneration || this.manualDisconnect) return;
     const baseDelayMs = Math.min(
       MAX_RECONNECT_DELAY_MS,
       INITIAL_RECONNECT_DELAY_MS * (2 ** Math.max(0, this.reconnectAttempt - 1))
@@ -317,6 +334,7 @@ export class SimulationClient {
     const jitteredDelayMs = Math.min(MAX_RECONNECT_DELAY_MS, Math.round(baseDelayMs * (0.75 + Math.random() * 0.5)));
 
     this.reconnectTimerId = window.setTimeout(() => {
+      if (generation !== this.socketGeneration) return;
       this.reconnectTimerId = null;
       if (this.manualDisconnect || !this.lastConnectOptions) {
         return;
@@ -328,23 +346,27 @@ export class SimulationClient {
   private markFresh(): void {
     this.lastError = null;
     this.reconnectAttempt = 0;
+    // Install owned work before notifying observers; disconnect can then revoke it.
+    this.armStaleTimer();
     if (this.connected) {
       this.setStatus('connected');
     }
-    this.armStaleTimer();
   }
 
   private armStaleTimer(): void {
+    const socket = this.ws;
     this.clearStaleTimer();
     this.staleTimerId = window.setTimeout(() => {
-      if (this.connected) {
+      if (this.ws === socket && this.connected) {
         this.latestState = null;
         this.latestKuiper = null;
         this.latestKuiperSnapshot = null;
         this.setStatus('stale');
+        if (this.ws !== socket) return;
         this.staleTimerId = window.setTimeout(() => {
+          if (this.ws !== socket) return;
           this.reportFailure('WebSocket valid-message timeout');
-          this.handleSocketEnded();
+          if (this.ws === socket) this.handleSocketEnded();
         }, RECONNECT_AFTER_MS - STALE_AFTER_MS);
       }
     }, STALE_AFTER_MS);
@@ -365,6 +387,7 @@ export class SimulationClient {
   }
 
   private disconnectSocket(): void {
+    this.socketGeneration++;
     this.clearStaleTimer();
     this.connected = false;
     this.serverReady = false;
@@ -384,12 +407,22 @@ export class SimulationClient {
   private setStatus(status: SimulationClientStatus): void {
     if (this.status === status) return;
     this.status = status;
-    if (this.onStatusChange) this.onStatusChange(status);
+    this.notifyObserver(() => this.onStatusChange?.(status));
   }
 
   private reportFailure(message: string): void {
     this.lastError = message;
-    if (this.onProtocolWarning) this.onProtocolWarning(message);
+    this.notifyObserver(() => this.onProtocolWarning?.(message));
+  }
+
+  private notifyObserver(notify: () => void): void {
+    try {
+      notify();
+    } catch (error) {
+      // UI observers cannot own transport cleanup, retry or subscription replay.
+      // Do not recursively notify the possibly failing protocol-warning observer.
+      try { console.warn('[simulationClient] observer failed:', error); } catch { /* Diagnostic only. */ }
+    }
   }
 
   private replayKuiperRequest(): void {
@@ -411,24 +444,27 @@ export class SimulationClient {
   }
 
   send(msg: Record<string, unknown>): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    const socket = this.ws;
+    if (socket && socket.readyState === WebSocket.OPEN) {
       try {
-        this.ws.send(JSON.stringify(msg));
+        socket.send(JSON.stringify(msg));
         return true;
       } catch (error) {
         this.reportFailure(error instanceof Error ? error.message : String(error));
-        this.handleSocketEnded();
+        if (this.ws === socket) this.handleSocketEnded();
       }
     }
     return false;
   }
 
   activateKuiper(center: Vector3Like, spread: number): void {
+    this.kuiperRevoked = false;
     this.kuiperRequest = { type: 'activate_kuiper', center: [center.x, center.y, center.z], spread };
     this.replayKuiperRequest();
   }
 
   deactivateKuiper(): void {
+    this.kuiperRevoked = true;
     this.kuiperRequest = null;
     if (this.kuiperActive) {
       this.send({ type: 'deactivate_kuiper' });
