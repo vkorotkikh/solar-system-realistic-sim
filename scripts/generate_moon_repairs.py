@@ -227,7 +227,7 @@ def main():
         return 0
     raw = encoded(generate(args.source_dir))
     if args.write:
-        if args.output_path.resolve() == fit.ARTIFACT.resolve():
+        if args.output_path.resolve() == fit.original.OUTPUT_PATH.resolve():
             raise ValueError('Cannot replace the canonical four-body artifact')
         publish(args.output_path, raw)
         print(f'wrote {args.output_path} ({len(raw)} bytes)')
