@@ -189,7 +189,7 @@ def test_lambert_rejects_same_from_and_to() -> None:
     assert "must differ" in response.text
 
 
-def test_lambert_rejects_overflowing_time_of_flight_before_admission() -> None:
+def test_lambert_rejects_extreme_epochs_before_time_of_flight_overflows() -> None:
     response = client.post(
         "/trajectory/lambert",
         json={
@@ -201,8 +201,10 @@ def test_lambert_rejects_overflowing_time_of_flight_before_admission() -> None:
         },
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"]["code"] == "trajectory_invalid_time_range"
+    # The shared epoch contract now rejects these endpoints before subtraction
+    # can overflow or a planning worker can receive the request.
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "trajectory_epoch_out_of_range"
 
 
 def test_porkchop_rejects_subminimum_steps_before_worker_admission() -> None:
