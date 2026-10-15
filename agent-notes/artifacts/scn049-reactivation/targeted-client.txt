@@ -1,0 +1,8 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-20261014-lifecycle-review
+
+
+ Test Files  6 passed (6)
+      Tests  69 passed (69)
+   Start at  01:34:50
+   Duration  211ms (transform 61%, tests 26%, import 9%, worker 3%)

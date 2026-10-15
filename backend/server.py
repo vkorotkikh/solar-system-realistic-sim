@@ -100,6 +100,7 @@ from mission.ephemeris_service import (
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
+from sim.kuiper_subscription import subscription_id_from_command
 from sim.rebound_nbody import REBOUNDEngine
 from sim.process_supervisor import (
     DEFAULT_MAX_RESULT_BYTES,
@@ -4364,6 +4365,7 @@ class SimulationRunner:
     def __init__(self, engine: SimulationEngine, target_fps: int = 60):
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
+        self._kuiper_subscription_id: str | None = None
         self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
         self.response_queue: queue.Queue = queue.Queue(maxsize=MAX_RESPONSE_QUEUE)
         self._state_lock = threading.Lock()
@@ -4557,6 +4559,8 @@ class SimulationRunner:
 
             if kuiper_particles:
                 state["kuiper"] = kuiper_particles
+                if self._kuiper_subscription_id is not None:
+                    state["kuiper_subscription_id"] = self._kuiper_subscription_id
 
             with self._state_lock:
                 self._latest_state = state
@@ -4640,8 +4644,14 @@ class SimulationRunner:
                     return
             if self.kuiper.active:
                 self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
 
         elif action == "activate_kuiper":
+            try:
+                subscription_id = subscription_id_from_command(cmd)
+            except ValueError as exc:
+                self._push_error(str(exc), action=action)
+                return
             center = self._coerce_vec3(cmd.get("center", [42.0, 0.0, 0.0]))
             if center is None:
                 self._push_error("`activate_kuiper` requires `center` as [x,y,z] numbers", action=action)
@@ -4687,6 +4697,7 @@ class SimulationRunner:
                 # Surface this without latching `_runtime_error`: the main
                 # simulation is unaffected, so the session must keep stepping.
                 self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
                 self._push_error(
                     f"`activate_kuiper` rejected: {exc}",
                     action=action,
@@ -4694,8 +4705,11 @@ class SimulationRunner:
                 )
                 return
 
+            self._kuiper_subscription_id = subscription_id
+
         elif action == "deactivate_kuiper":
             self.kuiper.deactivate()
+            self._kuiper_subscription_id = None
 
         elif action == "get_orbital_elements":
             body_id = cmd.get("body_id")
@@ -4813,6 +4827,11 @@ def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | No
     for field in _WS_SIM_COMMAND_FIELDS.get(action, ()):
         if field in message:
             normalized[field] = message[field]
+    if action == "activate_kuiper" and "subscription_id" in message:
+        try:
+            normalized["subscription_id"] = subscription_id_from_command(message)
+        except ValueError as exc:
+            return None, str(exc)
     return normalized, None
 
 
@@ -5053,6 +5072,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "type": "connected",
         "protocol_version": WS_PROTOCOL_VERSION,
         "protocol_version_requested": protocol_requested,
+        "kuiper_subscription_version": 1,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,
