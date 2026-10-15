@@ -238,68 +238,16 @@ class PFSSField:
 
         Units match the input coefficient units (typically Gauss for g_lm).
         """
-        if self.lmax > 64:
-            return tuple(float(v) for v in self._streaming.evaluate(r, theta, phi))
-        cos_t = math.cos(theta)
-        sin_t = math.sin(theta)
-
-        # Compute Legendre functions at this colatitude
-        plm_vals: dict[tuple[int, int], float] = {}
-        dplm_vals: dict[tuple[int, int], float] = {}
-        self._legendre_at_point(cos_t, sin_t, plm_vals, dplm_vals)
-
-        br_val = 0.0
-        bt_val = 0.0
-        bp_val = 0.0
-
-        for l in range(1, self.lmax + 1):
-            # B=-grad(Psi), with each unit-coefficient potential mode
-            # Psi_l = [r^(-l-1) - r^l/rss^(2l+1)] / D_l * Y_lm,
-            # D_l = l+1 + l/rss^(2l+1). Thus Psi_l(rss)=0,
-            # Br(1)=Y_lm, and Btheta(rss)=Bphi(rss)=0.
-            # Br(rss)=(2l+1)*rss^(-l-2)/D_l * Y_lm is generally nonzero.
-            rss = self.r_ss
-
-            r_ratio = r  # r in solar radii, photosphere = 1
-            rss_pow = (1.0 / rss) ** (2 * l + 1)
-
-            # c_l: radial decay factor for Br
-            # At r=1: c_l = (l+1+l*rss^{-(2l+1)}) / (l+1+l*rss^{-(2l+1)}) = 1 — correct
-            denominator = (l + 1) + l * rss_pow
-            if abs(denominator) < 1e-30:
-                continue
-
-            # Br coefficient
-            cl_br = ((l + 1) * r_ratio ** (-(l + 2)) + l * rss_pow * r_ratio ** (l - 1)) / denominator
-            # Btheta coefficient
-            cl_bt = -(r_ratio ** (-(l + 2)) - rss_pow * r_ratio ** (l - 1)) / denominator
-            # Bphi coefficient is similar to Btheta
-            cl_bp = cl_bt  # Same radial factor for Bφ
-
-            for m in range(l + 1):
-                plm = plm_vals.get((l, m), 0.0)
-                dplm = dplm_vals.get((l, m), 0.0)
-
-                cos_mp = math.cos(m * phi)
-                sin_mp = math.sin(m * phi)
-                glm = self.g[l, m] if l < self.g.shape[0] and m < self.g.shape[1] else 0.0
-                hlm = self.h[l, m] if l < self.h.shape[0] and m < self.h.shape[1] else 0.0
-
-                gh_cos = glm * cos_mp + hlm * sin_mp
-                gh_sin = -glm * sin_mp + hlm * cos_mp
-
-                br_val += cl_br * plm * gh_cos
-                bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * float(schmidt_azimuthal_factor(m, cos_t, plm, dplm)) * gh_sin
-
-        return (br_val, bt_val, bp_val)
+        # Keep scalar and batch coordinate handling identical, including
+        # resolved near-pole sine terms at degrees below the legacy cap.
+        return tuple(float(v) for v in self._streaming.evaluate(r, theta, phi))
 
     def evaluate_cartesian(self, x: float, y: float, z: float) -> tuple[float, float, float]:
         """Evaluate B at Cartesian position (x, y, z) in solar radii → (Bx, By, Bz)."""
         r = math.sqrt(x * x + y * y + z * z)
         if r < 0.01:
             return (0.0, 0.0, 0.0)
-        theta = math.acos(_clamp(z / r, -1.0, 1.0))
+        theta = math.atan2(math.hypot(x, y), z)
         phi = math.atan2(y, x)
 
         br, bt, bp = self.evaluate(r, theta, phi)
@@ -334,7 +282,7 @@ class PFSSField:
         
         # Avoid division by zero at origin
         r_safe = np.where(r < 0.01, 1.0, r)
-        theta = np.arccos(np.clip(z / r_safe, -1.0, 1.0))
+        theta = np.arctan2(np.hypot(x, y), z)
         phi = np.arctan2(y, x)
         
         br, bt, bp = self._evaluate_batch(r_safe, theta, phi)
