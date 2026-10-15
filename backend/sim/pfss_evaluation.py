@@ -62,6 +62,13 @@ class StreamingPFSS:
         self.denominators = l + 1 + l * self.rss**(-2*l - 1)
 
     def evaluate(self, r, theta, phi):
+        # Coordinate values, not their caller-selected storage dtype, determine
+        # the floating-point recurrence and radial scratch buffers.
+        r, theta, phi = (np.asarray(value, dtype=float) for value in (r, theta, phi))
+        if not np.isfinite(theta).all():
+            raise ValueError("PFSS colatitude must be finite")
+        if not np.isfinite(phi).all():
+            raise ValueError("PFSS azimuth must be finite")
         r, theta, phi = np.broadcast_arrays(r, theta, phi)
         shape = r.shape
         flat = [v.ravel() for v in (r, theta, phi)]
@@ -73,7 +80,11 @@ class StreamingPFSS:
 
     def _chunk(self, r, theta, phi):
         mu = np.cos(theta)
-        st = np.sqrt((1 - mu) * (1 + mu))
+        # cos(theta) can round to +/-1 while theta still resolves a nonzero
+        # transverse displacement. Preserve that information instead of
+        # reconstructing sine from cosine. Only the actual angular endpoints
+        # use the exact-pole limit (sin(pi) otherwise has a rounding residual).
+        st = np.where((theta == 0.0) | (theta == np.pi), 0.0, np.sin(theta))
         cosine = np.cos(self.orders[:, None] * phi)
         sine = np.sin(self.orders[:, None] * phi)
         p2, p1, p = np.zeros((3, self.degree + 1, len(r)))
