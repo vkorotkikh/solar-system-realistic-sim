@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.284" timestamp="2026-10-15T05:42:52.162618+00:00" hostname="Athena"><testcase classname="backend.tests.test_pfss_tracing" name="test_open_endpoint_does_not_overshoot" time="0.025"><failure message="AssertionError: R4-TRACE-EXACT-CROSSING&#10;assert 0.00500000000000389 &lt;= 1e-06&#10; +  where 0.00500000000000389 = abs((2.505000000000004 - 2.5))&#10; +    where 2.505000000000004 = &lt;built-in function hypot&gt;(*[1.2127279102811974, 0.0, 2.1918750000000045])&#10; +      where &lt;built-in function hypot&gt; = math.hypot">def test_open_endpoint_does_not_overshoot():
+        lines = trace_field_lines(RadialField(), n_lines=8)
+        for line in lines:
+            endpoint = line.get('endpoint', line['arc'][-1])
+&gt;           assert abs(math.hypot(*endpoint) - 2.5) &lt;= 1e-6, "R4-TRACE-EXACT-CROSSING"
+E           AssertionError: R4-TRACE-EXACT-CROSSING
+E           assert 0.00500000000000389 &lt;= 1e-06
+E            +  where 0.00500000000000389 = abs((2.505000000000004 - 2.5))
+E            +    where 2.505000000000004 = &lt;built-in function hypot&gt;(*[1.2127279102811974, 0.0, 2.1918750000000045])
+E            +      where &lt;built-in function hypot&gt; = math.hypot
+
+backend/tests/test_pfss_tracing.py:33: AssertionError</failure></testcase></testsuite></testsuites>

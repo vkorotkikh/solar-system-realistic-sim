@@ -1,0 +1,10 @@
+{
+  "currentCount": 223,
+  "headCount": 223,
+  "identicalBuckets": true,
+  "newDiagnosticsFromThisTask": 0,
+  "ratchetViolations": [
+    "new diagnostic bucket src/sim/moonSourceExceptionIndependentReview.test.ts|TS2307 (5)",
+    "new diagnostic bucket src/sim/moonSourceExceptionIndependentReview.test.ts|TS2591 (1)"
+  ]
+}
