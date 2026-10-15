@@ -799,16 +799,27 @@ async function fetchPhase1AsteroidCatalog(
   const latencyBudgetMs = options.loadLatencyBudgetMs ?? PHASE1_LOAD_LATENCY_BUDGET_MS;
   const loadStarted = nowMs();
 
-  const [binaryResponse, metadataLoad] = await Promise.all([
-    fetch(url, { signal, cache: 'no-cache' }),
+  const [binaryLoad, metadataLoad] = await Promise.all([
+    fetch(url, { signal, cache: 'no-cache' }).then(async (response) => {
+      // Consume the binary while metadata is loading. Retain HTTP/body errors
+      // until metadata settles, preserving the existing error/deadline ordering
+      // without leaving an early body rejection unhandled. Fetch rejection still
+      // rejects Promise.all immediately, as it did before body reads overlapped.
+      try {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch phase-1 catalog (${response.status}): ${response.statusText}`);
+        }
+        return { ok: true as const, buffer: await response.arrayBuffer() };
+      } catch (error) {
+        return { ok: false as const, error };
+      }
+    }),
     loadPhase1CatalogMetadata(metaUrl, signal),
   ]);
 
-  if (!binaryResponse.ok) {
-    throw new Error(`Failed to fetch phase-1 catalog (${binaryResponse.status}): ${binaryResponse.statusText}`);
-  }
+  if (!binaryLoad.ok) throw binaryLoad.error;
 
-  const buffer = await binaryResponse.arrayBuffer();
+  const buffer = binaryLoad.buffer;
   signal.throwIfAborted();
   let parsed: ParsedPhase1Catalog;
   try {
