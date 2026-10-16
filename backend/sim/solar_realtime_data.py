@@ -432,6 +432,32 @@ class SolarRealtimeDataProvider:
         remaining_s = self.SWPC_MAX_SAMPLE_AGE_S - maximum_age_s
         return max(0.0, min(lifetime, remaining_s))
 
+    # Weights of the sources that carry an activity proxy. SILSO has none.
+    _ACTIVITY_PROXY_WEIGHTS = (("swpc", 0.45), ("sdo_aia", 0.2))
+
+    def _combined_activity_proxy(self, snapshot: Mapping[str, Any]) -> float | None:
+        """Weighted blend of every source whose fetch (or LKG restore) is good.
+
+        One definition for the fetch path and the SWPC restore path, so a
+        restored SWPC sample is blended with the fresh AIA proxy instead of
+        replacing the whole blend (review I-2).
+        """
+        statuses = snapshot.get("source_status") or {}
+        weighted_sum = 0.0
+        weight_total = 0.0
+        for source, weight in self._ACTIVITY_PROXY_WEIGHTS:
+            status = statuses.get(source)
+            payload = snapshot.get(source)
+            if not (isinstance(status, Mapping) and status.get("ok") is True and isinstance(payload, Mapping)):
+                continue
+            proxy = payload.get("activity_proxy")
+            if isinstance(proxy, (float, int)) and not isinstance(proxy, bool):
+                weighted_sum += float(proxy) * weight
+                weight_total += weight
+        if weight_total <= 0:
+            return None
+        return _clamp(weighted_sum / weight_total, 0.0, 1.0)
+
     def _retain_or_restore_swpc(self, key: Any, snapshot: dict[str, Any], now: float, now_utc: datetime) -> None:
         """Retain only a fresh SWPC component, bounded by epoch, count and age.
 
@@ -464,7 +490,7 @@ class SolarRealtimeDataProvider:
                 "refresh_ok": False,
                 "refresh_error": status.get("error", "SWPC refresh unavailable"),
             }
-            snapshot["combined_activity_proxy"] = swpc.get("activity_proxy")
+            snapshot["combined_activity_proxy"] = self._combined_activity_proxy(snapshot)
         eligible = [s for s in statuses.values() if isinstance(s, Mapping) and s.get("runtime_eligible") is not False]
         good = sum(s.get("ok") is True and s.get("refresh_ok") is not False for s in eligible)
         snapshot["cache_state"] = "complete" if good == len(eligible) else "partial" if good else "failed"
@@ -2713,10 +2739,6 @@ class SolarRealtimeDataProvider:
             "combined_activity_proxy": None,
         }
 
-        proxies: list[float] = []
-        weighted_sum = 0.0
-        weight_total = 0.0
-
         try:
             self._remaining_provider_budget()
             swpc = self._fetch_swpc()
@@ -2726,11 +2748,6 @@ class SolarRealtimeDataProvider:
                 "updated": swpc.get("time_tag"),
                 "endpoint": self.NOAA_WIND_URL,
             }
-            if isinstance(swpc.get("activity_proxy"), (float, int)):
-                proxy = float(swpc["activity_proxy"])
-                proxies.append(proxy)
-                weighted_sum += proxy * 0.45
-                weight_total += 0.45
         except Exception as exc:
             snapshot["source_status"]["swpc"] = {
                 "ok": False,
@@ -2767,11 +2784,6 @@ class SolarRealtimeDataProvider:
                 "updated": sdo_aia.get("latest_image_date_utc") or sdo_aia.get("request_date_utc"),
                 "endpoint": self.HELIOVIEWER_CLOSEST_URL,
             }
-            if isinstance(sdo_aia.get("activity_proxy"), (float, int)):
-                proxy = float(sdo_aia["activity_proxy"])
-                proxies.append(proxy)
-                weighted_sum += proxy * 0.2
-                weight_total += 0.2
         except Exception as exc:
             snapshot["source_status"]["sdo_aia"] = {
                 "ok": False,
@@ -2780,10 +2792,6 @@ class SolarRealtimeDataProvider:
             }
 
         snapshot["source_status"]["gong_synoptic"] = self._gong_runtime_status()
-
-        if weight_total > 0:
-            snapshot["combined_activity_proxy"] = _clamp(weighted_sum / weight_total, 0.0, 1.0)
-        elif proxies:
-            snapshot["combined_activity_proxy"] = _clamp(sum(proxies) / len(proxies), 0.0, 1.0)
+        snapshot["combined_activity_proxy"] = self._combined_activity_proxy(snapshot)
 
         return snapshot
