@@ -12,13 +12,17 @@ import base64
 import importlib.metadata
 import json
 import math
+import os
 from pathlib import Path
 
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-CHROME = "/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome"
+# Hardware evidence-capture tool: the operator names the Chromium binary; no host default.
+CHROME = os.environ.get("SOLAR_CHROMIUM_EXECUTABLE")
+if not CHROME:
+    raise SystemExit("SOLAR_CHROMIUM_EXECUTABLE must be set to the Chromium binary used for this hardware gate")
 
 PROBE = """
 window.__solarMainFrame = {
