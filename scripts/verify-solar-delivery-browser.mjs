@@ -9,10 +9,11 @@ import { distribution, validatePhysics, summarizeRequests, frameClockSegments, a
 
 const { values } = parseArgs({ options: {
   mode: { type: 'string' }, url: { type: 'string' }, backend: { type: 'string' }, out: { type: 'string' },
-  chromium: { type: 'string', default: '/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome' },
+  chromium: { type: 'string' },
 } });
-if (!['dev', 'preview'].includes(values.mode) || !values.url || !values.backend || !values.out) {
-  throw new Error('Required: --mode dev|preview --url <origin> --backend <origin> --out <directory>');
+if (!['dev', 'preview'].includes(values.mode) || !values.url || !values.backend || !values.out || !values.chromium) {
+  // Hardware evidence-capture tool: the Chromium binary is named by the operator, never defaulted to one host.
+  throw new Error('Required: --mode dev|preview --url <origin> --backend <origin> --out <directory> --chromium <executable>');
 }
 const OBSERVATION_MS = 300_000;
 const DRAIN_MS = 25_000; // Observe existing outcomes, never extend application request deadlines.
