@@ -25,6 +25,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 import numpy as np
+
 from astropy.time import Time, TimeDelta
 
 from . import gong_magnetogram as gong
@@ -32,7 +33,7 @@ from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
 from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
-from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
+from .solar_frames import observed_carrington_geometry_frame, synthetic_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
@@ -58,6 +59,33 @@ GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))  # For Fibonacci spiral seeding
 
 WSA_MODEL_VERSION = "wsa_inspired_v1"
 WSA_CALIBRATION_STATUS = "unvalidated"
+
+
+def _wsa_calibration_evidence() -> dict[str, object]:
+    """Return the bounded offline acceptance claim without upgrading WSA status."""
+
+    return {
+        "status": "accepted_bounded_single_epoch",
+        "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+        "evidence_scope": "model_relation_only_not_current_input_certification",
+        "observation_sha256": (
+            "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
+        ),
+        "provider_wsa_sha256": (
+            "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035"
+        ),
+        "provider": "NASA/CCMC WSA_V6.2 driven by NSO/GONG zqs",
+        "scope": "topology and source-surface feature agreement at one pinned epoch",
+        "operational_forecast_validated": False,
+        "excluded_claims": (
+            "operational WSA equivalence",
+            "SCS equivalence",
+            "1-AU wind forecast accuracy",
+            "live-provider availability",
+            "solar-cycle generalization",
+            "scene-coordinate rendering",
+        ),
+    }
 WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
 WSA_RADIAL_FIELD_FLOOR = 1e-15
 
@@ -790,6 +818,7 @@ def compute_wsa_velocity_map(
     return {
         "model": WSA_MODEL_VERSION,
         "calibration_status": WSA_CALIBRATION_STATUS,
+        "calibration_evidence": _wsa_calibration_evidence(),
         "formula": "267.5 + 410/max(1,fs)^0.4*(1-0.8*exp(-(theta_b/0.045)^3))",
         "angle_units": "radian",
         "velocity_units": "km/s",
@@ -1363,7 +1392,14 @@ class PFSSCache:
             "geometry_frame": (
                 synthetic_geometry_frame(snapshot.snapshot_id.jd_tdb)
                 if snapshot.source_kind == "synthetic"
-                else unresolved_observed_geometry_frame()
+                else observed_carrington_geometry_frame(
+                    provider=snapshot.provenance.provider,
+                    product=snapshot.provenance.product_token,
+                    map_left_edge_longitude_deg=map_left_edge_longitude,
+                    map_left_edge_carrington_rotation=map_left_edge_cr,
+                    row_order=snapshot.grid.row_order,
+                    grid_convention=snapshot.grid.convention,
+                )
             ),
             "fallback_reason": fallback_reason,
             "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
@@ -1507,8 +1543,16 @@ class PFSSCache:
             raise ValueError("snapshot transform version is not implemented")
         if sid.coverage_semantics != gong.GONG_COVERAGE_SEMANTICS:
             raise ValueError("snapshot coverage semantics are not implemented")
-        if sid.flux_balance_policy_version != gong.FLUX_BALANCE_POLICY_VERSION:
+        if (
+            sid.flux_balance_policy_version
+            not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS
+        ):
             raise ValueError("snapshot flux-balance policy is not implemented")
+        expected_flux_quality = (
+            "flux-balanced-roundoff-only"
+            if sid.flux_balance_policy_version == gong.FLUX_BALANCE_POLICY_VERSION
+            else "flux-balanced-bounded-polarity-scaling"
+        )
         frozen_provenance = (
             provenance.provider == "NSO/GONG"
             and provenance.source_kind == "observed"
@@ -1521,8 +1565,7 @@ class PFSSCache:
             and provenance.radial_assumption == "provider-approximately-radial-v1"
             and provenance.polar_fill_status == "provider-polar-filled"
             and provenance.zero_point_status == "provider-zero-point-corrected"
-            and provenance.quality_flags
-            == ("complete-pixels", "flux-balanced-roundoff-only")
+            and provenance.quality_flags == ("complete-pixels", expected_flux_quality)
         )
         if not frozen_provenance:
             raise ValueError("snapshot provider provenance is inconsistent")
@@ -1737,10 +1780,26 @@ class PFSSCache:
         cell_area = 4.0 * math.pi / flat.size
         post_signed = math.fsum(float(value) for value in flat) * cell_area
         post_unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
-        pre_flat = flat + flux.removed_mean_g
+        if flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION:
+            pre_flat = flat + flux.removed_mean_g
+            expected_positive_scale = 1.0
+            expected_negative_scale = 1.0
+        elif flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION:
+            expected_positive_scale = 1.0 - flux.signed_imbalance_fraction
+            expected_negative_scale = 1.0 + flux.signed_imbalance_fraction
+            if expected_positive_scale <= 0.0 or expected_negative_scale <= 0.0:
+                raise ValueError("snapshot flux-balance provenance is inconsistent")
+            pre_flat = np.where(
+                flat > 0.0,
+                flat / expected_positive_scale,
+                np.where(flat < 0.0, flat / expected_negative_scale, flat),
+            )
+        else:
+            raise ValueError("snapshot flux-balance provenance is inconsistent")
         pre_signed = math.fsum(float(value) for value in pre_flat) * cell_area
         pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
         acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
+        imbalance_fraction = pre_signed / pre_unsigned
 
         def agrees(actual: float, expected: float) -> bool:
             return math.isfinite(actual) and math.isclose(
@@ -1748,15 +1807,39 @@ class PFSSCache:
             )
 
         if (
-            flux.policy_version != gong.FLUX_BALANCE_POLICY_VERSION
-            or not agrees(flux.removed_g00_g, flux.removed_mean_g)
+            flux.policy_version not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS
+            or not agrees(
+                flux.scaled_correction_limit_fraction,
+                gong.SCALED_FLUX_IMBALANCE_LIMIT,
+            )
+            or not agrees(flux.signed_imbalance_fraction, imbalance_fraction)
+            or not agrees(flux.positive_scale_factor, expected_positive_scale)
+            or not agrees(flux.negative_scale_factor, expected_negative_scale)
             or not agrees(flux.pre_signed_flux_g_sr, pre_signed)
             or not agrees(flux.pre_unsigned_flux_g_sr, pre_unsigned)
             or not agrees(flux.acceptance_limit_g_sr, acceptance_limit)
             or not agrees(flux.post_signed_flux_g_sr, post_signed)
             or not agrees(flux.post_unsigned_flux_g_sr, post_unsigned)
-            or abs(pre_signed) > acceptance_limit
             or abs(post_signed) > acceptance_limit
+            or (
+                flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
+                and (
+                    not agrees(flux.removed_g00_g, flux.removed_mean_g)
+                    or abs(pre_signed) > acceptance_limit
+                )
+            )
+            or (
+                flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION
+                and (
+                    not agrees(flux.removed_mean_g, 0.0)
+                    or not agrees(
+                        flux.removed_g00_g, pre_signed / (4.0 * math.pi)
+                    )
+                    or abs(pre_signed) <= acceptance_limit
+                    or abs(imbalance_fraction)
+                    > gong.SCALED_FLUX_IMBALANCE_LIMIT
+                )
+            )
         ):
             raise ValueError("snapshot flux-balance provenance is inconsistent")
 
@@ -1811,6 +1894,9 @@ class PFSSCache:
                 "model": wsa_result.get("model", WSA_MODEL_VERSION),
                 "calibration_status": wsa_result.get(
                     "calibration_status", WSA_CALIBRATION_STATUS,
+                ),
+                "calibration_evidence": copy.deepcopy(
+                    wsa_result.get("calibration_evidence")
                 ),
                 "valid_fraction": wsa_result.get("valid_fraction", 0.0),
                 "indeterminate_fraction": wsa_result.get(

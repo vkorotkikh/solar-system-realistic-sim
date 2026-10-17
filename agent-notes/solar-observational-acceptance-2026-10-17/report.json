@@ -1,0 +1,153 @@
+{
+  "acceptance_passed": true,
+  "application_wsa_acceptance": {
+    "application_api": "compute_pfss_from_coefficients",
+    "application_metadata": {
+      "calibration_evidence": {
+        "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+        "evidence_scope": "model_relation_only_not_current_input_certification",
+        "excluded_claims": [
+          "operational WSA equivalence",
+          "SCS equivalence",
+          "1-AU wind forecast accuracy",
+          "live-provider availability",
+          "solar-cycle generalization",
+          "scene-coordinate rendering"
+        ],
+        "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+        "operational_forecast_validated": false,
+        "provider": "NASA/CCMC WSA_V6.2 driven by NSO/GONG zqs",
+        "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+        "scope": "topology and source-surface feature agreement at one pinned epoch",
+        "status": "accepted_bounded_single_epoch"
+      },
+      "calibration_status": "unvalidated",
+      "coverage_fraction": 0.7337962962962963,
+      "indeterminate_fraction": 0.0,
+      "model": "wsa_inspired_v1",
+      "quality_reasons": [
+        "incomplete_source_surface_coverage"
+      ],
+      "valid_fraction": 0.09567901234567901
+    },
+    "boundary_distance_deg": {
+      "actual_median": 2.6063837543674486,
+      "bias": -4.208849526085077,
+      "correlation": 0.5171549417928994,
+      "median_abs": 3.421131313635742,
+      "p90_abs": 8.658708576563855,
+      "reference_median": 6.617185354232788,
+      "rmse": 5.409744151795224
+    },
+    "grid_shape": [
+      36,
+      72
+    ],
+    "log_expansion": {
+      "actual_median": 1.5788008284137645,
+      "bias": -0.081574927578528,
+      "correlation": 0.6804423537463109,
+      "median_abs": 0.4610123558401432,
+      "p90_abs": 1.263287405554286,
+      "reference_median": 1.583699786127467,
+      "rmse": 0.7522894376529763
+    },
+    "matched_feature_cells": 248,
+    "provider": "WSA_V6.2",
+    "provider_degree": 90,
+    "source_surface_radii": 2.51,
+    "speed_kms": {
+      "actual_median": 425.8183117364364,
+      "bias": -44.689082575160256,
+      "correlation": 0.6678807619760443,
+      "median_abs": 59.668607181798706,
+      "p90_abs": 136.26621863777217,
+      "reference_median": 485.06732743463897,
+      "rmse": 85.8743687292937
+    },
+    "topology": {
+      "accuracy": 0.9679783950617284,
+      "application_open": 248,
+      "balanced_accuracy": 0.8746223564954683,
+      "false_closed": 83,
+      "false_open": 0,
+      "provider_closed_recall": 1.0,
+      "provider_open": 331,
+      "provider_open_recall": 0.7492447129909365
+    }
+  },
+  "budget": {
+    "boundary_correlation_min": 0.5,
+    "boundary_median_abs_deg_max": 3.5,
+    "coefficient_correlation_min": 0.9999,
+    "coefficient_max_abs_gauss_max": 0.06,
+    "coefficient_normalized_rmse_max": 0.01,
+    "constant_monopole_normalized_rmse_min": 0.04,
+    "log_expansion_correlation_min": 0.67,
+    "log_expansion_median_abs_max": 0.47,
+    "matched_feature_cells_min": 240,
+    "provider_closed_recall_min": 0.999,
+    "provider_open_recall_min": 0.74,
+    "speed_abs_bias_kms_max": 50.0,
+    "speed_correlation_min": 0.65,
+    "speed_rmse_kms_max": 90.0,
+    "topology_accuracy_min": 0.96,
+    "wrong_frame_correlation_max": 0.1
+  },
+  "checks": {
+    "boundary_correlation": true,
+    "boundary_median_abs": true,
+    "coefficient_correlation": true,
+    "coefficient_max_abs": true,
+    "coefficient_normalized_rmse": true,
+    "constant_monopole_negative_control": true,
+    "log_expansion_correlation": true,
+    "log_expansion_median_abs": true,
+    "matched_feature_cells": true,
+    "provider_closed_recall": true,
+    "provider_open_recall": true,
+    "speed_abs_bias": true,
+    "speed_correlation": true,
+    "speed_rmse": true,
+    "topology_accuracy": true,
+    "wrong_frame_negative_control": true
+  },
+  "coefficient_frame_acceptance": {
+    "constant_monopole_normalized_rmse": 0.05189610458469901,
+    "correlation": 0.9999712887106362,
+    "degree": 15,
+    "frame_adapter": "absolute_carrington_to_provider_native_minus_long0_v1",
+    "max_abs_gauss": 0.05582740312250167,
+    "normalized_rmse": 0.007983229718697919,
+    "samples": 270,
+    "wrong_frame_correlation": 0.02829590680816537
+  },
+  "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+  "expanded_observation_sha256": "e93f2c4daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd",
+  "flux_balance": {
+    "acceptance_limit_g_sr": 6.081615481769013e-11,
+    "negative_scale_factor": 1.0407349648887105,
+    "policy_version": "bounded-polarity-scale-monopole-v1",
+    "positive_scale_factor": 0.9592650351112895,
+    "post_signed_flux_g_sr": 2.9765353869770173e-15,
+    "post_unsigned_flux_g_sr": 60.715240299636875,
+    "pre_signed_flux_g_sr": 2.4773439311649947,
+    "pre_unsigned_flux_g_sr": 60.81615481769013,
+    "removed_g00_g": 0.1971407661918085,
+    "removed_mean_g": 0.0,
+    "scaled_correction_limit_fraction": 0.05,
+    "signed_imbalance_fraction": 0.04073496488871058
+  },
+  "limitations": [
+    "One GONG-Z/WSA V6.2 epoch, not solar-cycle-wide coverage.",
+    "Provider WSA output is an independent model product, not an in-situ observation.",
+    "The application speed comparison evaluates the repository relation on provider expansion and boundary-distance features; it does not claim operational WSA equivalence.",
+    "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
+    "The public data_driven route remains fail-closed."
+  ],
+  "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+  "observed_snapshot_sha256": "a559fca910175cae2fa4b26d27baacdd678172786be3c9210f9f7e74e4402d25",
+  "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+  "schema": "scn041_observational_acceptance_v1",
+  "scope": "One pinned real GONG epoch and matched WSA V6.2 provider features."
+}
