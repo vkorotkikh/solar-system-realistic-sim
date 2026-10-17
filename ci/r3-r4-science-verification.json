@@ -137,7 +137,10 @@
       "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
       "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
       "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
-      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[negative_scale_factor-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[signed_imbalance_fraction-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[scaled_correction_limit_fraction-0.001]",
       "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit"
     ],
     "timeout_seconds": 120
@@ -222,7 +225,7 @@
       "production_files": [
         "backend/sim/pfss_magnetogram.py"
       ],
-      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected",
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
       "expected_assertion_regex": "SCN041-SCALED-FLUX-PROVENANCE",
       "fixed_commit": "052550a1c8964474a33889696217a62e7520b8a9",
       "oracle_class": "forged-observed-provenance-negative-control"
