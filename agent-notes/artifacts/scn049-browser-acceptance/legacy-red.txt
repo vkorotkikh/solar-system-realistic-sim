@@ -1,0 +1,52 @@
+[WebServer] (node:31366) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 1 test using 1 worker
+
+(node:31407) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+  1) [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+
+    Error: expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -2,9 +2,9 @@
+        "earthPosition": Array [
+          -0.184271557,
+          0.9644459632,
+          0.0002020515,
+        ],
+    -   "hasKuiper": false,
+    +   "hasKuiper": true,
+        "jd": 2451545,
+        "status": "connected",
+      }
+
+      128 |
+      129 |   const staleSnapshot = await page.evaluate(() => window.__scn049Client?.snapshot());
+    > 130 |   expect(staleSnapshot).toMatchObject({
+          |                         ^
+      131 |     earthPosition: nativeCapture.late_old.bodies.earth.pos,
+      132 |     hasKuiper: false,
+      133 |     jd: nativeCapture.late_old.jd,
+        at /home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:130:25
+
+    Error Context: test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
