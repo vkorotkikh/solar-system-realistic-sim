@@ -22,7 +22,7 @@ export function createRendererRecovery<T>({ canvas, surface, retry, create, onUn
     console.error('[visualization] initialization failed:', error);
     fail('The visualization could not start. WebGL may be unavailable or the application configuration may be invalid. Enable graphics acceleration or try another supported browser, then reload.');
   }
-  return { value, get available() { return available; }, dispose() {
+  return { value, get available() { return available; }, reportFailure: fail, dispose() {
     canvas.removeEventListener('webglcontextlost', lost); canvas.removeEventListener('webglcontextrestored', restored); retry.removeEventListener('click', reload);
   } };
 }

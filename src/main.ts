@@ -76,6 +76,7 @@ import {
   addDefaultLighting
 } from './frontend/app/sceneSetup';
 import { createTextureManager } from './frontend/app/textureManager';
+import { warmupRenderer } from './frontend/app/rendererWarmup';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt, type AsteroidBeltPopulation } from './sim/asteroidBelt';
@@ -234,7 +235,8 @@ function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-let stopVisualization = () => {};
+const startup = new AbortController();
+let stopVisualization = () => startup.abort();
 const recovery = createRendererRecovery({
   canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
   create: () => {
@@ -563,11 +565,12 @@ function syncAsteroidBeltInputs() {
 }
 
 function initPhaseOneAsteroids() {
-  loadPhase1AsteroidCatalog({
+  return loadPhase1AsteroidCatalog({
     maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
     loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
     metaUrl: PHASE1_CATALOG_META_URL
   }).then((catalog) => {
+    if (startup.signal.aborted || !recovery.available) return;
     const gate = catalog.acceptance;
     if (!catalog.accepted) {
       const reasons = gate.rejections.map(({ code, message }) => `[${code}] ${message}`);
@@ -612,13 +615,14 @@ function initPhaseOneAsteroids() {
       `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
     );
   }).catch((error) => {
+    if (startup.signal.aborted || !recovery.available) return;
     renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
     console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
   });
 }
 
 kuiperBeltUpdater.update(simState.julianDate);
-initPhaseOneAsteroids();
+const catalogReady = initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
@@ -1216,7 +1220,6 @@ for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
 
 resizeRenderer();
-renderer.render(scene, camera);
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
@@ -1261,14 +1264,15 @@ const frameLifecycle = createFrameLifecycle({
 });
 
 stopVisualization = () => {
+  startup.abort();
   frameLifecycle.dispose(); controls.enabled = false;
   viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
 };
-frameLifecycle.start();
 
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
+  startup.abort();
   frameLifecycle.dispose();
   window.removeEventListener('resize', resizeRenderer);
   refreshPanelLayout = () => {};
@@ -1321,6 +1325,22 @@ window.addEventListener('beforeunload', () => {
   if (sunTexture) sunTexture.dispose();
   renderer.dispose();
 });
+
+try {
+  // Keep the original fetch-to-parse/hash timer and the complete catalog.
+  // Adoption replaces/disposes asteroid materials, so compile only afterward.
+  await catalogReady;
+  if (startup.signal.aborted || !recovery.available) return;
+  syncAsteroidBeltInputs();
+  await warmupRenderer(renderer, scene, camera, { signal: startup.signal });
+  if (startup.signal.aborted || !recovery.available) return;
+  renderer.render(scene, camera);
+  frameLifecycle.start();
+} catch (error) {
+  if (startup.signal.aborted || !recovery.available) return;
+  console.error('[visualization] shader initialization failed:', error);
+  recovery.reportFailure('The visualization could not finish preparing its graphics. Reload the visualization to try again.');
+}
 
 }
 
