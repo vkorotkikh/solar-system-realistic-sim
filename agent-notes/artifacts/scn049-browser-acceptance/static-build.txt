@@ -1,0 +1,26 @@
+node=v22.23.2
+npm=11.19.0
+playwright=Version 1.64.0
+
+> solar-system-realistic-sim@0.0.0 typecheck
+> tsc --project tsconfig.json --strict --noEmit
+
+
+> solar-system-realistic-sim@0.0.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 68 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                       21.02 kB │ gzip:   4.76 kB
+dist/assets/modelWorker-DYAkMz1r.js   26.13 kB
+dist/assets/index-Ba7vuM9D.css        26.39 kB │ gzip:   5.96 kB
+dist/assets/index-DYcf3sEI.js        969.57 kB │ gzip: 249.38 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.51s
