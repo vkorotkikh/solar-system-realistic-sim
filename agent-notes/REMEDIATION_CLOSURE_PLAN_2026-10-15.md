@@ -1,5 +1,7 @@
 # Remaining remediation closure plan - 2026-10-15
 
+> Scope update (2026-10-17): the [consolidated tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17) retains `SimulationClient` as **API/library-only; not integrated into the default UI.** Its backend/library verification is separate from active-browser acceptance. The checkpoint and suite results below retain their original dates and revisions.
+
 Current construction source: `6539902` on
 `remediation/canonical-register-20261014`. This replaces the earlier pending
 handoff with the [fresh checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md).
@@ -29,7 +31,7 @@ The exclusive progress buckets remain 51 fix-available-only, 9 partial and
 | `SCN-043` | Approve accuracy-certificate/endpoint validation and response-body cancellation corrections. Resolve source storage before bulk commit; independently review, promote and validate all 424 records with original 13 hashes preserved. | Moon author/reviewer and storage owner. |
 | `SCN-047` | Reconcile final exact-source evidence across all applicable lanes, including rendering, startup, moons, browser and external/manual acceptance. Do not sum overlapping counts or turn skips into passes. | Parent integration; depends on remaining rows. |
 | `SCN-048` | Choose strict ambiguous scalar-JD rejection plus precise two-part input, or documented rounding; implement/test. Obtain actual deployment URL/auth/TLS and observed spatial/calibration evidence. | Time-policy, solar and deployment owners. |
-| `SCN-049` | Run affected actual-browser checks after rendering fixes and retain each remaining Section 7 child's own acceptance scope. Native/client Kuiper proof does not certify a deployment or legacy peer. | Lifecycle/browser integration. |
+| `SCN-049` | Preserve backend and optional client-library repairs/tests. Run affected actual-browser checks for active frame, solar HTTP, belt and rendering children; retain each remaining Section 7 child's own scope. Native/client Kuiper proof does not certify default-UI N-body behavior, a deployment or legacy peers. Client retirement or opt-in N-body UI integration requires a separate explicit decision; UI activation is not required to credit the API/library repairs. | Backend/library maintenance; active-UI lifecycle/browser acceptance; separate product decision for any scope change. |
 
 ## Evidence retained
 

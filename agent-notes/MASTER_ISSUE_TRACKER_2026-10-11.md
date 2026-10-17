@@ -1,5 +1,7 @@
 # Master issue / problem / bug tracker — 2026-10-11
 
+> **Historical record — superseded for maintenance on 2026-10-17.** Use the [consolidated October 10 tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md), including the [approved SimulationClient scope and verification boundaries](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17). The original dated content below is preserved; it is not a fresh status report.
+
 Generated **2026-10-11 21:25:36 -0400 (EDT)** from the issue-bearing artifacts
 semantically dated **2026-09-27 through 2026-10-11 inclusive**. This is a
 deduplicated status ledger, not a claim that every line of the repository has
