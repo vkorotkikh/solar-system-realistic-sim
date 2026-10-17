@@ -34,8 +34,8 @@ SOURCE_URL = (
 )
 REQUEST_JD_TDB = 2461326.239689611
 
-# Preregistered for this one-epoch corpus. These do not replace any existing
-# numerical tolerances or claim solar-cycle/1-AU forecast validation.
+# Bounded retained-epoch contract. These do not replace any existing numerical
+# tolerances or claim speed, solar-cycle, or 1-AU forecast validation.
 BUDGET = {
     "coefficient_correlation_min": 0.9999,
     "coefficient_normalized_rmse_max": 0.01,
@@ -50,9 +50,6 @@ BUDGET = {
     "log_expansion_median_abs_max": 0.47,
     "boundary_correlation_min": 0.50,
     "boundary_median_abs_deg_max": 3.5,
-    "speed_correlation_min": 0.65,
-    "speed_rmse_kms_max": 90.0,
-    "speed_abs_bias_kms_max": 50.0,
 }
 
 
@@ -128,7 +125,7 @@ def _raw_map(expanded: bytes) -> np.ndarray:
         return np.asarray(hdul[0].data, dtype=float)
 
 
-def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, float | int | str]:
+def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, object]:
     header, _, provider = _provider_reference()
     if (
         header["PROVERS"] != "WSA_V6.2"
@@ -138,6 +135,26 @@ def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, floa
         or header["FILELIST"] != "mrzql261012t1744c2316_079"
     ):
         raise ValueError("Observed input and provider product identity do not match")
+    correction_method_value = float(header["MPCORR"])
+    correction_method = 2
+    provider_pre_mean_g = float(header["MPOLD"])
+    provider_post_mean_g = float(header["MPNEW"])
+    derived_pre_mean_g = (
+        snapshot.provenance.flux.pre_signed_flux_g_sr / (4.0 * math.pi)
+    )
+    derived_post_mean_g = (
+        snapshot.provenance.flux.post_signed_flux_g_sr / (4.0 * math.pi)
+    )
+    if (
+        not math.isclose(correction_method_value, 2.0, rel_tol=0.0, abs_tol=0.0)
+        or not math.isclose(provider_pre_mean_g, 0.19715, rel_tol=0.0, abs_tol=5e-10)
+        or not math.isclose(provider_post_mean_g, 5.473e-05, rel_tol=0.0, abs_tol=5e-10)
+        or abs(provider_pre_mean_g - derived_pre_mean_g)
+        > gong.TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G
+        or abs(provider_post_mean_g - derived_post_mean_g)
+        > gong.TRUSTED_SCALED_POST_MEAN_TOLERANCE_G
+    ):
+        raise ValueError("Provider correction metadata does not corroborate map means")
 
     g_absolute, h_absolute = decompose_spherical_harmonics(
         snapshot.field_gauss, lmax=15, grid=snapshot.grid,
@@ -182,6 +199,20 @@ def coefficient_acceptance(snapshot: gong.MagnetogramSnapshot) -> dict[str, floa
         "wrong_frame_correlation": _correlation(_coefficient_vectors(absolute), expected),
         "constant_monopole_normalized_rmse": constant_normalized_rmse,
         "frame_adapter": "absolute_carrington_to_provider_native_minus_long0_v1",
+        "provider_correction": {
+            "method": correction_method,
+            "mpold_g": provider_pre_mean_g,
+            "mpnew_g": provider_post_mean_g,
+            "derived_pre_mean_g": derived_pre_mean_g,
+            "derived_post_mean_g": derived_post_mean_g,
+            "pre_mean_tolerance_g": gong.TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G,
+            "post_mean_tolerance_g": gong.TRUSTED_SCALED_POST_MEAN_TOLERANCE_G,
+            "provider_input_map": header["FILELIST"],
+            "retained_observation_product": "zqs",
+            "identity_relation": (
+                "same_epoch_rotation_left_edge_not_same_product_identifier"
+            ),
+        },
     }
 
 
@@ -195,14 +226,6 @@ def _nearest_provider_cells(theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndar
         (longitude[..., None] - provider_longitude + 180.0) % 360.0 - 180.0,
     )
     return latitude_index, longitude_distance.argmin(axis=-1)
-
-
-def _independent_speed(expansion: np.ndarray, boundary_deg: np.ndarray) -> np.ndarray:
-    boundary_rad = np.deg2rad(boundary_deg)
-    value = 267.5 + 410.0 / np.maximum(1.0, expansion) ** 0.4 * (
-        1.0 - 0.8 * np.exp(-((boundary_rad / 0.045) ** 3))
-    )
-    return np.clip(value, 265.0, 850.0)
 
 
 def _paired_metrics(actual: np.ndarray, reference: np.ndarray, mask: np.ndarray) -> dict[str, float]:
@@ -250,7 +273,6 @@ def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
         & (provider_boundary_deg >= 0.0)
         & np.isfinite(provider_boundary_deg)
     )
-    provider_speed = _independent_speed(provider_expansion, provider_boundary_deg)
     open_recall = float(np.mean(application_open[provider_open]))
     closed_recall = float(np.mean(application_closed[~provider_open]))
 
@@ -277,11 +299,10 @@ def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
         "boundary_distance_deg": _paired_metrics(
             np.rad2deg(wsa["theta_b_map"]), provider_boundary_deg, matched,
         ),
-        "speed_kms": _paired_metrics(wsa["velocity_map"], provider_speed, matched),
         "application_metadata": {
             "model": wsa["model"],
             "calibration_status": wsa["calibration_status"],
-            "calibration_evidence": wsa.get("calibration_evidence"),
+            "provider_feature_evidence": wsa.get("provider_feature_evidence"),
             "valid_fraction": wsa["valid_fraction"],
             "indeterminate_fraction": wsa["indeterminate_fraction"],
             "coverage_fraction": wsa["coverage_fraction"],
@@ -297,9 +318,6 @@ def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
         "log_expansion_median_abs": metrics["log_expansion"]["median_abs"] <= BUDGET["log_expansion_median_abs_max"],
         "boundary_correlation": metrics["boundary_distance_deg"]["correlation"] >= BUDGET["boundary_correlation_min"],
         "boundary_median_abs": metrics["boundary_distance_deg"]["median_abs"] <= BUDGET["boundary_median_abs_deg_max"],
-        "speed_correlation": metrics["speed_kms"]["correlation"] >= BUDGET["speed_correlation_min"],
-        "speed_rmse": metrics["speed_kms"]["rmse"] <= BUDGET["speed_rmse_kms_max"],
-        "speed_abs_bias": abs(metrics["speed_kms"]["bias"]) <= BUDGET["speed_abs_bias_kms_max"],
     }
     return metrics, checks
 
@@ -317,7 +335,7 @@ def build_report() -> dict[str, object]:
     }
     checks = {**coefficient_checks, **wsa_checks}
     return {
-        "schema": "scn041_observational_acceptance_v1",
+        "schema": "scn041_observational_acceptance_v2",
         "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
         "observation_sha256": OBSERVATION_SHA256,
         "expanded_observation_sha256": EXPANDED_SHA256,
@@ -329,7 +347,7 @@ def build_report() -> dict[str, object]:
         "budget": BUDGET,
         "checks": checks,
         "acceptance_passed": all(checks.values()),
-        "scope": "One pinned real GONG epoch and matched WSA V6.2 provider features.",
+        "scope": "One retained real GONG epoch and matched WSA V6.2 provider feature planes; no independent speed output.",
         "limitations": json.loads(MANIFEST.read_text())["limitations"],
     }
 

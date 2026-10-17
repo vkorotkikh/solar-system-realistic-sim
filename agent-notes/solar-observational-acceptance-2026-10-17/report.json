@@ -3,10 +3,16 @@
   "application_wsa_acceptance": {
     "application_api": "compute_pfss_from_coefficients",
     "application_metadata": {
-      "calibration_evidence": {
+      "calibration_status": "unvalidated",
+      "coverage_fraction": 0.7337962962962963,
+      "indeterminate_fraction": 0.0,
+      "model": "wsa_inspired_v1",
+      "provider_feature_evidence": {
         "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
-        "evidence_scope": "model_relation_only_not_current_input_certification",
+        "current_input_certified": false,
+        "evidence_scope": "topology_expansion_boundary_features_only",
         "excluded_claims": [
+          "independent speed calibration",
           "operational WSA equivalence",
           "SCS equivalence",
           "1-AU wind forecast accuracy",
@@ -14,17 +20,14 @@
           "solar-cycle generalization",
           "scene-coordinate rendering"
         ],
+        "independent_speed_output_available": false,
         "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
         "operational_forecast_validated": false,
-        "provider": "NASA/CCMC WSA_V6.2 driven by NSO/GONG zqs",
+        "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
         "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
-        "scope": "topology and source-surface feature agreement at one pinned epoch",
-        "status": "accepted_bounded_single_epoch"
+        "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+        "status": "bounded_retained_epoch_feature_match"
       },
-      "calibration_status": "unvalidated",
-      "coverage_fraction": 0.7337962962962963,
-      "indeterminate_fraction": 0.0,
-      "model": "wsa_inspired_v1",
       "quality_reasons": [
         "incomplete_source_surface_coverage"
       ],
@@ -56,15 +59,6 @@
     "provider": "WSA_V6.2",
     "provider_degree": 90,
     "source_surface_radii": 2.51,
-    "speed_kms": {
-      "actual_median": 425.8183117364364,
-      "bias": -44.689082575160256,
-      "correlation": 0.6678807619760443,
-      "median_abs": 59.668607181798706,
-      "p90_abs": 136.26621863777217,
-      "reference_median": 485.06732743463897,
-      "rmse": 85.8743687292937
-    },
     "topology": {
       "accuracy": 0.9679783950617284,
       "application_open": 248,
@@ -88,9 +82,6 @@
     "matched_feature_cells_min": 240,
     "provider_closed_recall_min": 0.999,
     "provider_open_recall_min": 0.74,
-    "speed_abs_bias_kms_max": 50.0,
-    "speed_correlation_min": 0.65,
-    "speed_rmse_kms_max": 90.0,
     "topology_accuracy_min": 0.96,
     "wrong_frame_correlation_max": 0.1
   },
@@ -106,9 +97,6 @@
     "matched_feature_cells": true,
     "provider_closed_recall": true,
     "provider_open_recall": true,
-    "speed_abs_bias": true,
-    "speed_correlation": true,
-    "speed_rmse": true,
     "topology_accuracy": true,
     "wrong_frame_negative_control": true
   },
@@ -119,6 +107,18 @@
     "frame_adapter": "absolute_carrington_to_provider_native_minus_long0_v1",
     "max_abs_gauss": 0.05582740312250167,
     "normalized_rmse": 0.007983229718697919,
+    "provider_correction": {
+      "derived_post_mean_g": 2.3686516006266995e-16,
+      "derived_pre_mean_g": 0.1971407661918085,
+      "identity_relation": "same_epoch_rotation_left_edge_not_same_product_identifier",
+      "method": 2,
+      "mpnew_g": 5.473e-05,
+      "mpold_g": 0.19715,
+      "post_mean_tolerance_g": 5.474e-05,
+      "pre_mean_tolerance_g": 1e-05,
+      "provider_input_map": "mrzql261012t1744c2316_079",
+      "retained_observation_product": "zqs"
+    },
     "samples": 270,
     "wrong_frame_correlation": 0.02829590680816537
   },
@@ -126,6 +126,9 @@
   "expanded_observation_sha256": "e93f2c4daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd",
   "flux_balance": {
     "acceptance_limit_g_sr": 6.081615481769013e-11,
+    "corroborating_input_map": "mrzql261012t1744c2316_079",
+    "corroborating_product_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+    "corroborating_provider": "NASA/CCMC WSA_V6.2",
     "negative_scale_factor": 1.0407349648887105,
     "policy_version": "bounded-polarity-scale-monopole-v1",
     "positive_scale_factor": 0.9592650351112895,
@@ -133,6 +136,9 @@
     "post_unsigned_flux_g_sr": 60.715240299636875,
     "pre_signed_flux_g_sr": 2.4773439311649947,
     "pre_unsigned_flux_g_sr": 60.81615481769013,
+    "provider_correction_method": 2,
+    "provider_post_mean_g": 5.473e-05,
+    "provider_pre_mean_g": 0.19715,
     "removed_g00_g": 0.1971407661918085,
     "removed_mean_g": 0.0,
     "scaled_correction_limit_fraction": 0.05,
@@ -141,13 +147,13 @@
   "limitations": [
     "One GONG-Z/WSA V6.2 epoch, not solar-cycle-wide coverage.",
     "Provider WSA output is an independent model product, not an in-situ observation.",
-    "The application speed comparison evaluates the repository relation on provider expansion and boundary-distance features; it does not claim operational WSA equivalence.",
+    "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
     "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
     "The public data_driven route remains fail-closed."
   ],
   "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
   "observed_snapshot_sha256": "a559fca910175cae2fa4b26d27baacdd678172786be3c9210f9f7e74e4402d25",
   "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
-  "schema": "scn041_observational_acceptance_v1",
-  "scope": "One pinned real GONG epoch and matched WSA V6.2 provider features."
+  "schema": "scn041_observational_acceptance_v2",
+  "scope": "One retained real GONG epoch and matched WSA V6.2 provider feature planes; no independent speed output."
 }

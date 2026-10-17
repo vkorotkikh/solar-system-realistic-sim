@@ -1,5 +1,5 @@
 {
-  "schema": "scn041_observational_acceptance_corpus_v1",
+  "schema": "scn041_observational_acceptance_corpus_v2",
   "captured_at_utc": "2026-10-17T19:07:29Z",
   "observation": {
     "file": "nso_gong_zqs_202610121744.fits.gz",
@@ -22,24 +22,24 @@
     "sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
     "provider": "NASA CCMC WSA_V6.2",
     "input_map": "mrzql261012t1744c2316_079",
-    "relationship": "Same observation minute, Carrington rotation, and leading longitude as the pinned NSO/GONG zqs input; provider product code differs and is asserted, not silently equated."
+    "relationship": "WSA FILELIST names mrzql261012t1744c2316_079 while the retained NSO/GONG artifact is mrzqs261012t1744c2316_079.fits.gz. Date, time, Carrington rotation, and leading longitude match; mrzql and zqs are distinct product identifiers and are not silently equated."
   },
   "generated_report": {
     "file": "report.json",
-    "sha256": "09ebd55d71da1dc3462d6b86e80e7299eb4c6b1e309aa1621e218b84f9f39021",
+    "sha256": "c1f873b23b865ee7a68088cddb9977b71a7ccb7e9c1f0e087fdcc48f4995221c",
     "generator": "backend/tests/solar_observational_acceptance.py",
     "acceptance_passed": true
   },
   "acceptance_scope": [
     "Exact compressed and expanded observation identity",
-    "Production GONG parser, WCS, bounded monopole correction, provenance, and PFSS ingestion",
+    "Production GONG parser, WCS, retained-artifact-attested monopole correction, provenance, and PFSS ingestion",
     "Declared 79 degree Carrington longitude adapter against independent WSA coefficients",
     "Public production degree-90 PFSS/WSA API against provider topology, expansion, and boundary-distance planes"
   ],
   "limitations": [
     "One GONG-Z/WSA V6.2 epoch, not solar-cycle-wide coverage.",
     "Provider WSA output is an independent model product, not an in-situ observation.",
-    "The application speed comparison evaluates the repository relation on provider expansion and boundary-distance features; it does not claim operational WSA equivalence.",
+    "No independent provider speed output exists in this corpus; application speed is not an observational acceptance measure.",
     "No Schatten current-sheet stage, 1 AU propagation, arrival-time calibration, live-provider availability, or scene-frame rendering calibration is established.",
     "The public data_driven route remains fail-closed."
   ]
