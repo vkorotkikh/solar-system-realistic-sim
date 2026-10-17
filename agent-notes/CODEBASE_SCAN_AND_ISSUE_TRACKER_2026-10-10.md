@@ -9,11 +9,108 @@ The separate October 7 and October 11 files are historical records pointing here
 
 The October 17 update implements the approved `SimulationClient` scope decision
 against `review/construction-1c5d88b-fixes@9e00947`. It is documentation only:
-no new runtime test, merge, deployment, remote refresh, or whole-codebase
-revalidation is claimed. The ledger's main baseline, construction checkpoint,
+no new runtime test, merge, deployment, or whole-codebase revalidation is
+claimed by that decision. The separate branch inventory below records its own
+remote-ref refresh. The ledger's main baseline, construction checkpoint,
 83 canonical IDs, 138 aliases, counts, and dated test results remain pinned to
 their recorded evidence. Scope clarification does not promote a finding to
 resolved or turn branch-only repairs into shipped fixes.
+
+## Pasted SCN-001–040 branch inventory — 2026-10-17
+
+The supplied list contains exactly **40 unique findings**. After a successful
+`git fetch origin --prune`, remote-tracking `origin/main` is
+`1e82830bd5979c1c7391c57840e3236494009045`. The reviewed repair trees
+`review/construction-1c5d88b-fixes@9e00947` and
+`fix/scn-041-scn-049-closure@c67a8d5` are byte-identical; the later branch date
+reflects cherry-picked review fixes, not additional issue coverage.
+
+| Exclusive disposition | Count |
+|---|---:|
+| Scoped root fixed on refreshed remote main | 19 |
+| Additional scoped repair available on construction/review branches | 18 |
+| Implemented, with partial acceptance (`SCN-005`, `SCN-030`) | 2 |
+| Owner decision required (`SCN-035`) | 1 |
+| **Total** | **40** |
+
+**37/40 have scoped fixes; 2 remain partial and 1 needs owner decisions.**
+Counting implementation/mitigation rather than acceptance, 39/40 have repairs
+or mitigations. These are finding counts, not commit counts or whole-subsystem
+certification. The 18 branch repairs are not claimed merged into main.
+`SCN-005`'s visible source/error status is already fixed on main and dated
+five-minute DEV/PREVIEW passes exist on a repair branch; its current startup
+and final integrated acceptance remain open. `SCN-030` still needs final-source
+browser and actual manual device/screen-reader evidence. `SCN-035` remains open
+for the owner's code-license choice, SILSO distribution disposition and Deimos
+permission or replacement decision.
+
+`SCN-015/037/038/039` permit explicit population, clock, animation and configuration
+contracts in the pasted criteria. Those contracts are implemented and tested on
+repair branches; historical `DECISION_REQUIRED` baseline labels do not mean no
+implementation exists, nor do implementation tests imply owner endorsement.
+This targeted inventory does not rewrite the older 83-row baseline counts.
+
+Source/commit ancestry was checked independently for every cited commit;
+runtime outcomes below remain dated evidence, not a fresh rerun. The
+[structured inventory](SCN001_040_BRANCH_STATUS_2026-10-17.json) records exact
+refs, per-commit ancestry, evidence paths, attachment hash and residual scope.
+
+| ID | Disposition | Fix / evidence commits | Scoped result and remaining boundary |
+|---|---|---|---|
+| SCN-001 | Fixed on main (scoped) | `1a6fcaa` | Normalized PFSS basis and decomposition fixed. Observed calibration and later near-pole/scientific gates remain separate. |
+| SCN-002 | Fixed on main (scoped) | `401c28d` | Original NumPy dtype/endian crash replaced by validated FITS parser. Later float64 snapshot admission defect is SCN-051, not this pasted root. |
+| SCN-003 | Fixed on main (scoped) | `70af7c8`, `401c28d` | Explicit sine-latitude geometry, WCS, area and weighted decomposition. Real observed-field accuracy remains separate. |
+| SCN-004 | Branch repair available | `870de80`, `5403b57` | Killable subprocess owns acquisition deadlines and cleanup; reviewed poll portability fix retained. Recorded transport evidence is platform-scoped, not universal network certification. |
+| SCN-005 | Partial acceptance | `82dd139`, `febb93d`, `6539902` | Visible source/error status is on main; branch has recorded five-minute production-budget DEV/PREVIEW passes. Pasted requirements have dated scoped evidence. Current integrated final-source delivery acceptance remains; later 2 s catalog/usable-scene startup gate is expanded scope, not the originally pasted UI defect. |
+| SCN-006 | Fixed on main (scoped) | `5182128` | Localhost and loopback preview-origin contract fixed. Actual configured deployment acceptance is separate. |
+| SCN-007 | Fixed on main (scoped) | `0789e08` | Trusted transport identity and bounded stores close original rotating-header bypass. Eviction/edge limits and broader deployment fairness remain separate. |
+| SCN-008 | Fixed on main (scoped) | `9655458`, `0789e08` | Solar physics epoch bounds reject before compute. AIA date coverage and playback bounds are different roots. |
+| SCN-009 | Fixed on main (scoped) | `9655458` | Unvalidated assimilation explicitly disabled with safe fallback. Validated assimilation is not claimed delivered. |
+| SCN-010 | Branch repair available | `870de80`, `e448e4f` | Failed/partial cache states retry with bounded failure backoff; reviewed restored-SWPC blend fix retained. Source age and disabled observational assimilation remain explicit. |
+| SCN-011 | Fixed on main (scoped) | `af027c2` | AIA timestamps canonicalized to UTC before browser parsing. Historical tests are not a fresh provider observation. |
+| SCN-012 | Branch repair available | `dc1f0ab`, `56ac52a` | Main fixed null undefined metrics; branch independently covers all three legacy windows, 3/3 comparable. Old third-party aggregate totals are not relabeled as executed. |
+| SCN-013 | Branch repair available | `2dee43c`, `2bddea3`, `a568625` | Relative/rebased GPU time and phase plus actual hardware readback evidence. Dated hardware gate is not new or whole-scene acceptance. |
+| SCN-014 | Branch repair available | `259601a` | Field-specific ACBF quantization budgets and full 100000-row format gate. Integrity, scientific fidelity and provenance are separate. |
+| SCN-015 | Branch repair available | `71ba472` | Pasted permitted alternative implemented: explicit largest-known-diameter, nonrepresentative prefix with population gates. Old DECISION_REQUIRED is historical product-baseline state; no representative sampling is promised and owner endorsement is not inferred. |
+| SCN-016 | Fixed on main (scoped) | `fea6f9d` | Runtime Earth corrected to geocentre while source EMB identity retained. Target-specific fixture scope remains limited. |
+| SCN-017 | Branch repair available | `2005a1f` | All secular element and moving-axis derivatives included with multi-epoch finite-difference gates. External sampled accuracy is separate SCN-080. |
+| SCN-018 | Fixed on main (scoped) | `fc32483` | Pluto secular rates and independent coverage gate added. Approximate fidelity/interval limits remain. |
+| SCN-019 | Fixed on main (scoped) | `62a4f5d` | Cargo enters chronological return-burn mass ledger. Risk, reserves and burn semantics remain separate roots. |
+| SCN-020 | Branch repair available | `62a4f5d`, `56ac52a` | Main ties deterministic risk to feasibility; branch excludes discarded/reserved fuel from usable margin and re-closes sampled budgets. Service evidence is scoped; independent mission endpoint/solver acceptance is retained. |
+| SCN-021 | Fixed on main (scoped) | `eef8945` | Schwarzschild radii and dependent conversions corrected. Speculative model truth and direction/jet sources are separate. |
+| SCN-022 | Fixed on main (scoped) | `7a21468` | Original six-step high-e JavaScript solver defect repaired. GLSL twin and current-catalog domain remain separate evidence scopes. |
+| SCN-023 | Branch repair available | `32da51b` | Display offsets separated from canonical states with experiment invariance gates. Actual full-scene rendering acceptance remains separate. |
+| SCN-024 | Branch repair available | `32da51b` | KBO propagation/upload skipped for unchanged JD with targeted regressions. Earlier aggregate browser traffic never became KBO-only bandwidth evidence. |
+| SCN-025 | Branch repair available | `19d1b6f`, `94cf1d4` | Strict typing closes zero-error backlog and is enforced without relaxed settings. Reported passing evidence is pinned, not a rerun in this read-only audit. |
+| SCN-026 | Fixed on main (scoped) | `fbe3d1c` | Discovery restricted to product/script trees; archive evidence retained. Main merge PR7 6a9de62 verified by ancestry. |
+| SCN-027 | Fixed on main (scoped) | `4177b51` | README documents pinned backend development/test environment. Runtime-only requirements do not pretend to include every test dependency. |
+| SCN-028 | Branch repair available | `94cf1d4` | Vite/Vitest/toolchain updates plus historical pinned install/test/type/build/audit evidence. Zero advisories is dated evidence; no fresh registry audit performed here. |
+| SCN-029 | Fixed on main (scoped) | `d6f19d1`, `477030a` | Tracked backend/frontend/scientific mutation CI exists. Strict TS and broader browser/load gates remain distinct. |
+| SCN-030 | Partial acceptance | `7fafd83`, `cae3c0f`, `00b5346`, `7681a0c` | Pasted concrete accessibility defects implemented; real three-engine automation and native Chromium zoom evidence retained. Manual NVDA/VoiceOver/physical touch and affected final-source browser acceptance remain; implementation is not merely a plan. |
+| SCN-031 | Branch repair available | `7fafd83`, `6c6f232` | Unavailable-WebGL/context-loss state, owned teardown and accessible restart implemented and browser-tested. Historical browser evidence remains revision scoped. |
+| SCN-032 | Fixed on main (scoped) | `4177b51`, `952de6a` | README aligned with actual local entry, hidden moons and real worker paths. Latest API/library-only clarification is docs follow-up; main root already repaired. |
+| SCN-033 | Fixed on main (scoped) | `fbe3d1c`, `f6a9fe7`, `952de6a` | Safe imports/help/dry-run, nonempty validation and atomic intentional publication. Original destructive --help/import roots repaired on main. |
+| SCN-034 | Branch repair available | `d78b732`, `71ba472` | Main fixes external-output path; branch adds pinned source snapshots and transactional offline-by-default generation. Byte-identical full-artifact rebuild evidence remains separate SCN-046. |
+| SCN-035 | Owner decision | `14741bd` | Provenance notices improved; original-code license and asset permissions remain undecided. Owner chooses code/distribution license; resolve SILSO terms and Deimos permission/replacement. Cannot be closed by code/tests alone. |
+| SCN-036 | Fixed on main (scoped) | `0789e08`, `735a2cc` | Authenticated profile and bounded per-subject WebSocket admission implemented. Multi-subject/global capacity fairness, multi-worker deployment and soak are separate. |
+| SCN-037 | Branch repair available | `a33ad93` | Pasted permitted alternative implemented: explicit fixed-step telemetry with slow-step/no-catch-up regression. Policy is implemented; owner acceptance is not retroactively manufactured. Optional API/library mode only. |
+| SCN-038 | Branch repair available | `32da51b` | Decorative versus scientific motion declared; pause/reverse/reduced-motion freezes and resume discard implemented. Policy is implemented; owner acceptance is separate from its recorded tests. |
+| SCN-039 | Branch repair available | `7fafd83`, `cae3c0f` | Consumed backend-origin/viewport/render-scale contract with nondefault browser checks. Owner deployment selection is separate; no dormant-client activation implied. |
+| SCN-040 | Branch repair available | `56e799a`, `0964ed9` | Selected Markdown plus164 original scan/merged evidence files are now committed on `remediation/scn-followup-20261017`; every copied byte is verified. Main landing and older September/H1 raw archival remain separate. |
+
+### SCN-040 evidence preservation follow-up
+
+The earlier `56e799a` repair intentionally archived selected Markdown only;
+its linked raw scan evidence was absent from fresh branch checkouts. This
+follow-up commit `0964ed9` preserves **164 original files (2,739,963 bytes)** from the October 7,
+October 10 and merged-review evidence directories, including ignored log files.
+All 102 entries in the original October 10 SHA-256 manifest match; the October 7
+manifest's 175 source hashes match its recorded Git snapshot. The
+[archive manifest](SCAN_EVIDENCE_ARCHIVE_2026-10-17.json) records every copied
+file's byte count and hash. Historical probes were not executed or relabeled as
+fresh passes. Older September/H1 raw evidence remains outside this archive;
+this closes the missing scan-evidence gap, not all historical archival work or
+the remaining main-landing requirement.
 
 ## SimulationClient scope decision — 2026-10-17
 
@@ -224,7 +321,7 @@ Filesystem mtimes caused by checkout or evidence restoration were ignored.
 | SCN-027 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 documents the pinned backend test environment and current invocation. Prior reviewed branch gates passed; full current integrated README-to-suite execution is recorded in the remediation effort. |
 | SCN-028 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `94cf1d4` deliberately updates Vite/Vitest and compatible transitive dependencies. Pinned npm ci, production build, strict typecheck, frontend tests and npm audit pass with zero reported advisories. [Toolchain evidence](REMEDIATION_TOOLCHAIN_2026-10-14.md). |
 | SCN-029 | P1 | RESOLVED_SCOPED | — | MIXED | A tracked CI/backend/science mutation workflow exists and passes its scoped contract. Strict TS is `025`; broader browser/live/load gates are `047`. |
-| SCN-030 | P1 | OPEN | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | R1-R8 implementation is integrated via `cae3c0f`. Earlier `b072d32` passed 87 UI checks, 29 each in Chromium, Firefox, and WebKit; `00b5346` separately records genuine Chromium 200%/400% zoom on software and RTX 5090. Manual NVDA, VoiceOver, and physical-touch evidence remains outstanding, as does final browser validation after remaining changes. Owner: accessibility/manual acceptance with parent browser integration. [Accessibility evidence](REMEDIATION_ACCESSIBILITY_2026-10-14.md); [dated browser scope](REMEDIATION_CLOSURE_PLAN_2026-10-15.md#recorded-evidence). |
+| SCN-030 | P1 | OPEN | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | R1-R8 implementation is integrated via `cae3c0f`. Earlier `b072d32` passed 87 UI checks, 29 each in Chromium, Firefox, and WebKit; `00b5346` separately records genuine Chromium 200%/400% zoom on software and RTX 5090. Manual NVDA, VoiceOver, and physical-touch evidence remains outstanding, as does final browser validation after remaining changes. Owner: accessibility/manual acceptance with parent browser integration. [Accessibility evidence](REMEDIATION_ACCESSIBILITY_2026-10-14.md); [dated browser scope](REMEDIATION_CLOSURE_PLAN_2026-10-15.md#evidence-retained). |
 | SCN-031 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2e2b31d` through `6c6f232` provide accessible no-WebGL/context-loss recovery, stop owned runtime work, and preserve keyboard restart. Actual-app software and RTX 5090 browser gates pass. |
 | SCN-032 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 aligns the README with shipped entry controls, moon display/propagation limitations, and maintenance safeguards. Review and 393-test/build gate passed. |
 | SCN-033 | P2 | RESOLVED_SCOPED | — | MIXED | PR #7 ships safe maintenance help/import paths, atomic catalog writes, explicit count-change admission, and shape/uniqueness/orbit validation. Nine updater regressions and full frontend/script gate passed. |

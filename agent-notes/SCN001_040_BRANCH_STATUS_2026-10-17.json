@@ -1,0 +1,968 @@
+{
+  "attachment": "/home/nomad/.codex/attachments/e14c2d39-51c8-40bf-b289-7eff2c5d0e21/pasted-text.txt",
+  "unique_pasted_rows": 40,
+  "refs": {
+    "origin/main": "1e82830bd5979c1c7391c57840e3236494009045",
+    "9e00947": "9e009474d8480b85feee926aab44cd6116d81f79",
+    "c67a8d5": "c67a8d5c3663d30aa261f66a5388ecdf4a7144b6"
+  },
+  "construction_tree": "91dbc945e6b85754dfc5bcceb2a416bb903c3ab7",
+  "closure_tree": "91dbc945e6b85754dfc5bcceb2a416bb903c3ab7",
+  "trees_identical": true,
+  "count_basis": "Mutually exclusive conservative acceptance-aware buckets for exactly 40 pasted rows. 37 scoped addressed; 2 implemented with partial acceptance; 1 owner decision. If counting original scoped implementation alone, all 39 non-license rows have fixes/mitigations or dated matching evidence. SCN005 original scoped delivery criteria have dated evidence but current integrated acceptance remains.",
+  "counts": {
+    "main_fixed": 19,
+    "branch_repair_available": 18,
+    "partial_acceptance": 2,
+    "owner_decision": 1
+  },
+  "runtime_tests_run": false,
+  "rows": [
+    {
+      "id": "SCN-001",
+      "category": "main_fixed",
+      "commits": [
+        "1a6fcaa"
+      ],
+      "ancestry": {
+        "1a6fcaa": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/spherical_harmonics.py",
+        "backend/tests/test_pfss_harmonics.py"
+      ],
+      "scoped_disposition": "Normalized PFSS basis and decomposition fixed.",
+      "residual": "Observed calibration and later near-pole/scientific gates remain separate."
+    },
+    {
+      "id": "SCN-002",
+      "category": "main_fixed",
+      "commits": [
+        "401c28d"
+      ],
+      "ancestry": {
+        "401c28d": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/gong_magnetogram.py",
+        "backend/tests/test_gong_fits.py"
+      ],
+      "scoped_disposition": "Original NumPy dtype/endian crash replaced by validated FITS parser.",
+      "residual": "Later float64 snapshot admission defect is SCN-051, not this pasted root."
+    },
+    {
+      "id": "SCN-003",
+      "category": "main_fixed",
+      "commits": [
+        "70af7c8",
+        "401c28d"
+      ],
+      "ancestry": {
+        "70af7c8": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "401c28d": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/magnetogram_grid.py",
+        "backend/tests/test_pfss_decomposition.py",
+        "backend/tests/test_gong_wcs.py"
+      ],
+      "scoped_disposition": "Explicit sine-latitude geometry, WCS, area and weighted decomposition.",
+      "residual": "Real observed-field accuracy remains separate."
+    },
+    {
+      "id": "SCN-004",
+      "category": "branch_repair_available",
+      "commits": [
+        "870de80",
+        "5403b57"
+      ],
+      "ancestry": {
+        "870de80": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "5403b57": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": false
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/solar_http_transport.py",
+        "backend/tests/test_solar_http_deadline.py",
+        "backend/tests/test_solar_http_high_fd.py"
+      ],
+      "scoped_disposition": "Killable subprocess owns acquisition deadlines and cleanup; reviewed poll portability fix retained.",
+      "residual": "Recorded transport evidence is platform-scoped, not universal network certification."
+    },
+    {
+      "id": "SCN-005",
+      "category": "partial_acceptance",
+      "commits": [
+        "82dd139",
+        "febb93d",
+        "6539902"
+      ],
+      "ancestry": {
+        "82dd139": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "febb93d": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "6539902": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/main.ts",
+        "src/sunController.ts",
+        "agent-notes/REMEDIATION_DELIVERY_2026-10-14.md"
+      ],
+      "scoped_disposition": "Visible source/error status is on main; branch has recorded five-minute production-budget DEV/PREVIEW passes.",
+      "residual": "Pasted requirements have dated scoped evidence. Current integrated final-source delivery acceptance remains; later 2 s catalog/usable-scene startup gate is expanded scope, not the originally pasted UI defect."
+    },
+    {
+      "id": "SCN-006",
+      "category": "main_fixed",
+      "commits": [
+        "5182128"
+      ],
+      "ancestry": {
+        "5182128": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/server.py",
+        "backend/tests/test_solar_security.py"
+      ],
+      "scoped_disposition": "Localhost and loopback preview-origin contract fixed.",
+      "residual": "Actual configured deployment acceptance is separate."
+    },
+    {
+      "id": "SCN-007",
+      "category": "main_fixed",
+      "commits": [
+        "0789e08"
+      ],
+      "ancestry": {
+        "0789e08": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/server.py",
+        "backend/tests/test_solar_security.py"
+      ],
+      "scoped_disposition": "Trusted transport identity and bounded stores close original rotating-header bypass.",
+      "residual": "Eviction/edge limits and broader deployment fairness remain separate."
+    },
+    {
+      "id": "SCN-008",
+      "category": "main_fixed",
+      "commits": [
+        "9655458",
+        "0789e08"
+      ],
+      "ancestry": {
+        "9655458": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "0789e08": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/server.py",
+        "backend/tests/test_solar_physics_api.py"
+      ],
+      "scoped_disposition": "Solar physics epoch bounds reject before compute.",
+      "residual": "AIA date coverage and playback bounds are different roots."
+    },
+    {
+      "id": "SCN-009",
+      "category": "main_fixed",
+      "commits": [
+        "9655458"
+      ],
+      "ancestry": {
+        "9655458": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/solar_physics.py",
+        "backend/tests/test_solar_physics_model.py"
+      ],
+      "scoped_disposition": "Unvalidated assimilation explicitly disabled with safe fallback.",
+      "residual": "Validated assimilation is not claimed delivered."
+    },
+    {
+      "id": "SCN-010",
+      "category": "branch_repair_available",
+      "commits": [
+        "870de80",
+        "e448e4f"
+      ],
+      "ancestry": {
+        "870de80": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "e448e4f": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": false
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/solar_realtime_data.py",
+        "backend/tests/test_solar_realtime_data_cache.py"
+      ],
+      "scoped_disposition": "Failed/partial cache states retry with bounded failure backoff; reviewed restored-SWPC blend fix retained.",
+      "residual": "Source age and disabled observational assimilation remain explicit."
+    },
+    {
+      "id": "SCN-011",
+      "category": "main_fixed",
+      "commits": [
+        "af027c2"
+      ],
+      "ancestry": {
+        "af027c2": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/sim/solar_realtime_data.py"
+      ],
+      "scoped_disposition": "AIA timestamps canonicalized to UTC before browser parsing.",
+      "residual": "Historical tests are not a fresh provider observation."
+    },
+    {
+      "id": "SCN-012",
+      "category": "branch_repair_available",
+      "commits": [
+        "dc1f0ab",
+        "56ac52a"
+      ],
+      "ancestry": {
+        "dc1f0ab": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "56ac52a": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/benchmark/accuracy.py",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md"
+      ],
+      "scoped_disposition": "Main fixed null undefined metrics; branch independently covers all three legacy windows, 3/3 comparable.",
+      "residual": "Old third-party aggregate totals are not relabeled as executed."
+    },
+    {
+      "id": "SCN-013",
+      "category": "branch_repair_available",
+      "commits": [
+        "2dee43c",
+        "2bddea3",
+        "a568625"
+      ],
+      "ancestry": {
+        "2dee43c": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "2bddea3": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "a568625": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/frontend/features/asteroids/beltRenderer.ts",
+        "agent-notes/REMEDIATION_HARDWARE_2026-10-14.md"
+      ],
+      "scoped_disposition": "Relative/rebased GPU time and phase plus actual hardware readback evidence.",
+      "residual": "Dated hardware gate is not new or whole-scene acceptance."
+    },
+    {
+      "id": "SCN-014",
+      "category": "branch_repair_available",
+      "commits": [
+        "259601a"
+      ],
+      "ancestry": {
+        "259601a": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "agent-notes/REMEDIATION_CATALOGS_2026-10-14.md",
+        "src/data/asteroidCatalogBinaryFormat.md"
+      ],
+      "scoped_disposition": "Field-specific ACBF quantization budgets and full 100000-row format gate.",
+      "residual": "Integrity, scientific fidelity and provenance are separate."
+    },
+    {
+      "id": "SCN-015",
+      "category": "branch_repair_available",
+      "commits": [
+        "71ba472"
+      ],
+      "ancestry": {
+        "71ba472": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sim/phase1AsteroidCatalog.ts",
+        "agent-notes/REMEDIATION_CATALOGS_2026-10-14.md"
+      ],
+      "scoped_disposition": "Pasted permitted alternative implemented: explicit largest-known-diameter, nonrepresentative prefix with population gates.",
+      "residual": "Old DECISION_REQUIRED is historical product-baseline state; no representative sampling is promised and owner endorsement is not inferred."
+    },
+    {
+      "id": "SCN-016",
+      "category": "main_fixed",
+      "commits": [
+        "fea6f9d"
+      ],
+      "ancestry": {
+        "fea6f9d": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sim/solarSystemModel.ts",
+        "src/sim/planetPositions.horizons.test.ts"
+      ],
+      "scoped_disposition": "Runtime Earth corrected to geocentre while source EMB identity retained.",
+      "residual": "Target-specific fixture scope remains limited."
+    },
+    {
+      "id": "SCN-017",
+      "category": "branch_repair_available",
+      "commits": [
+        "2005a1f"
+      ],
+      "ancestry": {
+        "2005a1f": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sim/orbitMath.ts",
+        "agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md"
+      ],
+      "scoped_disposition": "All secular element and moving-axis derivatives included with multi-epoch finite-difference gates.",
+      "residual": "External sampled accuracy is separate SCN-080."
+    },
+    {
+      "id": "SCN-018",
+      "category": "main_fixed",
+      "commits": [
+        "fc32483"
+      ],
+      "ancestry": {
+        "fc32483": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/data/planets.ts",
+        "scripts/verify-planet-positions.mjs"
+      ],
+      "scoped_disposition": "Pluto secular rates and independent coverage gate added.",
+      "residual": "Approximate fidelity/interval limits remain."
+    },
+    {
+      "id": "SCN-019",
+      "category": "main_fixed",
+      "commits": [
+        "62a4f5d"
+      ],
+      "ancestry": {
+        "62a4f5d": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/mission/vehicle_service.py"
+      ],
+      "scoped_disposition": "Cargo enters chronological return-burn mass ledger.",
+      "residual": "Risk, reserves and burn semantics remain separate roots."
+    },
+    {
+      "id": "SCN-020",
+      "category": "branch_repair_available",
+      "commits": [
+        "62a4f5d",
+        "56ac52a"
+      ],
+      "ancestry": {
+        "62a4f5d": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "56ac52a": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md"
+      ],
+      "scoped_disposition": "Main ties deterministic risk to feasibility; branch excludes discarded/reserved fuel from usable margin and re-closes sampled budgets.",
+      "residual": "Service evidence is scoped; independent mission endpoint/solver acceptance is retained."
+    },
+    {
+      "id": "SCN-021",
+      "category": "main_fixed",
+      "commits": [
+        "eef8945"
+      ],
+      "ancestry": {
+        "eef8945": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts"
+      ],
+      "scoped_disposition": "Schwarzschild radii and dependent conversions corrected.",
+      "residual": "Speculative model truth and direction/jet sources are separate."
+    },
+    {
+      "id": "SCN-022",
+      "category": "main_fixed",
+      "commits": [
+        "7a21468"
+      ],
+      "ancestry": {
+        "7a21468": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sim/orbitMath.ts",
+        "src/sim/orbitMath.test.ts"
+      ],
+      "scoped_disposition": "Original six-step high-e JavaScript solver defect repaired.",
+      "residual": "GLSL twin and current-catalog domain remain separate evidence scopes."
+    },
+    {
+      "id": "SCN-023",
+      "category": "branch_repair_available",
+      "commits": [
+        "32da51b"
+      ],
+      "ancestry": {
+        "32da51b": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sim/solarSystemModel.ts",
+        "src/frontend/features/superluminal-modeling/metricDisplay.ts"
+      ],
+      "scoped_disposition": "Display offsets separated from canonical states with experiment invariance gates.",
+      "residual": "Actual full-scene rendering acceptance remains separate."
+    },
+    {
+      "id": "SCN-024",
+      "category": "branch_repair_available",
+      "commits": [
+        "32da51b"
+      ],
+      "ancestry": {
+        "32da51b": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/frontend/features/asteroids/beltRenderer.ts",
+        "agent-notes/REMEDIATION_EVENTS_2026-10-14.md"
+      ],
+      "scoped_disposition": "KBO propagation/upload skipped for unchanged JD with targeted regressions.",
+      "residual": "Earlier aggregate browser traffic never became KBO-only bandwidth evidence."
+    },
+    {
+      "id": "SCN-025",
+      "category": "branch_repair_available",
+      "commits": [
+        "19d1b6f",
+        "94cf1d4"
+      ],
+      "ancestry": {
+        "19d1b6f": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "94cf1d4": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "tsconfig.json",
+        ".github/workflows/r3-r4-science.yml",
+        "agent-notes/REMEDIATION_TOOLCHAIN_2026-10-14.md"
+      ],
+      "scoped_disposition": "Strict typing closes zero-error backlog and is enforced without relaxed settings.",
+      "residual": "Reported passing evidence is pinned, not a rerun in this read-only audit."
+    },
+    {
+      "id": "SCN-026",
+      "category": "main_fixed",
+      "commits": [
+        "fbe3d1c"
+      ],
+      "ancestry": {
+        "fbe3d1c": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "vitest.config.ts"
+      ],
+      "scoped_disposition": "Discovery restricted to product/script trees; archive evidence retained.",
+      "residual": "Main merge PR7 6a9de62 verified by ancestry."
+    },
+    {
+      "id": "SCN-027",
+      "category": "main_fixed",
+      "commits": [
+        "4177b51"
+      ],
+      "ancestry": {
+        "4177b51": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "README.md",
+        "ci/backend-test-requirements.txt"
+      ],
+      "scoped_disposition": "README documents pinned backend development/test environment.",
+      "residual": "Runtime-only requirements do not pretend to include every test dependency."
+    },
+    {
+      "id": "SCN-028",
+      "category": "branch_repair_available",
+      "commits": [
+        "94cf1d4"
+      ],
+      "ancestry": {
+        "94cf1d4": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "package.json",
+        "package-lock.json",
+        "agent-notes/REMEDIATION_TOOLCHAIN_2026-10-14.md"
+      ],
+      "scoped_disposition": "Vite/Vitest/toolchain updates plus historical pinned install/test/type/build/audit evidence.",
+      "residual": "Zero advisories is dated evidence; no fresh registry audit performed here."
+    },
+    {
+      "id": "SCN-029",
+      "category": "main_fixed",
+      "commits": [
+        "d6f19d1",
+        "477030a"
+      ],
+      "ancestry": {
+        "d6f19d1": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "477030a": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        ".github/workflows/r3-r4-science.yml"
+      ],
+      "scoped_disposition": "Tracked backend/frontend/scientific mutation CI exists.",
+      "residual": "Strict TS and broader browser/load gates remain distinct."
+    },
+    {
+      "id": "SCN-030",
+      "category": "partial_acceptance",
+      "commits": [
+        "7fafd83",
+        "cae3c0f",
+        "00b5346",
+        "7681a0c"
+      ],
+      "ancestry": {
+        "7fafd83": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "cae3c0f": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "00b5346": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "7681a0c": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/main.ts",
+        "src/style.css",
+        "tests/browser",
+        "agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md"
+      ],
+      "scoped_disposition": "Pasted concrete accessibility defects implemented; real three-engine automation and native Chromium zoom evidence retained.",
+      "residual": "Manual NVDA/VoiceOver/physical touch and affected final-source browser acceptance remain; implementation is not merely a plan."
+    },
+    {
+      "id": "SCN-031",
+      "category": "branch_repair_available",
+      "commits": [
+        "7fafd83",
+        "6c6f232"
+      ],
+      "ancestry": {
+        "7fafd83": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "6c6f232": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/main.ts",
+        "src/frontend/app/sceneSetup.ts",
+        "tests/browser"
+      ],
+      "scoped_disposition": "Unavailable-WebGL/context-loss state, owned teardown and accessible restart implemented and browser-tested.",
+      "residual": "Historical browser evidence remains revision scoped."
+    },
+    {
+      "id": "SCN-032",
+      "category": "main_fixed",
+      "commits": [
+        "4177b51",
+        "952de6a"
+      ],
+      "ancestry": {
+        "4177b51": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "952de6a": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "README.md"
+      ],
+      "scoped_disposition": "README aligned with actual local entry, hidden moons and real worker paths.",
+      "residual": "Latest API/library-only clarification is docs follow-up; main root already repaired."
+    },
+    {
+      "id": "SCN-033",
+      "category": "main_fixed",
+      "commits": [
+        "fbe3d1c",
+        "f6a9fe7",
+        "952de6a"
+      ],
+      "ancestry": {
+        "fbe3d1c": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "f6a9fe7": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "952de6a": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "scripts/update-moons-data.mjs",
+        "scripts/ingest-moon-textures.mjs"
+      ],
+      "scoped_disposition": "Safe imports/help/dry-run, nonempty validation and atomic intentional publication.",
+      "residual": "Original destructive --help/import roots repaired on main."
+    },
+    {
+      "id": "SCN-034",
+      "category": "branch_repair_available",
+      "commits": [
+        "d78b732",
+        "71ba472"
+      ],
+      "ancestry": {
+        "d78b732": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "71ba472": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "scripts/asteroid",
+        "scripts/source-snapshots",
+        "agent-notes/REMEDIATION_CATALOGS_2026-10-14.md"
+      ],
+      "scoped_disposition": "Main fixes external-output path; branch adds pinned source snapshots and transactional offline-by-default generation.",
+      "residual": "Byte-identical full-artifact rebuild evidence remains separate SCN-046."
+    },
+    {
+      "id": "SCN-035",
+      "category": "owner_decision",
+      "commits": [
+        "14741bd"
+      ],
+      "ancestry": {
+        "14741bd": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "NOTICE.md",
+        "agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md"
+      ],
+      "scoped_disposition": "Provenance notices improved; original-code license and asset permissions remain undecided.",
+      "residual": "Owner chooses code/distribution license; resolve SILSO terms and Deimos permission/replacement. Cannot be closed by code/tests alone."
+    },
+    {
+      "id": "SCN-036",
+      "category": "main_fixed",
+      "commits": [
+        "0789e08",
+        "735a2cc"
+      ],
+      "ancestry": {
+        "0789e08": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "735a2cc": {
+          "origin/main": true,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/server.py",
+        "backend/tests/test_ws_resource_contract.py"
+      ],
+      "scoped_disposition": "Authenticated profile and bounded per-subject WebSocket admission implemented.",
+      "residual": "Multi-subject/global capacity fairness, multi-worker deployment and soak are separate."
+    },
+    {
+      "id": "SCN-037",
+      "category": "branch_repair_available",
+      "commits": [
+        "a33ad93"
+      ],
+      "ancestry": {
+        "a33ad93": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "backend/server.py",
+        "backend/tests/test_runtime_recovery_contract.py"
+      ],
+      "scoped_disposition": "Pasted permitted alternative implemented: explicit fixed-step telemetry with slow-step/no-catch-up regression.",
+      "residual": "Policy is implemented; owner acceptance is not retroactively manufactured. Optional API/library mode only."
+    },
+    {
+      "id": "SCN-038",
+      "category": "branch_repair_available",
+      "commits": [
+        "32da51b"
+      ],
+      "ancestry": {
+        "32da51b": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/sunController.ts",
+        "index.html"
+      ],
+      "scoped_disposition": "Decorative versus scientific motion declared; pause/reverse/reduced-motion freezes and resume discard implemented.",
+      "residual": "Policy is implemented; owner acceptance is separate from its recorded tests."
+    },
+    {
+      "id": "SCN-039",
+      "category": "branch_repair_available",
+      "commits": [
+        "7fafd83",
+        "cae3c0f"
+      ],
+      "ancestry": {
+        "7fafd83": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "cae3c0f": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        }
+      },
+      "evidence_paths": [
+        "src/main.ts",
+        "docs/frontend-configuration.md",
+        "tests/browser"
+      ],
+      "scoped_disposition": "Consumed backend-origin/viewport/render-scale contract with nondefault browser checks.",
+      "residual": "Owner deployment selection is separate; no dormant-client activation implied."
+    },
+    {
+      "id": "SCN-040",
+      "category": "branch_repair_available",
+      "commits": [
+        "56e799a",
+        "0964ed9"
+      ],
+      "ancestry": {
+        "56e799a": {
+          "origin/main": false,
+          "9e00947": true,
+          "c67a8d5": true
+        },
+        "0964ed9": {
+          "origin/main": false,
+          "9e00947": false,
+          "c67a8d5": false,
+          "remediation/scn-followup-20261017": true
+        }
+      },
+      "evidence_paths": [
+        "agent-notes/AUDIT_AND_ISSUE_INDEX_2026-10-07.md",
+        "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md",
+        "agent-notes/SCAN_EVIDENCE_ARCHIVE_2026-10-17.json"
+      ],
+      "scoped_disposition": "Selected audit Markdown was archived in56e799a; 0964ed9 also commits164 original scan/merged evidence files with byte-for-byte integrity verification.",
+      "residual": "Prior selected-Markdown repair alone left raw scan links missing. This follow-up closes that scan-evidence gap; older September/H1 raw archives and landing on main remain separate."
+    }
+  ],
+  "attachment_sha256": "e783821b74bac58e7b9f9e9146bfb7725780107abae0d19df2a6b673d3989c6f",
+  "archive_followup": "SCN-040: 0964ed9 preserves164 original scan/merged evidence files with byte hashes; prior56e799a archived selected Markdown only.",
+  "followup_ref": "remediation/scn-followup-20261017@0964ed9"
+}
