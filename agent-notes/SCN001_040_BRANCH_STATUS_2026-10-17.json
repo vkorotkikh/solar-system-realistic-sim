@@ -143,7 +143,13 @@
         "agent-notes/REMEDIATION_DELIVERY_2026-10-14.md"
       ],
       "scoped_disposition": "Visible source/error status is on main; branch has recorded five-minute production-budget DEV/PREVIEW passes.",
-      "residual": "Pasted requirements have dated scoped evidence. Current integrated final-source delivery acceptance remains; later 2 s catalog/usable-scene startup gate is expanded scope, not the originally pasted UI defect."
+      "residual": "Pasted requirements have dated scoped evidence. Current integrated final-source delivery acceptance remains; later 2 s catalog/usable-scene startup gate is expanded scope, not the originally pasted UI defect.",
+      "followup_commits": [
+        "6045dba",
+        "66ef13c"
+      ],
+      "followup_evidence": "agent-notes/REMEDIATION_STARTUP_WARMUP_2026-10-17.md",
+      "followup_status": "Catalog gate 3/3 at 162\u2013182 ms in author DEV measurements; observed GPU-fenced full scene 6.5\u20136.9 s. Still partial, with final-source delivery and usable-scene acceptance open."
     },
     {
       "id": "SCN-006",
@@ -707,7 +713,8 @@
         "agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md"
       ],
       "scoped_disposition": "Pasted concrete accessibility defects implemented; real three-engine automation and native Chromium zoom evidence retained.",
-      "residual": "Manual NVDA/VoiceOver/physical touch and affected final-source browser acceptance remain; implementation is not merely a plan."
+      "residual": "Manual NVDA/VoiceOver/physical touch and affected final-source browser acceptance remain; implementation is not merely a plan.",
+      "followup_status": "43 Chromium browser checks passed / one native-visibility skip at 66ef13c; manual screen-reader/physical-touch and other applicable current-source engine acceptance remain open."
     },
     {
       "id": "SCN-031",
@@ -963,6 +970,10 @@
     }
   ],
   "attachment_sha256": "e783821b74bac58e7b9f9e9146bfb7725780107abae0d19df2a6b673d3989c6f",
-  "archive_followup": "SCN-040: 0964ed9 preserves164 original scan/merged evidence files with byte hashes; prior56e799a archived selected Markdown only.",
-  "followup_ref": "remediation/scn-followup-20261017@0964ed9"
+  "archive_followup": "SCN-040: 0964ed9 preserves 164 original scan/merged evidence files with byte hashes; prior 56e799a archived selected Markdown only.",
+  "followup_ref": "remediation/scn-followup-20261017@66ef13c",
+  "runtime_tests_run_scope": "false above describes the ancestry inventory, not the separately recorded October 17 follow-up validation.",
+  "followup_source": "66ef13c969f62f48ec7aafbd5d11afc1afccc5df",
+  "followup_validation": "agent-notes/SCN_FOLLOWUP_VALIDATION_2026-10-17.md",
+  "archive_followup_ref": "remediation/scn-followup-20261017@0964ed9"
 }

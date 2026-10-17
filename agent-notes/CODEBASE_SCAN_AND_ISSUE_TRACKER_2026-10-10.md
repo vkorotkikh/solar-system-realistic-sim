@@ -7,11 +7,12 @@ SCN-001–083 ledger and alias mappings are below, followed by the complete
 findings, acceptance criteria, crosswalks, and evidence links are retained.
 The separate October 7 and October 11 files are historical records pointing here.
 
-The October 17 update implements the approved `SimulationClient` scope decision
-against `review/construction-1c5d88b-fixes@9e00947`. It is documentation only:
+The October 17 `SimulationClient` scope decision was implemented
+against `review/construction-1c5d88b-fixes@9e00947`. That decision is documentation only:
 no new runtime test, merge, deployment, or whole-codebase revalidation is
 claimed by that decision. The separate branch inventory below records its own
-remote-ref refresh. The ledger's main baseline, construction checkpoint,
+remote-ref refresh; the dated follow-up below records subsequent code repairs.
+The ledger's main baseline, construction checkpoint,
 83 canonical IDs, 138 aliases, counts, and dated test results remain pinned to
 their recorded evidence. Scope clarification does not promote a finding to
 resolved or turn branch-only repairs into shipped fixes.
@@ -51,7 +52,8 @@ implementation exists, nor do implementation tests imply owner endorsement.
 This targeted inventory does not rewrite the older 83-row baseline counts.
 
 Source/commit ancestry was checked independently for every cited commit;
-runtime outcomes below remain dated evidence, not a fresh rerun. The
+runtime outcomes in the inventory remain dated evidence, not a fresh rerun
+of all 40 findings. The
 [structured inventory](SCN001_040_BRANCH_STATUS_2026-10-17.json) records exact
 refs, per-commit ancestry, evidence paths, attachment hash and residual scope.
 
@@ -96,7 +98,7 @@ refs, per-commit ancestry, evidence paths, attachment hash and residual scope.
 | SCN-037 | Branch repair available | `a33ad93` | Pasted permitted alternative implemented: explicit fixed-step telemetry with slow-step/no-catch-up regression. Policy is implemented; owner acceptance is not retroactively manufactured. Optional API/library mode only. |
 | SCN-038 | Branch repair available | `32da51b` | Decorative versus scientific motion declared; pause/reverse/reduced-motion freezes and resume discard implemented. Policy is implemented; owner acceptance is separate from its recorded tests. |
 | SCN-039 | Branch repair available | `7fafd83`, `cae3c0f` | Consumed backend-origin/viewport/render-scale contract with nondefault browser checks. Owner deployment selection is separate; no dormant-client activation implied. |
-| SCN-040 | Branch repair available | `56e799a`, `0964ed9` | Selected Markdown plus164 original scan/merged evidence files are now committed on `remediation/scn-followup-20261017`; every copied byte is verified. Main landing and older September/H1 raw archival remain separate. |
+| SCN-040 | Branch repair available | `56e799a`, `0964ed9` | Selected Markdown plus 164 original scan/merged evidence files are now committed on `remediation/scn-followup-20261017`; every copied byte is verified. Main landing and older September/H1 raw archival remain separate. |
 
 ### SCN-040 evidence preservation follow-up
 
@@ -111,6 +113,32 @@ file's byte count and hash. Historical probes were not executed or relabeled as
 fresh passes. Older September/H1 raw evidence remains outside this archive;
 this closes the missing scan-evidence gap, not all historical archival work or
 the remaining main-landing requirement.
+
+## Implemented follow-up and combined validation — 2026-10-17
+
+Follow-up branch **`remediation/scn-followup-20261017`**, tested source `66ef13c`:
+
+- **SCN-005:** direct catalog mapping plus full-catalog adoption before owned,
+  cancelable shader warmup. The unchanged catalog gate passes three author DEV
+  measurements at 162–182 ms; GPU-fenced scene readiness remains 6.5–6.9 s.
+  Usable-scene and final-source delivery acceptance remain open.
+- **SCN-042:** asteroid shader PI collision and diagnostic sampling mismatch
+  repaired. Fresh combined-source RTX 5090 acceptance passes all six reference
+  cases, 156 markers and 235 surface probes, with three negative controls
+  detected, production antialiasing preserved and separate startup shader checks.
+- **SCN-030/031 and active SCN-049 children:** the final Chromium suite passes
+  43 checks with one native-visibility skip, including recovery, frame lifecycle,
+  reflow and native browser zoom. Manual accessibility and other applicable
+  current-source engine/deployment acceptance remain separate.
+- **SCN-040:** all 164 original scan/merged evidence files are preserved with
+  hash verification, alongside the consolidated scans and complete ledgers.
+
+The combined source also passes **759 frontend tests / 413 existing skips**,
+seven rendering-verifier tests, strict source/browser TypeScript and the
+production build. See [exact commands, revisions, raw evidence and limits](SCN_FOLLOWUP_VALIDATION_2026-10-17.md).
+Independent review found no actionable blockers. No push, main merge or
+deployment occurred. These follow-ups preserve the 37 scoped / two partial /
+one decision inventory above and do not promote historical main-baseline counts.
 
 ## SimulationClient scope decision — 2026-10-17
 
@@ -174,7 +202,7 @@ Recorded remediation reconciliation: **2026-10-15**, construction source
 `6539902`. The pre-work checkpoint was `dbfdbed`. Primary `State` remains
 pinned to the historical product baseline
 `origin/main@f45c1f917398718e27d8f1a9fdfa8502592c21fd`; PRs #7, #8, #9,
-and #11 had landed at that baseline. No newer main or remote state is asserted.
+and #11 had landed at that baseline. This baseline section does not assert newer remote state; the separate October 17 inventory above records its own refreshed refs.
 Construction-branch progress on `remediation/canonical-register-20261014`
 is separate from main resolution.
 
@@ -186,7 +214,7 @@ at `cdea3bc` passes all six baselines and kills all six mutants.
 See [the current checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md) for exact scope,
 warnings, remaining failures, and evidence. The earlier `b072d32` browser
 result remains **97 passed, 14 platform skips**, not a final-source browser
-claim. Default actual-main rendering, startup and moon promotion are not closed.
+claim. At that checkpoint, default actual-main rendering, startup and moon promotion were not closed. The dated October 17 follow-up above records subsequent scoped repairs without relabeling these older suite results.
 
 Use the [closure plan](REMEDIATION_CLOSURE_PLAN_2026-10-15.md) for current
 owners, dependencies, remaining gates, and dated evidence. The
@@ -296,7 +324,7 @@ Filesystem mtimes caused by checkout or evidence restoration were ignored.
 | SCN-002 | P1 | RESOLVED_SCOPED | — | OBS | Original NumPy endian/dtype FITS crash is fixed with a valid frozen fixture. Parser-to-solver float64 admission remains independently `051`. |
 | SCN-003 | P1 | RESOLVED_SCOPED | — | MIXED | GONG WCS, orientation, exact area weights, and weighted decomposition now have an explicit grid contract. Real observed accuracy remains `041/048`. |
 | SCN-004 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | Owned, killable DNS/header/body subprocess transport is implemented in `870de80`; stalled phases, interruption, framing, recovery and permit/resource cleanup pass. POSIX evidence in [solar report](REMEDIATION_SOLAR_2026-10-14.md); other platforms are not certified. |
-| SCN-005 | P1 | OPEN | PARTIAL | MIXED | Binary-body/metadata overlap is integrated in `6539902`, preserving validation and deadlines; it does not establish the unchanged 2 s startup gate. Earlier `fc3b6a0` passed five-minute DEV/PREVIEW delivery (11/11 physics and 3/3 realtime each), with startup 6.09/8.11 s. Startup behavior, fresh performance/delivery acceptance and actual usable-scene measurement remain open. [Current checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md). |
+| SCN-005 | P1 | OPEN | PARTIAL | MIXED | October 17 follow-up `6045dba` / `66ef13c` maps catalog rows directly and waits for full adoption before owned shader warmup. The unchanged 2 s fetch-to-parse/hash gate passes 3/3 DEV author measurements (162–182 ms); observed GPU-fenced full-scene readiness remains 6.5–6.9 s. Earlier `fc3b6a0` five-minute DEV/PREVIEW delivery passes remain dated; final-source delivery and usable-scene acceptance are still open. [Startup repair](REMEDIATION_STARTUP_WARMUP_2026-10-17.md). |
 | SCN-006 | P1 | RESOLVED_SCOPED | — | OBS | Default localhost and loopback-IP Vite preview origins pass the CORS contract. Actual deployed origins remain `048`. |
 | SCN-007 | P1 | RESOLVED_SCOPED | — | OBS | Solar admission now uses trusted identity policy and bounded stores; rotating untrusted headers no longer create unlimited identities. Preserve proxy/auth/cap/eviction tests. |
 | SCN-008 | P1 | RESOLVED_SCOPED | — | OBS | `/solar/physics` rejects extreme finite epochs and bounds JDTDB before compute. AIA historical-date coverage is separately `048`; playback escape is `053`. |
@@ -321,7 +349,7 @@ Filesystem mtimes caused by checkout or evidence restoration were ignored.
 | SCN-027 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 documents the pinned backend test environment and current invocation. Prior reviewed branch gates passed; full current integrated README-to-suite execution is recorded in the remediation effort. |
 | SCN-028 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `94cf1d4` deliberately updates Vite/Vitest and compatible transitive dependencies. Pinned npm ci, production build, strict typecheck, frontend tests and npm audit pass with zero reported advisories. [Toolchain evidence](REMEDIATION_TOOLCHAIN_2026-10-14.md). |
 | SCN-029 | P1 | RESOLVED_SCOPED | — | MIXED | A tracked CI/backend/science mutation workflow exists and passes its scoped contract. Strict TS is `025`; broader browser/live/load gates are `047`. |
-| SCN-030 | P1 | OPEN | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | R1-R8 implementation is integrated via `cae3c0f`. Earlier `b072d32` passed 87 UI checks, 29 each in Chromium, Firefox, and WebKit; `00b5346` separately records genuine Chromium 200%/400% zoom on software and RTX 5090. Manual NVDA, VoiceOver, and physical-touch evidence remains outstanding, as does final browser validation after remaining changes. Owner: accessibility/manual acceptance with parent browser integration. [Accessibility evidence](REMEDIATION_ACCESSIBILITY_2026-10-14.md); [dated browser scope](REMEDIATION_CLOSURE_PLAN_2026-10-15.md#evidence-retained). |
+| SCN-030 | P1 | OPEN | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | R1-R8 implementation is integrated via `cae3c0f`. Earlier `b072d32` passed 87 UI checks across Chromium, Firefox and WebKit. At `66ef13c`, the full Chromium suite passes 43 checks with one native-visibility skip, including actual-app recovery and native 200%/400% zoom on RTX 5090. This is Chromium-only automation: manual NVDA, VoiceOver and physical-touch acceptance and current-source checks on other applicable engines remain outstanding. [Accessibility evidence](REMEDIATION_ACCESSIBILITY_2026-10-14.md); [October 17 validation](SCN_FOLLOWUP_VALIDATION_2026-10-17.md). |
 | SCN-031 | P2 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `2e2b31d` through `6c6f232` provide accessible no-WebGL/context-loss recovery, stop owned runtime work, and preserve keyboard restart. Actual-app software and RTX 5090 browser gates pass. |
 | SCN-032 | P1 | RESOLVED_SCOPED | — | MIXED | PR #7 aligns the README with shipped entry controls, moon display/propagation limitations, and maintenance safeguards. Review and 393-test/build gate passed. |
 | SCN-033 | P2 | RESOLVED_SCOPED | — | MIXED | PR #7 ships safe maintenance help/import paths, atomic catalog writes, explicit count-change admission, and shape/uniqueness/orbit validation. Nine updater regressions and full frontend/script gate passed. |
@@ -331,10 +359,10 @@ Filesystem mtimes caused by checkout or evidence restoration were ignored.
 | SCN-037 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | The remediation effort selects explicit fixed-step semantics: time_scale/target_fps days per tick, no wall-time catch-up promise. Runtime telemetry declares the policy. Slow-step regression passes in `a33ad93`; not merged. |
 | SCN-038 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | `32da51b` declares simulation-driven versus decorative solar motion and gates pause/reverse/reduced-motion behavior. Integrated UI adapters preserve live JD, pause and time-scale inputs. |
 | SCN-039 | P2 | DECISION_REQUIRED | FIX_AVAILABLE_UNMERGED | MIXED | `cae3c0f` integrates a consumed runtime configuration contract: explicit VITE_BACKEND_ORIGIN or same-origin, no query redirects, nondefault backend ports, viewport sizes and drawing-buffer scale. Real-app configuration checks pass. |
-| SCN-040 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56e799a` archives an intentionally selected source set with original/archived hashes and current-status pointers. This effort and its reports are committed on the construction branch, not yet included in a clone of main. |
+| SCN-040 | P1 | OPEN | FIX_AVAILABLE_UNMERGED | MIXED | `56e799a` archives selected Markdown; `0964ed9` additionally preserves 164 original October 7/10 scan and merged-review files with byte/hash verification. The consolidated tracker retains both complete scans, all 83 canonical IDs and 138 aliases. Repairs/evidence are committed on construction/follow-up branches, not main; older September/H1 raw archival remains separate. [Archive manifest](SCAN_EVIDENCE_ARCHIVE_2026-10-17.json). |
 | SCN-041 | P1 | VERIFY | PARTIAL | MIXED | The numerical repair `df8adc6` clears the 55 failing PFSS regression cases. Updated streaming-path scientific gates at `cdea3bc` pass six baselines and kill all six mutants with unchanged oracle limits; full backend at `a8187a7` passes 3878 cases. Three reference epochs and cold High/Ultra budgets also pass. Observed-input/frame and provider/application calibration acceptance remain scoped open; observations are not silently enabled. [Current checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md). |
-| SCN-042 | P1 | VERIFY | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | Main orientation and controller fixes are integrated. Corrected actual-main hardware fixture passes 154/156 markers and 235/235 surface probes, but default acceptance still fails: diagnostic MSAA/reference mismatch and an asteroid shader PI macro collision. In-memory controls pass all six cases; applying the newly identified corrections awaits approval. Preserve production MSAA, independent reference, one-pixel limit and negative controls. [Rendering evidence](SCN042_RENDERED_ACCEPTANCE_2026-10-15.md). |
-| SCN-043 | P1 | VERIFY | PARTIAL | MIXED | All 424 records are prepared in the isolated moon worktree; 517 scoped Node 22 tests and seven Python tests pass, including offline byte-identical generation. Only 13 records are integrated here. Independent review found missing/inconsistent accuracy-certificate and endpoint-limit validation plus uncancelled rejected response bodies; correction approval and source-storage disposition remain pending before promotion. Preserve original 13 hashes, both Puck IDs and all accuracy limits. [Independent review](SCN043_LAZY_INDEPENDENT_REVIEW_2026-10-15.md); [checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md). |
+| SCN-042 | P1 | VERIFY | PARTIAL; FIX_AVAILABLE_UNMERGED | MIXED | October 17 repairs `8888563` / `b1f6bd9` fix the assembled asteroid shader PI collision and diagnostic sampling mismatch. Scoped actual-main hardware acceptance passes 6/6 cases, 156/156 markers, 235/235 surface probes and all three negative controls; production MSAA, pixel budget and independent reference remain intact. Startup compilation is separately gated. Broader artistic/layer/camera/epoch and application requirements remain open. [Rendering repair and retained failed baseline](SCN042_RENDERING_REPAIR_2026-10-17.md). |
+| SCN-043 | P1 | VERIFY | PARTIAL | MIXED | All 424 records are prepared in the isolated moon worktree; 517 scoped Node 22 tests and seven Python tests pass, including offline byte-identical generation. Only 13 records are integrated here. Independent review found missing/inconsistent accuracy-certificate and endpoint-limit validation plus uncancelled rejected response bodies; the code corrections, source-storage disposition and independent acceptance remain pending before promotion. Preserve original 13 hashes, both Puck IDs and all accuracy limits. [Independent review](SCN043_LAZY_INDEPENDENT_REVIEW_2026-10-15.md); [checkpoint](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md). |
 | SCN-044 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` adds a dated two-assist witness independently closed with Izzo/Gooding/DOP853, physical periapsis/continuity checks and an inconclusive-on-exhaustion gate. This is a feasible quality floor, not a global optimum or external ephemeris certification. |
 | SCN-045 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `2613436` declares rejection of exact collinearity without a supplied plane. Independent propagated-state gates cover rotated near-zero/near-pi/hyperbolic cases and both senses/branches for 1-3 revolutions. Existing `064` remains preserved. |
 | SCN-046 | P2 | VERIFY | FIX_AVAILABLE_UNMERGED | MIXED | `71ba472` pins 17 real provider responses. Two network-disabled asteroid builds and both generators' offline checks reproduce the new committed artifacts byte-for-byte; all 100,000 source periods/diameters/albedos are compared. Historical unpinned artifacts were replaced, not reverse-engineered. |
@@ -623,8 +651,8 @@ progress or a fresh remote check.
 
 ## 10. Remaining closure work
 
-1. Apply the newly requested shader/sampling and moon-loader corrections only after approval; retain all failing evidence and acceptance limits.
-2. Resolve startup behavior, precise-time handling, source-storage and licensing decisions. Manual device and actual deployment acceptance require real evidence.
+1. Retain the implemented October 17 shader/sampling and startup repairs with their failed baselines and acceptance limits. Complete the separately recorded moon-loader corrections and independent review before promotion.
+2. Complete usable-scene and final-source delivery acceptance under full-catalog startup. Resolve precise-time handling, source-storage and licensing decisions; manual device and actual deployment acceptance require real evidence.
 3. Complete observed-input/frame/calibration work without enabling unvalidated observational data.
 4. Promote the prepared moon records only after independent accuracy/provenance/resource checks and approved storage; all 424 identities remain in the denominator.
 5. Run affected final rendering, browser, startup/delivery and combined acceptance gates; retain exact revisions, every skip and every remaining failure.

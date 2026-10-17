@@ -2,6 +2,8 @@
 
 > Scope clarification (2026-10-17): `SimulationClient` is **API/library-only; not integrated into the default UI.** The [consolidated tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17) separates backend, client-library and active-browser acceptance. The dated execution results below are preserved.
 
+> Subsequent repair (2026-10-17): the shader and sampling corrections described below are now implemented on `remediation/scn-followup-20261017`, with scoped 6/6 hardware rendering acceptance. Full-catalog startup coordination passes the unchanged catalog timing gate in three DEV measurements, but observed complete-scene readiness remains 6.5–6.9 s and SCN-005 stays partial. See the [rendering repair](SCN042_RENDERING_REPAIR_2026-10-17.md), [startup repair](REMEDIATION_STARTUP_WARMUP_2026-10-17.md) and maintained tracker. The October 15 failures and approval requests below are historical, not the current disposition of those repairs.
+
 **Progress checkpoint, not complete resolution of the canonical register.**
 
 Branch: `remediation/canonical-register-20261014`. Production source:

@@ -1,0 +1,36 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn005-startup-20261017
+
+ ❯ src/frontend/app/rendererWarmup.test.ts (11 tests | 1 failed) 13ms
+   ❯ owned renderer shader warmup (11)
+     × contains a synchronous compiler failure (undefined) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > contains a synchronous compiler failure (undefined)
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:97:28
+     95|   it.each([new Error('compiler failed'), undefined, null])('contains a…
+     96|     vi.useFakeTimers(); const f = fixture(); f.renderer.compile = () =…
+     97|     return expect(f.start()).rejects.toBe(failure).then(() => {
+       |                            ^
+     98|     expect(vi.getTimerCount()).toBe(0);
+     99|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  15:31:38
+   Duration  144ms (transform 43%, import 36%, tests 18%, worker 3%)
+

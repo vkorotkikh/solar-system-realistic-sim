@@ -1,0 +1,149 @@
+[
+  {
+    "run": 0,
+    "createdAt": 453.10000000009313,
+    "renders": 7,
+    "firstRenderAt": 6691.600000000093,
+    "catalog": {
+      "loadMs": 6031.40000000014,
+      "budgetMs": 2000,
+      "passed": false,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 6804.800000000047,
+    "firstFullRenderAt": 7092.600000000093,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 4,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 7128,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request.",
+      "[phase-1] Catalog load exceeded its performance budget: loadMs=6031.4 exceeded budgetMs=2000"
+    ],
+    "loadStart": [
+      2.58,
+      6.13,
+      6.6
+    ],
+    "loadEnd": [
+      2.61,
+      6.08,
+      6.58
+    ]
+  },
+  {
+    "run": 1,
+    "createdAt": 458.89999999990687,
+    "renders": 7,
+    "firstRenderAt": 6260.299999999814,
+    "catalog": {
+      "loadMs": 5595.300000000047,
+      "budgetMs": 2000,
+      "passed": false,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 6370.699999999953,
+    "firstFullRenderAt": 6675.799999999814,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 4,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 6711.699999999953,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request.",
+      "[phase-1] Catalog load exceeded its performance budget: loadMs=5595.3 exceeded budgetMs=2000"
+    ],
+    "loadStart": [
+      2.61,
+      6.08,
+      6.58
+    ],
+    "loadEnd": [
+      2.6,
+      5.96,
+      6.54
+    ]
+  },
+  {
+    "run": 2,
+    "createdAt": 434.5,
+    "renders": 8,
+    "firstRenderAt": 6306.800000000047,
+    "catalog": {
+      "loadMs": 5668.300000000047,
+      "budgetMs": 2000,
+      "passed": false,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 6423.699999999953,
+    "firstFullRenderAt": 6763.699999999953,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 5,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 6799,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request.",
+      "[phase-1] Catalog load exceeded its performance budget: loadMs=5668.3 exceeded budgetMs=2000"
+    ],
+    "loadStart": [
+      2.6,
+      5.96,
+      6.54
+    ],
+    "loadEnd": [
+      2.55,
+      5.89,
+      6.51
+    ]
+  }
+]

@@ -149,9 +149,11 @@ node node_modules/vite/bin/vite.js build
 UI_TEST_PORT=5198 UI_HARDWARE_WEBGL=1 GALLIUM_DRIVER=d3d12   MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib   node node_modules/@playwright/test/cli.js test tests/browser/startup-warmup.spec.ts   tests/browser/asteroid-shader.spec.ts --project=chromium --reporter=line
 ```
 
-Immediate raw artifacts remain under `/tmp/scn005-browser-hardware-{baseline,candidate}-20261017.json`,
-corresponding screenshots, and `/tmp/scn005-startup-*-20261017.log`. The harness
-below preserves reproducibility without relying on those temporary paths.
+Raw baseline/candidate JSON, six screenshots, the measurement harness and
+validation logs are preserved in [the evidence archive](STARTUP_WARMUP_EVIDENCE_2026-10-17/)
+with a SHA-256 manifest. These retain the author run revisions and limits stated
+above; they are not relabeled as combined-branch reruns. The harness below
+preserves reproducibility without relying on its original temporary paths.
 Start Vite on 127.0.0.1:5197 at the named baseline/candidate revision, save this
 script as `/tmp/scn005-browser-startup-20261017.mjs`, and run:
 
