@@ -1,0 +1,248 @@
+{
+ "head": "68c3f85",
+ "scn052_reserve_partition": {
+  "single_4_8": {
+   "feasible": false,
+   "unmet": 0.18513981257705744,
+   "used": 950.0
+  },
+  "two_2_4": {
+   "feasible": true,
+   "unmet": 0.0,
+   "used": 965.2477048560982,
+   "remaining_kg": 34.75229514390185
+  },
+  "four_1_2": {
+   "feasible": true,
+   "used": 965.2477048560979,
+   "remaining_kg": 34.752295143902074
+  },
+  "required_reserve_kg": 50
+ },
+ "scn019_cargo_ledger": {
+  "return_burn_prop_empty": 5872.9035685379,
+  "return_burn_prop_laden_5t": 7026.726244528911,
+  "cargoAddedKg_reported": 5000.0
+ },
+ "scn020_infeasible_risk": {
+  "feasible": false,
+  "unmet_km_s": 194.26507217294514,
+  "propellantMarginKg": 1275.0,
+  "onboard_prop_remaining_kg": 0,
+  "all_stages_jettisoned": true,
+  "failureProbability": 1.0,
+  "margin_p50_in_risk_envelope": 1275.0
+ },
+ "scn012_benchmark": {
+  "scenarioCount": 3,
+  "comparableScenarioCount": 0,
+  "validationCoverage": 0.0,
+  "meanAbsErrorKmS": null,
+  "passRate": null,
+  "fixedStateReferences": {
+   "count": 2,
+   "passCount": 2,
+   "maxAbsErrorKmS": 3.968906282247886e-05
+  },
+  "report_lines": [
+   "- Validation coverage: 0.0%",
+   "- Pass rate: n/a (nothing compared)",
+   "- Mean |delta-v error|: n/a (nothing compared)",
+   "- Fixed-state textbook references passed: 2/2 (max |dv| 3.97e-05 km/s)",
+   "| Scenario | Source | Status | Model dV (km/s) | Reference dV (km/s) | |Error| (km/s) | Tool spread | Tolerance | Pass |"
+  ]
+ },
+ "scn053_rebound_step": {
+  "max_supported_jd": 2469807.5,
+  "after_step_plus1_jd": 2469808.5,
+  "fidelity_after_step": "high",
+  "same_epoch_seek": "Julian date is outside the validated REBOUND interval [2447892.5, 2469807.5] JDTDB",
+  "min_supported_jd": 2447892.5,
+  "after_step_minus1_jd": 2447891.5,
+  "fidelity_after_neg_step": "high"
+ },
+ "scn056_epo_policy": {
+  "direct_run_family": {
+   "family": "strict",
+   "total": 1,
+   "passed": 1,
+   "failed": 0,
+   "exception_count": 0,
+   "average_score": -100.0,
+   "reason_counts": {}
+  },
+  "run_families": {
+   "totals": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "exceptions": 0
+   },
+   "families": {
+    "strict": {
+     "family": "strict",
+     "total": 1,
+     "passed": 0,
+     "failed": 1,
+     "exception_count": 0,
+     "average_score": -100.0,
+     "reason_counts": {
+      "mission_score_below_threshold_-100.00": 1,
+      "embedded_verifier_rejected": 1,
+      "failure_probability_exceeds_threshold": 1
+     }
+    }
+   }
+  }
+ },
+ "scn064_lambert_antiparallel": [
+  {
+   "angle_deg": 90,
+   "solved": true,
+   "endpoint_miss_km": 15.783097477025967,
+   "v1_error_m_s": 0.002137295275769108,
+   "rootResidualDays": 6.1331752334581324e-06,
+   "transferAngleDeg": 90.0
+  },
+  {
+   "angle_deg": 170,
+   "solved": true,
+   "endpoint_miss_km": 0.00024287392231116454,
+   "v1_error_m_s": 1.3594247910907948e-08,
+   "rootResidualDays": 9.589484761818312e-11,
+   "transferAngleDeg": 170.00000000000003
+  },
+  {
+   "angle_deg": 179,
+   "solved": true,
+   "endpoint_miss_km": 129.29643576620524,
+   "v1_error_m_s": 0.006502225919238886,
+   "rootResidualDays": 5.0243534587934846e-05,
+   "transferAngleDeg": 179.0000000000001
+  },
+  {
+   "angle_deg": 179.9,
+   "solved": true,
+   "endpoint_miss_km": 0.0033965399681818147,
+   "v1_error_m_s": 6.249067577093964e-08,
+   "rootResidualDays": 1.2747136679536197e-10,
+   "transferAngleDeg": 179.8999999999998
+  },
+  {
+   "angle_deg": 179.99,
+   "solved": true,
+   "endpoint_miss_km": 2.6572542261436687,
+   "v1_error_m_s": 5.168569772853688e-05,
+   "rootResidualDays": 1.1394263310648967e-10,
+   "transferAngleDeg": 179.99000000001735
+  },
+  {
+   "angle_deg": 179.999,
+   "solved": true,
+   "endpoint_miss_km": 56.7852139686772,
+   "v1_error_m_s": 0.0011041943149013927,
+   "rootResidualDays": 1.1260681276326068e-10,
+   "transferAngleDeg": 179.9989999999629
+  },
+  {
+   "angle_deg": 179.9999,
+   "solved": true,
+   "endpoint_miss_km": 41810.83702648549,
+   "v1_error_m_s": 0.8130866410937114,
+   "rootResidualDays": 1.1237943908781745e-10,
+   "transferAngleDeg": 179.99990000272982
+  },
+  {
+   "angle_deg": 179.99999,
+   "solved": true,
+   "endpoint_miss_km": 1046762.5580045077,
+   "v1_error_m_s": 20.373769916773593,
+   "rootResidualDays": 1.1235101737838704e-10,
+   "transferAngleDeg": 179.99999000683567
+  },
+  {
+   "angle_deg": 179.999999,
+   "solved": true,
+   "endpoint_miss_km": 209061472.25451568,
+   "v1_error_m_s": 5101.243152161169,
+   "rootResidualDays": 1.1237943908781745e-10,
+   "transferAngleDeg": 179.99999914622634
+  },
+  {
+   "angle_deg": 180,
+   "solved": false
+  },
+  {
+   "angle_deg": 180.000001,
+   "solved": true,
+   "endpoint_miss_km": 209061485.43848735,
+   "v1_error_m_s": 5101.243236009946,
+   "rootResidualDays": 1.1235101737838704e-10,
+   "transferAngleDeg": 180.00000085377366
+  },
+  {
+   "angle_deg": 180.0001,
+   "solved": true,
+   "endpoint_miss_km": 41811.24851283775,
+   "v1_error_m_s": 0.8130942199604834,
+   "rootResidualDays": 1.1235101737838704e-10,
+   "transferAngleDeg": 180.00009999727018
+  },
+  {
+   "angle_deg": 181,
+   "solved": true,
+   "endpoint_miss_km": 21.620474462452655,
+   "v1_error_m_s": 0.0010651577819119104,
+   "rootResidualDays": 8.401600695151501e-06,
+   "transferAngleDeg": 180.9999999999999
+  },
+  {
+   "angle_deg": 190,
+   "solved": true,
+   "endpoint_miss_km": 0.6719973432593218,
+   "v1_error_m_s": 3.019526062162883e-05,
+   "rootResidualDays": 2.611326408441528e-07,
+   "transferAngleDeg": 190.0
+  },
+  {
+   "angle_deg": 270,
+   "solved": true,
+   "endpoint_miss_km": 0.00017486311391966587,
+   "v1_error_m_s": 3.5146630382861168e-09,
+   "rootResidualDays": 6.855316314613447e-11,
+   "transferAngleDeg": 270.0
+  }
+ ],
+ "scn045_capability": {
+  "MAX_LAMBERT_REVOLUTIONS": 10,
+  "one_rev_solved": true,
+  "one_rev_v1_err_m_s": 0.0005171260376892535,
+  "exact_180_returns": "None"
+ },
+ "scn063_transport": {
+  "HORIZONS_CONCURRENCY_LIMIT": 1,
+  "requests": [
+   {
+    "label": "first_stalled_read",
+    "elapsed_s": 0.0505,
+    "status": "EphemerisUpstreamTimeout",
+    "message": "Horizons state query exceeded its absolute deadline",
+    "outbound_calls": 1
+   },
+   {
+    "label": "second_while_first_blocked",
+    "elapsed_s": 0.0504,
+    "status": "EphemerisUpstreamTimeout",
+    "message": "Horizons transport capacity was unavailable before the request deadline",
+    "outbound_calls": 1
+   },
+   {
+    "label": "third_after_release",
+    "elapsed_s": 0.0003,
+    "status": "success",
+    "body": "local-body",
+    "outbound_calls": 2
+   }
+  ]
+ }
+}

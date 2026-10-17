@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /home/nomad/ai/projects/repositories/solar-system-realistic-sim
+
+ ✓ src/frontend/features/solar/solarDataStatus.test.ts (24 tests) 8ms
+ ✓ src/frontend/features/solar/solarPhysicsClient.test.ts (39 tests) 77ms
+ ✓ src/sunController.test.ts (11 tests) 723ms
+
+ Test Files  3 passed (3)
+      Tests  74 passed (74)
+   Start at  03:59:01
+   Duration  1.28s (transform 334ms, setup 0ms, collect 465ms, tests 807ms, environment 0ms, prepare 182ms)
+

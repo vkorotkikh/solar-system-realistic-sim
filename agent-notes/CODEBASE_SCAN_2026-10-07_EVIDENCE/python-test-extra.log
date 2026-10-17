@@ -1,0 +1,6 @@
+Using Python 3.12.13 environment at: /tmp/solar-codebase-scan-2026-10-07
+Resolved 7 packages in 60ms
+Installed 3 packages in 10ms
+ + httpcore2==2.13.1
+ + httpx2==2.13.1
+ + truststore==0.10.4

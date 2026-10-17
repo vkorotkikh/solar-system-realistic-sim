@@ -1,0 +1,16 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run src/sim/orbitMath.test.ts src/frontend/features/superluminal-modeling/smbhPhysics.test.ts src/sim/planetPositions.horizons.test.ts src/sim/asteroidDistributions.test.ts
+
+
+ RUN  v3.2.4 /home/nomad/ai/projects/repositories/solar-system-realistic-sim
+
+ ✓ src/sim/orbitMath.test.ts (2 tests) 4ms
+ ✓ src/frontend/features/superluminal-modeling/smbhPhysics.test.ts (5 tests) 5ms
+ ✓ src/sim/planetPositions.horizons.test.ts (75 tests) 10ms
+
+ Test Files  3 passed (3)
+      Tests  82 passed (82)
+   Start at  03:59:33
+   Duration  471ms (transform 224ms, setup 0ms, collect 396ms, tests 19ms, environment 1ms, prepare 185ms)
+

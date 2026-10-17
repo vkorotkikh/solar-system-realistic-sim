@@ -1,0 +1,104 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /home/nomad/ai/projects/repositories/solar-system-realistic-sim
+
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 3ms
+ ✓ src/constants.test.ts (3 tests) 3ms
+ ✓ src/frontend/app/plannerController.test.ts (7 tests) 6ms
+ ✓ src/frontend/features/trajectory/localPlanner.test.ts (9 tests) 6ms
+ ✓ src/frontend/features/trajectory/index.test.ts (10 tests) 15ms
+ ✓ src/sim/orbitMath.test.ts (1 test) 2ms
+ ✓ src/sim/sourceFrameOrbit.test.ts (4 tests) 9ms
+ ✓ src/workers/modelWorkerContract.test.ts (6 tests) 16ms
+ ✓ src/sim/moonEphemeris.test.ts (10 tests) 10ms
+ ✓ src/sim/catalog.test.ts (5 tests) 20ms
+ ✓ src/sim/planetPositions.horizons.test.ts (66 tests) 7ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (10 tests) 24ms
+ ✓ src/sim/solarSystemModel.test.ts (2 tests) 29ms
+ ✓ src/sim/moonFrames.horizons.test.ts (27 tests) 24ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts ]
+Error: Cannot find module '../../../wt-h1/src/frontend/features/solar/solarPhysicsClient' imported from '/home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts'
+ ❯ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts:12:1
+     10|  * otherwise the test and the app drift apart.
+     11|  */
+     12| import { SolarPhysicsClient } from '../../../wt-h1/src/frontend/featur…
+       | ^
+     13| 
+     14| const PROD = {
+
+Caused by: Error: Failed to load url ../../../wt-h1/src/frontend/features/solar/solarPhysicsClient (resolved id: ../../../wt-h1/src/frontend/features/solar/solarPhysicsClient) in /home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22663:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts ]
+Error: Cannot find module '../../../wt-h1/src/sunController' imported from '/home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts'
+ ❯ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts:10:1
+      8|  */
+      9| import { PerspectiveCamera } from 'three';
+     10| import { createSunController } from '../../../wt-h1/src/sunController';
+       | ^
+     11| 
+     12| const AIA_PAYLOAD = {
+
+Caused by: Error: Failed to load url ../../../wt-h1/src/sunController (resolved id: ../../../wt-h1/src/sunController) in /home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22663:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts ]
+Error: Cannot find module './solarPhysicsClient' imported from '/home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts'
+ ❯ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts:3:1
+      1| // THROW-AWAY adversarial tests for fix/solar-data-status-notice (728d…
+      2| import { afterEach, describe, expect, it, vi } from 'vitest';
+      3| import { SolarPhysicsClient } from './solarPhysicsClient';
+       | ^
+      4| 
+      5| const BASE_URL = 'http://localhost:8042';
+
+Caused by: Error: Failed to load url ./solarPhysicsClient (resolved id: ./solarPhysicsClient) in /home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22663:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts ]
+Error: Cannot find module './sunController' imported from '/home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts'
+ ❯ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts:5:1
+      3| import { afterEach, beforeEach, describe, expect, it, vi } from 'vites…
+      4| import type { Camera, Texture, TextureLoader } from 'three';
+      5| import { createSunController } from './sunController';
+       | ^
+      6| import type { SolarDataSourceStatus } from './frontend/features/solar/…
+      7| 
+
+Caused by: Error: Failed to load url ./sunController (resolved id: ./sunController) in /home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22663:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-advtests.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-advtests.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-branchtests.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-branchtests.test.ts ]
+Error: Cannot find module '../../../constants' imported from '/home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-client.ts'
+ ❯ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-client.ts:1:1
+      1| import { clamp } from '../../../constants';
+       | ^
+      2| import type { SolarObservationPhysicsStateLike } from './solarObservat…
+      3| 
+
+Caused by: Error: Failed to load url ../../../constants (resolved id: ../../../constants) in /home/nomad/ai/projects/repositories/solar-system-realistic-sim/agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-client.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22663:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  6 failed | 14 passed (20)
+      Tests  162 passed (162)
+   Start at  03:50:13
+   Duration  802ms (transform 2.00s, setup 0ms, collect 4.36s, tests 175ms, environment 2ms, prepare 1.80s)
+
