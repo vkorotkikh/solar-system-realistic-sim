@@ -10,7 +10,7 @@ Status: closed on this integration-ready branch. This note does not claim resolu
 
 ## Decision
 
-SCN-049 now has an actual-browser regression over the production `SimulationClient` and the retained native Tudat producer capture. It first proves `src/main.ts` advanced the live range beyond the static `Range · —` placeholder with no page error or unexpected network escape. The negotiated client then rejects all 36 stale Kuiper positions from subscription `1`, still applies that frame's valid Earth update, and accepts the exact 36-position replacement payload for subscription `2`.
+SCN-049 now has an actual-browser regression over the production `SimulationClient` and the retained native Tudat producer capture. It first proves `src/main.ts` advanced the live range beyond the static `Range · —` placeholder with no page error or unexpected network escape. The negotiated client then rejects all 36 stale Kuiper positions from subscription `1`, still applies that frame's valid Earth update, and accepts the exact 38-position replacement payload for subscription `2`.
 
 No production source changed in this closure step. The protocol repair was already integrated in `a8187a7`; this branch adds the browser acceptance contract, SCN-049 evidence, and Playwright-only Firefox software-WebGL preferences needed to execute the same live-app contract on this host.
 
@@ -33,7 +33,7 @@ The regression in [`tests/browser/scn049-kuiper-subscription.spec.ts`](../tests/
 5. Replays the exact handshake, commands, stale frame, and replacement frame from the retained [`kuiper-subscription-ordering.json`](../src/frontend/app/fixtures/kuiper-subscription-ordering.json) capture.
 6. Verifies the browser-emitted activation, deactivation, and replacement activation commands exactly match the native wire capture, including negotiated subscription IDs.
 7. Delivers the stale subscription-`1` frame after subscription `2` is active and verifies `latestState.bodies.earth.pos` equals the native frame while Kuiper count is `0` and positions remain `null`.
-8. Delivers the matching subscription-`2` frame and verifies count `36` plus exact equality of every distinguishing literal position with `nativeCapture.replacement.kuiper`.
+8. Delivers the matching subscription-`2` frame and verifies count `38` plus exact equality of every distinguishing literal position with `nativeCapture.replacement.kuiper`.
 
 The test uses retained frames captured from the actual native backend producer. It does not synthesize a payload shape or launch a backend during Playwright execution. Producer authenticity and capture procedure remain documented in [`REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md`](REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md).
 
