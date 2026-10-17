@@ -1,0 +1,2460 @@
+{
+  "schema": "solar-actual-main-frame-v2",
+  "pixelBudget": 1,
+  "headless": false,
+  "scope": "Default-AA startup compilation plus actual main/controller transforms in a single-sample diagnostic ID/depth target; offline, not live delivery or calibration",
+  "expectedGpu": "NVIDIA GeForce RTX 5090",
+  "playwright": "1.64.0",
+  "cases": [
+    {
+      "index": 0,
+      "mutant": "none",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 24,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 39,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 42,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 42
+    },
+    {
+      "index": 1,
+      "mutant": "none",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 24,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 39,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 42,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 42
+    },
+    {
+      "index": 2,
+      "mutant": "none",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 32,
+          "expectedPixels": 32
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 36,
+          "expectedPixels": 35
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 3,
+          "expectedPixels": 3
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 77,
+          "expectedPixels": 77
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 4,
+          "expectedPixels": 4
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 37
+    },
+    {
+      "index": 3,
+      "mutant": "none",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 24,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 39,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 42,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 39
+    },
+    {
+      "index": 4,
+      "mutant": "none",
+      "radius": 0.3755114655400654,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 31,
+          "expectedPixels": 31
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 40,
+          "expectedPixels": 40
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 19,
+          "expectedPixels": 18
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 37
+    },
+    {
+      "index": 5,
+      "mutant": "none",
+      "radius": 0.3755114655400654,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": true,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 24,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 39,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 42,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 38
+    }
+  ],
+  "negativeControls": [
+    {
+      "index": 0,
+      "mutant": "legacy_axis",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": false,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 24,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 39,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 80,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": true,
+          "pixels": 42,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": true,
+          "pixels": 79,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 78,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [],
+      "surfaceFailures": [
+        {
+          "pixel": [
+            317,
+            180
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            180
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            217
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            217
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            217
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            160
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            254
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            254
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            291
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            291
+          ],
+          "actual": [
+            160,
+            40,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            328
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            40
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            502,
+            365
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            280,
+            402
+          ],
+          "actual": [
+            40,
+            160,
+            40
+          ],
+          "expected": [
+            40,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            317,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            40,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            354,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            391,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            428,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        },
+        {
+          "pixel": [
+            465,
+            402
+          ],
+          "actual": [
+            160,
+            160,
+            160
+          ],
+          "expected": [
+            160,
+            160,
+            40
+          ]
+        }
+      ],
+      "surfaceProbeCount": 42
+    },
+    {
+      "index": 3,
+      "mutant": "double_spin",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": false,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": false,
+          "pixels": 77,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": false,
+          "pixels": 80,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 24
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 39
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 80
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 42
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": false,
+          "pixels": 12,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": false,
+          "pixels": 3,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": false,
+          "pixels": 80,
+          "expectedPixels": 79
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": false,
+          "pixels": 77,
+          "expectedPixels": 81
+        },
+        {
+          "name": "north",
+          "passed": false,
+          "pixels": 79,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": false,
+          "pixels": 27,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [
+        "lon135_lat-45",
+        "lon180_lat-45",
+        "lon225_lat-45",
+        "lon270_lat-45",
+        "lon315_lat-45",
+        "lon0_lat0",
+        "lon45_lat0",
+        "lon135_lat0",
+        "lon180_lat0",
+        "lon225_lat0",
+        "lon315_lat0",
+        "lon0_lat45",
+        "lon45_lat45",
+        "lon90_lat45",
+        "lon135_lat45",
+        "lon180_lat45",
+        "lon225_lat45",
+        "lon270_lat45",
+        "lon315_lat45",
+        "north",
+        "south"
+      ],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 39
+    },
+    {
+      "index": 2,
+      "mutant": "handedness",
+      "radius": 0.3755114655400653,
+      "frameOwner": "sunController",
+      "targetParent": "Sun",
+      "targetSamples": 0,
+      "framebufferComplete": true,
+      "productionAntialias": true,
+      "productionSamples": 4,
+      "webglError": 0,
+      "passed": false,
+      "markers": [
+        {
+          "name": "lon0_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon135_lat-45",
+          "passed": false,
+          "pixels": 36,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon180_lat-45",
+          "passed": true,
+          "pixels": 32,
+          "expectedPixels": 32
+        },
+        {
+          "name": "lon225_lat-45",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 35
+        },
+        {
+          "name": "lon270_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon315_lat-45",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon0_lat0",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon45_lat0",
+          "passed": false,
+          "pixels": 4,
+          "expectedPixels": 0
+        },
+        {
+          "name": "lon90_lat0",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 3
+        },
+        {
+          "name": "lon135_lat0",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 77
+        },
+        {
+          "name": "lon180_lat0",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat0",
+          "passed": false,
+          "pixels": 77,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat0",
+          "passed": false,
+          "pixels": 3,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat0",
+          "passed": false,
+          "pixels": 0,
+          "expectedPixels": 4
+        },
+        {
+          "name": "lon0_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon45_lat45",
+          "passed": false,
+          "pixels": 80,
+          "expectedPixels": 78
+        },
+        {
+          "name": "lon90_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon135_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon180_lat45",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon225_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon270_lat45",
+          "passed": false,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "lon315_lat45",
+          "passed": false,
+          "pixels": 78,
+          "expectedPixels": 80
+        },
+        {
+          "name": "north",
+          "passed": true,
+          "pixels": 81,
+          "expectedPixels": 81
+        },
+        {
+          "name": "south",
+          "passed": true,
+          "pixels": 0,
+          "expectedPixels": 0
+        }
+      ],
+      "failures": [
+        "lon135_lat-45",
+        "lon225_lat-45",
+        "lon45_lat0",
+        "lon90_lat0",
+        "lon135_lat0",
+        "lon225_lat0",
+        "lon270_lat0",
+        "lon315_lat0",
+        "lon45_lat45",
+        "lon90_lat45",
+        "lon135_lat45",
+        "lon225_lat45",
+        "lon270_lat45",
+        "lon315_lat45"
+      ],
+      "surfaceFailures": [],
+      "surfaceProbeCount": 37
+    }
+  ],
+  "hardware": {
+    "vendor": "Google Inc. (Microsoft Corporation)",
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "antialias": true,
+    "startup": {
+      "antialias": true,
+      "samples": 4,
+      "programs": [
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        },
+        {
+          "linked": true,
+          "linkLog": "",
+          "stages": [
+            {
+              "compiled": true,
+              "log": ""
+            },
+            {
+              "compiled": true,
+              "log": ""
+            }
+          ]
+        }
+      ],
+      "webglError": 1282,
+      "passed": false
+    },
+    "diagnosticSampling": "single-sample RGBA8 raw ID/depth target; pixel-centre reference"
+  },
+  "browserVersion": "153.0.8010.12",
+  "errors": [],
+  "passed": false
+}
