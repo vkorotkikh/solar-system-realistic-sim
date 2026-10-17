@@ -227,7 +227,7 @@
       ],
       "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
       "expected_assertion_regex": "SCN041-SCALED-FLUX-PROVENANCE",
-      "fixed_commit": "052550a1c8964474a33889696217a62e7520b8a9",
+      "fixed_commit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
       "oracle_class": "forged-observed-provenance-negative-control"
     },
     {
@@ -239,7 +239,7 @@
       ],
       "node": "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit",
       "expected_assertion_regex": "SCN041-SCALED-FLUX-EXACT-LIMIT",
-      "fixed_commit": "052550a1c8964474a33889696217a62e7520b8a9",
+      "fixed_commit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
       "oracle_class": "exact-policy-boundary-negative-control"
     }
   ]
