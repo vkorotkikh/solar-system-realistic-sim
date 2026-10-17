@@ -1,0 +1,12 @@
+diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
+--- a/backend/sim/pfss_magnetogram.py
++++ b/backend/sim/pfss_magnetogram.py
+@@ -1787,6 +1787,8 @@ class PFSSCache:
+             expected_positive_scale = 1.0
+             expected_negative_scale = 1.0
+         elif flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION:
++            # Historical defect: trusted scaled provenance was not revalidated.
++            return
+             expected_positive_scale = 1.0 - flux.signed_imbalance_fraction
+             expected_negative_scale = 1.0 + flux.signed_imbalance_fraction
+             if expected_positive_scale <= 0.0 or expected_negative_scale <= 0.0:

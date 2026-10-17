@@ -61,23 +61,29 @@ WSA_MODEL_VERSION = "wsa_inspired_v1"
 WSA_CALIBRATION_STATUS = "unvalidated"
 
 
-def _wsa_calibration_evidence() -> dict[str, object]:
-    """Return the bounded offline acceptance claim without upgrading WSA status."""
+def _wsa_provider_feature_evidence() -> dict[str, object]:
+    """Return bounded provider-feature evidence without a speed claim."""
 
     return {
-        "status": "accepted_bounded_single_epoch",
+        "status": "bounded_retained_epoch_feature_match",
         "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
-        "evidence_scope": "model_relation_only_not_current_input_certification",
+        "evidence_scope": "topology_expansion_boundary_features_only",
         "observation_sha256": (
             "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
         ),
         "provider_wsa_sha256": (
             "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035"
         ),
-        "provider": "NASA/CCMC WSA_V6.2 driven by NSO/GONG zqs",
-        "scope": "topology and source-surface feature agreement at one pinned epoch",
+        "provider": (
+            "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, "
+            "and left edge to retained NSO/GONG zqs"
+        ),
+        "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+        "independent_speed_output_available": False,
+        "current_input_certified": False,
         "operational_forecast_validated": False,
         "excluded_claims": (
+            "independent speed calibration",
             "operational WSA equivalence",
             "SCS equivalence",
             "1-AU wind forecast accuracy",
@@ -818,7 +824,7 @@ def compute_wsa_velocity_map(
     return {
         "model": WSA_MODEL_VERSION,
         "calibration_status": WSA_CALIBRATION_STATUS,
-        "calibration_evidence": _wsa_calibration_evidence(),
+        "provider_feature_evidence": _wsa_provider_feature_evidence(),
         "formula": "267.5 + 410/max(1,fs)^0.4*(1-0.8*exp(-(theta_b/0.045)^3))",
         "angle_units": "radian",
         "velocity_units": "km/s",
@@ -1800,6 +1806,46 @@ class PFSSCache:
         pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
         acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
         imbalance_fraction = pre_signed / pre_unsigned
+        retained_correction = gong._RETAINED_GONG_SCALED_CORRECTION
+        correction_values = (
+            flux.corroborating_provider,
+            flux.corroborating_product_sha256,
+            flux.corroborating_input_map,
+            flux.provider_correction_method,
+            flux.provider_pre_mean_g,
+            flux.provider_post_mean_g,
+        )
+        roundoff_corroboration_empty = all(
+            value is None for value in correction_values
+        )
+        scaled_corroboration_valid = (
+            flux.corroborating_provider == retained_correction.provider
+            and flux.corroborating_product_sha256
+            == retained_correction.product_sha256
+            and flux.corroborating_input_map == retained_correction.input_map
+            and flux.provider_correction_method
+            == retained_correction.correction_method
+            and isinstance(flux.provider_pre_mean_g, (int, float))
+            and math.isfinite(flux.provider_pre_mean_g)
+            and isinstance(flux.provider_post_mean_g, (int, float))
+            and math.isfinite(flux.provider_post_mean_g)
+            and math.isclose(
+                flux.provider_pre_mean_g,
+                retained_correction.pre_mean_g,
+                rel_tol=0.0,
+                abs_tol=5e-10,
+            )
+            and math.isclose(
+                flux.provider_post_mean_g,
+                retained_correction.post_mean_g,
+                rel_tol=0.0,
+                abs_tol=5e-10,
+            )
+            and abs(flux.provider_pre_mean_g - pre_signed / (4.0 * math.pi))
+            <= gong.TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G
+            and abs(flux.provider_post_mean_g - post_signed / (4.0 * math.pi))
+            <= gong.TRUSTED_SCALED_POST_MEAN_TOLERANCE_G
+        )
 
         def agrees(actual: float, expected: float) -> bool:
             return math.isfinite(actual) and math.isclose(
@@ -1824,14 +1870,16 @@ class PFSSCache:
             or (
                 flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
                 and (
-                    not agrees(flux.removed_g00_g, flux.removed_mean_g)
+                    not roundoff_corroboration_empty
+                    or not agrees(flux.removed_g00_g, flux.removed_mean_g)
                     or abs(pre_signed) > acceptance_limit
                 )
             )
             or (
                 flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION
                 and (
-                    not agrees(flux.removed_mean_g, 0.0)
+                    not scaled_corroboration_valid
+                    or not agrees(flux.removed_mean_g, 0.0)
                     or not agrees(
                         flux.removed_g00_g, pre_signed / (4.0 * math.pi)
                     )
@@ -1895,8 +1943,8 @@ class PFSSCache:
                 "calibration_status": wsa_result.get(
                     "calibration_status", WSA_CALIBRATION_STATUS,
                 ),
-                "calibration_evidence": copy.deepcopy(
-                    wsa_result.get("calibration_evidence")
+                "provider_feature_evidence": copy.deepcopy(
+                    wsa_result.get("provider_feature_evidence")
                 ),
                 "valid_fraction": wsa_result.get("valid_fraction", 0.0),
                 "indeterminate_fraction": wsa_result.get(
