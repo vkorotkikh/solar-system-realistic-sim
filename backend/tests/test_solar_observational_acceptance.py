@@ -109,7 +109,7 @@ def test_scaled_monopole_policy_accepts_exact_limit() -> None:
             trusted_correction=_trusted_correction(1.0),
         )
     except gong.GongFitsError as exc:
-        pytest.fail(f"SCN041-SCALED-FLUX-EXACT-LIMIT: {exc}")
+        assert False, f"SCN041-SCALED-FLUX-EXACT-LIMIT: {exc}"
     assert flux.signed_imbalance_fraction == 0.05
     assert abs(float(np.mean(balanced))) <= 1e-15
 
@@ -162,7 +162,7 @@ def test_forged_scaled_flux_snapshot_is_rejected(observed_snapshot, field_name, 
     except ValueError:
         pass
     else:
-        pytest.fail("SCN041-SCALED-FLUX-PROVENANCE")
+        assert False, "SCN041-SCALED-FLUX-PROVENANCE"
 
 
 def test_observed_solution_declares_provider_native_frame_but_not_scene_eligibility(observed_snapshot) -> None:
