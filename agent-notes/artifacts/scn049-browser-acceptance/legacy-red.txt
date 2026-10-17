@@ -1,22 +1,27 @@
-[WebServer] (node:31366) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+v22.23.2
+
+> solar-system-realistic-sim@0.0.0 test:browser
+> playwright test tests/browser/scn049-kuiper-subscription.spec.ts --project=chromium --reporter=line
+
+[WebServer] (node:125733) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
 
 
 Running 1 test using 1 worker
 
-(node:31407) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:125745) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
 
 
-[1/1] [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
-  1) [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+[1/1] [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+  1) [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
 
     Error: expect(received).toMatchObject(expected)
 
-    - Expected  - 1
-    + Received  + 1
+    - Expected  -   3
+    + Received  + 184
 
-    @@ -2,9 +2,9 @@
+    @@ -2,11 +2,192 @@
         "earthPosition": Array [
           -0.184271557,
           0.9644459632,
@@ -25,28 +30,213 @@ Running 1 test using 1 worker
     -   "hasKuiper": false,
     +   "hasKuiper": true,
         "jd": 2451545,
+    -   "kuiperCount": 0,
+    -   "kuiperPositions": null,
+    +   "kuiperCount": 36,
+    +   "kuiperPositions": Array [
+    +     Array [
+    +       -18.7798519212,
+    +       -40.3830119998,
+    +       1.5408488121,
+    +     ],
+    +     Array [
+    +       25.5523071575,
+    +       -34.0543484213,
+    +       0.7984929772,
+    +     ],
+    +     Array [
+    +       27.417889467,
+    +       -25.7310827766,
+    +       5.5267601623,
+    +     ],
+    +     Array [
+    +       -40.7013709456,
+    +       -19.3593255074,
+    +       -3.6336589082,
+    +     ],
+    +     Array [
+    +       -0.0896775972,
+    +       -42.5278104727,
+    +       0.0437183463,
+    +     ],
+    +     Array [
+    +       -0.0896012622,
+    +       -42.5278044535,
+    +       0.0437285986,
+    +     ],
+    +     Array [
+    +       -38.7985325765,
+    +       9.7946670829,
+    +       0.7846192778,
+    +     ],
+    +     Array [
+    +       32.1153278835,
+    +       25.9832922711,
+    +       -2.2989000281,
+    +     ],
+    +     Array [
+    +       -2.0350006285,
+    +       -43.9394376591,
+    +       -1.2556898471,
+    +     ],
+    +     Array [
+    +       -36.4642029884,
+    +       -18.4460078948,
+    +       -0.0445240594,
+    +     ],
+    +     Array [
+    +       13.0657758022,
+    +       -41.545420357,
+    +       -7.9943816831,
+    +     ],
+    +     Array [
+    +       32.6095883109,
+    +       26.4590274205,
+    +       0.5469411279,
+    +     ],
+    +     Array [
+    +       39.6617575051,
+    +       18.2078467029,
+    +       -2.4273109709,
+    +     ],
+    +     Array [
+    +       19.7192371992,
+    +       -35.9713245535,
+    +       -9.7485454411,
+    +     ],
+    +     Array [
+    +       -30.7837267293,
+    +       24.6734661899,
+    +       1.9750237681,
+    +     ],
+    +     Array [
+    +       42.9611450159,
+    +       -8.9105346994,
+    +       -2.0645550755,
+    +     ],
+    +     Array [
+    +       29.0488208762,
+    +       31.7380973925,
+    +       0.1626574739,
+    +     ],
+    +     Array [
+    +       41.620465128,
+    +       -0.7410862339,
+    +       2.6704093105,
+    +     ],
+    +     Array [
+    +       -28.8943555498,
+    +       -29.4841219844,
+    +       9.28096614,
+    +     ],
+    +     Array [
+    +       -20.7131518605,
+    +       -43.9296605527,
+    +       -3.1943545244,
+    +     ],
+    +     Array [
+    +       42.3929972531,
+    +       -22.6162072548,
+    +       0.7561121177,
+    +     ],
+    +     Array [
+    +       -41.9109484358,
+    +       -8.3440854277,
+    +       7.6951058848,
+    +     ],
+    +     Array [
+    +       31.0665709549,
+    +       -29.69036436,
+    +       11.4029356968,
+    +     ],
+    +     Array [
+    +       -29.3124451409,
+    +       23.4522240943,
+    +       4.6815497669,
+    +     ],
+    +     Array [
+    +       -9.4918630094,
+    +       43.6101052497,
+    +       0.0936910852,
+    +     ],
+    +     Array [
+    +       -9.4928403109,
+    +       43.6105257997,
+    +       0.0938018844,
+    +     ],
+    +     Array [
+    +       -22.5059920811,
+    +       -26.0838987931,
+    +       -2.204949507,
+    +     ],
+    +     Array [
+    +       -44.0699094763,
+    +       -1.6595365796,
+    +       -0.41862904,
+    +     ],
+    +     Array [
+    +       -44.0697829117,
+    +       -1.6598680382,
+    +       -0.4186114831,
+    +     ],
+    +     Array [
+    +       -32.7877419546,
+    +       -20.7778680048,
+    +       0.481947457,
+    +     ],
+    +     Array [
+    +       -32.7878044341,
+    +       -20.7780864272,
+    +       0.4819526651,
+    +     ],
+    +     Array [
+    +       17.0743444101,
+    +       48.1049089014,
+    +       -11.0333653917,
+    +     ],
+    +     Array [
+    +       -30.3133774068,
+    +       -30.8594687776,
+    +       -1.2341780562,
+    +     ],
+    +     Array [
+    +       -16.9403271236,
+    +       -35.2330087565,
+    +       -9.0477115293,
+    +     ],
+    +     Array [
+    +       -8.7414854012,
+    +       40.9917885606,
+    +       8.2101624172,
+    +     ],
+    +     Array [
+    +       -34.6864038791,
+    +       15.3087287313,
+    +       3.2650391403,
+    +     ],
+    +   ],
         "status": "connected",
       }
 
-      128 |
-      129 |   const staleSnapshot = await page.evaluate(() => window.__scn049Client?.snapshot());
-    > 130 |   expect(staleSnapshot).toMatchObject({
+      173 |
+      174 |   const staleSnapshot = await page.evaluate(() => window.__scn049Client?.snapshot());
+    > 175 |   expect(staleSnapshot).toMatchObject({
           |                         ^
-      131 |     earthPosition: nativeCapture.late_old.bodies.earth.pos,
-      132 |     hasKuiper: false,
-      133 |     jd: nativeCapture.late_old.jd,
-        at /home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:130:25
+      176 |     earthPosition: nativeCapture.late_old.bodies.earth.pos,
+      177 |     hasKuiper: false,
+      178 |     jd: nativeCapture.late_old.jd,
+        at /home/nomad/ai/projects/worktrees/solar-scn-049-browser-acceptance/tests/browser/scn049-kuiper-subscription.spec.ts:175:25
 
-    Error Context: test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/error-context.md
+    Error Context: test-results/4275/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/error-context.md
 
     attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
+    test-results/4275/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
     Usage:
 
-        npx playwright show-trace test-results/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
+        npx playwright show-trace test-results/4275/scn049-kuiper-subscription-543a2-ut-dropping-its-body-update-chromium/trace.zip
 
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
   1 failed
-    [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:45:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+    [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update

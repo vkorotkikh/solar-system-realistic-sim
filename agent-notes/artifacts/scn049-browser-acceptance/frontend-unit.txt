@@ -1,3 +1,4 @@
+v22.23.2
 
 > solar-system-realistic-sim@0.0.0 test
 > vitest run
@@ -8,5 +9,9 @@
 
  Test Files  72 passed | 1 skipped (73)
       Tests  743 passed | 413 skipped (1156)
-   Start at  15:16:50
-   Duration  1.66s (transform 69%, tests 19%, import 11%, worker 1%)
+   Start at  15:41:59
+   Duration  1.23s (transform 38%, tests 38%, import 22%, worker 2%)
+
+
+> solar-system-realistic-sim@0.0.0 typecheck
+> tsc --project tsconfig.json --strict --noEmit
