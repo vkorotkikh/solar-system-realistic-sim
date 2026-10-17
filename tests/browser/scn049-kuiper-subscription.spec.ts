@@ -6,6 +6,7 @@ type JsonCommand = Record<string, unknown>;
 interface NativeStateFrame extends Record<string, unknown> {
   jd: number;
   bodies: Record<string, { pos: number[] }>;
+  kuiper?: number[][] | { positions: number[][] };
 }
 
 interface NativeCapture {
@@ -19,6 +20,8 @@ interface BrowserClientSnapshot {
   earthPosition: number[] | null;
   hasKuiper: boolean;
   jd: number | null;
+  kuiperCount: number;
+  kuiperPositions: number[][] | null;
   status: string;
 }
 
@@ -41,15 +44,41 @@ const legacyNegotiation = process.env.SCN049_LEGACY_NEGOTIATION === '1';
 const expectedBrowserCommands = legacyNegotiation
   ? nativeCapture.commands.map(({ subscription_id: _subscriptionId, ...command }) => command)
   : nativeCapture.commands;
+const replacementKuiperPositions = Array.isArray(nativeCapture.replacement.kuiper)
+  ? nativeCapture.replacement.kuiper
+  : nativeCapture.replacement.kuiper?.positions;
+
+if (!replacementKuiperPositions) {
+  throw new Error('Native SCN-049 replacement capture is missing Kuiper positions');
+}
 
 test('SCN-049 rejects a stale native Kuiper snapshot without dropping its body update', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
   const browserCommands: JsonCommand[] = [];
   let browserSocket: WebSocketRoute | null = null;
+  const blockedHttpRequests: string[] = [];
+  const escapedHttpResponses: string[] = [];
+  const pageErrors: string[] = [];
+  const configuredBaseUrl = testInfo.project.use.baseURL;
+  if (typeof configuredBaseUrl !== 'string') {
+    throw new Error('SCN-049 requires a configured Playwright baseURL');
+  }
+  const appOrigin = new URL(configuredBaseUrl).origin;
   const sendBrowserFrame = (frame: Record<string, unknown>) => {
     const socket = browserSocket as WebSocketRoute | null;
     if (socket === null) throw new Error('SCN-049 browser socket is unavailable');
     socket.send(JSON.stringify(frame));
   };
+
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if ((url.protocol === 'http:' || url.protocol === 'https:')
+      && url.origin !== appOrigin
+      && response.headers()['x-scn049-network-block'] !== '1') {
+      escapedHttpResponses.push(response.url());
+    }
+  });
 
   const connected = structuredClone(nativeCapture.connected);
   if (legacyNegotiation) delete connected.kuiper_subscription_version;
@@ -61,18 +90,24 @@ test('SCN-049 rejects a stale native Kuiper snapshot without dropping its body u
     });
   });
 
-  await page.route('**/*', async (route) => {
+  await page.route(/^https?:\/\//, async (route) => {
     const url = new URL(route.request().url());
-    if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') {
+    if (url.origin === appOrigin) {
       await route.continue();
       return;
     }
-    await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+    blockedHttpRequests.push(route.request().url());
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      headers: { 'x-scn049-network-block': '1' },
+      body: '{}'
+    });
   });
 
   await page.goto('/');
   await expect(page.locator('#space-canvas')).toBeVisible();
-  await expect(page.locator('#status-zoom')).toContainText('Range');
+  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
 
   await page.evaluate(async ({ endpoint, initialCommand }) => {
     const clientModuleUrl: string = '/src/frontend/app/simulationClient.ts';
@@ -105,6 +140,8 @@ test('SCN-049 rejects a stale native Kuiper snapshot without dropping its body u
         earthPosition: client.latestState?.bodies.earth?.pos ?? null,
         hasKuiper: client.latestKuiper !== null,
         jd: client.latestState?.jd ?? null,
+        kuiperCount: client.latestKuiper?.length ?? 0,
+        kuiperPositions: client.latestKuiper,
         status: client.getStatus()
       })
     };
@@ -139,6 +176,8 @@ test('SCN-049 rejects a stale native Kuiper snapshot without dropping its body u
     earthPosition: nativeCapture.late_old.bodies.earth.pos,
     hasKuiper: false,
     jd: nativeCapture.late_old.jd,
+    kuiperCount: 0,
+    kuiperPositions: null,
     status: 'connected'
   });
 
@@ -147,11 +186,22 @@ test('SCN-049 rejects a stale native Kuiper snapshot without dropping its body u
     .toBe(true);
 
   const acceptedSnapshot = await page.evaluate(() => window.__scn049Client?.snapshot());
+  expect(acceptedSnapshot).toMatchObject({
+    hasKuiper: true,
+    kuiperCount: replacementKuiperPositions.length,
+    kuiperPositions: replacementKuiperPositions
+  });
+  expect(acceptedSnapshot?.kuiperPositions).toEqual(replacementKuiperPositions);
+  expect(escapedHttpResponses).toEqual([]);
+  expect(pageErrors).toEqual([]);
   await testInfo.attach('scn049-native-browser-trace.json', {
     body: Buffer.from(JSON.stringify({
+      blockedHttpRequests,
       browser: testInfo.project.name,
       commands: browserCommands,
+      escapedHttpResponses,
       legacyNegotiation,
+      pageErrors,
       staleSnapshot,
       acceptedSnapshot
     }, null, 2)),
