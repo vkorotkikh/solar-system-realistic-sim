@@ -159,6 +159,17 @@ class EphemerisTargetUnsupported(EphemerisError):
     default_retryable = False
 
 
+class EphemerisEpochUnsupported(EphemerisError):
+    """The provider has no ephemeris for this target at the requested epoch.
+
+    Caller-input refusal scoped to one request: it must never open the
+    process-wide provider outage circuit.
+    """
+
+    default_code = "ephemeris_epoch_unsupported"
+    default_retryable = False
+
+
 class EphemerisBudgetExceeded(EphemerisError):
     default_code = "ephemeris_budget_exceeded"
     default_retryable = True
@@ -326,6 +337,7 @@ class _EphemerisFailureData:
                 EphemerisUpstreamRateLimited,
                 EphemerisProtocolError,
                 EphemerisTargetUnsupported,
+                EphemerisEpochUnsupported,
             )
         }
         error_type = error_types.get(self.kind, EphemerisError)
@@ -1530,6 +1542,11 @@ def _numeric_id_from_header(header: str) -> str:
     return matches[0]
 
 
+# JPL answers an epoch outside the target's ephemeris with HTTP 200 and e.g.
+# 'No ephemeris for target "Earth" after A.D. 9999-DEC-30 12:00:00.0000 TDB'.
+_HORIZONS_COVERAGE_REFUSAL = re.compile(r"No ephemeris for target .+ (?:after|prior to) ")
+
+
 def _parse_horizons_payload(
     payload: Any,
     *,
@@ -1537,6 +1554,13 @@ def _parse_horizons_payload(
     expected_jd: float,
     body_id: str,
 ) -> Tuple[Tuple[float, float, float, float, float, float], str]:
+    if isinstance(payload, dict) and _HORIZONS_COVERAGE_REFUSAL.match(str(payload.get("error") or "").strip()):
+        raise EphemerisEpochUnsupported(
+            f"Horizons has no ephemeris for `{body_id}` at JD {expected_jd!r}",
+            provider="horizons",
+            body_id=body_id,
+            jd=expected_jd,
+        )
     try:
         if not isinstance(payload, dict):
             raise ValueError("top-level payload is not an object")
@@ -1657,6 +1681,7 @@ __all__ = [
     "TRAJECTORY_STATE_CONTRACT",
     "EphemerisBudgetExceeded",
     "EphemerisCancelled",
+    "EphemerisEpochUnsupported",
     "EphemerisError",
     "EphemerisProtocolError",
     "EphemerisProviderUnavailable",
