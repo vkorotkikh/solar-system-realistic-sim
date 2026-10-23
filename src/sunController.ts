@@ -143,6 +143,17 @@ export function fallbackSolarActivityFromJulianDate(julianDate: number): number 
   return Math.max(0.02, Math.min(0.98, activity));
 }
 
+export function resolveMagneticFieldActivity(
+  activityOverride: unknown,
+  stateActivity: unknown,
+): number {
+  return clampUnit(
+    finiteOrNull(activityOverride)
+      ?? finiteOrNull(stateActivity)
+      ?? 0.5,
+  );
+}
+
 /**
  * Factory that encapsulates all sun-model state, rendering, and backend polling.
  *
@@ -374,9 +385,10 @@ export function createSunController({
 
   function rebuildMagneticFieldLines(force = false, activityOverride: number | null | undefined = null) {
     if (!sunVisualNode) return;
-    const activity = Number.isFinite(Number(activityOverride))
-      ? clampUnit(Number(activityOverride))
-      : clampUnit(Number(solarPhysicsState?.activity_index) || 0.5);
+    const activity = resolveMagneticFieldActivity(
+      activityOverride,
+      solarPhysicsState?.activity_index,
+    );
     const nextSignature = buildMagneticFieldSignature(activity);
     if (!force && sunMagneticFieldGroup && sunMagneticFieldSignature === nextSignature) return;
 
