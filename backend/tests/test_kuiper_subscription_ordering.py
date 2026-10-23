@@ -154,6 +154,7 @@ def test_real_command_fifo_does_not_order_pending_outbound_state_after_reactivat
     assert capture["late_old"]["kuiper"]["binary_pairs"]
     assert capture["replacement"]["kuiper"]["binary_pairs"]
     assert capture["connected"]["kuiper_subscription_version"] == 1
+    assert capture["connected"]["kuiper_activation_error_version"] == 1
     assert capture["late_old"]["kuiper_subscription_id"] == "1"
     assert capture["replacement"]["kuiper_subscription_id"] == "2"
 

@@ -12,6 +12,7 @@ from starlette.websockets import WebSocket
 from starlette.websockets import WebSocketDisconnect
 
 import server
+from sim.kuiper import KuiperActivationError
 from sim.rebound_nbody import REBOUNDEngine
 
 
@@ -337,6 +338,44 @@ def test_failed_kuiper_replacement_cannot_publish_partial_state_under_old_subscr
     assert runner._latest_kuiper_payload is None
     assert "kuiper" not in state_after_failure
     assert "kuiper_subscription_id" not in state_after_failure
+
+
+def test_kuiper_activation_rejection_echoes_the_failed_subscription_id():
+    class RejectingKuiper(_RevisionKuiper):
+        def activate(self, **_kwargs):
+            raise KuiperActivationError("fixture rejection")
+
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine)
+    runner.kuiper = RejectingKuiper()
+
+    runner._handle_command({
+        "type": "activate_kuiper",
+        "subscription_id": "belt-b",
+    })
+
+    assert runner.get_response() == {
+        "type": "error",
+        "message": "`activate_kuiper` rejected: fixture rejection",
+        "code": "kuiper_activation_failed",
+        "action": "activate_kuiper",
+        "kuiper_subscription_id": "belt-b",
+    }
+
+
+def test_kuiper_units_rejection_echoes_the_failed_subscription_id():
+    runner = server.SimulationRunner(Engine())
+
+    runner._handle_command({
+        "type": "activate_kuiper",
+        "subscription_id": "belt-b",
+    })
+
+    response = runner.get_response()
+    assert response["code"] == "kuiper_activation_failed"
+    assert response["action"] == "activate_kuiper"
+    assert response["kuiper_subscription_id"] == "belt-b"
+    assert "declare `velocity_units`" in response["message"]
 
 
 def test_playback_at_bound_does_not_step_and_can_resume_inward_once():

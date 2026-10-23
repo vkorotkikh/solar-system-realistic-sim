@@ -4476,10 +4476,19 @@ class SimulationRunner:
         except queue.Full:
             self._dropped_responses += 1
 
-    def _push_error(self, message: str, *, action: str = "", code: str = "bad_request") -> None:
+    def _push_error(
+        self,
+        message: str,
+        *,
+        action: str = "",
+        code: str = "bad_request",
+        kuiper_subscription_id: str | None = None,
+    ) -> None:
         payload = {"type": "error", "message": message, "code": code}
         if action:
             payload["action"] = action
+        if kuiper_subscription_id is not None:
+            payload["kuiper_subscription_id"] = kuiper_subscription_id
         self._push_response(payload)
 
     def _clear_kuiper_payload(self) -> None:
@@ -4751,6 +4760,7 @@ class SimulationRunner:
                     "`velocity_units` in its state payload; refusing to guess",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
 
@@ -4778,6 +4788,7 @@ class SimulationRunner:
                     f"`activate_kuiper` rejected: {exc}",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
             except Exception:
@@ -5219,6 +5230,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "protocol_version": WS_PROTOCOL_VERSION,
         "protocol_version_requested": protocol_requested,
         "kuiper_subscription_version": 1,
+        "kuiper_activation_error_version": 1,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,
