@@ -162,6 +162,53 @@ def _install_deterministic_search_fixture(monkeypatch) -> None:
     monkeypatch.setattr(mga, "_matched_outgoing_legs", one_match)
 
 
+def _install_delayed_outgoing_fixture(
+    monkeypatch,
+    *,
+    outgoing_evaluations: int,
+    cancellation_context: PlanningContext | None = None,
+    cancel_after_outgoing: int | None = None,
+) -> None:
+    """Require many unique outgoing legs before certifying the first match."""
+
+    monkeypatch.setattr(mga, "_leg_tof_candidates", lambda *_args, **_kwargs: [100.0])
+
+    def fake_leg(_ephemeris, from_id, to_id, departure_jd, tof_days, **_kwargs):
+        # The regression must need the assisted route rather than retaining a
+        # direct result when depth 1 reaches its reservation.
+        if from_id == "earth" and to_id == "jupiter":
+            return None
+        leg = _outgoing_leg(departure_jd, tof_days, 10.0)
+        leg.update(fromId=from_id, toId=to_id)
+        return leg
+
+    def delayed_match(runtime, partial, to_id, _assist_body):
+        last_leg = None
+        for index in range(outgoing_evaluations):
+            last_leg = runtime.leg(
+                partial.body_route[-1],
+                to_id,
+                partial.current_jd,
+                100.0 + index * 1.0e-4,
+                refinement=True,
+            )
+            if (
+                cancellation_context is not None
+                and cancel_after_outgoing is not None
+                and index + 1 == cancel_after_outgoing
+            ):
+                cancellation_context.cancel("fixture_borrowed_stage_cancel")
+        assert last_leg is not None
+        yield (
+            float(last_leg["tofDays"]),
+            last_leg,
+            {"feasible": True, "reason": "ok", "assistGainKmS": 0.1},
+        )
+
+    monkeypatch.setattr(mga, "compute_lambert_leg", fake_leg)
+    monkeypatch.setattr(mga, "_matched_outgoing_legs", delayed_match)
+
+
 def _deterministic_result_signature(result: dict) -> dict:
     search = dict(result["search"])
     search.pop("elapsedMs", None)
@@ -571,6 +618,140 @@ def test_per_depth_reservations_preserve_work_for_deeper_routes(monkeypatch) -> 
         "assist_depth_2": 1_408,
         "assist_depth_3": 2_000,
     }
+
+
+def test_empty_assist_stage_borrows_unused_budget_until_first_certified_route(monkeypatch) -> None:
+    context = PlanningContext.with_timeout(3.0)
+    _install_delayed_outgoing_fixture(monkeypatch, outgoing_evaluations=800)
+
+    result = mga.optimize_mga_route(
+        ALL_BODIES,
+        ephemeris=_owned_session(context),
+        from_id="earth",
+        to_id="jupiter",
+        departure_jd=2_460_500.5,
+        objective="min_distance",
+        max_assists=2,
+        assist_pool=["venus"],
+        planning_context=context,
+    )
+
+    search = result["search"]
+    assert result["best"] is not None
+    assert 768 < search["legEvaluations"] <= 2_000
+    assert search["stageEvaluationLimits"]["assist_depth_1"] == 2_000
+    assert context.snapshot()["counters"]["leg_evaluations"] == search["legEvaluations"]
+
+
+def test_discarded_stage_route_does_not_reopen_empty_stage_borrowing(monkeypatch) -> None:
+    """Retention must not erase the fact that this depth certified a route."""
+
+    context = PlanningContext.with_timeout(3.0)
+
+    def candidates(_runtime, from_id, to_id, _departure_jd):
+        if (from_id, to_id) == ("earth", "jupiter"):
+            # Fill the retained direct-route set with routes better than an
+            # assisted route, so retaining the latter leaves its list length
+            # unchanged even though it was certified at this depth.
+            return [100.0 + index for index in range(mga.MAX_COMPLETED)]
+        return [100.0]
+
+    def fake_leg(_ephemeris, from_id, to_id, departure_jd, tof_days, **_kwargs):
+        leg = _outgoing_leg(departure_jd, tof_days, 10.0)
+        leg.update(fromId=from_id, toId=to_id)
+        return leg
+
+    generator_count = 0
+
+    def route_then_expensive_generator(runtime, partial, to_id, _assist_body):
+        nonlocal generator_count
+        generator_count += 1
+        evaluations = 1 if generator_count == 1 else 800
+        last_leg = None
+        for index in range(evaluations):
+            last_leg = runtime.leg(
+                partial.body_route[-1],
+                to_id,
+                partial.current_jd,
+                100.0 + index * 1.0e-4,
+                refinement=True,
+            )
+        assert last_leg is not None
+        yield (
+            float(last_leg["tofDays"]),
+            last_leg,
+            {"feasible": True, "reason": "ok", "assistGainKmS": 0.1},
+        )
+
+    monkeypatch.setattr(mga, "_leg_tof_candidates", candidates)
+    monkeypatch.setattr(mga, "compute_lambert_leg", fake_leg)
+    monkeypatch.setattr(mga, "_matched_outgoing_legs", route_then_expensive_generator)
+
+    result = mga.optimize_mga_route(
+        ALL_BODIES,
+        ephemeris=_owned_session(context),
+        from_id="earth",
+        to_id="jupiter",
+        departure_jd=2_460_500.5,
+        objective="min_distance",
+        max_assists=2,
+        assist_pool=["mars", "venus"],
+        planning_context=context,
+    )
+
+    search = result["search"]
+    assert search["assistedRoutes"] == 1
+    assert search["stageEvaluationLimits"]["assist_depth_1"] == 768
+    assert search["legEvaluations"] == 768
+
+
+def test_borrowed_empty_stage_still_obeys_request_leg_limit(monkeypatch) -> None:
+    context = PlanningContext.with_timeout(
+        3.0,
+        limits=PlanningLimits(leg_evaluations=790),
+    )
+    _install_delayed_outgoing_fixture(monkeypatch, outgoing_evaluations=800)
+
+    result = mga.optimize_mga_route(
+        ALL_BODIES,
+        ephemeris=_owned_session(context),
+        from_id="earth",
+        to_id="jupiter",
+        departure_jd=2_460_500.5,
+        objective="min_distance",
+        max_assists=2,
+        assist_pool=["venus"],
+        planning_context=context,
+    )
+
+    assert result["best"] is None
+    assert result["search"]["legEvaluations"] == 790
+    assert context.snapshot()["counters"]["leg_evaluations"] == 790
+
+
+def test_borrowed_empty_stage_still_obeys_cancellation(monkeypatch) -> None:
+    context = PlanningContext.with_timeout(3.0)
+    _install_delayed_outgoing_fixture(
+        monkeypatch,
+        outgoing_evaluations=800,
+        cancellation_context=context,
+        cancel_after_outgoing=770,
+    )
+
+    with pytest.raises(PlanningCancelled):
+        mga.optimize_mga_route(
+            ALL_BODIES,
+            ephemeris=_owned_session(context),
+            from_id="earth",
+            to_id="jupiter",
+            departure_jd=2_460_500.5,
+            objective="min_distance",
+            max_assists=2,
+            assist_pool=["venus"],
+            planning_context=context,
+        )
+
+    assert context.snapshot()["counters"]["leg_evaluations"] == 772
 
 
 def test_small_unpruned_search_matches_exhaustive_topology_oracle(monkeypatch) -> None:

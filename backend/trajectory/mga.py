@@ -212,6 +212,8 @@ class _SearchRuntime:
     )
     current_stage: int = 0
     current_stage_limit: int = MAX_LEG_EVALUATIONS
+    current_stage_hard_limit: int = MAX_LEG_EVALUATIONS
+    borrowing_empty_stage_budget: bool = False
 
     def begin_stage(self, stage: int, max_assists: int) -> None:
         """Reserve later-depth capacity with deterministic cumulative ceilings.
@@ -237,9 +239,16 @@ class _SearchRuntime:
             int(limit),
             context_limit,
         )
+        self.current_stage_hard_limit = min(MAX_LEG_EVALUATIONS, context_limit)
+        self.borrowing_empty_stage_budget = False
         label = "setup" if normalized_stage == 0 else f"assist_depth_{normalized_stage}"
         self.stats.stage_evaluation_limits[label] = self.current_stage_limit
         self.stats.leg_evaluations_by_stage.setdefault(label, 0)
+
+    def set_empty_stage_budget_borrowing(self, enabled: bool) -> None:
+        """Allow one empty assist stage to use its still-unclaimed hard budget."""
+
+        self.borrowing_empty_stage_budget = bool(enabled)
 
     def checkpoint(self) -> None:
         if self.planning_context is not None:
@@ -300,12 +309,21 @@ class _SearchRuntime:
             self.stats.leg_cache_hits += 1
             return self.leg_cache[key]
 
+        label = "setup" if self.current_stage == 0 else f"assist_depth_{self.current_stage}"
         if self.stats.leg_evaluations >= self.current_stage_limit:
-            label = "setup" if self.current_stage == 0 else f"assist_depth_{self.current_stage}"
-            if label not in self.stats.stages_truncated:
-                self.stats.stages_truncated.append(label)
-            self.stats.termination_reason = f"{label}_budget_exhausted"
-            raise _DepthBudgetExhausted(self.stats.termination_reason)
+            if (
+                self.borrowing_empty_stage_budget
+                and self.stats.leg_evaluations < self.current_stage_hard_limit
+            ):
+                # The soft reservation was insufficient for an otherwise empty
+                # depth. Expose the effective limit only once borrowed work is
+                # actually admitted; prior stages retain their normal telemetry.
+                self.stats.stage_evaluation_limits[label] = self.current_stage_hard_limit
+            else:
+                if label not in self.stats.stages_truncated:
+                    self.stats.stages_truncated.append(label)
+                self.stats.termination_reason = f"{label}_budget_exhausted"
+                raise _DepthBudgetExhausted(self.stats.termination_reason)
         if self.stats.leg_evaluations >= MAX_LEG_EVALUATIONS:
             self.stats.termination_reason = "leg_evaluations_budget_exhausted"
             raise _SearchStopped(self.stats.termination_reason)
@@ -319,7 +337,6 @@ class _SearchRuntime:
         # Charge before doing work so provider or solver exceptions cannot make
         # the telemetry under-report consumed work.
         self.stats.leg_evaluations += 1
-        label = "setup" if self.current_stage == 0 else f"assist_depth_{self.current_stage}"
         self.stats.leg_evaluations_by_stage[label] = (
             self.stats.leg_evaluations_by_stage.get(label, 0) + 1
         )
@@ -1121,6 +1138,7 @@ def optimize_mga_route(
             frontier = _select_frontier(initial, objective, runtime.stats)
             for assist_depth in range(1, bounded_assists + 1):
                 runtime.begin_stage(assist_depth, bounded_assists)
+                stage_has_certified_output = False
                 next_candidates: List[_Partial] = []
                 ordered_frontier = sorted(
                     frontier, key=lambda item: _partial_sort_key(item, objective)
@@ -1159,22 +1177,33 @@ def optimize_mga_route(
                                 next_body_id,
                                 assist_body,
                             )
-                            if next_body_id == to_id:
+                            runtime.set_empty_stage_budget_borrowing(
+                                not stage_has_certified_output
+                            )
+                            try:
                                 for _tof, leg, flyby in matches:
-                                    completed.append(
-                                        _complete_route(
-                                            _extend_partial(partial, to_id, leg, flyby),
-                                            objective,
+                                    # The first certified output restores the
+                                    # reservation before this generator can ask
+                                    # for another expensive outgoing leg.
+                                    stage_has_certified_output = True
+                                    runtime.set_empty_stage_budget_borrowing(False)
+                                    if next_body_id == to_id:
+                                        completed.append(
+                                            _complete_route(
+                                                _extend_partial(partial, to_id, leg, flyby),
+                                                objective,
+                                            )
                                         )
-                                    )
-                                    runtime.stats.assisted_routes += 1
+                                        runtime.stats.assisted_routes += 1
+                                    else:
+                                        next_candidates.append(
+                                            _extend_partial(partial, next_body_id, leg, flyby)
+                                        )
+                                        runtime.stats.partials_generated += 1
+                            finally:
+                                runtime.set_empty_stage_budget_borrowing(False)
+                            if next_body_id == to_id:
                                 _retain_completed(completed)
-                            else:
-                                for _tof, leg, flyby in matches:
-                                    next_candidates.append(
-                                        _extend_partial(partial, next_body_id, leg, flyby)
-                                    )
-                                    runtime.stats.partials_generated += 1
                 except _DepthBudgetExhausted:
                     # The cumulative stage ceiling deliberately preserves the
                     # reserved budget for deeper routes. Certified matches
