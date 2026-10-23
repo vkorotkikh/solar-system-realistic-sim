@@ -48,4 +48,43 @@ describe('actual coronal-loop geometry blend endpoints', () => {
       for (const material of Array.isArray(line.material) ? line.material : [line.material]) material.dispose();
     }
   });
+
+  it('keeps a mid-blend loop on or above the photosphere', () => {
+    const current = normalizeSolarFeatureSetFromState({ corona: { features: [
+      {
+        id: 'rotating-loop',
+        arc: [[1, 0, 0], [1, 0, 0]],
+        brightness: 0.5,
+      },
+    ] } }, 2451552)!;
+    const target = normalizeSolarFeatureSetFromState({ corona: { features: [
+      {
+        id: 'rotating-loop',
+        arc: [[-0.5, Math.sqrt(3) / 2, 0], [-0.5, Math.sqrt(3) / 2, 0]],
+        brightness: 0.5,
+      },
+    ] } }, 2451672)!;
+    const blend = buildSolarFeatureBlendView({
+      currentFeatureSet: current,
+      targetFeatureSet: target,
+      blendStartMs: 0,
+      blendDurationMs: 1_000,
+      nowMs: 500,
+    });
+    expect(blend.blendAlpha).toBe(0.5);
+
+    const group = new Group();
+    updateSunCoronalLoopsFromBlendView(group, blend, SOLAR_RADIUS_AU);
+    const line = group.children[0] as Mesh;
+    try {
+      const position = line.geometry.getAttribute('position');
+      const midpoint = new Vector3().fromBufferAttribute(position, 0);
+      // BufferGeometry stores Float32 positions, so compare within one upload ULP.
+      expect(midpoint.length()).toBeCloseTo(SOLAR_RADIUS_AU, 9);
+      expect(Math.atan2(midpoint.y, midpoint.x)).toBeCloseTo(Math.PI / 3, 6);
+    } finally {
+      line.geometry.dispose();
+      for (const material of Array.isArray(line.material) ? line.material : [line.material]) material.dispose();
+    }
+  });
 });
