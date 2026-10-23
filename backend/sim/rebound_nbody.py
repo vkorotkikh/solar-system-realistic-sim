@@ -341,12 +341,14 @@ class REBOUNDEngine(SimulationEngine):
             elif body.get("orbit"):
                 orbit = body["orbit"]
                 mean_anomaly_deg = orbit["mean_anomaly_deg"]
+                if orbit.get("epoch_jd") is None:
+                    raise ValueError(f"Body `{body_id}` requires a declared orbit.epoch_jd")
                 epoch_jd = self._validate_supported_jd(
-                    orbit.get("epoch_jd", initial_conditions.epoch_jd_tdb))
+                    orbit["epoch_jd"])
                 body_quality[body_id] = {
                     "fidelity": "approximate",
                     "initial_epoch_jd_tdb": epoch_jd,
-                    "epoch_provenance": "declared" if "epoch_jd" in orbit else "catalog_assumed_j2000",
+                    "epoch_provenance": "declared",
                     "input_frame": "heliocentric_ecliptic_j2000",
                     "initialization": "osculating_elements_at_source_epoch_then_nbody",
                     "accuracy_status": "not_independently_bounded",

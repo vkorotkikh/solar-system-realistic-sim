@@ -426,6 +426,7 @@ def _has_canonical_kepler_orbit(body: Mapping[str, Any]) -> bool:
         "arg_periapsis_deg",
         "mean_anomaly_deg",
         "period_days",
+        "epoch_jd",
     )
     parsed: Dict[str, float] = {}
     for name in required:
@@ -434,12 +435,6 @@ def _has_canonical_kepler_orbit(body: Mapping[str, Any]) -> bool:
             return False
         parsed[name] = float(value)
         if not math.isfinite(parsed[name]):
-            return False
-    epoch_jd = orbit.get("epoch_jd")
-    if epoch_jd is not None:
-        if isinstance(epoch_jd, bool) or not isinstance(epoch_jd, Real):
-            return False
-        if not math.isfinite(float(epoch_jd)):
             return False
     return (
         parsed["a_au"] > 0.0
@@ -942,7 +937,7 @@ class EphemerisService:
                 provider_revision="catalog_elements",
                 model_metadata=dict(model) if model else {
                     "quality": "approximate_fixed_elements",
-                    "initial_epoch_jd_tdb": orbit.get("epoch_jd", J2000_JD),
+                    "initial_epoch_jd_tdb": orbit["epoch_jd"],
                     "supported_jd_tdb_range": None,
                     "accuracy_scope": "unvalidated_no_error_bound",
                 },
