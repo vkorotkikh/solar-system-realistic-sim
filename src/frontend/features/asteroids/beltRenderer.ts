@@ -263,8 +263,7 @@ function createOrbitMaterial() {
   const material = new MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.08,
-    flatShading: true,
-    vertexColors: true
+    flatShading: true
   });
 
   // WARNING: Fragile shader patching — uses string replacement on Three.js

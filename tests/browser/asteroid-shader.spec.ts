@@ -18,6 +18,10 @@ test('actual main links the assembled asteroid material with production antialia
         const material = asteroidBeltRenderer.mesh.material;
         const program = renderer.properties.get(material).currentProgram?.program;
         const debug = gl.getExtension('WEBGL_debug_renderer_info');
+        const activeAttributes = program ? Array.from(
+          { length: gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) },
+          (_, index) => gl.getActiveAttrib(program, index)?.name
+        ).filter(Boolean) : [];
         window.__asteroidShaderReport = {
           antialias: gl.getContextAttributes().antialias,
           samples: gl.getParameter(gl.SAMPLES),
@@ -29,6 +33,7 @@ test('actual main links the assembled asteroid material with production antialia
             compiled: gl.getShaderParameter(shader, gl.COMPILE_STATUS),
             log: gl.getShaderInfoLog(shader)
           })) : [],
+          activeAttributes,
           webglError: gl.getError()
         };
       }
@@ -38,7 +43,7 @@ test('actual main links the assembled asteroid material with production antialia
   await page.waitForFunction('Boolean(window.__asteroidShaderReport)', undefined, { timeout: 60_000 });
   const report = await page.evaluate('window.__asteroidShaderReport') as {
     antialias: boolean; samples: number; material: string; linked: boolean; linkLog: string;
-    stages: Array<{ compiled: boolean; log: string }>; webglError: number;
+    stages: Array<{ compiled: boolean; log: string }>; activeAttributes: string[]; webglError: number;
   };
   await test.info().attach('production-asteroid-program', { body: JSON.stringify(report, null, 2), contentType: 'application/json' });
   console.info('Production asteroid shader:', JSON.stringify(report));
@@ -48,5 +53,7 @@ test('actual main links the assembled asteroid material with production antialia
   expect(report.linked, report.linkLog).toBe(true);
   expect(report.stages).toHaveLength(2);
   expect(report.stages.every(stage => stage.compiled), JSON.stringify(report.stages)).toBe(true);
+  expect(report.activeAttributes).toContain('instanceColor');
+  expect(report.activeAttributes).not.toContain('color');
   expect(report.webglError).toBe(0);
 });
