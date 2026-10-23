@@ -336,7 +336,86 @@ def test_horizons_uses_strict_query_bounded_timeout_and_context_budget(
     assert counters["remote_ephemeris_states"] == 1
     assert counters["external_requests"] == 1
     assert sample.source == "horizons"
-    assert sample.provider_revision == "DE441; horizons-api-1.2"
+    assert sample.provider_revision == "horizons-api-1.2"
+
+
+def test_horizons_revision_is_shared_across_target_source_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_urlopen(request: Any, *, timeout: float) -> _Response:
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        target = query["COMMAND"][0].strip("'")
+        payload = _horizons_payload(target_id=target, jd=float(query["TLIST"][0]))
+        if target == "499":
+            payload = payload.replace(
+                b"Earth (499) {source: DE441}", b"Mars (499) {source: mar099}"
+            )
+        elif target == "599":
+            payload = payload.replace(
+                b"Earth (599) {source: DE441}",
+                b"Jupiter (599) {source: jup365_merged}",
+            ).replace(
+                b"Sun (10) {source: DE441}",
+                b"Sun (10) {source: jup365_merged}",
+            )
+        return _Response(payload)
+
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    earth = service.sample_state("earth", 2_460_400.5)
+    mars = service.sample_state("mars", 2_460_500.5)
+    jupiter = service.sample_state("jupiter", 2_460_600.5)
+
+    # Horizons can select target-system-specific kernels for both headers; the
+    # provider revision must still describe their shared API/state contract.
+    assert (
+        earth.provider_revision
+        == mars.provider_revision
+        == jupiter.provider_revision
+        == "horizons-api-1.2"
+    )
+
+
+@pytest.mark.parametrize("header", [b"Earth (399)", b"Sun (10)"])
+def test_horizons_requires_target_and_center_source_headers(
+    monkeypatch: pytest.MonkeyPatch, header: bytes,
+) -> None:
+    payload = _horizons_payload().replace(header + b" {source: DE441}", header)
+    monkeypatch.setattr(
+        module, "_horizons_urlopen", lambda _request, *, timeout: _Response(payload)
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="omitted the source ephemeris"):
+        service.sample_state("earth", 2_460_400.5)
+
+
+@pytest.mark.parametrize("version", [None, "", "   ", 1.2])
+def test_horizons_requires_a_nonempty_string_api_version(
+    monkeypatch: pytest.MonkeyPatch,
+    version: object,
+) -> None:
+    payload = json.loads(_horizons_payload())
+    if version is None:
+        payload["signature"].pop("version")
+    else:
+        payload["signature"]["version"] = version
+    monkeypatch.setattr(
+        module,
+        "_horizons_urlopen",
+        lambda _request, *, timeout: _Response(json.dumps(payload).encode("utf-8")),
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="API version"):
+        service.sample_state("earth", 2_460_400.5)
 
 
 def test_all_providers_require_exact_planning_context_before_work(
@@ -719,7 +798,7 @@ def test_horizons_success_cache_is_bounded_and_uses_full_contract_key(
         assert len(module._SHARED_EPHEMERIS_SUCCESS) == 2
         assert len(module._SHARED_EPHEMERIS_ALIASES) == 2
         full_key = next(iter(module._SHARED_EPHEMERIS_SUCCESS))
-        assert full_key.provider_revision == "DE441; horizons-api-1.2"
+        assert full_key.provider_revision == "horizons-api-1.2"
         assert full_key.command == "399"
         assert full_key.frame_id == EPHEMERIS_FRAME_ID
         assert full_key.center == "10"

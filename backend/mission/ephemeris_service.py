@@ -1612,11 +1612,19 @@ def _parse_horizons_payload(
         if not all(math.isfinite(value) for value in vector):
             raise ValueError("response returned a non-finite state")
 
-        source_match = re.search(r"\{source:\s*([^}]+)\}", target_header)
-        if source_match is None:
+        if re.search(r"\{source:\s*([^}]+)\}", target_header) is None:
             raise ValueError("target header omitted the source ephemeris")
-        api_version = str(signature.get("version", "unknown")).strip() or "unknown"
-        provider_revision = f"{source_match.group(1).strip()}; horizons-api-{api_version}"
+        if re.search(r"\{source:\s*([^}]+)\}", center_header) is None:
+            raise ValueError("center header omitted the source ephemeris")
+        # Horizons may select a target-system kernel for both target and center
+        # headers (for example jup365_merged). That per-query provenance cannot
+        # serve as a cross-body compatibility revision. The validated API
+        # signature and canonical state contract are shared by every sample.
+        raw_api_version = signature.get("version")
+        if not isinstance(raw_api_version, str) or not raw_api_version.strip():
+            raise ValueError("provider signature omitted a valid API version")
+        api_version = raw_api_version.strip()
+        provider_revision = f"horizons-api-{api_version}"
     except (TypeError, ValueError, IndexError, csv.Error) as exc:
         raise EphemerisProtocolError(
             f"Horizons returned an invalid state for `{body_id}`: {exc}",
