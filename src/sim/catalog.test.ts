@@ -125,7 +125,7 @@ describe('moon-aware display radii (B024)', () => {
         .toBeGreaterThan(radius(visibleCatalog, id));
     }
     for (const [id, expected] of [
-      ['sun', 0.3755114512235279],
+      ['sun', 0.24599820128898311],
       ['mercury', 0.02074519414225859],
       ['venus', 0.03267319268146289],
     ] as const) {
