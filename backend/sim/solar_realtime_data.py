@@ -2398,8 +2398,9 @@ class SolarRealtimeDataProvider:
                         time.monotonic() + self.SILSO_FAILURE_BACKOFF_S
                     ),
                 )
-                with self._lock:
-                    self._silso_failure = failure
+                if failure.code != "acquisition_deadline":
+                    with self._lock:
+                        self._silso_failure = failure
                 raise
 
             with self._lock:
