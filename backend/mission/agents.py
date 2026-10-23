@@ -543,7 +543,7 @@ class MissionPlannerAgent:
             if not candidate_checkpoint():
                 break
 
-            total_delta_v = float(logistics["totalRequestedDeltaV_km_s"])
+            total_delta_v = float(logistics.get("totalRequestedDeltaV_km_s", 0.0))
             total_time_days = float(outbound["totalTimeDays"]) + float(mission_inputs["mining_days"]) + float(return_route["totalTimeDays"])
             arrival_jd = float(return_route["legs"][-1]["arrivalJd"])
             burns_km_s = [float(b["requestedDeltaV_km_s"]) for b in burns]

@@ -2956,9 +2956,9 @@ class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
 
 class MissionStageRequest(StrictRequestModel):
     name: StrictStr | None = None
-    dry_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    propellant_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    isp_s: FiniteFloat = Field(default=0.0, ge=0.0)
+    dry_mass_kg: FiniteFloat = Field(gt=0.0)
+    propellant_mass_kg: FiniteFloat = Field(gt=0.0)
+    isp_s: FiniteFloat = Field(gt=0.0)
 
     @field_validator("name")
     @classmethod
