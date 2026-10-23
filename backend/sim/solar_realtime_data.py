@@ -2293,8 +2293,7 @@ class SolarRealtimeDataProvider:
         raise RuntimeError("SILSO acquisition unavailable") from None
 
     def _fetch_silso(self) -> dict[str, Any]:
-        with self._acquisition_scope():
-            return self._fetch_silso_with_deadline()
+        return self._fetch_silso_with_deadline()
 
     def _fetch_silso_with_deadline(self) -> dict[str, Any]:
         call_reference_date = self._utc_now().astimezone(timezone.utc).date()
@@ -2409,12 +2408,13 @@ class SolarRealtimeDataProvider:
             return entry, cache_status, response_reference_date
 
         try:
-            entry, cache_status, response_reference_date = self._singleflight_fetch(
-                key=("silso_source",),
-                fetch_fn=refresh,
-                wait_timeout_s=self._remaining_provider_budget(),
-                allow_cached_failure=False,
-            )
+            with self._acquisition_scope():
+                entry, cache_status, response_reference_date = self._singleflight_fetch(
+                    key=("silso_source",),
+                    fetch_fn=refresh,
+                    wait_timeout_s=self._remaining_provider_budget(),
+                    allow_cached_failure=False,
+                )
             return self._silso_cache_value(
                 entry,
                 cache_status=cache_status,
@@ -2756,7 +2756,6 @@ class SolarRealtimeDataProvider:
             }
 
         try:
-            self._remaining_provider_budget()
             silso = self._fetch_silso()
             snapshot["silso"] = silso
             snapshot["source_status"]["silso"] = {
