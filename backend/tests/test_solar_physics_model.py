@@ -204,32 +204,48 @@ def test_synthetic_coronal_holes_coverage_decreases_at_solar_max() -> None:
     assert sum_area_min > sum_area_max
 
 
-def test_parker_spiral_fast_wind_in_coronal_holes() -> None:
-    """Spiral lines flagged in_coronal_hole should have fast-wind speeds (> 600 km/s)."""
+def test_parker_spiral_uses_fast_wind_inside_explicit_coronal_hole() -> None:
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-    state = model.sample_state(
-        jd=CYCLE_25_START_JD + 0.2 * 365.25,
-        fidelity="operational",
-        max_features=32,
-        forcing="synthetic",
-        realtime_data=None,
-    )
-    spiral = state["heliosphere"]["parker_spiral"]
-    lines = spiral["lines"]
-    assert len(lines) == 6
+    explicit_hole = {
+        "holes": [{
+            "center_lat_rad": 0.0,
+            "extent_lat_rad": math.radians(5.0),
+        }],
+    }
+    fast_line = model._build_parker_spiral(
+        jd=J2000_JD,
+        activity=0.0,
+        line_count=1,
+        point_count=2,
+        coronal_holes=explicit_hole,
+    )["lines"][0]
+    slow_line = model._build_parker_spiral(
+        jd=J2000_JD,
+        activity=0.0,
+        line_count=1,
+        point_count=2,
+        coronal_holes={
+            "holes": [{
+                "center_lat_rad": math.radians(30.0),
+                "extent_lat_rad": math.radians(5.0),
+            }],
+        },
+    )["lines"][0]
 
-    in_hole = [line for line in lines if line.get("in_coronal_hole")]
-    out_hole = [line for line in lines if not line.get("in_coronal_hole")]
-
-    # At solar minimum, some lines should be in coronal holes
-    # (depends on geometry, so just check field exists and speeds are correct)
-    for line in lines:
-        assert "in_coronal_hole" in line
-        speed = float(line["wind_speed_kms"])
-        if line["in_coronal_hole"]:
-            assert speed > 600.0, f"Fast wind expected in coronal hole, got {speed}"
-        else:
-            assert speed < 500.0, f"Slow wind expected outside coronal hole, got {speed}"
+    assert fast_line["in_coronal_hole"] is True
+    assert fast_line["wind_speed_kms"] == 720.0
+    assert fast_line["wind_speed_source"] == "empirical_ch_bimodal"
+    assert fast_line["wsa_available"] is False
+    assert fast_line["in_coronal_hole_basis"] == "empirical_coronal_hole_geometry_v1"
+    assert fast_line["wind_speed_quality_reasons"] == [
+        "wsa_unavailable_at_source_surface",
+        "empirical_visualization_fallback",
+    ]
+    assert slow_line["in_coronal_hole"] is False
+    assert slow_line["wind_speed_kms"] == 400.0
+    assert slow_line["wind_speed_source"] == "empirical_ch_bimodal"
+    assert slow_line["wsa_available"] is False
+    assert slow_line["in_coronal_hole_basis"] == "empirical_coronal_hole_geometry_v1"
 
 
 def test_sample_state_is_deterministic_for_fixed_epoch() -> None:
