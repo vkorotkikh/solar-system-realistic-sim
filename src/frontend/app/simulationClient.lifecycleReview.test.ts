@@ -97,6 +97,20 @@ describe('simulation-client reentrant lifecycle ownership', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('counts validated state as recovery before a connected observer closes the socket', () => {
+    client.connect(); socket().open(); socket().onclose?.();
+    vi.advanceTimersByTime(600);
+    socket().open();
+    client.onStatusChange = status => { if (status === 'connected') socket().onclose?.(); };
+
+    socket().message(captured.state);
+
+    vi.advanceTimersByTime(599);
+    expect(Socket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(Socket.instances).toHaveLength(3);
+  });
+
   it('does not leave a timeout after a stale-state observer disconnects', () => {
     client.connect(); socket().open(); socket().message(captured.state);
     client.onStatusChange = status => { if (status === 'stale') client.disconnect(); };

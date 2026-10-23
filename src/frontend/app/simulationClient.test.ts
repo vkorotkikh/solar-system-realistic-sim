@@ -94,7 +94,7 @@ describe('simulation client reconnection', () => {
     vi.advanceTimersByTime(600);
     socket().open(); socket().message(ready);
     expect(socket().send).toHaveBeenCalledTimes(1);
-    client.deactivateKuiper(); socket().onclose?.(); vi.advanceTimersByTime(600);
+    socket().message(state()); client.deactivateKuiper(); socket().onclose?.(); vi.advanceTimersByTime(600);
     socket().open(); socket().message(ready);
     expect(socket().send).not.toHaveBeenCalled();
   });
@@ -123,13 +123,30 @@ describe('simulation client reconnection', () => {
     expect(socket().close).not.toHaveBeenCalled();
   });
 
-  it('retains exponential backoff until valid traffic and cancels retries on disconnect', () => {
-    client.connect(); socket().open(); socket().onclose?.(); vi.advanceTimersByTime(600);
-    socket().open(); socket().onclose?.(); vi.advanceTimersByTime(600);
-    expect(Socket.instances).toHaveLength(2);
-    vi.advanceTimersByTime(600); expect(Socket.instances).toHaveLength(3);
+  it('retains exponential backoff through handshakes until valid state arrives', () => {
+    const acceptThenClose = () => {
+      socket().open();
+      socket().message(ready);
+      socket().onclose?.();
+    };
+    client.connect();
+    const delays = [600, 1_200, 2_400, 4_800, 9_600, 15_000, 15_000];
+    for (const [attempt, delay] of delays.entries()) {
+      acceptThenClose();
+      vi.advanceTimersByTime(delay - 1);
+      expect(Socket.instances).toHaveLength(attempt + 1);
+      vi.advanceTimersByTime(1);
+      expect(Socket.instances).toHaveLength(attempt + 2);
+    }
+
+    socket().open(); socket().message(ready); socket().message(state()); socket().onclose?.();
+    vi.advanceTimersByTime(599);
+    expect(Socket.instances).toHaveLength(delays.length + 1);
+    vi.advanceTimersByTime(1);
+    expect(Socket.instances).toHaveLength(delays.length + 2);
+
     socket().onerror?.(); client.disconnect(); vi.advanceTimersByTime(60_000);
-    expect(Socket.instances).toHaveLength(3);
+    expect(Socket.instances).toHaveLength(delays.length + 2);
     expect(vi.getTimerCount()).toBe(0);
   });
 

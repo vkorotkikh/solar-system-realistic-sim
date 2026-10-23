@@ -283,6 +283,7 @@ export class SimulationClient {
         this.reportFailure(`${msg.code ?? 'server_error'}: ${msg.message ?? 'WebSocket server error'}`);
         return;
       }
+      if (msg.type === 'state_update') this.reconnectAttempt = 0;
       this.markFresh();
       if (this.ws !== socket) return;
       if (msg.type === 'state_update') {
@@ -382,7 +383,6 @@ export class SimulationClient {
 
   private markFresh(): void {
     this.lastError = null;
-    this.reconnectAttempt = 0;
     // Install owned work before notifying observers; disconnect can then revoke it.
     this.armStaleTimer();
     if (this.connected) {
