@@ -70,6 +70,21 @@ def test_wall_clock_jump_rechecks_all_channels_on_a_live_cache_hit(live_aia):
     assert retained["sdo_aia"] is not None  # A detached delivery, not shared mutation.
 
 
+def test_delivery_recomputes_failed_state_after_every_source_ages_out(live_aia):
+    provider, clock, calls, _ = live_aia
+    provider.latest()
+
+    clock["utc"] += timedelta(days=70)
+    clock["monotonic"] = 0.5
+    result = provider.latest()
+
+    for source in ("swpc", "silso", "sdo_aia"):
+        assert result["source_status"][source]["ok"] is False
+        assert result[source] is None
+    assert result["cache_state"] == "failed"
+    assert len(calls) == 5
+
+
 def test_cached_live_freshness_advances_without_refetch(live_aia):
     provider, clock, calls, _ = live_aia
     clock["utc"] = datetime(2020, 1, 1, 0, 10, tzinfo=timezone.utc)
