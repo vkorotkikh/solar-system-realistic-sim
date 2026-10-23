@@ -56,10 +56,12 @@ def _horizons_payload(
     *,
     target_id: str = "399",
     jd: float = 2_460_400.5,
+    echoed_jd: str | None = None,
     frame: str = "Ecliptic of J2000.0",
     center_id: str = "10",
     extra_headers: str = "",
 ) -> bytes:
+    echoed_jd = echoed_jd if echoed_jd is not None else f"{jd:.9f}"
     result = f"""
 Target body name: Earth ({target_id}) {{source: DE441}}
 Center body name: Sun ({center_id}) {{source: DE441}}
@@ -71,7 +73,7 @@ Reference frame : {frame}
 {extra_headers}
             JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,
 $$SOE
-{jd:.9f}, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,
+{echoed_jd}, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,
 $$EOE
 ABERRATIONS AND CORRECTIONS
  Geometric state vectors have NO corrections or aberrations applied.
@@ -337,6 +339,75 @@ def test_horizons_uses_strict_query_bounded_timeout_and_context_budget(
     assert counters["external_requests"] == 1
     assert sample.source == "horizons"
     assert sample.provider_revision == "horizons-api-1.2"
+
+
+@pytest.mark.parametrize(
+    "echoed_jd",
+    [
+        pytest.param("2460400.500000000", id="exact"),
+        pytest.param("2460400.500000001", id="within-two-nanodays"),
+        pytest.param("2460400.500000002", id="at-two-nanoday-wire-bound"),
+    ],
+)
+def test_horizons_accepts_epoch_echo_through_two_nanoday_wire_bound(
+    echoed_jd: str,
+) -> None:
+    payload = json.loads(_horizons_payload(echoed_jd=echoed_jd))
+
+    vector, revision = module._parse_horizons_payload(
+        payload,
+        expected_target_id="399",
+        expected_jd=2_460_400.5,
+        body_id="earth",
+    )
+
+    assert vector == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+    assert revision == "horizons-api-1.2"
+
+
+@pytest.mark.parametrize(
+    "echoed_jd",
+    [
+        pytest.param("2460400.500000003", id="beyond-two-nanodays"),
+        pytest.param("2460401.500000000", id="clearly-wrong-day"),
+    ],
+)
+def test_horizons_rejects_epoch_echo_beyond_two_nanodays(echoed_jd: str) -> None:
+    payload = json.loads(_horizons_payload(echoed_jd=echoed_jd))
+
+    with pytest.raises(EphemerisProtocolError, match="different Julian date"):
+        module._parse_horizons_payload(
+            payload,
+            expected_target_id="399",
+            expected_jd=2_460_400.5,
+            body_id="earth",
+        )
+
+
+def test_horizons_accepts_observed_fractional_echo_and_keeps_requested_jd(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_jd = 2_460_400.987654321
+
+    def fake_urlopen(_request: Any, *, timeout: float) -> _Response:
+        return _Response(
+            _horizons_payload(
+                jd=requested_jd,
+                echoed_jd="2460400.987654320",
+            )
+        )
+
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        context=PlanningContext.with_timeout(1.0),
+    )
+
+    sample = service.sample_state("earth", requested_jd)
+
+    assert sample.jd == requested_jd
+    assert sample.position_au == (1.0, 2.0, 3.0)
 
 
 def test_horizons_revision_is_shared_across_target_source_files(

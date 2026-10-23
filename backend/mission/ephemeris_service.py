@@ -1604,7 +1604,7 @@ def _parse_horizons_payload(
         row = rows[0]
         returned_jd = float(row[0])
         if not math.isfinite(returned_jd) or not math.isclose(
-            returned_jd, expected_jd, rel_tol=0.0, abs_tol=5e-10
+            returned_jd, expected_jd, rel_tol=0.0, abs_tol=2e-9
         ):
             raise ValueError("response returned a different Julian date")
         vector = tuple(float(row[index]) for index in range(2, 8))
