@@ -4376,6 +4376,8 @@ class SimulationRunner:
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
         self._kuiper_subscription_id: str | None = None
+        self._latest_kuiper_payload: dict | None = None
+        self._kuiper_refresh_pending: bool = False
         self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
         self.response_queue: queue.Queue = queue.Queue(maxsize=MAX_RESPONSE_QUEUE)
         self._state_lock = threading.Lock()
@@ -4465,8 +4467,13 @@ class SimulationRunner:
             payload["action"] = action
         self._push_response(payload)
 
+    def _clear_kuiper_payload(self) -> None:
+        self._latest_kuiper_payload = None
+        self._kuiper_refresh_pending = False
+
     def _latch_runtime_error(self, message: str) -> None:
         self.paused = True
+        self._clear_kuiper_payload()
         if self._runtime_error is None:
             self._runtime_error = message
             self._push_error(message, code="runtime_error")
@@ -4523,6 +4530,7 @@ class SimulationRunner:
                 )
 
             # ── Step simulation ───────────────────────────────────────
+            kuiper_stepped = False
             if not self.paused and self._runtime_error is None:
                 try:
                     dt_days = self.time_scale * frame_time
@@ -4551,9 +4559,11 @@ class SimulationRunner:
 
                         if self.kuiper.active:
                             self.kuiper.step(bounded_dt_days)
+                            kuiper_stepped = True
 
                     if reached_epoch_boundary:
                         self.paused = True
+                        self._kuiper_refresh_pending = self.kuiper.active
                         self._push_error(
                             "Playback reached the engine's validated epoch boundary.",
                             code="epoch_out_of_range",
@@ -4570,13 +4580,22 @@ class SimulationRunner:
                 fidelity=self.engine.fidelity_level,
                 jd_fallback=self.engine.get_julian_date(),
             )
-            kuiper_particles = None
-            if self.kuiper.active and self.kuiper.should_send():
-                try:
-                    kuiper_particles = self.kuiper.get_state()
-                except Exception as exc:
-                    _log_operational_failure("kuiper_state_failed", exc)
-                    self._latch_runtime_error("Kuiper state failed.")
+            if self.kuiper.active and self._runtime_error is None:
+                refresh_kuiper = (
+                    self._latest_kuiper_payload is None
+                    or self._kuiper_refresh_pending
+                    or (kuiper_stepped and self.kuiper.should_send())
+                )
+                if refresh_kuiper:
+                    try:
+                        self._latest_kuiper_payload = self.kuiper.get_state()
+                        self._kuiper_refresh_pending = False
+                    except Exception as exc:
+                        _log_operational_failure("kuiper_state_failed", exc)
+                        self._latch_runtime_error("Kuiper state failed.")
+            kuiper_particles = (
+                self._latest_kuiper_payload if self.kuiper.active else None
+            )
 
             state = attach_runtime_telemetry(
                 normalized_state,
@@ -4639,6 +4658,8 @@ class SimulationRunner:
             self.time_scale = max(-365.0, min(365.0, days_per_sec))
 
         elif action == "pause":
+            if not self.paused and self.kuiper.active:
+                self._kuiper_refresh_pending = True
             self.paused = True
 
         elif action == "resume":
@@ -4683,6 +4704,7 @@ class SimulationRunner:
             if self.kuiper.active:
                 self.kuiper.deactivate()
                 self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "activate_kuiper":
             try:
@@ -4717,6 +4739,7 @@ class SimulationRunner:
                 )
                 return
 
+            self._clear_kuiper_payload()
             try:
                 self.kuiper.activate(
                     sun_pos=sun["pos"], sun_vel=sun["vel"],
@@ -4742,12 +4765,19 @@ class SimulationRunner:
                     code="kuiper_activation_failed",
                 )
                 return
+            except Exception:
+                self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
+                self._clear_kuiper_payload()
+                raise
 
             self._kuiper_subscription_id = subscription_id
+            self._kuiper_refresh_pending = True
 
         elif action == "deactivate_kuiper":
             self.kuiper.deactivate()
             self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "get_orbital_elements":
             body_id = cmd.get("body_id")
@@ -4785,6 +4815,35 @@ async def _ws_send_text(websocket: WebSocket, text: str) -> None:
 
 async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
     await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+class _KuiperPayloadDeliveryTracker:
+    """Remove an unchanged Kuiper snapshot only after its first delivery."""
+
+    def __init__(self) -> None:
+        self._last_payload: dict | None = None
+        self._last_subscription_id: str | None = None
+
+    def prepare(self, state: dict) -> dict:
+        if "kuiper" not in state:
+            return state
+        payload = state["kuiper"]
+        subscription_id = state.get("kuiper_subscription_id")
+        if (
+            payload is self._last_payload
+            and subscription_id == self._last_subscription_id
+        ):
+            outbound = state.copy()
+            outbound.pop("kuiper", None)
+            outbound.pop("kuiper_subscription_id", None)
+            return outbound
+        return state
+
+    async def send(self, websocket: WebSocket, state: dict, outbound: dict) -> None:
+        await _ws_send_text(websocket, json.dumps(outbound))
+        if "kuiper" in outbound:
+            self._last_payload = state["kuiper"]
+            self._last_subscription_id = state.get("kuiper_subscription_id")
 
 
 async def _ws_fail(
@@ -4968,6 +5027,7 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
     idle_send_interval = max(1, int(stream_hz // 3))
     last_progress = time.monotonic()
     last_snapshot: dict | None = None
+    kuiper_delivery = _KuiperPayloadDeliveryTracker()
 
     while True:
         # A producer can refill a bounded queue while it is drained. Bound the
@@ -4992,8 +5052,9 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
             if state is not last_snapshot:
                 last_progress = time.monotonic()
                 last_snapshot = state
-            jd = float(state.get("jd", 0.0))
-            has_kuiper_payload = "kuiper" in state
+            outbound_state = kuiper_delivery.prepare(state)
+            jd = float(outbound_state.get("jd", 0.0))
+            has_kuiper_payload = "kuiper" in outbound_state
             should_send = (
                 has_kuiper_payload
                 or last_jd is None
@@ -5001,7 +5062,7 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
                 or idle_frames >= idle_send_interval
             )
             if should_send:
-                await _ws_send_text(websocket, json.dumps(state))
+                await kuiper_delivery.send(websocket, state, outbound_state)
                 last_jd = jd
                 idle_frames = 0
             else:

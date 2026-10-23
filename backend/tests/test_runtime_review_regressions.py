@@ -84,6 +84,7 @@ class _KuiperStepRecorder:
         self.active = True
         self.steps = []
         self.fail = fail
+        self.state_reads = 0
 
     def step(self, dt):
         self.steps.append(dt)
@@ -92,6 +93,70 @@ class _KuiperStepRecorder:
 
     def should_send(self):
         return False
+
+    def get_state(self):
+        self.state_reads += 1
+        return {"step_count": len(self.steps)}
+
+
+class _KuiperSnapshotEngine(Engine):
+    def __init__(self):
+        super().__init__()
+        self.runner = None
+        self.stop_on_state = False
+
+    def get_state(self):
+        state = super().get_state()
+        state.update({
+            "velocity_units": "AU/yr",
+            "bodies": {
+                "sun": {"pos": [0.0, 0.0, 0.0], "vel": [0.0, 0.0, 0.0]},
+                "neptune": {"pos": [30.0, 0.0, 0.0], "vel": [0.0, 1.0, 0.0]},
+            },
+        })
+        if self.stop_on_state:
+            self.stop_on_state = False
+            self.runner.running = False
+        return state
+
+
+class _RevisionKuiper:
+    def __init__(self):
+        self.active = False
+        self.generation = 0
+        self.frame = 0
+        self.state_reads = 0
+        self.fail_step = False
+        self.fail_state = False
+
+    def activate(self, **_kwargs):
+        self.active = True
+        self.generation += 1
+        self.frame = 0
+
+    def deactivate(self):
+        self.active = False
+
+    def step(self, _dt):
+        if self.fail_step:
+            raise RuntimeError("Kuiper step failed")
+        self.frame += 1
+
+    def should_send(self):
+        return self.frame % 5 == 0
+
+    def get_state(self):
+        self.state_reads += 1
+        if self.fail_state:
+            raise RuntimeError("Kuiper snapshot failed")
+        return {"generation": self.generation, "frame": self.frame}
+
+
+def _run_one_runner_frame(runner, engine):
+    runner.running = True
+    engine.stop_on_state = True
+    runner._run_frames()
+    return runner.get_latest_state()
 
 
 @pytest.mark.parametrize(
@@ -116,12 +181,162 @@ def test_playback_clamps_partial_boundary_step_for_main_and_kuiper(
     assert engine.jd == pytest.approx(200.0 if time_scale > 0 else 100.0)
     assert runner.paused
     assert runner._runtime_error is None
+    assert runner.get_latest_state()["kuiper"] == {"step_count": 1}
     assert runner.get_response() == {
         "type": "error",
         "message": "Playback reached the engine's validated epoch boundary.",
         "code": "epoch_out_of_range",
     }
     assert runner.get_response() is None
+
+
+def test_runner_retains_initial_kuiper_snapshot_until_resumed_cadence():
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine, target_fps=10_000)
+    engine.runner = runner
+    runner.kuiper = _RevisionKuiper()
+    runner.paused = True
+    runner._handle_command({
+        "type": "activate_kuiper",
+        "subscription_id": "belt-a",
+    })
+
+    initial_state = _run_one_runner_frame(runner, engine)
+    initial_payload = initial_state["kuiper"]
+    assert initial_payload == {"generation": 1, "frame": 0}
+    assert initial_state["kuiper_subscription_id"] == "belt-a"
+    assert runner.kuiper.state_reads == 1
+
+    runner.paused = False
+    for frame in range(1, 5):
+        state = _run_one_runner_frame(runner, engine)
+        assert state["kuiper"] is initial_payload
+        assert state["kuiper_subscription_id"] == "belt-a"
+        assert runner.kuiper.state_reads == 1
+        assert runner.kuiper.frame == frame
+
+    cadence_state = _run_one_runner_frame(runner, engine)
+    assert cadence_state["kuiper"] == {"generation": 1, "frame": 5}
+    assert cadence_state["kuiper"] is not initial_payload
+    assert runner.kuiper.state_reads == 2
+
+
+def test_runner_refreshes_non_cadence_snapshot_when_playback_is_paused():
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine, target_fps=10_000)
+    engine.runner = runner
+    runner.kuiper = _RevisionKuiper()
+    runner.paused = True
+    runner._handle_command({"type": "activate_kuiper"})
+    initial_payload = _run_one_runner_frame(runner, engine)["kuiper"]
+
+    runner.paused = False
+    _run_one_runner_frame(runner, engine)
+    _run_one_runner_frame(runner, engine)
+    runner._handle_command({"type": "pause"})
+
+    paused_state = _run_one_runner_frame(runner, engine)
+    assert paused_state["kuiper"] == {"generation": 1, "frame": 2}
+    assert paused_state["kuiper"] is not initial_payload
+    assert runner.kuiper.state_reads == 2
+
+
+@pytest.mark.parametrize("action", ["replace", "deactivate", "seek"])
+def test_runner_clears_retained_kuiper_snapshot_at_lifecycle_boundaries(action):
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine, target_fps=10_000)
+    engine.runner = runner
+    runner.kuiper = _RevisionKuiper()
+    runner.paused = True
+    runner._handle_command({
+        "type": "activate_kuiper",
+        "subscription_id": "belt-a",
+    })
+    _run_one_runner_frame(runner, engine)
+    assert runner._latest_kuiper_payload is not None
+
+    if action == "replace":
+        runner._handle_command({
+            "type": "activate_kuiper",
+            "subscription_id": "belt-b",
+            "center": [50.0, 0.0, 0.0],
+        })
+        assert runner.kuiper.active
+        assert runner._kuiper_subscription_id == "belt-b"
+    elif action == "deactivate":
+        runner._handle_command({"type": "deactivate_kuiper"})
+        assert not runner.kuiper.active
+        assert runner._kuiper_subscription_id is None
+    else:
+        runner._handle_command({
+            "type": "set_julian_date",
+            "jd": engine.jd + 1.0,
+            "jd_time_scale": "TDB",
+        })
+        assert not runner.kuiper.active
+        assert runner._kuiper_subscription_id is None
+
+    assert runner._latest_kuiper_payload is None
+
+
+@pytest.mark.parametrize("failure", ["step", "snapshot"])
+def test_runner_does_not_publish_retained_kuiper_after_failure(failure):
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine, target_fps=10_000)
+    engine.runner = runner
+    runner.kuiper = _RevisionKuiper()
+    runner.paused = True
+    runner._handle_command({"type": "activate_kuiper"})
+    initial_state = _run_one_runner_frame(runner, engine)
+    assert "kuiper" in initial_state
+
+    if failure == "step":
+        runner.kuiper.fail_step = True
+        runner.paused = False
+    else:
+        runner.kuiper.fail_state = True
+        runner._kuiper_refresh_pending = True
+
+    failed_state = _run_one_runner_frame(runner, engine)
+    assert runner._runtime_error is not None
+    assert "kuiper" not in failed_state
+    assert "kuiper_subscription_id" not in failed_state
+    assert runner._latest_kuiper_payload is None
+
+
+def test_failed_kuiper_replacement_cannot_publish_partial_state_under_old_subscription():
+    class PartiallyActivatedKuiper(_RevisionKuiper):
+        fail_activate = False
+
+        def activate(self, **kwargs):
+            super().activate(**kwargs)
+            if self.fail_activate:
+                raise RuntimeError("activation failed after mutating native state")
+
+    engine = _KuiperSnapshotEngine()
+    runner = server.SimulationRunner(engine, target_fps=10_000)
+    engine.runner = runner
+    runner.kuiper = PartiallyActivatedKuiper()
+    runner.paused = True
+    runner._handle_command({
+        "type": "activate_kuiper",
+        "subscription_id": "belt-a",
+    })
+    assert _run_one_runner_frame(runner, engine)["kuiper_subscription_id"] == "belt-a"
+
+    runner.kuiper.fail_activate = True
+    with pytest.raises(RuntimeError, match="mutating native state"):
+        runner._handle_command({
+            "type": "activate_kuiper",
+            "subscription_id": "belt-b",
+        })
+
+    state_after_failure = _run_one_runner_frame(runner, engine)
+    assert not runner.kuiper.active
+    assert runner._kuiper_subscription_id is None
+    assert runner._latest_kuiper_payload is None
+    assert "kuiper" not in state_after_failure
+    assert "kuiper_subscription_id" not in state_after_failure
 
 
 def test_playback_at_bound_does_not_step_and_can_resume_inward_once():

@@ -66,6 +66,7 @@ class KuiperBeltEngine:
         self._massive_count = 0  # number of massive bodies (Sun + planets)
         self._frame_counter = 0
         self._binary_pairs: List[List[int]] = []  # [[primary_idx, companion_idx], ...]
+        self._cached_state: Optional[Dict[str, Any]] = None
 
     # ── Binary KBO parameters ─────────────────────────────────────────
     # ~30% of cold classical KBOs are binaries (Noll+ 2008)
@@ -272,6 +273,7 @@ class KuiperBeltEngine:
         jupiter_vel = _scale_velocity(jupiter_vel, velocity_scale)
         saturn_vel = _scale_velocity(saturn_vel, velocity_scale)
 
+        self._cached_state = None
         self.sim = rebound.Simulation()
         self.sim.units = ("yr", "AU", "Msun")
         self.sim.integrator = "whfast"
@@ -434,6 +436,7 @@ class KuiperBeltEngine:
         self.sim = None
         self._massive_count = 0
         self._binary_pairs = []
+        self._cached_state = None
 
     # ── Integration ───────────────────────────────────────────────────
 
@@ -443,6 +446,7 @@ class KuiperBeltEngine:
         target = self.sim.t + dt_days / 365.25
         self.sim.integrate(target)
         self._frame_counter += 1
+        self._cached_state = None
 
     # ── State output ──────────────────────────────────────────────────
 
@@ -454,6 +458,8 @@ class KuiperBeltEngine:
         """Return particle positions + binary pair metadata."""
         if not self.active or self.sim is None:
             return None
+        if self._cached_state is not None:
+            return self._cached_state
 
         positions = []
         velocities = []
@@ -469,7 +475,7 @@ class KuiperBeltEngine:
                 round(p.vy, 12),
                 round(p.vz, 12),
             ])
-        return {
+        self._cached_state = {
             "positions": positions,
             "velocities": velocities,
             "binary_pairs": self._binary_pairs,
@@ -477,3 +483,4 @@ class KuiperBeltEngine:
             "velocity_units": NATIVE_VELOCITY_UNITS,
             "binary_model": "osculating_initial_state_only_massless_no_mutual_gravity",
         }
+        return self._cached_state

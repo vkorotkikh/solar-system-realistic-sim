@@ -189,6 +189,31 @@ class TestKuiperBeltEngineLifecycle:
         # Now at frame 5
         assert fresh_activated_engine.should_send() is True
 
+    def test_state_snapshot_is_cached_until_a_successful_step(self):
+        engine = _activate_with_massive_options(binary_fraction=0.0)
+
+        initial = engine.get_state()
+        assert initial is engine.get_state()
+
+        engine.step(1.0)
+        stepped = engine.get_state()
+        assert stepped is not initial
+        assert stepped is engine.get_state()
+
+    def test_deactivate_and_reactivate_invalidate_the_cached_snapshot(self):
+        engine = _activate_with_massive_options(binary_fraction=0.0)
+        initial = engine.get_state()
+
+        engine.deactivate()
+        assert engine.get_state() is None
+
+        engine.activate(
+            **_activation_kwargs(with_jupiter=True, with_saturn=True)
+        )
+        replacement = engine.get_state()
+        assert replacement is not initial
+        assert replacement is engine.get_state()
+
 
 class TestKuiperActiveParticleBoundary:
     @pytest.mark.parametrize(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 import time
 from types import SimpleNamespace
@@ -164,6 +165,164 @@ def test_no_output_session_has_a_bounded_idle_lifetime(monkeypatch):
             await asyncio.wait_for(server._ws_send_loop(Socket(), Runner(), 1000), 0.2)
 
     asyncio.run(run())
+
+
+def _capture_sender_states(states, *, stream_hz=300):
+    class Runner:
+        def __init__(self):
+            self.running = True
+            self.index = 0
+
+        def get_response(self):
+            return None
+
+        def get_latest_state(self):
+            # The production runner publishes a fresh outer snapshot every tick
+            # while retaining the same Kuiper payload object between cadence frames.
+            return dict(states[min(self.index, len(states) - 1)])
+
+    runner = Runner()
+    sent = []
+    closed = []
+
+    class Socket:
+        async def send_text(self, text):
+            sent.append(json.loads(text))
+            runner.index += 1
+            if runner.index >= len(states):
+                runner.running = False
+
+        async def close(self, **kwargs):
+            closed.append(kwargs["code"])
+
+    async def run():
+        with pytest.raises(WebSocketDisconnect):
+            await asyncio.wait_for(
+                server._ws_send_loop(Socket(), runner, stream_hz),
+                1.5,
+            )
+
+    asyncio.run(run())
+    assert closed == [1011]
+    return sent
+
+
+def test_paused_sender_omits_an_unchanged_kuiper_payload_after_first_delivery():
+    payload = {"positions": [[43.0, 0.0, 0.0]], "velocity_units": "AU/yr"}
+    states = [
+        {
+            "type": "state_update",
+            "jd": 2451545.0,
+            "paused": True,
+            "kuiper": payload,
+            "kuiper_subscription_id": "belt-a",
+        },
+        {
+            "type": "state_update",
+            "jd": 2451545.0,
+            "paused": True,
+            "kuiper": payload,
+            "kuiper_subscription_id": "belt-a",
+        },
+    ]
+
+    sent = _capture_sender_states(states)
+
+    assert sent[0]["kuiper"] == payload
+    assert sent[0]["kuiper_subscription_id"] == "belt-a"
+    assert "kuiper" not in sent[1]
+    assert "kuiper_subscription_id" not in sent[1]
+    assert all(state["kuiper"] is payload for state in states)
+
+
+def test_sender_retains_omission_until_cadence_returns_a_new_payload():
+    first_payload = {"positions": [[43.0, 0.0, 0.0]]}
+    cadence_payload = {"positions": [[43.1, 0.0, 0.0]]}
+    states = [
+        {
+            "type": "state_update", "jd": 1.0,
+            "kuiper": first_payload, "kuiper_subscription_id": "belt-a",
+        },
+        {
+            "type": "state_update", "jd": 2.0,
+            "kuiper": first_payload, "kuiper_subscription_id": "belt-a",
+        },
+        {
+            "type": "state_update", "jd": 3.0,
+            "kuiper": cadence_payload, "kuiper_subscription_id": "belt-a",
+        },
+    ]
+
+    sent = _capture_sender_states(states, stream_hz=1_000)
+
+    assert sent[0]["kuiper"] == first_payload
+    assert "kuiper" not in sent[1]
+    assert "kuiper_subscription_id" not in sent[1]
+    assert sent[2]["kuiper"] == cadence_payload
+    assert sent[2]["kuiper_subscription_id"] == "belt-a"
+    assert states[1]["kuiper"] is first_payload
+    assert states[1]["kuiper_subscription_id"] == "belt-a"
+
+
+def test_sender_delivers_same_payload_object_for_a_new_subscription():
+    payload = {"positions": [[43.0, 0.0, 0.0]]}
+    states = [
+        {
+            "type": "state_update", "jd": 1.0,
+            "kuiper": payload, "kuiper_subscription_id": "belt-a",
+        },
+        {
+            "type": "state_update", "jd": 2.0,
+            "kuiper": payload, "kuiper_subscription_id": "belt-b",
+        },
+    ]
+
+    sent = _capture_sender_states(states, stream_hz=1_000)
+
+    assert sent[0]["kuiper"] == payload
+    assert sent[1]["kuiper"] == payload
+    assert sent[1]["kuiper_subscription_id"] == "belt-b"
+
+
+def test_failed_state_send_does_not_mark_kuiper_payload_as_delivered():
+    payload = {"positions": [[43.0, 0.0, 0.0]]}
+    state = {
+        "type": "state_update",
+        "jd": 1.0,
+        "kuiper": payload,
+        "kuiper_subscription_id": "belt-a",
+    }
+    tracker = server._KuiperPayloadDeliveryTracker()
+    attempts = []
+
+    class Socket:
+        fail = True
+
+        async def send_text(self, text):
+            attempts.append(json.loads(text))
+            if self.fail:
+                raise RuntimeError("transport failed")
+
+    socket = Socket()
+
+    async def run():
+        prepared = tracker.prepare(state)
+        with pytest.raises(RuntimeError):
+            await tracker.send(socket, state, prepared)
+
+        retry = tracker.prepare(state)
+        assert retry["kuiper"] is payload
+        assert retry["kuiper_subscription_id"] == "belt-a"
+
+        socket.fail = False
+        await tracker.send(socket, state, retry)
+        repeated = tracker.prepare(state)
+        assert repeated is not state
+        assert "kuiper" not in repeated
+        assert "kuiper_subscription_id" not in repeated
+
+    asyncio.run(run())
+    assert len(attempts) == 2
 
 
 @pytest.mark.parametrize("failure", ["accept", "initial_send"])
