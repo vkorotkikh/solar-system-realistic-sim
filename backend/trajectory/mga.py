@@ -28,6 +28,7 @@ from .contracts import (
     HARD_MAX_ASSIST_POOL_SIZE,
     HARD_MAX_ROUTE_TOPOLOGIES,
     MAX_BODY_ID_LENGTH,
+    PLANNING_JD_MAX,
     TrajectoryRequestRejected,
     estimate_route_count,
     validate_plan_request,
@@ -273,6 +274,12 @@ class _SearchRuntime:
         refinement: bool = False,
     ) -> Optional[Dict[str, Any]]:
         self.checkpoint()
+        # Public departures are validated before the search starts and every
+        # generated time of flight is positive, so only the upper epoch bound
+        # can be crossed here. Such a derived leg is an infeasible candidate,
+        # not a malformed request, and must consume no planning work.
+        if float(departure_jd) + float(tof_days) > PLANNING_JD_MAX:
+            return None
         if self.planning_context is not None:
             try:
                 self.planning_context.reserve("leg_requests")

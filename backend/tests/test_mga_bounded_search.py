@@ -15,7 +15,7 @@ from trajectory.budget import (
     PlanningContext,
     PlanningLimits,
 )
-from trajectory.contracts import TrajectoryRequestRejected
+from trajectory.contracts import PLANNING_JD_MAX, TrajectoryRequestRejected
 import trajectory.mga as mga
 
 
@@ -407,6 +407,45 @@ def test_leg_memo_caches_failures_without_spending_another_evaluation(monkeypatc
     assert calls == 1
     assert runtime.stats.leg_evaluations == 1
     assert runtime.stats.leg_cache_hits == 1
+
+
+def test_runtime_skips_generated_arrival_beyond_supported_epoch_without_spending_work(
+    monkeypatch,
+) -> None:
+    context = PlanningContext.with_timeout(2.0)
+    runtime = mga._SearchRuntime(
+        ephemeris=object(),
+        planning_context=context,
+        prograde=True,
+    )
+
+    def forbidden_solver(*_args, **_kwargs):
+        raise AssertionError("out-of-window search candidate reached the Lambert solver")
+
+    monkeypatch.setattr(mga, "compute_lambert_leg", forbidden_solver)
+
+    assert runtime.leg("earth", "mars", PLANNING_JD_MAX - 10.0, 20.0) is None
+    assert runtime.stats.leg_requests == 0
+    assert runtime.stats.leg_evaluations == 0
+    counters = context.snapshot()["counters"]
+    assert counters["leg_requests"] == 0
+    assert counters["leg_evaluations"] == 0
+    assert counters["ephemeris_queries"] == 0
+
+
+def test_runtime_admits_generated_arrival_at_supported_upper_bound(monkeypatch) -> None:
+    context = PlanningContext.with_timeout(2.0)
+    runtime = mga._SearchRuntime(
+        ephemeris=object(),
+        planning_context=context,
+        prograde=True,
+    )
+    admitted_leg = {"arrivalJd": PLANNING_JD_MAX}
+    monkeypatch.setattr(mga, "compute_lambert_leg", lambda *_args, **_kwargs: admitted_leg)
+
+    assert runtime.leg("earth", "mars", PLANNING_JD_MAX - 10.0, 10.0) is admitted_leg
+    assert runtime.stats.leg_requests == 1
+    assert runtime.stats.leg_evaluations == 1
 
 
 def test_runtime_state_cache_hits_remain_visible_to_shared_budget() -> None:
