@@ -55,7 +55,16 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket,
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictBool,
+    StrictStr,
+    field_validator,
+)
 from starlette.responses import JSONResponse
 
 from benchmark import (
@@ -605,6 +614,7 @@ def _load_solar_security_config(
         try:
             parsed = urlsplit(origin)
             parsed_port = parsed.port
+            canonical_url = AnyHttpUrl(origin)
         except ValueError as exc:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS contains an invalid origin."
@@ -623,6 +633,11 @@ def _load_solar_security_config(
             or parsed.query
             or parsed.fragment
         ):
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
+            )
+        canonical_origin = str(canonical_url).removesuffix("/")
+        if origin != canonical_origin:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
             )

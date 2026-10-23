@@ -105,6 +105,48 @@ def test_invalid_solar_security_configuration_is_rejected_loudly(
         server._load_solar_security_config(_security_env(**overrides))
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "HTTP://LOCALHOST:5173",
+        "http://localhost:80",
+        "https://solar.example:443",
+        "http://localhost?",
+        "http://localhost#",
+        "http://localhost:05173",
+        "http://[0:0:0:0:0:0:0:1]",
+        "https://b\u00fccher.example",
+        "http://127.1",
+    ],
+)
+def test_cors_configuration_rejects_noncanonical_browser_origins(
+    origin: str,
+) -> None:
+    with pytest.raises(RuntimeError, match=r"exact HTTP\(S\) origins"):
+        server._load_solar_security_config(
+            _security_env(SOLAR_CORS_ALLOWED_ORIGINS=origin)
+        )
+
+
+def test_cors_configuration_retains_canonical_browser_origins() -> None:
+    origins = (
+        "http://localhost",
+        "http://localhost:5173",
+        "https://solar.example",
+        "https://solar.example:8443",
+        "http://127.0.0.1:5173",
+        "http://[::1]",
+        "http://[::1]:5173",
+        "https://xn--bcher-kva.example",
+    )
+
+    config = server._load_solar_security_config(
+        _security_env(SOLAR_CORS_ALLOWED_ORIGINS=",".join(origins))
+    )
+
+    assert config.cors_allowed_origins == origins
+
+
 def test_security_config_retains_only_api_key_hashes() -> None:
     raw_key = "a-secret-that-must-not-be-retained"
     config = server._load_solar_security_config(
