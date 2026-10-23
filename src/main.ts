@@ -641,7 +641,7 @@ function focusBody(bodyId: string, hardSnap = false) {
   const preferredDistance = body.type === 'star'
     ? (simState.useRealisticScale ? 0.14 : 2.6)
     : planetViewDistances(radius).focus;
-  controls.minDistance = body.type === 'star' ? 0.0002 : planetViewDistances(radius).minimum;
+  controls.minDistance = planetViewDistances(radius).minimum;
 
   if (offset.lengthSq() < 1e-9) offset.set(0, -preferredDistance, preferredDistance * 0.6);
 
