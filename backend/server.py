@@ -4224,7 +4224,7 @@ async def mission_plan(request: Request, payload: MissionPlanRequest):
             503,
             "trajectory_compute_budget_exhausted",
             "Mission trajectory search stopped at a bounded work limit before reaching a conclusive outcome.",
-            retryable=True,
+            retryable=False,
             context={"trajectorySearch": result.get("trajectorySearch", {})},
         )
     if result.get("recommendation") is None:

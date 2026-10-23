@@ -196,7 +196,7 @@ def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch)
     assert "no_verified_candidate" in response.text
 
 
-def test_mission_plan_maps_inconclusive_trajectory_search_to_503(monkeypatch) -> None:
+def test_mission_plan_marks_deterministic_search_budget_exhaustion_non_retryable(monkeypatch) -> None:
     search = {
         "truncated": True,
         "budgetExhausted": True,
@@ -230,6 +230,7 @@ def test_mission_plan_maps_inconclusive_trajectory_search_to_503(monkeypatch) ->
     assert response.status_code == 503
     detail = response.json()["detail"]
     assert detail["code"] == "trajectory_compute_budget_exhausted"
+    assert detail["retryable"] is False
     assert detail["context"]["trajectorySearch"]["outbound"] == search
 
 
