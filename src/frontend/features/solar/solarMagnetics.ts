@@ -105,11 +105,28 @@ function extractFeatureSeedDirections(
     return seeds;
 }
 
+function sphericalFieldToCartesian(
+    theta: number,
+    phi: number,
+    radial: number,
+    polar: number
+): Vector3 {
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+    return new Vector3(
+        sinTheta * cosPhi * radial + cosTheta * cosPhi * polar,
+        sinTheta * sinPhi * radial + cosTheta * sinPhi * polar,
+        cosTheta * radial - sinTheta * polar
+    );
+}
+
 /**
  * Calculates a simplified, analytical potential magnetic field vector at position (x, y, z)
  * using a mix of dipole and quadrupole terms scaled by solar activity.
  */
-function computeMagneticField(x: number, y: number, z: number, activity: number): Vector3 {
+export function computeMagneticField(x: number, y: number, z: number, activity: number): Vector3 {
     const r2 = x * x + y * y + z * z;
     const r = Math.sqrt(r2);
     if (r < 0.0001) return new Vector3(0, 1, 0);
@@ -157,17 +174,23 @@ function computeMagneticField(x: number, y: number, z: number, activity: number)
     const br_oct = b0_oct * (5 * cosT3 - 3 * cosT_orig) / (r2 * r2 * r);
     const bt_oct = b0_oct * (1.5 * sin2T * cosT_orig) / (r2 * r2 * r);
 
-    // Combine all harmonics
-    const br = br_dip + br_quad + br_oct;
-    const bt = bt_dip + bt_quad + bt_oct;
-    const bp = 0; // Purely axisymmetric
+    // Project each harmonic in the frame where its spherical components were
+    // calculated. The dipole uses tilted axes, so rotate its Cartesian vector
+    // back into the scene before adding the untilted higher-order terms.
+    const dipoleTilted = sphericalFieldToCartesian(thetaTilt, phiTilt, br_dip, bt_dip);
+    const dipole = new Vector3(
+        dipoleTilted.x,
+        cosT_tilt * dipoleTilted.y + sinT_tilt * dipoleTilted.z,
+        -sinT_tilt * dipoleTilted.y + cosT_tilt * dipoleTilted.z
+    );
+    const multipoles = sphericalFieldToCartesian(
+        theta,
+        phi,
+        br_quad + br_oct,
+        bt_quad + bt_oct
+    );
 
-    // Transform back to Cartesian (using tilted basis for dipole consistency)
-    const bx = sinT * Math.cos(phiTilt) * br + cosT * Math.cos(phiTilt) * bt - Math.sin(phiTilt) * bp;
-    const by = sinT * Math.sin(phiTilt) * br + cosT * Math.sin(phiTilt) * bt + Math.cos(phiTilt) * bp;
-    const bz = cosT * br - sinT * bt;
-
-    return new Vector3(bx, by, bz).normalize();
+    return dipole.add(multipoles).normalize();
 }
 
 /**

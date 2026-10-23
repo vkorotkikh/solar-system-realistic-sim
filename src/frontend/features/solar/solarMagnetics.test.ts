@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Line, Vector3 } from 'three';
 import {
+    computeMagneticField,
     createMagneticFieldLines,
     createMagneticFieldLinesFromPFSS
 } from './solarMagnetics';
@@ -12,6 +13,60 @@ function vertex(line: Line, index: number): Vector3 {
     const position = line.geometry.getAttribute('position');
     return new Vector3(position.getX(index), position.getY(index), position.getZ(index));
 }
+
+function consistentAnalyticField(point: Vector3, activity: number): Vector3 {
+    const radius = point.length();
+    const radial = point.clone().divideScalar(radius);
+    const tilt = 0.2 * activity;
+    const dipoleAxis = new Vector3(0, Math.sin(tilt), Math.cos(tilt));
+    const dipole = radial.clone()
+        .multiplyScalar(3 * dipoleAxis.dot(radial))
+        .sub(dipoleAxis)
+        .multiplyScalar(1 / radius ** 3);
+
+    const cosTheta = radial.z;
+    const sinTheta = Math.hypot(radial.x, radial.y);
+    const cosPhi = radial.x / sinTheta;
+    const sinPhi = radial.y / sinTheta;
+    const polar = new Vector3(
+        cosTheta * cosPhi,
+        cosTheta * sinPhi,
+        -sinTheta
+    );
+    const quadrupoleStrength = 0.5 * activity;
+    const octupoleStrength = 0.25 * activity * activity;
+    const sinTwoTheta = 2 * sinTheta * cosTheta;
+    const radialMultipole =
+        0.5 * quadrupoleStrength * (3 * cosTheta * cosTheta - 1) / radius ** 4
+        + octupoleStrength * (5 * cosTheta ** 3 - 3 * cosTheta) / radius ** 5;
+    const polarMultipole =
+        quadrupoleStrength * sinTwoTheta / radius ** 4
+        + octupoleStrength * 1.5 * sinTwoTheta * cosTheta / radius ** 5;
+
+    return dipole
+        .addScaledVector(radial, radialMultipole)
+        .addScaledVector(polar, polarMultipole)
+        .normalize();
+}
+
+describe('analytic magnetic field frame consistency (B060)', () => {
+    it.each([
+        [new Vector3(0.9, 0.5, -0.2), 1],
+        [new Vector3(-0.8, 1.1, 0.7), 0.5],
+        [new Vector3(1.4, -0.3, 0.8), 0.85]
+    ])('projects every harmonic in its own basis at %j', (point, activity) => {
+        const expected = consistentAnalyticField(point, activity);
+        const actual = computeMagneticField(point.x, point.y, point.z, activity);
+
+        expect(actual.distanceTo(expected)).toBeLessThan(1e-12);
+    });
+
+    it('preserves the corrected radial polarity at a mixed-harmonic footpoint', () => {
+        const point = new Vector3(Math.cos(Math.PI / 6), Math.sin(Math.PI / 6), 0);
+
+        expect(computeMagneticField(point.x, point.y, point.z, 1).dot(point)).toBeLessThan(0);
+    });
+});
 
 describe('PFSS topology display', () => {
     const arc = [[1, 0, 0], [2, 0, 0]];
