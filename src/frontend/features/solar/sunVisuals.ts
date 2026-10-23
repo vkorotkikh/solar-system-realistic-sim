@@ -29,19 +29,21 @@ export const SUN_SURFACE_VERTEX_SHADER = `
 varying vec2 vUv;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
-varying vec3 vWorldPosition;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 varying float vLatitude;
 
 void main() {
   vUv = uv;
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewPosition = viewPosition.xyz;
+  vViewNormal = normalize(normalMatrix * normal);
   // The mesh hangs from the Sun's spin group, whose local +Y is the true spin axis, so the
   // object-space normal gives heliographic latitude; the world normal's y does not.
   vSunNormal = normalize(normal);
   vLatitude = asin(clamp(vSunNormal.y, -1.0, 1.0));
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  gl_Position = projectionMatrix * viewPosition;
 }
 `;
 
@@ -60,7 +62,8 @@ uniform vec4 flarePoints[3];
 varying vec2 vUv;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
-varying vec3 vWorldPosition;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 varying float vLatitude;
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
@@ -179,8 +182,7 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   if (angDist > spotSize * 2.5) return 1.0; // outside spot entirely
 
   // ─── Wilson Depression: foreshorten spot near limb (600 km depression) ────
-  float spotMu = max(0.0, dot(spotDir, normalize(cameraPosition - vWorldPosition)));
-  float wilsonFactor = 0.65 + 0.35 * spotMu;
+  float wilsonFactor = 0.65 + 0.35 * mu;
   float umbra = spotSize * 0.45 * wilsonFactor;
   float penumbra = spotSize * wilsonFactor;
   
@@ -238,8 +240,9 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 sunNormal = normalize(vSunNormal); // body frame: latitude, spots and flares
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float mu = max(0.0, dot(normalDir, viewDir));
+  vec3 viewNormal = normalize(vViewNormal);
+  vec3 viewDir = normalize(-vViewPosition);
+  float mu = max(0.0, dot(viewNormal, viewDir));
   
   // ─── Phase A1: Neckel-Labs Limb Darkening (per-channel RGB) ────────────────
   vec3 limbDark = neckellLimbDarkRGB(mu);
@@ -770,8 +773,10 @@ void main() {
   vec3 spiculePos = position + aAxis * height * sunRadius;
 
   // Limb fade: spicules are most visible at the limb (edge) of the disk
-  vec3 viewDelta = cameraPosition - vec3(modelMatrix[3]);
-  float ndotv = abs(dot(normalize(aAxis), normalize(viewDelta)));
+  vec3 viewAxis = normalize(normalMatrix * aAxis);
+  vec3 viewCenter = (modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 viewDir = normalize(-viewCenter);
+  float ndotv = abs(dot(viewAxis, viewDir));
   float limbFade = clamp(1.0 - ndotv * 0.65, 0.0, 1.0);
 
   vAlpha = rise * limbFade * (0.45 + chromoActivity * 0.55) * chromoOpacity;
