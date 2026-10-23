@@ -345,6 +345,180 @@ def test_local_trajectory_rate_limit_retains_peer_identity(monkeypatch) -> None:
     assert middleware._retry_after(identity_b) == 60
 
 
+@pytest.mark.parametrize("path", sorted(server.TRAJECTORY_INGRESS_PATHS))
+def test_trajectory_family_rate_limit_separates_trusted_proxy_clients(
+    monkeypatch,
+    path,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "local",
+                "SOLAR_TRUSTED_PROXY_CIDRS": "10.0.0.0/8",
+            }
+        ),
+    )
+    inner_calls = 0
+    receive_calls = 0
+
+    async def inner(_scope, receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+        await receive()
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=1,
+        window_seconds=60.0,
+        paths={path},
+        clock=lambda: 100.0,
+    )
+
+    async def invoke(forwarded_for: str):
+        nonlocal receive_calls
+        sent = []
+
+        async def receive():
+            nonlocal receive_calls
+            receive_calls += 1
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": path,
+                "headers": [(b"x-forwarded-for", forwarded_for.encode("ascii"))],
+                "client": ("10.2.3.4", 43100),
+            },
+            receive,
+            send,
+        )
+        return sent
+
+    assert asyncio.run(invoke("192.0.2.10")) == []
+    assert asyncio.run(invoke("192.0.2.11")) == []
+    repeated_first = asyncio.run(invoke("192.0.2.10"))
+
+    assert repeated_first[0]["status"] == 429
+    assert inner_calls == 2
+    assert receive_calls == 2
+
+
+def test_sixty_one_forwarded_clients_do_not_share_the_proxy_quota(monkeypatch) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "local",
+                "SOLAR_TRUSTED_PROXY_CIDRS": "10.0.0.0/8",
+            }
+        ),
+    )
+    inner_calls = 0
+
+    async def inner(_scope, _receive, _send):
+        nonlocal inner_calls
+        inner_calls += 1
+
+    middleware = server._TrajectoryRateLimitMiddleware(
+        inner,
+        max_requests=60,
+        window_seconds=60.0,
+        max_identities=128,
+        paths={"/trajectory/plan"},
+        clock=lambda: 100.0,
+    )
+
+    async def invoke(forwarded_for: str):
+        sent = []
+
+        async def receive():
+            return {"type": "http.request", "body": b"{}", "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/trajectory/plan",
+                "headers": [(b"x-forwarded-for", forwarded_for.encode("ascii"))],
+                "client": ("10.2.3.4", 43100),
+            },
+            receive,
+            send,
+        )
+        return sent
+
+    results = [
+        asyncio.run(invoke(f"192.0.2.{index}"))
+        for index in range(1, 62)
+    ]
+
+    assert results == [[] for _ in range(61)]
+    assert inner_calls == 61
+    assert len(middleware._requests) == 61
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [
+            (b"x-forwarded-for", b"192.0.2.10"),
+            (b"x-forwarded-for", b"192.0.2.11"),
+        ],
+        [(b"x-forwarded-for", b"\xff")],
+        [(b"x-forwarded-for", b"1" * (server.SOLAR_FORWARDED_FOR_MAX_BYTES + 1))],
+        [(b"x-forwarded-for", b"192.0.2.10, ,10.1.1.8")],
+        [(b"x-forwarded-for", b"192.0.2.10,not-an-address")],
+        [
+            (
+                b"x-forwarded-for",
+                b",".join(
+                    f"192.0.2.{index}".encode("ascii")
+                    for index in range(1, server.SOLAR_FORWARDED_FOR_MAX_HOPS + 2)
+                ),
+            )
+        ],
+    ],
+)
+def test_trajectory_rate_identity_rejects_ambiguous_forwarding_chains(
+    monkeypatch,
+    headers,
+) -> None:
+    monkeypatch.setattr(
+        server,
+        "SOLAR_SECURITY_CONFIG",
+        server._load_solar_security_config(
+            {
+                "SOLAR_SECURITY_PROFILE": "local",
+                "SOLAR_TRUSTED_PROXY_CIDRS": "10.0.0.0/8",
+            }
+        ),
+    )
+    middleware = server._TrajectoryRateLimitMiddleware(
+        lambda *_args: None,
+        max_requests=1,
+        window_seconds=60.0,
+        paths={"/trajectory/plan"},
+    )
+
+    assert middleware._identity(
+        {
+            "client": ("10.2.3.4", 43100),
+            "headers": headers,
+        }
+    ) == "10.2.3.4"
+
+
 def test_network_trajectory_rate_identity_rejects_oversized_subject(
     monkeypatch,
 ) -> None:

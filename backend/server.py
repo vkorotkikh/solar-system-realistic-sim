@@ -350,7 +350,7 @@ class _RequestBodyLimitMiddleware:
 
 
 class _TrajectoryRateLimitMiddleware:
-    """Bound trajectory ingress by authenticated subject or local peer."""
+    """Bound trajectory ingress by authenticated subject or validated peer."""
 
     IDENTITY_MAX_BYTES = 255
 
@@ -385,13 +385,7 @@ class _TrajectoryRateLimitMiddleware:
                     subject_bytes = b""
                 if len(subject_bytes) <= _TrajectoryRateLimitMiddleware.IDENTITY_MAX_BYTES:
                     return authenticated_subject
-
-        client = scope.get("client")
-        if isinstance(client, (tuple, list)) and client:
-            host = str(client[0]).strip()
-            if host:
-                return host[:255]
-        return "anonymous"
+        return _peer_identity_from_scope(scope)
 
     def _retry_after(self, identity: str) -> int | None:
         now = float(self.clock())
@@ -400,9 +394,9 @@ class _TrajectoryRateLimitMiddleware:
             queue = self._requests.get(identity)
             if queue is None:
                 if len(self._requests) >= self.max_identities:
-                    # Bound memory even under high-cardinality peer churn. Peer
-                    # identity comes from the ASGI transport, not spoofable
-                    # forwarding headers.
+                    # Bound memory even under high-cardinality peer churn.
+                    # Forwarding data contributes only behind a configured
+                    # trusted ASGI peer and after the whole chain validates.
                     self._requests.popitem(last=False)
                 queue = deque()
                 self._requests[identity] = queue
@@ -1576,19 +1570,6 @@ def _local_benchmark_writer_rejection(
     return None
 
 
-def _bounded_unique_request_header(
-    request: Request,
-    name: bytes,
-    *,
-    max_bytes: int,
-) -> tuple[bool, str | None]:
-    return _bounded_unique_scope_header(
-        request.scope,
-        name,
-        max_bytes=max_bytes,
-    )
-
-
 def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
     api_key_valid, header_key = _bounded_unique_scope_header(
         scope,
@@ -1662,6 +1643,57 @@ def _parse_ip_address(
         return None
 
 
+def _peer_identity_from_scope(
+    scope: Mapping[str, Any],
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str:
+    """Resolve a bounded peer identity through an explicitly trusted chain."""
+
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    client = scope.get("client")
+    peer_host = (
+        str(client[0]).strip()
+        if isinstance(client, (tuple, list)) and client and str(client[0]).strip()
+        else "anonymous"
+    )
+    peer_address = _parse_ip_address(peer_host)
+    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
+
+    forwarded_header_valid, forwarded_for = _bounded_unique_scope_header(
+        scope,
+        b"x-forwarded-for",
+        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
+    )
+    if (
+        not forwarded_header_valid
+        or not forwarded_for
+        or peer_address is None
+        or not _address_in_trusted_proxy_networks(peer_address, active_config)
+    ):
+        return peer_identity
+
+    raw_chain = forwarded_for.split(",")
+    if (
+        not raw_chain
+        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
+        or any(not item.strip() for item in raw_chain)
+    ):
+        return peer_identity
+    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
+    if any(address is None for address in parsed_chain):
+        return peer_identity
+
+    complete_chain = [
+        *(address for address in parsed_chain if address is not None),
+        peer_address,
+    ]
+    for address in reversed(complete_chain):
+        if not _address_in_trusted_proxy_networks(address, active_config):
+            return str(address)
+    return str(complete_chain[0])
+
+
 def _client_identity(
     request: Request,
     *,
@@ -1685,47 +1717,7 @@ def _client_identity(
     if isinstance(authenticated_subject, str) and authenticated_subject:
         return authenticated_subject
 
-    active_config = SOLAR_SECURITY_CONFIG if config is None else config
-    peer_host = (
-        request.client.host.strip()
-        if request.client and request.client.host
-        else "anonymous"
-    )
-    peer_address = _parse_ip_address(peer_host)
-    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
-
-    forwarded_header_valid, forwarded_for = _bounded_unique_request_header(
-        request,
-        b"x-forwarded-for",
-        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
-    )
-    if (
-        not forwarded_header_valid
-        or not forwarded_for
-        or peer_address is None
-        or not _address_in_trusted_proxy_networks(peer_address, active_config)
-    ):
-        return f"peer:{peer_identity}"
-
-    raw_chain = forwarded_for.split(",")
-    if (
-        not raw_chain
-        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
-        or any(not item.strip() for item in raw_chain)
-    ):
-        return f"peer:{peer_identity}"
-    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
-    if any(address is None for address in parsed_chain):
-        return f"peer:{peer_identity}"
-
-    complete_chain = [
-        *(address for address in parsed_chain if address is not None),
-        peer_address,
-    ]
-    for address in reversed(complete_chain):
-        if not _address_in_trusted_proxy_networks(address, active_config):
-            return f"peer:{address}"
-    return f"peer:{complete_chain[0]}"
+    return f"peer:{_peer_identity_from_scope(request.scope, config=config)}"
 
 
 def _require_optional_solar_api_key(
