@@ -1,4 +1,4 @@
-import { Group, Matrix4, Mesh, Vector3, type ShaderMaterial } from 'three';
+import { AdditiveBlending, Group, Matrix4, Mesh, SpriteMaterial, Vector3, type ShaderMaterial } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSolarFlareEvent, SolarFlareManager } from './solarFlares';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
@@ -44,6 +44,39 @@ describe('flare and CME lifetime', () => {
     const reachAu = uniforms.uStartRadius.value + uniforms.uVelocityAuPerSec.value * flashDurationSec;
     expect(reachAu).toBeCloseTo(coronalToDisplay(4.74, sunRadiusAu), 9);
     expect(reachAu).toBeLessThanOrEqual(1.6 * sunRadiusAu);
+  });
+
+  it('depth-tests an actual far-side feature flare against the solar disk', () => {
+    const fixed = new Group();
+    const surface = new Group();
+    const manager = new SolarFlareManager(fixed, surface);
+    manager.spawnFeatureFlare({
+      id: 'far-side-flare',
+      base_dir: [-1, 0, 0],
+      brightness: 1,
+      emergence: 1,
+      peak_extent_solar_radii: 2,
+      expansion_speed_kms: 800,
+    }, SOLAR_RADIUS_AU, 0.5, 1);
+
+    expect(manager.events).toHaveLength(1);
+    const sprite = manager.events[0].surfaceSprite;
+    surface.updateMatrixWorld(true);
+    const spriteWorld = sprite.getWorldPosition(new Vector3());
+    const camera = new Vector3(5 * SOLAR_RADIUS_AU, 0, 0);
+    const nearDiskSurface = new Vector3(SOLAR_RADIUS_AU, 0, 0);
+    expect(spriteWorld.x).toBeLessThan(-SOLAR_RADIUS_AU);
+    expect(camera.distanceTo(spriteWorld)).toBeGreaterThan(camera.distanceTo(nearDiskSurface));
+
+    expect(sprite.material).toBeInstanceOf(SpriteMaterial);
+    expect(sprite.material).toMatchObject({
+      depthTest: true,
+      depthWrite: false,
+      transparent: true,
+      blending: AdditiveBlending,
+    });
+
+    manager.dispose();
   });
 
   function physicsEvent(launchOffsetDays = 0) {

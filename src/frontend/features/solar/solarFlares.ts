@@ -197,7 +197,7 @@ export function createSolarFlareEvent({
         opacity: 0,
         blending: AdditiveBlending,
         depthWrite: false,
-        depthTest: false
+        depthTest: true
     });
     const flareSprite = new Sprite(flareMaterial);
     flareSprite.scale.setScalar(sunRadiusAu * 0.8 * (0.5 + intensity));
