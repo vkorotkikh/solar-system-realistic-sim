@@ -42,6 +42,55 @@ def test_max_closable_cargo_is_the_largest_cargo_that_closes() -> None:
     ) is None
 
 
+def test_nominal_cargo_capacity_has_no_delta_v_dispersion_margin() -> None:
+    burns = [2.0, 1.5]
+    cargo_kg = SERVICE.max_closable_cargo_kg(
+        VEHICLE,
+        payload_mass_kg=6_500.0,
+        burns_km_s=burns,
+        cargo_burn_index=1,
+        available_cargo_kg=10_000.0,
+        reserve_fraction=0.05,
+    )
+
+    assert cargo_kg is not None
+    assert _budget(burns, cargo=[0.0, cargo_kg])["feasible"]
+    assert not _budget([burn * 1.0001 for burn in burns], cargo=[0.0, cargo_kg])["feasible"]
+
+    risk = RiskService().run_monte_carlo(
+        base_total_delta_v_km_s=sum(burns),
+        base_total_time_days=900.0,
+        base_returned_payload_kg=cargo_kg,
+        base_arrival_jd=2_461_000.5,
+        reclose=lambda factor, cargo: _budget([burn * factor for burn in burns], cargo=[0.0, cargo]),
+        samples=5_000,
+        seed=17,
+    )
+
+    assert risk["failureProbability"] == pytest.approx(0.47, abs=0.02)
+    assert RiskService.cargo_sizing_delta_v_factor(0.05) == pytest.approx(1.0822426813475736)
+
+
+@pytest.mark.parametrize(
+    ("threshold", "expected"),
+    [
+        (0.05, 1.0822426813475736),
+        (0.45, 1.0062830673427536),
+        (0.5, 1.0),
+        (1.0, 1.0),
+    ],
+)
+def test_cargo_sizing_factor_tracks_risk_threshold(threshold: float, expected: float) -> None:
+    assert RiskService.cargo_sizing_delta_v_factor(threshold) == pytest.approx(expected, abs=1e-9)
+
+
+def test_zero_risk_threshold_uses_a_finite_fail_closed_cargo_factor() -> None:
+    factor = RiskService.cargo_sizing_delta_v_factor(0.0)
+
+    assert math.isfinite(factor)
+    assert factor > 1.0
+
+
 def _search_with_evaluation_limit(
     *, available_cargo_kg: float, largest_closable_kg: float, limit: int
 ):
