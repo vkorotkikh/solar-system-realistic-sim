@@ -242,6 +242,12 @@ export function createSunController({
     return solarLayerFrames[layer] ? solarPhysicsState : null;
   }
 
+  function decorativeMotionSuppressed() {
+    return simState.paused === true
+      || Number(simState.timeScaleDaysPerSec ?? 1) <= 0
+      || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  }
+
   function updateSurfaceFrame(jdTdb: number) {
     if (!sunSpinGroup) return;
     sunSpinGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(jdTdb));
@@ -254,6 +260,11 @@ export function createSunController({
   }
 
   function buildSolarFeatureBlendView(featureLimit = 220) {
+    if (solarPhysicsFeatureSetTarget && decorativeMotionSuppressed()) {
+      solarPhysicsFeatureSetCurrent = solarPhysicsFeatureSetTarget;
+      solarPhysicsFeatureSetTarget = null;
+      solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
+    }
     const bv = buildSolarFeatureBlendViewImpl({
       currentFeatureSet: solarPhysicsFeatureSetCurrent,
       targetFeatureSet: solarPhysicsFeatureSetTarget,
@@ -596,9 +607,7 @@ export function createSunController({
     const wallSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
     const rawDt = Math.max(0, wallSec - (lastTimeSec ?? wallSec));
     const forward = lastJulianDate !== null && julianDate > lastJulianDate;
-    const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const motionEnabled = forward && simState.paused !== true
-      && Number(simState.timeScaleDaysPerSec ?? 1) > 0 && !reducedMotion;
+    const motionEnabled = forward && !decorativeMotionSuppressed();
     // SCN-038: physical inputs use JD; these procedural visuals and compressed
     // AGN timelines are decorative. Freeze during pause/reverse/reduced motion,
     // discard wall-clock catch-up, and keep shader time near zero for precision.
@@ -610,8 +619,8 @@ export function createSunController({
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
     const activity = clampUnit(
-      finiteOrNull(solarBlendView?.activityIndex)
-        ?? finiteOrNull(solarPhysicsState?.activity_index)
+      finiteOrNull(solarPhysicsState?.activity_index)
+        ?? finiteOrNull(solarBlendView?.activityIndex)
         ?? fallbackActivity
     );
     const observationState = getRenderableObservationState(Date.now());
