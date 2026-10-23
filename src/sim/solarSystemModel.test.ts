@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { J2000_JD, MAJOR_BODY_IDS } from '../constants';
 import generatedJson from '../data/moonEphemerisChebyshev.json';
 import { createSolarSystemCatalog } from './catalog';
 import { parseMoonEphemerisArtifact } from './moonEphemeris';
@@ -11,6 +12,13 @@ function titanModel(withEphemeris: boolean): SolarSystemModel {
   const catalog = createSolarSystemCatalog({ moonEphemerides });
   const included = new Set(['sun', 'saturn']);
   const bodies = catalog.bodies.filter((body) => included.has(body.id) || body.name === 'Titan');
+  return new SolarSystemModel({ bodies });
+}
+
+function majorPlanetModel(): SolarSystemModel {
+  const majorIds = new Set<string>(MAJOR_BODY_IDS);
+  const bodies = createSolarSystemCatalog({ moonsVisible: false }).bodies
+    .filter((body) => majorIds.has(body.id));
   return new SolarSystemModel({ bodies });
 }
 
@@ -44,5 +52,31 @@ describe('SolarSystemModel fitted-state availability', () => {
     model.update(2_461_000.5);
     expect(model.getState(titanId!)?.available).toBe(false);
     expect(model.getWorldPosition(titanId!)).toBeNull();
+  });
+});
+
+describe('SolarSystemModel far-date availability', () => {
+  it.each([
+    ['Saturn after its secular eccentricity reaches zero', 'saturn', J2000_JD + 10_600 * 365.25],
+    ['Neptune before its secular eccentricity reaches zero', 'neptune', J2000_JD - 16_900 * 365.25]
+  ])('isolates %s and continues updating later bodies', (_label, unavailableId, julianDate) => {
+    const model = majorPlanetModel();
+    model.update(J2000_JD);
+    const lastValidPosition = model.getState(unavailableId)!.worldPosition.clone();
+    const previousPlutoPosition = model.getState('pluto')!.worldPosition.clone();
+
+    expect(() => model.update(julianDate)).not.toThrow();
+
+    const unavailable = model.getState(unavailableId);
+    expect(unavailable?.available).toBe(false);
+    expect(unavailable?.worldPosition.toArray()).toEqual(lastValidPosition.toArray());
+    expect(model.getWorldPosition(unavailableId)).toBeNull();
+    expect(model.sampleBodyStateAt(unavailableId, julianDate)).toBeNull();
+    expect(model.getState('pluto')?.available).toBe(true);
+    expect(model.getState('pluto')!.worldPosition.distanceTo(previousPlutoPosition)).toBeGreaterThan(1e-6);
+
+    model.update(J2000_JD + 1);
+    expect(model.getState(unavailableId)?.available).toBe(true);
+    expect(model.getWorldPosition(unavailableId)).not.toBeNull();
   });
 });
