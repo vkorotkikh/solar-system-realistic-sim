@@ -86,6 +86,72 @@ ABERRATIONS AND CORRECTIONS
     ).encode("utf-8")
 
 
+@pytest.mark.parametrize(
+    ("case", "reason"),
+    [
+        pytest.param(
+            "not-an-object",
+            "top-level payload is not an object",
+            id="top-level-object",
+        ),
+        pytest.param(
+            "upstream-error",
+            "upstream rejected the query",
+            id="upstream-error",
+        ),
+        pytest.param(
+            "wrong-signature",
+            "unexpected provider signature",
+            id="provider-signature",
+        ),
+        pytest.param(
+            "missing-result",
+            "response omitted the vector result",
+            id="vector-result",
+        ),
+        pytest.param(
+            "duplicate-vector-table",
+            "response did not contain exactly one vector table",
+            id="vector-table-count",
+        ),
+    ],
+)
+def test_horizons_classifies_invalid_payload_envelopes(
+    case: str,
+    reason: str,
+) -> None:
+    payload: Any = json.loads(_horizons_payload())
+    if case == "not-an-object":
+        payload = []
+    elif case == "upstream-error":
+        payload["error"] = "fixture rejection"
+    elif case == "wrong-signature":
+        payload["signature"] = {"source": "not-horizons", "version": "1.2"}
+    elif case == "missing-result":
+        del payload["result"]
+    elif case == "duplicate-vector-table":
+        payload["result"] += "\n$$SOE\n$$EOE\n"
+    else:  # pragma: no cover - the parameter table owns this value.
+        raise AssertionError(f"unknown fixture case: {case}")
+
+    with pytest.raises(EphemerisProtocolError) as caught:
+        module._parse_horizons_payload(
+            payload,
+            expected_target_id="399",
+            expected_jd=2_460_400.5,
+            body_id="earth",
+        )
+
+    assert caught.value.to_dict() == {
+        "code": "ephemeris_protocol_error",
+        "message": f"Horizons returned an invalid state for `earth`: {reason}",
+        "provider": "horizons",
+        "retryable": False,
+        "bodyId": "earth",
+        "jdTdb": 2_460_400.5,
+    }
+
+
 def test_auto_is_network_free_and_pins_kepler(monkeypatch: pytest.MonkeyPatch) -> None:
     def forbidden(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("auto attempted a non-local provider")
