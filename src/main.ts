@@ -182,7 +182,7 @@ const showMoons: boolean = false;
   const moonEphemerides: MoonEphemerisMap | undefined = showMoons
     ? await (await import('./sim/loadMoonEphemerides')).loadMoonEphemerides()
     : undefined;
-const catalog = createSolarSystemCatalog({ moonEphemerides });
+const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
 });

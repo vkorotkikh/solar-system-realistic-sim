@@ -80,3 +80,82 @@ describe('moon catalog realism', () => {
     expect(catalog.bodies.find((body) => body.name === 'Rhea')?.orbit?.ephemerisRequired).toBe(false);
   });
 });
+
+describe('moon-aware display radii (B024)', () => {
+  const visibleParentRadii = {
+    earth: 0.001670210938369994,
+    mars: 0.00004073420277632334,
+    jupiter: 0.0005561576485727347,
+    saturn: 0.0005804895456977919,
+    uranus: 0.00021618456097450325,
+    neptune: 0.00020942811454067043,
+    pluto: 0.0000851616399377,
+  } as const;
+  const hiddenParentRadii = {
+    earth: 0.03352378856871639,
+    mars: 0.024452153279414884,
+    jupiter: 0.1110508910364973,
+    saturn: 0.10135149135557898,
+    uranus: 0.06688689557753447,
+    neptune: 0.0659038754550899,
+    pluto: 0.014478125569285549,
+  } as const;
+
+  function radius(catalog: ReturnType<typeof createSolarSystemCatalog>, id: string): number {
+    return catalog.bodies.find(body => body.id === id)!.displayRadiusAu;
+  }
+
+  it('defaults to the existing visible-moon parent constraints', () => {
+    const defaultCatalog = createSolarSystemCatalog();
+    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
+
+    for (const [id, expected] of Object.entries(visibleParentRadii)) {
+      expect(radius(defaultCatalog, id), `${id} default`).toBeCloseTo(expected, 15);
+      expect(radius(visibleCatalog, id), `${id} explicit visible`).toBeCloseTo(expected, 15);
+    }
+  });
+
+  it('restores only moon-hosting parent radii when moons are hidden', () => {
+    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
+    const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
+
+    for (const [id, expected] of Object.entries(hiddenParentRadii)) {
+      expect(radius(hiddenCatalog, id), `${id} hidden`).toBeCloseTo(expected, 15);
+      expect(radius(hiddenCatalog, id), `${id} must no longer be moon-clamped`)
+        .toBeGreaterThan(radius(visibleCatalog, id));
+    }
+    for (const [id, expected] of [
+      ['sun', 0.3755114512235279],
+      ['mercury', 0.02074519414225859],
+      ['venus', 0.03267319268146289],
+    ] as const) {
+      expect(radius(hiddenCatalog, id), `${id} hidden`).toBeCloseTo(expected, 15);
+      expect(radius(hiddenCatalog, id), `${id} unaffected`)
+        .toBe(radius(visibleCatalog, id));
+    }
+  });
+
+  it('retains every moon record and the Earth barycentric correction in hidden mode', () => {
+    const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
+    const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
+    const visibleMoons = visibleCatalog.bodies.filter(body => body.type === 'moon');
+    const hiddenMoons = hiddenCatalog.bodies.filter(body => body.type === 'moon');
+
+    expect(hiddenCatalog.bodies.map(body => body.id)).toEqual(
+      visibleCatalog.bodies.map(body => body.id),
+    );
+    expect(hiddenCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body))
+      .toEqual(visibleCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body));
+    expect(hiddenMoons).toHaveLength(424);
+    expect(hiddenMoons).toEqual(visibleMoons);
+    expect(hiddenCatalog.jumpBodyIds).toEqual(visibleCatalog.jumpBodyIds);
+    expect(hiddenCatalog.plannerBodyIds).toEqual(visibleCatalog.plannerBodyIds);
+
+    const earth = hiddenCatalog.bodies.find(body => body.id === 'earth')!;
+    const moon = hiddenCatalog.bodies.find(body => (
+      body.parentId === 'earth' && body.name === 'Moon'
+    ))!;
+    expect(earth.orbit?.barycentreCompanion?.orbit).toBe(moon.orbit);
+    expect(earth.orbit?.barycentreCompanion?.massFraction).toBe(0.01215058);
+  });
+});

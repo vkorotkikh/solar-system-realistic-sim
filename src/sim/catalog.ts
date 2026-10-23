@@ -47,6 +47,8 @@ export interface CreateSolarSystemCatalogOptions {
    * so the normal planet-only application does not pay its download/parse cost.
    */
   moonEphemerides?: MoonEphemerisMap;
+  /** Whether moon orbits should constrain their visible parent body's display radius. */
+  moonsVisible?: boolean;
 }
 
 export interface CatalogBody {
@@ -638,7 +640,7 @@ function makeMoonId(moon: RawMoonRecord, usedIds: Set<string>): string {
   return id;
 }
 
-function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
+function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boolean): void {
   const minMoonOrbitByParent = new Map();
 
   for (const body of bodies) {
@@ -658,6 +660,8 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
     }
   }
 
+  if (!moonsVisible) return;
+
   for (const body of bodies) {
     const closestMoonOrbit = minMoonOrbitByParent.get(body.id);
     if (closestMoonOrbit === undefined) {
@@ -672,7 +676,7 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
 }
 
 export function createSolarSystemCatalog(
-  { moonEphemerides = {} }: CreateSolarSystemCatalogOptions = {}
+  { moonEphemerides = {}, moonsVisible = true }: CreateSolarSystemCatalogOptions = {}
 ): SolarCatalog {
   const usedIds = new Set<string>();
   const bodies: CatalogBody[] = [];
@@ -799,7 +803,7 @@ export function createSolarSystemCatalog(
     earth.orbit = { ...earth.orbit, barycentreCompanion: { orbit: moon.orbit, massFraction: 0.01215058 } };
   }
 
-  applyDisplayScaleConstraints(bodies);
+  applyDisplayScaleConstraints(bodies, moonsVisible);
 
   const jumpBodyIds = [
     ...MAJOR_BODY_IDS,
