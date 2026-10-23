@@ -4526,10 +4526,38 @@ class SimulationRunner:
             if not self.paused and self._runtime_error is None:
                 try:
                     dt_days = self.time_scale * frame_time
-                    self.engine.step(dt_days)
+                    bounded_dt_days = dt_days
+                    reached_epoch_boundary = False
+                    supported_range = getattr(self.engine, "supported_jd_range", None)
+                    if supported_range is not None:
+                        min_jd, max_jd = supported_range
+                        current_jd = self.engine.get_julian_date()
+                        target_jd = current_jd + dt_days
+                        if target_jd < min_jd:
+                            bounded_dt_days = min_jd - current_jd
+                            reached_epoch_boundary = True
+                        elif target_jd > max_jd:
+                            bounded_dt_days = max_jd - current_jd
+                            reached_epoch_boundary = True
 
-                    if self.kuiper.active:
-                        self.kuiper.step(dt_days)
+                    # Keep the main and optional Kuiper integrations on the
+                    # exact same signed playback increment, including a final
+                    # partial frame at an inclusive engine epoch boundary.
+                    # Preserve ordinary zero-time stepping. Only an outward
+                    # frame already at a declared boundary suppresses both
+                    # engines' zero-duration calls.
+                    if bounded_dt_days != 0.0 or not reached_epoch_boundary:
+                        self.engine.step(bounded_dt_days)
+
+                        if self.kuiper.active:
+                            self.kuiper.step(bounded_dt_days)
+
+                    if reached_epoch_boundary:
+                        self.paused = True
+                        self._push_error(
+                            "Playback reached the engine's validated epoch boundary.",
+                            code="epoch_out_of_range",
+                        )
                 except Exception as exc:
                     _log_operational_failure("simulation_step_failed", exc)
                     self._latch_runtime_error("Simulation step failed.")

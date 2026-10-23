@@ -51,6 +51,122 @@ class Engine:
         self.jd = jd
 
 
+class _BoundedPlaybackEngine(Engine):
+    supported_jd_range = (100.0, 200.0)
+
+    def __init__(self, jd: float, *, frames: int = 1, after_first_frame=None):
+        super().__init__()
+        self.jd = jd
+        self.frames = frames
+        self.after_first_frame = after_first_frame
+        self.published_frames = 0
+        self.runner = None
+
+    def step(self, dt):
+        target = self.jd + dt
+        if not self.supported_jd_range[0] <= target <= self.supported_jd_range[1]:
+            raise ValueError("bounded fixture rejects an out-of-range playback step")
+        super().step(dt)
+
+    def get_state(self):
+        state = super().get_state()
+        if self.runner is not None:
+            self.published_frames += 1
+            if self.published_frames == 1 and self.after_first_frame is not None:
+                self.after_first_frame(self.runner)
+            if self.published_frames >= self.frames:
+                self.runner.running = False
+        return state
+
+
+class _KuiperStepRecorder:
+    def __init__(self, *, fail: bool = False):
+        self.active = True
+        self.steps = []
+        self.fail = fail
+
+    def step(self, dt):
+        self.steps.append(dt)
+        if self.fail:
+            raise RuntimeError("in-range Kuiper fixture failure")
+
+    def should_send(self):
+        return False
+
+
+@pytest.mark.parametrize(
+    ("start_jd", "time_scale", "expected_delta"),
+    [(199.95, 1.0, 0.05), (100.05, -1.0, -0.05)],
+    ids=["upper", "lower"],
+)
+def test_playback_clamps_partial_boundary_step_for_main_and_kuiper(
+    start_jd, time_scale, expected_delta,
+):
+    engine = _BoundedPlaybackEngine(start_jd)
+    runner = server.SimulationRunner(engine, target_fps=10)
+    kuiper = _KuiperStepRecorder()
+    runner.kuiper = kuiper
+    runner.time_scale = time_scale
+    engine.runner = runner
+
+    runner._loop()
+
+    assert engine.steps == pytest.approx([expected_delta])
+    assert kuiper.steps == pytest.approx([expected_delta])
+    assert engine.jd == pytest.approx(200.0 if time_scale > 0 else 100.0)
+    assert runner.paused
+    assert runner._runtime_error is None
+    assert runner.get_response() == {
+        "type": "error",
+        "message": "Playback reached the engine's validated epoch boundary.",
+        "code": "epoch_out_of_range",
+    }
+    assert runner.get_response() is None
+
+
+def test_playback_at_bound_does_not_step_and_can_resume_inward_once():
+    def resume_inward(runner):
+        runner.send_command({"type": "set_time_scale", "days_per_sec": -1.0})
+        runner.send_command({"type": "resume"})
+
+    engine = _BoundedPlaybackEngine(200.0, frames=2, after_first_frame=resume_inward)
+    runner = server.SimulationRunner(engine, target_fps=10)
+    kuiper = _KuiperStepRecorder()
+    runner.kuiper = kuiper
+    runner.time_scale = 1.0
+    engine.runner = runner
+
+    runner._loop()
+
+    assert engine.steps == pytest.approx([-0.1])
+    assert kuiper.steps == pytest.approx([-0.1])
+    assert engine.jd == pytest.approx(199.9)
+    assert runner.paused is False
+    assert runner._runtime_error is None
+    assert runner.get_response()["code"] == "epoch_out_of_range"
+    assert runner.get_response() is None
+
+
+@pytest.mark.parametrize("failure", ["main", "kuiper"])
+def test_in_range_playback_failures_remain_fatal(failure):
+    class FailingEngine(_BoundedPlaybackEngine):
+        def step(self, dt):
+            if failure == "main":
+                raise RuntimeError("in-range main fixture failure")
+            super().step(dt)
+
+    engine = FailingEngine(150.0)
+    runner = server.SimulationRunner(engine, target_fps=240)
+    runner.kuiper = _KuiperStepRecorder(fail=failure == "kuiper")
+    engine.runner = runner
+
+    runner._loop()
+
+    assert runner.paused
+    assert runner._runtime_error == "Simulation step failed."
+    assert runner.get_response()["code"] == "runtime_error"
+
+
 def configure_session(monkeypatch, engine):
     monkeypatch.setattr(server, "_rebound_readiness", lambda: {"available": True})
     monkeypatch.setattr(server, "_tudatpy_available", lambda: False)
