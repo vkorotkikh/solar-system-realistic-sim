@@ -4,6 +4,7 @@ import {
     FrontSide,
     Group,
     Mesh,
+    Quaternion,
     ShaderMaterial,
     SphereGeometry,
     Sprite,
@@ -153,9 +154,10 @@ export interface CreateSolarFlareEventParams {
 
 export interface SolarFlareEventHandle {
     group: Group;
+    readonly surfaceSprite: Sprite;
     featureId: string | null;
-    longitude: number;
-    latitude: number;
+    readonly longitude: number;
+    readonly latitude: number;
     intensity: number;
     velocityKms: number;
     getSurfaceEnvelope(): number;
@@ -200,7 +202,6 @@ export function createSolarFlareEvent({
     const flareSprite = new Sprite(flareMaterial);
     flareSprite.scale.setScalar(sunRadiusAu * 0.8 * (0.5 + intensity));
     flareSprite.position.copy(position).multiplyScalar(1.02);
-    group.add(flareSprite);
 
     const cmeMaterial = new ShaderMaterial({
         vertexShader: CME_VERTEX_SHADER,
@@ -225,6 +226,7 @@ export function createSolarFlareEvent({
 
     let elapsedSec = 0;
     let _expired = false;
+    let disposed = false;
 
     const flashDurationSec = 15.0 + intensity * 20.0;
     // The CME grows to its peak extent over the flare's flash, a time-lapse: at its real speed it
@@ -237,9 +239,11 @@ export function createSolarFlareEvent({
 
     return {
         group,
+        surfaceSprite: flareSprite,
         featureId,
-        longitude: longitudeRad,
-        latitude: latitudeRad,
+        // Keep the surface anchor owned by this event, independent of later payloads.
+        get longitude() { return longitudeRad; },
+        get latitude() { return latitudeRad; },
         intensity,
         velocityKms,
 
@@ -280,6 +284,11 @@ export function createSolarFlareEvent({
         },
 
         dispose() {
+            if (disposed) return;
+            disposed = true;
+            _expired = true;
+            flareSprite.removeFromParent();
+            group.removeFromParent();
             flareSprite.material.dispose();
             cmeMesh.material.dispose();
             group.clear();
@@ -294,14 +303,16 @@ type CoronaFeatureRecord = Record<string, unknown>;
  */
 export class SolarFlareManager {
     readonly sunGroup: Group;
+    readonly surfaceGroup: Group;
     events: SolarFlareEventHandle[];
     maxEvents: number;
     timeSinceLastSpawn: number;
     featureCooldowns: Map<string, number>;
     lastPhysicsDrivenSpawnSec: number;
 
-    constructor(sunGroup: Group) {
+    constructor(sunGroup: Group, surfaceGroup: Group) {
         this.sunGroup = sunGroup;
+        this.surfaceGroup = surfaceGroup;
         this.events = [];
         this.maxEvents = 4;
         this.timeSinceLastSpawn = 0;
@@ -338,7 +349,6 @@ export class SolarFlareManager {
             event.update(dtSec);
             if (event.isExpired()) {
                 event.dispose();
-                this.sunGroup.remove(event.group);
                 this.events.splice(i, 1);
             }
         }
@@ -419,8 +429,7 @@ export class SolarFlareManager {
             peakExtentSolarRadii: peakExtent
         });
 
-        this.events.push(flare);
-        this.sunGroup.add(flare.group);
+        this.addEvent(flare);
     }
 
     spawnRandomFlare(activity: number, sunRadiusAu: number) {
@@ -443,8 +452,17 @@ export class SolarFlareManager {
             angularWidthDeg
         });
 
-        this.events.push(flare);
+        this.addEvent(flare);
+    }
+
+    private addEvent(flare: SolarFlareEventHandle) {
+        // Capture the surface orientation at launch; only the sprite keeps rotating.
+        const fixedWorld = this.sunGroup.getWorldQuaternion(new Quaternion());
+        const surfaceWorld = this.surfaceGroup.getWorldQuaternion(new Quaternion());
+        flare.group.quaternion.copy(fixedWorld.invert().multiply(surfaceWorld));
         this.sunGroup.add(flare.group);
+        this.surfaceGroup.add(flare.surfaceSprite);
+        this.events.push(flare);
     }
 
     getActiveFlaresParams(): number[] {
@@ -474,7 +492,6 @@ export class SolarFlareManager {
     dispose() {
         for (const e of this.events) {
             e.dispose();
-            this.sunGroup.remove(e.group);
         }
         this.events = [];
     }

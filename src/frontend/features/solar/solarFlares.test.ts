@@ -1,7 +1,16 @@
-import { Mesh, type ShaderMaterial } from 'three';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSolarFlareEvent } from './solarFlares';
+import { Group, Matrix4, Mesh, Vector3, type ShaderMaterial } from 'three';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createSolarFlareEvent, SolarFlareManager } from './solarFlares';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
+import { solarSurfaceToEclipticMatrix } from './solarFrame';
+import { solarFlareParamsInSurfaceFrame } from './solarGeometryContract';
+import type { SolarPhysicsStatePayload } from './solarPhysicsClient';
+import captured from '../../../../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
+import reference from '../../../../backend/tests/fixtures/solar_frames/cspice_solar_frame.json';
+
+const payload = () => structuredClone(captured) as unknown as SolarPhysicsStatePayload;
+
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('flare and CME lifetime', () => {
   beforeEach(() => {
@@ -35,5 +44,73 @@ describe('flare and CME lifetime', () => {
     const reachAu = uniforms.uStartRadius.value + uniforms.uVelocityAuPerSec.value * flashDurationSec;
     expect(reachAu).toBeCloseTo(coronalToDisplay(4.74, sunRadiusAu), 9);
     expect(reachAu).toBeLessThanOrEqual(1.6 * sunRadiusAu);
+  });
+
+  function physicsEvent(launchOffsetDays = 0) {
+    const root = new Group(), fixed = new Group(), surface = new Group();
+    root.add(fixed, surface);
+    const epoch = captured.epoch_jd_tdb;
+    fixed.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(2451545));
+    surface.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(epoch + launchOffsetDays));
+    const feature = captured.corona.features[0];
+    const input = new Vector3().fromArray(feature.base_dir);
+    const body = input.clone().applyMatrix4(new Matrix4().makeRotationZ(-(epoch - 2451545) * 14.1844 * Math.PI / 180));
+    const anchor = new Vector3(body.x, body.z, -body.y);
+    const state = { ...payload(), corona: { features: [{ ...feature, base_dir: anchor.toArray(), brightness: 1, emergence: 1 }] } };
+    const manager = new SolarFlareManager(fixed, surface);
+    manager.update(1, 0.5, SOLAR_RADIUS_AU, state, 0);
+    expect(manager.events).toHaveLength(1);
+    const event = manager.events[0];
+    const cme = event.group.children.find((child): child is Mesh => child instanceof Mesh)!;
+    root.updateMatrixWorld(true);
+    const rows = reference.cases.find(c => c.input_frame === 'SOLAR_EQUATORIAL_J2000')!.matrix_row_major;
+    const fixedReference = new Matrix4().set(
+      ...[...rows[0], 0, ...rows[1], 0, ...rows[2], 0, 0, 0, 0, 1] as Parameters<Matrix4['set']>
+    );
+    const expectedWorld = (days: number) => input.clone()
+      .applyMatrix4(new Matrix4().makeRotationZ(days * 14.1844 * Math.PI / 180)).transformDirection(fixedReference);
+    return { root, fixed, surface, epoch, manager, event, cme, expectedWorld };
+  }
+
+  it.each([0, 3])('co-rotates a physics flare while keeping its CME at the day %s launch orientation', launchOffsetDays => {
+    const { root, fixed, surface, epoch, manager, event, cme, expectedWorld } = physicsEvent(launchOffsetDays);
+    expect(event.surfaceSprite?.parent).toBe(surface);
+    expect(event.group.parent).toBe(fixed);
+    const launchAxis = new Vector3(0, 1, 0).transformDirection(cme.matrixWorld);
+    expect(launchAxis.distanceTo(expectedWorld(launchOffsetDays))).toBeLessThan(2e-10);
+    expect(event.surfaceSprite.getWorldPosition(new Vector3()).normalize().distanceTo(launchAxis)).toBeLessThan(2e-10);
+    const anchor = [event.longitude, event.latitude];
+
+    surface.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(epoch + launchOffsetDays + 8));
+    // A subsequent payload must not reinterpret this already-active event's anchor.
+    manager.update(1, 0, SOLAR_RADIUS_AU, { ...payload(), epoch_jd_tdb: epoch + 8, corona: { features: [] } }, 1);
+    root.updateMatrixWorld(true);
+    const spriteDirection = event.surfaceSprite.getWorldPosition(new Vector3()).normalize();
+    expect(spriteDirection.distanceTo(expectedWorld(launchOffsetDays + 8))).toBeLessThan(2e-10);
+    expect(spriteDirection.angleTo(launchAxis) * 180 / Math.PI).toBeGreaterThan(100);
+    expect(new Vector3(0, 1, 0).transformDirection(cme.matrixWorld).distanceTo(launchAxis)).toBeLessThan(2e-10);
+    expect([event.longitude, event.latitude]).toEqual(anchor);
+    const params = solarFlareParamsInSurfaceFrame(manager.getActiveFlaresParams());
+    const shaderDirection = new Vector3(Math.cos(params[1]) * Math.cos(params[0]), Math.sin(params[1]), Math.cos(params[1]) * Math.sin(params[0]))
+      .transformDirection(surface.matrixWorld);
+    expect(shaderDirection.distanceTo(spriteDirection)).toBeLessThan(2e-10);
+    manager.dispose();
+  });
+
+  it.each(['expiry', 'dispose'])('removes both event parents and disposes both materials once on %s', cleanup => {
+    const { fixed, surface, manager, event, cme } = physicsEvent();
+    expect(event.surfaceSprite?.parent).toBe(surface);
+    const spriteDisposed = vi.fn(), cmeDisposed = vi.fn();
+    event.surfaceSprite.material.addEventListener('dispose', spriteDisposed);
+    (cme.material as ShaderMaterial).addEventListener('dispose', cmeDisposed);
+    if (cleanup === 'expiry') manager.update(60, 0, SOLAR_RADIUS_AU);
+    else manager.dispose();
+    expect(manager.events).toHaveLength(0);
+    expect(fixed.children).toHaveLength(0);
+    expect(surface.children).toHaveLength(0);
+    manager.dispose();
+    event.dispose();
+    expect(spriteDisposed).toHaveBeenCalledTimes(1);
+    expect(cmeDisposed).toHaveBeenCalledTimes(1);
   });
 });

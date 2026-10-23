@@ -532,7 +532,7 @@ export function createSunController({
     node.add(sunFlareGroup);
     sunFlareGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(J2000_JD));
     sunFlareGroup.userData.lockBodySpin = true;
-    solarFlareManager = new SolarFlareManager(sunFlareGroup);
+    solarFlareManager = new SolarFlareManager(sunFlareGroup, spinGroup);
 
     rebuildMagneticFieldLines(true, 0.5);
 
@@ -652,8 +652,8 @@ export function createSunController({
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
     const geometryBlendView = solarLayerFrames.loops ? solarBlendView : null;
-    const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots, julianDate);
-    const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme, J2000_JD);
+    const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots);
+    const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme);
 
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
@@ -665,13 +665,13 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), julianDate)
+      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes)
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
-      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams(), julianDate));
+      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams()));
     }
 
     if (sunMagneticFieldGroup) {
