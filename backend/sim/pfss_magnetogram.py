@@ -31,11 +31,18 @@ from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
-from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
+from .solar_active_regions import (
+    J2000_JD,
+    ActiveRegionSeed,
+    build_active_regions,
+    region_lifetime,
+    region_polarity_dirs,
+)
 from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
     provider_carrington_state_from_crnow,
@@ -121,7 +128,11 @@ def synthetic_magnetogram(
     # Dipole tilt: g_1^1 (tilted component, increases at solar max)
     tilt_angle = 0.2 * activity  # ~12° at solar max
     g11 = g10 * math.sin(tilt_angle)
-    br += g11 * sin_theta * np.cos(phi_grid)
+    tilt_phase = (
+        math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY)
+        * (jd - J2000_JD)
+    ) % math.tau
+    br += g11 * sin_theta * np.cos(phi_grid - tilt_phase)
 
     # Quadrupole: g_2^0
     g20 = 2.5 * activity
@@ -862,7 +873,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v2"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v3"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
