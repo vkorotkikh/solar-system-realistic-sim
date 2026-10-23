@@ -350,12 +350,14 @@ export const SUN_CORONA_VERTEX_SHADER = `
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
+varying vec3 vSunCenterWorld;
 
 void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
   vSunNormal = normalize(normal); // body frame, as in the surface shader
+  vSunCenterWorld = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
@@ -383,6 +385,7 @@ uniform float coronalHoleCount;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
+varying vec3 vSunCenterWorld;
 
 float hash13(vec3 p) {
   p = fract(p * 0.1031);
@@ -460,11 +463,14 @@ float demChannelResponse(float temperatureMK, float channelId) {
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 sunNormal = normalize(vSunNormal); // body frame: streamer belt and coronal holes
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float ndotv = clamp(abs(dot(normalDir, viewDir)), 0.0, 1.0);
-  float limb = clamp(1.0 - ndotv, 0.0, 1.0);
-  float offLimb = smoothstep(0.78, 0.998, limb);
+  vec3 ray = vWorldPosition - cameraPosition;
+  vec3 rayDirection = ray / max(length(ray), 1e-6);
+  vec3 centerFromCamera = vSunCenterWorld - cameraPosition;
+  float impactR = length(centerFromCamera - rayDirection * dot(centerFromCamera, rayDirection))
+    / max(sunRadius, 0.0001);
+  float offLimb = smoothstep(1.0, 1.02, impactR);
   float rim = pow(offLimb, 1.8);
+  float fragR = max(impactR, 1.001);
   float turbulence = fbm(normalDir * 9.0 + vec3(time * 0.38, -time * 0.26, time * 0.19));
   float burst = smoothstep(0.72, 0.95, turbulence);
   float pulse = 0.78 + 0.22 * sin(time * 1.4 + turbulence * 6.8);
@@ -474,7 +480,6 @@ void main() {
   // ─── K-Corona Radial Intensity Falloff (Baumbach/van de Hulst 1950) ────────
   // N(r) = 10^8 * (0.036*r^-1.5 + 1.55*r^-6 + 2.99*r^-16)
   // Simplified to two dominant terms for real-time rendering.
-  float fragR = max(length(vWorldPosition) / max(sunRadius, 0.0001), 1.001);
   float coronaRadial = 0.036 * pow(fragR, -1.5) + 1.55 * pow(fragR, -6.0);
   coronaRadial = coronaRadial / 1.586; // normalize to ~1.0 at r=1
   alpha *= coronaRadial;
