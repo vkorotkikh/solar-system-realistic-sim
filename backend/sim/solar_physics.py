@@ -424,8 +424,12 @@ class SolarCoronaPhysicsModel:
         eruption_gate = 0.0
         if tube.family == "cme":
             eruption_gate = _clamp((rapid - 0.7) / 0.3, 0.0, 1.0) * _clamp((micro - 0.6) / 0.4, 0.0, 1.0)
-        lifetime, _, _ = region_lifetime(self.active_regions[tube.region_idx], jd)
-        return emergence * lifetime, eruption_gate * lifetime
+        lifetime_envelope, _, _ = region_lifetime(
+            self.active_regions[tube.region_idx], jd
+        )
+        if lifetime_envelope <= 0.0:
+            return 0.0, 0.0
+        return emergence, eruption_gate
 
     def _feature_score(
         self,
@@ -566,6 +570,8 @@ class SolarCoronaPhysicsModel:
             width = 0.02 + region.strength * 0.1 + emergence * 0.03
 
         peak = _clamp(peak, 1.02, 4.8)
+        peak = 1.0 + (peak - 1.0) * lifetime_envelope
+        width *= lifetime_envelope
 
         field_strength_gauss, temperature_mk, electron_density_m3, alfven_speed_kms, sound_speed_kms = self._thermodynamic_state(
             tube,
@@ -597,6 +603,7 @@ class SolarCoronaPhysicsModel:
                 20.0,
                 650.0,
             )
+        speed_kms *= lifetime_envelope
 
         arc: list[list[float]] = []
         pair_normal = _normalize(_cross(source_dir, sink_dir))
@@ -684,7 +691,7 @@ class SolarCoronaPhysicsModel:
             "alfven_speed_kms": alfven_speed_kms,
             "expansion_speed_kms": speed_kms,
             "brightness": brightness,
-            "emergence": emergence,
+            "emergence": emergence * lifetime_envelope,
             "peak_extent_solar_radii": peak,
             "arc": arc,
         }

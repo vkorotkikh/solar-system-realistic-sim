@@ -4,6 +4,7 @@ import math
 from dataclasses import replace
 import pytest
 
+from sim import solar_physics as solar
 from sim.pfss_magnetogram import (
     decompose_spherical_harmonics,
     synthetic_magnetogram,
@@ -89,6 +90,140 @@ def test_zero_activity_synthetic_background_is_epoch_invariant() -> None:
     later = synthetic_magnetogram(0.0, 2_460_000.0, grid=grid, active_regions=())
 
     np.testing.assert_array_equal(later, j2000)
+
+
+@pytest.mark.parametrize("envelope", [1.0, 0.5, 0.25, 0.02, 0.0])
+def test_region_envelope_scales_feature_score_once_without_changing_alive_phase(
+    monkeypatch: pytest.MonkeyPatch,
+    envelope: float,
+) -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=64)
+    tube = replace(model.seeds[0], idx=95, family="cme")
+    jd = solar.J2000_JD
+
+    def set_envelope(value: float) -> None:
+        monkeypatch.setattr(
+            solar,
+            "region_lifetime",
+            lambda _region, _jd: (value, solar.J2000_JD - 1.0, 50.0),
+        )
+
+    set_envelope(1.0)
+    intrinsic_phase = model._feature_temporal_state(tube, jd, jd)
+    full_score = model._feature_score(tube, jd, jd, 0.8)
+    assert intrinsic_phase[0] > 0.0
+    assert intrinsic_phase[1] > 0.0
+
+    set_envelope(envelope)
+    phase = model._feature_temporal_state(tube, jd, jd)
+    score = model._feature_score(tube, jd, jd, 0.8)
+
+    assert phase == pytest.approx(intrinsic_phase if envelope > 0.0 else (0.0, 0.0))
+    assert score == pytest.approx(full_score * envelope, rel=1e-12, abs=1e-15)
+
+
+@pytest.mark.parametrize("envelope", [1.0, 0.5, 0.25, 0.02, 0.0])
+def test_region_envelope_fades_cme_outputs_and_geometry_once(
+    monkeypatch: pytest.MonkeyPatch,
+    envelope: float,
+) -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=64)
+    tube = replace(model.seeds[0], idx=95, family="cme")
+    intrinsic_emergence = 0.6
+    intrinsic_eruption = 0.7
+
+    def build(value: float) -> dict[str, object]:
+        monkeypatch.setattr(
+            solar,
+            "region_lifetime",
+            lambda _region, _jd: (value, solar.J2000_JD - 1.0, 50.0),
+        )
+        return model._build_feature_arc(
+            tube,
+            solar.J2000_JD,
+            solar.J2000_JD,
+            0.8,
+            intrinsic_emergence,
+            intrinsic_eruption,
+            12,
+        )
+
+    full = build(1.0)
+    collapsed = build(0.0)
+    feature = build(envelope)
+
+    for key in (
+        "field_strength_gauss",
+        "alfven_speed_kms",
+        "expansion_speed_kms",
+    ):
+        assert feature[key] == pytest.approx(full[key] * envelope, rel=1e-12, abs=1e-15)
+    expected_brightness = min(
+        1.0,
+        max(
+            0.02,
+            0.05
+            + 0.26 * model.active_regions[tube.region_idx].strength
+            + 0.22 * 0.8
+            + 0.24 * intrinsic_emergence
+            + 0.08 * (feature["temperature_mk"] / 5.0)
+            + 0.33 * intrinsic_eruption,
+        ),
+    ) * envelope
+    assert feature["brightness"] == pytest.approx(expected_brightness, rel=1e-12)
+    assert feature["peak_extent_solar_radii"] - 1.0 == pytest.approx(
+        (full["peak_extent_solar_radii"] - 1.0) * envelope,
+        rel=1e-12,
+        abs=1e-15,
+    )
+    assert feature["emergence"] == pytest.approx(intrinsic_emergence * envelope)
+    assert feature["region_lifetime_envelope"] == envelope
+
+    full_arc = np.asarray(full["arc"])
+    collapsed_arc = np.asarray(collapsed["arc"])
+    actual_arc = np.asarray(feature["arc"])
+    np.testing.assert_allclose(
+        actual_arc,
+        collapsed_arc + envelope * (full_arc - collapsed_arc),
+        rtol=0.0,
+        atol=2e-15,
+    )
+    if envelope == 0.0:
+        np.testing.assert_allclose(
+            actual_arc,
+            np.repeat(actual_arc[:1], len(actual_arc), axis=0),
+            rtol=0.0,
+            atol=2e-15,
+        )
+        np.testing.assert_allclose(np.linalg.norm(actual_arc, axis=1), 1.0, atol=2e-15)
+    if envelope == 0.02:
+        assert feature["field_strength_gauss"] < 12.0
+
+
+def test_dormant_regions_are_omitted_from_the_serialized_corona(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=64)
+    monkeypatch.setattr(
+        solar,
+        "region_lifetime",
+        lambda _region, _jd: (0.0, solar.J2000_JD - 1.0, 50.0),
+    )
+    monkeypatch.setattr(
+        model._pfss_cache,
+        "get_or_compute",
+        lambda **_kwargs: {"geometry_frame": None, "lines": []},
+    )
+
+    state = model.sample_state(
+        jd=solar.J2000_JD,
+        fidelity="preview",
+        max_features=8,
+    )
+
+    assert state["corona"]["feature_count"] == 0
+    assert state["corona"]["features"] == []
+    assert state["corona"]["max_extent_solar_radii"] == 1.0
 
 
 def test_pfss_snapshot_depends_on_the_coronal_region_seed():
