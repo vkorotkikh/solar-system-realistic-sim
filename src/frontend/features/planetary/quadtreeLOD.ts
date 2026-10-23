@@ -190,6 +190,7 @@ export class PlanetQuadtree {
     faces: QuadtreeNode[] = [];
     material: ShaderMaterial;
     readonly cameraLocalPosition = new Vector3();
+    private disposed = false;
 
     constructor(
         public planetId: string,
@@ -271,5 +272,16 @@ export class PlanetQuadtree {
 
     setLightDirection(dir: Vector3) {
         this.material.uniforms.uLightDirection.value.copy(dir).normalize();
+    }
+
+    dispose() {
+        if (this.disposed) return;
+        this.disposed = true;
+        for (const face of this.faces) {
+            face.destroy();
+        }
+        this.faces.length = 0;
+        this.group.clear();
+        this.material.dispose();
     }
 }
