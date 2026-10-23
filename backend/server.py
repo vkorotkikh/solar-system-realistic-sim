@@ -2767,6 +2767,24 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
             },
         )
 
+    energy_kwh_per_kg = max(1e-9, float(payload.power_required_kw_per_kg_day))
+    effective_extraction_rate_kg_day = min(
+        float(payload.extraction_rate_kg_day),
+        float(payload.available_power_kw) / energy_kwh_per_kg,
+    )
+    effective_mined_ore_kg = effective_extraction_rate_kg_day * float(payload.mining_days)
+    if not math.isfinite(effective_mined_ore_kg):
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            "Effective mined ore must remain finite.",
+            context={
+                "extractionRateKgDay": float(payload.extraction_rate_kg_day),
+                "effectiveExtractionRateKgDay": effective_extraction_rate_kg_day,
+                "miningDays": float(payload.mining_days),
+            },
+        )
+
     if int(payload.risk_samples) > MISSION_PLAN_MAX_RISK_SAMPLES:
         raise _trajectory_http_exception(
             413,

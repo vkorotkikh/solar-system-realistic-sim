@@ -1101,6 +1101,89 @@ def test_mission_complexity_error_is_structured() -> None:
     assert detail["context"]["maximumRiskSamples"] == 5_000
 
 
+def test_mission_non_finite_effective_mining_output_is_rejected_before_work(monkeypatch) -> None:
+    invoked = False
+
+    def fake_mission(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        return {"recommendation": {"outbound": {}}, "alternatives": []}
+
+    monkeypatch.setattr(server, "_run_mission_plan", fake_mission)
+    response = client.post(
+        "/mission/plan",
+        json={
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "assist_pool": [],
+            "ephemeris_provider": "kepler",
+            "extraction_rate_kg_day": 1e308,
+            "available_power_kw": 1e300,
+            "power_required_kw_per_kg_day": 1e-9,
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"]["code"] == "mission_complexity_limit"
+    assert invoked is False
+
+
+def test_mission_huge_mining_duration_keeps_existing_epoch_rejection(monkeypatch) -> None:
+    invoked = False
+
+    def fake_mission(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        return {"recommendation": {"outbound": {}}, "alternatives": []}
+
+    monkeypatch.setattr(server, "_run_mission_plan", fake_mission)
+    response = client.post(
+        "/mission/plan",
+        json={
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "assist_pool": [],
+            "ephemeris_provider": "kepler",
+            "mining_days": 1e308,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "trajectory_epoch_out_of_range"
+    assert invoked is False
+
+
+def test_mission_accepts_large_finite_power_limited_mining_output(monkeypatch) -> None:
+    invoked = False
+
+    def fake_mission(*_args, **_kwargs):
+        nonlocal invoked
+        invoked = True
+        return {"recommendation": {"outbound": {}}, "alternatives": []}
+
+    monkeypatch.setattr(server, "_run_mission_plan", fake_mission)
+    response = client.post(
+        "/mission/plan",
+        json={
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "assist_pool": [],
+            "ephemeris_provider": "kepler",
+            "extraction_rate_kg_day": 1e308,
+            "available_power_kw": 1e12,
+        },
+    )
+
+    assert response.status_code == 200
+    assert invoked is True
+
+
 def test_mission_internal_value_error_is_not_mislabeled_as_bad_input(monkeypatch) -> None:
     monkeypatch.setattr(server, "_mission_plan_concurrent_guard", threading.BoundedSemaphore(1))
     monkeypatch.setattr(

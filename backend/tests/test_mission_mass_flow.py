@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from mission.mining_service import MiningService
@@ -38,6 +40,52 @@ def test_max_closable_cargo_is_the_largest_cargo_that_closes() -> None:
     assert SERVICE.max_closable_cargo_kg(
         VEHICLE, available_cargo_kg=1e4, payload_mass_kg=6_500.0, burns_km_s=[30.0, 30.0], cargo_burn_index=1
     ) is None
+
+
+def _search_with_evaluation_limit(
+    *, available_cargo_kg: float, largest_closable_kg: float, limit: int
+):
+    service = VehicleService()
+    evaluations = 0
+
+    def evaluate_burn_budget(_vehicle, *, cargo_added_kg, **_kwargs):
+        nonlocal evaluations
+        evaluations += 1
+        assert evaluations <= limit, "cargo bisection did not make progress"
+        return {"feasible": cargo_added_kg[0] <= largest_closable_kg}
+
+    service.evaluate_burn_budget = evaluate_burn_budget
+    cargo = service.max_closable_cargo_kg(
+        VEHICLE,
+        payload_mass_kg=6_500.0,
+        burns_km_s=[1.0],
+        cargo_burn_index=0,
+        available_cargo_kg=available_cargo_kg,
+    )
+    return cargo, evaluations
+
+
+def test_max_closable_cargo_terminates_for_infinite_available_cargo() -> None:
+    cargo, evaluations = _search_with_evaluation_limit(
+        available_cargo_kg=math.inf,
+        largest_closable_kg=100.0,
+        limit=1_100,
+    )
+
+    assert cargo == pytest.approx(100.0, abs=1.0)
+    assert evaluations <= 1_100
+
+
+def test_max_closable_cargo_terminates_when_midpoint_cannot_progress() -> None:
+    largest_closable_kg = float(2**60)
+    cargo, evaluations = _search_with_evaluation_limit(
+        available_cargo_kg=float(2**62),
+        largest_closable_kg=largest_closable_kg,
+        limit=100,
+    )
+
+    assert cargo == largest_closable_kg
+    assert evaluations <= 100
 
 
 def test_return_propellant_is_not_subtracted_from_the_cargo_again() -> None:
