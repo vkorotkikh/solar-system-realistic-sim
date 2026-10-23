@@ -316,6 +316,7 @@ class KuiperBeltEngine:
         self._massive_count = self.sim.N
 
         self._verify_perturbers_bound(perturbers, velocity_units)
+        self.sim.N_active = self._massive_count
 
         # ── Test particles ────────────────────────────────────────────
         center_r = math.sqrt(center_au[0] ** 2 + center_au[1] ** 2)
