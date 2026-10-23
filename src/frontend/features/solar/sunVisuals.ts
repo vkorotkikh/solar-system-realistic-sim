@@ -756,6 +756,7 @@ uniform float time;
 uniform float sunRadius;
 uniform float chromoActivity;
 uniform float chromoOpacity;  // driven from JS, not material.opacity
+uniform float viewportHeight; // active drawing-buffer viewport height in pixels
 
 varying float vAlpha;
 varying float vHeight; // 0 = base, 1 = tip
@@ -797,12 +798,18 @@ void main() {
   // Type II fade faster overall
   if (isTypeII) vAlpha *= 0.7;
 
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(spiculePos, 1.0);
+  vec4 viewPosition = modelViewMatrix * vec4(spiculePos, 1.0);
+  gl_Position = projectionMatrix * viewPosition;
 
-  // Distance-scaled point size (perspective attenuation)
-  float dist = length(cameraPosition - (modelMatrix * vec4(spiculePos, 1.0)).xyz);
-  float baseSize = isTypeII ? 1.2 : 2.0; // Type II are thinner (~200 km vs ~660 km)
-  gl_PointSize = clamp(baseSize * (300.0 / max(dist, 0.001)), 0.5, 6.0);
+  // Project the rendered physical width to framebuffer pixels. The direction
+  // transform carries the layer's display/activity scale without translation.
+  float objectWidth = sunRadius * (
+    isTypeII ? (200.0 / 696340.0) : (660.0 / 696340.0)
+  );
+  float viewWidth = length((modelViewMatrix * vec4(aAxis * objectWidth, 0.0)).xyz);
+  float projectedSize = viewWidth * projectionMatrix[1][1] * viewportHeight * 0.5
+    / max(-viewPosition.z, 0.000001);
+  gl_PointSize = clamp(projectedSize, 0.5, 6.0);
 }
 `;
 
@@ -877,6 +884,7 @@ export function createChromosphereLayer(sunDisplayRadius: number, count = 8000):
       sunRadius: { value: sunDisplayRadius },
       chromoActivity: { value: 0.5 },
       chromoOpacity: { value: 0.3 },  // controlled via updateChromosphereLayer
+      viewportHeight: { value: 1 },
       chromoColor: { value: new Color('#ff8842') }  // default warm orange
     },
     transparent: true,
@@ -891,6 +899,11 @@ export function createChromosphereLayer(sunDisplayRadius: number, count = 8000):
   points.userData.activityScale = 1.004;
   points.renderOrder = 4;
   points.frustumCulled = false;
+  const activeViewport = new Vector4();
+  points.onBeforeRender = (renderer) => {
+    renderer.getCurrentViewport(activeViewport);
+    material.uniforms.viewportHeight.value = Math.max(1, activeViewport.w);
+  };
   return points;
 }
 
