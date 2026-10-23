@@ -57,6 +57,7 @@ uniform float observationEmission;
 // Sunspot seed positions: xy = (lon, lat) in radians, z = size (0.01..0.08), w = intensity
 // w == 0.0 means the slot is inactive (no sunspot)
 uniform vec4 sunspotSeeds[8];
+uniform float sunspotPatternSeeds[8];
 uniform vec4 flarePoints[3];
 
 varying vec2 vUv;
@@ -220,7 +221,7 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 // Each uniform slot represents a sunspot GROUP, not an individual spot.
 // Generates 2-5 sub-spots per group at slightly offset positions with varying sizes.
 // At solar max with 8 groups × 5 spots = up to 40 visible spots.
-float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
+float sunspotGroupDarkening(vec3 nDir, vec4 seed, float patternSeed, float timeSec, float mu) {
   if (seed.w < 0.001) return 1.0;
   float dark = 1.0;
   // Cluster count: 2-5 based on group intensity
@@ -228,9 +229,9 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   for (int c = 0; c < 5; c++) {
     if (c >= clusterCount) break;
     float cSeed = float(c) * 0.618033;
-    float lonOff = (hash12(vec2(seed.x, cSeed)) - 0.5) * seed.z * 1.5;
-    float latOff = (hash12(vec2(seed.y, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
-    float subSize = seed.z * (0.3 + hash12(vec2(cSeed, seed.x)) * 0.7);
+    float lonOff = (hash12(vec2(patternSeed, cSeed)) - 0.5) * seed.z * 1.5;
+    float latOff = (hash12(vec2(patternSeed + 0.37, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
+    float subSize = seed.z * (0.3 + hash12(vec2(cSeed, patternSeed + 0.73)) * 0.7);
     vec4 subSpot = vec4(seed.x + lonOff, seed.y + latOff, subSize, seed.w);
     dark = min(dark, sunspotDarkening(nDir, subSpot, timeSec, mu));
   }
@@ -277,14 +278,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[0], sunspotPatternSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[1], sunspotPatternSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[2], sunspotPatternSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[3], sunspotPatternSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[4], sunspotPatternSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[5], sunspotPatternSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[6], sunspotPatternSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[7], sunspotPatternSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -607,7 +608,8 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
           new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
           new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)
         ]
-      }
+      },
+      sunspotPatternSeeds: { value: new Float32Array(8) }
     }
   });
   material.toneMapped = false;
@@ -666,7 +668,14 @@ function collectPhysicsDrivenSunspotGroups(physicsState: SolarPhysicsStateLike |
     const regionId = `${feature?.active_region_id ?? feature?.region_id ?? feature?.id ?? `sunspot-${grouped.size}`}`;
     const existing = grouped.get(regionId);
     if (!existing || score > existing.score) {
-      grouped.set(regionId, { lon, lat, angularRadius, intensity, score });
+      grouped.set(regionId, {
+        lon,
+        lat,
+        angularRadius,
+        intensity,
+        score,
+        patternSeed: stableHash01(regionId)
+      });
     }
   }
 
@@ -685,11 +694,13 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
 
   const TWO_PI = Math.PI * 2;
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
+  const patternSeeds = sunSurfaceMaterial.uniforms.sunspotPatternSeeds?.value as Float32Array | number[] | undefined;
   const physicsDrivenGroups = collectPhysicsDrivenSunspotGroups(physicsState, activity);
   let seedIndex = 0;
 
   for (const group of physicsDrivenGroups) {
     seeds[seedIndex].set(group.lon, group.lat, group.angularRadius, group.intensity);
+    if (patternSeeds) patternSeeds[seedIndex] = group.patternSeed;
     seedIndex += 1;
     if (seedIndex >= seeds.length) return;
   }
@@ -700,6 +711,7 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
   for (let i = seedIndex; i < 8; i++) {
     if (i >= targetCount) {
       seeds[i].set(0, 0, 0, 0);
+      if (patternSeeds) patternSeeds[i] = 0;
       continue;
     }
 
@@ -713,6 +725,7 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
     const angularRadius = 0.025 + s * 0.08 * activity;
     const intensity = 0.55 + s2 * 0.35;
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
+    if (patternSeeds) patternSeeds[i] = stableHash01(`synthetic-sunspot-${syntheticIndex}`);
   }
 }
 
