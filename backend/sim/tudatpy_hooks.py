@@ -31,12 +31,14 @@ unchanged.
 
 import logging
 import math
+import threading
 from copy import copy
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from .base import SimulationEngine
+from .epoch_contract import SUPPORTED_JD_MAX_TDB, SUPPORTED_JD_MIN_TDB
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +187,10 @@ def _equatorial_to_ecliptic_j2000(vector: np.ndarray) -> np.ndarray:
     )
 
 
+class TudatSeekCancelledError(RuntimeError):
+    """Raised when a cooperative Tudat seek is cancelled by its owner."""
+
+
 # ── Engine ────────────────────────────────────────────────────────────────────
 
 
@@ -240,6 +246,7 @@ class TudatPyEngine(SimulationEngine):
         self._body_system: Any = None
         self._acceleration_models: Any = None
         self._initial_energy: float = 0.0
+        self._seek_cancel_event = threading.Event()
 
     # ── SimulationEngine interface ────────────────────────────────────
 
@@ -258,17 +265,44 @@ class TudatPyEngine(SimulationEngine):
     def list_body_ids(self) -> List[str]:
         return list(self._body_ids)
 
+    @property
+    def supported_jd_range(self) -> tuple[float, float]:
+        return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
+
+    def cancel_pending_operation(self) -> None:
+        self._seek_cancel_event.set()
+
+    def _raise_if_seek_cancelled(self) -> None:
+        if self._seek_cancel_event.is_set():
+            raise TudatSeekCancelledError("Tudat epoch seek was cancelled")
+
+    @staticmethod
+    def _validate_supported_jd(jd: float) -> float:
+        try:
+            requested_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Julian date must be finite JDTDB") from exc
+        if not math.isfinite(requested_jd):
+            raise ValueError("Julian date must be finite JDTDB")
+        _jd_to_seconds(requested_jd)
+        if not SUPPORTED_JD_MIN_TDB <= requested_jd <= SUPPORTED_JD_MAX_TDB:
+            raise ValueError(
+                "Julian date is outside the validated TudatPy interval "
+                f"[{SUPPORTED_JD_MIN_TDB}, {SUPPORTED_JD_MAX_TDB}] JDTDB"
+            )
+        return requested_jd
+
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
         # Validate before entering native code. Failed setup must not leave the
         # old trajectory paired with a new body list, origin, or epoch.
-        _jd_to_seconds(start_jd)
+        requested_start_jd = self._validate_supported_jd(start_jd)
         selected_ids = [body["id"] for body in bodies if body["id"] in _ID_TO_SPICE]
         if "sun" not in selected_ids:
             raise ValueError("TudatPy initialization requires the Sun")
         if len(set(selected_ids)) != len(selected_ids):
             raise ValueError("TudatPy initialization requires unique body IDs")
         candidate = copy(self)
-        candidate._initialize_candidate(bodies, start_jd)
+        candidate._initialize_candidate(bodies, requested_start_jd)
         self.__dict__.update(candidate.__dict__)
 
     def _initialize_candidate(self, bodies: List[Dict], start_jd: float) -> None:
@@ -478,17 +512,43 @@ class TudatPyEngine(SimulationEngine):
         return self._jd
 
     def set_julian_date(self, jd: float) -> None:
-        if not math.isfinite(jd):
-            raise ValueError("Julian date must be finite JDTDB")
-        target_s = _jd_to_seconds(jd)
+        requested_jd = self._validate_supported_jd(jd)
+        target_s = _jd_to_seconds(requested_jd)
         if (
             self._chunk_epochs is None
             or target_s > self._chunk_end_s
             or target_s < self._chunk_start_s
         ):
-            self._propagate_chunk(target_s)
+            self._seek_cancel_event.clear()
+            candidate = copy(self)
+            candidate._raise_if_seek_cancelled()
+            while (
+                candidate._chunk_epochs is None
+                or target_s > candidate._chunk_end_s
+                or target_s < candidate._chunk_start_s
+            ):
+                candidate._propagate_chunk(target_s)
+                candidate._raise_if_seek_cancelled()
+            candidate_state = candidate._interpolate_at(target_s)
+            candidate._raise_if_seek_cancelled()
+            (
+                self._chunk_epochs,
+                self._chunk_states,
+                self._chunk_start_s,
+                self._chunk_end_s,
+                self._current_state,
+                self._jd,
+            ) = (
+                candidate._chunk_epochs,
+                candidate._chunk_states,
+                candidate._chunk_start_s,
+                candidate._chunk_end_s,
+                candidate_state,
+                requested_jd,
+            )
+            return
         self._current_state = self._interpolate_at(target_s)
-        self._jd = jd
+        self._jd = requested_jd
 
     def get_energy(self) -> float:
         """Point-mass energy in SI, SSB/J2000 (excludes harmonic potential)."""
@@ -644,6 +704,10 @@ class TudatPyEngine(SimulationEngine):
     def _propagate_chunk(self, center_epoch_s: float) -> None:
         """Extend the trajectory from its integrated boundary, in either direction."""
         chunk_s = self.CHUNK_DAYS * DAY_S
+        if not math.isfinite(chunk_s) or chunk_s <= 0.0:
+            raise ValueError("TudatPy CHUNK_DAYS must be finite and positive")
+        supported_start_s = _jd_to_seconds(SUPPORTED_JD_MIN_TDB)
+        supported_end_s = _jd_to_seconds(SUPPORTED_JD_MAX_TDB)
         direction = 1
         if self._chunk_epochs is None or self._chunk_states is None:
             start_s = center_epoch_s
@@ -653,6 +717,8 @@ class TudatPyEngine(SimulationEngine):
                 body_system=self._body_system,
                 initial_time=start_s,
             )
+            if start_s + chunk_s > supported_end_s:
+                direction = -1
         elif center_epoch_s < self._chunk_start_s:
             direction = -1
             start_s = self._chunk_start_s
@@ -660,8 +726,11 @@ class TudatPyEngine(SimulationEngine):
         else:
             start_s = self._chunk_end_s
             initial_state = self._chunk_states[-1].copy()
-        end_s = (max(center_epoch_s, start_s + chunk_s) if direction > 0
-                 else min(center_epoch_s, start_s - chunk_s))
+        end_s = (
+            min(start_s + chunk_s, supported_end_s)
+            if direction > 0
+            else max(start_s - chunk_s, supported_start_s)
+        )
 
         # Termination
         termination = _propagation_setup.propagator.time_termination(
