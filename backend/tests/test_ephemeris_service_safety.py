@@ -395,6 +395,28 @@ def test_horizons_requires_target_and_center_source_headers(
         service.sample_state("earth", 2_460_400.5)
 
 
+@pytest.mark.parametrize("header", [b"Earth (399)", b"Sun (10)"])
+@pytest.mark.parametrize("source", [b"", b"   "])
+def test_horizons_rejects_blank_target_and_center_source_labels(
+    monkeypatch: pytest.MonkeyPatch,
+    header: bytes,
+    source: bytes,
+) -> None:
+    payload = _horizons_payload().replace(
+        header + b" {source: DE441}",
+        header + b" {source: " + source + b"}",
+    )
+    monkeypatch.setattr(
+        module, "_horizons_urlopen", lambda _request, *, timeout: _Response(payload)
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="source ephemeris"):
+        service.sample_state("earth", 2_460_400.5)
+
+
 @pytest.mark.parametrize("version", [None, "", "   ", 1.2])
 def test_horizons_requires_a_nonempty_string_api_version(
     monkeypatch: pytest.MonkeyPatch,

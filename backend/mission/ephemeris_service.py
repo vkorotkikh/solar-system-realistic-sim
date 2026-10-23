@@ -1612,9 +1612,11 @@ def _parse_horizons_payload(
         if not all(math.isfinite(value) for value in vector):
             raise ValueError("response returned a non-finite state")
 
-        if re.search(r"\{source:\s*([^}]+)\}", target_header) is None:
+        target_source_match = re.search(r"\{source:\s*([^}]*)\}", target_header)
+        if target_source_match is None or not target_source_match.group(1).strip():
             raise ValueError("target header omitted the source ephemeris")
-        if re.search(r"\{source:\s*([^}]+)\}", center_header) is None:
+        center_source_match = re.search(r"\{source:\s*([^}]*)\}", center_header)
+        if center_source_match is None or not center_source_match.group(1).strip():
             raise ValueError("center header omitted the source ephemeris")
         # Horizons may select a target-system kernel for both target and center
         # headers (for example jup365_merged). That per-query provenance cannot
