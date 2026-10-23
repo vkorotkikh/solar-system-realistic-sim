@@ -951,6 +951,164 @@ def test_horizons_transport_is_globally_serialized(
     assert maximum_active == 1
 
 
+def test_horizons_permit_queue_starts_a_fresh_upstream_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_entered = threading.Event()
+    guard = threading.BoundedSemaphore(1)
+    call_lock = threading.Lock()
+    received_timeouts: list[float] = []
+
+    def healthy_but_slow_urlopen(request: Any, *, timeout: float) -> _Response:
+        with call_lock:
+            received_timeouts.append(timeout)
+            if len(received_timeouts) == 1:
+                first_entered.set()
+        time.sleep(0.075)
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        return _Response(
+            _horizons_payload(
+                target_id=query["COMMAND"][0],
+                jd=float(query["TLIST"][0]),
+            )
+        )
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", healthy_but_slow_urlopen)
+    first_context = PlanningContext.with_timeout(1.0)
+    second_context = PlanningContext.with_timeout(1.0)
+    first_service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=first_context,
+    )
+    second_service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=second_context,
+    )
+    results: list[EphemerisSample] = []
+    errors: list[BaseException] = []
+
+    def sample(service: EphemerisService, body_id: str, jd: float) -> None:
+        try:
+            results.append(service.sample_state(body_id, jd))
+        except BaseException as exc:
+            errors.append(exc)
+
+    first = threading.Thread(target=sample, args=(first_service, "earth", 2_460_400.5))
+    second = threading.Thread(target=sample, args=(second_service, "mars", 2_460_401.5))
+    first.start()
+    assert first_entered.wait(timeout=1.0)
+    second.start()
+    first.join(timeout=1.0)
+    second.join(timeout=1.0)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert not errors
+    assert {sample.body_id for sample in results} == {"earth", "mars"}
+    assert len(received_timeouts) == 2
+    assert received_timeouts[1] >= 0.09
+    assert first_context.snapshot()["counters"]["provider_failures"] == 0
+    assert second_context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+
+    fresh = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=PlanningContext.with_timeout(1.0),
+    )
+    assert fresh.sample_state("jupiter", 2_460_402.5).source == "horizons"
+    assert len(received_timeouts) == 3
+
+
+def test_horizons_queue_expiry_is_context_control_not_provider_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guard = threading.BoundedSemaphore(1)
+    assert guard.acquire(blocking=False)
+    calls = 0
+
+    def forbidden_urlopen(_request: Any, *, timeout: float) -> _Response:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("expired queued request reached upstream")
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden_urlopen)
+    context = PlanningContext.with_timeout(0.025)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=1.0,
+        context=context,
+    )
+
+    try:
+        with pytest.raises(PlanningDeadlineExceeded):
+            service.sample_state("saturn", 2_460_403.5)
+    finally:
+        guard.release()
+
+    assert calls == 0
+    assert context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+
+
+def test_horizons_cancelled_queue_admission_never_starts_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guard = threading.BoundedSemaphore(1)
+    assert guard.acquire(blocking=False)
+    calls = 0
+
+    def forbidden_urlopen(_request: Any, *, timeout: float) -> _Response:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("cancelled queued request reached upstream")
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden_urlopen)
+    context = PlanningContext.with_timeout(1.0)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=1.0,
+        context=context,
+    )
+    errors: list[BaseException] = []
+
+    def sample() -> None:
+        try:
+            service.sample_state("uranus", 2_460_404.5)
+        except BaseException as exc:
+            errors.append(exc)
+
+    queued = threading.Thread(target=sample)
+    queued.start()
+    time.sleep(0.02)
+    assert queued.is_alive()
+    context.cancel("fixture_queue_cancelled")
+    guard.release()
+    queued.join(timeout=1.0)
+
+    assert not queued.is_alive()
+    assert len(errors) == 1
+    assert isinstance(errors[0], PlanningCancelled)
+    assert calls == 0
+    assert context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+    assert guard.acquire(blocking=False)
+    guard.release()
+
+
 def test_horizons_refuses_display_name_fallback_without_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

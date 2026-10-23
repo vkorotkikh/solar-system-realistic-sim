@@ -1213,46 +1213,45 @@ class EphemerisService:
         body_id: str,
         jd: float,
     ) -> bytes:
-        """Supervise terminable HTTP I/O under one deadline and remote permit.
+        """Supervise terminable HTTP I/O under an admitted upstream deadline.
 
-        Every redirect consumes the remaining original deadline and an external
-        request reservation. The supervisor can outlive a cancelled waiter only
-        until that deadline; child kill/reap always precedes permit release.
+        Queueing for the local permit is governed by the owning planning
+        context.  Once admitted, every redirect consumes the configured
+        upstream deadline (capped by that same context) and an external request
+        reservation. The supervisor can outlive a cancelled waiter only until
+        that deadline; child kill/reap always precedes permit release.
         """
 
         _validate_horizons_url(request.full_url)
-        absolute_deadline = min(
-            time.monotonic() + max(0.0, float(timeout_s)),
-            self._context.deadline_monotonic,
-        )
         acquired = False
         while not acquired:
             self._context_checkpoint()
-            remaining = absolute_deadline - time.monotonic()
-            if remaining <= 0.0:
-                raise EphemerisUpstreamTimeout(
-                    "Horizons transport capacity was unavailable before the request deadline",
-                    provider="horizons",
-                    body_id=body_id,
-                    jd=jd,
-                )
+            # Local admission must never consume the configured upstream
+            # timeout: a healthy request may wait behind another local caller.
+            # Bound each poll by the owning context instead, so expiry and
+            # cancellation retain their owner-control classification.
+            remaining = self._context_remaining_seconds()
+            if remaining is not None and remaining <= 0.0:
+                self._context_checkpoint()
             acquired = _HORIZONS_CONCURRENCY_GUARD.acquire(
-                timeout=min(HORIZONS_WAIT_POLL_S, remaining)
+                timeout=(
+                    HORIZONS_WAIT_POLL_S
+                    if remaining is None
+                    else min(HORIZONS_WAIT_POLL_S, max(0.001, remaining))
+                )
             )
 
         handed_to_transport = False
         try:
-            # Admission can race the request deadline/cancellation. Re-check
-            # after acquiring so a permit becoming free at the boundary cannot
-            # authorize a brand-new outbound call.
+            # Admission can race context expiry/cancellation. Re-check after
+            # acquiring so a permit becoming free at the boundary cannot
+            # authorize a brand-new outbound call, then start the upstream
+            # timeout only for admitted transport work.
             self._context_checkpoint()
-            if time.monotonic() >= absolute_deadline:
-                raise EphemerisUpstreamTimeout(
-                    "Horizons transport capacity was unavailable before the request deadline",
-                    provider="horizons",
-                    body_id=body_id,
-                    jd=jd,
-                )
+            absolute_deadline = min(
+                time.monotonic() + max(0.0, float(timeout_s)),
+                self._context.deadline_monotonic,
+            )
             # Charge only after global admission and immediately before the
             # outbound thread is started. A failed expensive call still owns
             # its reservation.
