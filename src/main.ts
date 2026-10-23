@@ -55,6 +55,7 @@ import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
+import { applyBodySpin } from './frontend/features/planetary/bodySpin';
 import { planetViewDistances } from './frontend/features/planetary/planetView';
 import {
   buildCatalogIndexContract,
@@ -221,11 +222,6 @@ const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 function bodyBaseRadiusAu(body: CatalogBody) {
   return simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
-}
-
-function normalizeRadians(angle: number) {
-  const wrapped = angle % TWO_PI;
-  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
 }
 
 function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
@@ -787,7 +783,7 @@ function updateBodyRotations(julianDate: number) {
       const offset = Number.isFinite(child.userData.rotationOffsetRad)
         ? child.userData.rotationOffsetRad
         : ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
-      child.rotation.y = normalizeRadians(offset + (TWO_PI / (rotH * 3_600)) * elapsedSeconds);
+      applyBodySpin(child, elapsedSeconds, rotH, offset);
     }
   }
 }

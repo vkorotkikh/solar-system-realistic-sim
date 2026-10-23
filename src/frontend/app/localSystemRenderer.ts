@@ -16,6 +16,7 @@ import {
   Vector3
 } from 'three';
 import { PlanetQuadtree } from '../features/planetary/quadtreeLOD';
+import { applyBodySpin } from '../features/planetary/bodySpin';
 import type { SimulationStateStore } from './stateStore';
 
 interface ToggleLike {
@@ -107,7 +108,6 @@ interface LocalSystemManifest {
 interface LocalSystemConstants {
   AU_KM: number;
   J2000_JD: number;
-  TWO_PI: number;
 }
 
 interface LocalSystemControls {
@@ -160,7 +160,6 @@ interface TextureTools {
 
 interface MathTools {
   stableHash: (value: string) => number;
-  normalizeRadians: (angle: number) => number;
 }
 
 interface OrbitTools {
@@ -206,8 +205,7 @@ export function createLocalSystemRenderer({
 }: CreateLocalSystemRendererArgs) {
   const {
     AU_KM,
-    J2000_JD,
-    TWO_PI
+    J2000_JD
   } = constants;
 
   const {
@@ -217,10 +215,7 @@ export function createLocalSystemRenderer({
     generatePlanetTexture
   } = textureTools;
 
-  const {
-    stableHash,
-    normalizeRadians
-  } = mathTools;
+  const { stableHash } = mathTools;
 
   const {
     propagateKeplerOrbit
@@ -559,11 +554,10 @@ export function createLocalSystemRenderer({
 
       const rotationPeriodHours = entry.mesh?.userData?.rotationPeriodHours;
       if (entry.mesh && Number.isFinite(rotationPeriodHours) && Math.abs(rotationPeriodHours) > 0.01) {
-        const angularSpeed = TWO_PI / (rotationPeriodHours * 3_600);
         const rotationOffset = Number.isFinite(entry.mesh.userData.rotationOffsetRad)
           ? entry.mesh.userData.rotationOffsetRad
           : 0;
-        entry.mesh.rotation.y = normalizeRadians(rotationOffset + angularSpeed * elapsedSeconds);
+        applyBodySpin(entry.mesh, elapsedSeconds, rotationPeriodHours, rotationOffset);
       }
 
       if (entry.mesh && entry.mesh.userData.isQuadtree) {
