@@ -20,6 +20,47 @@ describe('flare and CME lifetime', () => {
     });
   });
 
+  function cmeEvent(angularWidthDeg: number, latitudeRad = 0, longitudeRad = 0) {
+    const event = createSolarFlareEvent({
+      latitudeRad,
+      longitudeRad,
+      sunRadiusAu: SOLAR_RADIUS_AU,
+      angularWidthDeg,
+    });
+    const cme = event.group.children.find((child): child is Mesh => child instanceof Mesh);
+    if (!cme) throw new Error('CME mesh was not created');
+    return { event, cme };
+  }
+
+  function cmeGeometryStats(cme: Mesh) {
+    const position = cme.geometry.getAttribute('position');
+    const index = cme.geometry.getIndex();
+    if (!index) throw new Error('CME geometry must be indexed');
+
+    const a = new Vector3(), b = new Vector3(), c = new Vector3();
+    const edgeAb = new Vector3(), edgeAc = new Vector3(), triangleCentroid = new Vector3();
+    const weightedCentroid = new Vector3();
+    let area = 0;
+    for (let i = 0; i < index.count; i += 3) {
+      a.fromBufferAttribute(position, index.getX(i));
+      b.fromBufferAttribute(position, index.getX(i + 1));
+      c.fromBufferAttribute(position, index.getX(i + 2));
+      const triangleArea = edgeAb.subVectors(b, a).cross(edgeAc.subVectors(c, a)).length() * 0.5;
+      triangleCentroid.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+      weightedCentroid.addScaledVector(triangleCentroid, triangleArea);
+      area += triangleArea;
+    }
+
+    const directions = Array.from({ length: position.count }, (_, i) =>
+      new Vector3().fromBufferAttribute(position, i).normalize().applyQuaternion(cme.quaternion)
+    );
+    return {
+      area,
+      centroidDirection: weightedCentroid.normalize().applyQuaternion(cme.quaternion),
+      directions,
+    };
+  }
+
   it.each([
     ['enlarged', 0.3755],
     ['realistic', SOLAR_RADIUS_AU],
@@ -44,6 +85,52 @@ describe('flare and CME lifetime', () => {
     const reachAu = uniforms.uStartRadius.value + uniforms.uVelocityAuPerSec.value * flashDurationSec;
     expect(reachAu).toBeCloseTo(coronalToDisplay(4.74, sunRadiusAu), 9);
     expect(reachAu).toBeLessThanOrEqual(1.6 * sunRadiusAu);
+  });
+
+  it('centers a 60-degree CME cap on an arbitrary launch normal with a 30-degree rim', () => {
+    const latitudeRad = Math.asin(1 / Math.sqrt(3));
+    const { event, cme } = cmeEvent(60, latitudeRad, -Math.PI / 4);
+    const launchNormal = new Vector3(1, 1, 1).normalize();
+    const { centroidDirection, directions } = cmeGeometryStats(cme);
+
+    expect(centroidDirection.distanceTo(launchNormal)).toBeLessThan(1e-6);
+    const maxAngleDeg = Math.max(...directions.map(direction => direction.angleTo(launchNormal))) * 180 / Math.PI;
+    expect(maxAngleDeg).toBeCloseTo(30, 5);
+
+    event.dispose();
+  });
+
+  it('covers a rotationally symmetric cap rather than a longitude lune', () => {
+    const { event, cme } = cmeEvent(60, Math.PI / 2);
+    const { area, directions } = cmeGeometryStats(cme);
+    const tangentX = directions.map(direction => direction.x);
+    const tangentZ = directions.map(direction => direction.z);
+
+    for (const projection of [tangentX, tangentZ]) {
+      const min = Math.min(...projection);
+      const max = Math.max(...projection);
+      expect(max).toBeGreaterThan(0.49);
+      expect(min).toBeLessThan(-0.49);
+      expect(max).toBeCloseTo(-min, 6);
+    }
+    const exactCapArea = 2 * Math.PI * (1 - Math.cos(Math.PI / 6));
+    expect(Math.abs(area / exactCapArea - 1)).toBeLessThan(0.01);
+
+    event.dispose();
+  });
+
+  it('derives shared CME geometry from its quantized width instead of the first caller', () => {
+    const first = cmeEvent(94, Math.PI / 2);
+    const second = cmeEvent(86, Math.PI / 2);
+    expect(first.cme.geometry).toBe(second.cme.geometry);
+
+    const up = new Vector3(0, 1, 0);
+    const { directions } = cmeGeometryStats(first.cme);
+    const maxAngleDeg = Math.max(...directions.map(direction => direction.angleTo(up))) * 180 / Math.PI;
+    expect(maxAngleDeg).toBeCloseTo(45, 5);
+
+    first.event.dispose();
+    second.event.dispose();
   });
 
   it('depth-tests an actual far-side feature flare against the solar disk', () => {

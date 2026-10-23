@@ -103,7 +103,8 @@ const sharedCmeGeometries: Record<number, SphereGeometry> = {};
 function getCmeGeometry(angularWidthRad = Math.PI * 2): SphereGeometry {
     const key = Math.round(angularWidthRad * 180 / Math.PI / 10) * 10;
     if (!sharedCmeGeometries[key]) {
-        sharedCmeGeometries[key] = new SphereGeometry(1, 32, 16, 0, angularWidthRad, 0, Math.PI * 0.5);
+        const quantizedWidthRad = key * Math.PI / 180;
+        sharedCmeGeometries[key] = new SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, quantizedWidthRad * 0.5);
     }
     return sharedCmeGeometries[key];
 }
