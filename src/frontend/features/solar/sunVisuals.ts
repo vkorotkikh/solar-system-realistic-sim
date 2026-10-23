@@ -145,9 +145,10 @@ vec2 voronoiGranulation(vec2 uv, float scale, float t) {
     for (int x = -1; x <= 1; x++) {
       vec2 neighbor = vec2(float(x), float(y));
       vec2 nId = cellId + neighbor;
+      vec2 wrappedId = vec2(mod(nId.x, scale), nId.y);
       // Drift cell centers slowly over time (granule lifetime ~8-10 min -> normalised to ~0.08 time units)
       float drift = t * 0.042;
-      vec2 centerOffset = hash22(nId + vec2(drift, drift * 0.71)) * 0.62 + 0.19;
+      vec2 centerOffset = hash22(wrappedId + vec2(drift, drift * 0.71)) * 0.62 + 0.19;
       vec2 r = neighbor + centerOffset - cellFr;
       float d = dot(r, r);
       if (d < minDist) { secDist = minDist; minDist = d; minCell = centerOffset; }
