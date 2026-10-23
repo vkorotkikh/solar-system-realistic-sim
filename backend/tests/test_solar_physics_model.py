@@ -14,6 +14,7 @@ from sim.solar_physics import (
     MEAN_MONTH_DAYS,
     ObservedSolarInputUnavailable,
     SolarCoronaPhysicsModel,
+    _hathaway_normalized,
 )
 
 
@@ -66,9 +67,29 @@ def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     assert peak_activity > end_activity + 0.45
 
 
-def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
-    from sim.solar_physics import _hathaway_normalized
+def test_hathaway_activity_carries_the_previous_cycle_tail_across_minimum() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    boundary_jd = CYCLE_25_START_JD + CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
+    # Independent Decimal-oracle values for current + preceding cycle envelopes.
+    expected_boundary = (
+        (-0.01, 0.210739831890143),
+        (0.0, 0.210806770259572),
+        (0.01, 0.210873502743775),
+    )
+    values = []
+    for offset_days, expected in expected_boundary:
+        activity, _ = model._activity_index(boundary_jd + offset_days)
+        assert activity == pytest.approx(expected, abs=2e-12)
+        values.append(activity)
+    assert values[-1] - values[0] < 1e-3
 
+    early_cycle, _ = model._activity_index(CYCLE_25_START_JD + 12.0 * MEAN_MONTH_DAYS)
+    assert early_cycle == pytest.approx(0.237060195980691, abs=2e-12)
+    overlapping_peak, _ = model._activity_index(CYCLE_25_START_JD + HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS)
+    assert overlapping_peak == pytest.approx(0.929678329312317, abs=2e-12)
+
+
+def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
     months = [k * 0.01 for k in range(1, 13_201)]
     values = [_hathaway_normalized(t) for t in months]
     peak_index = max(range(len(values)), key=values.__getitem__)

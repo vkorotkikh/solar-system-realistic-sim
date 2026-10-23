@@ -137,7 +137,8 @@ export function fallbackSolarActivityFromJulianDate(julianDate: number): number 
   const cycleDays = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS;
   const cycleOffsetDays = ((julianDate - CYCLE_25_START_JD) % cycleDays + cycleDays) % cycleDays;
   const tMonths = cycleOffsetDays / MEAN_MONTH_DAYS;
-  const hathaway = hathawayNormalized(tMonths);
+  // Preserve the dying tail of the preceding cycle across the modulo boundary.
+  const hathaway = hathawayNormalized(tMonths) + hathawayNormalized(tMonths + CYCLE_LENGTH_MONTHS);
   const rotationMod = 0.5 + 0.5 * Math.sin(((julianDate - J2000_JD) / 27.2753) * TWO_PI + 0.17);
   const activity = 0.06 + hathaway * 0.82 + rotationMod * 0.1;
   return Math.max(0.02, Math.min(0.98, activity));

@@ -389,7 +389,10 @@ class SolarCoronaPhysicsModel:
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
         cycle_phase = (t_months / CYCLE_LENGTH_MONTHS) * 2.0 * math.pi
+        # Solar cycles overlap: while the new cycle rises, the preceding cycle's
+        # Hathaway envelope continues down its tail instead of vanishing at wrap.
         hathaway = _hathaway_normalized(t_months, HATHAWAY_B, HATHAWAY_C)
+        hathaway += _hathaway_normalized(t_months + CYCLE_LENGTH_MONTHS, HATHAWAY_B, HATHAWAY_C)
         rotation_mod = 0.5 + 0.5 * math.sin(((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi + 0.17)
         activity = 0.06 + hathaway * 0.82 + rotation_mod * 0.10
         return _clamp(activity, 0.02, 0.98), cycle_phase
