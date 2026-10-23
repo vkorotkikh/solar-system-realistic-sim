@@ -689,11 +689,33 @@ function updateFollowTarget() {
   camera.position.copy(tempVec).add(offset);
 }
 
+const BODY_INFO_DISTANCE_REFRESH_INTERVAL_MS = 250;
+let lastBodyInfoDistanceRefreshTimestamp: number | null = null;
+
+function updateBodyInfoDistance(bodyId = dom.bodyInfo.dataset.bodyId) {
+  if (!bodyId) return;
+  const state = model.getState(bodyId);
+  const distanceText = !state || state.available === false
+    ? 'State unavailable'
+    : `${state.worldPosition.length().toFixed(4)} AU`;
+  if (dom.bodyInfoDistance.textContent !== distanceText) {
+    dom.bodyInfoDistance.textContent = distanceText;
+  }
+}
+
+function refreshBodyInfoDistance(timestamp: number) {
+  const bodyId = dom.bodyInfo.dataset.bodyId;
+  if (dom.bodyInfo.hidden || !bodyId) return;
+  if (lastBodyInfoDistanceRefreshTimestamp !== null
+    && timestamp - lastBodyInfoDistanceRefreshTimestamp
+      < BODY_INFO_DISTANCE_REFRESH_INTERVAL_MS) return;
+  lastBodyInfoDistanceRefreshTimestamp = timestamp;
+  updateBodyInfoDistance(bodyId);
+}
+
 function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
   if (!body) return;
-  const state = model.getState(bodyId);
-  const dist = !state || state.available === false ? null : state.worldPosition.length();
   const typeLabel = body.type.charAt(0).toUpperCase() + body.type.slice(1);
 
   dom.bodyInfo.dataset.bodyId = body.id;
@@ -703,7 +725,7 @@ function updateBodyInfoPanel(bodyId: string) {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
   })} km`;
-  dom.bodyInfoDistance.textContent = dist === null ? 'State unavailable' : `${dist.toFixed(4)} AU`;
+  updateBodyInfoDistance(body.id);
   dom.bodyInfoPeriod.textContent = body.orbit
     ? `${body.orbit.periodDays.toLocaleString(undefined, { maximumFractionDigits: 1 })} days`
     : '—';
@@ -1255,6 +1277,7 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'clip-planes', run: updateCameraClipPlanes },
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
+    { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },
     { name: 'zoom-status', run: () => {
       if (dom.statusZoom) {
         const dist = camera.position.distanceTo(controls.target);
