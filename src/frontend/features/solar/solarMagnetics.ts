@@ -351,10 +351,12 @@ export function createMagneticFieldLines(sunRadiusAu: number, activity = 0.5, {
 
         const positions = new Float32Array(trace.points.length * 3);
         for (let p = 0; p < trace.points.length; p++) {
-            // Scale up to AU
-            positions[p * 3] = trace.points[p].x * sunRadiusAu;
-            positions[p * 3 + 1] = trace.points[p].y * sunRadiusAu;
-            positions[p * 3 + 2] = trace.points[p].z * sunRadiusAu;
+            const point = trace.points[p];
+            const r = point.length() || 1;
+            const scale = coronalToDisplay(r, sunRadiusAu) / r;
+            positions[p * 3] = point.x * scale;
+            positions[p * 3 + 1] = point.y * scale;
+            positions[p * 3 + 2] = point.z * scale;
         }
 
         const geometry = new BufferGeometry();
