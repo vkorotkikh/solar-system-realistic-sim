@@ -88,6 +88,45 @@ describe('moon positions vs JPL Horizons multi-epoch snapshot', () => {
     expect(ungated, 'fixture moons with no budget entry are not checked at all').toEqual([]);
   });
 
+  it('rejects negated node-precession rates for the outer irregular moons', () => {
+    const targets = new Set(['Pasiphae', 'Sinope', 'Carme']);
+    const mutatedCatalog = {
+      ...catalog,
+      bodies: catalog.bodies.map((body) => {
+        if (!targets.has(body.name)) return body;
+
+        const orbit = body.orbit!;
+        const rates = orbit.secularRates!;
+        const nodeRate = rates.ascendingNodeDegPerCentury!;
+        expect(Number.isFinite(nodeRate), `${body.name} must carry a finite node rate`).toBe(true);
+        expect(nodeRate, `${body.name} must carry a non-zero node rate`).not.toBe(0);
+
+        return {
+          ...body,
+          orbit: {
+            ...orbit,
+            secularRates: {
+              ...rates,
+              ascendingNodeDegPerCentury: -nodeRate
+            }
+          }
+        };
+      })
+    };
+
+    const summaries = new Map(
+      evaluateMoonFrames(mutatedCatalog, propagate, fixture).summaries.map((summary) => [summary.name, summary])
+    );
+    for (const name of targets) {
+      const summary = summaries.get(name);
+      expect(summary, `${name} must be evaluated by the real moon-frame gate`).toBeDefined();
+      expect(
+        summary!.planeOk,
+        `${name}: a reversed secular node direction must exceed the phase-immune plane budget`
+      ).toBe(false);
+    }
+  });
+
   for (const [name, body] of Object.entries(fixture.bodies)) {
     it(`${name} matches Horizons in position, velocity, orbit plane and drift at every epoch`, () => {
       const moon = byName.get(name);
