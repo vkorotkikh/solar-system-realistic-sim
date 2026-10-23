@@ -4996,6 +4996,45 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
 
+def _prepare_simulation_engine(
+    engine_requested: str,
+    integrator: str,
+    enable_j2: bool,
+    warnings: list[str],
+) -> tuple[SimulationEngine, dict, list[str], float] | None:
+    """Initialize and read native state before handing ownership to the runner."""
+    engine: Optional[SimulationEngine] = None
+    rebound_status = _rebound_readiness()
+    rebound_ready = bool(rebound_status.get("available", False))
+    tudatpy_ready = _tudatpy_available()
+    if engine_requested == "tudatpy":
+        if tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+        elif rebound_ready:
+            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
+            engine = REBOUNDEngine(integrator=integrator)
+    elif engine_requested == "rebound":
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    else:
+        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    if engine is None:
+        return None
+    engine.initialize(ALL_BODIES)
+    # Keep every initial native read on this thread; no runner exists yet.
+    initial_state = engine.get_state()
+    initial_body_ids = engine.list_body_ids()
+    initial_jd = engine.get_julian_date()
+    return engine, initial_state, initial_body_ids, initial_jd
+
+
 async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     # Select engine and integrator from query params
     engine_requested = websocket.query_params.get("engine", DEFAULT_ENGINE).lower()
@@ -5024,49 +5063,42 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    engine: Optional[SimulationEngine] = None
     try:
-        rebound_status = _rebound_readiness()
-        rebound_ready = bool(rebound_status.get("available", False))
-        tudatpy_ready = _tudatpy_available()
-        if engine_requested == "tudatpy":
-            if tudatpy_ready and TudatPyEngine is not None:
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-            elif rebound_ready:
-                warnings.append("Engine `tudatpy` unavailable; using `rebound`")
-                engine = REBOUNDEngine(integrator=integrator)
-        elif engine_requested == "rebound":
-            if rebound_ready:
-                engine = REBOUNDEngine(integrator=integrator)
-            elif tudatpy_ready and TudatPyEngine is not None:
-                warnings.append("Engine `rebound` unavailable; using `tudatpy`")
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-        else:
-            warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
-            if rebound_ready:
-                engine = REBOUNDEngine(integrator=integrator)
-            elif tudatpy_ready and TudatPyEngine is not None:
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-        if engine is not None:
-            engine.initialize(ALL_BODIES)
-            # Capture handshake metadata before transferring engine ownership to
-            # the simulation thread. Native engine reads are not thread-safe.
-            initial_state = engine.get_state()
-            initial_body_ids = engine.list_body_ids()
-            initial_jd = engine.get_julian_date()
+        initialization = asyncio.create_task(asyncio.to_thread(
+            _prepare_simulation_engine,
+            engine_requested,
+            integrator,
+            websocket.query_params.get("j2", "true").lower() == "true",
+            warnings,
+        ))
+        cancellation: asyncio.CancelledError | None = None
+        while not initialization.done():
+            try:
+                await asyncio.shield(initialization)
+            except asyncio.CancelledError as exc:
+                # A cancelled waiter cannot stop native initialization. Retain
+                # the admission lease until the worker has actually finished.
+                cancellation = exc
+            except Exception:
+                if cancellation is not None:
+                    raise cancellation
+                raise
+        try:
+            prepared = initialization.result()
+        finally:
+            if cancellation is not None:
+                raise cancellation
     except Exception as exc:
         _log_operational_failure("engine_init_failed", exc)
         await _ws_fail(websocket, code="engine_init_failed",
                        message="Simulation engine initialization failed.", close_code=1011)
         return
 
-    if engine is None:
+    if prepared is None:
         await _ws_fail(websocket, code="engine_unavailable",
                        message="No simulation engines are available.", close_code=1013)
         return
+    engine, initial_state, initial_body_ids, initial_jd = prepared
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
