@@ -1,21 +1,43 @@
-// Requires a running Vite server and Playwright. WEBGL_BROWSER optionally pins
-// the executable; the report records the actual renderer, including software.
+// Self-hosts Vite unless GPU_TEST_ORIGIN is supplied. WEBGL_BROWSER optionally
+// pins Chromium; PLAYWRIGHT_MODULE may select the documented hardware adapter.
 import { pathToFileURL } from 'node:url';
+import { createServer } from 'vite';
 
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE
-  ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
-const browser = await chromium.launch({
-  executablePath: process.env.WEBGL_BROWSER || undefined,
-  args: ['--enable-unsafe-swiftshader'],
-});
+const playwrightModule = process.env.PLAYWRIGHT_MODULE;
+const { chromium } = await import(playwrightModule
+  ? pathToFileURL(playwrightModule).href : 'playwright');
+const explicitOrigin = process.env.GPU_TEST_ORIGIN;
+const host = '127.0.0.1';
+let viteServer;
+let browser;
 try {
+  let origin = explicitOrigin;
+  if (!explicitOrigin) {
+    viteServer = await createServer({
+      logLevel: 'error',
+      server: { host, port: 0, strictPort: true },
+    });
+    await viteServer.listen();
+    const address = viteServer.httpServer?.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Vite did not expose a local TCP port');
+    }
+    origin = `http://${host}:${address.port}`;
+  }
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.WEBGL_BROWSER || undefined,
+    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
+  });
   const page = await browser.newPage();
   await page.route('**/gpu-contract.html', route => route.fulfill({
     contentType: 'text/html', body: '<!doctype html><title>Asteroid GPU contract</title>',
   }));
-  await page.goto(`${process.env.GPU_TEST_ORIGIN || 'http://127.0.0.1:5189'}/gpu-contract.html`);
+  await page.goto(`${origin}/gpu-contract.html`);
   const report = await page.evaluate(async () => {
     const { createAsteroidBeltRenderer } = await import('/src/frontend/features/asteroids/beltRenderer.ts');
+    const { propagateKeplerOrbit } = await import('/src/sim/orbitMath.ts');
+    const { Vector3 } = await import('/node_modules/three/build/three.module.js');
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
     if (!gl) throw new Error('WebGL2 unavailable: GPU gate did not run');
@@ -51,11 +73,9 @@ try {
     gl.enable(gl.RASTERIZER_DISCARD);
 
     let lastProbe;
-    function read(jd, eccentricity, meanAnomaly) {
-      body.orbit.e = eccentricity;
-      body.orbit.meanAnomalyDeg = meanAnomaly;
+    function readBody(probeBody, jd) {
       // Each fixture owns its immutable orbital attributes, as the application does.
-      const sample = createAsteroidBeltRenderer([body]);
+      const sample = createAsteroidBeltRenderer([probeBody]);
       const materialShader = { uniforms: {}, vertexShader: '#include <common>' };
       sample.mesh.material.onBeforeCompile(materialShader, {});
       sample.setJulianDate(jd);
@@ -82,6 +102,12 @@ try {
       if (gl.getError() !== gl.NO_ERROR) throw new Error('WebGL readback error');
       sample.dispose();
       return Array.from(values);
+    }
+
+    function read(jd, eccentricity, meanAnomaly) {
+      body.orbit.e = eccentricity;
+      body.orbit.meanAnomalyDeg = meanAnomaly;
+      return readBody(body, jd);
     }
 
     // Independent double-precision monotonic bisection oracle, no shader solver reuse.
@@ -115,11 +141,41 @@ try {
     if (!(motion > 0.5 * expectedMotion && motion < 1.5 * expectedMotion)) {
       throw new Error(`Sub-minute motion collapsed or jumped: ${motion} vs ${expectedMotion} AU`);
     }
+
+    const inclinedOrbit = { ...body.orbit, e: 0.23, iDeg: 30, ascendingNodeDeg: 80,
+      argPeriapsisDeg: 110, meanAnomalyDeg: 17 };
+    const inclinedBody = { ...body, orbit: inclinedOrbit };
+    let maximumInclinedErrorAu = 0;
+    const inclinedPositions = [inclinedOrbit.epochJd, inclinedOrbit.epochJd + 123.456].map((jd) => {
+      const actual = readBody(inclinedBody, jd);
+      const expectedVector = new Vector3();
+      if (!propagateKeplerOrbit(inclinedOrbit, jd - inclinedOrbit.epochJd, expectedVector)) {
+        throw new Error(`CPU inclined orbit unavailable: JD=${jd}`);
+      }
+      const expected = expectedVector.toArray();
+      const errorAu = Math.hypot(...actual.map((value, index) => value - expected[index]));
+      if (!Number.isFinite(errorAu) || errorAu > 5e-5) {
+        throw new Error(`Inclined GPU position error ${errorAu} AU: JD=${jd}; actual=${actual}; expected=${expected}; inputs=${JSON.stringify(lastProbe)}`);
+      }
+      maximumInclinedErrorAu = Math.max(maximumInclinedErrorAu, errorAu);
+      return { jd, actual, expected, errorAu };
+    });
     renderer.dispose();
     return { passed: true, cases, maximumErrorAu, oneMinuteMotionAu: motion,
-      renderer: rendererName, scope: 'actual WebGL2 transform feedback; hardware performance not implied' };
+      renderer: rendererName, swiftShader: /swiftshader/i.test(rendererName),
+      inclinedCases: inclinedPositions.length, maximumInclinedErrorAu, inclinedPositions,
+      orientationDeg: { inclination: inclinedOrbit.iDeg, ascendingNode: inclinedOrbit.ascendingNodeDeg,
+        argPeriapsis: inclinedOrbit.argPeriapsisDeg },
+      scope: 'actual WebGL2 transform feedback; independent planar oracle plus production CPU inclined cross-check; hardware performance not implied' };
   });
   console.log(JSON.stringify(report, null, 2));
+  if (!playwrightModule && !report.swiftShader) {
+    throw new Error(`Asteroid GPU gate requires SwiftShader; received ${report.renderer}`);
+  }
 } finally {
-  await browser.close();
+  try {
+    await browser?.close();
+  } finally {
+    await viteServer?.close();
+  }
 }

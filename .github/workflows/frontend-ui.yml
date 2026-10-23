@@ -21,6 +21,7 @@ jobs:
       - run: npm test
       - run: npm run typecheck:ratchet && npm run typecheck:ui-delta && npm run test:types:ui
       - run: npm run build
+      - run: npm run verify:asteroid-gpu
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: failure()
