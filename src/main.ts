@@ -541,6 +541,7 @@ function refreshAsteroidBeltRenderer(population: AsteroidBeltPopulation) {
   asteroidPop = population;
   asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
   asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
+  asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
   solarSystemGroup.add(asteroidBeltRenderer.mesh);
 }
 
