@@ -1,3 +1,7 @@
+/// <reference types="node" />
+
+import { readFileSync } from 'node:fs';
+import * as ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Group, Mesh, PerspectiveCamera, SphereGeometry, Texture } from 'three';
 import type { Camera, TextureLoader } from 'three';
@@ -5,6 +9,7 @@ import capturedPhysics from '../backend/tests/fixtures/solar_frames/synthetic_st
 import { createSunController } from './sunController';
 import { SolarPhysicsClient } from './frontend/features/solar/solarPhysicsClient';
 import type { SolarDataSourceStatus } from './frontend/features/solar/solarDataStatus';
+import { createTimeController, type TimeController } from './frontend/app/timeController';
 
 type Controller = ReturnType<typeof createSunController>;
 function deferred<T>() {
@@ -82,7 +87,7 @@ function fixture(withVisuals = false) {
   const physics: PendingFetch[] = [], realtime: PendingFetch[] = [];
   const publications: SolarDataSourceStatus[] = [], calls: ClientCall[] = [];
   const textures: Array<{ url: string; onLoad: (texture: Texture) => void }> = [];
-  const simState = { julianDate: 2451552, paused: true, timeScaleDaysPerSec: 0 };
+  const simState = { julianDate: 2451552, paused: true, timeScaleDaysPerSec: 0, timeScaleDirty: false };
   const hooks: { onStatus?: () => void; onClientSettled?: (call: ClientCall) => void } = {};
   const realRefresh = SolarPhysicsClient.prototype.maybeRefresh;
   // Call through: counts distinguish wrapper reentry from actual transport.
@@ -331,5 +336,71 @@ describe('solar physics wrapper request ownership', () => {
       expect(f.controller.getSolarDeliveryStatus().disposed).toBe(true);
       f.refresh(); expect(f.calls).toHaveLength(1);
     }
+  });
+});
+
+// Execute the unique actual main composition, not a copied integration callback.
+// External transport remains owned by fixture(); no browser/bootstrap claim.
+function mainTimeController(f: ReturnType<typeof fixture>, dom: Record<string, unknown>, now: () => number): TimeController {
+  const source = readFileSync(new URL('./main.ts', import.meta.url), 'utf8');
+  const file = ts.createSourceFile('main.ts', source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+  const declarations: ts.VariableStatement[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableStatement(node) && node.declarationList.declarations.some(
+      declaration => ts.isIdentifier(declaration.name) && declaration.name.text === 'timeController'
+    )) declarations.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  if (declarations.length !== 1) throw new Error('Expected one main timeController composition');
+  const javascript = ts.transpileModule(declarations[0].getText(file), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
+  }).outputText;
+  const instantiate = new Function('createTimeController', 'dom', 'simState',
+    'MIN_TIME_SCALE_DAYS_PER_SEC', 'MAX_TIME_SCALE_DAYS_PER_SEC', 'currentJulianDate', 'formatJulianAsDate', 'sunCtrl',
+    `${javascript}\nreturn timeController;`) as (...args: unknown[]) => TimeController;
+  return instantiate(createTimeController, dom, f.simState, -120, 120, now, (jd: number) => `JD${jd}`, f.controller);
+}
+
+// Separate SDEL-060 / R0052 UI integration, found by /qa on 2026-10-24.
+// agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+describe('actual main Now integration with solar delivery', () => {
+  it.each(['fetch', 'body'] as const)('rekeys a pending %s to Now while paused, preserving the latest click through late old completion', async stage => {
+    const f = fixture(); const nowTime = new EventTarget();
+    const oldBody = deferred<unknown>();
+    cleanups.push(async () => { oldBody.resolve(physicsPayload(2451552)); await flushMicrotasks(); });
+    const plannerDate = { value: '' }, plannerArrivalDate = { value: '' };
+    let now = 2461300.5;
+    const time = mainTimeController(f, { nowTime, plannerDate, plannerArrivalDate }, () => now);
+    time.bindUi(); f.refresh();
+    if (stage === 'body') {
+      let bodyReads = 0;
+      f.physics[0].delivery.resolve({ ...responseWith(null), json: () => { bodyReads++; return oldBody.promise; } } as Response);
+      await flushMicrotasks(); expect(bodyReads).toBe(1);
+    }
+    nowTime.dispatchEvent(new Event('click'));
+    expect(f.simState).toEqual({ julianDate: 2461300.5, paused: true, timeScaleDaysPerSec: 0, timeScaleDirty: false });
+    expect([plannerDate.value, plannerArrivalDate.value]).toEqual(['JD2461300.5', 'JD2461540.5']);
+    expect(f.physics).toHaveLength(2);
+    expect(f.calls[1]).toMatchObject({ jd: 2461300.5, force: true });
+    expect(f.physics[0].signal.aborted).toBe(true);
+    expect(new URL(f.physics[1].url).searchParams.get('jd_tdb')).toBe('2461300.50000000');
+    now = 2461301.5; nowTime.dispatchEvent(new Event('click'));
+    expect(f.physics).toHaveLength(3); expect(f.physics[1].signal.aborted).toBe(true);
+    await flushMicrotasks(); f.succeed(2); await flushMicrotasks();
+    const accepted = f.controller.getSolarDeliveryStatus();
+    expect(accepted.geometry.snapshotEpochJdTdb).toBe(2461301.5);
+    f.succeed(0, 2451552); oldBody.resolve(physicsPayload(2451552));
+    f.succeed(1, 2461300.5); await flushMicrotasks();
+    expect(f.controller.getSolarDeliveryStatus()).toEqual(accepted);
+  });
+
+  it('preserves terminal solar disposal when a later Now click still updates the UI date', () => {
+    const f = fixture(); const nowTime = new EventTarget();
+    const time = mainTimeController(f, { nowTime }, () => 2461300.5);
+    time.bindUi(); f.controller.disposeSolarDelivery(); nowTime.dispatchEvent(new Event('click'));
+    expect(f.simState.julianDate).toBe(2461300.5);
+    expect(f.physics).toHaveLength(0); expect(f.calls).toHaveLength(0);
+    expect(f.controller.getSolarDeliveryStatus().disposed).toBe(true);
   });
 });

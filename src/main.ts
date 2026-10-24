@@ -1140,7 +1140,8 @@ const timeController = createTimeController({
   minTimeScale: MIN_TIME_SCALE_DAYS_PER_SEC,
   maxTimeScale: MAX_TIME_SCALE_DAYS_PER_SEC,
   currentJulianDate,
-  formatJulianAsDate
+  formatJulianAsDate,
+  onTimeJump: () => sunCtrl.maybeRefreshPhysics(Date.now(), true)
 });
 timeController.bindUi();
 
