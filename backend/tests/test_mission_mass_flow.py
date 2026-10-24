@@ -6,7 +6,7 @@ import pytest
 
 from mission.mining_service import MiningService
 from mission.risk_service import RiskService
-from mission.vehicle_service import VehicleService, default_vehicle
+from mission.vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 
 VEHICLE = default_vehicle()
 SERVICE = VehicleService()
@@ -27,6 +27,91 @@ def test_return_burn_carries_the_mined_cargo() -> None:
     # Same delta-v with 5 t more on board costs ~19% more propellant (ignition mass 31.9 t vs
     # 26.9 t); before cargo entered the rocket equation it cost exactly the same.
     assert laden["burns"][1]["propellantUsedKg"] > empty["burns"][1]["propellantUsedKg"] * 1.15
+
+
+@pytest.mark.parametrize(
+    ("burns", "cargo", "expected_mass_kg"),
+    [
+        ([100.0], None, 173.0198189431324),
+        ([50.0, 50.0], None, 173.0198189431324),
+        ([50.0, 50.0], [0.0, 3.0], 173.01981906791934),
+    ],
+)
+def test_large_finite_stage_preserves_dry_mass_and_remaining_propellant(
+    burns, cargo, expected_mass_kg
+) -> None:
+    # Regression: MIS-033; found by /qa on 2026-10-24.
+    # Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+    # Independent 80-digit Decimal oracle: m1=(10**17+2)*exp(-100000/(300*9.80665)).
+    # Cargo case adds 3 kg between the two exponential mass-ratio operations.
+    vehicle = VehicleDefinition("large", [StageDefinition("stage", 1.0, 1e17, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=burns,
+        reserve_fraction=0.0, cargo_added_kg=cargo,
+    )
+
+    assert result["feasible"] is True
+    assert result["totalUnmetDeltaV_km_s"] == 0.0
+    assert result["finalMassKg"] == pytest.approx(expected_mass_kg, rel=1e-12)
+    inert_mass_kg = 2.0 + sum(cargo or [])
+    assert result["propellantOnboardKg"] == pytest.approx(expected_mass_kg - inert_mass_kg, rel=1e-12)
+    assert result["stageTelemetry"][0]["jettisoned"] is False
+
+
+def test_large_finite_exhausted_stage_has_analytic_capacity_and_nonnegative_mass() -> None:
+    # Same regression, exhaustion branch: ve*ln((10**17+2)/2) from an 80-digit oracle.
+    capacity_km_s = 113.12205958179984
+    vehicle = VehicleDefinition("large", [StageDefinition("stage", 1.0, 1e17, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=[120.0], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is False
+    assert result["totalUnmetDeltaV_km_s"] == pytest.approx(120.0 - capacity_km_s, abs=1e-12)
+    assert result["stageTelemetry"][0]["delta_v_delivered_km_s"] == pytest.approx(capacity_km_s, abs=1e-12)
+    assert result["finalMassKg"] == 1.0  # Only the payload remains after jettison.
+    assert result["propellantOnboardKg"] == 0.0
+    assert result["propellantDiscardedKg"] == 0.0
+
+
+def test_large_stage_jettison_preserves_later_stage_mass() -> None:
+    # First-stage floor includes both the payload and the entire later stage.
+    vehicle = VehicleDefinition("large-staged", [
+        StageDefinition("booster", 1.0, 1e17, 300.0),
+        StageDefinition("orbiter", 1.0, 1_000.0, 300.0),
+    ])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=1.0, burns_km_s=[100.0], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is True
+    assert result["finalMassKg"] > 2.0
+    assert result["stageTelemetry"][0]["jettisoned"] is True
+    assert result["stageTelemetry"][1]["jettisoned"] is False
+    assert result["finalMassKg"] == pytest.approx(2.0 + result["propellantOnboardKg"], abs=1e-12)
+
+
+@pytest.mark.parametrize(
+    ("dry_kg", "payload_kg", "fuel_kg", "burn_km_s", "expected_mass_kg"),
+    [
+        (1e-300, 1e-300, 1e300, 3.0, 3.606972868589679e299),
+        (1e308, 1.0, 1e308, 1.0, 1.423675312681448e308),
+    ],
+)
+def test_finite_postburn_mass_does_not_overflow_intermediate_rocket_equation(
+    dry_kg, payload_kg, fuel_kg, burn_km_s, expected_mass_kg
+) -> None:
+    # MIS-033 boundary checks: finite results from 80-digit Decimal mass-ratio
+    # oracles even when the raw fuel/floor ratio or initial wet sum overflows.
+    vehicle = VehicleDefinition("large-ratio", [StageDefinition("stage", dry_kg, fuel_kg, 300.0)])
+    result = SERVICE.evaluate_burn_budget(
+        vehicle, payload_mass_kg=payload_kg, burns_km_s=[burn_km_s], reserve_fraction=0.0,
+    )
+
+    assert result["feasible"] is True
+    assert result["finalMassKg"] == pytest.approx(expected_mass_kg, rel=1e-12)
+    assert 0.0 < result["propellantOnboardKg"] < fuel_kg
+    assert math.isfinite(result["totalPropellantUsedKg"])
 
 
 def test_max_closable_cargo_is_the_largest_cargo_that_closes() -> None:
