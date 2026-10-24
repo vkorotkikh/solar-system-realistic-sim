@@ -125,7 +125,7 @@ export function buildCatalogIndexContract(catalog: ModelWorkerCatalog): CatalogI
 
   for (let i = 0; i < catalog.bodies.length; i += 1) {
     const sourceIndex = catalog.bodies[i].sourceIndex;
-    if (!Number.isInteger(sourceIndex) || sourceIndex < 0) {
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex > 2147483647) {
       throw new Error(`model worker body \`${catalog.bodies[i].id}\` has an invalid sourceIndex`);
     }
     sourceIndexByIndex[i] = sourceIndex;
