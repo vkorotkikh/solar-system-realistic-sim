@@ -31,8 +31,8 @@ try {
   const address = server.httpServer.address();
   if (!address || typeof address === 'string') throw new Error('No isolated TCP server');
   if (address.port === 5189) throw new Error('Refusing controller-owned port');
-  browser = await chromium.launch({ executablePath, headless: false, args, env: { ...process.env,
-    GALLIUM_DRIVER: 'd3d12', MESA_D3D12_DEFAULT_ADAPTER_NAME: 'NVIDIA', LD_LIBRARY_PATH: ['/usr/lib/wsl/lib', process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') } });
+  const browserEnvironment = { ...process.env };
+  browser = await chromium.launch({ executablePath, headless: false, args, env: browserEnvironment });
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -50,7 +50,9 @@ try {
   await writeFile(resolve(output, 'capture.png'), screenshot);
   const report = { recordedAt: new Date().toISOString(), revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
     node: process.version, chromium: browser.version(), port: address.port, executablePath, args,
-    driverEnvironment: { GALLIUM_DRIVER: 'd3d12', MESA_D3D12_DEFAULT_ADAPTER_NAME: 'NVIDIA', LD_LIBRARY_PATH_PREFIX: '/usr/lib/wsl/lib' },
+    driverEnvironment: { GALLIUM_DRIVER: browserEnvironment.GALLIUM_DRIVER ?? null,
+      MESA_D3D12_DEFAULT_ADAPTER_NAME: browserEnvironment.MESA_D3D12_DEFAULT_ADAPTER_NAME ?? null,
+      LD_LIBRARY_PATH: browserEnvironment.LD_LIBRARY_PATH ?? null },
     screenshotSha256: createHash('sha256').update(screenshot).digest('hex'), ...result };
   await writeFile(resolve(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));
