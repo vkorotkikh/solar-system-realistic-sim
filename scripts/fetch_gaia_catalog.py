@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import math
@@ -54,15 +55,30 @@ def bp_rp_to_bv(bp_rp: float) -> float:
     return max(-0.4, min(2.5, bv))
 
 
-def _run_tap_query(adql: str, tap_url: str = ESA_TAP_URL, timeout: float = 120.0) -> str:
-    """Execute a synchronous TAP/ADQL query, return CSV text."""
-    params = {
+def _tap_request(adql: str) -> dict[str, str]:
+    return {
         "REQUEST": "doQuery",
         "LANG": "ADQL",
         "FORMAT": "csv",
         "QUERY": adql,
     }
-    return http_get(tap_url, params=params, timeout=timeout)
+
+
+def _run_tap_request(request: dict[str, str], tap_url: str, timeout: float = 120.0) -> str:
+    return http_get(tap_url, params=request, timeout=timeout)
+
+
+def _run_tap_query(adql: str, tap_url: str = ESA_TAP_URL, timeout: float = 120.0) -> str:
+    """Execute a synchronous TAP/ADQL query, return CSV text."""
+    return _run_tap_request(_tap_request(adql), tap_url, timeout)
+
+
+def _gaia_query_cache_path(
+    kind: str, request: dict[str, str], endpoints: tuple[str, ...], *, schema: int,
+) -> Path:
+    identity = {"schema": schema, "kind": kind, "request": request, "endpoints": endpoints}
+    digest = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return CACHE_DIR / f"gaia_{kind}_stars_query_v{schema}_{digest}.json"
 
 
 def _parse_gaia_source_id(value: object) -> int | None:
@@ -92,13 +108,8 @@ def _parse_gaia_csv(csv_text: str) -> list[dict]:
     return rows
 
 
-def fetch_bright_stars_tap(
-    max_mag: float = 7.5,
-    tap_url: str = ESA_TAP_URL,
-    timeout: float = 120.0,
-) -> list[dict]:
-    """Fetch bright stars from Gaia DR3 via TAP."""
-    adql = f"""
+def _bright_stars_query(max_mag: float) -> str:
+    return f"""
     SELECT ra, dec, phot_g_mean_mag, bp_rp, parallax, pmra, pmdec
     FROM gaiadr3.gaia_source
     WHERE phot_g_mean_mag IS NOT NULL
@@ -107,8 +118,27 @@ def fetch_bright_stars_tap(
       AND parallax > 0
       AND bp_rp IS NOT NULL
     ORDER BY phot_g_mean_mag ASC
-    """
-    csv_text = _run_tap_query(adql.strip(), tap_url=tap_url, timeout=timeout)
+    """.strip()
+
+
+def _nearby_stars_query(min_parallax_mas: float) -> str:
+    return f"""
+    SELECT source_id, ra, dec, parallax, parallax_error, pmra, pmdec,
+           radial_velocity, phot_g_mean_mag, bp_rp
+    FROM gaiadr3.gaia_source
+    WHERE parallax > {min_parallax_mas}
+      AND parallax_over_error > 5
+    ORDER BY parallax DESC
+    """.strip()
+
+
+def fetch_bright_stars_tap(
+    max_mag: float = 7.5,
+    tap_url: str = ESA_TAP_URL,
+    timeout: float = 120.0,
+) -> list[dict]:
+    """Fetch bright stars from Gaia DR3 via TAP."""
+    csv_text = _run_tap_query(_bright_stars_query(max_mag), tap_url=tap_url, timeout=timeout)
     return _parse_gaia_csv(csv_text)
 
 
@@ -118,28 +148,22 @@ def fetch_nearby_stars_tap(
     timeout: float = 120.0,
 ) -> list[dict]:
     """Fetch nearby stars (large parallax) from Gaia DR3 via TAP."""
-    adql = f"""
-    SELECT source_id, ra, dec, parallax, parallax_error, pmra, pmdec,
-           radial_velocity, phot_g_mean_mag, bp_rp
-    FROM gaiadr3.gaia_source
-    WHERE parallax > {min_parallax_mas}
-      AND parallax_over_error > 5
-    ORDER BY parallax DESC
-    """
-    csv_text = _run_tap_query(adql.strip(), tap_url=tap_url, timeout=timeout)
+    csv_text = _run_tap_query(_nearby_stars_query(min_parallax_mas), tap_url=tap_url, timeout=timeout)
     return _parse_gaia_csv(csv_text)
 
 
 def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
     """Fetch bright stars with TAP fallback chain: ESA -> VizieR -> static fallback."""
-    cache_path = CACHE_DIR / "gaia_bright_stars.json"
+    request = _tap_request(_bright_stars_query(max_mag))
+    endpoints = (ESA_TAP_URL, VIZIER_TAP_URL)
+    cache_path = _gaia_query_cache_path("bright", request, endpoints, schema=2)
 
     def _fetch():
         # Try ESA TAP
-        for label, url in [("ESA Gaia Archive", ESA_TAP_URL), ("VizieR TAP mirror", VIZIER_TAP_URL)]:
+        for label, url in zip(("ESA Gaia Archive", "VizieR TAP mirror"), endpoints):
             try:
                 print(f"  Querying {label} for bright stars (mag < {max_mag})...")
-                stars = fetch_bright_stars_tap(max_mag=max_mag, tap_url=url)
+                stars = _parse_gaia_csv(_run_tap_request(request, url))
                 if stars:
                     print(f"  Got {len(stars)} stars from {label}")
                     return stars
@@ -161,14 +185,16 @@ def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
 
 def fetch_nearby_stars(min_parallax_mas: float = 100.0) -> list[dict]:
     """Fetch nearby stars with TAP fallback chain."""
-    # Old cached float IDs cannot be recovered; leave that generation untouched.
-    cache_path = CACHE_DIR / "gaia_nearby_stars_v2.json"
+    request = _tap_request(_nearby_stars_query(min_parallax_mas))
+    endpoints = (ESA_TAP_URL, VIZIER_TAP_URL)
+    # Both old nearby generations lack query provenance; leave them untouched.
+    cache_path = _gaia_query_cache_path("nearby", request, endpoints, schema=3)
 
     def _fetch():
-        for label, url in [("ESA Gaia Archive", ESA_TAP_URL), ("VizieR TAP mirror", VIZIER_TAP_URL)]:
+        for label, url in zip(("ESA Gaia Archive", "VizieR TAP mirror"), endpoints):
             try:
                 print(f"  Querying {label} for nearby stars (parallax > {min_parallax_mas} mas)...")
-                stars = fetch_nearby_stars_tap(min_parallax_mas=min_parallax_mas, tap_url=url)
+                stars = _parse_gaia_csv(_run_tap_request(request, url))
                 if stars:
                     print(f"  Got {len(stars)} nearby stars from {label}")
                     return stars
