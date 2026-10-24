@@ -11,6 +11,7 @@ import pytest
 
 import sim.gong_magnetogram as gong
 import sim.pfss_magnetogram as pfss
+from sim.solar_active_regions import build_active_regions
 from gong_fixture_helpers import EXPANDED, context, rewrite_fits
 
 
@@ -221,17 +222,43 @@ def test_synthetic_dipole_phase_has_a_versioned_cache_identity() -> None:
     rotated = cache._resolve_synthetic_snapshot(quarter_cycle_jd, 0.8)
 
     assert first is reused
-    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v3"
-    with pytest.raises(ValueError, match="transform_version is not implemented"):
-        replace(
-            first.snapshot_id,
-            transform_version="synthetic-persistent-bipoles-v2",
-        )
+    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v4"
+    for obsolete_version in ("synthetic-persistent-bipoles-v2", "synthetic-persistent-bipoles-v3"):
+        with pytest.raises(ValueError, match="transform_version is not implemented"):
+            replace(first.snapshot_id, transform_version=obsolete_version)
     assert rotated is not first
     assert rotated.snapshot_id.sha256 != first.snapshot_id.sha256
     assert rotated.snapshot_id.normalized_content_sha256 != (
         first.snapshot_id.normalized_content_sha256
     )
+
+
+def test_hale_corrected_snapshot_reuses_identity_without_reusing_inverted_content() -> None:
+    regions = build_active_regions(seed=17, base_tube_count=64)
+    cache = pfss.PFSSCache(active_regions=regions)
+    cycle25_jd = 2_460_000.0
+    first = cache._resolve_synthetic_snapshot(cycle25_jd, 0.8)
+    reused = cache._resolve_synthetic_snapshot(cycle25_jd, 0.8)
+    independent = pfss.PFSSCache(active_regions=regions)._resolve_synthetic_snapshot(
+        cycle25_jd, 0.8,
+    )
+    inverted_regions = tuple(
+        replace(region, hale_cycle25_leading_polarity=-region.hale_cycle25_leading_polarity)
+        for region in regions
+    )
+    inverted = pfss.PFSSCache(active_regions=inverted_regions)._resolve_synthetic_snapshot(
+        cycle25_jd, 0.8,
+    )
+
+    assert first is reused
+    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v4"
+    assert first.snapshot_id.sha256 == independent.snapshot_id.sha256
+    np.testing.assert_array_equal(first.field_gauss, independent.field_gauss)
+    assert first.snapshot_id.sha256 != inverted.snapshot_id.sha256
+    assert first.snapshot_id.normalized_content_sha256 != (
+        inverted.snapshot_id.normalized_content_sha256
+    )
+    assert not np.array_equal(first.field_gauss, inverted.field_gauss)
 
 
 def test_timeout_is_request_metadata_not_solution_identity(

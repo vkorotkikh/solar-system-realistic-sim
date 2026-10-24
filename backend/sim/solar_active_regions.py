@@ -14,7 +14,7 @@ from random import Random
 J2000_JD = 2451545.0
 CYCLE_25_START_JD = 2458849.5
 CYCLE_DAYS = 132.0 * 30.44
-REGION_MODEL_VERSION = "persistent-bipoles-v2"
+REGION_MODEL_VERSION = "persistent-bipoles-v3"
 
 
 @dataclass(frozen=True)
@@ -44,7 +44,7 @@ def build_active_regions(seed: int = 17, base_tube_count: int = 420) -> tuple[Ac
         separation = min(10, max(2, 2 + strength * 7 + rng.uniform(-.9, .9)))
         regions.append(ActiveRegionSeed(
             idx, math.radians(lat), math.radians(lon), math.radians(tilt),
-            math.radians(separation), strength, hemisphere, -hemisphere,
+            math.radians(separation), strength, hemisphere, hemisphere,
             rng.uniform(-.18, .18),
         ))
     return tuple(regions)
