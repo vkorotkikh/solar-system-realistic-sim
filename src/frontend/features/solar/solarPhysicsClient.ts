@@ -440,6 +440,7 @@ export class SolarPhysicsClient {
         // A readable error reply proves the server is up and allows this origin.
         this.lastProbe = null;
         const detail = await readErrorDetail(response);
+        if (timedOut) throw this.timeoutError();
         throw new SolarPhysicsRequestError(
           classifyHttpFailure(response.status, detail.code),
           `Solar physics request failed (${response.status})${detail.message ? `: ${detail.message}` : ''}`,

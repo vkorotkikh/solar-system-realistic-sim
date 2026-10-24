@@ -348,6 +348,64 @@ describe('SolarPhysicsClient failure classification', () => {
     expect(status.timeoutMs).toBe(SOLAR_PHYSICS_REQUEST_TIMEOUT_MS);
   });
 
+  it.each([503, 429])('records a timeout when an HTTP %i error body reaches the deadline', async (httpStatus) => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    stubFetch(() => Promise.resolve(responseWith(validPayload(JD))));
+    const client = createClient();
+    await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+    const latest = client.latestState();
+
+    const fetchMock = stubFetch((init) => Promise.resolve(new Response(new ReadableStream({
+      start(stream) {
+        init?.signal?.addEventListener('abort', () => stream.error(abortError()), { once: true });
+      },
+    }), { status: httpStatus, headers: { 'Retry-After': '60' } })));
+
+    const pending = client.maybeRefresh(JD, true);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(client.status()).toMatchObject({ inFlight: true, lastFailure: null });
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(pending).resolves.toBe(false);
+    expect(client.status().lastFailure).toMatchObject({ kind: 'timeout', httpStatus: null, code: null });
+    expect(client.status()).toMatchObject({
+      lastError: 'No reply from the solar server within 20 s',
+      consecutiveFailures: 1,
+      inFlight: false,
+      nextRefreshMs: 1_050_000,
+    });
+    expect(client.latestState()).toBe(latest);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([
+    [503, 'http', 'SyntaxError'],
+    [503, 'http', 'AbortError'],
+    [429, 'rate-limited', 'SyntaxError'],
+    [429, 'rate-limited', 'AbortError'],
+  ] as const)('keeps HTTP %i as %s when the body has an early %s', async (httpStatus, kind, errorName) => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const transport: { signal?: AbortSignal | null } = {};
+    const fetchMock = stubFetch((init) => {
+      transport.signal = init?.signal;
+      const body = errorName === 'SyntaxError'
+        ? 'not JSON'
+        : new ReadableStream({ start(stream) { stream.error(abortError()); } });
+      return Promise.resolve(new Response(body, { status: httpStatus, headers: { 'Retry-After': '60' } }));
+    });
+    const client = createClient();
+
+    await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+
+    expect(client.status().lastFailure).toMatchObject({ kind, httpStatus, code: null });
+    expect(client.status()).toMatchObject({ consecutiveFailures: 1, inFlight: false, nextRefreshMs: 1_060_000 });
+    expect(client.lastError).toBe(`Solar physics request failed (${httpStatus})`);
+    expect(transport.signal?.aborted).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it.each([
     [503, 'solar_compute_saturated', 'busy'],
     [503, 'solar_compute_timeout', 'server-timeout'],
