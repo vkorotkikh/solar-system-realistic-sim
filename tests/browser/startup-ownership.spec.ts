@@ -9,13 +9,13 @@ import type { WebGLRenderer } from 'three';
 type Mode = 'healthy' | 'early' | 'late';
 interface Capture {
   mode: Mode; rendererCreated: number; rendererDisposed: number; renders: number;
-  imageDataCalls: number; pixelRatioCalls: number; throws: number;
+  imageDataCalls: number; pixelRatioCalls: number; resizeChecks: number; throws: number;
   workersCreated: number; initPosts: number; workerTerminates: number; workerReady: number;
   observers: Array<{ targets: string[]; disconnects: number }>;
   solarFetches: number; solarAborts: number; solarSignalPresent: boolean;
   phaseFetches: number; phaseAborts: number; keyAdds: number; keyRemoves: number;
   events: string[]; unhandled: string[];
-  atThrow?: { rendererCreated: number; pixelRatioCalls: number; workersCreated: number; initPosts: number; solarFetches: number };
+  atThrow?: { rendererCreated: number; pixelRatioCalls: number; resizeChecks: number; workersCreated: number; initPosts: number; solarFetches: number };
 }
 interface OwnedWindow extends Window {
   __startupOwnership: Capture;
@@ -60,14 +60,14 @@ async function ownStartup(page: Page, mode: Mode, baseURL: string) {
     const owned = window as unknown as OwnedWindow;
     const mode: Mode = sessionStorage.getItem('owned-startup-fault-consumed') ? 'healthy' : requestedMode;
     const c: Capture = { mode, rendererCreated: 0, rendererDisposed: 0, renders: 0,
-      imageDataCalls: 0, pixelRatioCalls: 0, throws: 0, workersCreated: 0,
+      imageDataCalls: 0, pixelRatioCalls: 0, resizeChecks: 0, throws: 0, workersCreated: 0,
       initPosts: 0, workerTerminates: 0, workerReady: 0, observers: [],
       solarFetches: 0, solarAborts: 0, solarSignalPresent: false, phaseFetches: 0,
       phaseAborts: 0, keyAdds: 0, keyRemoves: 0, events: [], unhandled: [] };
     owned.__startupOwnership = c;
     function fail(kind: 'early' | 'late'): never {
       c.throws++; c.events.push(`${kind}-throw`);
-      c.atThrow = { rendererCreated: c.rendererCreated, pixelRatioCalls: c.pixelRatioCalls,
+      c.atThrow = { rendererCreated: c.rendererCreated, pixelRatioCalls: c.pixelRatioCalls, resizeChecks: c.resizeChecks,
         workersCreated: c.workersCreated, initPosts: c.initPosts, solarFetches: c.solarFetches };
       sessionStorage.setItem('owned-startup-fault-consumed', '1');
       throw new Error(marker);
@@ -77,13 +77,18 @@ async function ownStartup(page: Page, mode: Mode, baseURL: string) {
       const renderer = (event as CustomEvent<WebGLRenderer & { isWebGLRenderer: boolean }>).detail;
       if (!renderer?.isWebGLRenderer) return;
       c.rendererCreated++; c.events.push('renderer-created');
-      const render = renderer.render, dispose = renderer.dispose, pixel = renderer.setPixelRatio;
+      const render = renderer.render, dispose = renderer.dispose, pixel = renderer.setPixelRatio, ratio = renderer.getPixelRatio;
       renderer.render = function (...args) { c.renders++; return Reflect.apply(render, this, args); };
       renderer.dispose = function () { c.rendererDisposed++; c.events.push('renderer-disposed'); return dispose.call(this); };
       renderer.setPixelRatio = function (value: number) {
         c.pixelRatioCalls++;
-        if (mode === 'late' && !c.throws && c.workersCreated && c.initPosts && c.solarFetches) fail('late');
         return pixel.call(this, value);
+      };
+      // Observe the resize check, not an unnecessary write of an unchanged ratio.
+      renderer.getPixelRatio = function () {
+        c.resizeChecks++;
+        if (mode === 'late' && !c.throws && c.workersCreated && c.initPosts && c.solarFetches) fail('late');
+        return ratio.call(this);
       };
     });
     const image = CanvasRenderingContext2D.prototype.createImageData;
@@ -161,7 +166,7 @@ async function snapshot(page: Page) {
 async function milestone(page: Page, mode: Mode) {
   await page.waitForFunction(mode => {
     const c = (window as unknown as OwnedWindow).__startupOwnership;
-    return mode === 'healthy' ? c.initPosts > 0 && c.solarFetches > 0 && c.pixelRatioCalls >= 3
+    return mode === 'healthy' ? c.initPosts > 0 && c.solarFetches > 0 && c.resizeChecks >= 2
       : c.throws === 1 && (c.unhandled.length > 0 || !document.querySelector<HTMLElement>('#renderer-unavailable')!.hidden);
   }, mode);
 }
@@ -241,7 +246,8 @@ test('later worker and solar startup failure gates late catalog adoption and que
     await page.evaluate(() => window.dispatchEvent(new Event('beforeunload'))); await page.waitForTimeout(100);
     const closed = await snapshot(page);
     await attach(testInfo, { before, catalog, afterCatalog, afterCallbacks, closed, errors: owned.errors, catalogLogs: owned.catalogLogs, held: owned.held });
-    expect(before.atThrow?.rendererCreated).toBe(1); expect(before.atThrow?.pixelRatioCalls).toBeGreaterThanOrEqual(3);
+    expect(before.atThrow?.rendererCreated).toBe(1); expect(before.atThrow?.pixelRatioCalls).toBeGreaterThanOrEqual(1);
+    expect(before.atThrow?.resizeChecks).toBeGreaterThanOrEqual(2);
     expect(before.atThrow?.workersCreated).toBe(1); expect(before.atThrow?.initPosts).toBe(1); expect(before.atThrow?.solarFetches).toBe(1);
     expect(before.events.indexOf('late-throw')).toBeGreaterThan(before.events.indexOf('worker-init-posted'));
     expect(before.events.indexOf('late-throw')).toBeGreaterThan(before.events.indexOf('solar-fetch-started'));
@@ -258,6 +264,7 @@ test('later worker and solar startup failure gates late catalog adoption and que
     expect(afterCatalog.catalogStatus).toBe(before.catalogStatus); expect(owned.catalogLogs.some(text => text.includes('Loaded deterministic catalog'))).toBe(false);
     expect(afterCatalog.renders).toBe(0); expect(afterCallbacks.renders).toBe(0); expect(closed.renders).toBe(0);
     expect(afterCallbacks.pixelRatioCalls).toBe(afterCatalog.pixelRatioCalls);
+    expect(afterCallbacks.resizeChecks).toBe(afterCatalog.resizeChecks);
     expect(afterCallbacks.solarFetches).toBe(afterCatalog.solarFetches);
     expect(closed.rendererDisposed).toBe(1); expect(closed.workerTerminates).toBe(1); expect(closed.solarAborts).toBe(1);
     expect(closed.observers.map(o => o.disconnects)).toEqual([1, 1]);
