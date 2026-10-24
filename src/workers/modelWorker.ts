@@ -67,16 +67,19 @@ if (isWorkerContext) {
     if (message.type === 'init') {
       try {
         const catalog = message.catalog;
-        contract = buildCatalogIndexContract(catalog);
-        model = new SolarSystemModel(createSimulationCatalog(catalog));
-        model.update(message.simStartJd);
-        lastSequence = Number(message.sequence);
+        const nextContract = buildCatalogIndexContract(catalog);
+        const nextModel = new SolarSystemModel(createSimulationCatalog(catalog));
+        nextModel.update(message.simStartJd);
+        const nextSequence = Number(message.sequence);
 
         const readyMsg: ModelWorkerReadyMessage = {
           type: 'ready',
-          bodyCount: contract.idByIndex.length,
+          bodyCount: nextContract.idByIndex.length,
           schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION
         };
+        contract = nextContract;
+        model = nextModel;
+        lastSequence = nextSequence;
         self.postMessage(readyMsg);
       } catch (error) {
         throw new Error(`model worker init failed: ${error instanceof Error ? error.message : String(error)}`);
