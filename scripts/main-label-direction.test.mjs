@@ -4,6 +4,7 @@
 // Oracle: projected label-center x equals body-center x, and y is above it.
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { createBodyIdResolver } from '../src/frontend/app/stateStore';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -76,6 +77,7 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
     });
   } };
   const bindings = { ...THREE, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
+    isEarthMoonBody: createBodyIdResolver({ bodies: [body] }).isEarthMoonBody,
     document: { createElement: () => ({ width: 0, height: 0, getContext: () => null }) },
     BODY_LOCAL_SPIN_AXIS: new THREE.Vector3(0, 1, 0), PLANET_COLORS: {}, sunTexture: null,
     catalog: { bodies: [body] }, showMoons: true,

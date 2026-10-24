@@ -195,14 +195,15 @@ export class PlanetQuadtree {
     constructor(
         public planetId: string,
         public baseRadius: number,
-        public camera: Camera
+        public camera: Camera,
+        visualId: string = planetId
     ) {
         if (!Number.isFinite(baseRadius) || baseRadius <= 0) {
             throw new RangeError('Planet radius must be finite and positive');
         }
         this.group = new Group();
         this.group.userData.bodyId = planetId;
-        this.material = createPlanetShaderMaterial(planetId, baseRadius);
+        this.material = createPlanetShaderMaterial(visualId, baseRadius);
 
         // A deliberate mean-radius sphere pick proxy. CPU plane triangles do
         // not describe a shader-displaced surface. This keeps identity and hit

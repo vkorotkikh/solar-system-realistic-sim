@@ -56,7 +56,7 @@ import { applyMetricDisplayOffsets } from './frontend/features/superluminal-mode
 import { resolveAgnSelection, type AgnEventOptions } from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
-import { createSimulationState } from './frontend/app/stateStore';
+import { createBodyIdResolver, createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
 import { applyBodySpin } from './frontend/features/planetary/bodySpin';
 import { planetViewDistances } from './frontend/features/planetary/planetView';
@@ -217,6 +217,7 @@ if (showMoons) {
 }
 if (startup.signal.aborted || !recovery.available) return;
 const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
+const { isEarthMoonBody } = createBodyIdResolver(catalog);
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
 });
@@ -409,9 +410,10 @@ function createBodyNode(body: CatalogBody) {
   let geometry: SphereGeometry;
   let mesh;
 
-  if (['earth', 'moon', 'mars'].includes(body.id)) {
+  const visualId = isEarthMoonBody(body) ? 'moon' : body.id;
+  if (['earth', 'moon', 'mars'].includes(visualId)) {
     const radius = bodyBaseRadiusAu(body);
-    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera));
+    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera, visualId));
     mesh = quadtree.group;
     mesh.userData.isQuadtree = true;
     mesh.userData.quadtree = quadtree;
