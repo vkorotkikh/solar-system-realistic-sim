@@ -7,7 +7,7 @@ const MAX_LOCAL_ASSIST_POOL_SIZE = 8;
 const MAX_LOCAL_ROUTE_TOPOLOGIES = 401;
 
 export interface PlannerModel {
-  sampleBodyStateAt(bodyId: string, julianDate: number): { position: Vector3 };
+  sampleBodyStateAt(bodyId: string, julianDate: number): { position: Vector3 } | null;
 }
 export interface PlannerBody {
   type?: string;
@@ -47,27 +47,38 @@ interface LocalRoute {
   score: number;
 }
 
+function checkedHohmannState(state: { position: Vector3 } | null) {
+  if (!state) throw new Error('Hohmann sample is unavailable');
+  const radiusAu = state.position.length();
+  if (!Number.isFinite(radiusAu) || radiusAu <= 0) {
+    throw new Error('Hohmann sample radius must be finite and positive');
+  }
+  return { state, radiusAu };
+}
+
 function computeHohmannLeg(model: PlannerModel, fromId: string, toId: string, departureJd: number) {
   const fromAtDeparture = model.sampleBodyStateAt(fromId, departureJd);
   const toAtDeparture = model.sampleBodyStateAt(toId, departureJd);
 
-  let r1 = fromAtDeparture.position.length();
-  let r2 = toAtDeparture.position.length();
+  let r1 = checkedHohmannState(fromAtDeparture).radiusAu;
+  let r2 = checkedHohmannState(toAtDeparture).radiusAu;
 
   // Light phasing refinement: one fixed-point iteration on destination radius.
   for (let i = 0; i < 2; i += 1) {
     const transferA = 0.5 * (r1 + r2);
     const tofDays = Math.PI * Math.sqrt((transferA ** 3) / MU_SUN_AU3_DAY2);
     const toAtArrival = model.sampleBodyStateAt(toId, departureJd + tofDays);
-    r2 = toAtArrival.position.length();
+    r2 = checkedHohmannState(toAtArrival).radiusAu;
   }
 
   const transferA = 0.5 * (r1 + r2);
   const tofDays = Math.PI * Math.sqrt((transferA ** 3) / MU_SUN_AU3_DAY2);
   const arrivalJd = departureJd + tofDays;
 
-  const fromState = model.sampleBodyStateAt(fromId, departureJd);
-  const toState = model.sampleBodyStateAt(toId, arrivalJd);
+  const fromSample = model.sampleBodyStateAt(fromId, departureJd);
+  const toSample = model.sampleBodyStateAt(toId, arrivalJd);
+  const fromState = checkedHohmannState(fromSample).state;
+  const toState = checkedHohmannState(toSample).state;
 
   const vCircular1 = Math.sqrt(MU_SUN_AU3_DAY2 / r1);
   const vCircular2 = Math.sqrt(MU_SUN_AU3_DAY2 / r2);
@@ -78,6 +89,7 @@ function computeHohmannLeg(model: PlannerModel, fromId: string, toId: string, de
   const deltaVArrivalKmS = auPerDayToKmPerSec(Math.abs(vCircular2 - vTransfer2));
 
   const endpointChordAu = fromState.position.distanceTo(toState.position);
+  if (!Number.isFinite(endpointChordAu)) throw new Error('Hohmann endpoint chord must be finite');
 
   return {
     fromId,
