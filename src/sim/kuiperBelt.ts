@@ -503,9 +503,9 @@ export function propagateBinaryKBOPositions(
     const offsets = computeBinaryBarycentricOffsets(orb, kbos[i].diameterKm, bin, julianDate);
     const pOff = i * 3;
     const cOff = bIdx * 3;
-    companionOut[cOff] = primaryPositions[pOff] + offsets.companionOffset[0];
-    companionOut[cOff + 1] = primaryPositions[pOff + 1] + offsets.companionOffset[1];
-    companionOut[cOff + 2] = primaryPositions[pOff + 2] + offsets.companionOffset[2];
+    companionOut[cOff] = primaryPositions[pOff] + (offsets.companionOffset[0] - offsets.primaryOffset[0]);
+    companionOut[cOff + 1] = primaryPositions[pOff + 1] + (offsets.companionOffset[1] - offsets.primaryOffset[1]);
+    companionOut[cOff + 2] = primaryPositions[pOff + 2] + (offsets.companionOffset[2] - offsets.primaryOffset[2]);
 
     bIdx++;
   }
