@@ -3127,6 +3127,15 @@ class AccuracyReportRequest(StrictRequestModel):
 
 # ── Health / Info ─────────────────────────────────────────────────────────────
 
+def _public_artifact_metadata(metadata: Dict[str, Any], path_field: str) -> Dict[str, Any]:
+    """Copy known native artifact metadata without publishing its local directory."""
+    public = dict(metadata)
+    path = public.get(path_field)
+    if isinstance(path, (str, Path)):
+        public[path_field] = Path(path).name
+    return public
+
+
 @app.api_route("/health/live", methods=["GET", "HEAD"], include_in_schema=False)
 def health_liveness():
     """Constant-cost process liveness without engine construction or I/O."""
@@ -3136,7 +3145,12 @@ def health_liveness():
 
 @app.get("/health")
 def health():
-    rebound_status = _rebound_readiness()
+    rebound_status = dict(_rebound_readiness())
+    initial_conditions = rebound_status.get("initial_conditions")
+    if isinstance(initial_conditions, dict):
+        rebound_status["initial_conditions"] = _public_artifact_metadata(initial_conditions, "path")
+    if "error" in rebound_status and rebound_status["error"] != "REBOUND is not installed":
+        rebound_status["error"] = "REBOUND readiness check failed."
     tudatpy_ready = _tudatpy_available()
     return {
         "status": "ok",
@@ -3629,10 +3643,10 @@ def nearby_systems(limit: int = 354, max_distance_ly: float = 20.0):
         "total_available": len(all_rows),
         "limit": safe_limit,
         "max_distance_ly": safe_max_distance_ly,
-        "source": {
+        "source": _public_artifact_metadata({
             "catalog_path": str(CATALOG_PATH),
             "catalog_name": CATALOG_NAME,
-        },
+        }, "catalog_path"),
         "systems": rows,
     }
 
@@ -3646,10 +3660,10 @@ def nearby_system_detail(system_ref: str):
     aliases = nearby_system_aliases(system)
     return {
         "schema": NEARBY_SYSTEMS_SCHEMA,
-        "source": {
+        "source": _public_artifact_metadata({
             "catalog_path": str(CATALOG_PATH),
             "catalog_name": CATALOG_NAME,
-        },
+        }, "catalog_path"),
         "match": {
             "query": system_ref,
             "match_type": "sys_id" if system_ref.strip().isdigit() else "alias",
@@ -4332,7 +4346,7 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
     )
 
     try:
-        return await _run_request_owned_thread(
+        result = await _run_request_owned_thread(
             request,
             benchmark_against_references,
             ALL_BODIES,
@@ -4343,6 +4357,7 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
             timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
             owner_context=planning_context,
         )
+        return _public_artifact_metadata(result, "referenceFile")
     except PlanningDeadlineExceeded as exc:
         raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
     except PlanningBudgetExceeded as exc:
@@ -4403,7 +4418,10 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             owner_context=planning_context,
         )
         # Public paths are logical report names, not server filesystem layout.
-        return {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
+        public_result = {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
+        if isinstance(result.get("summary"), dict):
+            public_result["summary"] = _public_artifact_metadata(result["summary"], "referenceFile")
+        return public_result
     except FileExistsError as exc:
         raise _trajectory_http_exception(
             409, "benchmark_report_exists",
