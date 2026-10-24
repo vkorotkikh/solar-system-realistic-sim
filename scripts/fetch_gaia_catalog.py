@@ -65,15 +65,29 @@ def _run_tap_query(adql: str, tap_url: str = ESA_TAP_URL, timeout: float = 120.0
     return http_get(tap_url, params=params, timeout=timeout)
 
 
+def _parse_gaia_source_id(value: object) -> int | None:
+    """Keep exact integer identities; floats may already have lost digits."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
+
+
 def _parse_gaia_csv(csv_text: str) -> list[dict]:
-    """Parse Gaia TAP CSV response into list of dicts with float values."""
+    """Parse Gaia TAP CSV with exact source IDs and floating-point measurements."""
     rows = []
     reader = csv.DictReader(io.StringIO(csv_text))
     for row in reader:
         parsed = {}
         for key, val in row.items():
             key = key.strip().lower()
-            parsed[key] = safe_float(val)
+            parsed[key] = _parse_gaia_source_id(val) if key == "source_id" else safe_float(val)
         rows.append(parsed)
     return rows
 
@@ -147,7 +161,8 @@ def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
 
 def fetch_nearby_stars(min_parallax_mas: float = 100.0) -> list[dict]:
     """Fetch nearby stars with TAP fallback chain."""
-    cache_path = CACHE_DIR / "gaia_nearby_stars.json"
+    # Old cached float IDs cannot be recovered; leave that generation untouched.
+    cache_path = CACHE_DIR / "gaia_nearby_stars_v2.json"
 
     def _fetch():
         for label, url in [("ESA Gaia Archive", ESA_TAP_URL), ("VizieR TAP mirror", VIZIER_TAP_URL)]:
@@ -303,8 +318,8 @@ def cross_match_nearby(
         max_sys_id += 1
         new_count += 1
 
-        source_id = gstar.get("source_id")
-        identifier = f"Gaia DR3 {int(source_id)}" if source_id else f"Gaia-nearby-{max_sys_id}"
+        source_id = _parse_gaia_source_id(gstar.get("source_id"))
+        identifier = f"Gaia DR3 {source_id}" if source_id else f"Gaia-nearby-{max_sys_id}"
         gmag = gstar.get("phot_g_mean_mag")
 
         new_row = {
