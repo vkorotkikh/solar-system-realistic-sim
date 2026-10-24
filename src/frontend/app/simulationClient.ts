@@ -287,7 +287,7 @@ export class SimulationClient {
     if (generation !== this.socketGeneration || this.manualDisconnect) return;
 
     const backend = options.backend ?? 'rebound';
-    const integrator = backend === 'rebound' ? 'ias15' : 'whfast';
+    const integrator = backend.toLowerCase() === 'rebound' ? 'ias15' : 'whfast';
 
     let socket: WebSocket;
     try {
