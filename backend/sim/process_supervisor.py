@@ -13,9 +13,11 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 import importlib
 import json
+import logging
 import math
 import multiprocessing
 from multiprocessing.connection import Connection
+import os
 import threading
 import time
 from typing import Any
@@ -291,9 +293,36 @@ class SupervisedProcessRunner:
     async def run(self, payload: Any, *, timeout_seconds: float) -> Any:
         future = self.submit(payload, timeout_seconds=timeout_seconds)
         wrapped = asyncio.wrap_future(future)
+        detached = False
+        reported = False
+
+        def observe_completion(completed: asyncio.Future) -> None:
+            nonlocal reported
+            if completed.cancelled():
+                return
+            # The concurrent Future's admission callback cannot observe this
+            # separate asyncio wrapper after shield's owner has left.
+            error = completed.exception()
+            if not detached or reported or error is None or isinstance(error, ProcessCancelled):
+                return
+            reported = True
+            try:
+                # Never serialize private messages, paths or child tracebacks.
+                logging.getLogger("solar.operational").warning(json.dumps({
+                    "event": "detached_process_failed",
+                    "exception_type": type(error).__name__[:80],
+                    "pid": os.getpid(),
+                }, sort_keys=True))
+            except BaseException:
+                # A diagnostic handler must not replace the owner's original
+                # cancellation or become another unhandled loop exception.
+                pass
+
+        wrapped.add_done_callback(observe_completion)
         try:
             return await asyncio.shield(wrapped)
         except asyncio.CancelledError:
+            detached = True
             with self._state_lock:
                 cancel_event = self._cancel_events.get(future)
             # A queued concurrent Future can be cancelled before any
@@ -302,6 +331,10 @@ class SupervisedProcessRunner:
             future.cancel()
             if cancel_event is not None:
                 cancel_event.set()
+            # Completion may have been observed while still attached, then
+            # cancellation won before await resumed. Report that outcome once.
+            if wrapped.done():
+                observe_completion(wrapped)
             raise
 
     def shutdown(self) -> None:

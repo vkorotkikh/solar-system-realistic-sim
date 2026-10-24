@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import Future
+import gc
 import importlib.util
+import json
+import logging
 import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
 from typing import Any
+import weakref
 
 import pytest
 
@@ -583,7 +589,7 @@ def test_async_cancellation_terminates_child_and_capacity_recovers(tmp_path: Pat
         finally:
             runner.shutdown()
 
-    asyncio.run(scenario())
+    _run_without_loop_errors(scenario)
 
 
 def test_queued_owner_cancellation_releases_without_waiting_for_running_job(
@@ -641,7 +647,7 @@ def test_queued_owner_cancellation_releases_without_waiting_for_running_job(
         finally:
             runner.shutdown()
 
-    asyncio.run(scenario())
+    _run_without_loop_errors(scenario)
 
 
 def test_normal_interpreter_exit_is_bounded_by_job_deadline(tmp_path: Path) -> None:
@@ -700,3 +706,198 @@ if not Path({str(child_pid_path)!r}).exists():
     assert elapsed < 3.0
     child_pid = int(child_pid_path.read_text(encoding="ascii"))
     assert not _pid_exists(child_pid)
+
+
+# Regression: BKP025b — detached asyncio wrappers left process failures unobserved.
+# Found by /qa on 2026-10-24; evidence: /tmp/solar-bkp025b-evidence/.
+def _run_without_loop_errors(scenario) -> None:
+    async def checked() -> None:
+        loop = asyncio.get_running_loop()
+        previous = loop.get_exception_handler()
+        errors = []
+        loop.set_exception_handler(lambda _loop, context: errors.append(context))
+        try:
+            await scenario()
+            # The warning may arrive only after the owner coroutine and its
+            # traceback have gone out of scope, not when the Future completes.
+            for _ in range(3):
+                await asyncio.sleep(0)
+                gc.collect()
+            assert errors == []
+        finally:
+            loop.set_exception_handler(previous)
+
+    asyncio.run(asyncio.wait_for(checked(), timeout=10.0))
+
+
+class _SubmittedFutureOwner:
+    """Exercise the real async adapter without a subprocess or executor seam."""
+
+    def __init__(self, *, running=True):
+        self._state_lock = threading.Lock()
+        self.future = Future()
+        if running:
+            assert self.future.set_running_or_notify_cancel()
+        self.cancel_event = threading.Event()
+        self._cancel_events = {self.future: self.cancel_event}
+        self.started = asyncio.Event()
+
+    def submit(self, payload, *, timeout_seconds):
+        assert payload == {"synthetic": True}
+        assert timeout_seconds == 1.0
+        self.started.set()
+        return self.future
+
+
+@pytest.mark.parametrize("outcome", ["success", "cancelled", "reap_failed", "crashed"])
+@pytest.mark.parametrize("completion_order", ["connected", "after_detach", "before_detach"])
+def test_wrapped_outcome_is_observed_and_detached_failure_logged_once(
+    monkeypatch, caplog, outcome, completion_order,
+) -> None:
+    from sim.process_supervisor import (
+        ProcessCancelled, ProcessCrashed, ProcessReapFailed, SupervisedProcessRunner,
+    )
+
+    secret = "synthetic-token=https://private.invalid/data?token=hidden /private/path"
+
+    async def scenario():
+        owner = _SubmittedFutureOwner()
+        wrapped_futures = []
+        real_wrap = asyncio.wrap_future
+
+        def capture_wrap(future, **kwargs):
+            wrapped = real_wrap(future, **kwargs)
+            # The recording hook outlives scenario via monkeypatch. It must not
+            # retain the wrapper and defer its native warning past our handler.
+            wrapped_futures.append(weakref.ref(wrapped))
+            return wrapped
+
+        monkeypatch.setattr(asyncio, "wrap_future", capture_wrap)
+        task = asyncio.create_task(
+            SupervisedProcessRunner.run(owner, {"synthetic": True}, timeout_seconds=1.0)
+        )
+        await owner.started.wait()
+        result = {"ok": True}
+        error = {
+            "success": None,
+            "cancelled": ProcessCancelled(secret),
+            "reap_failed": ProcessReapFailed(secret),
+            "crashed": ProcessCrashed(23),
+        }[outcome]
+        cancellation_callbacks = []
+
+        if completion_order == "after_detach":
+            task.cancel("outer-owner-token")
+            with pytest.raises(asyncio.CancelledError) as caught:
+                await task
+            assert type(caught.value) is asyncio.CancelledError
+            assert caught.value.args == ("outer-owner-token",)
+            assert owner.cancel_event.is_set()
+            await asyncio.sleep(0)
+        elif completion_order == "before_detach":
+            # This callback is registered after run's observer and shield.
+            # Both completion callbacks run first, but cancellation wins before
+            # the awaiting task resumes. The diagnostic must not be lost.
+            def cancel_before_owner_resumes(_completed):
+                cancellation_callbacks.append("completed-before-cancel")
+                task.cancel("outer-owner-token")
+
+            wrapped_futures[0]().add_done_callback(cancel_before_owner_resumes)
+
+        if error is None:
+            owner.future.set_result(result)
+        else:
+            owner.future.set_exception(error)
+
+        if completion_order == "before_detach":
+            with pytest.raises(asyncio.CancelledError) as caught:
+                await task
+            assert type(caught.value) is asyncio.CancelledError
+            assert caught.value.args == ("outer-owner-token",)
+            assert owner.cancel_event.is_set()
+            assert cancellation_callbacks == ["completed-before-cancel"]
+        elif completion_order == "connected":
+            if error is None:
+                assert await task is result
+            else:
+                with pytest.raises(type(error)) as caught:
+                    await task
+                assert caught.value is error
+            assert not owner.cancel_event.is_set()
+        # No caller consults wrapped.exception(): the production observer must
+        # consume it, or the outer loop handler detects the native GC warning.
+
+    with caplog.at_level(logging.WARNING, logger="solar.operational"):
+        _run_without_loop_errors(scenario)
+    records = [record for record in caplog.records if record.name == "solar.operational"]
+    expected_error = {"reap_failed": "ProcessReapFailed", "crashed": "ProcessCrashed"}.get(outcome)
+    if completion_order != "connected" and expected_error is not None:
+        assert len(records) == 1
+        diagnostic = json.loads(records[0].getMessage())
+        assert diagnostic["event"] == "detached_process_failed"
+        assert diagnostic["exception_type"] == expected_error
+        assert records[0].exc_info is None
+    else:
+        assert records == []
+    assert secret not in caplog.text
+    assert "hidden" not in caplog.text
+    assert "/private/path" not in caplog.text
+
+
+def test_wrapped_outcome_queued_cancellation_is_quiet(caplog):
+    from sim.process_supervisor import SupervisedProcessRunner
+
+    async def scenario():
+        owner = _SubmittedFutureOwner(running=False)
+        task = asyncio.create_task(
+            SupervisedProcessRunner.run(owner, {"synthetic": True}, timeout_seconds=1.0)
+        )
+        await owner.started.wait()
+        task.cancel("queued-owner-token")
+        with pytest.raises(asyncio.CancelledError) as caught:
+            await task
+        assert caught.value.args == ("queued-owner-token",)
+        assert owner.future.cancelled()
+        assert owner.cancel_event.is_set()
+
+    with caplog.at_level(logging.WARNING, logger="solar.operational"):
+        _run_without_loop_errors(scenario)
+    assert not [record for record in caplog.records if record.name == "solar.operational"]
+
+
+@pytest.mark.parametrize("completion_order", ["after_detach", "before_detach"])
+@pytest.mark.parametrize("logger_failure", [RuntimeError, asyncio.CancelledError])
+def test_wrapped_outcome_logger_failure_cannot_replace_owner_cancellation(
+    monkeypatch, completion_order, logger_failure,
+):
+    from sim.process_supervisor import ProcessReapFailed, SupervisedProcessRunner
+
+    calls = []
+
+    def broken_warning(*_args, **_kwargs):
+        calls.append("diagnostic-attempt")
+        raise logger_failure("logger-failure-must-not-escape")
+
+    monkeypatch.setattr(logging.getLogger("solar.operational"), "warning", broken_warning)
+
+    async def scenario():
+        owner = _SubmittedFutureOwner()
+        task = asyncio.create_task(
+            SupervisedProcessRunner.run(owner, {"synthetic": True}, timeout_seconds=1.0)
+        )
+        await owner.started.wait()
+        if completion_order == "before_detach":
+            owner.future.set_exception(ProcessReapFailed("synthetic private path"))
+            # Copy completion into the asyncio wrapper, then cancel before its
+            # callbacks/awaiting owner run. Catch and callback must not log twice.
+            await asyncio.sleep(0)
+        task.cancel("original-owner-token")
+        with pytest.raises(asyncio.CancelledError) as caught:
+            await task
+        assert caught.value.args == ("original-owner-token",)
+        assert owner.cancel_event.is_set()
+        if completion_order == "after_detach":
+            owner.future.set_exception(ProcessReapFailed("synthetic private path"))
+
+    _run_without_loop_errors(scenario)
+    assert calls == ["diagnostic-attempt"]
