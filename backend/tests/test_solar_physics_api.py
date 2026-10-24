@@ -1054,7 +1054,11 @@ def test_solar_physics_enforces_rate_limit(monkeypatch) -> None:
     assert second.headers.get("retry-after") is not None
 
 
-def test_solar_physics_times_out_with_short_budget(monkeypatch) -> None:
+def test_solar_physics_times_out_with_short_budget(monkeypatch, request) -> None:
+    # A deadline check owns a cold runner, not a prior test's ready result.
+    runner = server._new_solar_physics_runner()
+    request.addfinalizer(runner.shutdown)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
     original_builder = server._build_solar_physics_state
 
     def delayed_state(*_args, **_kwargs):

@@ -1522,10 +1522,35 @@ def _new_solar_physics_runner() -> SupervisedProcessRunner:
 _solar_physics_runner = _new_solar_physics_runner()
 
 
+_SolarPhysicsReadyKey = tuple[float, str, int, str, bool]
+
+
+@dataclass
+class _SolarPhysicsReadyCache:
+    """One runner generation; all mutations hold the lifecycle lock."""
+
+    runner: SupervisedProcessRunner
+    entries: OrderedDict[_SolarPhysicsReadyKey, bytes]
+    active: bool = True
+    stored_bytes: int = 0
+
+
+_solar_physics_ready_cache: _SolarPhysicsReadyCache | None = None
+
+
+def _retire_solar_physics_ready_cache() -> None:
+    """Caller holds the lifecycle lock; old cold tokens retain no ready bytes."""
+
+    if _solar_physics_ready_cache is not None:
+        _solar_physics_ready_cache.active = False
+        _solar_physics_ready_cache.entries.clear()
+        _solar_physics_ready_cache.stored_bytes = 0
+
+
 def _get_solar_physics_runner():
     """Return a live runner without replacing quarantined child ownership."""
 
-    global _solar_physics_runner
+    global _solar_physics_runner, _solar_physics_ready_cache
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
         if isinstance(runner, SupervisedProcessRunner):
@@ -1541,14 +1566,92 @@ def _get_solar_physics_runner():
                     )
                 runner = _new_solar_physics_runner()
                 _solar_physics_runner = runner
+            if (_solar_physics_ready_cache is None
+                    or _solar_physics_ready_cache.runner is not runner):
+                _retire_solar_physics_ready_cache()
+                _solar_physics_ready_cache = _SolarPhysicsReadyCache(runner, OrderedDict())
+        else:
+            # Alternative runners retain their existing uncached contract.
+            _retire_solar_physics_ready_cache()
+            _solar_physics_ready_cache = None
         return runner
+
+
+def _solar_physics_ready_healthy(cache: _SolarPhysicsReadyCache) -> bool:
+    """Lifecycle lock precedes the supervisor's lock-only health snapshot."""
+
+    if (not cache.active or cache is not _solar_physics_ready_cache
+            or cache.runner is not _solar_physics_runner):
+        return False
+    snapshot = cache.runner.snapshot()
+    return not (snapshot["closed"] or snapshot["broken"] or snapshot["quarantined_jobs"])
+
+
+def _lookup_solar_physics_ready(runner, key: _SolarPhysicsReadyKey):
+    with _solar_physics_runner_lifecycle_lock:
+        cache = _solar_physics_ready_cache
+        if cache is None or cache.runner is not runner or not _solar_physics_ready_healthy(cache):
+            return None, None
+        encoded = cache.entries.get(key)
+        if encoded is not None:
+            cache.entries.move_to_end(key)
+        return cache, encoded
+
+
+def _publish_solar_physics_ready(
+    cache: _SolarPhysicsReadyCache | None, key: _SolarPhysicsReadyKey, state,
+) -> None:
+    if cache is None or not isinstance(state, dict):
+        return
+    forcing_status = state.get("forcing_status")
+    pfss = state.get("pfss_field_lines")
+    if (state.get("effective_forcing") != "synthetic"
+            or state.get("live_data_enabled") is not False
+            or not isinstance(forcing_status, dict)
+            or forcing_status.get("effective") != "synthetic"
+            or forcing_status.get("runtime_eligible") is not False
+            or not isinstance(pfss, dict) or pfss.get("source") != "synthetic"):
+        return
+    # Only validated, reaped cold results reach here. Prepare a detached immutable
+    # representation without holding lifecycle/state locks; inability to cache
+    # must not turn a successful cold response into a new HTTP rejection.
+    try:
+        encoded = json.dumps(state, allow_nan=False, separators=(",", ":")).encode("utf-8")
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        return
+    limit = SOLAR_PHYSICS_PROCESS_MAX_RESULT_BYTES
+    if len(encoded) > limit:
+        return
+    with _solar_physics_runner_lifecycle_lock:
+        if not _solar_physics_ready_healthy(cache):
+            return
+        previous = cache.entries.pop(key, None)
+        if previous is not None:
+            cache.stored_bytes -= len(previous)
+        cache.entries[key] = encoded
+        cache.stored_bytes += len(encoded)
+        # Three individually bounded entries also bound total serialized storage,
+        # not process RSS. Keep explicit accounting on replacement and eviction.
+        while len(cache.entries) > 3 or cache.stored_bytes > 3 * limit:
+            _, evicted = cache.entries.popitem(last=False)
+            cache.stored_bytes -= len(evicted)
 
 
 def _shutdown_solar_physics_runner() -> None:
     """Terminate and reap all solar children during FastAPI lifespan shutdown."""
 
+    global _solar_physics_ready_cache
     with _solar_physics_runner_lifecycle_lock:
         runner = _solar_physics_runner
+        _retire_solar_physics_ready_cache()
+        if isinstance(runner, SupervisedProcessRunner):
+            if (_solar_physics_ready_cache is None
+                    or _solar_physics_ready_cache.runner is not runner):
+                _solar_physics_ready_cache = _SolarPhysicsReadyCache(runner, OrderedDict(), active=False)
+            # Retain this inactive generation even while shutdown is waiting:
+            # lookup/getter must not rearm the same still-open runner.
+        else:
+            _solar_physics_ready_cache = None
     shutdown = getattr(runner, "shutdown", None)
     if callable(shutdown):
         shutdown()
@@ -3568,9 +3671,18 @@ async def solar_physics_state(
         )
 
     try:
+        runner = _get_solar_physics_runner()
+        ready_key = (epoch_jd, fidelity_key, safe_max_features, forcing_key, bool(live_data))
+        ready_owner, encoded = _lookup_solar_physics_ready(runner, ready_key)
+        if encoded is not None:
+            # Decode outside locks so neither caller mutations nor producer aliases
+            # can alter a later delivery. Only wall-time aliases are fresh on hits.
+            state = json.loads(encoded)
+            state["wall_epoch_jd_tdb"] = state["wall_epoch_jd"] = current_jd_tdb()
+            return state
         state = await _run_request_owned_process(
             request,
-            _get_solar_physics_runner(),
+            runner,
             {
                 "epoch_jd_tdb": epoch_jd,
                 "fidelity": fidelity_key,
@@ -3580,6 +3692,7 @@ async def solar_physics_state(
             },
             timeout_seconds=SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS,
         )
+        _publish_solar_physics_ready(ready_owner, ready_key, state)
     except ProcessSaturated as exc:
         raise HTTPException(
             status_code=503,
