@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -145,22 +146,28 @@ def fetch_sbdb(
     cache_name: str = "sbdb_query",
 ) -> list[dict]:
     """Query JPL SBDB Query API."""
-    cache_path = CACHE_DIR / f"{cache_name}_full_precision_albedo.json"
+    endpoint = SBDB_API_URL
+    params: dict = {
+        "fields": SBDB_FIELDS,
+        "sb-kind": sb_kind,
+        "sort": sort,
+        "limit": str(limit),
+        "full-prec": "true",
+    }
+    if sb_class:
+        params["sb-class"] = sb_class.replace(":", ",")
+    if sb_group:
+        params["sb-group"] = sb_group
+    identity = json.dumps(
+        {"endpoint": endpoint, "params": params},
+        sort_keys=True, separators=(",", ":"),
+    )
+    query_digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    cache_path = CACHE_DIR / f"{cache_name}_query_v2_{query_digest}.json"
 
     def _fetch():
-        params: dict = {
-            "fields": SBDB_FIELDS,
-            "sb-kind": sb_kind,
-            "sort": sort,
-            "limit": str(limit),
-            "full-prec": "true",
-        }
-        if sb_class:
-            params["sb-class"] = sb_class.replace(":", ",")
-        if sb_group:
-            params["sb-group"] = sb_group
         print(f"  Querying JPL SBDB (kind={sb_kind}, class={sb_class or 'all'}, limit={limit})...")
-        data = http_get_json(SBDB_API_URL, params=params, timeout=30.0)
+        data = http_get_json(endpoint, params=params, timeout=30.0)
         if "data" not in data or "fields" not in data:
             print(f"  Warning: Unexpected SBDB response structure")
             return []
