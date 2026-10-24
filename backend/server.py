@@ -3490,6 +3490,19 @@ async def solar_physics_state(
     force_data_refresh: bool = False,
 ):
     _reject_network_refresh_get(force_data_refresh)
+    allowed_query_parameters = {
+        "jd_tdb", "jd", "fidelity", "max_features", "forcing", "live_data",
+        "force_data_refresh",
+    }
+    if any(name not in allowed_query_parameters for name in request.query_params):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unknown_query_parameters",
+                "message": "Unknown query parameters for /solar/physics.",
+                "retryable": False,
+            },
+        )
     epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
     assert epoch_jd is not None
     if not (SOLAR_PHYSICS_JD_MIN <= epoch_jd <= SOLAR_PHYSICS_JD_MAX):
