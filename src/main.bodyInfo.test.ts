@@ -20,6 +20,7 @@ const MAIN_BINDINGS = [
   'kuiperBeltUpdater', 'sunCtrl', 'applyMetricDisplayOffsets', 'bodyNodes',
   'updateFollowTarget', 'viewportCamera', 'bodyMeshes', 'Vector3',
   'backgroundStars', 'camera', 'controls', 'updateCameraClipPlanes',
+  'updateLabelDirections',
   'renderer', 'scene', 'AU_KM',
 ] as const;
 
@@ -169,6 +170,7 @@ function makeHarness() {
     camera,
     controls,
     updateCameraClipPlanes: () => undefined,
+    updateLabelDirections: () => undefined,
     renderer: { render: () => undefined },
     scene: {},
     AU_KM,

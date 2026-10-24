@@ -350,7 +350,8 @@ const bodyMeshes = new Map();
 const bodySpinGroups = new Map();
 const orbitLines: Line[] = [];
 const orbitLineByBodyId = new Map<string, Line>();
-const labels: { bodyId: string; sprite: Sprite }[] = [];
+const labels: { bodyId: string; sprite: Sprite; offsetAu: number }[] = [];
+const labelScreenUp = new Vector3();
 
 function createLabelCanvas(text: string) {
   const canvas = document.createElement('canvas');
@@ -375,6 +376,14 @@ function createLabelSprite(text: string) {
   const sprite = new Sprite(mat);
   sprite.scale.set(0.12, 0.03, 1);
   return sprite;
+}
+
+function updateLabelDirections() {
+  // Body parents are translation-only; keep the original clearance in camera-up.
+  labelScreenUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+  for (const label of labels) {
+    label.sprite.position.copy(labelScreenUp).multiplyScalar(label.offsetAu);
+  }
 }
 
 function createBodyNode(body: CatalogBody) {
@@ -448,9 +457,10 @@ function createBodyNode(body: CatalogBody) {
   const isMajor = body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'star';
   if (isMajor) {
     const label = createLabelSprite(body.name);
-    label.position.set(0, radius * 2.5 + 0.03, 0);
+    const offsetAu = radius * 2.5 + 0.03;
+    label.position.set(0, offsetAu, 0);
     node.add(label);
-    labels.push({ bodyId: body.id, sprite: label });
+    labels.push({ bodyId: body.id, sprite: label, offsetAu });
   }
 
   bodyNodes.set(body.id, node);
@@ -1322,6 +1332,7 @@ const frameLifecycle = createFrameLifecycle({
     }),
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
+    { name: 'label-directions', run: updateLabelDirections },
     { name: 'clip-planes', run: updateCameraClipPlanes },
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
@@ -1345,6 +1356,7 @@ try {
   syncAsteroidBeltInputs();
   await warmupRenderer(renderer, scene, camera, { signal: startup.signal });
   if (startup.signal.aborted || !recovery.available) return;
+  updateLabelDirections();
   renderer.render(scene, camera);
   frameLifecycle.start();
 } catch (error) {
