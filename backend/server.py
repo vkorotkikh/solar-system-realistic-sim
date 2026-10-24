@@ -93,6 +93,7 @@ from mission import MissionPlannerAgent
 from mission.ephemeris_service import (
     EphemerisBudgetExceeded,
     EphemerisCancelled,
+    EphemerisEpochUnsupported,
     EphemerisError,
     EphemerisProtocolError,
     EphemerisProviderUnavailable,
@@ -2333,7 +2334,7 @@ def _trajectory_http_exception(
 
 def _ephemeris_http_exception(exc: EphemerisError) -> HTTPException:
     status_code = 503
-    if isinstance(exc, EphemerisTargetUnsupported):
+    if isinstance(exc, (EphemerisTargetUnsupported, EphemerisEpochUnsupported)):
         status_code = 422
     elif isinstance(exc, EphemerisProtocolError):
         status_code = 502

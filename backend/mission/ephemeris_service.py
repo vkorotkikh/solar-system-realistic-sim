@@ -159,6 +159,11 @@ class EphemerisTargetUnsupported(EphemerisError):
     default_retryable = False
 
 
+class EphemerisEpochUnsupported(EphemerisError):
+    default_code = "ephemeris_epoch_unsupported"
+    default_retryable = False
+
+
 class EphemerisBudgetExceeded(EphemerisError):
     default_code = "ephemeris_budget_exceeded"
     default_retryable = True
@@ -326,6 +331,7 @@ class _EphemerisFailureData:
                 EphemerisUpstreamRateLimited,
                 EphemerisProtocolError,
                 EphemerisTargetUnsupported,
+                EphemerisEpochUnsupported,
             )
         }
         error_type = error_types.get(self.kind, EphemerisError)
@@ -1530,6 +1536,11 @@ def _numeric_id_from_header(header: str) -> str:
     return matches[0]
 
 
+_HORIZONS_COVERAGE_REFUSAL = re.compile(
+    r"^No ephemeris for target .+ (?:after|prior to) (?:A\.D\.|B\.C\.) \d"
+)
+
+
 def _parse_horizons_payload(
     payload: Any,
     *,
@@ -1540,11 +1551,24 @@ def _parse_horizons_payload(
     try:
         if not isinstance(payload, dict):
             raise ValueError("top-level payload is not an object")
-        if payload.get("error"):
-            raise ValueError("upstream rejected the query")
         signature = payload.get("signature")
         if not isinstance(signature, dict) or signature.get("source") != "NASA/JPL Horizons API":
             raise ValueError("unexpected provider signature")
+        raw_api_version = signature.get("version")
+        if not isinstance(raw_api_version, str) or not raw_api_version.strip():
+            raise ValueError("provider signature omitted a valid API version")
+        api_version = raw_api_version.strip()
+
+        error = payload.get("error")
+        if error:
+            # A validated provider refusing one target/epoch is not an outage.
+            # Unknown errors and untrusted envelopes retain protocol protection.
+            if isinstance(error, str) and _HORIZONS_COVERAGE_REFUSAL.match(error.strip()):
+                raise EphemerisEpochUnsupported(
+                    f"Horizons has no ephemeris for `{body_id}` at the requested epoch",
+                    provider="horizons", body_id=body_id, jd=expected_jd,
+                )
+            raise ValueError("upstream rejected the query")
 
         result_text = payload.get("result")
         if not isinstance(result_text, str):
@@ -1621,10 +1645,6 @@ def _parse_horizons_payload(
         # headers (for example jup365_merged). That per-query provenance cannot
         # serve as a cross-body compatibility revision. The validated API
         # signature and canonical state contract are shared by every sample.
-        raw_api_version = signature.get("version")
-        if not isinstance(raw_api_version, str) or not raw_api_version.strip():
-            raise ValueError("provider signature omitted a valid API version")
-        api_version = raw_api_version.strip()
         provider_revision = f"horizons-api-{api_version}"
     except (TypeError, ValueError, IndexError, csv.Error) as exc:
         raise EphemerisProtocolError(
@@ -1657,6 +1677,7 @@ __all__ = [
     "TRAJECTORY_STATE_CONTRACT",
     "EphemerisBudgetExceeded",
     "EphemerisCancelled",
+    "EphemerisEpochUnsupported",
     "EphemerisError",
     "EphemerisProtocolError",
     "EphemerisProviderUnavailable",
