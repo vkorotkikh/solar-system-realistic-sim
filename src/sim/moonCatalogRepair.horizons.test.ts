@@ -11,6 +11,7 @@ import oracle from '../../backend/tests/fixtures/all_moons_horizons_oracle.json'
 import spk75052 from '../../backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from '../../backend/tests/fixtures/daphnis_legacy_spk_capture.json';
 import { createSolarSystemCatalog } from './catalog';
+import { moonDisplayName } from './moonDisplayName';
 import { parseMoonEphemerisArtifact } from './moonEphemeris';
 import { propagateKeplerOrbit } from './orbitMath';
 import { candidateBodies } from './moonRepairTestInputs.mjs';
@@ -48,7 +49,7 @@ describe('SCN-043 independent catalog repair gates', () => {
     const available = !!reference.states?.length;
     const state = !available ? 'provider unavailable' : !fit ? 'repair pending, oracle available' : 'independent accuracy';
     it.skipIf(!fit || !available)(`${moon.planet}/${moon.name}: ${state}`, () => {
-      const body = catalog.bodies.find(b => b.type === 'moon' && b.name === moon.name && b.parentId === moon.planet.toLowerCase())!;
+      const body = catalog.bodies.find(b => b.type === 'moon' && b.name === moonDisplayName(moon) && b.parentId === moon.planet.toLowerCase())!;
       const newlyRepaired = !(moon.name.toLowerCase() in generated.bodies);
       const positionLimit = newlyRepaired ? Math.min(500, .001 * moon.aKm) : fit.validation.accuracyLimits.positionKm;
       const velocityLimit = newlyRepaired ? 10 : fit.validation.accuracyLimits.velocityMPerS;

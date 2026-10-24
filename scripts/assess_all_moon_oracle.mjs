@@ -12,6 +12,7 @@ import oracle from './backend/tests/fixtures/all_moons_horizons_oracle.json';
 import spk75052 from './backend/tests/fixtures/uranus_75052_spk_capture.json';
 import daphnisLegacy from './backend/tests/fixtures/daphnis_legacy_spk_capture.json';
 import { createSolarSystemCatalog } from './src/sim/catalog.ts';
+import { moonDisplayName } from './src/sim/moonDisplayName.ts';
 import { parseMoonEphemerisArtifact } from './src/sim/moonEphemeris.ts';
 import { propagateKeplerOrbit, orbitPropagationQualityAt } from './src/sim/orbitMath.ts';
 const catalog = createSolarSystemCatalog({moonEphemerides: {
@@ -31,7 +32,7 @@ const records = rawMoons.map(raw => {
       quality: daphnisLegacy.source_quality, liveProviderMissingJdTdb: live.missing_jd_tdb,
       states: daphnisLegacy.states.map(row => live.states.find(s => s.jd_tdb === row.jd_tdb) ?? row)};
   }
-  const body = catalog.bodies.find(b => b.type === 'moon' && b.name === raw.name && b.parentId === raw.planet.toLowerCase());
+  const body = catalog.bodies.find(b => b.type === 'moon' && b.name === moonDisplayName(raw) && b.parentId === raw.planet.toLowerCase());
   if (!body?.orbit) throw new Error('Missing catalog orbit: ' + raw.name);
   const record = {catalogId: raw.id, name: raw.name, parent: raw.planet, targetId: raw.iauCode,
     referenceStatus: reference.status, referenceProvider: reference.provider ?? 'NASA/JPL Horizons',

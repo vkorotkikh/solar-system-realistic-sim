@@ -474,6 +474,12 @@ export function moonsByName(catalog: SolarCatalog): Map<string, CatalogBody> {
   for (const body of catalog.bodies) {
     if (body.type === 'moon' && !byName.has(body.name)) byName.set(body.name, body);
   }
+  // Ordinary source names retain first-wins ownership before the legacy alias.
+  for (const body of catalog.bodies) {
+    if (body.type === 'moon' && body.id === 'moon-jupiter-magaclite'
+      && body.parentId === 'jupiter' && body.name === 'Megaclite'
+      && !byName.has('Magaclite')) byName.set('Magaclite', body);
+  }
   return byName;
 }
 

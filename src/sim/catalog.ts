@@ -11,6 +11,7 @@ import {
 import type { MoonChebyshevEphemeris } from './moonEphemeris';
 import type { KeplerOrbit } from './orbitMath';
 import { planetaryRotationFields, type IauPlanetRotation } from '../data/planetaryRotation';
+import { moonDisplayName } from './moonDisplayName';
 
 export interface RawMoonRecord {
   id: number;
@@ -835,7 +836,7 @@ export function createSolarSystemCatalog(
 
     bodies.push({
       id,
-      name: moon.name,
+      name: moonDisplayName(moon),
       type: 'moon',
       parentId,
       massKg: null,
