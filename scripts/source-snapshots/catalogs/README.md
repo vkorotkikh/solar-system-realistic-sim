@@ -22,14 +22,17 @@ is not a complete or representative sample of the physical main belt.
 All generation commands below use the repository's pinned test environment:
 
 ```sh
-uv run --with-requirements ci/backend-test-requirements.txt python scripts/build_asteroid_phase1_dataset.py --offline
+uv run --with-requirements ci/backend-test-requirements.txt python scripts/build_asteroid_phase1_dataset.py --offline --write
 uv run --with-requirements ci/backend-test-requirements.txt python scripts/build_asteroid_phase1_dataset.py --offline --check
 uv run --with-requirements ci/backend-test-requirements.txt python scripts/generate_moon_ephemeris.py --offline --write
 uv run --with-requirements ci/backend-test-requirements.txt python scripts/generate_moon_ephemeris.py --offline --check
 ```
 
 `--output-dir` (asteroids) and `--output-path` (moons) support reproduction in
-an external temporary directory. Checks only compare bytes. The asteroid
+an external temporary directory. The asteroid CLI validates and serializes
+without publication by default; even an external `--output-dir` requires
+`--write` to publish. Its `--write`, `--check` and `--dry-run` modes are mutually
+exclusive. Checks only compare bytes. The asteroid
 binary, metadata and sample are published together with Linux `renameat2`
 directory exchange; unsupported filesystems fail closed for replacement.
 The moon artifact contains its provenance and is atomically replaced as a

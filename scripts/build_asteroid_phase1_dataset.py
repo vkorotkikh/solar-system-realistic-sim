@@ -2,7 +2,8 @@
 """Reproduce the Phase-1 asteroid bundle offline from pinned REAL JPL inputs.
 
 Refresh inputs explicitly with capture_catalog_sources.py. All three artifacts
-are staged and published as one directory generation; --check never writes.
+are validated without publication by default. Pass --write to stage and publish
+one directory generation; --check only compares existing artifact bytes.
 """
 from __future__ import annotations
 
@@ -222,10 +223,13 @@ def main() -> None:
     parser.add_argument("--source-dir", type=Path, default=SOURCE_DIR)
     parser.add_argument("--offline", action="store_true", help="explicit default; generation never accesses the network")
     mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--write", action="store_true", help="publish the validated bundle to the selected output directory")
     mode.add_argument("--check", action="store_true", help="byte-compare without writing")
     mode.add_argument("--dry-run", action="store_true", help="validate all pinned inputs and serialize without writing")
     args = parser.parse_args()
-    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name, args.source_dir, check=args.check, dry_run=args.dry_run)
+    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name, args.source_dir, check=args.check, dry_run=args.dry_run or not (args.write or args.check))
+    if not args.write and not args.check:
+        print("[phase1] Preview only; pass --write to publish the validated bundle.")
 
 
 if __name__ == "__main__":
