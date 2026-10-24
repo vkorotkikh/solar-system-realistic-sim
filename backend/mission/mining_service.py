@@ -61,7 +61,7 @@ class MiningService:
         }
 
     @staticmethod
-    def deliverable_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.03) -> float:
+    def deliverable_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -> float:
         storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
         return storable_payload * (1.0 - max(0.0, min(0.6, float(handling_loss_fraction))))
 
@@ -72,7 +72,7 @@ class MiningService:
         outbound_propellant_kg: float,
         return_propellant_kg: float,
         return_capacity_kg: float,
-        handling_loss_fraction: float = 0.03,
+        handling_loss_fraction: float = 0.04,
     ) -> Dict[str, Any]:
         storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
         handling_loss_fraction = max(0.0, min(0.6, float(handling_loss_fraction)))

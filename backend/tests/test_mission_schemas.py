@@ -11,6 +11,29 @@ from mission.schemas import (
 )
 
 
+@pytest.mark.parametrize("entrypoint", ["schema", "parser", "http"])
+def test_mis031_public_request_default_is_four_percent(entrypoint: str) -> None:
+    # MIS-031: pin the established request default independently of helper output.
+    # Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+    from server import MissionPlanRequest
+
+    factories = {
+        "schema": MissionRequestSchema,
+        "parser": lambda: parse_mission_request({}),
+        "http": MissionPlanRequest,
+    }
+    assert factories[entrypoint]().handling_loss_fraction == 0.04
+
+
+@pytest.mark.parametrize("fraction", [0.0, 0.03, 0.04, 0.10])
+def test_mis031_explicit_request_handling_fraction_is_preserved(fraction: float) -> None:
+    from server import MissionPlanRequest
+
+    assert MissionRequestSchema(handling_loss_fraction=fraction).handling_loss_fraction == fraction
+    assert parse_mission_request({"handling_loss_fraction": fraction}).handling_loss_fraction == fraction
+    assert MissionPlanRequest(handling_loss_fraction=fraction).handling_loss_fraction == fraction
+
+
 def test_parse_mission_request_defaults_and_bounds() -> None:
     parsed = parse_mission_request(
         {

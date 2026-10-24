@@ -233,6 +233,95 @@ def test_return_propellant_is_not_subtracted_from_the_cargo_again() -> None:
     assert closure["returnedPayloadKg"] == pytest.approx(8_000.0)  # capacity-limited, not 9000 - 7000
 
 
+@pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
+def test_mis031_deliverable_cargo_omitted_default_uses_four_percent(
+    storable_kg: float, expected_kg: float
+) -> None:
+    # MIS-031: literal yields detect either helper's inconsistent 3% default.
+    # Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+    assert MiningService.deliverable_cargo_kg({"storablePayloadKg": storable_kg}) == expected_kg
+
+
+@pytest.mark.parametrize("storable_kg, expected_kg", [(1000.0, 960.0), (800.0, 768.0)])
+def test_mis031_return_closure_omitted_default_uses_four_percent(
+    storable_kg: float, expected_kg: float
+) -> None:
+    closure = MiningService().payload_return_closure(
+        {"storablePayloadKg": storable_kg},
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=1000.0,
+    )
+    assert closure["returnedPayloadKg"] == expected_kg
+    assert closure["deliveredBeforePropellantKg"] == expected_kg
+    assert closure["handlingLossFraction"] == 0.04
+    assert closure["storablePayloadKg"] == storable_kg
+    assert closure["outboundPropellantKg"] == 9000.0
+    assert closure["returnPropellantKg"] == 7000.0
+    assert closure["returnCapacityKg"] == 1000.0
+
+
+@pytest.mark.parametrize(
+    "fraction, storable_kg, capacity_kg, delivered_kg, returned_kg",
+    [
+        (0.00, 1000.0, 1000.0, 1000.0, 1000.0),
+        (0.03, 1000.0, 1000.0, 970.0, 970.0),
+        (0.04, 1000.0, 1000.0, 960.0, 960.0),
+        (0.10, 1000.0, 1000.0, 900.0, 900.0),
+        (0.00, 1000.0, 800.0, 1000.0, 800.0),
+        (0.03, 1000.0, 800.0, 970.0, 800.0),
+        (0.04, 1000.0, 800.0, 960.0, 800.0),
+        (0.10, 1000.0, 800.0, 900.0, 800.0),
+        (0.00, 800.0, 1000.0, 800.0, 800.0),
+        (0.03, 800.0, 1000.0, 776.0, 776.0),
+        (0.04, 800.0, 1000.0, 768.0, 768.0),
+        (0.10, 800.0, 1000.0, 720.0, 720.0),
+    ],
+)
+def test_mis031_explicit_service_loss_storage_and_capacity_controls(
+    fraction: float, storable_kg: float, capacity_kg: float,
+    delivered_kg: float, returned_kg: float,
+) -> None:
+    mining = {"storablePayloadKg": storable_kg}
+    assert MiningService.deliverable_cargo_kg(mining, fraction) == delivered_kg
+    assert MiningService().payload_return_closure(
+        mining,
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=capacity_kg,
+        handling_loss_fraction=fraction,
+    ) == {
+        "storablePayloadKg": storable_kg,
+        "handlingLossFraction": fraction,
+        "deliveredBeforePropellantKg": delivered_kg,
+        "outboundPropellantKg": 9000.0,
+        "returnPropellantKg": 7000.0,
+        "returnCapacityKg": capacity_kg,
+        "returnedPayloadKg": returned_kg,
+    }
+
+
+def test_mis031_omitted_loss_still_obeys_return_capacity_without_subtracting_fuel() -> None:
+    closure = MiningService().payload_return_closure(
+        {"storablePayloadKg": 1000.0},
+        outbound_propellant_kg=9000.0,
+        return_propellant_kg=7000.0,
+        return_capacity_kg=800.0,
+    )
+    assert closure["returnedPayloadKg"] == 800.0
+    assert closure["returnCapacityKg"] == 800.0
+
+
+def test_mis031_empty_mining_result_stays_zero_with_omitted_loss() -> None:
+    assert MiningService.deliverable_cargo_kg({}) == 0.0
+    closure = MiningService().payload_return_closure(
+        {}, outbound_propellant_kg=0.0, return_propellant_kg=0.0,
+        return_capacity_kg=1000.0,
+    )
+    assert closure["deliveredBeforePropellantKg"] == 0.0
+    assert closure["returnedPayloadKg"] == 0.0
+
+
 @pytest.mark.parametrize("uncertainty", [
     {},
     {"ephemeris_sigma_fraction": 0.0, "thrust_sigma_fraction": 0.0,
