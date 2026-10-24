@@ -403,11 +403,13 @@ Fetch enriched star catalog (Gaia DR3):
 python scripts/fetch_gaia_catalog.py
 ```
 
-Fetch expanded asteroid catalog (JPL SBDB):
+Preview legacy JPL SBDB additions (may populate query caches, but does not write catalog sources):
 
 ```bash
-python scripts/fetch_jpl_sbdb.py
+python scripts/fetch_jpl_sbdb.py --dry-run
 ```
+
+Append mode requires both `backend/data/bodies.py` and the removed `src/data/planets.js`, so it is unavailable in the current checkout and fails before cache setup or provider requests. It does not target `planets.ts`. Use the separate supported Phase 1 dataset workflow below for the rendered asteroid catalog.
 
 Verify the committed REBOUND initial states and off-epoch accuracy fixtures
 against live JPL Horizons and the pinned DE440 GM kernel:

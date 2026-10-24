@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-Fetch top asteroids from JPL Small-Body Database and append to data files.
+Preview JPL Small-Body Database additions for the legacy paired-source updater.
 
-Directly modifies:
+Non-dry-run appends to both existing regular-file targets:
   - backend/data/bodies.py  (ASTEROID_BELT_OBJECTS list)
   - src/data/planets.js     (ASTEROID_BELT_OBJECTS array)
 
+The current checkout no longer contains planets.js, so append mode is unavailable.
+Use --dry-run to preview without catalog-source writes; query caches may still be
+populated. Shared query helpers remain usable by the separate Phase 1 pipeline.
+
 Usage:
-  python scripts/fetch_jpl_sbdb.py
-  python scripts/fetch_jpl_sbdb.py --limit 80 --neo-limit 20 --trojan-limit 15
+  python scripts/fetch_jpl_sbdb.py --dry-run
+  python scripts/fetch_jpl_sbdb.py --dry-run --limit 80 --neo-limit 20 --trojan-limit 15
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import hashlib
 import json
 import math
 import re
+import stat
 import sys
 import textwrap
 from pathlib import Path
@@ -437,8 +442,25 @@ def main():
     parser.add_argument("--limit", type=int, default=100, help="Top N asteroids by H magnitude")
     parser.add_argument("--neo-limit", type=int, default=30, help="Notable NEO count")
     parser.add_argument("--trojan-limit", type=int, default=20, help="Jupiter Trojan count")
-    parser.add_argument("--dry-run", action="store_true", help="Print output without modifying files")
+    parser.add_argument("--dry-run", action="store_true", help="Preview entries without catalog-source writes (query caches may be populated)")
     args = parser.parse_args()
+
+    if not args.dry_run:
+        for target in (BODIES_PY_PATH, PLANETS_JS_PATH):
+            try:
+                mode = target.stat().st_mode
+            except FileNotFoundError as error:
+                raise FileNotFoundError(
+                    f"Missing legacy catalog target: {target}; use --dry-run to preview additions."
+                ) from error
+            if stat.S_ISDIR(mode):
+                raise IsADirectoryError(
+                    f"Legacy catalog target is a directory: {target}; use --dry-run to preview additions."
+                )
+            if not stat.S_ISREG(mode):
+                raise OSError(
+                    f"Legacy catalog target is not a regular file: {target}; use --dry-run to preview additions."
+                )
 
     ensure_cache_dir()
 
