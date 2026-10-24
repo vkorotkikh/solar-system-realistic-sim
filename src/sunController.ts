@@ -906,9 +906,57 @@ export function createSunController({
     solarRealtimeClient.dispose();
     revokeSolarObservationTexture();
     solarObservationTextureLoadInFlight = false;
+
+    // Dispose only controller-owned resources: shell geometry, the surface
+    // material/base map, and Sprite/flare shared assets belong to other owners.
+    if (sunGlowSprite) {
+      sunGlowSprite.material.map?.dispose();
+      sunGlowSprite.material.dispose();
+      sunGlowSprite.removeFromParent();
+      sunGlowSprite = null;
+    }
+    sunCoronaMaterial?.dispose(); // Alias of sunCoronaMesh.material; retire once.
+    sunCoronaMesh?.removeFromParent();
+    sunCoronaMaterial = null;
+    sunCoronaMesh = null;
+    if (sunTransitionRegionMesh) {
+      sunTransitionRegionMesh.material.dispose();
+      sunTransitionRegionMesh.removeFromParent();
+      sunTransitionRegionMesh = null;
+    }
+    for (const layer of [sunEruptionLayer, sunChromosphereLayer]) {
+      if (!layer) continue;
+      layer.geometry.dispose();
+      const materials = Array.isArray(layer.material) ? layer.material : [layer.material];
+      for (const material of materials) material.dispose();
+      layer.removeFromParent();
+    }
+    sunEruptionLayer = null;
+    sunChromosphereLayer = null;
+
+    disposeMagneticFieldGroup(sunMagneticFieldGroup);
+    sunMagneticFieldGroup?.removeFromParent();
+    sunMagneticFieldGroup = null;
+    sunMagneticFieldSignature = null;
+    clearSunCoronalLoopsImpl(sunCoronalLoopGroup);
+    sunCoronalLoopGroup?.removeFromParent();
+    sunCoronalLoopGroup = null;
+    clearSunParkerSpiralLinesImpl(sunParkerSpiralGroup);
+    sunParkerSpiralGroup?.removeFromParent();
+    sunParkerSpiralGroup = null;
+    solarFlareManager?.dispose();
+    solarFlareManager = null;
+    sunFlareGroup?.removeFromParent();
+    sunFlareGroup = null;
+
     agnEngine?.dispose();
     gwDisplayer?.dispose();
     warpDisplayer?.dispose();
+    agnEngine = null;
+    gwDisplayer = null;
+    warpDisplayer = null;
+    sunVisualNode = null;
+    sunSpinGroup = null;
   }
 
   return {
