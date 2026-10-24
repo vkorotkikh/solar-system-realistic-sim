@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
+import ctypes
 import importlib
 import json
 import logging
@@ -18,6 +19,8 @@ import math
 import multiprocessing
 from multiprocessing.connection import Connection
 import os
+import signal
+import sys
 import threading
 import time
 from typing import Any
@@ -105,6 +108,42 @@ def _encode_envelope(envelope: Mapping[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _arm_parent_death_guard() -> None:
+    """Contain Linux work after entry; non-Linux/bootstrap behavior is unchanged.
+
+    PDEATHSIG follows the creating *thread*. Our supervisor executor thread
+    owns the child through join/reap, including during shutdown. The kernel
+    signal also works while target native code holds the GIL.
+    """
+    if sys.platform != "linux":
+        return
+
+    # Spawn records the original owner and its sentinel before calling entry.
+    # getppid() alone could already identify an adopting process, not the owner.
+    parent = multiprocessing.parent_process()
+    expected_pid = getattr(parent, "pid", None)
+    if (type(expected_pid) is not int or expected_pid <= 0
+            or not callable(getattr(parent, "is_alive", None))):
+        # Direct calls in a main process must fail safely, never arm or _exit.
+        raise RuntimeError("worker parent identity unavailable")
+    if not parent.is_alive() or os.getppid() != expected_pid:
+        os._exit(125)
+
+    try:
+        prctl = ctypes.CDLL(None, use_errno=True).prctl
+        prctl.argtypes = [ctypes.c_int] + [ctypes.c_ulong] * 4
+        prctl.restype = ctypes.c_int
+        if prctl(1, signal.SIGKILL, 0, 0, 0) != 0:  # PR_SET_PDEATHSIG
+            raise OSError(ctypes.get_errno(), "worker parent guard unavailable")
+    except (AttributeError, OSError):
+        # Fail closed, using _child_entry's existing sanitized error envelope.
+        raise RuntimeError("worker parent guard unavailable") from None
+
+    # Registration is not retroactive. Close owner-death races before/during it.
+    if not parent.is_alive() or os.getppid() != expected_pid:
+        os._exit(125)
+
+
 def _child_entry(
     target_spec: str,
     payload: Any,
@@ -115,6 +154,7 @@ def _child_entry(
 
     try:
         try:
+            _arm_parent_death_guard()
             target = _resolve_target(target_spec)
             result = target(payload)
             try:
