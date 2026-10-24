@@ -173,8 +173,11 @@ interface ParsedPhase1Catalog {
 
 type Phase1TaxonomyCounts = Record<Phase1TaxonomyCode, number>;
 
-const PHASE1_DEFAULT_URL = '/data/asteroid-phase1/asteroid_phase1_main_100000.bin';
-const PHASE1_DEFAULT_META_URL = '/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json';
+const PHASE1_ASSET_BASE_URL = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const PHASE1_DEFAULT_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroid_phase1_main_100000.bin`;
+const PHASE1_DEFAULT_META_URL = `${PHASE1_ASSET_BASE_URL}data/asteroid-phase1/asteroid_phase1_main_100000.meta.json`;
 const PHASE1_DEFAULT_MAX_RECORDS = 15_000;
 export const PHASE1_LOAD_LATENCY_BUDGET_MS = 2_000;
 const ASPH_MAGIC = 'ASPH';
