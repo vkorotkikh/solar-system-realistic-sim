@@ -178,7 +178,7 @@ Not every module or asset below is imported by the shipped entry.
 │   │       ├── asteroidDistributions.ts       #   Size/taxonomy/family distributions
 │   │       ├── asteroidGeometry.ts            #   Instanced mesh generation
 │   │       ├── asteroidPipeline.ts            #   Central simulation pipeline
-│   │       └── asteroidShaders.ts             #   GPU vertex/fragment shaders
+│   │       └── asteroidShaders.ts             #   Asteroid vertex-shader patch
 │   ├── frontend/
 │   │   ├── app/
 │   │   │   ├── sceneSetup.ts                  # Three.js scene, renderer, lights
