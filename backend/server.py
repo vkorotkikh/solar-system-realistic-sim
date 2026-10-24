@@ -5392,12 +5392,10 @@ async def simulation_websocket(websocket: WebSocket):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "server:app",
+    from server_launcher import reexec_uvicorn
+
+    reexec_uvicorn(
         host=SOLAR_SECURITY_CONFIG.default_bind_host,
-        port=8042,
-        proxy_headers=False,
         reload=SOLAR_SECURITY_CONFIG.profile == "local",
         ws_max_size=WS_SIM_COMMAND_MAX_BYTES,
     )
