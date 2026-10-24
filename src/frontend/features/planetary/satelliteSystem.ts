@@ -280,19 +280,21 @@ function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryM
 
   const satellites: NormalizedSatellite[] = [];
 
-  for (let i = 0; i < lines.length - 2; i += 1) {
+  for (let i = 0; i < lines.length;) {
     let name = lines[i];
     let line1 = lines[i + 1];
     let line2 = lines[i + 2];
+    let recordLength = 3;
 
     if (lines[i].startsWith('1 ') && lines[i + 1]?.startsWith('2 ')) {
       line1 = lines[i];
       line2 = lines[i + 1];
       name = `Satellite ${satellites.length + 1}`;
-      i += 1;
+      recordLength = 2;
     }
 
     if (!line1?.startsWith('1 ') || !line2?.startsWith('2 ')) {
+      i += 1;
       continue;
     }
 
@@ -301,7 +303,7 @@ function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryM
       satellites.push(parsed);
     }
 
-    i += 2;
+    i += recordLength;
   }
 
   return satellites;

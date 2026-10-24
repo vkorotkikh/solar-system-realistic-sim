@@ -1,0 +1,165 @@
+import { expect, test, vi } from 'vitest';
+import type { BufferGeometry, Material, Object3D } from 'three';
+import { OrbitalSatelliteSystem } from './satelliteSystem';
+
+// Regression: MOON-033 — bare TLE pairs must not lose neighbors or the final pair.
+// Found by /qa on 2026-10-24; consolidated Markdown issue audit, MOON-033.
+// Primary format/example: https://celestrak.org/NORAD/documentation/tle-fmt.php
+// 2LE/3LE distinction: https://celestrak.org/NORAD/documentation/gp-data-formats.php
+// Element-line contract: https://celestrak.org/columns/v04n03/
+const base1 = '1 23455U 94089A   97320.90946019  .00000140  00000-0  10191-3 0  2621';
+const base2 = '2 23455  99.0090 272.6745 0008546 223.1686 136.8816 14.11711747148495';
+
+function replace(line: string, start: number, end: number, value: string): string {
+  expect(value.length).toBe(end - start);
+  return line.slice(0, start) + value + line.slice(end);
+}
+
+function withChecksum(line: string): string {
+  const body = line.slice(0, 68);
+  return body + [...body].reduce((sum, char) => sum + (/\d/.test(char) ? Number(char) : char === '-' ? 1 : 0), 0) % 10;
+}
+
+function tle(index: number, name: string | null = null, overrides: { motion?: number; e?: number; i?: number } = {}): string {
+  const id = String(23455 + index);
+  const line1 = withChecksum(replace(base1, 2, 7, id));
+  let line2 = replace(replace(base2, 2, 7, id), 43, 51, (10 * (index + 1)).toFixed(4).padStart(8));
+  if (overrides.motion !== undefined) line2 = replace(line2, 52, 63, overrides.motion.toFixed(8).padStart(11));
+  if (overrides.e !== undefined) line2 = replace(line2, 26, 33, String(Math.round(overrides.e * 1e7)).padStart(7, '0'));
+  if (overrides.i !== undefined) line2 = replace(line2, 8, 16, overrides.i.toFixed(4).padStart(8));
+  line2 = withChecksum(line2);
+  return [...(name === null ? [] : [name]), line1, line2].join('\n');
+}
+
+async function load(
+  textOrGroups: string | Record<string, string>,
+  options: { primaryId?: string; failFetch?: boolean; maxGeoCount?: number } = {}
+) {
+  const primaryId = options.primaryId ?? 'mars';
+  const groups = typeof textOrGroups === 'string' ? { science: textOrGroups } : textOrGroups;
+  const urls = Object.fromEntries(Object.keys(groups).map(key => [key, `https://fixture.invalid/${key}`]));
+  const calls: Array<{ url: RequestInfo | URL; init?: RequestInit }> = [];
+  let system: OrbitalSatelliteSystem | undefined;
+  try {
+    vi.stubGlobal('fetch', async (url: RequestInfo | URL, init?: RequestInit) => {
+      const group = Object.keys(urls).find(key => urls[key] === url);
+      expect(group, 'Only fixture URLs are allowed').toBeDefined();
+      calls.push({ url, init });
+      return { ok: !options.failFetch, status: options.failFetch ? 503 : 200, text: async () => groups[group!] };
+    });
+    system = new OrbitalSatelliteSystem({ primaryId, tleSources: urls, useInstancing: true,
+      useWorkerPropagation: false, maxOrbitLines: 1, showOrbits: false, maxGeoCount: options.maxGeoCount ?? 28 });
+    await system.initialize();
+    return { records: system.satellites.map(s => ({ name: s.name, id: s.id, category: s.category,
+      anomaly: Math.round(s.meanAnomalyRad * 180 / Math.PI), motion: s.meanMotionRevDay })),
+      status: system.status(), calls };
+  } finally {
+    vi.unstubAllGlobals();
+    if (system) {
+      const geometries = new Set<BufferGeometry>([system.markerGeometry]);
+      const materials = new Set<Material>();
+      system.group.traverse(object => {
+        const drawable = object as Object3D & { geometry?: BufferGeometry; material?: Material | Material[] };
+        if (drawable.geometry) geometries.add(drawable.geometry);
+        for (const material of Array.isArray(drawable.material) ? drawable.material : [drawable.material]) {
+          if (material) materials.add(material);
+        }
+      });
+      for (const geometry of geometries) geometry.dispose();
+      for (const material of materials) material.dispose();
+      system.group.clear();
+    }
+  }
+}
+
+test('fixture independent width, prefixes, catalog ID and checksum controls', () => {
+  expect(base1.length).toBe(69); expect(base2.length).toBe(69);
+  for (let index = 0; index < 6; index++) {
+    const lines = tle(index).split('\n');
+    expect(lines[0].slice(2, 7)).toBe(lines[1].slice(2, 7));
+    for (const [position, line] of lines.entries()) {
+      expect(line.length).toBe(69); expect(line.slice(0, 2)).toBe(`${position + 1} `);
+      let sum = 0;
+      for (let column = 0; column < 68; column++) {
+        const code = line.charCodeAt(column);
+        if (code >= 48 && code <= 57) sum += code - 48;
+        else if (code === 45) sum += 1;
+      }
+      expect(Number(line[68])).toBe(sum % 10);
+      expect(Number(lines[1].slice(43, 51))).toBe((index + 1) * 10);
+    }
+  }
+});
+
+async function expectRecords(text: string, anomalies: readonly number[], names: readonly string[]) {
+  const result = await load(text);
+  expect(result.records.map(s => s.anomaly)).toEqual(anomalies);
+  expect(result.records.map(s => s.name)).toEqual(names);
+  expect(result.records.every(s => s.category === 'science' && !s.name.includes('(fallback)'))).toBe(true);
+  expect(result.calls).toEqual([{ url: 'https://fixture.invalid/science', init: { cache: 'no-store' } }]);
+}
+
+for (const count of [1, 2, 3, 4]) {
+  test(`bare ${count} records retain input order and generated names`, async () => {
+    await expectRecords(Array.from({ length: count }, (_, i) => tle(i)).join('\n'),
+      Array.from({ length: count }, (_, i) => (i + 1) * 10), Array.from({ length: count }, (_, i) => `Satellite ${i + 1}`));
+  });
+  test(`named ${count} records preserve names and input order`, async () => {
+    await expectRecords(Array.from({ length: count }, (_, i) => tle(i, `Probe ${i + 1}`)).join('\n'),
+      Array.from({ length: count }, (_, i) => (i + 1) * 10), Array.from({ length: count }, (_, i) => `Probe ${i + 1}`));
+  });
+}
+
+for (const [name, text, names] of [
+  ['bare named bare', [tle(0), tle(1, 'Probe 2'), tle(2)].join('\n'), ['Satellite 1', 'Probe 2', 'Satellite 3']],
+  ['named bare named', [tle(0, 'Probe 1'), tle(1), tle(2, 'Probe 3')].join('\n'), ['Probe 1', 'Satellite 2', 'Probe 3']],
+  ['named named bare', [tle(0, 'Probe 1'), tle(1, 'Probe 2'), tle(2)].join('\n'), ['Probe 1', 'Probe 2', 'Satellite 3']],
+  ['bare bare named', [tle(0), tle(1), tle(2, 'Probe 3')].join('\n'), ['Satellite 1', 'Satellite 2', 'Probe 3']]
+] as const) test(`mixed ${name}`, () => expectRecords(text, [10, 20, 30], names));
+
+test('blank and CRLF lines preserve adjacent bare pairs', () => expectRecords('\r\n' + [tle(0), tle(1)].join('\n\n').replaceAll('\n', '\r\n') + '\r\n', [10, 20], ['Satellite 1', 'Satellite 2']));
+test('named CRLF and blank lines retain trimmed names', () => expectRecords('\r\n  ' + tle(0, 'Probe 1').replaceAll('\n', '\r\n\r\n') + '\r\n', [10], ['Probe 1']));
+
+for (const named of [false, true]) test(`${named ? 'named' : 'bare'} valid pair before truncated tail survives`, () => expectRecords(tle(0, named ? 'Probe 1' : null) + '\nTrailing name\n' + tle(1).split('\n')[0], [10], [named ? 'Probe 1' : 'Satellite 1']));
+
+for (const named of [false, true]) test(`${named ? 'named' : 'bare'} numeric-invalid record does not swallow next bare pair`, async () => {
+  const lines = tle(0, named ? 'Invalid' : null).split('\n');
+  lines[lines.length - 1] = withChecksum(replace(lines.at(-1)!, 52, 63, ' BAD_MOTION'));
+  await expectRecords([...lines, tle(1)].join('\n'), [20], ['Satellite 1']);
+});
+
+test('named record truncated before mean motion is ignored and next named record survives', async () => {
+  const bad = tle(0, 'Truncated').split('\n'); bad[2] = bad[2].slice(0, 51);
+  await expectRecords([...bad, tle(1, 'Probe 2')].join('\n'), [20], ['Probe 2']);
+});
+
+for (const [name, text] of [
+  ['empty', ''], ['blank only', '\r\n  \n'], ['orphan line1', tle(0).split('\n')[0]],
+  ['name and orphan line1', 'Name\n' + tle(0).split('\n')[0]], ['orphan line2', tle(0).split('\n')[1]],
+  ['wrong element prefix', 'Name\n' + tle(0).replace(/^1 /, '3 ')],
+  ['reversed pair', tle(0).split('\n').reverse().join('\n')]
+]) test(`invalid ${name} keeps existing fallback`, async () => {
+  const result = await load(text);
+  expect(result.records.map(s => s.name)).toEqual(['MRO (fallback)']);
+});
+
+test('Earth single bare station uses live record instead of fallback', async () => {
+  const result = await load({ stations: tle(0) }, { primaryId: 'earth' });
+  expect(result.records.map(s => [s.name, s.anomaly, s.category])).toEqual([['Satellite 1', 10, 'leo']]);
+});
+
+test('Earth named ISS preference, GEO filter, sorting and maximum remain unchanged', async () => {
+  const result = await load({ stations: [tle(0, 'Other'), tle(1, 'ISS (ZARYA)')].join('\n'), geo: [
+    tle(2, 'Higher eccentricity', { motion: 1, e: .002, i: 2 }),
+    tle(3, 'Lower eccentricity', { motion: 1, e: .001, i: 3 }),
+    tle(4, 'LEO not GEO'), tle(5, 'Inclination tie break', { motion: 1, e: .001, i: 1 })
+  ].join('\n') }, { primaryId: 'earth', maxGeoCount: 2 });
+  expect(result.records.map(s => [s.name, s.anomaly, s.category])).toEqual([
+    ['ISS (ZARYA)', 20, 'leo'], ['Inclination tie break', 60, 'geo'], ['Lower eccentricity', 40, 'geo']]);
+});
+
+test('fetch failure preserves existing fallback and diagnostic', async () => {
+  const result = await load(tle(0, 'Probe 1'), { failFetch: true });
+  expect(result.records.map(s => s.name)).toEqual(['MRO (fallback)']);
+  expect(JSON.stringify(result.status)).toMatch(/Failed TLE fetch \(503\)/);
+});
