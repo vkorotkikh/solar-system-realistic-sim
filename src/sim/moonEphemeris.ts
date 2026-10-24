@@ -262,8 +262,8 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
       `${context}.validation`
     );
     if (
-      !Number.isInteger(sampleCount) ||
-      !Number.isInteger(heldOutSampleCount) ||
+      !Number.isSafeInteger(sampleCount) || sampleCount < 0 ||
+      !Number.isSafeInteger(heldOutSampleCount) || heldOutSampleCount < 0 ||
       endpointSampleCount !== 2 ||
       sampleCount !== heldOutSampleCount + endpointSampleCount
     ) {
@@ -292,6 +292,7 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
       throw new Error(`${context}.validation.accuracyLimits must be nonnegative`);
     }
     const endpointJds: number[] = [];
+    const endpointMaxima = { positionErrorKm: 0, velocityErrorMPerS: 0 };
     for (const [endpointIndex, untypedEndpoint] of validation.coverageEndpointErrors.entries()) {
       const endpointContext = `${context}.validation.coverageEndpointErrors[${endpointIndex}]`;
       if (!isRecord(untypedEndpoint)) throw new Error(`${endpointContext} must be an object`);
@@ -301,6 +302,7 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
         if (error < 0 || error > limit) {
           throw new Error(`${endpointContext}.${field} must be nonnegative and within its declared accuracy limit`);
         }
+        endpointMaxima[field] = Math.max(endpointMaxima[field], error);
       }
     }
     endpointJds.sort((left, right) => left - right);
@@ -310,30 +312,32 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     ) {
       throw new Error(`${context}.validation endpoints do not match declared coverage`);
     }
-    const maximumByStatsField: Record<string, number> = {};
-    for (const statsField of ['positionErrorKm', 'velocityErrorMPerS']) {
+    for (const [statsField, limit] of [['positionErrorKm', positionLimit], ['velocityErrorMPerS', velocityLimit]] as const) {
       const stats = validation[statsField];
       if (!isRecord(stats)) throw new Error(`${context}.validation.${statsField} is missing`);
+      let previous = 0;
       for (const percentile of ['p50', 'p95', 'p99', 'max']) {
         const statistic = requireFiniteNumber(
           stats,
           percentile,
           `${context}.validation.${statsField}`
         );
-        if (percentile === 'max') maximumByStatsField[statsField] = statistic;
+        if (statistic < previous || statistic > limit) {
+          throw new Error(`${context}.validation.${statsField} must be nonnegative, ordered and within its declared accuracy limit`);
+        }
+        previous = statistic;
       }
-    }
-    if (
-      maximumByStatsField.positionErrorKm > positionLimit ||
-      maximumByStatsField.velocityErrorMPerS > velocityLimit
-    ) {
-      throw new Error(`${context}.validation exceeds its declared accuracy limit`);
+      // Aggregate errors include both exact coverage endpoints as well as
+      // held-out samples, so their reported maximum must cover those rows.
+      if (endpointMaxima[statsField] > previous) {
+        throw new Error(`${context}.validation.${statsField}.max must include coverage endpoint errors`);
+      }
     }
     const handoffs = untypedBody.sourceDiscontinuities;
     const audit = validation.postSelectionCrossValidation;
     if (audit !== undefined || bodyId === 's2023_s38') {
       if (!isRecord(audit) || audit.usedForFitOrSubdivision !== false ||
-          typeof audit.sampleCount !== 'number' || !Number.isInteger(audit.sampleCount) || audit.sampleCount <= 0 ||
+          typeof audit.sampleCount !== 'number' || !Number.isSafeInteger(audit.sampleCount) || audit.sampleCount <= 0 ||
           typeof audit.rowsSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(audit.rowsSha256)) {
         throw new Error(`${context}.validation must retain an independent post-selection audit`);
       }
