@@ -236,6 +236,7 @@ export function createSunController({
     const status = describeSolarDataStatus({
       lastSuccessMs: clientStatus.lastSuccessMs,
       lastFailure: clientStatus.lastFailure,
+      epochRangeBlocked: clientStatus.epochRangeBlocked,
       timeoutMs: clientStatus.timeoutMs,
       backendBaseUrl: backendBaseUrl(),
       pageOrigin: globalThis.location?.origin ?? '',
@@ -752,14 +753,17 @@ export function createSunController({
     // replacement or disposes delivery before this outer call resumes.
     if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
     if (!solarPhysicsClient || (solarPhysicsRefreshInFlight && !force)) return;
-    if (!force && nowMs < solarPhysicsNextRefreshMs) return;
+    const requestJd = simState.julianDate;
+    const rangeReadiness = solarPhysicsClient.epochRangeReadiness(requestJd);
+    if (solarDeliveryDisposed || entryGeneration !== solarPhysicsRefreshGeneration) return;
+    if (!force && rangeReadiness?.blocked && !rangeReadiness.bypassCadence) return;
+    if (!force && !rangeReadiness?.bypassCadence && nowMs < solarPhysicsNextRefreshMs) return;
 
     solarPhysicsRefreshInFlight = true;
     const generation = ++solarPhysicsRefreshGeneration;
     const ownsRefresh = () => !solarDeliveryDisposed && generation === solarPhysicsRefreshGeneration;
-    const requestJd = simState.julianDate;
 
-    void solarPhysicsClient.maybeRefresh(requestJd, force)
+    void solarPhysicsClient.maybeRefresh(requestJd, force, rangeReadiness)
       .then((updated) => {
         if (!ownsRefresh()) return;
         const status = solarPhysicsClient.status();

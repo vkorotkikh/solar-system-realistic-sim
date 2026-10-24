@@ -3630,6 +3630,10 @@ async def solar_physics_state(
                     "JDTDB (the corona model validity window)."
                 ),
                 "retryable": False,
+                "valid_jd_range": {
+                    "min_jd_tdb": SOLAR_PHYSICS_JD_MIN,
+                    "max_jd_tdb": SOLAR_PHYSICS_JD_MAX,
+                },
             },
         )
     _require_optional_solar_api_key(request)

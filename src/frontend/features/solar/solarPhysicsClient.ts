@@ -190,6 +190,24 @@ export interface SolarPhysicsFailure {
   atMs: number;
 }
 
+interface SolarEpochRange {
+  minJdTdb: number;
+  maxJdTdb: number;
+}
+
+export interface SolarPhysicsEpochRangeBlock extends SolarEpochRange {
+  baseUrl: string;
+  /** Stable for one outside episode, including advancing unsupported epochs. */
+  atMs: number;
+  episode: number;
+}
+
+interface SolarEpochRangeReadiness {
+  readonly baseUrl: string;
+  readonly blocked: boolean;
+  readonly bypassCadence: boolean;
+}
+
 export interface SolarPhysicsClientStatus {
   lastError: string | null;
   lastFailure: SolarPhysicsFailure | null;
@@ -202,6 +220,8 @@ export interface SolarPhysicsClientStatus {
   nextRefreshMs: number;
   inFlight: boolean;
   disposed: boolean;
+  /** Local admission state, not a fabricated HTTP failure or refresh attempt. */
+  epochRangeBlocked: SolarPhysicsEpochRangeBlock | null;
 }
 
 /** Each `/health` probe only has to tell "answers" from "refused" from "nothing listening". */
@@ -260,22 +280,37 @@ function classifyHttpFailure(status: number, code: string | null): SolarPhysicsF
 }
 
 /** `detail` is `{code, message, retryable}` on structured backend errors and a string on plain ones. */
-async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string }> {
+async function readErrorDetail(response: Response): Promise<{ code: string | null; message: string; validJdRange?: SolarEpochRange | null }> {
   try {
     const body: unknown = await response.json();
     const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
     if (typeof detail === 'string') return { code: null, message: detail };
     if (detail && typeof detail === 'object') {
-      const { code, message } = detail as { code?: unknown; message?: unknown };
+      const { code, message, valid_jd_range } = detail as { code?: unknown; message?: unknown; valid_jd_range?: unknown };
       return {
         code: typeof code === 'string' ? code : null,
-        message: typeof message === 'string' ? message : ''
+        message: typeof message === 'string' ? message : '',
+        validJdRange: parseEpochRange(valid_jd_range)
       };
     }
   } catch {
     // An unreadable error body still has a status to report.
   }
   return { code: null, message: '' };
+}
+
+function parseEpochRange(value: unknown): SolarEpochRange | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const { min_jd_tdb: min, max_jd_tdb: max } = value as Record<string, unknown>;
+  return typeof min === 'number' && Number.isFinite(min)
+    && typeof max === 'number' && Number.isFinite(max) && min < max
+    ? { minJdTdb: min, maxJdTdb: max } : null;
+}
+
+function outsideEpochRange(jd: number, range: SolarEpochRange): boolean {
+  // Admission follows the same eight-decimal identity as the actual request.
+  const wireJd = Number(Number(jd).toFixed(8));
+  return Number.isFinite(wireJd) && (wireJd < range.minJdTdb || wireJd > range.maxJdTdb);
 }
 
 function parseRetryAfterMs(value: string | null | undefined): number | null {
@@ -321,6 +356,9 @@ export class SolarPhysicsClient {
   abortController: AbortController | null;
   lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; baseUrl: string; atMs: number } | null;
   private requestContext: SolarPhysicsRequestContext | null;
+  private knownEpochRange: (SolarEpochRange & { baseUrl: string }) | null;
+  private epochRangeBlock: SolarPhysicsEpochRangeBlock | null;
+  private epochRangeEpisode: number;
   _reqId: number;
   disposed: boolean;
 
@@ -360,6 +398,9 @@ export class SolarPhysicsClient {
     this.abortController = null;
     this.lastProbe = null;
     this.requestContext = null;
+    this.knownEpochRange = null;
+    this.epochRangeBlock = null;
+    this.epochRangeEpisode = 0;
     this._reqId = 0;
     this.disposed = false;
   }
@@ -380,8 +421,34 @@ export class SolarPhysicsClient {
       timeoutMs: this.timeoutMs,
       nextRefreshMs: this.nextRefreshMs,
       inFlight: this.inFlight,
-      disposed: this.disposed
+      disposed: this.disposed,
+      epochRangeBlocked: this.epochRangeBlock ? { ...this.epochRangeBlock } : null
     };
+  }
+
+  /** Read-only: the controller can honor transitions before its outer cadence gate. */
+  epochRangeReadiness(jd: number): SolarEpochRangeReadiness | null {
+    if (this.disposed || !this.knownEpochRange) return null;
+    return this.epochRangeReadinessFor(jd, this.baseUrl());
+  }
+
+  private epochRangeReadinessFor(jd: number, baseUrl: string): SolarEpochRangeReadiness {
+    const range = this.knownEpochRange;
+    if (!range) return { baseUrl, blocked: false, bypassCadence: false };
+    if (baseUrl !== range.baseUrl) {
+      return { baseUrl, blocked: false, bypassCadence: true };
+    }
+    const blocked = outsideEpochRange(jd, range);
+    return { baseUrl, blocked, bypassCadence: blocked !== (this.epochRangeBlock !== null) };
+  }
+
+  private blockKnownEpochRange(): void {
+    const range = this.knownEpochRange;
+    if (!range) return;
+    const previous = this.epochRangeBlock;
+    if (previous && previous.baseUrl === range.baseUrl
+      && previous.minJdTdb === range.minJdTdb && previous.maxJdTdb === range.maxJdTdb) return;
+    this.epochRangeBlock = { ...range, atMs: Date.now(), episode: ++this.epochRangeEpisode };
   }
 
   dispose(): void {
@@ -397,10 +464,11 @@ export class SolarPhysicsClient {
     this.inFlight = false;
   }
 
-  async maybeRefresh(jd: number, force = false): Promise<boolean> {
+  async maybeRefresh(jd: number, force = false, preparedRange?: SolarEpochRangeReadiness | null): Promise<boolean> {
     const nowMs = Date.now();
 
     if (this.disposed) return false;
+    const entryReqId = this._reqId;
 
     if (this.inFlight) {
       if (force) {
@@ -413,7 +481,21 @@ export class SolarPhysicsClient {
       }
     }
 
-    if (!force && nowMs < this.nextRefreshMs) return false;
+    // Carry only the captured base across the outer gate; admission uses the
+    // current tuple and epoch, never a previously prepared decision.
+    const prepared = preparedRange ?? this.epochRangeReadiness(jd);
+    if (this.disposed || this._reqId !== entryReqId) return false;
+    const rangeReadiness = prepared ? this.epochRangeReadinessFor(jd, prepared.baseUrl) : null;
+    if (rangeReadiness && rangeReadiness.baseUrl !== this.knownEpochRange?.baseUrl) {
+      this.knownEpochRange = null;
+      this.epochRangeBlock = null;
+    }
+    if (rangeReadiness?.blocked && !force) {
+      this.blockKnownEpochRange();
+      return false;
+    }
+    if (!force && !rangeReadiness?.bypassCadence && nowMs < this.nextRefreshMs) return false;
+    if (rangeReadiness && !rangeReadiness.blocked) this.epochRangeBlock = null;
 
     this.inFlight = true;
     this._reqId++;
@@ -426,7 +508,7 @@ export class SolarPhysicsClient {
       forcing: this.forcing,
       live_data: this.liveData ? 'true' : 'false'
     });
-    const baseUrl = this.baseUrl();
+    const baseUrl = rangeReadiness?.baseUrl ?? this.baseUrl();
     const url = `${baseUrl}/solar/physics?${query.toString()}`;
 
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
@@ -505,6 +587,11 @@ export class SolarPhysicsClient {
         this.lastProbe = null;
         const detail = await awaitDelivery(() => readErrorDetail(response));
         if (timedOut) throw this.timeoutError();
+        if (response.status === 400 && detail.code === 'jd_out_of_range'
+          && detail.validJdRange && outsideEpochRange(jd, detail.validJdRange)) {
+          this.knownEpochRange = { ...detail.validJdRange, baseUrl };
+          this.blockKnownEpochRange();
+        }
         throw new SolarPhysicsRequestError(
           classifyHttpFailure(response.status, detail.code),
           `Solar physics request failed (${response.status})${detail.message ? `: ${detail.message}` : ''}`,
@@ -528,6 +615,11 @@ export class SolarPhysicsClient {
         assertDeliveryActive();
         throw new SolarPhysicsRequestError('invalid-response', error instanceof Error ? error.message : String(error));
       }
+      if (this.knownEpochRange && outsideEpochRange(jd, this.knownEpochRange)) {
+        // A validated owned success disproves the remembered interval.
+        this.knownEpochRange = null;
+      }
+      this.epochRangeBlock = null;
       this.latest = payload;
       this.lastLatencyMs = Date.now() - startMs;
       this.lastSuccessMs = Date.now();
