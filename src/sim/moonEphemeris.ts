@@ -275,21 +275,6 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     ) {
       throw new Error(`${context}.validation must include both coverage endpoints`);
     }
-    const endpointJds: number[] = [];
-    for (const [endpointIndex, untypedEndpoint] of validation.coverageEndpointErrors.entries()) {
-      const endpointContext = `${context}.validation.coverageEndpointErrors[${endpointIndex}]`;
-      if (!isRecord(untypedEndpoint)) throw new Error(`${endpointContext} must be an object`);
-      endpointJds.push(requireFiniteNumber(untypedEndpoint, 'jdTdb', endpointContext));
-      requireFiniteNumber(untypedEndpoint, 'positionErrorKm', endpointContext);
-      requireFiniteNumber(untypedEndpoint, 'velocityErrorMPerS', endpointContext);
-    }
-    endpointJds.sort((left, right) => left - right);
-    if (
-      Math.abs(endpointJds[0] - coverageStartJd) > 1e-9 ||
-      Math.abs(endpointJds[1] - coverageEndJd) > 1e-9
-    ) {
-      throw new Error(`${context}.validation endpoints do not match declared coverage`);
-    }
     if (!isRecord(validation.accuracyLimits)) {
       throw new Error(`${context}.validation.accuracyLimits is missing`);
     }
@@ -303,6 +288,28 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
       'velocityMPerS',
       `${context}.validation.accuracyLimits`
     );
+    if (positionLimit < 0 || velocityLimit < 0) {
+      throw new Error(`${context}.validation.accuracyLimits must be nonnegative`);
+    }
+    const endpointJds: number[] = [];
+    for (const [endpointIndex, untypedEndpoint] of validation.coverageEndpointErrors.entries()) {
+      const endpointContext = `${context}.validation.coverageEndpointErrors[${endpointIndex}]`;
+      if (!isRecord(untypedEndpoint)) throw new Error(`${endpointContext} must be an object`);
+      endpointJds.push(requireFiniteNumber(untypedEndpoint, 'jdTdb', endpointContext));
+      for (const [field, limit] of [['positionErrorKm', positionLimit], ['velocityErrorMPerS', velocityLimit]] as const) {
+        const error = requireFiniteNumber(untypedEndpoint, field, endpointContext);
+        if (error < 0 || error > limit) {
+          throw new Error(`${endpointContext}.${field} must be nonnegative and within its declared accuracy limit`);
+        }
+      }
+    }
+    endpointJds.sort((left, right) => left - right);
+    if (
+      Math.abs(endpointJds[0] - coverageStartJd) > 1e-9 ||
+      Math.abs(endpointJds[1] - coverageEndJd) > 1e-9
+    ) {
+      throw new Error(`${context}.validation endpoints do not match declared coverage`);
+    }
     const maximumByStatsField: Record<string, number> = {};
     for (const statsField of ['positionErrorKm', 'velocityErrorMPerS']) {
       const stats = validation[statsField];
