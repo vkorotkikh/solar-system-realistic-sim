@@ -68,6 +68,7 @@ from pydantic import (
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from benchmark import (
+    InvalidReportOutputPathError,
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
     generate_accuracy_report,
@@ -4422,6 +4423,10 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
         if isinstance(result.get("summary"), dict):
             public_result["summary"] = _public_artifact_metadata(result["summary"], "referenceFile")
         return public_result
+    except InvalidReportOutputPathError as exc:
+        raise _trajectory_http_exception(
+            400, "invalid_report_path", "The report output path is invalid.",
+        ) from exc
     except FileExistsError as exc:
         raise _trajectory_http_exception(
             409, "benchmark_report_exists",

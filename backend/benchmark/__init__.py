@@ -2,6 +2,7 @@
 
 from .accuracy import (
     BENCHMARK_DEFAULT_TIMEOUT_SECONDS,
+    InvalidReportOutputPathError,
     MAX_REFERENCE_FILE_BYTES,
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
@@ -11,6 +12,7 @@ from .accuracy import (
 
 __all__ = [
     "BENCHMARK_DEFAULT_TIMEOUT_SECONDS",
+    "InvalidReportOutputPathError",
     "MAX_REFERENCE_FILE_BYTES",
     "MAX_REFERENCE_SCENARIOS",
     "benchmark_against_references",
