@@ -84,15 +84,19 @@ class RiskService:
             # Re-close the staged rocket equation for this sample: every burn scaled by the
             # sampled delta-v factor, carrying the planned cargo (or less, if less was mined).
             # A plan short of delta-v therefore fails here instead of scoring 0% risk.
-            budget = reclose(dv_factor, min(payload, base_returned_payload_kg))
+            cargo = min(payload, base_returned_payload_kg)
+            budget = reclose(dv_factor, cargo)
             margin = float(budget.get("propellantMarginKg", 0.0))
 
-            if payload <= 0.0 or not budget.get("feasible", False):
+            failed = payload <= 0.0 or not budget.get("feasible", False)
+            if failed:
                 failure_count += 1
 
             dv_samples.append(dv)
             time_samples.append(time_days)
-            payload_samples.append(payload)
+            # Unconditional returned yield includes failed-delivery zeros and
+            # never exceeds the cargo actually evaluated by the rocket closure.
+            payload_samples.append(0.0 if failed else cargo)
             arrival_samples.append(arrival_jd)
             margin_samples.append(margin)
 

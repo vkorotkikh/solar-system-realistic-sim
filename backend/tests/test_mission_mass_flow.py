@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from statistics import quantiles
 
 import pytest
 
@@ -232,7 +233,12 @@ def test_return_propellant_is_not_subtracted_from_the_cargo_again() -> None:
     assert closure["returnedPayloadKg"] == pytest.approx(8_000.0)  # capacity-limited, not 9000 - 7000
 
 
-def test_risk_fails_every_sample_of_a_plan_short_of_delta_v() -> None:
+@pytest.mark.parametrize("uncertainty", [
+    {},
+    {"ephemeris_sigma_fraction": 0.0, "thrust_sigma_fraction": 0.0,
+     "extraction_sigma_fraction": 0.0},
+], ids=["default-dispersion", "zero-dispersion"])
+def test_risk_fails_every_sample_of_a_plan_short_of_delta_v(uncertainty) -> None:
     # The audit's case: a plan 6.3 km/s short scored failureProbability 0.0.
     burns = [6.0, 9.0]
     assert not _budget(burns)["feasible"]
@@ -243,8 +249,116 @@ def test_risk_fails_every_sample_of_a_plan_short_of_delta_v() -> None:
     risk = RiskService().run_monte_carlo(
         base_total_delta_v_km_s=sum(burns), base_total_time_days=900.0, base_returned_payload_kg=1_000.0,
         base_arrival_jd=2_461_000.5, reclose=reclose, samples=200, seed=3,
+        **uncertainty,
     )
     assert risk["failureProbability"] == pytest.approx(1.0)
+    assert risk["envelopes"]["returnedPayloadKg"] == {"p05": 0.0, "p50": 0.0, "p95": 0.0}
+
+
+# MIS-020 returned-yield facet: failed deliveries cannot report cargo returned.
+# Register: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
+@pytest.mark.parametrize("payload, feasibility, failure_probability, expected", [
+    (1_000.0, "success", 0.0, {"p05": 1_000.0, "p50": 1_000.0, "p95": 1_000.0}),
+    (1_000.0, "half", 0.5, {"p05": 0.0, "p50": 500.0, "p95": 1_000.0}),
+    (0.0, "success", 1.0, {"p05": 0.0, "p50": 0.0, "p95": 0.0}),
+    (1_000.0, "missing", 1.0, {"p05": 0.0, "p50": 0.0, "p95": 0.0}),
+], ids=["all-success", "mixed-delivery", "zero-cargo", "missing-feasibility"])
+def test_risk_returned_yield_includes_failed_delivery_zeros(
+    payload, feasibility, failure_probability, expected,
+) -> None:
+    calls = []
+
+    def reclose(factor, cargo):
+        calls.append((factor, cargo))
+        if feasibility == "missing":
+            return {}
+        return {"feasible": feasibility == "success" or len(calls) <= 15}
+
+    risk = RiskService().run_monte_carlo(
+        base_total_delta_v_km_s=3.0, base_total_time_days=900.0,
+        base_returned_payload_kg=payload, base_arrival_jd=2_461_000.5,
+        reclose=reclose, samples=30, seed=3,
+        ephemeris_sigma_fraction=0.0, thrust_sigma_fraction=0.0,
+        extraction_sigma_fraction=0.0,
+    )
+
+    assert calls == [(1.0, payload)] * 30
+    assert risk["failureProbability"] == failure_probability
+    # Fifteen failures and fifteen deliveries have an interpolated median of 500,
+    # not the 1,000 kg conditional-on-success median.
+    assert risk["envelopes"]["returnedPayloadKg"] == expected
+
+
+def test_risk_returned_yield_matches_capped_reclosed_cargo_and_lower_mining_draws() -> None:
+    calls = []
+
+    def reclose(factor, cargo):
+        calls.append((factor, cargo))
+        return {"feasible": True}
+
+    kwargs = dict(
+        base_total_delta_v_km_s=3.0, base_total_time_days=900.0,
+        base_returned_payload_kg=1_000.0, base_arrival_jd=2_461_000.5,
+        reclose=reclose, samples=30, seed=3,
+        ephemeris_sigma_fraction=0.0, thrust_sigma_fraction=0.0,
+        extraction_sigma_fraction=0.5,
+    )
+    risk = RiskService().run_monte_carlo(**kwargs)
+    first_calls = calls.copy()
+    calls.clear()
+    assert RiskService().run_monte_carlo(**kwargs) == risk
+    assert calls == first_calls
+    assert len(calls) == 30
+    cargo_draws = [cargo for _factor, cargo in calls]
+    assert min(cargo_draws) < 1_000.0
+    assert max(cargo_draws) == 1_000.0
+    # Independent inclusive quantile implementation applied to the exact cargo
+    # that the callback evaluated, not uncapped hypothetical mining output.
+    oracle = quantiles(cargo_draws, n=20, method="inclusive")
+    assert risk["envelopes"]["returnedPayloadKg"] == pytest.approx({
+        "p05": oracle[0], "p50": oracle[9], "p95": oracle[18],
+    })
+    assert risk["envelopes"]["returnedPayloadKg"]["p95"] == 1_000.0
+
+
+def test_risk_returned_yield_fix_preserves_other_envelopes_and_callback_draws() -> None:
+    calls = []
+
+    def reclose(factor, cargo):
+        calls.append((factor, cargo))
+        return {"feasible": factor <= 1.0,
+                "propellantMarginKg": 27.0 + cargo / 100.0 - factor}
+
+    kwargs = dict(
+        base_total_delta_v_km_s=3.0, base_total_time_days=900.0,
+        base_returned_payload_kg=1_000.0, base_arrival_jd=2_461_000.5,
+        reclose=reclose, samples=30, seed=3,
+    )
+    risk = RiskService().run_monte_carlo(**kwargs)
+    first_calls = calls.copy()
+    calls.clear()
+    assert RiskService().run_monte_carlo(**kwargs) == risk
+    assert calls == first_calls
+    assert len(calls) == risk["samples"] == 30
+    assert risk["seed"] == 3
+    # Frozen pre-repair controls: no changes to random draw order or non-yield
+    # envelopes, including failed scenarios' required delta-v/time and margin.
+    assert calls[0] == pytest.approx((1.0047354019143653, 875.1952987254252))
+    assert calls[-1] == pytest.approx((0.9925941548982359, 1_000.0))
+    assert risk["failureProbability"] == 1 / 3
+    expected = {
+        "deltaV_km_s": {"p05": 2.7072111216047583, "p50": 2.9751117709918677, "p95": 3.226173324270411},
+        "timeDays": {"p05": 812.5445510018158, "p50": 889.198770256508, "p95": 955.498400518496},
+        "arrivalJd": {"p05": 2460913.044551002, "p50": 2460989.6987702567, "p95": 2461055.9984005187},
+        "propellantMarginKg": {"p05": 33.638308984928436, "p50": 35.84889538618559, "p95": 36.01918909679812},
+    }
+    for name, values in expected.items():
+        assert risk["envelopes"][name] == pytest.approx(values, rel=1e-12, abs=1e-9)
+    realized_cargo = [cargo if factor <= 1.0 else 0.0 for factor, cargo in calls]
+    oracle = quantiles(realized_cargo, n=20, method="inclusive")
+    assert risk["envelopes"]["returnedPayloadKg"] == pytest.approx({
+        "p05": oracle[0], "p50": oracle[9], "p95": oracle[18],
+    })
 
 
 def test_risk_is_low_for_a_plan_with_real_margin() -> None:
