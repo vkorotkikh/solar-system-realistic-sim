@@ -92,7 +92,7 @@ interface FetchJobResult {
 }
 
 interface NormalizedOrbit {
-  epochJd?: number;
+  epochJd?: number | null;
   epochPacked?: string | null;
   aAu: number | null;
   e: number;
@@ -218,7 +218,11 @@ const DEFAULT_OPTIONS: CommandOptions = {
 
 class RateLimiter {
   private nextAllowAt = 0;
-  constructor(private readonly minIntervalMs: number) {}
+  private readonly minIntervalMs: number;
+
+  constructor(minIntervalMs: number) {
+    this.minIntervalMs = minIntervalMs;
+  }
 
   async wait(): Promise<void> {
     const now = Date.now();

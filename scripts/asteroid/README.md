@@ -1,6 +1,9 @@
-# Asteroid Source Acquisition Scripts (Phase 1)
+# Asteroid Source Acquisition Scripts
 
-This folder contains the TS-based catalog ingestion path for Phase 1 deterministic/procedural workflows.
+This folder contains a retained TypeScript source-acquisition tool. Its raw output defaults to
+`public/data/asteroid-phase2`; it does not automatically publish a runtime catalog.
+The Phase 1 dataset builder is the separate `scripts/build_asteroid_phase1_dataset.py` path
+(`npm run phase1:asteroid-dataset`).
 
 ## `catalog_fetcher.ts`
 
@@ -14,13 +17,28 @@ It applies normalization, schema alignment, deterministic ID assignment, de-dupl
 - a raw normalized snapshot
 - provenance metadata describing fetch jobs, retries, cache state, checksums, and run schedule
 
-## Quick run
+## Offline help and type checking
+
+Use the repository-pinned Node.js `22.23.2` and npm `10.9.8`. Help runs without
+fetching catalogs or writing files:
 
 ```bash
-npx tsx scripts/asteroid/catalog_fetcher.ts --dry-run
+node scripts/asteroid/catalog_fetcher.ts --help
+node scripts/asteroid/catalog_fetcher.ts -h
 ```
 
-> `tsx` is assumed for direct TS execution in local workflows. If unavailable, run through a preferred TS runtime.
+No extra TypeScript runtime or transform flag is required. Native type stripping
+does not type-check the script. Run the dedicated strict Node-compatible check,
+or the combined frontend/script check:
+
+```bash
+npm run typecheck:scripts
+npm run typecheck
+```
+
+Acquisition commands, including `--dry-run`, can contact JPL/MPC and write cache
+files. `--dry-run` skips only final snapshot and provenance publication; it is
+not an offline or no-filesystem-effects mode.
 
 ## CLI
 
@@ -44,7 +62,7 @@ npx tsx scripts/asteroid/catalog_fetcher.ts --dry-run
 | `--meta-output <path>` | Provenance JSON output path override.
 | `--interval-minutes <n>` | Delay between cycles. `0` means single run.
 | `--max-runs <n>` | Number of schedule cycles to execute.
-| `--dry-run` | Parse and compute outputs without writing files.
+| `--dry-run` | Fetch/cache and compute records, but skip final snapshot and provenance writes. |
 | `--help` | Print full CLI help and exit.
 
 ## Source jobs (scheduler model)
