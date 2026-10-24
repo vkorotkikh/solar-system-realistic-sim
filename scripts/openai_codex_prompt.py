@@ -128,9 +128,20 @@ def extract_output_text(response_payload: dict) -> str:
     return "\n".join(parts).strip()
 
 
+class _RejectInlineApiKey(argparse.Action):
+    """Reject the obsolete flag without echoing its credential value."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.error(
+            "Inline API keys are not supported. "
+            "Set OPENAI_API_KEY securely in the environment."
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Send a prompt to OpenAI and prefer Codex models automatically."
+        description="Send a prompt to OpenAI and prefer Codex models automatically.",
+        epilog="Set OPENAI_API_KEY securely in the environment for authentication.",
     )
     parser.add_argument(
         "prompt_words",
@@ -154,7 +165,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=800,
         help="Max output tokens for the response.",
     )
-    parser.add_argument("--api-key", help="OpenAI API key. Defaults to OPENAI_API_KEY env var.")
+    parser.add_argument("--api-key", action=_RejectInlineApiKey, help=argparse.SUPPRESS)
     parser.add_argument(
         "--base-url",
         default=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
@@ -168,9 +179,9 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    api_key = args.api_key or os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        parser.error("Missing API key. Set OPENAI_API_KEY or pass --api-key.")
+        parser.error("Missing API key. Set OPENAI_API_KEY securely in the environment.")
 
     base_url = build_base_url(args.base_url)
 
