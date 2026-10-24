@@ -52,12 +52,23 @@ class RiskService:
         base_returned_payload_kg: float,
         base_arrival_jd: float,
         reclose: Callable[[float, float], Dict[str, Any]],
+        base_departure_cargo_kg: float | None = None,
         samples: int = 300,
         seed: int = 7,
         ephemeris_sigma_fraction: float = DEFAULT_EPHEMERIS_SIGMA_FRACTION,
         thrust_sigma_fraction: float = DEFAULT_THRUST_SIGMA_FRACTION,
         extraction_sigma_fraction: float = DEFAULT_EXTRACTION_SIGMA_FRACTION,
     ) -> Dict[str, Any]:
+        if base_departure_cargo_kg is not None:
+            try:
+                base_departure_cargo_kg = float(base_departure_cargo_kg)
+                base_returned_payload_kg = float(base_returned_payload_kg)
+            except (TypeError, ValueError, OverflowError) as error:
+                raise ValueError("Invalid departure cargo or returned payload") from error
+            if (not math.isfinite(base_departure_cargo_kg)
+                    or not math.isfinite(base_returned_payload_kg)
+                    or not 0.0 <= base_returned_payload_kg <= base_departure_cargo_kg):
+                raise ValueError("Explicit cargo masses must be finite with 0 <= returned payload <= departure cargo")
         samples = max(MIN_MISSION_RISK_SAMPLES, min(50_000, int(samples)))
         rng = random.Random(int(seed))
 
@@ -87,6 +98,9 @@ class RiskService:
             # sampled delta-v factor, carrying the planned cargo (or less, if less was mined).
             # A plan short of delta-v therefore fails here instead of scoring 0% risk.
             cargo = min(payload, base_returned_payload_kg)
+            delivered = cargo
+            if base_departure_cargo_kg is not None:
+                cargo = min(base_departure_cargo_kg * payload_factor, base_departure_cargo_kg)
             budget = reclose(dv_factor, cargo)
             margin = float(budget.get("propellantMarginKg", 0.0))
 
@@ -97,8 +111,8 @@ class RiskService:
             dv_samples.append(dv)
             time_samples.append(time_days)
             # Unconditional returned yield includes failed-delivery zeros and
-            # never exceeds the cargo actually evaluated by the rocket closure.
-            payload_samples.append(0.0 if failed else cargo)
+            # applies nominal transit survival when departure and delivery masses differ.
+            payload_samples.append(0.0 if failed else delivered)
             arrival_samples.append(arrival_jd)
             margin_samples.append(margin)
 
