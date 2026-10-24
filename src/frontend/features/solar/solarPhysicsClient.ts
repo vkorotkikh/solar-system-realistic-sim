@@ -293,6 +293,14 @@ interface SolarPhysicsClientOptions {
   liveData?: boolean;
 }
 
+function finiteNumericOption(value: number, name: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new RangeError(`Solar physics ${name} must be finite`);
+  }
+  return parsed;
+}
+
 export class SolarPhysicsClient {
   baseUrl: () => string;
   pollIntervalMs: number;
@@ -326,16 +334,16 @@ export class SolarPhysicsClient {
     liveData = true
   }: SolarPhysicsClientOptions) {
     this.baseUrl = baseUrl;
-    this.pollIntervalMs = clamp(Number(pollIntervalMs), 5_000, 300_000);
+    this.pollIntervalMs = clamp(finiteNumericOption(pollIntervalMs, 'pollIntervalMs'), 5_000, 300_000);
     // A shorter browser deadline would detach from work the backend is still
     // entitled to run. Keep the public option for compatibility but enforce
     // the cross-runtime ownership contract.
     this.timeoutMs = clamp(
-      Number(timeoutMs),
+      finiteNumericOption(timeoutMs, 'timeoutMs'),
       SOLAR_PHYSICS_REQUEST_TIMEOUT_MS,
       SOLAR_PHYSICS_REQUEST_TIMEOUT_MS
     );
-    this.maxFeatures = clamp(Number(maxFeatures), 8, SOLAR_PHYSICS_MAX_FEATURES);
+    this.maxFeatures = clamp(finiteNumericOption(maxFeatures, 'maxFeatures'), 8, SOLAR_PHYSICS_MAX_FEATURES);
     this.fidelity = `${fidelity ?? 'high'}`.trim().toLowerCase() || 'high';
     this.forcing = forcing ?? 'hybrid';
     this.liveData = Boolean(liveData);

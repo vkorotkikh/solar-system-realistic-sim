@@ -77,6 +77,91 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// FE-PHYSICS-OPTIONS. Found by /qa on 2026-10-24:
+// agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+// This finite-input boundary does not expose the separate SDEL065 factory configuration.
+describe('SolarPhysicsClient finite numeric options', () => {
+  const optionNames = ['pollIntervalMs', 'timeoutMs', 'maxFeatures'] as const;
+
+  it.each(optionNames.flatMap((option) =>
+    [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY].map((input) => ({ option, input }))))(
+    'rejects $option=$input before any request or timer starts', ({ option, input }) => {
+      const fetchMock = vi.fn();
+      const timerSpy = vi.spyOn(globalThis, 'setTimeout');
+      const baseUrl = vi.fn(() => 'http://backend.test');
+      vi.stubGlobal('fetch', fetchMock);
+
+      expect(() => new SolarPhysicsClient({ baseUrl, [option]: input })).toThrowError(
+        new RangeError(`Solar physics ${option} must be finite`)
+      );
+      expect(baseUrl).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(timerSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([{}, { pollIntervalMs: undefined, timeoutMs: undefined, maxFeatures: undefined }])(
+    'preserves defaults for omitted or undefined numeric options (%j)', (options) => {
+      const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test', ...options });
+      expect(client).toMatchObject({ pollIntervalMs: 30_000, timeoutMs: 20_000, maxFeatures: 220 });
+    }
+  );
+
+  it.each([
+    [-1, 5_000], [0, 5_000], [5_000, 5_000], [30_000, 30_000],
+    [60_000, 60_000], [120_000, 120_000], [300_000, 300_000], [900_000, 300_000],
+  ])('preserves finite poll interval %i → %i', (input, expected) => {
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test', pollIntervalMs: input });
+    expect(client.pollIntervalMs).toBe(expected);
+  });
+
+  it.each([-1, 0, 500, 19_000, 20_000, 30_000])('preserves the 20 s delivery contract for finite timeout %i', (input) => {
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test', timeoutMs: input });
+    expect(client.timeoutMs).toBe(20_000);
+  });
+
+  it.each([
+    [-1, 8], [0, 8], [7.6, 8], [8, 8], [180, 180], [220, 220], [255.6, 255.6], [256, 256], [2_048, 256],
+  ])('preserves finite maxFeatures %s → %s', (input, expected) => {
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test', maxFeatures: input });
+    expect(client.maxFeatures).toBe(expected);
+  });
+
+  it.each([
+    [{ pollIntervalMs: '60000', timeoutMs: '30000', maxFeatures: '180' }, { pollIntervalMs: 60_000, timeoutMs: 20_000, maxFeatures: 180 }],
+    [{ pollIntervalMs: null, timeoutMs: null, maxFeatures: null }, { pollIntervalMs: 5_000, timeoutMs: 20_000, maxFeatures: 8 }],
+  ])('preserves existing finite Number coercion for runtime callers (%j)', (options, expected) => {
+    // Runtime compatibility is intentionally narrower than widening the declared number-only API.
+    const client = new SolarPhysicsClient({
+      baseUrl: () => 'http://backend.test',
+      ...options as unknown as { pollIntervalMs: number; timeoutMs: number; maxFeatures: number },
+    });
+    expect(client).toMatchObject(expected);
+  });
+
+  it.each(optionNames)('coerces %s exactly once before clamping', (option) => {
+    const firstValue = option === 'maxFeatures' ? 180 : 60_000;
+    const valueOf = vi.fn().mockReturnValueOnce(firstValue).mockReturnValue(Number.NaN);
+    const client = new SolarPhysicsClient({
+      baseUrl: () => 'http://backend.test', [option]: { valueOf } as unknown as number,
+    });
+
+    expect(valueOf).toHaveBeenCalledOnce();
+    expect(client[option]).toBe(option === 'timeoutMs' ? 20_000 : firstValue);
+  });
+
+  it('rounds a finite fractional feature count only when constructing the request', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request) => responseWith(validPayload()));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test', maxFeatures: 255.6 });
+    expect(client.maxFeatures).toBe(255.6);
+
+    await expect(client.maybeRefresh(2_460_000.5, true)).resolves.toBe(true);
+    const url = `${fetchMock.mock.calls[0][0]}`;
+    expect(new URL(url).searchParams.get('max_features')).toBe('256');
+  });
+});
+
 describe('SolarPhysicsClient time contract', () => {
   it('ships a bounded cadence and waits beyond the backend compute ceiling', () => {
     const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
