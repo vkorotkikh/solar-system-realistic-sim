@@ -1323,7 +1323,8 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'zoom-status', run: () => {
       if (dom.statusZoom) {
         const dist = camera.position.distanceTo(controls.target);
-        dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+        const text = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
+        if (dom.statusZoom.textContent !== text) dom.statusZoom.textContent = text;
       }
     } }
   ]
