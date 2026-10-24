@@ -19,6 +19,13 @@ CATALOG_NAME = "J/A+A/650/A201 tablea1"
 NEARBY_SYSTEMS_SCHEMA_NAME = "nearby_systems_catalog"
 NEARBY_SYSTEMS_SCHEMA_VERSION = "1.2.0"
 
+# Supplement exact component identifiers, not system ranks or catalog groups.
+_COMMON_NAMES_BY_IDENTIFIER: dict[str, tuple[str, ...]] = {
+    "alf CMa A": ("Sirius",),
+    "alf Cen C": ("Proxima", "Proxima Centauri"),
+    "Barnard's Star": ("Barnards Star",),
+}
+
 
 def _to_int(value: str | None) -> int | None:
     if value is None:
@@ -127,6 +134,7 @@ def nearby_system_aliases(system: dict[str, Any]) -> list[str]:
         str(system.get("sys_id", "")).strip(),
         str(system.get("identifier", "")).strip(),
         str(system.get("catalog_name", "")).strip(),
+        *_COMMON_NAMES_BY_IDENTIFIER.get(str(system.get("identifier", "")).strip(), ()),
     ):
         if not candidate:
             continue
