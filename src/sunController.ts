@@ -484,6 +484,7 @@ export function createSunController({
       },
       undefined,
       () => {
+        if (solarDeliveryDisposed) return;
         solarObservationTextureLoadInFlight = false;
         solarObservationFailedChannel = nextChannel;
         publishSolarDataStatus();
