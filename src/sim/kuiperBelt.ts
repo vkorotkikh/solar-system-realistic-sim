@@ -282,22 +282,18 @@ function computeBinaryBarycentricOffsets(
   const cosI = Math.cos(iRad);
   const sinI = Math.sin(iRad);
 
-  const px = trueX * cosW - trueY * sinW;
-  const py = trueX * sinW + trueY * cosW;
+  // Fixed perifocal P/Q axes retain the periapsis convention. The mutual
+  // phase belongs only in trueX/trueY, not in these orientation axes too.
   const radial: [number, number, number] = [
-    cosO * px - sinO * cosI * py,
-    sinO * px + cosO * cosI * py,
-    sinI * py,
+    cosO * cosW - sinO * cosI * sinW,
+    sinO * cosW + cosO * cosI * sinW,
+    sinI * sinW,
   ];
 
-  const dxOrb = -sepAu * sinE;
-  const dyOrb = sepAu * sqrtE * cosE;
-  const dpx = dxOrb * cosW - dyOrb * sinW;
-  const dpy = dxOrb * sinW + dyOrb * cosW;
   const tangential: [number, number, number] = [
-    cosO * dpx - sinO * cosI * dpy,
-    sinO * dpx + cosO * cosI * dpy,
-    sinI * dpy,
+    -cosO * sinW - sinO * cosI * cosW,
+    -sinO * sinW + cosO * cosI * cosW,
+    sinI * cosW,
   ];
 
   const radialNorm = Math.hypot(radial[0], radial[1], radial[2]) || 1;
