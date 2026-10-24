@@ -16,9 +16,10 @@ Concretely:
 - **Oracle, not recomputation.** Expected positions/velocities come from JPL
   Horizons vectors committed as fixtures (for example,
   `moonFrames.horizons.test.ts`), with the query recorded so the fixture is
-  regenerable. A test that recomputes the code's own
-  transform and checks the two agree (see the note atop `catalog.test.ts`) proves
-  nothing — it agrees by construction.
+  regenerable. The copied-transform assertions formerly in `catalog.test.ts`
+  agreed with the implementation by construction and were removed. Recomputing
+  the code's own transform is not an independent accuracy check. The Horizons
+  gate covers its fixture bodies and declared budgets, not every catalog moon.
 
 - **Budgets, not deltas.** Assert "error < N km", not "output changed". The
   secular-rate regression satisfied "changed" perfectly while being far worse.
