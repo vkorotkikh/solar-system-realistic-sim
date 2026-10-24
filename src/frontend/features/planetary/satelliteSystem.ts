@@ -560,7 +560,8 @@ export class OrbitalSatelliteSystem {
     markerColorOverrides = null
   }: OrbitalSatelliteSystemOptions = {}) {
     this.primaryId = primaryId;
-    this.primaryModel = PRIMARY_MODELS[primaryId] ?? PRIMARY_MODELS.earth;
+    this.primaryModel = (Object.prototype.hasOwnProperty.call(PRIMARY_MODELS, primaryId)
+      ? PRIMARY_MODELS[primaryId] : undefined) ?? PRIMARY_MODELS.earth;
     this.maxGeoCount = maxGeoCount;
     this.showOrbits = showOrbits;
     this.useJ2 = useJ2;

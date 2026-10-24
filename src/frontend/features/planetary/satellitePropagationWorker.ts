@@ -32,7 +32,8 @@ self.onmessage = (event) => {
         throw new TypeError('Invalid satellite worker message.');
       }
     }
-    primaryModel = PRIMARY_MODELS[requestedPrimary] ?? PRIMARY_MODELS.earth;
+    primaryModel = (Object.prototype.hasOwnProperty.call(PRIMARY_MODELS, requestedPrimary)
+      ? PRIMARY_MODELS[requestedPrimary] : undefined) ?? PRIMARY_MODELS.earth;
     satellites = nextSatellites;
     self.postMessage({ type: 'ready', count: satellites.length });
     return;
