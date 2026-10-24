@@ -508,6 +508,62 @@ def test_snapshot_failure_cannot_leave_a_dead_worker_advertising_a_healthy_state
     assert runner.get_response()["code"] == "runtime_error"
 
 
+@pytest.mark.parametrize("failure", ["position", "velocity", "epoch", "time_scale", "energy"])
+def test_numeric_snapshot_corruption_clears_previous_valid_state(failure):
+    """NBW007: malformed numbers must reach the real worker's fatal latch."""
+    class CorruptingEngine(Engine):
+        def __init__(self):
+            super().__init__()
+            self.reads = 0
+            self.before_corruption = threading.Event()
+            self.release_corruption = threading.Event()
+
+        def get_state(self):
+            self.reads += 1
+            if self.reads == 2:
+                self.before_corruption.set()
+                assert self.release_corruption.wait(2)
+            if self.reads > 2:
+                runner.running = False  # Bound a failing baseline without a hang.
+            state = super().get_state()
+            state["bodies"] = {"earth": {"pos": [1, 2, 3], "vel": [0.1, 0.2, 0.3]}}
+            if self.reads >= 2:
+                if failure == "position":
+                    state["bodies"]["earth"]["pos"][1] = float("nan")
+                elif failure == "velocity":
+                    state["bodies"]["earth"]["vel"] = [0.1, 0.2]
+                elif failure == "epoch":
+                    state["jd"] = float("inf")
+                elif failure == "time_scale":
+                    runner.time_scale = float("nan")
+            return state
+
+        def get_energy_error(self):
+            return float("nan") if self.reads >= 2 and failure == "energy" else 0.0
+
+    engine = CorruptingEngine()
+    runner = server.SimulationRunner(engine, target_fps=240)
+    runner.paused = True
+    runner.start()
+    try:
+        assert engine.before_corruption.wait(2)
+        healthy = runner.get_latest_state()
+        assert healthy["bodies"]["earth"]["pos"] == [1.0, 2.0, 3.0]
+        assert healthy["backend"]["runtime_error"] is None
+        engine.release_corruption.set()
+        runner._thread.join(timeout=2)
+        assert not runner._thread.is_alive()
+        assert not runner.running
+        assert runner.paused
+        assert runner._runtime_error
+        assert runner.get_latest_state() is None
+        assert runner.get_response()["code"] == "runtime_error"
+        assert runner.get_response() is None
+    finally:
+        engine.release_corruption.set()
+        assert runner.stop()
+
+
 def test_kuiper_snapshot_failure_is_fatal_in_the_same_published_frame():
     runner = server.SimulationRunner(Engine(), target_fps=240)
 
