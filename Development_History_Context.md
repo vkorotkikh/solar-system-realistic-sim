@@ -55,6 +55,30 @@ Entry template (use this order):
 
 ## 2) Notes (Rolling Log)
 
+### 2026-10-24 20:04:50 UTC — Recorded Sun Model Lab scope transition
+Status: DONE (documentation correction only)
+
+What changed:
+- This dated correction records an omitted historical transition; it does not claim that the application rewrite occurred today.
+- Commit `d1484e807ce2408e374c8dc51b8ef7d77e72589e` changed `index.html` from Solar System Mission Lab to Sun Model Lab and removed the engine selector, planner panel and several broader-system controls. Git records its committer time as `2026-02-23 05:35:35 UTC`.
+- Commit `04e99a4ed73a7a6f330157073c3cea30259da1df` then replaced much of `src/main.js` (`+400/-4190` lines), removing imports and entry-point wiring for trajectory planning, nearby systems, satellite/cloud interfaces and the server simulation client. Git records its committer time as `2026-02-23 05:35:44 UTC`.
+
+Why it changed:
+- Earlier log entries describe different application states without recording this scope boundary. Their presence is not proof that a retained module is reachable from today's page. Historical rationale beyond the commit records is not reconstructed here.
+
+Evidence/validation:
+- Inspected those commit records and relevant entry-point changes, plus the current [README](README.md), [entry point](src/main.ts) and [page](index.html). Git times are repository metadata, not independently authenticated work-session times.
+- The current entry is Sun-focused and uses the [model worker](src/workers/modelWorker.ts); the retained satellite worker is not wired into this entry. The older statement below that only satellite propagation uses a worker must not be read as current scope.
+- Planner and N-body backend/library availability does not imply planner or engine-selection controls in the shipped page. See [current scope and API boundaries](README.md#backend-optional).
+- This documentation check does not revalidate historical test counts, visual parity, scientific accuracy, old completion statuses or all claims elsewhere in these logs.
+
+Files touched:
+- `Development_History_Context.md` (this correction) and `Development_Improvements.md` (current-scope pointer).
+
+Follow-ups / open questions:
+- Consult the [consolidated issue audit](agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md) for current verification and unresolved issues. Feature restoration or retirement requires a separate scoped decision; this note does not make that decision or invent a historical ADR.
+
+
 ### 2026-03-07 ~08:00 UTC — Comprehensive codebase audit, critical bug fixes, and @ts-nocheck removal
 Status: IN-PROGRESS
 

@@ -47,7 +47,7 @@ Entry template (use this order):
 
 ## 2) Improvements Log (Rolling)
 
-Maintenance 2026-10-24 19:58:33 UTC: archived 30 historical DONE entries from this rolling view; [complete pre-prune snapshot](agent-notes/archives/Development_Improvements.pre-cap-2026-10-24.md) preserves all 46 original entries. The 11 OPEN, 4 IN-PROGRESS and 1 DONE (partial) entries below retain their original order, statuses and timestamps; historical status/time accuracy has not been revalidated.
+Maintenance 2026-10-24 19:58:33 UTC: archived 30 historical DONE entries from this rolling view; [complete pre-prune snapshot](agent-notes/archives/Development_Improvements.pre-cap-2026-10-24.md) preserves all 46 original entries. The 11 OPEN, 4 IN-PROGRESS and 1 DONE (partial) entries below retain their original order, statuses and timestamps; historical status/time accuracy has not been revalidated. Current scope: [Sun Model Lab transition and entry-point boundaries](Development_History_Context.md).
 ### 2026-03-07 ~08:00 UTC
 Status: `IN-PROGRESS`
 Type: `TECH-DEBT`
