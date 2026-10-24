@@ -231,11 +231,10 @@ def test_openapi_publishes_supported_not_silently_rewritten_ranges(endpoint, fie
 
 
 def test_legacy_direct_parser_clamps_are_not_changed_by_http_policy():
-    # Part A preserves legacy direct clamps. The plant-cost floor here is transitional:
-    # the separately scoped MIS-012 direct-cost repair will replace only that facet.
+    # Nonplant direct clamps remain compatible. MIS-012 now rejects unsupported
+    # plant costs separately (test_mission_plant_cost.py), so use a supported cost.
     parsed = parse_mission_request({'reserve_fraction': 0.9, 'handling_loss_fraction': 0.9,
-        'risk_samples': 1, 'payload_mass_kg': 0.25, 'power_required_kw_per_kg_day': 1e-12})
+        'risk_samples': 1, 'payload_mass_kg': 0.25, 'power_required_kw_per_kg_day': 0.24})
     assert (parsed.reserve_fraction, parsed.handling_loss_fraction, parsed.risk_samples,
-            parsed.payload_mass_kg, parsed.power_required_kw_per_kg_day) == (0.4, 0.6, 30, 1.0, 1e-9)
+            parsed.payload_mass_kg, parsed.power_required_kw_per_kg_day) == (0.4, 0.6, 30, 1.0, 0.24)
     assert parse_mission_request({'risk_samples': 5001}).risk_samples == 5000
-

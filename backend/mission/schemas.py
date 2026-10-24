@@ -34,6 +34,16 @@ def _as_float(value: Any, default: float) -> float:
     return parsed
 
 
+def validate_mission_plant_cost(value: float) -> float:
+    """Validate an already converted plant cost without changing caller coercion."""
+    if not math.isfinite(value) or value < MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY:
+        raise ValueError(
+            "power_required_kw_per_kg_day must be finite and >= "
+            f"{MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY:g}"
+        )
+    return value
+
+
 def _as_int(value: Any, default: int) -> int:
     try:
         parsed = int(float(value))
@@ -239,7 +249,9 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
         refining_yield=max(0.0, min(1.0, _as_float(payload.get("refining_yield"), 0.82))),
         storage_loss_rate_per_day=max(0.0, _as_float(payload.get("storage_loss_rate_per_day"), 0.0015)),
         available_power_kw=max(0.0, _as_float(payload.get("available_power_kw"), 320.0)),
-        power_required_kw_per_kg_day=max(MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY, _as_float(payload.get("power_required_kw_per_kg_day"), 0.24)),
+        power_required_kw_per_kg_day=validate_mission_plant_cost(
+            _as_float(payload.get("power_required_kw_per_kg_day"), 0.24)
+        ),
         prograde=_as_bool(payload.get("prograde"), True),
         vehicle=_parse_vehicle(payload.get("vehicle")),
     )
@@ -258,4 +270,5 @@ __all__ = [
     "StageSchema",
     "VehicleSchema",
     "parse_mission_request",
+    "validate_mission_plant_cost",
 ]

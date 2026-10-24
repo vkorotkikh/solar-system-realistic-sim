@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict
 
-from .schemas import MAX_MISSION_HANDLING_LOSS_FRACTION, MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY
+from .schemas import MAX_MISSION_HANDLING_LOSS_FRACTION, validate_mission_plant_cost
 
 
 class MiningService:
@@ -30,7 +30,7 @@ class MiningService:
         refining_yield = max(0.0, min(1.0, float(refining_yield)))
         storage_loss_rate_per_day = max(0.0, float(storage_loss_rate_per_day))
         available_power_kw = max(0.0, float(available_power_kw))
-        power_required_kw_per_kg_day = max(MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY, float(power_required_kw_per_kg_day))
+        power_required_kw_per_kg_day = validate_mission_plant_cost(float(power_required_kw_per_kg_day))
         transport_delay_days = max(0.0, float(transport_delay_days))
 
         power_limited_rate = available_power_kw / power_required_kw_per_kg_day
