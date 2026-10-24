@@ -80,7 +80,7 @@ def route(monkeypatch):
     monkeypatch.setattr(server, "_solar_aia_tile_concurrent_guard", Guard())
     monkeypatch.setattr(server, "_enforce_solar_aia_tile_rate_limit", rate)
     monkeypatch.setattr(server, "_run_owned_thread", owned_thread)
-    monkeypatch.setattr(provider, "latest", snapshot)
+    monkeypatch.setattr(provider, "_latest_aia_bundle", snapshot)
     monkeypatch.setattr(provider, "latest_aia_tile", latest_tile)
     monkeypatch.setattr(provider, "_fetch_aia_png_cached", binary)
     monkeypatch.setattr(provider, "_request_bytes", no_network)
