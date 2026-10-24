@@ -321,8 +321,9 @@ class SolarCoronaPhysicsModel:
         return {
             "model": self.model_name,
             "description": (
-                "Backend-driven quasi-MHD solar corona model producing 3D eruptive structures "
-                "from rotating active regions with solar-cycle forcing."
+                "Deterministic, physically-inspired solar-corona synthesis producing parametric "
+                "3D eruptive structures from rotating active regions with solar-cycle forcing; "
+                "not a full MHD PDE solver."
             ),
             "fidelity_levels": list(self.fidelity_levels),
             "forcing_modes": list(self.FORCING_MODES),
