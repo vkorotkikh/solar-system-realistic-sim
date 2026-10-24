@@ -6,6 +6,7 @@ Gaia DR3 source_id is a long integer, unlike its physical floating-point fields.
 # Regression: EXO-026 — float decoding rounded Gaia identifiers before catalog naming.
 # Found by /qa on 2026-10-24; report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 from copy import deepcopy
+import hashlib
 import importlib.util
 import json
 import os
@@ -490,3 +491,171 @@ def test_request_mapping_order_does_not_change_cache_identity(gaia):
     assert gaia._gaia_query_cache_path('bright', reordered, (ESA, VIZIER), schema=2) == first
     assert first.parent == gaia.CACHE_DIR
     assert not gaia.CACHE_DIR.exists()
+
+
+# TOOL-GAIA-STATIC-MAGNITUDE: first-miss fallback rows must honor the requested bound.
+# Found by /qa on 2026-10-24; consolidated Markdown issue audit.
+def static_row(ra, mag):
+    return {'ra': ra, 'dec': 20.0, 'phot_g_mean_mag': mag, 'bp_rp': 0.5,
+            'parallax': 200.0, 'pmra': 1.0, 'pmdec': 2.0}
+
+
+def seed_static_fallback(module, rows):
+    path = module.FALLBACK_DIR / 'gaia_bright_stars_fallback.json'
+    module.load_or_fetch(path, lambda: deepcopy(rows), max_age_hours=168)
+    return path
+
+
+def static_network_outage(module, monkeypatch, *, kind, threshold):
+    return query_http_sequence(module, monkeypatch, [
+        (ESA, kind, threshold, URLError('owned offline provider')),
+        (VIZIER, kind, threshold, URLError('owned offline provider')),
+    ])
+
+
+@pytest.mark.parametrize('threshold, expected_indices, expected_catalog', [
+    (3.0, [0, 1], [[10.0, 20.0, -1.0, 0.476], [20.0, 20.0, 2.0, 0.476]]),
+    (0.0, [0], [[10.0, 20.0, -1.0, 0.476]]),
+    (-2.0, [], []),
+    (9.0, [0, 1, 2, 3], [[10.0, 20.0, -1.0, 0.476], [20.0, 20.0, 2.0, 0.476],
+                         [30.0, 20.0, 3.0, 0.476], [40.0, 20.0, 8.0, 0.476]]),
+])
+def test_static_fallback_respects_strict_magnitude_before_catalog_build(
+    gaia, monkeypatch, threshold, expected_indices, expected_catalog
+):
+    # Separate from TOOL-057 cache identity: this fails on the first cache miss.
+    static = [static_row(10.0, -1.0), static_row(20.0, 2.0), static_row(30.0, 3.0), static_row(40.0, 8.0)]
+    fallback = seed_static_fallback(gaia, static)
+    before = (fallback.read_bytes(), fallback.stat().st_mtime_ns)
+    calls = static_network_outage(gaia, monkeypatch, kind='bright', threshold=threshold)
+    selected = gaia.fetch_bright_stars(max_mag=threshold)
+    # The observable output oracle is independent of any future filter helper.
+    assert gaia.build_stars_catalog(selected) == expected_catalog
+    assert selected == [static[index] for index in expected_indices]
+    assert gaia.fetch_bright_stars(max_mag=threshold) == selected
+    assert len(calls) == 2
+    assert (fallback.read_bytes(), fallback.stat().st_mtime_ns) == before
+
+
+def test_static_fallback_uses_unrounded_magnitude_for_selection(gaia, monkeypatch):
+    static = [static_row(10.0, 2.9999), static_row(20.0, 3.0), static_row(30.0, 3.0001)]
+    seed_static_fallback(gaia, static)
+    static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, 3.0, 0.476]]
+    assert selected == [static[0]]  # Output rounding may display an eligible value as 3.00.
+
+
+def test_missing_nonfinite_photometry_does_not_become_selected_fallback_data(gaia, monkeypatch):
+    missing = static_row(60.0, 2.0)
+    del missing['phot_g_mean_mag']
+    valid = static_row(10.0, 2.0)
+    seed_static_fallback(gaia, [valid, static_row(20.0, None), static_row(30.0, float('nan')),
+                         static_row(40.0, float('inf')), static_row(50.0, float('-inf')), missing])
+    static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, 2.0, 0.476]]
+    assert selected == [valid]
+
+
+def test_empty_static_fallback_remains_empty_and_cached(gaia, monkeypatch):
+    seed_static_fallback(gaia, [])
+    calls = static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+    assert gaia.build_stars_catalog(gaia.fetch_bright_stars(max_mag=3.0)) == []
+    assert gaia.fetch_bright_stars(max_mag=3.0) == []
+    assert len(calls) == 2
+
+
+def test_provider_success_does_not_consume_static_fallback(gaia, monkeypatch):
+    seed_static_fallback(gaia, [static_row(99.0, 2.0)])
+    calls = []
+
+    def owned_http(url, *, params, timeout):
+        assert url == ESA
+        assert 'phot_g_mean_mag < 3.0' in params['QUERY']
+        assert timeout == 120.0
+        calls.append(url)
+        return 'ra,dec,phot_g_mean_mag,bp_rp,parallax,pmra,pmdec\n10,20,2,0.5,200,1,2\n'
+
+    monkeypatch.setattr(gaia, 'http_get', owned_http)
+    assert gaia.build_stars_catalog(gaia.fetch_bright_stars(max_mag=3.0)) == [[10.0, 20.0, 2.0, 0.476]]
+    assert calls == [ESA]
+
+
+def test_empty_provider_results_still_advance_to_static_fallback(gaia, monkeypatch):
+    seed_static_fallback(gaia, [static_row(10.0, 2.0)])
+    calls = []
+
+    def owned_http(url, *, params, timeout):
+        assert url == [ESA, VIZIER][len(calls)]
+        assert 'phot_g_mean_mag < 3.0' in params['QUERY']
+        calls.append(url)
+        return 'ra,dec,phot_g_mean_mag,bp_rp,parallax,pmra,pmdec\n'
+
+    monkeypatch.setattr(gaia, 'http_get', owned_http)
+    assert gaia.build_stars_catalog(gaia.fetch_bright_stars(max_mag=3.0)) == [[10.0, 20.0, 2.0, 0.476]]
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize('threshold', [100.0, 200.0])
+def test_nearby_fallback_is_empty_not_the_bright_static_population(gaia, monkeypatch, threshold):
+    seed_static_fallback(gaia, [static_row(10.0, 2.0), static_row(20.0, 8.0)])
+    calls = static_network_outage(gaia, monkeypatch, kind='nearby', threshold=threshold)
+    assert gaia.fetch_nearby_stars(min_parallax_mas=threshold) == []
+    assert gaia.fetch_nearby_stars(min_parallax_mas=threshold) == []
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize('age_hours', [0, 200], ids=['fresh', 'expired'])
+def test_prior_keyed_unfiltered_bright_cache_is_unused_and_untouched(gaia, monkeypatch, age_hours):
+    # Independently reconstruct the committed query-v2 format, not the new key helper.
+    old_identity = {'schema': 2, 'kind': 'bright',
+                    'request': expected_tap_request('bright', 3.0), 'endpoints': [ESA, VIZIER]}
+    digest = hashlib.sha256(json.dumps(old_identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    old_path = gaia.CACHE_DIR / f'gaia_bright_stars_query_v2_{digest}.json'
+    gaia.load_or_fetch(old_path, lambda: [static_row(99.0, 8.0)], max_age_hours=168)
+    timestamp = time.time() - age_hours * 3600
+    os.utime(old_path, (timestamp, timestamp))
+    before = (old_path.read_bytes(), old_path.stat().st_mtime_ns)
+    eligible = static_row(10.0, 2.0)
+    seed_static_fallback(gaia, [eligible, static_row(20.0, 3.0), static_row(30.0, 8.0)])
+    calls = static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert selected == [eligible]
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, 2.0, 0.476]]
+    assert gaia.fetch_bright_stars(max_mag=3.0) == selected
+    assert len(calls) == 2
+    assert (old_path.read_bytes(), old_path.stat().st_mtime_ns) == before
+    assert len(list(gaia.CACHE_DIR.glob('*.json'))) == 2
+
+
+@pytest.mark.parametrize('invalid_mag', ['2.0', True, False], ids=['numeric-string', 'true', 'false'])
+def test_static_fallback_does_not_coerce_nonnumeric_photometry(gaia, monkeypatch, invalid_mag):
+    eligible = static_row(10.0, 2.0)
+    seed_static_fallback(gaia, [eligible, static_row(20.0, invalid_mag)])
+    static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert selected == [eligible]
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, 2.0, 0.476]]
+
+
+def test_static_selection_keeps_complete_rows_and_input_order(gaia, monkeypatch):
+    first = {**static_row(40.0, 2), 'extra_metadata': {'label': 'retained'}}
+    last = {**static_row(10.0, -1), 'source_id': 9007199254740993}
+    seed_static_fallback(gaia, [first, static_row(20.0, 3), last])
+    static_network_outage(gaia, monkeypatch, kind='bright', threshold=3.0)
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert selected == [first, last]
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, -1.0, 0.476], [40.0, 20.0, 2.0, 0.476]]
+
+
+def test_static_selection_does_not_filter_remote_provider_rows(gaia, monkeypatch):
+    # The static-only repair does not introduce a second remote query validator.
+    seed_static_fallback(gaia, [static_row(99.0, 2.0)])
+    csv_text = 'ra,dec,phot_g_mean_mag,bp_rp,parallax,pmra,pmdec\n10,20,8,0.5,200,1,2\n'
+    calls = query_http_sequence(gaia, monkeypatch, [(ESA, 'bright', 3.0, csv_text)])
+    selected = gaia.fetch_bright_stars(max_mag=3.0)
+    assert selected == [static_row(10.0, 8.0)]
+    assert gaia.build_stars_catalog(selected) == [[10.0, 20.0, 8.0, 0.476]]
+    assert len(calls) == 1
