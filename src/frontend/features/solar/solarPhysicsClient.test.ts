@@ -332,6 +332,323 @@ describe('SolarPhysicsClient failure classification', () => {
     vi.useRealTimers();
   });
 
+  // FE-UNBOUNDED-PROBE (SDEL079). Found by /qa on 2026-10-24:
+  // agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+  describe('owned health probes', () => {
+    const cancellationCases = (['dispose', 'force'] as const).flatMap((action) =>
+      (['cors', 'no-cors'] as const).flatMap((stage) =>
+        (['resolve', 'reject'] as const).map((late) => ({ action, stage, late }))));
+
+    it.each(cancellationCases)('$action cancels pending $stage without waiting for its late $late', async ({ action, stage, late }) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      stubFetch(() => Promise.resolve(responseWith(validPayload(JD))));
+      const client = createClient();
+      await client.maybeRefresh(JD, true);
+      const lastGood = client.latestState();
+      const health = deferred<Response>();
+      const replacement = deferred<Response>();
+      const signals: AbortSignal[] = [];
+      let physicsCalls = 0;
+      const fetchMock = stubFetch(
+        () => ++physicsCalls === 1 ? Promise.reject(new TypeError('Failed to fetch')) : replacement.promise,
+        (init) => {
+          if (stage === 'no-cors' && init?.mode === 'cors') return Promise.reject(new TypeError('CORS failure'));
+          signals.push(init!.signal!);
+          return health.promise; // Deliberately ignores abort: the client owns settlement.
+        }
+      );
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(signals).toHaveLength(1);
+      const healthCalls = fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health')).length;
+
+      let newer: Promise<boolean> | undefined;
+      if (action === 'dispose') {
+        client.dispose();
+        client.dispose();
+      } else {
+        newer = client.maybeRefresh(JD, true);
+      }
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(results).toEqual([false]);
+      expect(signals[0].aborted).toBe(true);
+      expect(client.status()).toMatchObject({
+        disposed: action === 'dispose', inFlight: action === 'force',
+        lastFailure: null, consecutiveFailures: 0,
+      });
+      expect(client.latestState()).toBe(lastGood);
+      expect(vi.getTimerCount()).toBe(action === 'force' ? 1 : 0);
+      if (newer) {
+        replacement.resolve(responseWith(validPayload(JD)));
+        await expect(newer).resolves.toBe(true);
+      }
+      const settledStatus = client.status();
+      const settledLatest = client.latestState();
+      if (late === 'resolve') health.resolve(new Response(null));
+      else health.reject(new TypeError('Late health failure'));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(client.status()).toEqual(settledStatus);
+      expect(client.latestState()).toBe(settledLatest);
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(healthCalls);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('cannot repopulate a newer successful request cache from retired health work', async () => {
+      vi.useFakeTimers();
+      const oldHealth = deferred<Response>();
+      let physicsCalls = 0;
+      let healthCalls = 0;
+      stubFetch(
+        () => ++physicsCalls === 2
+          ? Promise.resolve(responseWith(validPayload(JD)))
+          : Promise.reject(new TypeError('Failed to fetch')),
+        () => ++healthCalls === 1 ? oldHealth.promise : Promise.reject(new TypeError('Server down'))
+      );
+      const client = createClient();
+      const old = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+      oldHealth.resolve(new Response(null));
+      await expect(old).resolves.toBe(false);
+
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+      expect(client.status().lastFailure?.kind).toBe('unreachable');
+      expect(client.status().consecutiveFailures).toBe(1);
+      expect(healthCalls).toBe(3);
+    });
+
+    it.each((['cors', 'no-cors'] as const).flatMap((stage) =>
+      (['resolve', 'reject'] as const).map((late) => ({ stage, late }))))(
+      'bounds an abort-ignoring $stage probe at 2 s despite a late $late', async ({ stage, late }) => {
+        vi.useFakeTimers({ now: 1_000_000 });
+        const health = deferred<Response>();
+        const signals: AbortSignal[] = [];
+        const fetchMock = stubFetch(
+          () => Promise.reject(new TypeError('Failed to fetch')),
+          (init) => {
+            if (stage === 'no-cors' && init?.mode === 'cors') return Promise.reject(new TypeError('CORS failure'));
+            signals.push(init!.signal!);
+            return health.promise;
+          }
+        );
+        const client = createClient();
+        const results: boolean[] = [];
+        void client.maybeRefresh(JD, true).then((result) => results.push(result));
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(results).toEqual([]);
+        expect(signals[0].aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(results).toEqual([false]);
+        expect(signals[0].aborted).toBe(true);
+        expect(client.status()).toMatchObject({ inFlight: false, consecutiveFailures: 1, nextRefreshMs: 1_032_000 });
+        expect(client.status().lastFailure?.kind).toBe('network');
+        const settledStatus = client.status();
+        const probeCalls = stage === 'cors' ? 1 : 2;
+        expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(probeCalls);
+        expect(vi.getTimerCount()).toBe(0);
+        if (late === 'resolve') health.resolve(new Response(null));
+        else health.reject(new TypeError('Late health failure'));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(client.status()).toEqual(settledStatus);
+
+        // The late transport outcome must not replace the cached inconclusive verdict either.
+        await client.maybeRefresh(JD, true);
+        expect(client.status().lastFailure?.kind).toBe('network');
+        expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(probeCalls);
+        expect(vi.getTimerCount()).toBe(0);
+      }
+    );
+
+    it('captures one backend URL for physics and both diagnostic stages', async () => {
+      vi.useFakeTimers();
+      let baseUrl = 'http://origin-a.test';
+      const physics = deferred<Response>();
+      const cors = deferred<Response>();
+      const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        if (!`${input}`.endsWith('/health')) return physics.promise;
+        return init?.mode === 'cors' ? cors.promise : Promise.resolve(new Response(null));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new SolarPhysicsClient({ baseUrl: () => baseUrl });
+      const pending = client.maybeRefresh(JD, true);
+      baseUrl = 'http://origin-b.test';
+      physics.reject(new TypeError('Failed to fetch'));
+      await vi.advanceTimersByTimeAsync(0);
+      baseUrl = 'http://origin-c.test';
+      cors.reject(new TypeError('CORS failure'));
+      await expect(pending).resolves.toBe(false);
+
+      expect(fetchMock.mock.calls.map(([url]) => new URL(`${url}`).origin)).toEqual([
+        'http://origin-a.test', 'http://origin-a.test', 'http://origin-a.test',
+      ]);
+      expect(client.status().lastFailure?.kind).toBe('blocked');
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not reuse health evidence for a different backend URL', async () => {
+      vi.useFakeTimers();
+      let baseUrl = 'http://origin-a.test';
+      const healthUrls: string[] = [];
+      vi.stubGlobal('fetch', vi.fn((input: string | URL | Request) => {
+        const url = `${input}`;
+        if (url.endsWith('/health')) {
+          healthUrls.push(url);
+          if (url.startsWith('http://origin-a.test/')) return Promise.resolve(new Response(null));
+        }
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }));
+      const client = new SolarPhysicsClient({ baseUrl: () => baseUrl });
+      await client.maybeRefresh(JD, true);
+      expect(client.status().lastFailure?.kind).toBe('server-error');
+      baseUrl = 'http://origin-b.test';
+      await client.maybeRefresh(JD, true);
+
+      expect(client.status().lastFailure?.kind).toBe('unreachable');
+      expect(healthUrls).toEqual([
+        'http://origin-a.test/health', 'http://origin-b.test/health', 'http://origin-b.test/health',
+      ]);
+    });
+
+    it.each(['dispose', 'force'] as const)('%s cancels diagnosis after the physics signal already timed out', async (action) => {
+      vi.useFakeTimers();
+      const health = deferred<Response>();
+      const physicsSignals: AbortSignal[] = [];
+      const healthSignals: AbortSignal[] = [];
+      stubFetch(
+        (init) => {
+          physicsSignals.push(init!.signal!);
+          return physicsSignals.length === 1 ? hangUntilAborted(init) : Promise.resolve(responseWith(validPayload(JD)));
+        },
+        (init) => { healthSignals.push(init!.signal!); return health.promise; }
+      );
+      const client = createClient();
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(physicsSignals[0].aborted).toBe(true);
+      expect(healthSignals).toHaveLength(1);
+      expect(healthSignals[0].aborted).toBe(false);
+      if (action === 'dispose') client.dispose();
+      else await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(results).toEqual([false]);
+      expect(healthSignals[0].aborted).toBe(true);
+      expect(client.status()).toMatchObject({ lastFailure: null, consecutiveFailures: 0, inFlight: false });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('cannot start diagnostics from a retired main fetch that rejects after its deadline', async () => {
+      vi.useFakeTimers();
+      const oldPhysics = deferred<Response>();
+      let physicsCalls = 0;
+      const fetchMock = stubFetch(
+        () => ++physicsCalls === 1 ? oldPhysics.promise : Promise.resolve(responseWith(validPayload(JD))),
+        healthServer('up')
+      );
+      const client = createClient();
+      const old = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+      const newerStatus = client.status();
+      oldPhysics.reject(new TypeError('Late physics failure'));
+      await expect(old).resolves.toBe(false);
+
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(0);
+      expect(client.status()).toEqual(newerStatus);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('allows each diagnostic stage its own 2 s after the 20 s physics deadline', async () => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const cors = deferred<Response>();
+      const noCors = deferred<Response>();
+      stubFetch(hangUntilAborted, (init) => init?.mode === 'cors' ? cors.promise : noCors.promise);
+      const client = createClient();
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(21_999);
+      expect(results).toEqual([]);
+      cors.reject(new TypeError('CORS failure'));
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(results).toEqual([]);
+      noCors.resolve(new Response(null));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(results).toEqual([false]);
+      expect(client.status().lastFailure?.kind).toBe('blocked');
+      expect(client.status().nextRefreshMs).toBe(1_053_998);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps a CORS timeout inconclusive when timeout cleanup synchronously rejects fetch', async () => {
+      vi.useFakeTimers();
+      const fetchMock = stubFetch(() => Promise.reject(new TypeError('Failed to fetch')), hangUntilAborted);
+      const client = createClient();
+      const pending = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(2_000);
+      await expect(pending).resolves.toBe(false);
+
+      expect(client.status().lastFailure?.kind).toBe('network');
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(1);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('classifies synchronous health transport throws and clears both stage timers', async () => {
+      vi.useFakeTimers();
+      const fetchMock = stubFetch(
+        () => Promise.reject(new TypeError('Failed to fetch')),
+        () => { throw new TypeError('Synchronous transport failure'); }
+      );
+      const client = createClient();
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+
+      expect(client.status()).toMatchObject({ inFlight: false, consecutiveFailures: 1 });
+      expect(client.status().lastFailure?.kind).toBe('unreachable');
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health')).map(([, init]) => init?.mode)).toEqual(['cors', 'no-cors']);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['resolve', 'reject'] as const)('retires CORS after %s but before its continuation', async (outcome) => {
+      vi.useFakeTimers();
+      const health = deferred<Response>();
+      const fetchMock = stubFetch(() => Promise.reject(new TypeError('Failed to fetch')), () => health.promise);
+      const client = createClient();
+      const pending = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(0);
+      if (outcome === 'resolve') health.resolve(new Response(null));
+      else health.reject(new TypeError('CORS failure'));
+      client.dispose();
+      await expect(pending).resolves.toBe(false);
+
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(1);
+      expect(client.lastProbe).toBeNull();
+      expect(client.status()).toMatchObject({ lastFailure: null, consecutiveFailures: 0 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('treats readable HTTP 503 health as reachability and preserves the exact cache expiry', async () => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const fetchMock = stubFetch(() => Promise.reject(new TypeError('Failed to fetch')), () => Promise.resolve(new Response(null, { status: 503 })));
+      const client = createClient();
+      await client.maybeRefresh(JD, true);
+      expect(client.status().lastFailure?.kind).toBe('server-error');
+      await vi.advanceTimersByTimeAsync(29_999);
+      await client.maybeRefresh(JD, true);
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await client.maybeRefresh(JD, true);
+
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(2);
+      expect(client.status().lastFailure?.kind).toBe('server-error');
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   it('records a timeout when the server does not answer within the request deadline', async () => {
     vi.useFakeTimers();
     stubFetch(hangUntilAborted);

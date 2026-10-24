@@ -212,9 +212,16 @@ const HEALTH_PROBE_REUSE_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 120_000;
 
 type HealthProbeVerdict = 'origin-allowed' | 'origin-refused' | 'unreachable' | 'inconclusive';
-type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out';
+type HealthProbeOutcome = 'ok' | 'failed' | 'timed-out' | 'cancelled';
 /** What made us probe; a verdict is only reused for the same kind of failure. */
 type HealthProbeTrigger = 'type-error' | 'timeout';
+
+interface SolarPhysicsRequestContext {
+  baseUrl: string;
+  /** Unlike the physics deadline, retirement also cancels any subsequent diagnosis. */
+  lifetime: AbortController;
+  ownsRequest: () => boolean;
+}
 
 class SolarPhysicsRequestError extends Error {
   kind: SolarPhysicsFailureKind;
@@ -304,7 +311,8 @@ export class SolarPhysicsClient {
   nextRefreshMs: number;
   latest: SolarPhysicsStatePayload | null;
   abortController: AbortController | null;
-  lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; atMs: number } | null;
+  lastProbe: { verdict: HealthProbeVerdict; trigger: HealthProbeTrigger; baseUrl: string; atMs: number } | null;
+  private requestContext: SolarPhysicsRequestContext | null;
   _reqId: number;
   disposed: boolean;
 
@@ -343,6 +351,7 @@ export class SolarPhysicsClient {
     this.latest = null;
     this.abortController = null;
     this.lastProbe = null;
+    this.requestContext = null;
     this._reqId = 0;
     this.disposed = false;
   }
@@ -371,6 +380,8 @@ export class SolarPhysicsClient {
     if (this.disposed) return;
     this.disposed = true;
     this._reqId += 1;
+    this.requestContext?.lifetime.abort();
+    this.requestContext = null;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -386,6 +397,7 @@ export class SolarPhysicsClient {
     if (this.inFlight) {
       if (force) {
         // If forced, abort the current in-flight request and proceed
+        this.requestContext?.lifetime.abort();
         this.abortController?.abort();
         this.inFlight = false;
       } else {
@@ -406,16 +418,21 @@ export class SolarPhysicsClient {
       forcing: this.forcing,
       live_data: this.liveData ? 'true' : 'false'
     });
-    const url = `${this.baseUrl()}/solar/physics?${query.toString()}`;
+    const baseUrl = this.baseUrl();
+    const url = `${baseUrl}/solar/physics?${query.toString()}`;
 
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     let timedOut = false;
     const controller = new AbortController();
+    const lifetime = new AbortController();
     this.abortController = controller;
     const ownsRequest = (): boolean =>
       !this.disposed &&
+      !lifetime.signal.aborted &&
       this._reqId === currentReqId &&
       this.abortController === controller;
+    const context: SolarPhysicsRequestContext = { baseUrl, lifetime, ownsRequest };
+    this.requestContext = context;
 
     try {
       timeoutHandle = setTimeout(() => {
@@ -430,7 +447,8 @@ export class SolarPhysicsClient {
           signal: controller.signal
         });
       } catch (error: unknown) {
-        throw await this.classifyFetchError(error, timedOut, controller.signal);
+        if (!ownsRequest()) return false;
+        throw await this.classifyFetchError(error, timedOut, controller.signal, context);
       }
 
       // If a new request started while we were awaiting, ignore this result
@@ -496,6 +514,7 @@ export class SolarPhysicsClient {
       }
       if (ownsRequest()) {
         this.abortController = null;
+        this.requestContext = null;
         this.inFlight = false;
       }
     }
@@ -513,10 +532,11 @@ export class SolarPhysicsClient {
    * origin is also reported after a timeout, because the server still runs the whole computation
    * before the browser can refuse the reply.
    */
-  async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal): Promise<unknown> {
+  async classifyFetchError(error: unknown, timedOut: boolean, signal: AbortSignal, context: SolarPhysicsRequestContext): Promise<unknown> {
     if (!timedOut && !(error instanceof TypeError)) return error;
     if (signal.aborted && !timedOut) return error;
-    const verdict = await this.probeHealth(timedOut ? 'timeout' : 'type-error');
+    const verdict = await this.probeHealth(timedOut ? 'timeout' : 'type-error', context);
+    if (verdict === null) return error;
     if (timedOut) {
       return verdict === 'origin-refused' ? this.originRefusedError() : this.timeoutError();
     }
@@ -538,43 +558,63 @@ export class SolarPhysicsClient {
   }
 
   /**
-   * A verdict is reused only for the same kind of failure: a timeout means a connection was
-   * accepted, which contradicts an "unreachable" verdict taken while nothing was listening.
+   * A verdict is reused only for the same backend and kind of failure: a timeout means a
+   * connection was accepted, which contradicts an earlier "unreachable" verdict.
    */
-  async probeHealth(trigger: HealthProbeTrigger): Promise<HealthProbeVerdict> {
+  async probeHealth(trigger: HealthProbeTrigger, context: SolarPhysicsRequestContext): Promise<HealthProbeVerdict | null> {
+    if (!context.ownsRequest()) return null;
     const nowMs = Date.now();
     const reusable = this.lastProbe
       && this.lastProbe.trigger === trigger
+      && this.lastProbe.baseUrl === context.baseUrl
       && nowMs - this.lastProbe.atMs < HEALTH_PROBE_REUSE_MS;
     if (reusable && this.lastProbe) return this.lastProbe.verdict;
     let verdict: HealthProbeVerdict;
-    const cors = await this.fetchHealth('cors');
+    const cors = await this.fetchHealth('cors', context);
+    if (!context.ownsRequest() || cors === 'cancelled') return null;
     if (cors === 'ok') {
       verdict = 'origin-allowed';
     } else if (cors === 'timed-out') {
       verdict = 'inconclusive';
     } else {
-      const noCors = await this.fetchHealth('no-cors');
+      const noCors = await this.fetchHealth('no-cors', context);
+      if (!context.ownsRequest() || noCors === 'cancelled') return null;
       verdict = noCors === 'ok' ? 'origin-refused' : noCors === 'failed' ? 'unreachable' : 'inconclusive';
     }
-    this.lastProbe = { verdict, trigger, atMs: Date.now() };
+    this.lastProbe = { verdict, trigger, baseUrl: context.baseUrl, atMs: Date.now() };
     return verdict;
   }
 
-  async fetchHealth(mode: RequestMode): Promise<HealthProbeOutcome> {
-    const controller = new AbortController();
-    let timedOut = false;
-    const timeoutHandle = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, HEALTH_PROBE_TIMEOUT_MS);
-    try {
-      await fetch(`${this.baseUrl()}/health`, { mode, cache: 'no-store', signal: controller.signal });
-      return 'ok';
-    } catch {
-      return timedOut ? 'timed-out' : 'failed';
-    } finally {
-      clearTimeout(timeoutHandle);
-    }
+  async fetchHealth(mode: RequestMode, context: SolarPhysicsRequestContext): Promise<HealthProbeOutcome> {
+    if (!context.ownsRequest()) return 'cancelled';
+    return new Promise<HealthProbeOutcome>((resolve) => {
+      const controller = new AbortController();
+      let settled = false;
+      const settle = (outcome: HealthProbeOutcome): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutHandle);
+        context.lifetime.signal.removeEventListener('abort', cancel);
+        resolve(outcome);
+        // Settle first so a cooperative abort rejection cannot replace the winning outcome.
+        if (outcome === 'timed-out' || outcome === 'cancelled') controller.abort();
+      };
+      const cancel = (): void => settle('cancelled');
+      const timeoutHandle = setTimeout(() => settle('timed-out'), HEALTH_PROBE_TIMEOUT_MS);
+      context.lifetime.signal.addEventListener('abort', cancel, { once: true });
+      if (!context.ownsRequest()) {
+        cancel();
+        return;
+      }
+      try {
+        // Both handlers remain attached if a foreign transport ignores timeout/retirement.
+        void fetch(`${context.baseUrl}/health`, { mode, cache: 'no-store', signal: controller.signal }).then(
+          () => settle('ok'),
+          () => settle('failed')
+        );
+      } catch {
+        settle('failed');
+      }
+    });
   }
 }
