@@ -13,6 +13,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from types import SimpleNamespace
+from urllib.error import URLError
 
 import pytest
 
@@ -228,3 +229,70 @@ def test_missing_prompt_rejects_before_request(tmp_path):
         assert result.returncode == 2
         assert 'Missing prompt' in result.stderr and KEY not in result.stderr
         assert provider.requests == []
+
+
+# TOOL-060 Part2: exact active-key reflection in default error diagnostics only.
+# Found by /qa on 2026-10-24; preserve Part1 fixtures and intentional output.
+@pytest.mark.parametrize('kind,status', [('json', 401), ('plain', 500)])
+@pytest.mark.parametrize('reflect', [False, True], ids=['no-secret-control', 'active-key-reflection'])
+def test_actual_cli_http_diagnostics_redact_only_active_credential(tmp_path, kind, status, reflect):
+    message = 'owned upstream failure'
+    if reflect:
+        message += f': {KEY}; repeated {KEY}'
+    with loopback_provider() as provider:
+        provider.status = status
+        if kind == 'json':
+            provider.response = {'error': {'message': message}}
+        else:
+            provider.raw_body = message.encode()
+        result = public_cli(tmp_path, provider.url,
+            ['--model', MODEL, '--prompt', 'owned diagnostic probe'])
+        assert result.returncode == 1
+        assert result.stdout == ''
+        assert f'OpenAI API request failed ({status}): owned upstream failure' in result.stderr
+        assert KEY not in result.stderr
+        if not reflect:
+            assert result.stderr == f'OpenAI API request failed ({status}): {message}\n'
+        assert provider.requests == [{'method': 'POST', 'path': '/v1/responses',
+            'authorization': 'Bearer ' + KEY,
+            'payload': {'model': MODEL, 'input': 'owned diagnostic probe', 'max_output_tokens': 800}}]
+
+
+@pytest.mark.parametrize('reflect', [False, True], ids=['no-secret-control', 'active-key-reflection'])
+def test_outer_network_diagnostic_preserves_context_and_auth(monkeypatch, reflect):
+    spec = importlib.util.spec_from_file_location('owned_tool060_network', SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    reason = 'owned network failure' + (f': {KEY}; repeated {KEY}' if reflect else '')
+    calls = []
+
+    def rejected(req, timeout):
+        calls.append((req.get_header('Authorization'), timeout))
+        raise URLError(reason)
+
+    monkeypatch.setattr(module.request, 'urlopen', rejected)
+    with pytest.raises(RuntimeError) as caught:
+        module.api_request('GET', 'http://127.0.0.1:1/v1/models', KEY)
+    assert calls == [('Bearer ' + KEY, 120)]
+    assert 'Network error while calling OpenAI API: owned network failure' in str(caught.value)
+    assert KEY not in str(caught.value)
+    if not reflect:
+        assert str(caught.value) == 'Network error while calling OpenAI API: ' + reason
+
+
+def test_empty_direct_credential_does_not_corrupt_network_diagnostic(monkeypatch):
+    spec = importlib.util.spec_from_file_location('owned_tool060_empty', SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def rejected(req, timeout):
+        assert req.get_header('Authorization') == 'Bearer '
+        raise URLError('owned network failure')
+
+    monkeypatch.setattr(module.request, 'urlopen', rejected)
+    with pytest.raises(RuntimeError, match='^Network error while calling OpenAI API: owned network failure$'):
+        module.api_request('GET', 'http://127.0.0.1:1/v1/models', '')
+
+
+def test_intentional_success_and_raw_response_content_are_unchanged(tmp_path):
+    test_requested_response_content_is_not_blanket_redacted(tmp_path)

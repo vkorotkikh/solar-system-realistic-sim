@@ -24,6 +24,11 @@ def build_base_url(raw_base_url: str) -> str:
     return base
 
 
+def _redact_active_key(message: str, api_key: str) -> str:
+    """Remove exact active-key reflections from default diagnostics only."""
+    return message.replace(api_key, "[REDACTED]") if api_key else message
+
+
 def api_request(
     method: str,
     url: str,
@@ -54,9 +59,11 @@ def api_request(
                         message = err_msg
         except json.JSONDecodeError:
             pass
+        message = _redact_active_key(message, api_key)
         raise RuntimeError(f"OpenAI API request failed ({exc.code}): {message}") from exc
     except error.URLError as exc:
-        raise RuntimeError(f"Network error while calling OpenAI API: {exc.reason}") from exc
+        reason = _redact_active_key(str(exc.reason), api_key)
+        raise RuntimeError(f"Network error while calling OpenAI API: {reason}") from exc
 
     try:
         parsed = json.loads(body)
