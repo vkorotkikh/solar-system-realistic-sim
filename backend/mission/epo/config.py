@@ -22,12 +22,21 @@ class EpisodeConfig:
 
 @dataclass(frozen=True)
 class EpisodeFamilyPolicy:
-    """Policy gates used by the demo verifier for a family."""
+    """Policy gates used by the demo verifier for a family.
+
+    Recommendations are mandatory; ``require_recommendation=False`` is unsupported.
+    """
 
     min_mission_score: float | None = None
     max_failure_probability: float = 1.0
     require_verifier_valid: bool = True
     require_recommendation: bool = True
+
+    def __post_init__(self) -> None:
+        if self.require_recommendation is False:
+            raise ValueError(
+                "require_recommendation=False is unsupported; recommendations are mandatory."
+            )
 
     def merge_payload(self, overrides: Mapping[str, Any]) -> "EpisodeFamilyPolicy":
         return replace(self, **{key: value for key, value in overrides.items() if hasattr(self, key)})
