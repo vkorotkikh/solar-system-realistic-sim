@@ -7,6 +7,17 @@ from numbers import Real
 from typing import Any, Dict, List
 
 
+_STATE_VECTOR_CONTRACT_FIELDS = {
+    "schema_version": 1,
+    "reference_frame": "barycentric_ecliptic_j2000",
+    "origin": "integrated_particle_barycenter",
+    "orientation": "ecliptic_j2000",
+    "position_unit": "AU",
+    "velocity_unit": "AU/day",
+    "jd_time_scale": "TDB",
+}
+
+
 def _finite_float(value: Any) -> float:
     """Validate scientific numbers without inventing replacement values."""
     if isinstance(value, bool) or not isinstance(value, Real):
@@ -30,6 +41,26 @@ def _text_field(value: Any) -> str:
     if not isinstance(value, str):
         return ""
     return value.strip()
+
+
+def _validate_state_vector_contract(value: Any) -> Dict[str, Any]:
+    """Check only supplied core fields without rewriting optional declarations."""
+    if not isinstance(value, dict):
+        raise ValueError("Simulation state_vector_contract must be a mapping")
+    for field, expected in _STATE_VECTOR_CONTRACT_FIELDS.items():
+        if field not in value:
+            continue
+        supplied = value[field]
+        if field == "schema_version":
+            valid = not isinstance(supplied, bool) and isinstance(supplied, Real) and supplied == 1
+        else:
+            valid = isinstance(supplied, str) and (
+                supplied == expected
+                or (field == "origin" and supplied == "solar_system_barycenter")
+            )
+        if not valid:
+            raise ValueError(f"Unsupported simulation state_vector_contract {field}")
+    return value
 
 
 def normalize_state_update(
@@ -58,11 +89,25 @@ def normalize_state_update(
             bodies_out[body_id]["ephemeris_quality"] = dict(quality)
 
     force_models = state.get("force_models") if isinstance(state.get("force_models"), dict) else {}
-    position_frame = _text_field(state.get("position_frame"))
-    velocity_frame = _text_field(state.get("velocity_frame"))
-    position_units = _text_field(state.get("position_units"))
-    velocity_units = _text_field(state.get("velocity_units"))
-    jd_time_scale = _text_field(state.get("jd_time_scale"))
+    flat_metadata = {}
+    for field, expected in {
+        "position_frame": "barycentric", "velocity_frame": "barycentric",
+        "position_units": "AU", "velocity_units": "AU/day", "jd_time_scale": "TDB",
+    }.items():
+        if field in state:
+            supplied = _text_field(state[field])
+            if supplied != expected:
+                raise ValueError(f"Unsupported simulation {field}")
+            flat_metadata[field] = supplied
+
+    top_contract = (_validate_state_vector_contract(state["state_vector_contract"])
+                    if "state_vector_contract" in state else None)
+    nested_contract = (_validate_state_vector_contract(force_models["state_vector_contract"])
+                       if "state_vector_contract" in force_models else None)
+    if top_contract is not None and nested_contract is not None:
+        for field in _STATE_VECTOR_CONTRACT_FIELDS:
+            if field in top_contract and field in nested_contract and top_contract[field] != nested_contract[field]:
+                raise ValueError(f"Contradictory simulation state_vector_contract {field}")
 
     payload = {
         "type": "state_update",
@@ -74,16 +119,9 @@ def normalize_state_update(
         "bodies": bodies_out,
         "force_models": force_models,
     }
-    if position_frame:
-        payload["position_frame"] = position_frame
-    if velocity_frame:
-        payload["velocity_frame"] = velocity_frame
-    if position_units:
-        payload["position_units"] = position_units
-    if velocity_units:
-        payload["velocity_units"] = velocity_units
-    if jd_time_scale:
-        payload["jd_time_scale"] = jd_time_scale
+    payload.update(flat_metadata)
+    if top_contract is not None:
+        payload["state_vector_contract"] = top_contract
 
     return payload
 

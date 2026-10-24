@@ -109,10 +109,11 @@ class _KuiperSnapshotEngine(Engine):
     def get_state(self):
         state = super().get_state()
         state.update({
-            "velocity_units": "AU/yr",
+            # Main-body velocities use AU/day; Kuiper snapshots separately use AU/yr.
+            "velocity_units": "AU/day",
             "bodies": {
                 "sun": {"pos": [0.0, 0.0, 0.0], "vel": [0.0, 0.0, 0.0]},
-                "neptune": {"pos": [30.0, 0.0, 0.0], "vel": [0.0, 1.0, 0.0]},
+                "neptune": {"pos": [30.0, 0.0, 0.0], "vel": [0.0, 1.0 / 365.25, 0.0]},
             },
         })
         if self.stop_on_state:
