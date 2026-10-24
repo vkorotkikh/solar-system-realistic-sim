@@ -202,6 +202,10 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
     if parking_altitude <= 0.0:
         raise ValueError("parking_altitude_km must be positive")
 
+    raw_seed = payload.get("risk_seed")
+    # Integer seeds must not round through float; legacy bool seeds stay plain 0/1.
+    risk_seed = int(raw_seed) if isinstance(raw_seed, int) else _as_int(raw_seed, 17)
+
     return MissionRequestSchema(
         from_id=from_id,
         target_id=target_id,
@@ -219,7 +223,7 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
             30,
             min(MAX_MISSION_RISK_SAMPLES, _as_int(payload.get("risk_samples"), 240)),
         ),
-        risk_seed=_as_int(payload.get("risk_seed"), 17),
+        risk_seed=risk_seed,
         risk_failure_probability_threshold=max(
             0.0,
             min(1.0, _as_float(payload.get("risk_failure_probability_threshold"), 0.45)),
