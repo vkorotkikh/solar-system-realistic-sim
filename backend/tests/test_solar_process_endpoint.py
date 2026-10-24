@@ -44,6 +44,38 @@ class _FakeRunner:
         self.shutdown_calls += 1
 
 
+# SDEL-016: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize("raise_server_exceptions", [True, False])
+def test_unexpected_solar_failure_keeps_testclient_exception_policy(monkeypatch, raise_server_exceptions):
+    failure = RuntimeError("private-unexpected-worker-defect")
+    runner = _FakeRunner(failure)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner)
+    monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server.app, "middleware_stack", None)
+    request_client = TestClient(server.app, raise_server_exceptions=raise_server_exceptions)
+
+    def request():
+        return request_client.get(
+            "/solar/physics",
+            params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+    with request_client:
+        if raise_server_exceptions:
+            with pytest.raises(RuntimeError) as caught:
+                request()
+            assert caught.value is failure
+        else:
+            response = request()
+            assert response.status_code == 500
+            assert response.text == "Internal Server Error"
+            assert response.headers["content-type"] == "text/plain; charset=utf-8"
+            assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+            assert response.headers["cache-control"] == "private, no-store"
+    assert len(runner.calls) == 1
+
+
 def test_solar_endpoint_uses_dedicated_process_runner_not_heavy_thread_pool(
     monkeypatch,
 ) -> None:

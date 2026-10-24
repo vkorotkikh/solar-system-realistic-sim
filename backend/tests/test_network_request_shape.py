@@ -114,6 +114,52 @@ def _response_headers(messages: list[dict[str, Any]]) -> dict[bytes, bytes]:
     return {bytes(name).lower(): bytes(value) for name, value in start["headers"]}
 
 
+# SDEL-016: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize(
+    "headers",
+    [
+        "not-a-header-collection", None, [()], [(b"origin",)],
+        [("origin", b"http://localhost:3000")], [(b"origin", "http://localhost:3000")],
+        [(b"origin", b"http://localhost:3000"), None],
+        [(b"origin", b"http://localhost:3000"), (b"origin", b"http://localhost:3000")],
+        [(b"origin", b"http://localhost:3000"), (b"origin", b"https://foreign.invalid")],
+        [(b"origin", b"\xff")], [(b"origin", b"")], [(b"origin", b"x" * 513)],
+        [(b"origin", b"https://foreign.invalid")], [],
+    ],
+)
+def test_cors_error_headers_fail_closed_for_invalid_origin_scope(headers):
+    middleware = NetworkRequestShapeMiddleware(
+        None, enabled=lambda: True, limits=DEFAULT_LIMITS,
+        cors_allowed_origins=frozenset({"http://localhost:3000"}),
+    )
+    assert middleware._cors_error_headers({"headers": headers}) == {}
+
+
+def test_cors_error_headers_bound_collection_and_header_name_work():
+    class UnscannableHeaders(list):
+        def __iter__(self):
+            raise AssertionError("oversized header collection was scanned")
+
+    class UncopyableName(bytes):
+        def lower(self):
+            raise AssertionError("oversized header name was copied")
+
+    middleware = NetworkRequestShapeMiddleware(
+        None, enabled=lambda: True, limits=DEFAULT_LIMITS,
+        cors_allowed_origins=frozenset({"http://localhost:3000"}),
+    )
+    assert middleware._cors_error_headers({
+        "headers": UnscannableHeaders([(b"origin", b"http://localhost:3000")] * 65),
+    }) == {}
+    assert middleware._cors_error_headers({"headers": [
+        (UncopyableName(b"x" * 129), b"v"), (b"origin", b"http://localhost:3000"),
+    ]}) == {
+        "Access-Control-Allow-Origin": "http://localhost:3000",
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+    }
+
+
 @pytest.mark.parametrize(
     ("headers", "expected_code"),
     [

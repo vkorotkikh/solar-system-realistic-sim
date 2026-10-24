@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 import json
 import logging
 import socket
@@ -10,6 +11,9 @@ import threading
 import anyio
 import pytest
 import uvicorn
+from starlette.background import BackgroundTask
+from starlette.responses import PlainTextResponse, StreamingResponse
+from starlette.routing import Mount
 
 import server
 
@@ -150,9 +154,16 @@ def test_full_asgi_thread_disconnect_retains_permit_until_real_worker_exits(monk
     asyncio.run(scenario())
 
 
-def test_real_uvicorn_h11_disconnect_does_not_log_asgi_error(monkeypatch, caplog):
+@pytest.mark.parametrize("unexpected_failure", [False, True], ids=["disconnect", "unexpected-error"])
+def test_real_uvicorn_h11_logs_only_unexpected_errors(monkeypatch, caplog, unexpected_failure):
+    failure = RuntimeError("private-unexpected-worker-defect")
+
+    class FailingRunner:
+        async def run(self, _payload, *, timeout_seconds):
+            raise failure
+
     async def scenario():
-        runner = _WaitingRunner()
+        runner = FailingRunner() if unexpected_failure else _WaitingRunner()
         monkeypatch.setattr(server, "_solar_physics_runner", runner)
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         transport.bind(("127.0.0.1", 0))
@@ -168,16 +179,26 @@ def test_real_uvicorn_h11_disconnect_does_not_log_asgi_error(monkeypatch, caplog
         writer = None
         try:
             await _wait_until(lambda: http_server.started)
-            _reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
             writer.write(
                 b"GET /solar/physics?" + SOLAR_QUERY
-                + b" HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+                + b" HTTP/1.1\r\nHost: localhost\r\nOrigin: http://localhost:3000"
+                + b"\r\nConnection: close\r\n\r\n"
             )
             await writer.drain()
-            await asyncio.wait_for(runner.started.wait(), timeout=2.0)
-            writer.close()
-            await writer.wait_closed()
-            await asyncio.wait_for(runner.cancelled.wait(), timeout=2.0)
+            if unexpected_failure:
+                wire = await asyncio.wait_for(reader.read(), timeout=2.0)
+                head, body = wire.split(b"\r\n\r\n", 1)
+                assert head.startswith(b"HTTP/1.1 500 ")
+                assert body == b"Internal Server Error"
+                assert b"private-unexpected-worker-defect" not in wire
+                assert b"access-control-allow-origin: http://localhost:3000" in head.lower()
+                assert b"cache-control: private, no-store" in head.lower()
+            else:
+                await asyncio.wait_for(runner.started.wait(), timeout=2.0)
+                writer.close()
+                await writer.wait_closed()
+                await asyncio.wait_for(runner.cancelled.wait(), timeout=2.0)
             await _wait_until(lambda: not http_server.server_state.tasks)
         finally:
             if writer is not None:
@@ -189,7 +210,13 @@ def test_real_uvicorn_h11_disconnect_does_not_log_asgi_error(monkeypatch, caplog
 
     caplog.set_level(logging.ERROR, logger="uvicorn.error")
     asyncio.run(scenario())
-    assert [record.getMessage() for record in caplog.records if record.name == "uvicorn.error"] == []
+    errors = [record for record in caplog.records if record.name == "uvicorn.error"]
+    if unexpected_failure:
+        assert len(errors) == 1
+        assert "Exception in ASGI application" in errors[0].getMessage()
+        assert errors[0].exc_info[1] is failure
+    else:
+        assert errors == []
 
 
 def test_full_asgi_external_cancellation_keeps_original_token(monkeypatch):
@@ -241,10 +268,144 @@ def test_full_asgi_unexpected_worker_exception_still_propagates(monkeypatch):
     async def scenario():
         monkeypatch.setattr(server, "_solar_physics_runner", FailingRunner())
         exchange = _HttpExchange()
+        exchange.scope["headers"].append((b"origin", b"http://localhost:3000"))
         with pytest.raises(RuntimeError) as caught:
             await asyncio.wait_for(exchange.run(), timeout=2.0)
         assert caught.value is failure
-        assert exchange.messages[0]["status"] == 500
+        starts = [message for message in exchange.messages if message["type"] == "http.response.start"]
+        assert len(starts) == 1
+        assert starts[0]["status"] == 500
+        body = b"".join(message.get("body", b"") for message in exchange.messages)
+        assert body == b"Internal Server Error"
+        assert b"unexpected-worker-defect" not in body
+        headers = dict(starts[0]["headers"])
+        # SDEL-016: generic errors bypassed CORS outside the ingress stack.
+        # Found by /qa on 2026-10-24; consolidated Markdown issue audit.
+        assert headers[b"access-control-allow-origin"] == b"http://localhost:3000"
+        assert headers[b"access-control-allow-credentials"] == b"true"
+        assert headers[b"vary"] == b"Origin"
+        assert headers[b"cache-control"] == b"private, no-store"
+
+    asyncio.run(scenario())
+
+
+# SDEL-016: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize(
+    "origin_headers",
+    [
+        [],
+        [(b"origin", b"https://untrusted.invalid")],
+        [(b"origin", b"")],
+        [(b"origin", b"\xff")],
+        [(b"origin", b"x" * 513)],
+        [(b"origin", b"http://localhost:3000"), (b"origin", b"http://localhost:3000")],
+        [(b"origin", b"http://localhost:3000"), (b"origin", b"https://untrusted.invalid")],
+        [(b"origin", b"https://untrusted.invalid"), (b"origin", b"http://localhost:3000")],
+    ],
+    ids=["absent", "foreign", "empty", "non-ascii", "oversized", "duplicate", "mixed", "mixed-reversed"],
+)
+def test_generic_500_does_not_reflect_invalid_or_untrusted_origin(monkeypatch, origin_headers):
+    failure = RuntimeError("private-worker-error")
+
+    class FailingRunner:
+        async def run(self, _payload, *, timeout_seconds):
+            raise failure
+
+    async def scenario():
+        monkeypatch.setattr(server, "_solar_physics_runner", FailingRunner())
+        exchange = _HttpExchange()
+        exchange.scope["headers"].extend(origin_headers)
+        with pytest.raises(RuntimeError) as caught:
+            await asyncio.wait_for(exchange.run(), timeout=2.0)
+        assert caught.value is failure
+        starts = [message for message in exchange.messages if message["type"] == "http.response.start"]
+        assert len(starts) == 1
+        assert starts[0]["status"] == 500
+        headers = dict(starts[0]["headers"])
+        assert b"access-control-allow-origin" not in headers
+        assert b"access-control-allow-credentials" not in headers
+        assert headers[b"cache-control"] == b"private, no-store"
+        assert b"".join(message.get("body", b"") for message in exchange.messages) == b"Internal Server Error"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("origin", [b"http://localhost:3000", b"https://runtime-only.invalid"])
+@pytest.mark.parametrize("response_kind", ["normal", "shape-error", "generic-error"])
+def test_http_cors_paths_share_startup_snapshot(monkeypatch, origin, response_kind):
+    config = server._load_solar_security_config({
+        "SOLAR_SECURITY_PROFILE": "network",
+        "SOLAR_PHYSICS_API_KEYS": "sdel016-owned-test-key",
+    })
+    monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", replace(
+        config, cors_allowed_origins=("https://runtime-only.invalid",),
+    ))
+    failure = RuntimeError("private-worker-error")
+
+    class FailingRunner:
+        async def run(self, _payload, *, timeout_seconds):
+            raise failure
+
+    async def scenario():
+        monkeypatch.setattr(server, "_solar_physics_runner", FailingRunner())
+        path = "/solar/physics" if response_kind == "generic-error" else "/health/live"
+        exchange = _HttpExchange(path=path)
+        exchange.scope["headers"].extend([
+            (b"origin", origin), (b"x-api-key", b"sdel016-owned-test-key"),
+        ])
+        if response_kind == "shape-error":
+            exchange.scope["query_string"] = b"x" * (server.NETWORK_REQUEST_LIMITS.max_query_bytes + 1)
+        if response_kind == "generic-error":
+            with pytest.raises(RuntimeError) as caught:
+                await asyncio.wait_for(exchange.run(), timeout=2.0)
+            assert caught.value is failure
+        else:
+            await asyncio.wait_for(exchange.run(), timeout=2.0)
+        starts = [message for message in exchange.messages if message["type"] == "http.response.start"]
+        assert len(starts) == 1
+        assert starts[0]["status"] == {"normal": 200, "shape-error": 414, "generic-error": 500}[response_kind]
+        headers = dict(starts[0]["headers"])
+        assert headers.get(b"access-control-allow-origin") == (
+            origin if origin == b"http://localhost:3000" else None
+        )
+        if response_kind != "normal":
+            assert headers[b"cache-control"] == b"private, no-store"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("response_kind", ["stream", "background"])
+def test_generic_error_after_response_start_does_not_send_second_response(monkeypatch, response_kind):
+    failure = RuntimeError("private-post-start-error")
+
+    async def fail_after_body():
+        raise failure
+
+    async def stream():
+        yield b"first"
+        raise failure
+
+    async def endpoint(scope, receive, send):
+        response = (
+            StreamingResponse(stream()) if response_kind == "stream"
+            else PlainTextResponse("first", background=BackgroundTask(fail_after_body))
+        )
+        await response(scope, receive, send)
+
+    monkeypatch.setattr(server.app.router, "routes", [
+        *server.app.router.routes, Mount("/__sdel016", app=endpoint),
+    ])
+
+    async def scenario():
+        exchange = _HttpExchange(path="/__sdel016/response")
+        exchange.scope["headers"].append((b"origin", b"http://localhost:3000"))
+        with pytest.raises(RuntimeError) as caught:
+            await asyncio.wait_for(exchange.run(), timeout=2.0)
+        assert caught.value is failure
+        starts = [message for message in exchange.messages if message["type"] == "http.response.start"]
+        assert len(starts) == 1
+        assert starts[0]["status"] == 200
+        assert b"".join(message.get("body", b"") for message in exchange.messages) == b"first"
 
     asyncio.run(scenario())
 

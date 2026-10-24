@@ -71,6 +71,63 @@ class NetworkRequestLimits:
             raise ValueError("network request limits must be positive")
 
 
+def bounded_cors_error_headers(
+    scope: Mapping[str, object],
+    *,
+    limits: NetworkRequestLimits,
+    allowed_origins: frozenset[str],
+) -> dict[str, str]:
+    """Return CORS metadata only for one bounded, exact allowed Origin."""
+
+    headers = scope.get("headers", ())
+    if not isinstance(headers, (list, tuple)):
+        return {}
+    # The cardinality failure path must remain O(configured limit), not
+    # O(attacker-supplied headers). No CORS metadata is emitted when the
+    # collection itself is already invalid because uniqueness cannot be
+    # established without rescanning unbounded input.
+    if len(headers) > limits.max_header_count:
+        return {}
+    origin_bytes: bytes | None = None
+    for item in headers:
+        if (
+            not isinstance(item, (list, tuple))
+            or len(item) != 2
+            or not isinstance(item[0], bytes)
+            or not isinstance(item[1], bytes)
+        ):
+            return {}
+        raw_name, raw_value = item
+        # Avoid copying/lowercasing an attacker-sized name on an error
+        # path. The primary validator will report the precise violation.
+        if len(raw_name) > limits.max_header_name_bytes:
+            continue
+        if raw_name.lower() != b"origin":
+            continue
+        if origin_bytes is not None:
+            return {}
+        if (
+            not raw_value
+            or len(raw_value) > limits.max_header_value_bytes
+            or len(raw_value) > _MAX_ORIGIN_BYTES
+        ):
+            return {}
+        origin_bytes = raw_value
+    if origin_bytes is None:
+        return {}
+    try:
+        origin = origin_bytes.decode("ascii")
+    except UnicodeDecodeError:
+        return {}
+    if origin not in allowed_origins:
+        return {}
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+    }
+
+
 class NetworkRequestShapeMiddleware:
     """Bound a network-profile ASGI request before body consumption.
 
@@ -95,53 +152,9 @@ class NetworkRequestShapeMiddleware:
         self.cors_allowed_origins = cors_allowed_origins
 
     def _cors_error_headers(self, scope) -> dict[str, str]:
-        headers = scope.get("headers", ())
-        if not isinstance(headers, (list, tuple)):
-            return {}
-        # The cardinality failure path must remain O(configured limit), not
-        # O(attacker-supplied headers). No CORS metadata is emitted when the
-        # collection itself is already invalid because uniqueness cannot be
-        # established without rescanning unbounded input.
-        if len(headers) > self.limits.max_header_count:
-            return {}
-        origin_bytes: bytes | None = None
-        for item in headers:
-            if (
-                not isinstance(item, (list, tuple))
-                or len(item) != 2
-                or not isinstance(item[0], bytes)
-                or not isinstance(item[1], bytes)
-            ):
-                return {}
-            raw_name, raw_value = item
-            # Avoid copying/lowercasing an attacker-sized name on an error
-            # path. The primary validator will report the precise violation.
-            if len(raw_name) > self.limits.max_header_name_bytes:
-                continue
-            if raw_name.lower() != b"origin":
-                continue
-            if origin_bytes is not None:
-                return {}
-            if (
-                not raw_value
-                or len(raw_value) > self.limits.max_header_value_bytes
-                or len(raw_value) > _MAX_ORIGIN_BYTES
-            ):
-                return {}
-            origin_bytes = raw_value
-        if origin_bytes is None:
-            return {}
-        try:
-            origin = origin_bytes.decode("ascii")
-        except UnicodeDecodeError:
-            return {}
-        if origin not in self.cors_allowed_origins:
-            return {}
-        return {
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-            "Vary": "Origin",
-        }
+        return bounded_cors_error_headers(
+            scope, limits=self.limits, allowed_origins=self.cors_allowed_origins,
+        )
 
     def _error(
         self,

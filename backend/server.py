@@ -65,7 +65,7 @@ from pydantic import (
     StrictStr,
     field_validator,
 )
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from benchmark import (
     MAX_REFERENCE_SCENARIOS,
@@ -76,6 +76,7 @@ from http_ingress import (
     NetworkRequestLimits,
     NetworkRequestShapeMiddleware,
     NetworkSafeMethodBodyMiddleware,
+    bounded_cors_error_headers,
     scope_route_path,
 )
 from data.bodies import ALL_BODIES
@@ -678,6 +679,10 @@ def _load_solar_security_config(
 
 SOLAR_SECURITY_CONFIG = _load_solar_security_config()
 SOLAR_CORS_ALLOWED_ORIGINS = list(SOLAR_SECURITY_CONFIG.cors_allowed_origins)
+# All HTTP response paths share this startup policy, independent of the
+# mutable list retained for legacy WebSocket defaults.
+_HTTP_CORS_ALLOWED_ORIGINS = tuple(SOLAR_CORS_ALLOWED_ORIGINS)
+_HTTP_CORS_ALLOWED_ORIGIN_SET = frozenset(_HTTP_CORS_ALLOWED_ORIGINS)
 NETWORK_PUBLIC_HTTP_ROUTES = frozenset(
     {
         ("GET", "/health/live"),
@@ -1371,6 +1376,20 @@ TRAJECTORY_INGRESS_PATHS = {
 }
 
 
+@app.exception_handler(Exception)
+async def _sanitized_unexpected_http_error(request: Request, _exc: Exception):
+    # ServerErrorMiddleware is outside user CORS/ingress middleware. It retains
+    # ownership of re-raising/logging the original error and will not send this
+    # replacement once a response has started.
+    headers = {"Cache-Control": "private, no-store"}
+    headers.update(bounded_cors_error_headers(
+        request.scope,
+        limits=NETWORK_REQUEST_LIMITS,
+        allowed_origins=_HTTP_CORS_ALLOWED_ORIGIN_SET,
+    ))
+    return PlainTextResponse("Internal Server Error", status_code=500, headers=headers)
+
+
 @app.exception_handler(RequestValidationError)
 async def _bounded_request_validation_error(
     request: Request,
@@ -1422,7 +1441,7 @@ app.add_middleware(
 app.add_middleware(_NetworkAuthenticationMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=SOLAR_CORS_ALLOWED_ORIGINS,
+    allow_origins=_HTTP_CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
@@ -1431,7 +1450,7 @@ app.add_middleware(
     NetworkRequestShapeMiddleware,
     enabled=lambda: SOLAR_SECURITY_CONFIG.profile == "network",
     limits=NETWORK_REQUEST_LIMITS,
-    cors_allowed_origins=frozenset(SOLAR_CORS_ALLOWED_ORIGINS),
+    cors_allowed_origins=_HTTP_CORS_ALLOWED_ORIGIN_SET,
 )
 
 _solar_physics_rate_locks: OrderedDict[str, deque[float]] = OrderedDict()
