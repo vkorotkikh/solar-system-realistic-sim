@@ -205,6 +205,29 @@ app = FastAPI(
 )
 
 
+class _RequestOwnerDisconnected(asyncio.CancelledError):
+    """Internal signal: the HTTP peer left while owned work was still running."""
+
+
+class _RequestOwnerDisconnectMiddleware:
+    """End confirmed HTTP disconnects without treating them as server failures."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+        try:
+            await self.app(scope, receive, send)
+        except _RequestOwnerDisconnected:
+            # Owned-work helpers already observed http.disconnect and cancelled
+            # their waiter. There is no peer to receive an error response; real
+            # cancellation and unexpected failures still propagate unchanged.
+            return
+
+
 class _RequestBodyLimitMiddleware:
     """Reject selected JSON request bodies before FastAPI parses them.
 
@@ -1376,6 +1399,7 @@ async def _bounded_request_validation_error(
     )
 
 
+app.add_middleware(_RequestOwnerDisconnectMiddleware)
 app.add_middleware(
     _RequestBodyLimitMiddleware,
     max_body_bytes=TRAJECTORY_REQUEST_MAX_BODY_BYTES,
@@ -2169,10 +2193,6 @@ async def _run_owned_thread(
         # releases queued-work admission; a live worker keeps its permit.
         worker_future.cancel()
         raise
-
-
-class _RequestOwnerDisconnected(asyncio.CancelledError):
-    """Internal signal: the HTTP peer left while owned work was still running."""
 
 
 async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float = 0.05) -> None:
