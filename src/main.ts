@@ -792,6 +792,10 @@ function applyScaleMode() {
       mesh.scale.setScalar(bodyBaseRadiusAu(body));
     }
   }
+  for (const label of labels) {
+    const body = bodyById.get(label.bodyId);
+    if (body) label.offsetAu = bodyBaseRadiusAu(body) * 2.5 + 0.03;
+  }
   sunCtrl.onScaleChange();
   // Notify belt renderers so asteroids use physical sizes in realistic mode
   asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
