@@ -156,7 +156,8 @@ def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
     """Fetch bright stars with TAP fallback chain: ESA -> VizieR -> static fallback."""
     request = _tap_request(_bright_stars_query(max_mag))
     endpoints = (ESA_TAP_URL, VIZIER_TAP_URL)
-    cache_path = _gaia_query_cache_path("bright", request, endpoints, schema=2)
+    # Earlier keyed results may contain an unfiltered static population.
+    cache_path = _gaia_query_cache_path("bright", request, endpoints, schema=3)
 
     def _fetch():
         # Try ESA TAP
@@ -176,7 +177,12 @@ def fetch_bright_stars(max_mag: float = 7.5) -> list[dict]:
         if fallback_path.exists():
             print(f"  Using static fallback ({fallback_path.name})")
             with open(fallback_path) as f:
-                return json.load(f)
+                stars = json.load(f)
+            return [
+                star for star in stars
+                if type(mag := star.get("phot_g_mean_mag")) in (int, float)
+                and math.isfinite(mag) and mag < max_mag
+            ]
 
         raise RuntimeError("All TAP endpoints failed and no static fallback available")
 
