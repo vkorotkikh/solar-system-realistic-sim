@@ -169,6 +169,8 @@ from trajectory.contracts import (
 from trajectory.lambert import (
     MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
     MIN_PORKCHOP_TOF_STEP_DAYS,
+    estimate_porkchop_unique_states,
+    porkchop_grid_sample_count,
 )
 from trajectory.mga import (
     GLOBAL_BEAM_WIDTH,
@@ -2710,8 +2712,8 @@ def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
             },
         )
 
-    departure_samples = int(departure_window / departure_step) + 1
-    tof_samples = int(tof_window / tof_step) + 1
+    departure_samples = porkchop_grid_sample_count(departure_window, departure_step)
+    tof_samples = porkchop_grid_sample_count(tof_window, tof_step)
     estimated_points = departure_samples * tof_samples
     if estimated_points > TRAJECTORY_PORKCHOP_MAX_GRID_POINTS:
         raise _trajectory_http_exception(
@@ -2727,12 +2729,16 @@ def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
             },
         )
 
-    # Each cell can introduce one destination-arrival state, while every
-    # departure row introduces one source state. Reject a grid whose worst-case
-    # unique state count cannot fit the request-owned state-computation budget;
-    # otherwise an admitted scan can deterministically fail halfway through and
-    # discard already certified points.
-    estimated_unique_states = departure_samples + estimated_points
+    # Match the core cache-key domain, including shared arrival epochs, without
+    # constructing a provider or loosening the request-owned computation budget.
+    estimated_unique_states = estimate_porkchop_unique_states(
+        departure_start_jd=departure_start,
+        departure_step_days=departure_step,
+        departure_count=departure_samples,
+        tof_min_days=tof_min,
+        tof_step_days=tof_step,
+        tof_count=tof_samples,
+    )
     unique_state_limit = min(
         HARD_MAX_UNIQUE_EPHEMERIS_STATES,
         estimated_points * 2,

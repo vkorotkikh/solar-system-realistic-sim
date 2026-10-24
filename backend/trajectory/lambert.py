@@ -192,6 +192,48 @@ def _validate_lambert_leg_request(
     return normalized_from, normalized_to, departure, tof
 
 
+def porkchop_grid_sample_count(window_days: float, step_days: float) -> int:
+    """Count an already-validated grid axis using the scan's boundary tolerance."""
+    return math.floor(window_days / step_days + 1.0e-12) + 1
+
+
+def estimate_porkchop_unique_states(
+    *,
+    departure_start_jd: float,
+    departure_step_days: float,
+    departure_count: int,
+    tof_min_days: float,
+    tof_step_days: float,
+    tof_count: int,
+) -> int:
+    """Count exact body/epoch cache keys for an already-validated, bounded grid."""
+    if any(type(count) is not int or count < 1 for count in (departure_count, tof_count)):
+        raise ValueError("Porkchop sample counts must be positive integers")
+    if (
+        departure_count > MAX_PORKCHOP_GRID_POINTS
+        or tof_count > MAX_PORKCHOP_GRID_POINTS
+        or departure_count * tof_count > MAX_PORKCHOP_GRID_POINTS
+    ):
+        raise ValueError(f"Porkchop grid may contain at most {MAX_PORKCHOP_GRID_POINTS} points")
+
+    departure_values = [
+        departure_start_jd + departure_index * departure_step_days
+        for departure_index in range(departure_count)
+    ]
+    tof_values = [tof_min_days + tof_index * tof_step_days for tof_index in range(tof_count)]
+    prospective_states = {
+        ("from", round(departure, 9)) for departure in departure_values
+    }
+    # Match the scan's dep + tof association and the ephemeris cache's rounding;
+    # regrouping dep + tof_min + j * tof_step can change the unique-key count.
+    prospective_states.update(
+        ("to", round(departure + tof, 9))
+        for departure in departure_values
+        for tof in tof_values
+    )
+    return len(prospective_states)
+
+
 def validate_porkchop_request(
     *,
     from_id: str,
@@ -265,10 +307,8 @@ def validate_porkchop_request(
             f"Porkchop time-of-flight step must be at least {MIN_PORKCHOP_TOF_STEP_DAYS} days",
         )
 
-    departure_count = int(
-        math.floor(departure_window / values["departure_step_days"] + 1.0e-12)
-    ) + 1
-    tof_count = int(math.floor(tof_window / values["tof_step_days"] + 1.0e-12)) + 1
+    departure_count = porkchop_grid_sample_count(departure_window, values["departure_step_days"])
+    tof_count = porkchop_grid_sample_count(tof_window, values["tof_step_days"])
     if (
         departure_count > 1
         and values["departure_start_jd"] + values["departure_step_days"]
@@ -303,27 +343,14 @@ def validate_porkchop_request(
             context={"estimatedGridPointCount": estimated_grid_points},
         )
 
-    # Compute the exact cache-key domain before any provider/session work.
-    # This is itself bounded by MAX_PORKCHOP_GRID_POINTS and accounts for
-    # arrival-epoch collisions rather than relying on a loose 2*N estimate.
-    departure_values = [
-        values["departure_start_jd"]
-        + departure_index * values["departure_step_days"]
-        for departure_index in range(departure_count)
-    ]
-    tof_values = [
-        values["tof_min_days"] + tof_index * values["tof_step_days"]
-        for tof_index in range(tof_count)
-    ]
-    prospective_states = {
-        ("from", round(departure, 9)) for departure in departure_values
-    }
-    prospective_states.update(
-        ("to", round(departure + tof, 9))
-        for departure in departure_values
-        for tof in tof_values
+    estimated_unique_states = estimate_porkchop_unique_states(
+        departure_start_jd=values["departure_start_jd"],
+        departure_step_days=values["departure_step_days"],
+        departure_count=departure_count,
+        tof_min_days=values["tof_min_days"],
+        tof_step_days=values["tof_step_days"],
+        tof_count=tof_count,
     )
-    estimated_unique_states = len(prospective_states)
     if estimated_unique_states > HARD_MAX_UNIQUE_EPHEMERIS_STATES:
         raise TrajectoryInputError(
             "trajectory_complexity_limit",
@@ -1331,7 +1358,9 @@ __all__ = [
     "MAX_PORKCHOP_GRID_POINTS",
     "TrajectoryInputError",
     "compute_lambert_leg",
+    "estimate_porkchop_unique_states",
     "estimate_turn_angle_deg",
+    "porkchop_grid_sample_count",
     "scan_porkchop_window",
     "solve_lambert_universal",
     "validate_direct_lambert_request",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -11,6 +12,7 @@ from fastapi.testclient import TestClient
 
 import server
 from mission.ephemeris_service import EphemerisProtocolError, EphemerisProviderUnavailable
+from trajectory.lambert import validate_porkchop_request
 
 
 client = TestClient(server.app, raise_server_exceptions=False)
@@ -1157,6 +1159,178 @@ def test_porkchop_core_minimum_and_unique_state_budget_are_enforced_before_work(
     assert detail["context"]["estimatedGridPoints"] == 2_000
     assert detail["context"]["estimatedUniqueEphemerisStates"] == 4_000
     assert invoked is False
+
+
+def _porkchop_grid_payload(**overrides):
+    return {
+        "from_id": "earth",
+        "to_id": "mars",
+        "departure_start_jd": 2_460_500.5,
+        "departure_end_jd": 2_460_995.5,
+        "departure_step_days": 5.0,
+        "tof_min_days": 80.0,
+        "tof_max_days": 175.0,
+        "tof_step_days": 5.0,
+        "ephemeris_provider": "kepler",
+        **overrides,
+    }
+
+
+@pytest.fixture
+def porkchop_admission_receipts(monkeypatch):
+    """Keep real HTTP admission and core validation, without Lambert/provider work."""
+    receipts = []
+
+    def scan_receipt(*_args, **kwargs):
+        validated = validate_porkchop_request(**{
+            name: kwargs[name]
+            for name in _porkchop_grid_payload()
+            if name != "ephemeris_provider"
+        })
+        receipt = {
+            "gridPoints": validated["estimated_grid_points"],
+            "uniqueStates": validated["estimated_unique_states"],
+        }
+        receipts.append(receipt)
+        return receipt
+
+    monkeypatch.setattr(server, "run_porkchop_scan", scan_receipt)
+    monkeypatch.setattr(
+        server, "_trajectory_porkchop_concurrent_guard", threading.BoundedSemaphore(1)
+    )
+    return receipts
+
+
+def test_porkchop_admits_shared_arrival_grid_within_exact_state_budget(
+    porkchop_admission_receipts,
+) -> None:
+    response = client.post("/trajectory/porkchop", json=_porkchop_grid_payload())
+
+    assert response.status_code == 200
+    assert response.json() == {"gridPoints": 2_000, "uniqueStates": 219}
+    assert porkchop_admission_receipts == [response.json()]
+
+
+@pytest.mark.parametrize("overrides", [
+    {
+        "departure_end_jd": 2_460_625.5,
+        "tof_max_days": math.nextafter(95.0, -math.inf),
+    },
+    {
+        "departure_end_jd": 2_460_515.5,
+        "departure_step_days": math.nextafter(5.0, math.inf),
+        "tof_max_days": 205.0,
+    },
+], ids=["tof-endpoint", "departure-step"])
+def test_porkchop_boundary_counts_respect_configured_grid_limit(
+    monkeypatch, porkchop_admission_receipts, overrides,
+) -> None:
+    monkeypatch.setattr(server, "TRAJECTORY_PORKCHOP_MAX_GRID_POINTS", 100)
+    response = client.post(
+        "/trajectory/porkchop", json=_porkchop_grid_payload(**overrides)
+    )
+
+    assert response.status_code == 413
+    detail = response.json()["detail"]
+    assert detail["code"] == "trajectory_complexity_limit"
+    assert detail["retryable"] is False
+    assert detail["context"] == {
+        "estimatedGridPoints": 104, "maximumGridPoints": 100,
+    }
+    assert porkchop_admission_receipts == []
+
+
+@pytest.mark.parametrize("overrides, points, states", [
+    ({"tof_max_days": 176.9, "tof_step_days": 5.1}, 2_000, 2_100),
+    ({
+        "departure_start_jd": 2_450_104.0932780663,
+        "departure_end_jd": 2_450_104.0932780663 + 867 * 4.125730985086473,
+        "departure_step_days": 4.125730985086473,
+        "tof_min_days": 489.08731202849344,
+        "tof_max_days": 489.08731202849344 + 8.251461970172945,
+        "tof_step_days": 8.251461970172945,
+    }, 1_736, 2_126),
+], ids=["distinct-arrivals", "float-association"])
+def test_porkchop_exact_state_overbudget_rejects_before_worker(
+    porkchop_admission_receipts, overrides, points, states,
+) -> None:
+    response = client.post(
+        "/trajectory/porkchop", json=_porkchop_grid_payload(**overrides)
+    )
+
+    assert response.status_code == 413
+    detail = response.json()["detail"]
+    assert detail["code"] == "trajectory_complexity_limit"
+    assert detail["retryable"] is False
+    assert detail["context"] == {
+        "estimatedGridPoints": points,
+        "estimatedUniqueEphemerisStates": states,
+        "maximumUniqueEphemerisStates": 2_000,
+    }
+    assert porkchop_admission_receipts == []
+
+
+@pytest.mark.parametrize("overrides", [
+    {"departure_end_jd": 2_460_510.5},
+    {"departure_end_jd": 2_460_515.5, "departure_step_days": 5.0 + 1e-9},
+    {"departure_end_jd": math.nextafter(2_460_515.5, -math.inf)},
+], ids=["exact", "step-outside-epsilon", "endpoint-outside-epsilon"])
+def test_porkchop_admission_preserves_exact_and_outside_epsilon_counts(
+    porkchop_admission_receipts, overrides,
+) -> None:
+    response = client.post(
+        "/trajectory/porkchop",
+        json=_porkchop_grid_payload(tof_max_days=90.0, **overrides),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["gridPoints"] == 9
+    assert porkchop_admission_receipts == [response.json()]
+
+
+@pytest.mark.parametrize("setting, value, overrides, status, code, context", [
+    (None, None, {"to_id": " EARTH "}, 400, "trajectory_same_body", {}),
+    (None, None, {"departure_end_jd": 2_460_500.5}, 400,
+     "trajectory_invalid_time_range", {
+         "departureStartJd": 2_460_500.5, "departureEndJd": 2_460_500.5,
+     }),
+    (None, None, {"tof_max_days": 80.0}, 400, "trajectory_invalid_time_range",
+     {"tofMinDays": 80.0, "tofMaxDays": 80.0}),
+    ("TRAJECTORY_PORKCHOP_MIN_DEPARTURE_STEP_DAYS", 6.0, {}, 400,
+     "trajectory_invalid_time_range", {
+         "departureStepDays": 5.0, "minimumDepartureStepDays": 6.0,
+     }),
+    ("TRAJECTORY_PORKCHOP_MIN_TOF_STEP_DAYS", 10.0, {}, 400,
+     "trajectory_invalid_time_range", {"tofStepDays": 5.0, "minimumTofStepDays": 10.0}),
+    ("TRAJECTORY_PORKCHOP_MAX_DEPARTURE_WINDOW_DAYS", 100.0, {}, 413,
+     "trajectory_complexity_limit", {
+         "departureWindowDays": 495.0, "maximumDepartureWindowDays": 100.0,
+     }),
+    ("TRAJECTORY_PORKCHOP_MAX_TOF_WINDOW_DAYS", 40.0, {}, 413,
+     "trajectory_complexity_limit", {"tofWindowDays": 95.0, "maximumTofWindowDays": 40.0}),
+    ("TRAJECTORY_PORKCHOP_MAX_GRID_POINTS", 100, {"to_id": "EARTH"}, 413,
+     "trajectory_complexity_limit", {"estimatedGridPoints": 2_000, "maximumGridPoints": 100}),
+], ids=["same-body", "zero-departure", "zero-tof", "departure-minimum",
+        "tof-minimum", "departure-window", "tof-window", "size-before-same-body"])
+def test_porkchop_exact_admission_preserves_http_specific_policy(
+    monkeypatch, porkchop_admission_receipts,
+    setting, value, overrides, status, code, context,
+) -> None:
+    if setting is not None:
+        monkeypatch.setattr(server, setting, value)
+    # The same-body control must fit all budgets so it reaches that existing gate.
+    if code == "trajectory_same_body":
+        overrides = {"departure_end_jd": 2_460_510.5, "tof_max_days": 90.0, **overrides}
+    response = client.post(
+        "/trajectory/porkchop", json=_porkchop_grid_payload(**overrides)
+    )
+
+    assert response.status_code == status
+    detail = response.json()["detail"]
+    assert detail["code"] == code
+    assert detail["retryable"] is False
+    assert detail["context"] == context
+    assert porkchop_admission_receipts == []
 
 
 def test_porkchop_internal_value_error_is_not_mislabeled_as_bad_input(monkeypatch) -> None:
