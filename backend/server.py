@@ -91,6 +91,13 @@ from data.nearby_systems import (
     query_nearby_systems,
 )
 from mission import MissionPlannerAgent
+from mission.schemas import (
+    MAX_MISSION_HANDLING_LOSS_FRACTION,
+    MAX_MISSION_RESERVE_FRACTION,
+    MIN_MISSION_PAYLOAD_MASS_KG,
+    MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY,
+    MIN_MISSION_RISK_SAMPLES,
+)
 from mission.ephemeris_service import (
     EphemerisBudgetExceeded,
     EphemerisCancelled,
@@ -2821,7 +2828,7 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
             },
         )
 
-    energy_kwh_per_kg = max(1e-9, float(payload.power_required_kw_per_kg_day))
+    energy_kwh_per_kg = max(MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY, float(payload.power_required_kw_per_kg_day))
     effective_extraction_rate_kg_day = min(
         float(payload.extraction_rate_kg_day),
         float(payload.available_power_kw) / energy_kwh_per_kg,
@@ -3055,11 +3062,11 @@ class MissionPlanRequest(StrictRequestModel):
     max_assists: int = Field(default=1, ge=0, le=3)
     assist_pool: list[StrictStr] | None = None
     ephemeris_provider: StrictStr = "auto"
-    payload_mass_kg: FiniteFloat = Field(default=6_500.0, gt=0.0)
+    payload_mass_kg: FiniteFloat = Field(default=6_500.0, ge=MIN_MISSION_PAYLOAD_MASS_KG)
     parking_altitude_km: FiniteFloat = Field(default=200.0, gt=0.0)
-    reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=1.0)
-    handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=1.0)
-    risk_samples: int = Field(default=240, ge=1)
+    reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=MAX_MISSION_RESERVE_FRACTION)
+    handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=MAX_MISSION_HANDLING_LOSS_FRACTION)
+    risk_samples: int = Field(default=240, ge=MIN_MISSION_RISK_SAMPLES)
     risk_seed: int = 17
     risk_failure_probability_threshold: FiniteFloat = Field(default=0.45, ge=0.0, le=1.0)
     mining_days: FiniteFloat = Field(default=180.0, ge=0.0)
@@ -3068,7 +3075,7 @@ class MissionPlanRequest(StrictRequestModel):
     refining_yield: FiniteFloat = Field(default=0.82, ge=0.0, le=1.0)
     storage_loss_rate_per_day: FiniteFloat = Field(default=0.0015, ge=0.0)
     available_power_kw: FiniteFloat = Field(default=320.0, ge=0.0)
-    power_required_kw_per_kg_day: FiniteFloat = Field(default=0.24, gt=0.0)
+    power_required_kw_per_kg_day: FiniteFloat = Field(default=0.24, ge=MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY)
     vehicle: MissionVehicleRequest | None = None
     prograde: StrictBool = True
 

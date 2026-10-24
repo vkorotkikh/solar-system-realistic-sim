@@ -35,6 +35,8 @@ def test_mis031_explicit_request_handling_fraction_is_preserved(fraction: float)
 
 
 def test_parse_mission_request_defaults_and_bounds() -> None:
+    # Legacy direct-parser normalization remains compatible; HTTP rejects values
+    # outside modeled ranges before admission (see test_mission_http_ranges.py).
     parsed = parse_mission_request(
         {
             "from_id": " earth ",

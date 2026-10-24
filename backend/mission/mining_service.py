@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from typing import Any, Dict
 
+from .schemas import MAX_MISSION_HANDLING_LOSS_FRACTION, MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY
+
 
 class MiningService:
     """Computes mining yield and returnable payload closure."""
@@ -28,7 +30,7 @@ class MiningService:
         refining_yield = max(0.0, min(1.0, float(refining_yield)))
         storage_loss_rate_per_day = max(0.0, float(storage_loss_rate_per_day))
         available_power_kw = max(0.0, float(available_power_kw))
-        power_required_kw_per_kg_day = max(1e-9, float(power_required_kw_per_kg_day))
+        power_required_kw_per_kg_day = max(MIN_MISSION_POWER_REQUIRED_KW_PER_KG_DAY, float(power_required_kw_per_kg_day))
         transport_delay_days = max(0.0, float(transport_delay_days))
 
         power_limited_rate = available_power_kw / power_required_kw_per_kg_day
@@ -63,7 +65,7 @@ class MiningService:
     @staticmethod
     def deliverable_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -> float:
         storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
-        return storable_payload * (1.0 - max(0.0, min(0.6, float(handling_loss_fraction))))
+        return storable_payload * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
 
     def payload_return_closure(
         self,
@@ -75,7 +77,7 @@ class MiningService:
         handling_loss_fraction: float = 0.04,
     ) -> Dict[str, Any]:
         storable_payload = max(0.0, float(mining_result.get("storablePayloadKg", 0.0)))
-        handling_loss_fraction = max(0.0, min(0.6, float(handling_loss_fraction)))
+        handling_loss_fraction = max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction)))
         delivered_before_propellant = self.deliverable_cargo_kg(mining_result, handling_loss_fraction)
 
         # The return propellant comes out of the vehicle's tanks and its cost is already in the

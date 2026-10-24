@@ -7,6 +7,8 @@ import random
 from statistics import NormalDist
 from typing import Any, Callable, Dict, List
 
+from .schemas import MIN_MISSION_RISK_SAMPLES
+
 DEFAULT_EPHEMERIS_SIGMA_FRACTION = 0.01
 DEFAULT_THRUST_SIGMA_FRACTION = 0.04
 DEFAULT_EXTRACTION_SIGMA_FRACTION = 0.12
@@ -56,7 +58,7 @@ class RiskService:
         thrust_sigma_fraction: float = DEFAULT_THRUST_SIGMA_FRACTION,
         extraction_sigma_fraction: float = DEFAULT_EXTRACTION_SIGMA_FRACTION,
     ) -> Dict[str, Any]:
-        samples = max(30, min(50_000, int(samples)))
+        samples = max(MIN_MISSION_RISK_SAMPLES, min(50_000, int(samples)))
         rng = random.Random(int(seed))
 
         dv_sigma = max(0.0, float(ephemeris_sigma_fraction)) + max(0.0, float(thrust_sigma_fraction))

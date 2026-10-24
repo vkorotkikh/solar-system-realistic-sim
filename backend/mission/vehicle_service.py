@@ -7,6 +7,8 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
+from .schemas import MAX_MISSION_RESERVE_FRACTION
+
 G0 = 9.80665
 
 
@@ -63,7 +65,7 @@ class VehicleService:
                 "error": "vehicle must define at least one stage with dry mass, propellant, and Isp",
             }
 
-        reserve_fraction = max(0.0, min(0.4, float(reserve_fraction)))
+        reserve_fraction = max(0.0, min(MAX_MISSION_RESERVE_FRACTION, float(reserve_fraction)))
         carried_mass_kg = float(payload_mass_kg)
         # Remaining fuel is an independent ledger: subtracting nearly all fuel
         # from a huge initial/used total would erase small but real residuals.
