@@ -25,6 +25,10 @@ Status: **IN PROGRESS**. This is the single working issue register requested by 
 - [ ] Run complete pinned-toolchain frontend/backend suites, strict types/build and applicable browser/science gates; retain skips and external acceptance gaps explicitly.
 - [ ] Reconcile every row, update the commit ledger, and report unresolved external decisions without pretending they are fixed.
 
+## Probe charters
+
+- FE-083: Finite camera transition inputs complete and restore controls; nonfinite duration/timestep is rejected before state mutation. Risk: NaN interpolation poisons positions and leaves controls permanently disabled. Entry: createCameraTransitions in src/frontend/camera/transitions.ts (retained library). Isolation: New PerspectiveCamera and controls per test; no network, DOM, GPU or shared external state. Exit: Exact invalid-input replay plus full pinned frontend suite and strict TypeScript pass after repair. Source: CODEBASE_AUDIT_2026-09-06.md L6 / FE-083 Commands: Node 22.23.2 node_modules/vitest/vitest.mjs run src/frontend/camera/transitions.test.ts; full npm test; npm run typecheck. Each command bounded at 60 seconds.
+
 ## Current verification evidence
 
 - 2026-10-24 baseline npm test: 91 test files passed, one skipped; 881 tests passed, 413 skipped. Node 24.21.0/npm 11.19.0 (not pinned; rerun on pinned toolchain before final gates).
@@ -35,7 +39,7 @@ Status: **IN PROGRESS**. This is the single working issue register requested by 
 
 | ID | State | Severity / reach | Evidence and next action | Repair |
 |---|---|---|---|---|
-| FE-083 | CONFIRMED_SOURCE_PENDING_REPLAY | Low; retained library, not current main.ts composition | Nonfinite camera-transition duration or timestep poisons positions and permanently disables controls. src/frontend/camera/transitions.ts uses Math.max on durationSec and deltaSeconds without a finite guard; normalized remains NaN, so completion never restores controls. Reproduction and test pending. | Pending |
+| FE-083 | FIXED_HERE | Low; retained library, not current main.ts composition | Nonfinite camera-transition duration or timestep poisons positions and permanently disables controls. Root cause: Math.max propagates NaN into interpolation/completion. New transitions.test.ts produced six expected RED failures twice; finite control passed. Reject nonfinite duration before changing state and active timesteps before interpolation; preserve finite negative-time clamping. GREEN: all seven cases; complete frontend suite888 passed/413 skipped; strict TypeScript exit0, Node22.23.2/npm10.9.8. Exact commands in charter; gstack captures001–006 at /tmp/solar-markdown-root-evidence retain stdout/stderr/status/checkpoints (temporary path). | FE-083 repair commit (this entry is committed with the fix) |
 
 Domain audit outputs are being reconciled into this section. Their absence here is not a claim that a domain has no defects.
 
@@ -910,7 +914,7 @@ Every row below is a source cluster to check, not an endorsement of the old find
 | FE-080 | Runtime warning: 'Texture marked for update but no image data found' | PENDING_CHECK | runtime:texture-no-image-data@CODEX_XHIGH_2026-02-16_15-31-00.md |
 | FE-081 | Three.js warning: sizeAttenuation is not a ShaderMaterial property | PENDING_CHECK | S4:three-warning@CODEBASE_EVALUATION_REPORT_2026-08-23_CODEX.md |
 | FE-082 | No eclipse umbra/penumbra or physically accurate terminator geometry in lighting | PENDING_CHECK | B5@solar_system_codebase_analysis_consolidated_2026-02-21_03-08-50.md |
-| FE-083 | Camera transition with NaN durationSec/deltaSeconds leaves controls.enabled false forever | CONFIRMED_SOURCE_PENDING_REPLAY | L6@CODEBASE_AUDIT_2026-09-06.md |
+| FE-083 | Camera transition with NaN durationSec/deltaSeconds leaves controls.enabled false forever | FIXED_HERE | L6@CODEBASE_AUDIT_2026-09-06.md |
 | FE-084 | Catalog startup exceeds 2 s budget: synchronous Three.js shader compile/link on main thread (multi-second first-frame stall) | PENDING_CHECK | I-1@REVIEW_CONSTRUCTION_BRANCH_1c5d88b_2026-10-15.md; SCN-005@REMEDIATION_DELIVERY_2026-10-14.md; SCN-024@CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md; SCN-037@CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md; SCN-041@PFSS_STREAMING_INDEPENDENT_REVIEW_2026-10-14.md; SCN-041@REMEDIATION_SOLAR_SCN042_FRAMES_2026-10-14.md; SCN-042@REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md; SCN-050@CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md; SOL-03@CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md |
 | FE-085 | Startup metric stops after parse/hash before scene adoption; first intercepted RAF does not prove a drawn usable scene | PENDING_CHECK | SCN-055@REMEDIATION_NATIVE_TUDAT_2026-10-14.md; SCN-077@REMEDIATION_NATIVE_TUDAT_2026-10-14.md |
 | FE-086 | Frame loop has no per-stage isolation: a throwing stage callback skips remaining stages each frame | PENDING_CHECK | SCN-030@REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md; SCN-049@REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md; SCN-065@REMEDIATION_EVENTS_2026-10-14.md |
