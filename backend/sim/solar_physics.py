@@ -234,7 +234,7 @@ class SolarCoronaPhysicsModel:
         self.base_tube_count = max(64, int(base_tube_count))
         self.fidelity_levels = tuple(self.FIDELITY_POINT_COUNT.keys())
         self.default_fidelity = "operational"
-        self.model_name = "quasi_mhd_corona_v4"
+        self.model_name = "quasi_mhd_corona_v5"
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
         from sim.pfss_magnetogram import PFSSCache
