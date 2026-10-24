@@ -19,6 +19,7 @@ import {
   Line,
   LineBasicMaterial,
   LineLoop,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -1302,19 +1303,23 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'solar-refresh', run: () => sunCtrl.maybeRefreshPhysics() },
     { name: 'follow', run: updateFollowTarget },
     { name: 'camera-actions', run: () => viewportCamera.applyPendingActions() },
-    ...[...bodyMeshes.entries()].filter(([, mesh]) => mesh.userData.isQuadtree).map(([bodyId, mesh]) => ({
-      name: `quadtree:${bodyId}`,
-      run: () => {
-        mesh.userData.quadtree.update();
-        const sunWorldPos = new Vector3(0, 0, 0);
-        const planetWorldPos = new Vector3();
-        mesh.getWorldPosition(planetWorldPos);
-        const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
-        const meshInverse = mesh.matrixWorld.clone().invert();
-        const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
-        mesh.userData.quadtree.setLightDirection(sunLocalDir);
-      }
-    })),
+    ...[...bodyMeshes.entries()].filter(([, mesh]) => mesh.userData.isQuadtree).map(([bodyId, mesh]) => {
+      const sunWorldPos = new Vector3(0, 0, 0);
+      const planetWorldPos = new Vector3();
+      const meshInverse = new Matrix4();
+      return {
+        name: `quadtree:${bodyId}`,
+        run: () => {
+          mesh.userData.quadtree.update();
+          sunWorldPos.set(0, 0, 0);
+          mesh.getWorldPosition(planetWorldPos);
+          const sunDirWorld = sunWorldPos.sub(planetWorldPos).normalize();
+          meshInverse.copy(mesh.matrixWorld).invert();
+          const sunLocalDir = sunDirWorld.transformDirection(meshInverse).normalize();
+          mesh.userData.quadtree.setLightDirection(sunLocalDir);
+        }
+      };
+    }),
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },
