@@ -208,7 +208,7 @@ export class SolarSystemModel {
     julianDate: number,
     memo: Map<string, SampledBodyState> = new Map()
   ): SampledBodyState | null {
-    // Validate the entire current ancestry before any cached or orbitless shortcut.
+    // Validate the entire current ancestry before any cached shortcut.
     const ancestry: { lookupId: string; body: CatalogBody }[] = [];
     const seen = new Set<string>();
     let lookupId = id;
@@ -236,11 +236,6 @@ export class SolarSystemModel {
         parent = memo.get(memoKey) ?? null;
         if (!parent) return null;
         neededCount = i;
-        break;
-      }
-      // Preserve the existing orbitless computation boundary for this safety repair.
-      if (!entry.body.orbit) {
-        neededCount = i + 1;
         break;
       }
     }
@@ -272,12 +267,12 @@ export class SolarSystemModel {
         }
         sampled.position.copy(sampled.relativePosition);
         sampled.velocity.copy(sampled.relativeVelocity);
+      }
 
-        if (body.parentId) {
-          if (!parent) return null;
-          sampled.position.add(parent.position);
-          sampled.velocity.add(parent.velocity);
-        }
+      if (body.parentId) {
+        if (!parent) return null;
+        sampled.position.add(parent.position);
+        sampled.velocity.add(parent.velocity);
       }
 
       staged.push([`${currentId}:${julianDate}`, sampled]);
