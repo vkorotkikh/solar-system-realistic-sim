@@ -332,6 +332,324 @@ describe('SolarPhysicsClient failure classification', () => {
     vi.useRealTimers();
   });
 
+  // FE-PHYSICS-DEADLINE (SDEL075). Found by /qa on 2026-10-24:
+  // agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+  describe('owned physics delivery deadline', () => {
+    const stages = ['fetch', 'success-body', 'error-body'] as const;
+    type DeliveryStage = typeof stages[number];
+
+    function stalledDelivery(stage: DeliveryStage) {
+      const headers = deferred<Response>();
+      const body = deferred<Record<string, unknown>>();
+      const signals: AbortSignal[] = [];
+      const json = vi.fn(() => stage === 'fetch' ? Promise.resolve(validPayload(JD)) : body.promise);
+      const response = {
+        ok: stage !== 'error-body', status: stage === 'error-body' ? 503 : 200,
+        headers: new Headers({ 'Retry-After': '60' }), json,
+      } as unknown as Response;
+      return {
+        headers, body, signals, json, response,
+        physics: (init?: RequestInit): Promise<Response> => {
+          signals.push(init!.signal!);
+          return stage === 'fetch' ? headers.promise : Promise.resolve(response);
+        },
+        finish: (outcome: 'resolve' | 'reject'): void => {
+          if (stage === 'fetch') {
+            if (outcome === 'resolve') headers.resolve(response);
+            else headers.reject(new TypeError('Late fetch failure'));
+          } else if (outcome === 'resolve') {
+            body.resolve(stage === 'error-body' ? { detail: 'Late HTTP detail' } : validPayload(JD));
+          } else {
+            body.reject(new SyntaxError('Late body failure'));
+          }
+        },
+      };
+    }
+
+    function observeAbortListenerCleanup() {
+      const adds = vi.spyOn(AbortSignal.prototype, 'addEventListener');
+      const removes = vi.spyOn(AbortSignal.prototype, 'removeEventListener');
+      return (): void => {
+        for (const [index, [event, listener]] of adds.mock.calls.entries()) {
+          if (event !== 'abort') continue;
+          expect(removes.mock.calls.some(([removedEvent, removedListener], removeIndex) =>
+            removedEvent === event && removedListener === listener
+              && removes.mock.contexts[removeIndex] === adds.mock.contexts[index])).toBe(true);
+        }
+      };
+    }
+
+    it.each(stages.flatMap((stage) => (['resolve', 'reject'] as const).map((late) => ({ stage, late }))))(
+      'bounds abort-ignoring $stage delivery and ignores a late $late', async ({ stage, late }) => {
+        vi.useFakeTimers({ now: 1_000_000 });
+        const checkListeners = observeAbortListenerCleanup();
+        stubFetch(() => Promise.resolve(responseWith(validPayload(JD))));
+        const client = createClient();
+        await client.maybeRefresh(JD, true);
+        const lastGood = client.latestState();
+        const delivery = stalledDelivery(stage);
+        const fetchMock = stubFetch(delivery.physics, healthServer('up'));
+        const results: boolean[] = [];
+        void client.maybeRefresh(JD, true).then((result) => results.push(result));
+        await vi.advanceTimersByTimeAsync(19_999);
+        expect(results).toEqual([]);
+        expect(delivery.signals[0].aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(results).toEqual([false]);
+        expect(delivery.signals[0].aborted).toBe(true);
+        expect(client.status()).toMatchObject({ inFlight: false, consecutiveFailures: 1, nextRefreshMs: 1_050_000 });
+        expect(client.status().lastFailure).toMatchObject({ kind: 'timeout', httpStatus: null, code: null });
+        expect(client.latestState()).toBe(lastGood);
+        const settled = client.status();
+        const probe = client.lastProbe;
+        delivery.finish(late);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(client.status()).toEqual(settled);
+        expect(client.lastProbe).toBe(probe);
+        expect(client.latestState()).toBe(lastGood);
+        expect(delivery.json).toHaveBeenCalledTimes(stage === 'fetch' ? 0 : 1);
+        expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(stage === 'fetch' ? 1 : 0);
+        expect(vi.getTimerCount()).toBe(0);
+        checkListeners();
+      }
+    );
+
+    const cancellationCases = stages.flatMap((stage) =>
+      (['dispose', 'force'] as const).flatMap((action) =>
+        (['resolve', 'reject'] as const).map((late) => ({ stage, action, late }))));
+    it.each(cancellationCases)('$action settles pending $stage before its late $late', async ({ stage, action, late }) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const checkListeners = observeAbortListenerCleanup();
+      stubFetch(() => Promise.resolve(responseWith(validPayload(JD))));
+      const client = createClient();
+      await client.maybeRefresh(JD, true);
+      const lastGood = client.latestState();
+      const delivery = stalledDelivery(stage);
+      const replacement = deferred<Response>();
+      let physicsCalls = 0;
+      const fetchMock = stubFetch((init) => ++physicsCalls === 1 ? delivery.physics(init) : replacement.promise);
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(0);
+      let newer: Promise<boolean> | undefined;
+      if (action === 'dispose') client.dispose();
+      else newer = client.maybeRefresh(JD + 1, true);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(results).toEqual([false]);
+      expect(delivery.signals[0].aborted).toBe(true);
+      expect(client.status()).toMatchObject({
+        disposed: action === 'dispose', inFlight: action === 'force',
+        lastFailure: null, consecutiveFailures: 0, nextRefreshMs: 1_030_000,
+      });
+      expect(client.latestState()).toBe(lastGood);
+      expect(vi.getTimerCount()).toBe(action === 'force' ? 1 : 0);
+      if (newer) {
+        replacement.resolve(responseWith(validPayload(JD + 1)));
+        await expect(newer).resolves.toBe(true);
+      } else {
+        await expect(client.maybeRefresh(JD + 1, true)).resolves.toBe(false);
+      }
+      const newerStatus = client.status();
+      const newerLatest = client.latestState();
+      delivery.finish(late);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(client.status()).toEqual(newerStatus);
+      expect(client.latestState()).toBe(newerLatest);
+      expect(client.lastProbe).toBeNull();
+      expect(delivery.json).toHaveBeenCalledTimes(stage === 'fetch' ? 0 : 1);
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(0);
+      expect(vi.getTimerCount()).toBe(0);
+      checkListeners();
+    });
+
+    it.each(['success-body', 'error-body'] as const)('does not restart the 20 s budget for late %s headers', async (stage) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const delivery = stalledDelivery(stage);
+      const fetchMock = stubFetch(() => delivery.headers.promise);
+      const client = createClient();
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(19_900);
+      delivery.headers.resolve(delivery.response);
+      await vi.advanceTimersByTimeAsync(99);
+      expect(results).toEqual([]);
+      expect(delivery.json).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(results).toEqual([false]);
+      expect(client.status().lastFailure?.kind).toBe('timeout');
+      expect(client.status().nextRefreshMs).toBe(1_050_000);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['refused-origin', 'inconclusive'] as const)('allows bounded %s diagnosis after non-cooperating fetch expires', async (outcome) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const delivery = stalledDelivery('fetch');
+      const cors = deferred<Response>();
+      const noCors = deferred<Response>();
+      stubFetch(delivery.physics, (init) => init?.mode === 'cors' ? cors.promise : noCors.promise);
+      const client = createClient();
+      const results: boolean[] = [];
+      void client.maybeRefresh(JD, true).then((result) => results.push(result));
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(delivery.signals[0].aborted).toBe(true);
+      expect(results).toEqual([]);
+      delivery.finish('resolve');
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(delivery.json).not.toHaveBeenCalled();
+      cors.reject(new TypeError('CORS failure'));
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(results).toEqual([]);
+      if (outcome === 'refused-origin') noCors.resolve(new Response(null));
+      await vi.advanceTimersByTimeAsync(outcome === 'refused-origin' ? 0 : 1);
+
+      expect(results).toEqual([false]);
+      expect(client.status().lastFailure?.kind).toBe(outcome === 'refused-origin' ? 'blocked' : 'timeout');
+      expect(client.status().nextRefreshMs).toBe(outcome === 'refused-origin' ? 1_053_998 : 1_053_999);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['fetch', 'success-body'] as const)('publishes timeout before abort can resolve %s successfully', async (stage) => {
+      vi.useFakeTimers();
+      const delivery = stalledDelivery(stage);
+      const fetchMock = stubFetch((init) => {
+        init!.signal!.addEventListener('abort', () => delivery.finish('resolve'), { once: true });
+        return delivery.physics(init);
+      }, healthServer('refuses-origin'));
+      const client = createClient();
+      const pending = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(pending).resolves.toBe(false);
+
+      expect(client.latestState()).toBeNull();
+      expect(client.status().lastFailure?.kind).toBe(stage === 'fetch' ? 'blocked' : 'timeout');
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(stage === 'fetch' ? 2 : 0);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['dispose', 'force'] as const)('%s after resolved headers does not start the retired body read', async (action) => {
+      vi.useFakeTimers();
+      const delivery = stalledDelivery('fetch');
+      let physicsCalls = 0;
+      stubFetch((init) => ++physicsCalls === 1 ? delivery.physics(init) : Promise.resolve(responseWith(validPayload(JD))));
+      const client = createClient();
+      const old = client.maybeRefresh(JD, true);
+      delivery.finish('resolve');
+      if (action === 'dispose') client.dispose();
+      else await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+      await expect(old).resolves.toBe(false);
+
+      expect(delivery.json).not.toHaveBeenCalled();
+      expect(client.status()).toMatchObject({ lastFailure: null, consecutiveFailures: 0 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(stages)('preserves classification and cleanup for synchronous %s throws', async (stage) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const checkListeners = observeAbortListenerCleanup();
+      const fetchMock = stubFetch(() => {
+        if (stage === 'fetch') throw new TypeError('Synchronous fetch failure');
+        return Promise.resolve({
+          ok: stage !== 'error-body', status: stage === 'error-body' ? 503 : 200,
+          headers: new Headers({ 'Retry-After': '60' }),
+          json: () => { throw new SyntaxError('Synchronous decode failure'); },
+        } as unknown as Response);
+      });
+      const client = createClient();
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+
+      expect(client.status().lastFailure?.kind).toBe(stage === 'fetch' ? 'unreachable' : stage === 'success-body' ? 'invalid-response' : 'http');
+      expect(client.status().nextRefreshMs).toBe(stage === 'error-body' ? 1_060_000 : 1_030_000);
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(stage === 'fetch' ? 2 : 0);
+      expect(vi.getTimerCount()).toBe(0);
+      checkListeners();
+    });
+
+    it.each(['success-body', 'error-body'] as const)('accepts %s completion immediately before the delivery deadline', async (stage) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      const delivery = stalledDelivery(stage);
+      const fetchMock = stubFetch(delivery.physics);
+      const client = createClient();
+      const pending = client.maybeRefresh(JD, true);
+      await vi.advanceTimersByTimeAsync(19_999);
+      delivery.finish('resolve');
+      await expect(pending).resolves.toBe(stage === 'success-body');
+
+      expect(client.status().lastFailure?.kind ?? null).toBe(stage === 'success-body' ? null : 'http');
+      expect(delivery.signals[0].aborted).toBe(false);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([-60_000, 60_000])('keeps an under-budget body valid across a %i ms wall-clock correction', async (wallShift) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      vi.spyOn(performance, 'now').mockReturnValue(0);
+      const fetchMock = stubFetch(() => Promise.resolve({
+        ok: true, status: 200,
+        json: () => {
+          vi.setSystemTime(1_000_000 + wallShift);
+          return Promise.resolve(validPayload(JD));
+        },
+      } as Response));
+      const client = createClient();
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
+
+      expect(client.status().lastFailure).toBeNull();
+      expect(client.status().lastSuccessMs).toBe(1_000_000 + wallShift);
+      expect(client.status().nextRefreshMs).toBe(1_030_000);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([0, -60_000])('rejects an over-budget body before the timer callback despite a %i ms wall shift', async (wallShift) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      let elapsedMs = 0;
+      vi.spyOn(performance, 'now').mockImplementation(() => elapsedMs);
+      const fetchMock = stubFetch(() => Promise.resolve({
+        ok: true, status: 200,
+        json: () => {
+          // Models synchronous decode occupying the main thread; no timer callback runs here.
+          elapsedMs = 20_000;
+          vi.setSystemTime(1_000_000 + wallShift);
+          return Promise.resolve(validPayload(JD));
+        },
+      } as Response));
+      const client = createClient();
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+
+      expect(client.status().lastFailure?.kind).toBe('timeout');
+      expect(client.latestState()).toBeNull();
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['returns', 'throws'] as const)('gives elapsed deadline precedence when synchronous validation %s', async (outcome) => {
+      vi.useFakeTimers({ now: 1_000_000 });
+      let elapsedMs = 0;
+      vi.spyOn(performance, 'now').mockImplementation(() => elapsedMs);
+      const payload = validPayload(JD);
+      Object.defineProperty(payload, 'epoch_jd_tdb', {
+        get() {
+          // Owned getter models elapsed validation without pretending synchronous work is preemptible.
+          elapsedMs = 20_000;
+          if (outcome === 'throws') throw new Error('Over-budget validation failed');
+          return JD;
+        },
+      });
+      const fetchMock = stubFetch(() => Promise.resolve(responseWith(payload)));
+      const client = createClient();
+      await expect(client.maybeRefresh(JD, true)).resolves.toBe(false);
+
+      expect(client.status().lastFailure?.kind).toBe('timeout');
+      expect(client.latestState()).toBeNull();
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   // FE-UNBOUNDED-PROBE (SDEL079). Found by /qa on 2026-10-24:
   // agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
   describe('owned health probes', () => {
@@ -553,12 +871,15 @@ describe('SolarPhysicsClient failure classification', () => {
       const client = createClient();
       const old = client.maybeRefresh(JD, true);
       await vi.advanceTimersByTimeAsync(20_000);
+      // The delivery fix may already diagnose the 20 s deadline. A later retired rejection
+      // must not launch any additional probes, regardless of that authorized earlier work.
+      const probesAtDeadline = fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health')).length;
       await expect(client.maybeRefresh(JD, true)).resolves.toBe(true);
       const newerStatus = client.status();
       oldPhysics.reject(new TypeError('Late physics failure'));
       await expect(old).resolves.toBe(false);
 
-      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(0);
+      expect(fetchMock.mock.calls.filter(([url]) => `${url}`.endsWith('/health'))).toHaveLength(probesAtDeadline);
       expect(client.status()).toEqual(newerStatus);
       expect(vi.getTimerCount()).toBe(0);
     });

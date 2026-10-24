@@ -434,20 +434,58 @@ export class SolarPhysicsClient {
     const context: SolarPhysicsRequestContext = { baseUrl, lifetime, ownsRequest };
     this.requestContext = context;
 
+    const startMs = Date.now();
+    // Delivery duration is monotonic; wall-clock corrections still affect only status timestamps.
+    const deliveryDeadlineMs = performance.now() + this.timeoutMs;
+    const deliveryInterrupted = Symbol('delivery interrupted');
+    let stopDelivery!: () => void;
+    // Resolving the sentinel is safe even when no delivery await is currently attached.
+    const deliveryStopped = new Promise<typeof deliveryInterrupted>((resolve) => {
+      stopDelivery = () => resolve(deliveryInterrupted);
+    });
+    const expireDelivery = (): void => {
+      if (timedOut) return;
+      timedOut = true;
+      stopDelivery();
+      // Publish the deadline before abort can reject or even resolve a cooperative transport.
+      controller.abort();
+    };
+    const assertDeliveryActive = (): void => {
+      if (!ownsRequest()) throw deliveryInterrupted;
+      if (timedOut || performance.now() >= deliveryDeadlineMs) {
+        expireDelivery();
+        throw this.timeoutError();
+      }
+    };
+    const awaitDelivery = async <T>(operation: () => Promise<T>): Promise<T> => {
+      assertDeliveryActive();
+      try {
+        // Promise.race observes late fulfillment/rejection without a state-writing continuation.
+        const result = await Promise.race([operation(), deliveryStopped]);
+        assertDeliveryActive();
+        if (result === deliveryInterrupted) throw deliveryInterrupted;
+        return result;
+      } catch (error: unknown) {
+        // Cancellation/deadline also wins if the operation threw synchronously or on abort.
+        assertDeliveryActive();
+        throw error;
+      }
+    };
+
     try {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, this.timeoutMs);
-      const startMs = Date.now();
+      lifetime.signal.addEventListener('abort', stopDelivery, { once: true });
+      timeoutHandle = setTimeout(expireDelivery, this.timeoutMs);
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await awaitDelivery(() => fetch(url, {
           cache: 'no-store',
           signal: controller.signal
-        });
+        }));
       } catch (error: unknown) {
         if (!ownsRequest()) return false;
+        // Diagnosis has its own bounded budget; the delivery deadline must not govern it.
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
         throw await this.classifyFetchError(error, timedOut, controller.signal, context);
       }
 
@@ -457,7 +495,7 @@ export class SolarPhysicsClient {
       if (!response.ok) {
         // A readable error reply proves the server is up and allows this origin.
         this.lastProbe = null;
-        const detail = await readErrorDetail(response);
+        const detail = await awaitDelivery(() => readErrorDetail(response));
         if (timedOut) throw this.timeoutError();
         throw new SolarPhysicsRequestError(
           classifyHttpFailure(response.status, detail.code),
@@ -472,11 +510,14 @@ export class SolarPhysicsClient {
       }
       let payload: SolarPhysicsStatePayload;
       try {
-        const rawPayload = await response.json();
+        const rawPayload = await awaitDelivery(() => response.json());
         if (!ownsRequest()) return false;
         payload = validateSolarPhysicsPayload(rawPayload, jd, this.forcing);
+        // Synchronous validation cannot be preempted, but an over-budget result is not accepted.
+        assertDeliveryActive();
       } catch (error: unknown) {
-        if (timedOut) throw this.timeoutError();
+        if (!ownsRequest()) return false;
+        assertDeliveryActive();
         throw new SolarPhysicsRequestError('invalid-response', error instanceof Error ? error.message : String(error));
       }
       this.latest = payload;
@@ -509,6 +550,7 @@ export class SolarPhysicsClient {
       );
       return false;
     } finally {
+      lifetime.signal.removeEventListener('abort', stopDelivery);
       if (timeoutHandle !== null) {
         clearTimeout(timeoutHandle);
       }
