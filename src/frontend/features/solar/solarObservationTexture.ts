@@ -216,7 +216,7 @@ export function buildAiaProxyTextureUrl(
 ): string | null {
   const base = `${baseUrl ?? ''}`.trim().replace(/\/+$/, '');
   const normalizedChannel = `${channel ?? ''}`.trim().toLowerCase();
-  if (!base || !normalizedChannel) return null;
+  if (baseUrl == null || !normalizedChannel) return null;
 
   const query = new URLSearchParams({ channel: normalizedChannel });
   if (imageId) {
