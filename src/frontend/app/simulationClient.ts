@@ -7,6 +7,19 @@ type BuildWebSocketUrl = (args?: BuildWebSocketUrlArgs) => string;
 
 interface ServerBodyState {
   pos: [number, number, number];
+  vel?: [number, number, number];
+}
+
+/** Supplied core fields are checked; absent fields remain a legacy contract. */
+interface ServerStateVectorContract {
+  schema_version?: 1;
+  reference_frame?: 'barycentric_ecliptic_j2000';
+  origin?: 'integrated_particle_barycenter' | 'solar_system_barycenter';
+  orientation?: 'ecliptic_j2000';
+  position_unit?: 'AU';
+  velocity_unit?: 'AU/day';
+  jd_time_scale?: 'TDB';
+  [key: string]: unknown;
 }
 
 /** Current SimulationRunner payload; metadata is retained, not reinterpreted. */
@@ -24,6 +37,13 @@ export interface ServerStateUpdateMessage {
   type: 'state_update';
   jd: number;
   jd_time_scale?: 'TDB' | string;
+  position_frame?: 'barycentric';
+  velocity_frame?: 'barycentric';
+  position_units?: 'AU';
+  velocity_units?: 'AU/day';
+  state_vector_contract?: ServerStateVectorContract;
+  // Diagnostics are uninterpreted except for a record's supplied contract.
+  force_models?: unknown;
   bodies: Record<string, ServerBodyState>;
   kuiper?: ServerKuiperSnapshot | number[][] | null;
   kuiper_subscription_id?: string;
@@ -100,9 +120,43 @@ function decodeMessage(data: string): IncomingMessage {
   if (message.type === 'state_update') {
     if (typeof message.jd !== 'number' || !Number.isFinite(message.jd)
       || !isRecord(message.bodies)
-      || !Object.values(message.bodies).every(body => isRecord(body) && isPosition(body.pos))
+      || !Object.values(message.bodies).every(body => isRecord(body) && isPosition(body.pos)
+        && (body.vel === undefined || isPosition(body.vel)))
       || (message.kuiper !== undefined && !isKuiperPayload(message.kuiper))) {
       throw new Error('Invalid WebSocket state_update: expected finite epoch and 3D positions');
+    }
+    const flatFields = {
+      position_frame: 'barycentric', velocity_frame: 'barycentric',
+      position_units: 'AU', velocity_units: 'AU/day'
+    };
+    for (const [field, expected] of Object.entries(flatFields)) {
+      if (message[field] !== undefined && message[field] !== expected) {
+        throw new Error(`Unsupported WebSocket state_update ${field}`);
+      }
+    }
+    const contractFields = {
+      schema_version: 1, reference_frame: 'barycentric_ecliptic_j2000',
+      origin: 'integrated_particle_barycenter', orientation: 'ecliptic_j2000',
+      position_unit: 'AU', velocity_unit: 'AU/day', jd_time_scale: 'TDB'
+    };
+    const topContract = message.state_vector_contract;
+    const nestedContract = isRecord(message.force_models)
+      ? message.force_models.state_vector_contract : undefined;
+    // Optional legacy declarations are not inferred or made mandatory. The two
+    // native origins are supported but distinct; duplicates must not contradict.
+    for (const contract of [topContract, nestedContract]) {
+      if (contract === undefined) continue;
+      if (!isRecord(contract)) throw new Error('Invalid WebSocket state_vector_contract');
+      for (const [field, expected] of Object.entries(contractFields)) {
+        const value = contract[field];
+        if (value === undefined) continue;
+        if (value !== expected && !(field === 'origin' && value === 'solar_system_barycenter')) {
+          throw new Error(`Unsupported WebSocket state_vector_contract ${field}`);
+        }
+        if (isRecord(topContract) && topContract[field] !== undefined && topContract[field] !== value) {
+          throw new Error(`Contradictory WebSocket state_vector_contract ${field}`);
+        }
+      }
     }
   } else if (message.type === 'connected') {
     // The v1 fields remain optional for legacy servers, but provided fields must
