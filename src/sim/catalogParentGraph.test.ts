@@ -288,7 +288,7 @@ for (const includeMoons of [false, true]) {
   test(`shipped catalog remains valid: includeMoons=${includeMoons}`, async () => {
     const source = createSolarSystemCatalog({ moonsVisible: includeMoons });
     const catalog = buildModelWorkerCatalog(source.bodies, { includeMoons });
-    const count = includeMoons ? 434 : 10;
+    const count = includeMoons ? 433 : 10;
     assert.equal(catalog.bodies.length, count);
     const contract = buildCatalogIndexContract(catalog);
     assert.equal(contract.idToIndex.size, count);

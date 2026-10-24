@@ -640,6 +640,33 @@ function makeMoonId(moon: RawMoonRecord, usedIds: Set<string>): string {
   return id;
 }
 
+function selectRuntimeMoons(
+  sourceMoons: readonly RawMoonRecord[],
+  planetNameToId: ReadonlyMap<string, string>
+): readonly RawMoonRecord[] {
+  const isPuck = (moon: RawMoonRecord) =>
+    planetNameToId.get(moon.planet) === 'uranus' && moon.iauCode === '715';
+  const preferredPuck = sourceMoons.find(moon =>
+    isPuck(moon) && moon.id === 378 && moon.ephemeris === 'URA182');
+  if (!preferredPuck && sourceMoons.some(isPuck)) {
+    throw new Error('Puck requires the preferred row 378 / URA182 source model');
+  }
+
+  // Raw rows retain alternate source models; runtime bodies represent identities.
+  // Filter in source order so the preferred record keeps its own position.
+  const emitted = new Set<string>();
+  return sourceMoons.filter(moon => {
+    const parentId = planetNameToId.get(moon.planet);
+    if (!parentId) return false;
+    if (typeof moon.iauCode !== 'string' || moon.iauCode.trim().length === 0) return true;
+    if (isPuck(moon) && moon !== preferredPuck) return false;
+    const key = JSON.stringify([parentId, moon.iauCode]);
+    if (emitted.has(key)) return false;
+    emitted.add(key);
+    return true;
+  });
+}
+
 function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boolean): void {
   const minMoonOrbitByParent = new Map();
 
@@ -784,7 +811,7 @@ export function createSolarSystemCatalog(
     ['Pluto', 'pluto']
   ]);
 
-  for (const sourceMoon of moons) {
+  for (const sourceMoon of selectRuntimeMoons(moons, planetNameToId)) {
     const measuredPeriodDays = MEASURED_ORBITS[sourceMoon.name]?.periodDays;
     const moon = measuredPeriodDays === undefined ? sourceMoon : { ...sourceMoon, periodDays: measuredPeriodDays };
     const parentId = planetNameToId.get(moon.planet);

@@ -135,7 +135,7 @@ describe('moon-aware display radii (B024)', () => {
     }
   });
 
-  it('retains every moon record and the Earth barycentric correction in hidden mode', () => {
+  it('retains every unique runtime moon and the Earth barycentric correction in hidden mode', () => {
     const visibleCatalog = createSolarSystemCatalog({ moonsVisible: true });
     const hiddenCatalog = createSolarSystemCatalog({ moonsVisible: false });
     const visibleMoons = visibleCatalog.bodies.filter(body => body.type === 'moon');
@@ -146,7 +146,7 @@ describe('moon-aware display radii (B024)', () => {
     );
     expect(hiddenCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body))
       .toEqual(visibleCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body));
-    expect(hiddenMoons).toHaveLength(424);
+    expect(hiddenMoons).toHaveLength(423);
     expect(hiddenMoons).toEqual(visibleMoons);
     expect(hiddenCatalog.jumpBodyIds).toEqual(visibleCatalog.jumpBodyIds);
     expect(hiddenCatalog.plannerBodyIds).toEqual(visibleCatalog.plannerBodyIds);

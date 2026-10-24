@@ -176,8 +176,8 @@ for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-d
 async function startSimulation() {
 // ── Data & State ─────────────────────────────────────────────────────────────
 
-// Moon rendering is not currently exposed by the shipped UI. Keep those 424
-// catalog records available for provenance/search, but do not pretend to keep
+// Moon rendering is not currently exposed by the shipped UI. Keep the 423 runtime
+// moon bodies (424 raw source records) available for search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
   const moonEphemerides: MoonEphemerisMap | undefined = showMoons
