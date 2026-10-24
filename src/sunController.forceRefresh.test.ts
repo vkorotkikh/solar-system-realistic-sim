@@ -357,9 +357,9 @@ function mainTimeController(f: ReturnType<typeof fixture>, dom: Record<string, u
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
   }).outputText;
   const instantiate = new Function('createTimeController', 'dom', 'simState',
-    'MIN_TIME_SCALE_DAYS_PER_SEC', 'MAX_TIME_SCALE_DAYS_PER_SEC', 'currentJulianDate', 'formatJulianAsDate', 'sunCtrl',
+    'MIN_TIME_SCALE_DAYS_PER_SEC', 'MAX_TIME_SCALE_DAYS_PER_SEC', 'currentJulianDate', 'formatJulianAsDate', 'sunCtrl', 'startup',
     `${javascript}\nreturn timeController;`) as (...args: unknown[]) => TimeController;
-  return instantiate(createTimeController, dom, f.simState, -120, 120, now, (jd: number) => `JD${jd}`, f.controller);
+  return instantiate(createTimeController, dom, f.simState, -120, 120, now, (jd: number) => `JD${jd}`, f.controller, new AbortController());
 }
 
 // Separate SDEL-060 / R0052 UI integration, found by /qa on 2026-10-24.

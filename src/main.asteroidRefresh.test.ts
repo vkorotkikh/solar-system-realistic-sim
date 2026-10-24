@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { Group, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three';
 import * as ts from 'typescript';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 import {
   createAsteroidBeltRenderer,
   type BeltRendererHandle,
@@ -25,7 +26,7 @@ type MainAsteroidRuntime = {
 const MAIN_BINDINGS = [
   'solarSystemGroup', 'asteroidBeltRenderer', 'asteroidPop',
   'createAsteroidBeltRenderer', 'jupiterPerturbationMu', 'saturnPerturbationMu',
-  'simState',
+  'simState', 'startup', 'retireAsteroidBelt',
 ] as const;
 
 function productionRefreshRuntime(bindings: Record<string, unknown>): MainAsteroidRuntime {
@@ -73,6 +74,7 @@ function instanceScaleY(mesh: InstancedMesh): number {
 }
 
 function makeHarness(initialRealisticScale: boolean) {
+  const startup = createRuntimeLifetime();
   const oldPopulation = generateAsteroidBelt(1, 42, {
     deterministicAsteroids: [NAMED_ASTEROIDS[0]], includeNamed: false,
   });
@@ -97,10 +99,12 @@ function makeHarness(initialRealisticScale: boolean) {
     jupiterPerturbationMu: 0,
     saturnPerturbationMu: 0,
     simState,
+    startup,
+    retireAsteroidBelt: startup.defer(oldRenderer.dispose),
   });
   return {
     oldRenderer, replacementPopulation, solarSystemGroup, simState, runtime,
-    dispose: () => { for (const renderer of renderers) renderer.dispose(); },
+    dispose: () => { startup.dispose(); for (const renderer of renderers) renderer.dispose(); },
   };
 }
 

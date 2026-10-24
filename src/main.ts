@@ -5,7 +5,8 @@ import { createBodyPickerPresentation } from './frontend/app/bodyPickerPresentat
 import { createViewportCameraController } from './frontend/app/viewportCameraController';
 import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
-import { createRendererRecovery } from './frontend/app/rendererRecovery';
+import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
+import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 import { createFrameLifecycle, hasFiniteAvailableBodyState } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
@@ -166,23 +167,53 @@ const panelController = createPanelController({
   toggle: dom.panelToggle, close: dom.panelClose, backdrop: dom.panelBackdrop,
   breakpoint: window.matchMedia('(max-width: 1100px)'), onLayoutChange: () => refreshPanelLayout()
 });
-window.addEventListener('beforeunload', () => panelController.dispose());
 for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-disclosure')) {
   const summary = disclosure.querySelector('summary');
   const sync = () => summary?.setAttribute('aria-expanded', String(disclosure.open));
   disclosure.addEventListener('toggle', sync); sync();
 }
 
+const startup = createRuntimeLifetime();
+function stopVisualization() {
+  refreshPanelLayout = () => {};
+  startup.dispose();
+}
+const recovery = createRendererRecoverySurface({
+  canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
+  onUnavailable: () => {
+    stopVisualization();
+    if (dom.controlPanel.contains(document.activeElement)) dom.panelClose.focus();
+    for (const control of dom.controlPanel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('.panel-scroll input, .panel-scroll button, .panel-scroll select')) control.disabled = true;
+    dom.cameraTools.hidden = true;
+    elementById<HTMLElement>('session-label').textContent = 'Visualization unavailable';
+    dom.statusFocus.textContent = 'Simulation stopped';
+    dom.statusSolar.textContent = 'Sun data unavailable while visualization is stopped';
+  }
+});
+window.addEventListener('beforeunload', () => {
+  stopVisualization();
+  recovery.dispose();
+  panelController.dispose();
+});
+
 async function startSimulation() {
+function ownDisposable<T extends { dispose(): void }>(value: T): T {
+  startup.defer(() => value.dispose());
+  return value;
+}
 // ── Data & State ─────────────────────────────────────────────────────────────
 
 // Moon rendering is not currently exposed by the shipped UI. Keep the 423 runtime
 // moon bodies (424 raw source records) available for search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
-  const moonEphemerides: MoonEphemerisMap | undefined = showMoons
-    ? await (await import('./sim/loadMoonEphemerides')).loadMoonEphemerides()
-    : undefined;
+let moonEphemerides: MoonEphemerisMap | undefined;
+if (showMoons) {
+  const { loadMoonEphemerides } = await import('./sim/loadMoonEphemerides');
+  if (startup.signal.aborted || !recovery.available) return;
+  moonEphemerides = await loadMoonEphemerides();
+}
+if (startup.signal.aborted || !recovery.available) return;
 const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
@@ -208,6 +239,7 @@ const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
 const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
 let modelWorker: Worker | null = null;
+let retireModelWorker = () => {};
 let modelWorkerEnabled = false;
 let modelWorkerReady = false;
 let modelWorkerTickInFlight = false;
@@ -231,32 +263,20 @@ function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-const startup = new AbortController();
-let stopVisualization = () => startup.abort();
-const recovery = createRendererRecovery({
-  canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
-  create: () => {
+const sceneSetup = recovery.initialize(() => {
     const runtimeUiConfig = createRuntimeUiConfig();
     applyViewportSizeOverride({ viewportShell: dom.viewportShell, runtimeUiConfig });
     return { runtimeUiConfig, ...createSceneSetup({
       canvas: dom.canvas, runtimeUiConfig, initialZoomSensitivity: simState.zoomSensitivity, solarSystemMaxDistanceAu: 200
     }) };
-  },
-  onUnavailable: () => {
-    stopVisualization();
-    if (dom.controlPanel.contains(document.activeElement)) dom.panelClose.focus();
-    for (const control of dom.controlPanel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('.panel-scroll input, .panel-scroll button, .panel-scroll select')) control.disabled = true;
-    dom.cameraTools.hidden = true;
-    elementById<HTMLElement>('session-label').textContent = 'Visualization unavailable';
-    dom.statusFocus.textContent = 'Simulation stopped';
-    dom.statusSolar.textContent = 'Sun data unavailable while visualization is stopped';
-  }
 });
-window.addEventListener('beforeunload', () => recovery.dispose());
-if (!recovery.value) return;
-const { renderer, scene, camera, controls, runtimeUiConfig } = recovery.value;
+if (!sceneSetup) return;
+const { renderer, scene, camera, controls, runtimeUiConfig } = sceneSetup;
+ownDisposable(renderer);
+startup.defer(() => { controls.enabled = false; controls.dispose(); });
+if (startup.signal.aborted || !recovery.available) return;
 const backendBaseUrl = () => runtimeUiConfig.backendOrigin;
-const viewportCamera = createViewportCameraController({ canvas: dom.canvas, actionRoot: dom.cameraTools, camera, controls });
+const viewportCamera = ownDisposable(createViewportCameraController({ canvas: dom.canvas, actionRoot: dom.cameraTools, camera, controls }));
 addDefaultLighting(scene);
 
 const solarSystemGroup = new Group();
@@ -272,9 +292,9 @@ const {
 } = createTextureManager({ maxAnisotropy });
 
 const geometryCache = {
-  sun: new SphereGeometry(1, 128, 96),
-  planet: new SphereGeometry(1, 16, 12),
-  moon: new SphereGeometry(1, 8, 6)
+  sun: ownDisposable(new SphereGeometry(1, 128, 96)),
+  planet: ownDisposable(new SphereGeometry(1, 16, 12)),
+  moon: ownDisposable(new SphereGeometry(1, 8, 6))
 };
 
 const PLANET_COLORS: Record<string, string> = {
@@ -286,7 +306,7 @@ const PLANET_COLORS: Record<string, string> = {
 const sunTextureCanvas = generatePlanetTexture('sun');
 let sunTexture: CanvasTexture | null = null;
 if (sunTextureCanvas) {
-  sunTexture = new CanvasTexture(sunTextureCanvas);
+  sunTexture = ownDisposable(new CanvasTexture(sunTextureCanvas));
   configureLoadedTexture(sunTexture);
   sunTexture.wrapS = RepeatWrapping;
   sunTexture.wrapT = RepeatWrapping;
@@ -319,6 +339,7 @@ const sunCtrl = createSunController({
     }
   }
 });
+startup.defer(() => sunCtrl.disposeSolarDelivery());
 
 // ── Body Nodes ───────────────────────────────────────────────────────────────
 
@@ -347,8 +368,8 @@ function createLabelCanvas(text: string) {
 
 function createLabelSprite(text: string) {
   const canvas = createLabelCanvas(text);
-  const tex = new CanvasTexture(canvas);
-  const mat = new SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const tex = ownDisposable(new CanvasTexture(canvas));
+  const mat = ownDisposable(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   const sprite = new Sprite(mat);
   sprite.scale.set(0.12, 0.03, 1);
   return sprite;
@@ -379,29 +400,29 @@ function createBodyNode(body: CatalogBody) {
 
   if (['earth', 'moon', 'mars'].includes(body.id)) {
     const radius = bodyBaseRadiusAu(body);
-    const quadtree = new PlanetQuadtree(body.id, radius, camera);
+    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera));
     mesh = quadtree.group;
     mesh.userData.isQuadtree = true;
     mesh.userData.quadtree = quadtree;
   } else if (body.id === 'sun') {
     geometry = geometryCache.sun;
-    material = sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) });
+    material = ownDisposable(sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'star') {
     geometry = geometryCache.planet;
-    material = new MeshBasicMaterial({ color: new Color(body.color) });
+    material = ownDisposable(new MeshBasicMaterial({ color: new Color(body.color) }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'moon') {
     geometry = geometryCache.moon;
-    material = new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 });
+    material = ownDisposable(new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else {
     geometry = geometryCache.planet;
     const col = PLANET_COLORS[body.id] ?? body.color ?? '#888';
-    material = new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 });
+    material = ownDisposable(new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   }
@@ -452,10 +473,10 @@ function createOrbitLine(body: CatalogBody) {
     positions[i * 3 + 2] = tmpVec.z;
   }
 
-  const geo = new BufferGeometry();
+  const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
   const col = body.type === 'moon' ? '#556' : '#4477aa';
-  const line = new Line(geo, new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 }));
+  const line = new Line(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
   line.userData.bodyId = body.id;
   line.userData.bodyType = body.type;
   line.userData.stateAvailable = true;
@@ -488,9 +509,9 @@ function createBackgroundStars(count = 6000, radius = 15000) {
     positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
     positions[i * 3 + 2] = r * Math.cos(phi);
   }
-  const geo = new BufferGeometry();
+  const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  return new Points(geo, new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false }));
+  return new Points(geo, ownDisposable(new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false })));
 }
 
 const backgroundStars = createBackgroundStars();
@@ -521,7 +542,8 @@ const asteroidJupiterPositionAu = new Vector3();
 const asteroidSaturnPositionAu = new Vector3();
 
 let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
-const kuiperBeltRenderer = createKuiperBeltRenderer(kuiperPop.kbos);
+let retireAsteroidBelt = startup.defer(asteroidBeltRenderer.dispose);
+const kuiperBeltRenderer = ownDisposable(createKuiperBeltRenderer(kuiperPop.kbos));
 const kuiperBeltUpdater = createKuiperBeltUpdater(kuiperPop, kuiperBeltRenderer);
 asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 
@@ -533,9 +555,10 @@ if (kuiperBeltRenderer.companionMesh) {
 
 function refreshAsteroidBeltRenderer(population: AsteroidBeltPopulation) {
   solarSystemGroup.remove(asteroidBeltRenderer.mesh);
-  asteroidBeltRenderer.dispose();
+  retireAsteroidBelt();
   asteroidPop = population;
   asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
+  retireAsteroidBelt = startup.defer(asteroidBeltRenderer.dispose);
   asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
   asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
   solarSystemGroup.add(asteroidBeltRenderer.mesh);
@@ -732,13 +755,13 @@ function updateBodyInfoPanel(bodyId: string) {
 const majorBodies = catalog.bodies.filter((b) =>
   b.type === 'star' || b.type === 'planet' || b.type === 'dwarf'
 );
-const explorer = createExplorerController({
+const explorer = ownDisposable(createExplorerController({
   dom, bodies: majorBodies, onInspect: updateBodyInfoPanel,
   onFocus: (bodyId) => { simState.followBodyId = null; focusBody(bodyId, true); updateCameraMode('focus', bodyId); },
   onFollow: (bodyId) => { simState.followBodyId = bodyId; focusBody(bodyId, true); updateCameraMode('follow', bodyId); },
   onFree: () => { simState.followBodyId = null; updateCameraMode('free'); }
-});
-const bodyPicker = createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') });
+}));
+const bodyPicker = ownDisposable(createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') }));
 function refillBodyList() {
   explorer.refresh(); bodyPicker.refresh();
   const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
@@ -791,9 +814,7 @@ function updateBodyRotations(julianDate: number) {
 // ── Scene Body Positions ─────────────────────────────────────────────────────
 
 function disableModelWorkerIntegration() {
-  if (modelWorker) {
-    modelWorker.terminate();
-  }
+  retireModelWorker();
   modelWorker = null;
   modelWorkerEnabled = false;
   modelWorkerReady = false;
@@ -816,7 +837,22 @@ function initializeModelWorker() {
     return;
   }
 
+  const worker = modelWorker;
+  retireModelWorker = startup.defer(() => {
+    worker.onmessage = null;
+    worker.onerror = null;
+    worker.terminate();
+  });
+  startup.defer(() => {
+    modelWorker = null;
+    modelWorkerEnabled = false;
+    modelWorkerReady = false;
+    modelWorkerTickInFlight = false;
+    latestModelWorkerState = null;
+  });
+  if (startup.signal.aborted || !recovery.available) return;
   modelWorker.onmessage = (event: MessageEvent<ModelWorkerOutboundMessage>) => {
+    if (startup.signal.aborted || modelWorker !== worker) return;
     const message = event.data;
     if (!message || typeof message !== 'object') return;
 
@@ -873,6 +909,7 @@ function initializeModelWorker() {
   };
 
   modelWorker.onerror = (event) => {
+    if (startup.signal.aborted || modelWorker !== worker) return;
     const errorMessage = event.message || 'unknown worker error';
     console.warn('[modelWorker] stopped:', errorMessage);
     disableModelWorkerIntegration();
@@ -1101,6 +1138,7 @@ function updateCameraClipPlanes() {
 }
 
 function resizeRenderer() {
+  if (startup.signal.aborted || !recovery.available) return;
   const w = dom.canvas.clientWidth;
   const h = dom.canvas.clientHeight;
   if (w <= 0 || h <= 0) return;
@@ -1112,12 +1150,17 @@ function resizeRenderer() {
     camera.updateProjectionMatrix();
   }
 }
+let rendererResizeFrame = 0;
 window.addEventListener('resize', resizeRenderer);
+startup.defer(() => window.removeEventListener('resize', resizeRenderer));
+startup.defer(() => {
+  if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
+  rendererResizeFrame = 0;
+});
 resizeRenderer();
 
-let rendererResizeFrame = 0;
 function queueRendererResize() {
-  if (rendererResizeFrame) return;
+  if (startup.signal.aborted || !recovery.available || rendererResizeFrame) return;
   rendererResizeFrame = window.requestAnimationFrame(() => {
     rendererResizeFrame = 0;
     resizeRenderer();
@@ -1127,6 +1170,7 @@ function queueRendererResize() {
 const viewportResizeObserver = typeof ResizeObserver === 'undefined'
   ? null
   : new ResizeObserver(queueRendererResize);
+if (viewportResizeObserver) startup.defer(() => viewportResizeObserver.disconnect());
 viewportResizeObserver?.observe(dom.viewportShell);
 viewportResizeObserver?.observe(dom.canvas);
 
@@ -1141,7 +1185,8 @@ const timeController = createTimeController({
   maxTimeScale: MAX_TIME_SCALE_DAYS_PER_SEC,
   currentJulianDate,
   formatJulianAsDate,
-  onTimeJump: () => sunCtrl.maybeRefreshPhysics(Date.now(), true)
+  onTimeJump: () => sunCtrl.maybeRefreshPhysics(Date.now(), true),
+  signal: startup.signal
 });
 timeController.bindUi();
 
@@ -1159,28 +1204,28 @@ function updatePlayButton() {
 dom.togglePlay.addEventListener('click', () => {
   simState.paused = !simState.paused;
   updatePlayButton();
-});
+}, { signal: startup.signal });
 
 dom.toggleOrbits.addEventListener('change', () => {
   const vis = dom.toggleOrbits.checked;
   for (const line of orbitLines) {
     line.visible = vis && line.userData.stateAvailable !== false;
   }
-});
+}, { signal: startup.signal });
 
 dom.toggleLabels.addEventListener('change', () => {
   const vis = dom.toggleLabels.checked;
   for (const entry of labels) entry.sprite.visible = vis;
-});
+}, { signal: startup.signal });
 
 dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
   applyScaleMode();
-});
+}, { signal: startup.signal });
 
 dom.aiaChannel.addEventListener('change', () => {
   sunCtrl.setAiaChannelOverride(dom.aiaChannel.value);
-});
+}, { signal: startup.signal });
 
 dom.zoomSensitivity.addEventListener('input', () => {
   const v = Number(dom.zoomSensitivity.value);
@@ -1188,7 +1233,7 @@ dom.zoomSensitivity.addEventListener('input', () => {
     controls.zoomSpeed = v;
     dom.zoomSensitivityValue.textContent = `${v.toFixed(2)}×`;
   }
-});
+}, { signal: startup.signal });
 
 dom.canvas.addEventListener('dblclick', (e) => {
   const rect = dom.canvas.getBoundingClientRect();
@@ -1213,9 +1258,9 @@ dom.canvas.addEventListener('dblclick', (e) => {
       updateCameraMode('follow', bodyId);
     }
   }
-});
+}, { signal: startup.signal });
 
-const experiment = createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) });
+const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) }));
 
 // ── Initialize ───────────────────────────────────────────────────────────────
 
@@ -1283,69 +1328,7 @@ const frameLifecycle = createFrameLifecycle({
     } }
   ]
 });
-
-stopVisualization = () => {
-  startup.abort();
-  frameLifecycle.dispose(); controls.enabled = false;
-  viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
-};
-
-// ── Resource Cleanup ──────────────────────────────────────────────────────────
-
-window.addEventListener('beforeunload', () => {
-  startup.abort();
-  frameLifecycle.dispose();
-  window.removeEventListener('resize', resizeRenderer);
-  refreshPanelLayout = () => {};
-  explorer.dispose(); bodyPicker.dispose(); viewportCamera.dispose(); experiment.dispose(); controls.dispose();
-  sunCtrl.disposeSolarDelivery();
-  viewportResizeObserver?.disconnect();
-  if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
-
-  if (modelWorker) {
-    modelWorker.terminate();
-    modelWorker = null;
-  }
-
-  asteroidBeltRenderer.dispose();
-  kuiperBeltRenderer.dispose();
-
-  for (const mesh of bodyMeshes.values()) {
-    if (mesh.geometry) mesh.geometry.dispose();
-    if (mesh.material) {
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((m: { dispose: () => void }) => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    }
-  }
-
-  for (const line of orbitLines) {
-    line.geometry.dispose();
-    if (Array.isArray(line.material)) {
-      line.material.forEach((m: { dispose: () => void }) => m.dispose());
-    } else {
-      line.material.dispose();
-    }
-  }
-
-  for (const entry of labels) {
-    const sprite = entry.sprite;
-    if (sprite.material.map) sprite.material.map.dispose();
-    sprite.material.dispose();
-  }
-
-  backgroundStars.geometry.dispose();
-  if (Array.isArray(backgroundStars.material)) {
-    backgroundStars.material.forEach((m: { dispose: () => void }) => m.dispose());
-  } else {
-    backgroundStars.material.dispose();
-  }
-
-  if (sunTexture) sunTexture.dispose();
-  renderer.dispose();
-});
+startup.defer(() => frameLifecycle.dispose());
 
 try {
   // Keep the original fetch-to-parse/hash timer and the complete catalog.
@@ -1365,4 +1348,8 @@ try {
 
 }
 
-void startSimulation();
+void startSimulation().catch((error) => {
+  if (startup.signal.aborted || !recovery.available) return;
+  console.error('[visualization] initialization failed:', error);
+  recovery.reportFailure('The visualization could not start. WebGL may be unavailable or the application configuration may be invalid. Enable graphics acceleration or try another supported browser, then reload.');
+});
