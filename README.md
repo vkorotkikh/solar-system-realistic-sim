@@ -23,8 +23,8 @@ A real-time 3D solar system simulator and mission-design workbench running entir
 - `src` is fully TypeScript-native; legacy `.js` shim/re-export files have been removed from the frontend/runtime tree.
 - All `// @ts-nocheck` directives have been removed across the entire `src` tree. Strict type checking is now active on every source file.
 - Type annotations have been added to simulation, rendering, solar-feature, planetary-feature, and asteroid-pipeline modules. Remaining files still require explicit type definitions for full compile-time safety.
-- The browser runtime is driven from [`src/main.ts`](main.ts) with two workerized paths: satellite propagation and solar-system model propagation ([`src/workers/modelWorker.ts`](modelWorker.ts)).
-- Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](asteroidCatalogLoader.ts). The phase-1 runtime loader now supports algorithm-aware checksum verification (SHA-256 via WebCrypto, FNV-1a fallback) and parallelized binary+metadata fetching.
+- The browser runtime is driven from [`src/main.ts`](src/main.ts) with two workerized paths: satellite propagation and solar-system model propagation ([`src/workers/modelWorker.ts`](src/workers/modelWorker.ts)).
+- Small-body data tooling includes compact binary pack/read utilities in [`src/data/asteroidCatalogLoader.ts`](src/data/asteroidCatalogLoader.ts). The phase-1 runtime loader now supports algorithm-aware checksum verification (SHA-256 via WebCrypto, FNV-1a fallback) and parallelized binary+metadata fetching.
 - Ongoing hardening: replacing implicit `any` types with concrete interfaces across app, rendering, and feature modules.
 
 ## Quick Start
