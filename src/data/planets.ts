@@ -1,5 +1,6 @@
 import planetSecularModel from '../../backend/data/ephemerides/planet_secular_model.json';
 import { J2000_JD } from '../constants';
+import { NAMED_ASTEROID_ORBITS } from './namedAsteroidOrbits';
 
 export const SUN = {
   id: 'sun',
@@ -313,7 +314,7 @@ export const MAJOR_MOONS = new Set([
   'Charon'
 ]);
 
-// Major asteroid belt objects with J2000 orbital elements.
+// Major asteroid belt objects with epoch-tagged elements in the J2000 ecliptic frame.
 export const ASTEROID_BELT_OBJECTS = [
   {
     id: 'ceres',
@@ -322,16 +323,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 9.393e20,
     radiusKm: 469.7,
     color: '#8a8a82',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.7691651,
-      e: 0.0760090,
-      iDeg: 10.59351,
-      ascendingNodeDeg: 80.30553,
-      argPeriapsisDeg: 73.59769,
-      meanAnomalyDeg: 77.37209,
-      periodDays: 1_681.63
-    }
+    orbit: NAMED_ASTEROID_ORBITS.ceres
   },
   {
     id: 'vesta',
@@ -340,16 +332,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 2.59076e20,
     radiusKm: 262.7,
     color: '#a0998e',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.3615126,
-      e: 0.0887459,
-      iDeg: 7.14170,
-      ascendingNodeDeg: 103.85141,
-      argPeriapsisDeg: 149.85773,
-      meanAnomalyDeg: 212.82215,
-      periodDays: 1_325.75
-    }
+    orbit: NAMED_ASTEROID_ORBITS.vesta
   },
   {
     id: 'pallas',
@@ -358,16 +341,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 2.04e20,
     radiusKm: 256,
     color: '#7a7a72',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.7716515,
-      e: 0.2312736,
-      iDeg: 34.84099,
-      ascendingNodeDeg: 173.08940,
-      argPeriapsisDeg: 310.20237,
-      meanAnomalyDeg: 259.88584,
-      periodDays: 1_686.04
-    }
+    orbit: NAMED_ASTEROID_ORBITS.pallas
   },
   {
     id: 'hygiea',
@@ -376,16 +350,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 8.32e19,
     radiusKm: 217,
     color: '#606058',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 3.1415207,
-      e: 0.1175540,
-      iDeg: 3.84168,
-      ascendingNodeDeg: 283.20102,
-      argPeriapsisDeg: 312.32860,
-      meanAnomalyDeg: 156.51580,
-      periodDays: 2_033.81
-    }
+    orbit: NAMED_ASTEROID_ORBITS.hygiea
   },
   {
     id: 'juno',
@@ -412,16 +377,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 2.72e19,
     radiusKm: 111,
     color: '#9f978d',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.92187,
-      e: 0.1398,
-      iDeg: 3.095,
-      ascendingNodeDeg: 150.03,
-      argPeriapsisDeg: 228.15,
-      meanAnomalyDeg: 33.56,
-      periodDays: 1_824.5
-    }
+    orbit: NAMED_ASTEROID_ORBITS.psyche
   },
   {
     id: 'eunomia',
@@ -430,16 +386,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 3.12e19,
     radiusKm: 127,
     color: '#9a8d7f',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.64385,
-      e: 0.1868,
-      iDeg: 11.75,
-      ascendingNodeDeg: 293.19,
-      argPeriapsisDeg: 98.39,
-      meanAnomalyDeg: 157.43,
-      periodDays: 1_571.3
-    }
+    orbit: NAMED_ASTEROID_ORBITS.eunomia
   },
   {
     id: 'europa52',
@@ -448,16 +395,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 2.41e19,
     radiusKm: 156,
     color: '#8b847b',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 3.09695,
-      e: 0.0985,
-      iDeg: 7.48,
-      ascendingNodeDeg: 128.62,
-      argPeriapsisDeg: 260.12,
-      meanAnomalyDeg: 313.21,
-      periodDays: 1_991.0
-    }
+    orbit: NAMED_ASTEROID_ORBITS.europa52
   },
   {
     id: 'interamnia704',
@@ -466,16 +404,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 3.39e19,
     radiusKm: 166,
     color: '#7e756a',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 3.0627,
-      e: 0.154,
-      iDeg: 17.29,
-      ascendingNodeDeg: 282.89,
-      argPeriapsisDeg: 95.78,
-      meanAnomalyDeg: 349.6,
-      periodDays: 1_958.0
-    }
+    orbit: NAMED_ASTEROID_ORBITS.interamnia704
   },
   {
     id: 'davida511',
@@ -484,16 +413,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 3.8e19,
     radiusKm: 163,
     color: '#7f756b',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 3.1662,
-      e: 0.1889,
-      iDeg: 15.94,
-      ascendingNodeDeg: 108.58,
-      argPeriapsisDeg: 333.04,
-      meanAnomalyDeg: 102.44,
-      periodDays: 2_057.4
-    }
+    orbit: NAMED_ASTEROID_ORBITS.davida511
   },
   {
     id: 'iris7',
@@ -502,16 +422,7 @@ export const ASTEROID_BELT_OBJECTS = [
     massKg: 1.29e19,
     radiusKm: 107,
     color: '#8f8578',
-    orbit: {
-      epochJd: J2000_JD,
-      aAu: 2.3866,
-      e: 0.231,
-      iDeg: 5.52,
-      ascendingNodeDeg: 259.58,
-      argPeriapsisDeg: 145.4,
-      meanAnomalyDeg: 185.6,
-      periodDays: 1_345.4
-    }
+    orbit: NAMED_ASTEROID_ORBITS.iris7
   },
   {
     id: 'hebe',
