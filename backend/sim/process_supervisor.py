@@ -262,6 +262,7 @@ class SupervisedProcessRunner:
         self._closed = False
         self._executor_shutdown = False
         self._broken_reason: str | None = None
+        self._quarantine_reason: str | None = None
         self._next_job_id = 1
         self._in_flight = 0
         self._active_processes: dict[int, Any] = {}
@@ -302,6 +303,9 @@ class SupervisedProcessRunner:
         cancel_event = threading.Event()
         absolute_deadline = time.monotonic() + timeout
         with self._state_lock:
+            if (not self._closed and self._quarantined_jobs
+                    and self._broken_reason == self._quarantine_reason):
+                self._recover_exited_quarantine()
             if self._broken_reason is not None:
                 raise ProcessSupervisorBroken(self._broken_reason)
             if self._closed:
@@ -425,6 +429,49 @@ class SupervisedProcessRunner:
                     f"{len(failures)} worker process(es) remain alive after shutdown"
                 ) from failures[0]
 
+    def _recover_exited_quarantine(self) -> None:
+        """Under state_lock, nonblockingly retire only finished, dead owners."""
+
+        for job_id in tuple(self._quarantined_jobs):
+            future = self._job_futures.get(job_id)
+            process = self._active_processes.get(job_id)
+            if (future is None or process is None
+                    or self._future_job_ids.get(future) != job_id
+                    or future not in self._cancel_events or not future.done()):
+                continue
+            # A done Future has left _execute's finally; its admission callback
+            # may still be pending. Never touch a process still owned by it.
+            if self._in_flight <= 0:
+                self._broken_reason = "process supervisor admission underflow"
+                return
+            try:
+                if process.is_alive():
+                    continue
+                process.join(0)
+                if process.is_alive() or process.exitcode is None:
+                    continue
+                # A failed close retains all ownership and the lease for retry.
+                process.close()
+            except BaseException:
+                continue
+
+            self._active_processes.pop(job_id)
+            self._quarantined_jobs.remove(job_id)
+            self._job_futures.pop(job_id)
+            self._future_job_ids.pop(future)
+            self._cancel_events.pop(future)
+            self._in_flight -= 1
+            try:
+                self._capacity.release()
+            except ValueError:
+                self._broken_reason = "process supervisor admission over-credit"
+                return
+
+        if (not self._quarantined_jobs
+                and self._broken_reason == self._quarantine_reason):
+            self._broken_reason = None
+            self._quarantine_reason = None
+
     def _release_admission(self, future: Future[Any]) -> None:
         exception: BaseException | None = None
         try:
@@ -436,10 +483,13 @@ class SupervisedProcessRunner:
         release_capacity = False
         with self._state_lock:
             job_id = self._future_job_ids.get(future)
+            if job_id is None:
+                # Recovery/shutdown already retired this exact admission.
+                return
             if isinstance(exception, ProcessReapFailed) or (
                 job_id is not None and job_id in self._quarantined_jobs
             ):
-                # Ownership is deliberately retained until a later shutdown
+                # Ownership is retained until a later admission or shutdown
                 # retry proves the child has exited and has been joined.
                 return
 
@@ -601,6 +651,7 @@ class SupervisedProcessRunner:
             self._quarantined_jobs.add(job_id)
             if self._broken_reason is None:
                 self._broken_reason = f"worker lifecycle control failed: {exc}"
+                self._quarantine_reason = self._broken_reason
 
     def _reap_or_quarantine(self, job_id: int, process: Any) -> None:
         try:
