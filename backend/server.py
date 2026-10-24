@@ -1445,6 +1445,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    expose_headers=["Retry-After"],
 )
 app.add_middleware(
     NetworkRequestShapeMiddleware,
@@ -3551,6 +3552,7 @@ async def solar_physics_state(
                 "message": "Solar physics generation exceeded its hard deadline.",
                 "retryable": True,
             },
+            headers={"Retry-After": "2"},
         ) from exc
     except ProcessCrashed as exc:
         raise HTTPException(

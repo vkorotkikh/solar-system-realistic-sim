@@ -465,7 +465,9 @@ def test_solar_realtime_authenticates_before_provider_work(monkeypatch) -> None:
     assert raw_key not in repr(rate_store)
 
 
-def test_solar_realtime_rate_limits_before_second_provider_call(monkeypatch) -> None:
+# SDEL-017: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize("origin", [None, "http://localhost:3000", "https://untrusted.invalid"])
+def test_solar_realtime_rate_limits_before_second_provider_call(monkeypatch, origin) -> None:
     provider_calls = 0
 
     def fake_latest(*, force_refresh: bool):
@@ -481,9 +483,11 @@ def test_solar_realtime_rate_limits_before_second_provider_call(monkeypatch) -> 
     monkeypatch.setattr(server, "_solar_realtime_rate_locks", OrderedDict())
     monkeypatch.setattr(server, "SOLAR_REALTIME_RATE_LIMIT_PER_WINDOW", 1)
     monkeypatch.setattr(server.SOLAR_REALTIME_DATA, "latest", fake_latest)
+    monkeypatch.setattr(server.app, "middleware_stack", None)
 
-    first = client.get("/solar/realtime")
-    rejected = client.get("/solar/realtime")
+    headers = {"Origin": origin} if origin is not None else {}
+    first = client.get("/solar/realtime", headers=headers)
+    rejected = client.get("/solar/realtime", headers=headers)
 
     assert first.status_code == 200
     assert rejected.status_code == 429
@@ -491,6 +495,14 @@ def test_solar_realtime_rate_limits_before_second_provider_call(monkeypatch) -> 
         server.SOLAR_REALTIME_RATE_WINDOW_SECONDS.__ceil__()
     )
     assert provider_calls == 1
+    if origin == "http://localhost:3000":
+        assert rejected.headers["access-control-allow-origin"] == origin
+        assert rejected.headers["access-control-allow-credentials"] == "true"
+        assert rejected.headers["access-control-expose-headers"] == "Retry-After"
+    else:
+        assert "access-control-allow-origin" not in rejected.headers
+        if origin is None:
+            assert "access-control-expose-headers" not in rejected.headers
 
 
 def test_solar_physics_and_aia_authenticate_before_admission(monkeypatch) -> None:

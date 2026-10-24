@@ -115,6 +115,8 @@ def test_solar_endpoint_uses_dedicated_process_runner_not_heavy_thread_pool(
     ]
 
 
+# SDEL-017: /qa 2026-10-24; agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md.
+@pytest.mark.parametrize("origin", [None, "http://localhost:3000", "https://untrusted.invalid"])
 @pytest.mark.parametrize(
     ("failure", "expected_code", "retryable"),
     [
@@ -131,13 +133,17 @@ def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
     failure: BaseException,
     expected_code: str,
     retryable: bool,
+    origin: str | None,
 ) -> None:
-    monkeypatch.setattr(server, "_solar_physics_runner", _FakeRunner(failure), raising=False)
+    runner = _FakeRunner(failure)
+    monkeypatch.setattr(server, "_solar_physics_runner", runner, raising=False)
     monkeypatch.setattr(server, "_solar_physics_rate_locks", {})
+    monkeypatch.setattr(server.app, "middleware_stack", None)
 
     response = client.get(
         "/solar/physics",
         params={"jd_tdb": 2_460_000.5, "fidelity": "preview", "max_features": 8},
+        headers={"Origin": origin} if origin is not None else {},
     )
 
     assert response.status_code == 503
@@ -145,8 +151,19 @@ def test_solar_endpoint_maps_supervisor_failures_to_stable_503_contract(
     assert detail["code"] == expected_code
     assert detail["retryable"] is retryable
     assert "process" not in detail["message"].lower()
-    if expected_code == "solar_compute_saturated":
+    assert len(runner.calls) == 1
+    if expected_code in {"solar_compute_saturated", "solar_compute_timeout"}:
         assert response.headers["retry-after"] == "2"
+    else:
+        assert "retry-after" not in response.headers
+    if origin == "http://localhost:3000":
+        assert response.headers["access-control-allow-origin"] == origin
+        assert response.headers["access-control-allow-credentials"] == "true"
+        assert response.headers["access-control-expose-headers"] == "Retry-After"
+    else:
+        assert "access-control-allow-origin" not in response.headers
+        if origin is None:
+            assert "access-control-expose-headers" not in response.headers
 
 
 def test_health_path_remains_available_when_solar_process_capacity_is_full(
