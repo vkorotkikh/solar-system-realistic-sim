@@ -18,6 +18,7 @@ import {
   Group,
   Line,
   LineBasicMaterial,
+  LineLoop,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -476,7 +477,7 @@ function createOrbitLine(body: CatalogBody) {
   const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
   const col = body.type === 'moon' ? '#556' : '#4477aa';
-  const line = new Line(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
+  const line = new LineLoop(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
   line.userData.bodyId = body.id;
   line.userData.bodyType = body.type;
   line.userData.stateAvailable = true;
