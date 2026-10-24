@@ -2,13 +2,15 @@
 """
 Fetch Gaia DR3 star catalog for the Solar System Mission Lab.
 
-Produces:
+Previews acquisition and catalog conversion by default; may contact TAP and
+populate query caches. --save-fallback separately authorizes a fallback write.
+Pass --write to publish:
   - src/data/stars_catalog.json   (bright sky stars, [ra, dec, mag, bv] tuples)
   - solar-systems/nearby_star_systems_ranked_full.csv  (enriched nearby systems)
 
 Usage:
   python scripts/fetch_gaia_catalog.py
-  python scripts/fetch_gaia_catalog.py --max-stars 5000 --max-distance-pc 8
+  python scripts/fetch_gaia_catalog.py --write --max-stars 5000 --min-parallax-mas 125
 """
 
 from __future__ import annotations
@@ -415,7 +417,8 @@ def save_static_fallback(stars: list[dict], max_entries: int = 2000) -> None:
 # ── Main ──
 
 def main():
-    parser = argparse.ArgumentParser(description="Fetch Gaia DR3 star catalog data")
+    parser = argparse.ArgumentParser(description="Preview Gaia DR3 catalog acquisition and conversion; may contact TAP and populate query caches. Pass --write to publish catalogs.")
+    parser.add_argument("--write", action="store_true", help="publish the generated star catalog and enriched nearby systems CSV")
     parser.add_argument("--max-stars", type=int, default=12000, help="Max stars for sky catalog")
     parser.add_argument("--max-mag", type=float, default=7.5, help="Magnitude limit for bright stars")
     parser.add_argument("--min-parallax-mas", type=float, default=100.0, help="Minimum parallax for nearby systems")
@@ -432,14 +435,15 @@ def main():
     bright_stars = fetch_bright_stars(max_mag=args.max_mag)
     print(f"  Total bright stars available: {len(bright_stars)}")
 
-    # Save fallback if requested or if this is a fresh fetch
+    # Save fallback only when separately requested
     if args.save_fallback and bright_stars:
         save_static_fallback(bright_stars)
 
-    # Step 2: Build and write stars_catalog.json
+    # Step 2: Build stars_catalog.json and publish only when requested
     print("\nStep 2: Building stars_catalog.json...")
     catalog = build_stars_catalog(bright_stars, max_stars=args.max_stars)
-    write_stars_catalog(catalog, STARS_JSON_PATH)
+    if args.write:
+        write_stars_catalog(catalog, STARS_JSON_PATH)
 
     # Step 3: Fetch nearby stars
     print("\nStep 3: Fetching nearby stars...")
@@ -454,7 +458,8 @@ def main():
         final_rows = cross_match_nearby(
             existing_rows, nearby_stars, match_radius_arcsec=args.match_radius
         )
-        write_nearby_csv(final_rows, NEARBY_CSV_PATH)
+        if args.write:
+            write_nearby_csv(final_rows, NEARBY_CSV_PATH)
     else:
         final_rows = existing_rows
         print("  No Gaia nearby data available; CSV unchanged")
@@ -462,6 +467,8 @@ def main():
     print("\n=== Done ===")
     print(f"  Stars catalog: {len(catalog)} entries")
     print(f"  Nearby systems: {len(final_rows)} entries")
+    if not args.write:
+        print("  Preview only; pass --write to publish catalogs. Query caches and explicitly requested fallback files may still be written.")
 
 
 if __name__ == "__main__":

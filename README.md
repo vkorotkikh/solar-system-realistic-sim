@@ -383,10 +383,19 @@ Ingest moon textures:
 npm run ingest:moon-textures
 ```
 
-Fetch enriched star catalog (Gaia DR3):
+Preview Gaia DR3 acquisition, conversion and nearby-system enrichment without
+publishing either catalog. This can contact TAP and populate query caches;
+`--save-fallback` separately authorizes saving the fallback dataset:
 
 ```bash
 python scripts/fetch_gaia_catalog.py
+```
+
+To intentionally publish the star catalog and enriched nearby-system CSV, add
+`--write`. Selecting data limits alone does not authorize publication:
+
+```bash
+python scripts/fetch_gaia_catalog.py --write
 ```
 
 Preview legacy JPL SBDB additions (may populate query caches, but does not write catalog sources):
@@ -406,11 +415,22 @@ python scripts/fetch_jpl_nbody_ephemeris.py --check
 
 Use `--write` only when intentionally reviewing an upstream ephemeris update.
 
-Build Phase 1 asteroid dataset:
+Validate and serialize the Phase 1 asteroid dataset offline without publishing:
 
 ```bash
 npm run phase1:asteroid-dataset
 ```
+
+Publish the validated bundle only when intended:
+
+```bash
+npm run phase1:asteroid-dataset -- --write
+```
+
+`--output-dir` selects a destination, including an external directory, but does
+not authorize writing. `--write`, `--check` and `--dry-run` are mutually exclusive;
+`--check` compares existing bytes and `--dry-run` explicitly selects the default
+non-publishing validation mode.
 
 ## Physics Notes and Limitations
 

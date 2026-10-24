@@ -4,6 +4,11 @@ This folder contains a retained TypeScript source-acquisition tool. Its raw outp
 `public/data/asteroid-phase2`; it does not automatically publish a runtime catalog.
 The Phase 1 dataset builder is the separate `scripts/build_asteroid_phase1_dataset.py` path
 (`npm run phase1:asteroid-dataset`).
+That Phase 1 command validates and serializes without publication by default.
+Use `npm run phase1:asteroid-dataset -- --write` to publish its bundle, including
+when selecting an external `--output-dir`. Its `--write`, `--check` and
+`--dry-run` modes are mutually exclusive. These Phase 1 modes do not change the
+source-acquisition tool described below.
 
 ## `catalog_fetcher.ts`
 
