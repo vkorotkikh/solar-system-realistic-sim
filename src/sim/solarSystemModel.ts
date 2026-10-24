@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import { propagateKeplerOrbit, type KeplerOrbit } from './orbitMath';
+import { validateCatalogParentGraph } from './catalogParentGraph';
 
 export interface CatalogBody {
   id: string;
@@ -53,6 +54,7 @@ export class SolarSystemModel {
   private currentJd: number | null;
 
   constructor(catalog: SolarSystemCatalog) {
+    validateCatalogParentGraph(catalog.bodies);
     this.bodies = catalog.bodies;
     this.bodyById = new Map(this.bodies.map((body) => [body.id, body]));
     this.childrenById = new Map();

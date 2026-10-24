@@ -1,4 +1,5 @@
 import type { KeplerOrbit } from '../sim/orbitMath';
+import { validateCatalogParentGraph } from '../sim/catalogParentGraph';
 
 export interface ModelWorkerCatalogBody {
   id: string;
@@ -134,6 +135,8 @@ export function buildCatalogIndexContract(catalog: ModelWorkerCatalog): CatalogI
       parentIndexByIndex[i] = idToIndex.get(parentId) ?? -1;
     }
   }
+
+  validateCatalogParentGraph(catalog.bodies);
 
   return {
     idByIndex,
