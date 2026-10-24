@@ -1105,7 +1105,7 @@ function resizeRenderer() {
   const h = dom.canvas.clientHeight;
   if (w <= 0 || h <= 0) return;
   const pixelRatio = renderPixelRatio(runtimeUiConfig, window.devicePixelRatio);
-  renderer.setPixelRatio(pixelRatio);
+  if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
   if (dom.canvas.width !== Math.floor(w * pixelRatio) || dom.canvas.height !== Math.floor(h * pixelRatio) || camera.aspect !== w / h) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
