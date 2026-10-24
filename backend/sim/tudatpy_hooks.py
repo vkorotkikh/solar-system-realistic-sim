@@ -672,14 +672,20 @@ class TudatPyEngine(SimulationEngine):
         else:
             f = 0.0
 
-        # Mean anomaly (elliptic)
+        # Mean anomaly (elliptic or signed, unbounded hyperbolic).
         if 0 < e < 1:
             E = 2 * math.atan2(
                 math.sqrt(1 - e) * math.sin(f / 2),
                 math.sqrt(1 + e) * math.cos(f / 2),
             )
             M = E - e * math.sin(E)
+        elif e > 1 and a_m < 0:
+            sinh_H = float(np.dot(pos, vel)) / (e * math.sqrt(mu * (-a_m)))
+            H = math.asinh(sinh_H)
+            M = e * sinh_H - H
         else:
+            # Near-parabolic roundoff can make independently computed e and
+            # energy disagree; preserve the existing fallback in that case.
             M = f
 
         P_days = (
