@@ -3284,6 +3284,17 @@ async def solar_realtime_aia_tile(
     _reject_network_refresh_get(force_refresh)
     epoch_jd_tdb = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
     _require_optional_solar_api_key(request)
+    try:
+        SolarRealtimeDataProvider._normalize_aia_image_id(image_id)
+    except SolarRealtimeFetchError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_image_id",
+                "message": "Invalid AIA image ID.",
+                "retryable": False,
+            },
+        ) from exc
     _enforce_solar_aia_tile_rate_limit(request)
 
     channel_key = channel.strip().lower()
