@@ -9,7 +9,7 @@
  * for educational purposes only.
  * 
  * LIGO sensitivity band: 10-1000 Hz
- * Strain amplitude: h ~ 10⁻²¹ (amplified by 10¹⁸ for visualization)
+ * Display amplitude is illustrative, not physically calibrated.
  */
 
 import {
@@ -237,7 +237,7 @@ export function createGWVisualization(size = 10): GwVisualization {
             return `Gravitational Wave Visualization (Educational)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Real strain amplitude: h ≈ 10⁻²¹
-Displayed amplification: ×10¹⁸
+Display amplitude: illustrative, not physically calibrated.
 Earth-Sun distance change: ~0.15 femtometers
 (smaller than an atomic nucleus)
 
