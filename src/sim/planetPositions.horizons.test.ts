@@ -23,6 +23,7 @@ import {
  * the heliocentric ecliptic-J2000 position against a committed JPL Horizons
  * snapshot. See ./planetPositionCheck.ts for what the two budgets mean, why they
  * are the sizes they are, and how they were measured.
+ * Pluto target9 is reconstructed from its corrected physical centre; Earth399 stays physical.
  *
  * This asserts ACCURACY IN KILOMETRES, deliberately. The predecessor of this gate
  * asserted only that the secular rates changed the elements, which is true of a
@@ -59,7 +60,7 @@ describe('planet positions vs JPL Horizons 1900-2100 snapshot', () => {
       const planet = byId.get(id);
       const rows = planet
         ? body.states.map((state, k) =>
-            comparePlanetAtEpoch(id, planet, state, fixture._epochs[k].label, propagate)
+            comparePlanetAtEpoch(id, planet, state, fixture._epochs[k].label, propagate, body.hid)
           )
         : [];
       allRows.push(...rows);

@@ -31,6 +31,8 @@
  * mass fraction of r_moon), so Earth's truth is Horizons 399, Earth itself. The ~4,700 km
  * offset sits inside Standish's own position error, so the gate pins it with Earth's
  * VELOCITY (12 m/s off at the barycentre, < 1.5 m/s at the geocentre).
+ * Runtime Pluto is also body-centred: for target9, reconstruct its system centre
+ * from the corrected Pluto result and all five relative moons. Target999 stays physical.
  */
 
 import type { CatalogBody, SolarCatalog } from './catalog';
@@ -251,7 +253,7 @@ export type PropagateFn = (
   elapsedDays: number,
   outPosition: MutableVector3,
   outVelocity?: MutableVector3 | null
-) => void;
+) => boolean | void;
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const mag = (a: Vec3): number => Math.hypot(a[0], a[1], a[2]);
@@ -283,7 +285,9 @@ export function heliocentricPositionKm(
   jd: number
 ): Vec3 {
   const p = makeVector();
-  propagate(orbit, jd - orbit.epochJd, p, null);
+  if (propagate(orbit, jd - orbit.epochJd, p, null) === false) {
+    throw new Error(`Planet state unavailable at JD ${jd}`);
+  }
   return [p.x * AU_KM, p.y * AU_KM, p.z * AU_KM];
 }
 
@@ -303,7 +307,8 @@ export function comparePlanetAtEpoch(
   planet: CatalogBody,
   truth: PlanetTruthState,
   label: string,
-  propagate: PropagateFn
+  propagate: PropagateFn,
+  truthTargetId: string
 ): PlanetPositionRow {
   const orbit = planet.orbit;
   if (!orbit || !Number.isFinite(orbit.epochJd)) {
@@ -315,7 +320,23 @@ export function comparePlanetAtEpoch(
     );
   }
 
+  if (id === 'pluto' && truthTargetId !== '9' && truthTargetId !== '999') {
+    throw new Error(`pluto: unsupported truth target ${truthTargetId}`);
+  }
   const rModel = heliocentricPositionKm(propagate, orbit, truth.jd);
+  if (id === 'pluto' && truthTargetId === '9') {
+    const companions = orbit.barycentreCompanions;
+    if (!Array.isArray(companions) || companions.length === 0) {
+      throw new Error('pluto: target9 requires system-centre reconstruction metadata');
+    }
+    for (const companion of companions) {
+      if (!companion.orbit) throw new Error('pluto: required system component is missing');
+      const relative = heliocentricPositionKm(propagate, companion.orbit, truth.jd);
+      rModel[0] += companion.massFraction * relative[0];
+      rModel[1] += companion.massFraction * relative[1];
+      rModel[2] += companion.massFraction * relative[2];
+    }
+  }
   const rTruth: Vec3 = [truth.x, truth.y, truth.z];
   const rTruthKm = mag(rTruth);
   const errKm = mag(sub(rModel, rTruth));
@@ -482,7 +503,7 @@ export function evaluatePlanetPositions(
     if (!(id in POSITION_BUDGET_KM)) ungated.push(id);
 
     const planetRows = body.states.map((state, k) =>
-      comparePlanetAtEpoch(id, planet, state, fixture._epochs[k].label, propagate)
+      comparePlanetAtEpoch(id, planet, state, fixture._epochs[k].label, propagate, body.hid)
     );
     for (const row of planetRows) totalKm += row.errKm;
     rows.push(...planetRows);

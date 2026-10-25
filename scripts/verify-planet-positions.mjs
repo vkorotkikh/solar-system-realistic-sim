@@ -14,6 +14,8 @@
  * scripts/fixtures/. The fixture targets planet BARYCENTRES (Horizons ids 1..9),
  * which is what the Standish table describes -- except Earth, whose truth is the
  * geocentre (399) because the catalog places Earth there rather than at the EMB.
+ * Physical Pluto (999) is reconstructed to the fixture's system centre (9) using
+ * all five relative moons; the original comparison budgets are unchanged.
  *
  * Two independent quantities are gated per planet (see src/sim/planetPositionCheck.ts):
  *   errKm  -- |r_model - r_horizons| at each epoch, against a per-planet budget;
@@ -91,7 +93,7 @@ function printTable(fixture, report) {
   const ids = report.summaries.map((s) => s.id);
   const byId = new Map(ids.map((id) => [id, report.rows.filter((r) => r.id === id)]));
 
-  console.log('|r_model - r_horizons| in km, heliocentric ecliptic J2000, planet barycentres\n');
+  console.log('|r_model - r_horizons| in km, heliocentric ecliptic J2000, planet barycentres (Earth399 physical; Pluto9 reconstructed)\n');
   console.log(
     'planet  '.padEnd(9) +
       epochs.map((e) => e.label.slice(0, 4).padStart(11)).join('') +
