@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { generateAsteroidBelt } from './asteroidBelt';
 
 import {
   loadPhase1AsteroidCatalog,
@@ -98,6 +99,7 @@ async function loadTestCatalog(loadLatencyBudgetMs = 2_000) {
     metaUrl: METADATA_URL,
     maxRecords: 3,
     loadLatencyBudgetMs,
+    cache: false,
   });
 }
 
@@ -316,7 +318,9 @@ describe('Phase-1 asteroid catalog source status', () => {
 
     renderAsteroidCatalogSourceStatus(element, verifiedAsteroidCatalogStatus(100_000));
     expect(element.dataset.catalogState).toBe('verified');
-    expect(element.textContent).toContain('verified Phase-1 catalog (100,000 rows, SHA-256)');
+    expect(element.textContent).toContain('integrity checked');
+    expect(element.textContent).toContain('largest-first');
+    expect(element.textContent).toContain('accuracy not certified');
 
     renderAsteroidCatalogSourceStatus(element, rejectedAsteroidCatalogStatus([
       { code: 'metadata-missing', message: 'metadata missing' },
@@ -329,5 +333,68 @@ describe('Phase-1 asteroid catalog source status', () => {
     expect(element.dataset.catalogState).toBe('error');
     expect(element.textContent).toContain('catalog load failed');
     expect(element.title).toBe(element.textContent);
+  });
+});
+
+describe('Phase-1 source fidelity and population policy', () => {
+  it.each([1, 2])('retains ASPH-v%s identities and orbital fields through the shared conversion', async version => {
+    const stride = version === 2 ? 12 : 11;
+    const catalog = new ArrayBuffer(12 + stride * 4);
+    new Uint8Array(catalog).set([65, 83, 80, 72, version, stride, 0, 0, 1, 0, 0, 0]);
+    const view = new DataView(catalog);
+    if (version === 2) view.setUint32(12, 42, true);
+    const offset = version === 2 ? 16 : 12;
+    [2451545, 2.5, 0.125, 10, 30, 40, 50, 1500, 20, 0.25, 2].forEach((value, index) => {
+      view.setFloat32(offset + 4 * index, value, true);
+    });
+    installFetch(catalog, async () => responseStub({ ok: true, json: async () => ({
+      stored_count: 1, source_rows: 1, checksum_sha256: await sha256Hex(catalog),
+    }) }));
+
+    const result = await loadTestCatalog();
+    expect(result.accepted).toBe(true);
+    expect(result.asteroids).toHaveLength(1);
+    expect(result.asteroids[0]).toMatchObject({
+      sourceId: version === 2 ? '42' : '1', taxonomy: 2, diameterKm: 20, albedo: 0.25,
+      orbit: {
+        epochJd: 2451545, aAu: 2.5, e: 0.125, iDeg: 10, ascendingNodeDeg: 30,
+        argPeriapsisDeg: 40, meanAnomalyDeg: 50, periodDays: 1500,
+      },
+    });
+  });
+
+  it('preserves unknown science without rejecting an honest homogeneous prefix', async () => {
+    const record = { ...makeRecord(42, 0), taxonomyIndex: 255, albedo: 0 };
+    const catalog = writeAsteroidCatalogBinary([record]);
+    installFetch(catalog, async () => responseStub({ ok: true, json: async () => ({
+      stored_count: 1, source_rows: 1, checksum_sha256: await sha256Hex(catalog),
+    }) }));
+    const result = await loadTestCatalog();
+    expect(result.accepted).toBe(true);
+    expect(result.asteroids[0].taxonomy).toBe(255);
+    expect(result.asteroids[0].albedo).toBeNull();
+    expect(result.taxonomyCheck.counts).toMatchObject({ unknown: 1, C: 0, S: 0, M: 0 });
+    expect(result).toMatchObject({
+      fidelity: { status: 'not-independently-validated' },
+      population: { policy: 'largest-first-prefix', representative: false },
+    });
+  });
+
+  it('keeps the diameter-ordered prefix and reports its coverage without synthetic top-ups', async () => {
+    const catalog = writeAsteroidCatalogBinary([30, 20, 10, 5].map((diameterKm, i) => ({
+      ...makeRecord(i + 1, 0), diameterKm,
+    })));
+    installFetch(catalog, async () => responseStub({ ok: true, json: async () => ({
+      stored_count: 4, source_rows: 4, checksum_sha256: await sha256Hex(catalog),
+    }) }));
+    const result = await loadTestCatalog();
+    expect(result.accepted).toBe(true);
+    expect(result.asteroids.map(a => a.sourceId)).toEqual(['1', '2', '3']);
+    expect(result).toMatchObject({ population: { storedCount: 4, selectedCount: 3, fraction: 0.75 } });
+    const population = generateAsteroidBelt(50_000, 42, {
+      deterministicAsteroids: result.asteroids, includeNamed: false,
+    });
+    expect(population.count).toBe(3);
+    expect(population.asteroids.map(a => a.sourceId)).toEqual(['1', '2', '3']);
   });
 });

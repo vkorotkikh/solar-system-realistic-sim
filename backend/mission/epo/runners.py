@@ -8,6 +8,7 @@ from typing import Any
 
 from data.bodies import ALL_BODIES
 from mission import MissionPlannerAgent
+from trajectory.contracts import TrajectoryRequestRejected
 
 from .config import EpisodeConfig, EpisodeFamily
 from .metrics import EpisodeFamilyMetrics, EpisodeRunMetrics, EpisodeRunRecord
@@ -30,6 +31,12 @@ class EpisodeRunner:
         start = time.perf_counter()
         try:
             result = self.planner.plan(episode.mission_payload.copy())
+        except TrajectoryRequestRejected as exc:
+            return EpisodeRunRecord(
+                episode_id=episode.episode_id, family=episode.family, status="request_rejected",
+                mission_score=None, verifier_passed=False, reasons=[exc.code],
+                timing_ms=(time.perf_counter() - start) * 1000,
+            )
         except Exception as exc:  # pragma: no cover - planner runtime safety net
             return EpisodeRunRecord(
                 episode_id=episode.episode_id,

@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from mission.ephemeris_service import EphemerisService
 from trajectory import solve_direct_lambert
-from trajectory.lambert import solve_lambert_universal
+from trajectory.lambert import compute_lambert_leg_from_state_vectors, solve_lambert_universal
 from trajectory.budget import PlanningContext, PlanningLimits
 
 REQUIRED_TOOLS: Tuple[str, str, str] = ("gmat", "orekit", "tudat")
@@ -298,6 +298,46 @@ def _scenario_row(
         "comparisonContract": comparison_contract,
     }
 
+    independent = calibration.get("independentReference")
+    if independent is not None and not comparison_contract["comparableToSolver"]:
+        # The legacy captures remain explicitly incomparable. These replacement
+        # comparisons use archived provider states and independently executed
+        # Izzo/Gooding answers, never outputs of the solver under test.
+        start = independent["start_state_au_day"]
+        end = independent["end_state_au_day"]
+        planning_context.reserve(leg_requests=1, leg_evaluations=1)
+        leg = compute_lambert_leg_from_state_vectors(
+            start[:3], start[3:], end[:3], end[3:],
+            independent["arrival_jd"] - independent["departure_jd"], prograde=True,
+        )
+        reference = {
+            "calibrationTier": "independent_fixed_state",
+            "artifactChecksPassed": True,
+            "requiredToolsPresent": True,
+            "fixedState": independent,
+            "legacyCalibration": reference_payload,
+            "comparisonContract": {"problemType": "fixed_state_lambert", "comparableToSolver": True},
+        }
+        base = {"id": scenario_id, "description": scenario.get("description", ""),
+                "source": "archived Horizons + lamberthub 1.0.0 Izzo/Gooding", "reference": reference}
+        if leg is None:
+            return {**base, "status": "no_solution"}
+        model = float(leg["deltaVDepartureKmS"]) + float(leg["deltaVArrivalKmS"])
+        expected = float(independent["total_v_infinity_km_s"])
+        velocity_error = max(
+            math.dist(leg[key], independent[expected_key]) * _AU_KM / _DAY_S
+            for key, expected_key in (("departureVelocityApprox", "expected_v1_au_day"),
+                                      ("arrivalVelocityApprox", "expected_v2_au_day"))
+        )
+        tolerance = float(independent["tolerance_km_s"])
+        return {**base, "status": "ok", "modelTotalDeltaVKmS": model,
+                "referenceTotalDeltaVKmS": expected, "absErrorKmS": abs(model-expected),
+                "maxVelocityErrorKmS": velocity_error, "toleranceKmS": tolerance,
+                "pass": max(abs(model-expected), velocity_error) <= tolerance,
+                "ephemerisProvider": "archived_horizons",
+                "departureVelocityAuDay": leg["departureVelocityApprox"],
+                "arrivalVelocityAuDay": leg["arrivalVelocityApprox"]}
+
     if not comparison_contract["comparableToSolver"]:
         return {
             "id": scenario_id,
@@ -441,6 +481,26 @@ def _prepare_scenario(
     )
     prepared = dict(scenario)
     prepared["id"] = scenario_id
+
+    independent_entry = scenario.get("independent_reference")
+    if independent_entry is not None:
+        path, digest = artifact_budget.verify(
+            independent_entry["artifact_path"], scenario_id=scenario_id, tool_name="independent",
+        )
+        if digest != independent_entry["artifact_sha256"]:
+            raise ValueError(f"Scenario `{scenario_id}` independent artifact checksum mismatch")
+        reference = json.loads(path.read_text(encoding="utf-8"))
+        if (reference["scenario_id"] != scenario_id
+                or reference["departure_jd"] != scenario["departure_jd"]
+                or reference["arrival_jd"] != scenario["arrival_jd"]):
+            raise ValueError(f"Scenario `{scenario_id}` independent reference identity mismatch")
+        for capture in reference["provenance"]["captures"]:
+            _, capture_digest = artifact_budget.verify(
+                capture["path"], scenario_id=scenario_id, tool_name="horizons_capture",
+            )
+            if capture_digest != capture["sha256"]:
+                raise ValueError(f"Scenario `{scenario_id}` provider capture checksum mismatch")
+        calibration["independentReference"] = reference
 
     if calibration["comparisonContract"]["comparableToSolver"]:
         normalized_ids: dict[str, str] = {}
@@ -642,14 +702,14 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
             comparison_contract = ref.get("comparisonContract", {})
             note = comparison_contract.get("compatibilityNote", "")
             lines.append(
-                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.3f} | - | - |"
+                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.2e} | - | - |"
             )
             if note:
                 lines.append(f"|  |  |  |  |  |  |  |  | note: {note} |")
             continue
 
         lines.append(
-            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.3f} | {tol:.3f} | {passed} |".format(
+            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.2e} | {tol:.2e} | {passed} |".format(
                 id=row.get("id"),
                 source=row.get("source", ""),
                 model=float(row.get("modelTotalDeltaVKmS", 0.0)),
@@ -675,8 +735,9 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
             "",
             "## Notes",
             "",
-            "- This report compares current Lambert outputs against strict multi-tool calibration rows.",
-            "- Each scenario requires GMAT, Orekit, and Tudat entries with artifact checksum validation.",
+            "- Archived Horizons fixed states are compared with independently executed Izzo/Gooding references.",
+            "- The historical GMAT/Orekit/Tudat captures remain incomparable and are preserved as legacyCalibration; their checksums are integrity checks, not proof of execution.",
+            "- Endpoint v-infinity sums are transfer metrics, not parking/capture propulsive burns. These checks validate Lambert, not the live ephemeris provider.",
             "- Reference rows are stored in `backend/benchmark/reference_scenarios.json`.",
         ]
     )
@@ -696,8 +757,8 @@ def generate_accuracy_report(
     path = Path(output_path)
 
     # Refuse to clobber an existing report unless the caller explicitly opts in.
-    # This endpoint is unauthenticated, and its target directory holds
-    # hand-written notes; silently replacing a file there destroys user data.
+    # Its target directory holds hand-written notes; authentication or local
+    # trust does not authorize silently replacing those files.
     # Check before benchmarking so a rejected call costs no work. Include
     # dangling symlinks, which Path.exists() alone deliberately ignores.
     if not allow_overwrite and (path.exists() or path.is_symlink()):

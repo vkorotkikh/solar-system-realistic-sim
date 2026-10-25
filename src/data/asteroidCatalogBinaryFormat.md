@@ -75,6 +75,20 @@ Each record contains one asteroid body:
 
 ## Versioned validation path
 
+ACBF v1 is lossy. Its format gate checks encoding accuracy, not agreement with
+observations or integrity of a separately downloaded artifact. IEEE float32
+fields allow half an ULP at the source magnitude (including the subnormal
+floor). Around JD 2,460,000 this is **0.125 day**; a passing format test does
+not make v1 suitable for high-precision epoch storage.
+
+For unsigned 16-bit fields, the maximum rounding errors are `0.5/65535` for
+eccentricity and albedo, `90/65535` degrees for inclination, and `180/65535`
+degrees for the three circular angles. Circular differences wrap at 360
+degrees. Source IDs and taxonomy indices are exact in their declared integer
+ranges. Finite inputs and outputs are required. The regression suite checks
+100,000 generated rows and rejects independent perturbations beyond every
+field's limit.
+
 - Test target: `validatePackedCatalogRoundTrip(100_000)` (or
   `validatePackedCatalogRoundTrip100k()`).
 - The roundtrip performs:

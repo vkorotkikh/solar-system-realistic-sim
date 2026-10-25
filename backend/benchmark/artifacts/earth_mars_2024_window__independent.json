@@ -1,0 +1,93 @@
+{
+  "scenario_id": "earth_mars_2024_window",
+  "departure_jd": 2460600.5,
+  "arrival_jd": 2460860.5,
+  "mu_au3_day2": 0.0002959122082855911,
+  "start_state_au_day": [
+    0.9120457741704595,
+    0.4017022899591658,
+    -2.830441325259657e-05,
+    -0.007212521515210686,
+    0.01567281442891806,
+    -1.541071427312292e-06
+  ],
+  "end_state_au_day": [
+    -1.607847787605373,
+    -0.3025050116456996,
+    0.03308892347008972,
+    0.003109828453605448,
+    -0.01255618988918836,
+    -0.0003393940223853737
+  ],
+  "expected_v1_au_day": [
+    -0.007049698772133401,
+    0.017782470199276538,
+    0.001701411967198625
+  ],
+  "expected_v2_au_day": [
+    0.0019856541357515392,
+    -0.011474740802342039,
+    -0.0010058596512819227
+  ],
+  "total_v_infinity_km_s": 7.639904701677505,
+  "tolerance_km_s": 0.0001,
+  "oracle_agreement_km_s": 1.353703695657053e-14,
+  "propagated_miss_km": 0.0001327617480032124,
+  "contract": {
+    "central_body": "sun",
+    "state_source": "archived JPL Horizons",
+    "state_center": "sun_center",
+    "reference_frame": "ecliptic_j2000",
+    "time_scale": "TDB",
+    "corrections": "NONE",
+    "position_units": "AU",
+    "velocity_units": "AU/day",
+    "prograde": true,
+    "revolutions": 0,
+    "path": "zero-revolution prograde",
+    "delta_v_metric": "sum of endpoint v-infinity magnitudes; not propulsive burns"
+  },
+  "provenance": {
+    "oracles": [
+      "lamberthub.izzo2015",
+      "lamberthub.gooding1990"
+    ],
+    "versions": {
+      "lamberthub": "1.0.0",
+      "numpy": "2.2.6",
+      "scipy": "1.15.3",
+      "numba": "0.61.2",
+      "llvmlite": "0.44.0"
+    },
+    "sources": [
+      "https://arxiv.org/abs/1403.2705v2",
+      "https://doi.org/10.1007/BF00049511",
+      "https://github.com/jorgepiloto/lamberthub/tree/v1.0.0",
+      "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    ],
+    "captures": [
+      {
+        "path": "artifacts/earth_mars_2024_window__horizons_departure.json",
+        "sha256": "08e4d0bddf9983a58c8fa64293520def5af3c7d54f305e708a9bd03c249f1312",
+        "request_url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=399&CENTER=500%4010&MAKE_EPHEM=YES&EPHEM_TYPE=VECTORS&TLIST=2460600.5&OUT_UNITS=AU-D&REF_PLANE=ECLIPTIC&REF_SYSTEM=ICRF&VEC_CORR=NONE&VEC_TABLE=2&CSV_FORMAT=YES",
+        "target_id": "399",
+        "jd_tdb": 2460600.5,
+        "signature": {
+          "source": "NASA/JPL Horizons API",
+          "version": "1.2"
+        }
+      },
+      {
+        "path": "artifacts/earth_mars_2024_window__horizons_arrival.json",
+        "sha256": "52526de944567b3cec5672e43092227e9fb81e10a04bf677d8a248ac8f4a8f6e",
+        "request_url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=499&CENTER=500%4010&MAKE_EPHEM=YES&EPHEM_TYPE=VECTORS&TLIST=2460860.5&OUT_UNITS=AU-D&REF_PLANE=ECLIPTIC&REF_SYSTEM=ICRF&VEC_CORR=NONE&VEC_TABLE=2&CSV_FORMAT=YES",
+        "target_id": "499",
+        "jd_tdb": 2460860.5,
+        "signature": {
+          "version": "1.2",
+          "source": "NASA/JPL Horizons API"
+        }
+      }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
-import { planInterplanetaryRoute, TrajectoryApiError } from './index';
+import { createRuntimeUiConfig } from '../../app/runtimeConfig';
+import { createTrajectoryClient, TrajectoryApiError } from './index';
 
 const BASE_OPTIONS = {
   fromId: 'earth',
@@ -31,7 +32,85 @@ function localModel() {
   };
 }
 
+describe('configured trajectory backend origin', () => {
+  const operations = [
+    {
+      path: '/trajectory/plan',
+      invoke: (client: ReturnType<typeof createTrajectoryClient>) =>
+        client.planInterplanetaryRoute({}, new Map(), BASE_OPTIONS)
+    },
+    {
+      path: '/trajectory/lambert',
+      invoke: (client: ReturnType<typeof createTrajectoryClient>) =>
+        client.solveLambertTransfer({
+          fromId: 'earth',
+          toId: 'mars',
+          departureJd: 2_460_500.5,
+          arrivalJd: 2_460_700.5
+        })
+    },
+    {
+      path: '/trajectory/porkchop',
+      invoke: (client: ReturnType<typeof createTrajectoryClient>) =>
+        client.scanPorkchopWindow({
+          fromId: 'earth',
+          toId: 'mars',
+          departureStartJd: 2_460_500.5,
+          departureEndJd: 2_460_510.5,
+          departureStepDays: 5,
+          tofMinDays: 100,
+          tofMaxDays: 200,
+          tofStepDays: 50
+        })
+    },
+    {
+      path: '/mission/plan',
+      invoke: (client: ReturnType<typeof createTrajectoryClient>) =>
+        client.planMissionProfile({
+          fromId: 'earth',
+          targetId: 'mars',
+          returnId: 'earth',
+          departureJd: 2_460_500.5
+        })
+    }
+  ];
+
+  it.each(operations)('routes every trajectory operation through the configured backend origin', async ({ path, invoke }) => {
+    const config = createRuntimeUiConfig({
+      search: '',
+      env: { VITE_BACKEND_ORIGIN: 'http://127.0.0.1:9000' },
+      pageOrigin: 'http://127.0.0.1:8042'
+    });
+    const client = createTrajectoryClient({ backendBaseUrl: () => config.backendOrigin });
+    const requestedUrls: string[] = [];
+    vi.stubGlobal('window', {
+      setTimeout: globalThis.setTimeout.bind(globalThis),
+      clearTimeout: globalThis.clearTimeout.bind(globalThis)
+    });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      requestedUrls.push(url);
+      const payload = url.endsWith('/trajectory/plan')
+        ? { best: { legs: [] }, alternatives: [] }
+        : url.endsWith('/trajectory/lambert')
+          ? { solution: {} }
+          : url.endsWith('/trajectory/porkchop')
+            ? { points: [] }
+            : { recommendation: {} };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }));
+
+    await invoke(client);
+
+    expect(requestedUrls).toEqual([`http://127.0.0.1:9000${path}`]);
+  });
+});
+
 describe('trajectory API fallback policy', () => {
+  const client = createTrajectoryClient({ backendBaseUrl: () => 'http://localhost:8042' });
+
   beforeEach(() => {
     stubWindow();
   });
@@ -62,7 +141,7 @@ describe('trajectory API fallback policy', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(
-      planInterplanetaryRoute({}, new Map(), BASE_OPTIONS)
+      client.planInterplanetaryRoute({}, new Map(), BASE_OPTIONS)
     ).rejects.toMatchObject({
       name: 'TrajectoryApiError',
       status,
@@ -77,7 +156,7 @@ describe('trajectory API fallback policy', () => {
       throw new TypeError('Failed to fetch');
     }));
 
-    const result = await planInterplanetaryRoute(
+    const result = await client.planInterplanetaryRoute(
       localModel(),
       new Map([
         ['earth', { name: 'Earth' }],
@@ -104,7 +183,7 @@ describe('trajectory API fallback policy', () => {
     }));
 
     await expect(
-      planInterplanetaryRoute(localModel(), new Map(), {
+      client.planInterplanetaryRoute(localModel(), new Map(), {
         ...BASE_OPTIONS,
         ephemerisProvider: 'horizons'
       })
@@ -121,7 +200,7 @@ describe('trajectory API fallback policy', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(
-      planInterplanetaryRoute(
+      client.planInterplanetaryRoute(
         localModel(),
         new Map([
           ['earth', { name: 'Earth' }],
@@ -143,7 +222,7 @@ describe('trajectory API fallback policy', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const outcome = planInterplanetaryRoute(
+    const outcome = client.planInterplanetaryRoute(
       localModel(),
       new Map([
         ['earth', { name: 'Earth' }],

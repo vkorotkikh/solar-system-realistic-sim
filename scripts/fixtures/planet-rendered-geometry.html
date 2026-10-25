@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Planet rendered geometry regression</title>
+<body>
+<script type="module">
+import { PerspectiveCamera, Scene, Vector3, WebGLRenderer, WebGLRenderTarget } from 'three';
+import { PlanetQuadtree } from '/src/frontend/features/planetary/quadtreeLOD.ts';
+import { createSolarSystemCatalog } from '/src/sim/catalog.ts';
+
+window.planetGeometryCheck = (async () => {
+  const renderer = new WebGLRenderer({ alpha: true, antialias: false });
+  renderer.setSize(128, 128);
+  renderer.setClearColor(0, 0);
+  document.body.append(renderer.domElement);
+  const gl = renderer.getContext();
+  const debug = gl.getExtension('WEBGL_debug_renderer_info');
+  const rendererName = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  const target = new WebGLRenderTarget(128, 128);
+  const pixels = new Uint8Array(128 * 128 * 4);
+  const results = [];
+  const catalog = createSolarSystemCatalog();
+  function require(condition, message) { if (!condition) throw new Error(message); }
+  for (const id of ['earth', 'mars']) {
+    const body = catalog.bodies.find((body) => body.id === id);
+    const camera = new PerspectiveCamera(58, 1, 1e-9, 20000);
+    const scene = new Scene();
+    const tree = new PlanetQuadtree(id, body.displayRadiusAu, camera);
+    if (new URLSearchParams(location.search).has('flat')) tree.material.uniforms.uDisplacementScale.value = 0;
+    tree.group.position.set(2, -3, 4);
+    scene.add(tree.group);
+    // Production shader and shared-material draw callbacks, including displaced
+    // geometry; silhouette expectations are independent ray/sphere geometry.
+    for (const [mode, radius] of [['display', body.displayRadiusAu], ['physical', body.realRadiusAu]]) {
+      tree.setRadius(radius);
+      for (const range of [20, 3.8, 20]) {
+        camera.position.copy(tree.group.position).add(new Vector3(0, 0, radius * range));
+        camera.lookAt(tree.group.position);
+        camera.near = radius * 0.001;
+        camera.updateProjectionMatrix();
+        tree.update();
+        tree.setLightDirection(new Vector3(0, 0, 1));
+        renderer.setRenderTarget(target);
+        renderer.render(scene, camera);
+        renderer.readRenderTargetPixels(target, 0, 0, 128, 128, pixels);
+        require(gl.getError() === gl.NO_ERROR, `${id} ${mode}: WebGL error`);
+        const screenRadius = 64 / (Math.tan(29 * Math.PI / 180) * Math.sqrt(range * range - 1));
+        // A 10% radial envelope includes this deliberately exaggerated relief.
+        const margin = Math.max(1.5, screenRadius * 0.12);
+        let covered = 0;
+        for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+          const radialPixel = Math.hypot(x + 0.5 - 64, y + 0.5 - 64);
+          const opaque = pixels[(y * 128 + x) * 4 + 3] > 0;
+          if (opaque) covered++;
+          if (radialPixel < screenRadius - margin) require(opaque, `${id} ${mode} ${range}: missing interior at ${x},${y}`);
+          if (radialPixel > screenRadius + margin) require(!opaque, `${id} ${mode} ${range}: vertex outside spherical envelope at ${x},${y}`);
+        }
+        require(covered > 50, `${id} ${mode}: no rendered sphere`);
+        require(range < 4 ? tree.group.children.length > 6 : tree.group.children.length === 6, `${id}: wrong LOD coverage`);
+        results.push({ id, mode, rangeRadii: range, meshes: tree.group.children.length, coveredPixels: covered });
+        // Yield between draws so the browser remains responsive under software GL.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
+    tree.material.dispose();
+  }
+  target.dispose();
+  renderer.dispose();
+  return { renderer: rendererName, cases: results };
+})();
+</script>
+</body>
+</html>

@@ -1,3 +1,20 @@
+import type { BufferGeometry, Camera, Mesh, Object3D, Vector3 } from 'three';
+
+type LodLevel = 'low' | 'medium' | 'high';
+interface SurfaceLodOptions {
+  bodyId: string;
+  profile?: { lod?: { thresholdsAu?: { high?: number; medium?: number } } } | null;
+  lodGeometries?: { low: BufferGeometry; medium?: BufferGeometry; high?: BufferGeometry } | null;
+  currentLevel: string;
+  surfaceMesh?: Mesh | null;
+  cloudMesh?: Mesh | null;
+  atmosphereMesh?: Mesh | null;
+  extraMeshes?: (Mesh | null | undefined)[];
+  bodyNodes: ReadonlyMap<string, Object3D>;
+  camera: Camera;
+  tempVector: Vector3;
+}
+
 export function updateBodySurfaceLod({
   bodyId,
   profile,
@@ -10,7 +27,7 @@ export function updateBodySurfaceLod({
   bodyNodes,
   camera,
   tempVector
-}) {
+}: SurfaceLodOptions) {
   if (!surfaceMesh || !lodGeometries) return currentLevel;
 
   const node = bodyNodes.get(bodyId);
@@ -21,7 +38,7 @@ export function updateBodySurfaceLod({
   const highThreshold = profile?.lod?.thresholdsAu?.high ?? 0.00025;
   const mediumThreshold = profile?.lod?.thresholdsAu?.medium ?? 0.0012;
 
-  let targetLevel = 'low';
+  let targetLevel: LodLevel = 'low';
   if (distanceToBody < highThreshold) {
     targetLevel = 'high';
   } else if (distanceToBody < mediumThreshold) {

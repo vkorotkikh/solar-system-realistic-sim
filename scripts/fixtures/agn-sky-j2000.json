@@ -1,0 +1,102 @@
+{
+  "frame": "ICRS catalog bearing rotated to fixed J2000 ecliptic; x=equinox, z=ecliptic north",
+  "obliquityArcsec": 84381.448,
+  "frameReference": "https://ssd.jpl.nasa.gov/horizons/manual.html#frames",
+  "capturedDate": "2026-10-14",
+  "viewport": [
+    256,
+    256
+  ],
+  "markerRadius": 4,
+  "limits": "Direction/projection fixtures, not measured source distances, apparent places, GW amplitudes, or evidence for H29.",
+  "sources": [
+    {
+      "key": "SagittariusA",
+      "raDeg": 266.416816625,
+      "decDeg": -29.007824972222224,
+      "reference": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=Sagittarius+A%2A",
+      "provenance": "2011AJ....142...35P",
+      "direction": [
+        -0.054657485767541925,
+        -0.9937122664878811,
+        -0.09771637877597161
+      ],
+      "eclipticLongitudeDeg": 266.8517135631627,
+      "eclipticLatitudeDeg": -5.6076845097183465,
+      "topPixel": [
+        124.50192091087732,
+        191.59758505522439
+      ],
+      "obliquePixel": [
+        123.97907482399678,
+        177.61285287746398
+      ]
+    },
+    {
+      "key": "CentaurusA",
+      "raDeg": 201.36506337683332,
+      "decDeg": -43.01911250808333,
+      "reference": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=NGC5128",
+      "provenance": "2020A&A...644A.159C",
+      "direction": [
+        -0.6808818052051732,
+        -0.5157570997188988,
+        -0.5199947898105275
+      ],
+      "eclipticLongitudeDeg": 217.143347690876,
+      "eclipticLatitudeDeg": -31.331902009061526,
+      "topPixel": [
+        84.42356446686892,
+        161.00845438200952
+      ],
+      "obliquePixel": [
+        86.63605936358653,
+        172.0714883222354
+      ]
+    },
+    {
+      "key": "Maffei1",
+      "raDeg": 39.147916666666674,
+      "decDeg": 59.655166666666666,
+      "reference": "https://ned.ipac.caltech.edu/level5/NED1D/ned1d.html",
+      "provenance": "NED-1D host-galaxy position; not SMBH astrometry",
+      "direction": [
+        0.3917944254396355,
+        0.635910147938795,
+        0.6649175978592278
+      ],
+      "eclipticLongitudeDeg": 58.36211230933145,
+      "eclipticLatitudeDeg": 41.67600403698018,
+      "topPixel": [
+        153.07484322813667,
+        87.30175053191712
+      ],
+      "obliquePixel": [
+        150.5043551302778,
+        75.53043752292793
+      ]
+    },
+    {
+      "key": "M87",
+      "raDeg": 187.70593076725,
+      "decDeg": 12.391123246083334,
+      "reference": "https://simbad.cds.unistra.fr/simbad/sim-id?Ident=M87",
+      "provenance": "2020A&A...644A.159C",
+      "direction": [
+        -0.9678852252918978,
+        -0.03480163827258041,
+        0.24897195953600215
+      ],
+      "eclipticLongitudeDeg": 182.059261048102,
+      "eclipticLatitudeDeg": 14.416686394653928,
+      "topPixel": [
+        66.05534558131853,
+        130.22730484944515
+      ],
+      "obliquePixel": [
+        67.93952975761889,
+        116.93610891273175
+      ]
+    }
+  ]
+}

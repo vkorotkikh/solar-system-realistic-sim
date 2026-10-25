@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "status": "Historical run metadata preserved without rerunning tests, builds, or version probes",
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris",
+  "worktreeHead": "86ac5fe0bad35d5bed4a2a18df82cfc6d453d6f6",
+  "parentReviewTarget": "4f2e2507797eb73d50443711df433e10032cc3fd",
+  "pinnedNode": {
+    "version": "v22.23.2",
+    "executable": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+    "source": "node22/cold-load.json",
+    "pathPrefix": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin",
+    "vitest": "3.2.4",
+    "vite": "7.3.1",
+    "testFiles": 10,
+    "passed": 517,
+    "failed": 0,
+    "pending": 0
+  },
+  "priorFullVitest": {
+    "nodeVersion": "v24.21.0",
+    "nodeVersionBasis": "Recorded original session output and acceptance note; not freshly probed",
+    "vitest": "3.2.4",
+    "testFiles": 36,
+    "passed": 884,
+    "failed": 0,
+    "pending": 0
+  },
+  "npm": {
+    "version": "11.19.0",
+    "requestedPackageVersion": "10.9.8",
+    "basis": "Recorded original session output and acceptance note; npm pin was not verified"
+  },
+  "python": {
+    "executable": "/home/nomad/miniconda3/envs/agentic-rag/bin/python",
+    "version": "3.12.13",
+    "numpy": "2.5.2",
+    "pytest": "9.1.1",
+    "basis": "Recorded original session output and acceptance note; no version probes rerun",
+    "environment": {
+      "PYTHONHASHSEED": "0",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "TZ": "UTC"
+    }
+  },
+  "openReview": {
+    "reviewer": "Aristotle",
+    "agentId": "01a13e09-7a4f-7661-a281-5c9d8ab67f82",
+    "findings": [
+      {
+        "severity": "P2",
+        "status": "open",
+        "location": "src/sim/lazyMoonEphemerides.ts:183",
+        "description": "Missing/absurd vectorOracle metadata and individual over-cap endpoint errors can be accepted even with consistently rehashed content"
+      },
+      {
+        "severity": "P2",
+        "status": "open",
+        "location": "src/sim/lazyMoonEphemerides.ts:118",
+        "description": "HTTP errors and rejected Content-Length headers can release request capacity without cancelling the body; independent review observed three rejected probes and zero cancellations"
+      }
+    ],
+    "repairApproval": "pending",
+    "bulkStorageApproval": "pending",
+    "promotion": "held",
+    "staging": "held"
+  },
+  "persistenceActions": {
+    "testsRerun": false,
+    "buildsRerun": false,
+    "sourceChanges": false,
+    "rawInputsCopied": false,
+    "coefficientShardsCopied": false,
+    "stagingPerformed": false
+  }
+}

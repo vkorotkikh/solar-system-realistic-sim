@@ -50,6 +50,8 @@ def solve_kepler(mean_anomaly_rad: float, eccentricity: float, max_iter: int = 2
 
 
 def propagate_kepler_orbit(orbit: Dict[str, Any], elapsed_days: float) -> Tuple[List[float], List[float]]:
+    if orbit.get("secular_rates"):
+        return _propagate_secular_orbit(orbit, elapsed_days)
     a = float(orbit["a_au"])
     e = max(0.0, min(0.9999999, float(orbit.get("e", 0.0))))
     i = math.radians(float(orbit.get("i_deg", 0.0)))
@@ -103,12 +105,68 @@ def propagate_kepler_orbit(orbit: Dict[str, Any], elapsed_days: float) -> Tuple[
     return [x, y, z], [vx, vy, vz]
 
 
+def _propagate_secular_orbit(orbit: Dict[str, Any], elapsed_days: float) -> Tuple[List[float], List[float]]:
+    """Differentiate the full precessing ellipse; coefficients are shared with TS.
+
+    JPL recipe: https://ssd.jpl.nasa.gov/planets/approx_pos.html, steps 1-5.
+    Derivative uses dE/dt = (dM/dt + de/dt sin E)/(1 - e cos E), followed
+    by the product rule for Rz(node) Rx(i) Rz(apsis).
+    """
+    rates = orbit['secular_rates']
+    cy = 36525.0
+    da = rates.get('aAuPerCentury', 0.0) / cy
+    de = rates.get('ePerCentury', 0.0) / cy
+    di, dn, dw = [math.radians(rates.get(key, 0.0)) / cy for key in
+                  ('iDegPerCentury', 'ascendingNodeDegPerCentury', 'argPeriapsisDegPerCentury')]
+    base_a = float(orbit['a_au'])
+    a = base_a + da * elapsed_days
+    e = float(orbit.get('e', 0.0)) + de * elapsed_days
+    if not (math.isfinite(a) and math.isfinite(e) and a > 0 and 0 <= e < 1):
+        raise ValueError('secular drift produced an invalid elliptic orbit')
+    inc, node, apsis = [math.radians(orbit.get(key, 0.0)) + rate * elapsed_days
+                        for key, rate in zip(('i_deg', 'ascending_node_deg', 'arg_periapsis_deg'), (di, dn, dw))]
+    if 'meanLongitudeDegPerCentury' in rates:
+        dm = math.radians(rates['meanLongitudeDegPerCentury']) / cy - dn - dw
+        advance = dm * elapsed_days
+    else:
+        n0 = TWO_PI / orbit['period_days']
+        dm = n0 * (base_a/a)**1.5
+        advance = (n0*elapsed_days if da == 0 else
+                   -2*n0*base_a*math.expm1(-0.5*math.log1p(da*elapsed_days/base_a))/da)
+        if rates.get('periodIsMeanLongitudePeriod'):
+            dm -= dn + dw
+            advance -= (dn + dw)*elapsed_days
+    anomaly = normalize_radians(math.radians(orbit.get('mean_anomaly_deg', 0.0)) + advance)
+    eccentric = solve_kepler(anomaly, e)
+    ce, se = math.cos(eccentric), math.sin(eccentric)
+    beta = math.sqrt(1-e*e)
+    dE = (dm + de*se)/(1-e*ce)
+    p = [a*(ce-e), a*beta*se, 0.0]
+    v = [da*(ce-e) - a*(se*dE+de),
+         da*beta*se + a*(-e*de*se/beta + beta*ce*dE), 0.0]
+
+    def rotate(vec, angle, axis):
+        c, s = math.cos(angle), math.sin(angle)
+        x, y, z = vec
+        return [x, c*y-s*z, s*y+c*z] if axis == 0 else [c*x-s*y, s*x+c*y, z]
+
+    for angle, rate, axis in [(apsis, dw, 2), (inc, di, 0), (node, dn, 2)]:
+        p = rotate(p, angle, axis)
+        v = rotate(v, angle, axis)
+        spin = [0.0, 0.0, 0.0]
+        spin[axis] = rate
+        v = vector_add(v, vector_cross(spin, p))
+    return p, v
+
+
 def sample_body_state_from_elements(body: Dict[str, Any], jd: float) -> Dict[str, List[float]]:
     orbit = body.get("orbit")
     if not orbit:
         return {"position": [0.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]}
 
-    epoch_jd = float(orbit.get("epoch_jd", J2000_JD))
+    if orbit.get("epoch_jd") is None:
+        raise ValueError(f"Body `{body.get('id', 'unknown')}` requires a declared orbit.epoch_jd")
+    epoch_jd = float(orbit["epoch_jd"])
     elapsed_days = jd - epoch_jd
     position, velocity = propagate_kepler_orbit(orbit, elapsed_days)
     return {"position": position, "velocity": velocity}

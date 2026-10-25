@@ -156,6 +156,93 @@ export function sampleCoronalArcPoint(
   return [x, y, z];
 }
 
+function sphericalInterpolateArcPoint(
+  fromPoint: SolarArcPoint,
+  toPoint: SolarArcPoint,
+  blendAlpha: number,
+): SolarArcPoint {
+  const alpha = clampUnit(Number.isFinite(blendAlpha) ? blendAlpha : 1);
+  if (alpha <= 0) return [...fromPoint];
+  if (alpha >= 1) return [...toPoint];
+
+  const fromRadius = Math.hypot(fromPoint[0], fromPoint[1], fromPoint[2]);
+  const toRadius = Math.hypot(toPoint[0], toPoint[1], toPoint[2]);
+  const radius = lerpNumber(fromRadius, toRadius, alpha);
+  const epsilon = 1e-12;
+
+  if (fromRadius <= epsilon && toRadius <= epsilon) return [0, 0, 0];
+
+  // A zero-length endpoint has no direction. Keep the defined endpoint's
+  // direction while its separately interpolated radius grows or collapses.
+  if (fromRadius <= epsilon) {
+    return [
+      toPoint[0] / toRadius * radius,
+      toPoint[1] / toRadius * radius,
+      toPoint[2] / toRadius * radius,
+    ];
+  }
+  if (toRadius <= epsilon) {
+    return [
+      fromPoint[0] / fromRadius * radius,
+      fromPoint[1] / fromRadius * radius,
+      fromPoint[2] / fromRadius * radius,
+    ];
+  }
+
+  const fromX = fromPoint[0] / fromRadius;
+  const fromY = fromPoint[1] / fromRadius;
+  const fromZ = fromPoint[2] / fromRadius;
+  const toX = toPoint[0] / toRadius;
+  const toY = toPoint[1] / toRadius;
+  const toZ = toPoint[2] / toRadius;
+  const dot = Math.max(-1, Math.min(1, fromX * toX + fromY * toY + fromZ * toZ));
+
+  let directionX: number;
+  let directionY: number;
+  let directionZ: number;
+
+  if (dot > 1 - epsilon) {
+    // Normalized lerp avoids precision loss from acos/sin for coincident directions.
+    directionX = lerpNumber(fromX, toX, alpha);
+    directionY = lerpNumber(fromY, toY, alpha);
+    directionZ = lerpNumber(fromZ, toZ, alpha);
+    const directionLength = Math.hypot(directionX, directionY, directionZ) || 1;
+    directionX /= directionLength;
+    directionY /= directionLength;
+    directionZ /= directionLength;
+  } else {
+    let tangentX = toX - dot * fromX;
+    let tangentY = toY - dot * fromY;
+    let tangentZ = toZ - dot * fromZ;
+    let tangentLength = Math.hypot(tangentX, tangentY, tangentZ);
+
+    if (tangentLength <= epsilon) {
+      // Exact antipodes have infinitely many shortest arcs. Pick a stable
+      // perpendicular so the midpoint cannot collapse to the origin.
+      const referenceX = 0;
+      const referenceY = Math.abs(fromZ) >= 0.85 ? 1 : 0;
+      const referenceZ = Math.abs(fromZ) >= 0.85 ? 0 : 1;
+      const projection = referenceX * fromX + referenceY * fromY + referenceZ * fromZ;
+      tangentX = referenceX - projection * fromX;
+      tangentY = referenceY - projection * fromY;
+      tangentZ = referenceZ - projection * fromZ;
+      tangentLength = Math.hypot(tangentX, tangentY, tangentZ);
+    }
+
+    tangentX /= tangentLength;
+    tangentY /= tangentLength;
+    tangentZ /= tangentLength;
+    const angle = Math.acos(dot) * alpha;
+    const fromWeight = Math.cos(angle);
+    const tangentWeight = Math.sin(angle);
+    directionX = fromX * fromWeight + tangentX * tangentWeight;
+    directionY = fromY * fromWeight + tangentY * tangentWeight;
+    directionZ = fromZ * fromWeight + tangentZ * tangentWeight;
+  }
+
+  return [directionX * radius, directionY * radius, directionZ * radius];
+}
+
 export function sampleSolarFeatureEntryPoint(
   entry: SolarFeatureBlendEntry | null | undefined,
   phase: number,
@@ -165,15 +252,25 @@ export function sampleSolarFeatureEntryPoint(
   const toWeight = Number(entry?.toWeight);
   const hasFrom = Number.isFinite(fromWeight) ? fromWeight > 0.5 : true;
   const hasTo = Number.isFinite(toWeight) ? toWeight > 0.5 : true;
+  const alpha = clampUnit(Number.isFinite(blendAlpha) ? blendAlpha : 1);
+
+  // Outside a live cross-fade both sides normally reference the same feature.
+  // Avoid sampling the same arc twice on every animation frame.
+  if (hasFrom && hasTo && entry?.fromFeature === entry?.toFeature) {
+    return sampleCoronalArcPoint(entry?.toFeature?.arc, phase);
+  }
+  if (hasFrom && hasTo && alpha <= 0) {
+    return sampleCoronalArcPoint(entry?.fromFeature?.arc, phase);
+  }
+  if (hasFrom && hasTo && alpha >= 1) {
+    return sampleCoronalArcPoint(entry?.toFeature?.arc, phase);
+  }
+
   const fromPoint = hasFrom ? sampleCoronalArcPoint(entry?.fromFeature?.arc, phase) : null;
   const toPoint = hasTo ? sampleCoronalArcPoint(entry?.toFeature?.arc, phase) : null;
 
   if (fromPoint && toPoint && hasFrom && hasTo) {
-    return [
-      lerpNumber(fromPoint[0], toPoint[0], blendAlpha),
-      lerpNumber(fromPoint[1], toPoint[1], blendAlpha),
-      lerpNumber(fromPoint[2], toPoint[2], blendAlpha)
-    ];
+    return sphericalInterpolateArcPoint(fromPoint, toPoint, alpha);
   }
   return toPoint ?? fromPoint;
 }

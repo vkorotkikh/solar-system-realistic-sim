@@ -1,0 +1,10 @@
+{
+  "revision": "b072d32191217492714ed869a04aa03500cd48f6",
+  "node": "v22.23.2",
+  "chromium": "/home/nomad/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
+  "firefox": "/home/nomad/.cache/ms-playwright/firefox-1555/firefox/firefox",
+  "webkitWrapper": "/tmp/solar-frame-lifecycle-webkit-20261014/webkit-wrapper.sh",
+  "display": ":0",
+  "waylandDisplay": "wayland-0",
+  "xdgRuntimeDir": "/run/user/1000"
+}

@@ -1,83 +1,177 @@
 {
-  "version": 1,
-  "generated_utc": "2026-03-04T09:18:40Z",
-  "description": "Phase-1 deterministic main-belt-oriented asteroid corpus.",
+  "checksum_algorithm_sha256": "sha256",
+  "checksum_sha256": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a",
+  "counts": {
+    "orbit_class": {
+      "IMB": 0,
+      "MBA": 93764,
+      "OMB": 6236
+    },
+    "taxonomy": {
+      "C": 592,
+      "M": 37,
+      "S": 738,
+      "unknown": 98633
+    }
+  },
+  "description": "Largest-first prefix of diameter-bearing JPL main-belt asteroids; not a representative population sample.",
+  "fidelity": {
+    "albedo": "SBDB source value or unknown; no assumed albedo",
+    "appearance": "colors and irregularity are illustrative",
+    "diameter": "SBDB-supplied diameter in km; no magnitude-derived diameters in this population",
+    "dynamics": "quantized fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris",
+    "integrity": "SHA-256 binds artifact bytes only, not scientific accuracy",
+    "period": "SBDB full-prec=true per (days), rounded only to ACBF float32",
+    "status": "not-independently-validated",
+    "taxonomy": "coarse visual families from observed spec_T/spec_B; original labels remain in pinned input; no semimajor-axis inference; X/E are not metallic M"
+  },
+  "generated_utc": "2026-10-14T05:23:55.687392Z",
+  "population_policy": {
+    "display_prefix_50000": {
+      "a_au_counts": [
+        4142,
+        12334,
+        33524
+      ],
+      "a_au_edges": [
+        2,
+        2.5,
+        2.82,
+        3.500001
+      ],
+      "count": 50000,
+      "diameter_max_km": 939.4,
+      "diameter_min_km": 4.662,
+      "fraction_of_stored": 0.5,
+      "inclination_deg_counts": [
+        10278,
+        13294,
+        20879,
+        5549
+      ],
+      "inclination_deg_edges": [
+        0,
+        5,
+        10,
+        20,
+        180.000001
+      ],
+      "taxonomy": {
+        "C": 587,
+        "M": 37,
+        "S": 709,
+        "unknown": 48667
+      },
+      "unknown_albedo_count": 85
+    },
+    "order": [
+      "diameter_km descending",
+      "source_id ascending for ties"
+    ],
+    "representative": false,
+    "scope": "known SBDB diameters, MBA/IMB/OMB, 2 <= a <= 3.5 AU",
+    "selection": "largest-first-prefix",
+    "stored": {
+      "a_au_counts": [
+        13724,
+        32316,
+        53960
+      ],
+      "a_au_edges": [
+        2,
+        2.5,
+        2.82,
+        3.500001
+      ],
+      "count": 100000,
+      "diameter_max_km": 939.4,
+      "diameter_min_km": 2.797,
+      "inclination_deg_counts": [
+        22267,
+        28553,
+        39856,
+        9324
+      ],
+      "inclination_deg_edges": [
+        0,
+        5,
+        10,
+        20,
+        180.000001
+      ],
+      "taxonomy": {
+        "C": 592,
+        "M": 37,
+        "S": 738,
+        "unknown": 98633
+      },
+      "unknown_albedo_count": 590
+    }
+  },
   "query": {
     "endpoint": "https://ssd-api.jpl.nasa.gov/sbdb_query.api",
-    "fields": [
-      "spkid",
-      "full_name",
-      "H",
-      "diameter",
-      "e",
-      "a",
-      "i",
-      "om",
-      "w",
-      "ma",
-      "per",
-      "epoch",
-      "class",
-      "spec_B",
-      "spec_T"
-    ],
-    "sb_kind": "a",
-    "sort": "-diameter",
-    "limit": 100000,
-    "filters": {
-      "main_belt_class_whitelist": [
-        "IMB",
-        "MBA",
-        "OMB"
+    "fields": "spkid,full_name,H,diameter,albedo,e,a,i,om,w,ma,per,epoch,class,spec_B,spec_T",
+    "full-prec": "true",
+    "limit": "100000",
+    "sb-cdata": "{\"AND\":[\"a|GE|2\",\"a|LE|3.5\",\"diameter|GT|0\"]}",
+    "sb-class": "MBA,IMB,OMB",
+    "sb-kind": "a",
+    "sort": "-diameter,spkid"
+  },
+  "record_layout": {
+    "format": "acbf_v1",
+    "positive_albedo_min_code": 1,
+    "quantization": {
+      "float32": [
+        "epoch_jd",
+        "a_au",
+        "period_days",
+        "diameter_km"
       ],
-      "main_belt_au_min": 2.0,
-      "main_belt_au_max": 3.5
-    }
+      "u16_ranges": {
+        "albedo": [
+          0,
+          1
+        ],
+        "angles_deg": [
+          0,
+          360
+        ],
+        "e": [
+          0,
+          1
+        ],
+        "i_deg": [
+          0,
+          180
+        ]
+      }
+    },
+    "stride_bytes": 36,
+    "unknown_albedo_u16": 0,
+    "unknown_taxonomy_u8": 255
+  },
+  "scientific_references": [
+    "https://ssd-api.jpl.nasa.gov/doc/sbdb_query.html",
+    "https://cneos.jpl.nasa.gov/tools/ast_size_est.html"
+  ],
+  "source": {
+    "captured_utc": "2026-10-14T05:23:55.687392Z",
+    "matching_database_rows": 133963,
+    "sha256": "83c66292a7c6df051a93b8ae450c16d403cbb103c354fbfddd9f59f200e188f6",
+    "signature": {
+      "source": "NASA/JPL SBDB (Small-Body DataBase) Query API",
+      "version": "1.0"
+    },
+    "url": "https://ssd-api.jpl.nasa.gov/sbdb_query.api?fields=spkid%2Cfull_name%2CH%2Cdiameter%2Calbedo%2Ce%2Ca%2Ci%2Com%2Cw%2Cma%2Cper%2Cepoch%2Cclass%2Cspec_B%2Cspec_T&full-prec=true&limit=100000&sb-cdata=%7B%22AND%22%3A%5B%22a%7CGE%7C2%22%2C%22a%7CLE%7C3.5%22%2C%22diameter%7CGT%7C0%22%5D%7D&sb-class=MBA%2CIMB%2COMB&sb-kind=a&sort=-diameter%2Cspkid"
   },
   "source_rows": 100000,
   "stored_count": 100000,
-  "record_layout": {
-    "format": "acbf_v1",
-    "fields": [
-      "source_id",
-      "epoch_jd",
-      "a_au",
-      "e",
-      "i_deg",
-      "ascending_node_deg",
-      "arg_periapsis_deg",
-      "mean_anomaly_deg",
-      "period_days",
-      "diameter_km",
-      "albedo",
-      "taxonomy_index"
-    ],
-    "header": {
-      "magic": "ACBF",
-      "version": 1,
-      "count_u32": true,
-      "stride_bytes": 36
-    }
-  },
   "taxonomy_map": {
     "C": 0,
+    "M": 2,
     "S": 1,
-    "M": 2
+    "unknown": 255
   },
-  "counts": {
-    "taxonomy": {
-      "C": 66362,
-      "S": 14009,
-      "M": 19629
-    },
-    "orbit_class": {
-      "MBA": 93733,
-      "OMB": 6267
-    }
-  },
-  "warnings": [],
-  "checksum": "0xf1f80244",
-  "checksum_algorithm": "fnv1a32",
-  "checksum_sha256": "a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d",
-  "checksum_algorithm_sha256": "sha256"
+  "version": 1
 }

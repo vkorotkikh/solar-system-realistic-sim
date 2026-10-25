@@ -18,6 +18,9 @@
 // FUNDAMENTAL CONSTANTS (CGS unless noted)
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { SOURCE_COORDINATES, sourceEclipticDirection, intrinsicBetaForApparentSpeed, type SourceKey } from './sourceCoordinates';
+import type { ChannelDefinition, SmbhSource } from './smbhTypes';
+
 export const C_CM_S = 2.998e10;
 export const C_KM_S = 2.998e5;
 export const C_AU_YR = 63241.1;
@@ -81,10 +84,13 @@ export const SGR_A = Object.freeze({
     pevatronConfirmed: true,            // HESS 2016, 2024
     pevatronMaxEnergyEV: 1e15,
 
-    jetBeta: 0.90,                      // conservative for current state
-    jetThetaDeg: 35,                    // observer angle estimate
+    jetBeta: 0.90,                      // illustrative, not a detected jet measurement
+    jetThetaDeg: 35,                    // assumed inclination
+    jetModelStatus: 'hypothetical',
+    jetModelNote: 'Sgr A* jet speed and inclination are hypothetical inputs.',
 
-    direction: [-0.05, -0.86, 0.5]      // approximate galactic coordinates
+    coordinates: SOURCE_COORDINATES.SagittariusA,
+    direction: sourceEclipticDirection('SagittariusA')
 });
 
 export const CEN_A = Object.freeze({
@@ -99,10 +105,14 @@ export const CEN_A = Object.freeze({
     distanceCm: 3.8 * 3.086e24,
     distanceLy: 12_400_000,
 
-    jetBetaSpine: 0.94,                // X-ray fast core (Bogensberger+ 2024)
-    jetBetaSheath: 0.80,                // radio slower envelope
-    jetBetaAppXray: 2.7,                // apparent superluminal (confirmed)
-    jetThetaDeg: 15,                  // estimated viewing angle
+    jetBetaSpine: intrinsicBetaForApparentSpeed(2.7, 15),
+    jetBetaSheath: intrinsicBetaForApparentSpeed(0.8, 15),
+    jetBetaAppXray: 2.7,                // AX4 knot: 2.7 +/- 0.4 c, not bulk flow
+    jetBetaAppRadio: 0.8,               // radio knot: 0.8 +/- 0.1 c
+    jetThetaDeg: 15,                    // assumed; beta values derived at this angle
+    jetModelStatus: 'illustrative',
+    jetModelNote: 'Cen A knot apparent speeds are observed; 15 deg inclination and intrinsic speeds are illustrative.',
+    jetReference: 'https://arxiv.org/abs/2408.14078',
     jetPowerErgS: 1e43,
     jetOpeningDeg: 12,
 
@@ -115,7 +125,8 @@ export const CEN_A = Object.freeze({
     egmfUpperLimitNG: 6.7,              // nG·Mpc^(1/2)
     activityTimescaleMyr: 30,           // active within past ~30 Myr
 
-    direction: [-0.35, -0.45, 0.8]
+    coordinates: SOURCE_COORDINATES.CentaurusA,
+    direction: sourceEclipticDirection('CentaurusA')
 });
 
 export const MAFFEI_1 = Object.freeze({
@@ -136,8 +147,11 @@ export const MAFFEI_1 = Object.freeze({
 
     jetBeta: 0.92,                      // hypothetical
     jetThetaDeg: 20,                    // hypothetical
+    jetModelStatus: 'hypothetical',
+    jetModelNote: 'Maffei 1 outburst, jet speed and inclination are hypothetical; AGN status is unknown.',
 
-    direction: [0.23, 0.18, 0.96]
+    coordinates: SOURCE_COORDINATES.Maffei1,
+    direction: sourceEclipticDirection('Maffei1')
 });
 
 export const M87 = Object.freeze({
@@ -153,13 +167,18 @@ export const M87 = Object.freeze({
     distanceLy: 54_700_000,
 
     rSchwarzschildCm: schwarzschildRadiusCm(6.5e9),         // 1.92e15 cm = 128 AU — bigger than Pluto's orbit
-    jetBeta: 0.98,
-    jetBetaApp: 6.3,                   // Biretta+ 1999
+    jetBeta: intrinsicBetaForApparentSpeed(6.3, 15),
+    jetBetaApp: 6.3,                    // illustrative target, not a catalog measurement
+    jetThetaDeg: 15,                    // assumed inclination
+    jetModelStatus: 'illustrative',
+    jetModelNote: 'M87 uses an illustrative 6.3 c apparent knot speed at assumed 15 deg; not a measured bulk-flow solution.',
+    jetReference: 'https://arxiv.org/abs/1308.4633', // measured knot speeds vary by feature/epoch
     jetPowerErgS: 1e44,
     jetLengthLy: 5000,                  // visible optical
     jetLengthRadioKpc: 100,
 
-    direction: [0.1, 0.9, 0.4]          // approximate
+    coordinates: SOURCE_COORDINATES.M87,
+    direction: sourceEclipticDirection('M87')
 });
 
 export const SOURCE_CATALOG = Object.freeze({
@@ -167,7 +186,7 @@ export const SOURCE_CATALOG = Object.freeze({
     CentaurusA: CEN_A,
     Maffei1: MAFFEI_1,
     M87: M87
-});
+} satisfies Record<SourceKey, SmbhSource>);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERSTELLAR MEDIUM PARAMETERS
@@ -297,9 +316,10 @@ export const EVENT_PRESETS = Object.freeze({
     SgrA_WarpWave_H29: {
         label: 'H29: The Metric-Frame-Dragging Slipstream',
         sourceKey: 'SagittariusA',
+        hypothesis: 'h29',
         energyErg: 5e54,
         lorentzFactor: 1.0,
-        description: 'Solitary Alcubierre-like warp bubble. Pure spatial translation, no kinetic acceleration.'
+        description: 'Hypothetical Alcubierre-like display distortion; no change to canonical orbital state.'
     }
 });
 
@@ -373,7 +393,7 @@ export const CHANNEL_DEFS = Object.freeze([
         energyFraction: 0.44,
         description: 'BM ultrarelativistic → Sedov-Taylor. The Fermi Bubbles ARE this.'
     }
-]);
+] satisfies ChannelDefinition[]);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NANOGRAV GW BACKGROUND

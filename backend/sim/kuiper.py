@@ -66,6 +66,7 @@ class KuiperBeltEngine:
         self._massive_count = 0  # number of massive bodies (Sun + planets)
         self._frame_counter = 0
         self._binary_pairs: List[List[int]] = []  # [[primary_idx, companion_idx], ...]
+        self._cached_state: Optional[Dict[str, Any]] = None
 
     # ── Binary KBO parameters ─────────────────────────────────────────
     # ~30% of cold classical KBOs are binaries (Noll+ 2008)
@@ -124,6 +125,10 @@ class KuiperBeltEngine:
         inclination_rad: float,
         mass_ratio: float,
     ) -> tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]:
+        if not math.isfinite(separation_au) or separation_au <= 0:
+            raise ValueError("binary semimajor axis must be finite and positive")
+        if not math.isfinite(mass_ratio) or mass_ratio <= 0:
+            raise ValueError("companion/primary mass ratio must be finite and positive")
         radial = cls._normalize(base_pos)
         vel_proj = cls._dot(base_vel, radial)
         tangential_vec = (
@@ -154,7 +159,7 @@ class KuiperBeltEngine:
         y_orb = separation_au * sqrt_term * sin_e
 
         mu = 4.0 * math.pi * math.pi * cls.NOMINAL_BINARY_TOTAL_MASS_MSUN
-        mean_motion = math.sqrt(mu / max(1e-12, separation_au ** 3))
+        mean_motion = math.sqrt(mu / separation_au ** 3)
         denom = max(1e-12, 1.0 - eccentricity * cos_e)
         vx_orb = -separation_au * mean_motion * sin_e / denom
         vy_orb = separation_au * mean_motion * sqrt_term * cos_e / denom
@@ -170,7 +175,8 @@ class KuiperBeltEngine:
             radial[2] * vx_orb + tilted_tangent[2] * vy_orb,
         )
 
-        companion_fraction = 1.0 / (1.0 + max(0.05, mass_ratio))
+        # q = m_companion / m_primary. The primary has the smaller offset.
+        companion_fraction = mass_ratio / (1.0 + mass_ratio)
         primary_fraction = 1.0 - companion_fraction
         primary_offset = (
             -rel_pos[0] * companion_fraction,
@@ -267,6 +273,7 @@ class KuiperBeltEngine:
         jupiter_vel = _scale_velocity(jupiter_vel, velocity_scale)
         saturn_vel = _scale_velocity(saturn_vel, velocity_scale)
 
+        self._cached_state = None
         self.sim = rebound.Simulation()
         self.sim.units = ("yr", "AU", "Msun")
         self.sim.integrator = "whfast"
@@ -311,6 +318,7 @@ class KuiperBeltEngine:
         self._massive_count = self.sim.N
 
         self._verify_perturbers_bound(perturbers, velocity_units)
+        self.sim.N_active = self._massive_count
 
         # ── Test particles ────────────────────────────────────────────
         center_r = math.sqrt(center_au[0] ** 2 + center_au[1] ** 2)
@@ -428,6 +436,7 @@ class KuiperBeltEngine:
         self.sim = None
         self._massive_count = 0
         self._binary_pairs = []
+        self._cached_state = None
 
     # ── Integration ───────────────────────────────────────────────────
 
@@ -437,6 +446,7 @@ class KuiperBeltEngine:
         target = self.sim.t + dt_days / 365.25
         self.sim.integrate(target)
         self._frame_counter += 1
+        self._cached_state = None
 
     # ── State output ──────────────────────────────────────────────────
 
@@ -448,23 +458,29 @@ class KuiperBeltEngine:
         """Return particle positions + binary pair metadata."""
         if not self.active or self.sim is None:
             return None
+        if self._cached_state is not None:
+            return self._cached_state
 
         positions = []
         velocities = []
         for i in range(self._massive_count, self.sim.N):
             p = self.sim.particles[i]
             positions.append([
-                round(p.x, 5),
-                round(p.y, 5),
-                round(p.z, 5),
+                round(p.x, 10),
+                round(p.y, 10),
+                round(p.z, 10),
             ])
             velocities.append([
-                round(p.vx, 8),
-                round(p.vy, 8),
-                round(p.vz, 8),
+                round(p.vx, 12),
+                round(p.vy, 12),
+                round(p.vz, 12),
             ])
-        return {
+        self._cached_state = {
             "positions": positions,
             "velocities": velocities,
             "binary_pairs": self._binary_pairs,
+            "position_units": "AU",
+            "velocity_units": NATIVE_VELOCITY_UNITS,
+            "binary_model": "osculating_initial_state_only_massless_no_mutual_gravity",
         }
+        return self._cached_state

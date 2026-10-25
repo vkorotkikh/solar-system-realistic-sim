@@ -1,0 +1,12 @@
+{
+  "file": "src/sunController.ts:111-116",
+  "head": "68c3f85",
+  "normalization_peak_month": 66.1362230551458,
+  "true_peak_month_by_sampling": 58.39,
+  "unclamped_overshoot_ratio": 1.0343309710166895,
+  "clamped_plateau_month_range": [
+    51.03,
+    66.13
+  ],
+  "plateau_sample_count": 1511
+}

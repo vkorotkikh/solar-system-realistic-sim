@@ -346,6 +346,9 @@ socket.create_connection = _create_connection
 
 
 _PYTEST_GUARD = '''"""Reject non-evidence outcomes on required R3/R4 nodes."""
+import json
+import os
+import sys
 import pytest
 
 def pytest_collection_modifyitems(items):
@@ -357,6 +360,85 @@ def pytest_collection_modifyitems(items):
             raise pytest.UsageError(
                 f"R3/R4 skip/xfail marker forbidden on required node {item.nodeid}: {joined}"
             )
+
+def pytest_configure(config):
+    request = os.environ.get("R3_R4_MUTATION_REQUEST")
+    config._r3_r4_mutation = None
+    if request is None:
+        return
+    request = json.loads(request)
+    state = {
+        "schema_version": 1,
+        "node": request["node"],
+        "reports": [],
+        "trace_intact": True,
+        "hunks": [dict(hunk, executed_lines=[]) for hunk in request["hunks"]],
+    }
+    targets = {}
+    for index, hunk in enumerate(state["hunks"]):
+        filename = os.path.abspath(os.path.join(request["root"], hunk["path"]))
+        lines = targets.setdefault(filename, {})
+        for line in hunk["lines"]:
+            lines.setdefault(line, []).append(index)
+    config._r3_r4_mutation = (request, state, targets)
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    capture = item.config._r3_r4_mutation
+    if capture is None:
+        yield
+        return
+    request, state, targets = capture
+    previous = sys.gettrace()
+
+    def trace(frame, event, arg):
+        lines = targets.get(frame.f_code.co_filename)
+        if lines is None:
+            return None
+        if event == "line":
+            for index in lines.get(frame.f_lineno, ()):
+                executed = state["hunks"][index]["executed_lines"]
+                if frame.f_lineno not in executed:
+                    executed.append(frame.f_lineno)
+        return trace
+
+    sys.settrace(trace)
+    try:
+        yield
+    finally:
+        state["trace_intact"] = state["trace_intact"] and sys.gettrace() is trace
+        sys.settrace(previous)
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    capture = item.config._r3_r4_mutation
+    if capture is None:
+        return
+    request, state, targets = capture
+    exception = call.excinfo.value if call.excinfo is not None else None
+    state["reports"].append({
+        "node": item.nodeid,
+        "phase": call.when,
+        "outcome": report.outcome,
+        "exception_type": (
+            type(exception).__module__ + "." + type(exception).__qualname__
+            if exception is not None else None
+        ),
+        "is_assertion_error": isinstance(exception, AssertionError),
+        "exception_message": str(exception) if exception is not None else None,
+    })
+
+def pytest_sessionfinish(session, exitstatus):
+    capture = session.config._r3_r4_mutation
+    if capture is None or session.config.option.collectonly:
+        return
+    request, state, targets = capture
+    for hunk in state["hunks"]:
+        hunk["executed_lines"].sort()
+    with open(request["output"], "x", encoding="utf-8") as stream:
+        json.dump(state, stream, indent=2, sort_keys=True)
 '''
 
 
@@ -364,6 +446,8 @@ def _test_environment(
     repo: Path, manifest: dict[str, Any], guard_dir: Path,
 ) -> dict[str, str]:
     env = os.environ.copy()
+    # Only this verifier may supply the per-mutant runtime-evidence request.
+    env.pop("R3_R4_MUTATION_REQUEST", None)
     env.update(manifest["environment"]["variables"])
     env.update({
         "TZ": "UTC",
@@ -541,6 +625,111 @@ def _baseline(
     return {"collected": len(nodes), "passed": counts["passed"]}
 
 
+def _mutation_execution_hunks(
+    repo: Path, mutation: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Derive new-side line targets from the applied diff, never stale headers.
+
+    Every changed hunk must execute an added nonblank/noncomment line during
+    the test call. Deletion-only hunks fail closed: nearby unchanged execution
+    cannot establish that a removed scientific operation was exercised.
+    """
+    hunks: list[dict[str, Any]] = []
+    header = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+    for file_name in mutation["production_files"]:
+        diff = _git(
+            repo, "diff", "--no-ext-diff", "--no-color", "--no-renames",
+            "--unified=3", "--", file_name,
+        )
+        if diff.returncode != 0:
+            raise VerificationError(f"cannot inspect mutation {mutation['id']} diff: {diff.stderr}")
+        current: dict[str, Any] | None = None
+        new_line = 0
+        file_hunks: list[dict[str, Any]] = []
+        for line in diff.stdout.splitlines():
+            match = header.match(line)
+            if match:
+                current = {"path": file_name, "lines": []}
+                file_hunks.append(current)
+                new_line = int(match.group(1))
+            elif current is not None and line.startswith("+"):
+                content = line[1:].strip()
+                if content and not content.startswith("#"):
+                    current["lines"].append(new_line)
+                new_line += 1
+            elif current is not None and line.startswith(" "):
+                new_line += 1
+        if not file_hunks:
+            raise VerificationError(f"mutation {mutation['id']} has no production hunks in {file_name}")
+        for hunk in file_hunks:
+            if not hunk["lines"]:
+                raise VerificationError(
+                    f"mutation {mutation['id']} hunk in {file_name} has no added executable-line candidates"
+                )
+        hunks.extend(file_hunks)
+    return hunks
+
+
+def _validate_mutation_evidence(
+    path: Path, mutation: dict[str, Any], hunks: list[dict[str, Any]],
+) -> None:
+    """Accept only a marked call AssertionError with changed-hunk execution."""
+    label = f"mutation {mutation['id']}"
+    try:
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise VerificationError(f"{label} missing or invalid runtime evidence: {exc}") from exc
+    if (
+        not isinstance(evidence, dict)
+        or evidence.get("schema_version") != 1
+        or evidence.get("node") != mutation["node"]
+    ):
+        raise VerificationError(f"{label} runtime evidence identity mismatch")
+    reports = evidence.get("reports")
+    if (
+        not isinstance(reports, list)
+        or len(reports) != 3
+        or any(not isinstance(report, dict) for report in reports)
+        or [(report.get("node"), report.get("phase"), report.get("outcome")) for report in reports]
+        != [(mutation["node"], phase, outcome) for phase, outcome in (
+            ("setup", "passed"), ("call", "failed"), ("teardown", "passed"),
+        )]
+        or reports[1].get("is_assertion_error") is not True
+        or not isinstance(reports[1].get("exception_type"), str)
+    ):
+        raise VerificationError(f"{label} requires a call-phase AssertionError with clean setup/teardown")
+    message = reports[1].get("exception_message")
+    if not isinstance(message, str) or not re.search(
+        mutation["expected_assertion_regex"], message, re.MULTILINE,
+    ):
+        raise VerificationError(
+            f"{label} expected assertion regex did not match the actual exception: "
+            f"{mutation['expected_assertion_regex']!r}"
+        )
+    if evidence.get("trace_intact") is not True:
+        raise VerificationError(f"{label} call-phase execution tracer was replaced")
+    observed = evidence.get("hunks")
+    if not isinstance(observed, list) or len(observed) != len(hunks):
+        raise VerificationError(f"{label} production-hunk evidence mismatch")
+    for expected, actual in zip(hunks, observed):
+        if (
+            not isinstance(actual, dict)
+            or actual.get("path") != expected["path"]
+            or actual.get("lines") != expected["lines"]
+        ):
+            raise VerificationError(f"{label} production-hunk evidence mismatch")
+        executed = actual.get("executed_lines")
+        if (
+            not isinstance(executed, list)
+            or not executed
+            or any(type(line) is not int or line not in expected["lines"] for line in executed)
+        ):
+            raise VerificationError(
+                f"{label} altered production hunk was not executed during the test call: "
+                f"{expected['path']}:{expected['lines']}"
+            )
+
+
 def _mutation(
     source_repo: Path,
     base_commit: str,
@@ -581,6 +770,14 @@ def _mutation(
 
         env = _test_environment(temp_root, manifest, guard_dir)
         node = mutation["node"]
+        hunks = _mutation_execution_hunks(temp_root, mutation)
+        evidence_path = (artifacts / f"mutant-{mutation['id']}.evidence.json").resolve()
+        if evidence_path.exists():
+            raise VerificationError(f"mutation runtime evidence already exists: {evidence_path}")
+        env["R3_R4_MUTATION_REQUEST"] = json.dumps({
+            "root": str(temp_root.resolve()), "node": node,
+            "hunks": hunks, "output": str(evidence_path),
+        })
         try:
             _collect_exact(temp_root, [node], manifest, env, label="mutant")
         except VerificationError as exc:
@@ -602,13 +799,7 @@ def _mutation(
             raise VerificationError(
                 f"mutation {mutation['id']} was not killed by one test assertion: {counts}\n{details}",
             )
-        evidence = result.stdout + result.stderr
-        junit_text = (artifacts / f"mutant-{mutation['id']}.xml").read_text()
-        if not re.search(mutation["expected_assertion_regex"], evidence + junit_text, re.MULTILINE):
-            raise VerificationError(
-                f"mutation {mutation['id']} expected assertion regex did not match: "
-                f"{mutation['expected_assertion_regex']!r}",
-            )
+        _validate_mutation_evidence(evidence_path, mutation, hunks)
         return {"id": mutation["id"], "status": "killed", "node": node}
     finally:
         if added:

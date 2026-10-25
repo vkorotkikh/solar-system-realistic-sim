@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "scope": "local real Uvicorn two-worker network profile with HTTP reverse proxy",
+  "requestCount": 64,
+  "concurrency": 16,
+  "requestTimeoutSeconds": 5,
+  "startupBudgetSeconds": 30,
+  "remoteProductionVerified": false,
+  "firstLivenessSeconds": 0.6192972970020492,
+  "authenticatedRequestsPassed": 64,
+  "latencySeconds": {
+    "median": 0.01410519698401913,
+    "maximum": 1.043243052001344
+  },
+  "directAndProxyAuthCorsPassed": true,
+  "workerPids": [
+    "1353651",
+    "1353652"
+  ],
+  "servingWorkerPids": [
+    "1353651",
+    "1353652"
+  ]
+}

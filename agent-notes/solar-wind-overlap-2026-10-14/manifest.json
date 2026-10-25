@@ -1,0 +1,32 @@
+{
+  "schema": "external_solar_wind_overlap_capture_v1",
+  "purpose": "Frozen independent observations for an exact-time external NASA WSA forecast comparison; not application calibration.",
+  "observation": {
+    "url": "https://services.swpc.noaa.gov/json/ace/swepam/ace_swepam_1h.json",
+    "file": "ace_swepam_1h.json",
+    "headers": "ace_swepam_1h.headers",
+    "httpResponseDateUtc": "2026-10-14T06:23:24Z",
+    "lastModifiedUtc": "2026-10-14T06:22:40Z",
+    "bodyBytes": 73431,
+    "sha256": "814ba7b31342ecb4805c5ad52d03b564074bc53c82542df475d23a9fe1f25223",
+    "headersSha256": "56e5325dd3842debf1488ac1e189e38faffdcb55c2d0bd3159c5dffe52910a0a",
+    "rows": 618,
+    "admission": "dsflag == 0 and finite strictly positive non-boolean speed"
+  },
+  "forecast": {
+    "url": "https://ccmc.gsfc.nasa.gov/wsa-dashboard/api/get_solarwind_simple?start_date=2026-10-10&end_date=2026-10-14&input_map=AGONG&sat=ACE",
+    "file": "../solar-reference-2026-10-14/nasa_wsa_ace.json",
+    "sha256": "3eeb807edca46fc8206387f40797de80aaf59ca4ff667ee60255a7b04c6755c0",
+    "productDocumentation": "https://ccmc.gsfc.nasa.gov/community-tools/WSA-Dashboard/",
+    "description": "NASA WSA ADAPT-GONG ensemble-average four-day-ahead speed forecast at ACE, six-hour cadence",
+    "sameProductAsCapturedGongZCoronalMap": false
+  },
+  "comparison": {
+    "file": "comparison.json",
+    "command": "python scripts/compare_wsa_observation_overlap.py",
+    "pairing": "Exact UTC timestamps only; no lag search, interpolation, amplitude adjustment or fitted calibration",
+    "usableForecastRows": 13,
+    "matchedRows": 11,
+    "applicationCalibrationPassed": false
+  }
+}

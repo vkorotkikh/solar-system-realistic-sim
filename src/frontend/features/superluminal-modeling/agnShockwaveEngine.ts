@@ -14,25 +14,75 @@ import { Vector3 } from 'three';
 import { clamp } from '../../../constants';
 import {
     SOURCE_CATALOG, EVENT_PRESETS,
-    SGR_A, C_CM_S
+    SGR_A, CEN_A, MAFFEI_1, M87, AU_CM, C_CM_S
 } from './smbhPhysicsConstants';
 import {
     computeMultiMessengerTimeline,
     yearsToDisplaySeconds,
-    dopplerFactor,
-    timeCompressionFactor,
-    lorentzGamma,
     generateStochasticFlares
 } from './smbhPropagation';
+import type { SourceKey } from './sourceCoordinates';
+import type { createGWVisualization } from '../solar/gravitationalWaves';
+import type { MessengerChannel as Channel, MultiMessengerTimeline as Physics, StochasticFlare } from './smbhTypes';
+
+type DisplayChannel = Channel & { arrivalDisplaySec: number };
+type Source = (typeof SOURCE_CATALOG)[SourceKey];
+type GwDisplayer = Pick<ReturnType<typeof createGWVisualization>, 'toggle' | 'setParams'>
+    & Partial<Pick<ReturnType<typeof createGWVisualization>, 'reset'>>;
+
+interface SolarResponder {
+    triggerFlareBurst?: (intensity: number, count: number) => void;
+    triggerMassiveAgnFlare?: (intensity: number) => void;
+    triggerWarpWaveImpact?: (energyErg: number, smbhMassG: number) => void;
+}
+
+export interface AgnEventOptions {
+    energyErg?: number;
+    thetaObsDeg?: number;
+    preset?: string;
+    hypothesis?: string;
+    scenario?: string;
+}
+
+interface DisplayTimeline {
+    channels: DisplayChannel[];
+    gwArrivalDisplaySec: number;
+    frontTravelDisplaySec: number;
+    isH29Mode: boolean;
+    totalDisplaySec: number;
+}
+
+interface AgnPreset {
+    sourceKey: string;
+    energyErg: number;
+    hypothesis?: string;
+}
+
+function isSourceKey(key: string): key is SourceKey {
+    return Object.hasOwn(SOURCE_CATALOG, key);
+}
+
+/** Shared UI/engine dispatch: a named preset owns its source and model. */
+export function resolveAgnSelection(source: string, options: AgnEventOptions = {}) {
+    const key = options.preset;
+    const preset: AgnPreset | null = key && Object.hasOwn(EVENT_PRESETS, key)
+        ? EVENT_PRESETS[key as keyof typeof EVENT_PRESETS] : null;
+    const selectedSource = preset?.sourceKey ?? source;
+    const sourceKey: SourceKey = isSourceKey(selectedSource) ? selectedSource : 'SagittariusA';
+    const hypothesis = preset
+        ? (preset.hypothesis ?? 'compound')
+        : `${options.hypothesis ?? options.scenario ?? 'compound'}`.toLowerCase().trim();
+    return { sourceKey, source: SOURCE_CATALOG[sourceKey], hypothesis, energyErg: preset?.energyErg ?? options.energyErg ?? 1e56 };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DIRECTION VECTORS (scene-space approximations)
+// SOURCE DIRECTIONS (mean ecliptic J2000, shared with canonical model axes)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const SAGITTARIUS_A_DIR = new Vector3(-0.05, -0.86, 0.5).normalize();
-export const CENTAURUS_A_DIR = new Vector3(-0.35, -0.45, 0.8).normalize();
-export const MAFFEI_1_DIR = new Vector3(0.23, 0.18, 0.96).normalize();
-export const M87_DIR = new Vector3(0.1, 0.9, 0.4).normalize();
+export const SAGITTARIUS_A_DIR = new Vector3(...SGR_A.direction).normalize();
+export const CENTAURUS_A_DIR = new Vector3(...CEN_A.direction).normalize();
+export const MAFFEI_1_DIR = new Vector3(...MAFFEI_1.direction).normalize();
+export const M87_DIR = new Vector3(...M87.direction).normalize();
 
 const SOURCE_DIRECTIONS = {
     SagittariusA: SAGITTARIUS_A_DIR,
@@ -46,12 +96,12 @@ const H29_CHANNELS = new Set(['metric_slipstream', 'warpMetric']);
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function toRadians(deg) {
+function toRadians(deg: number) {
     return (deg * Math.PI) / 180;
 }
 
-function channelShaderParams(channel: any, elapsedFraction: number) {
-    const freqMap: any = {
+function channelShaderParams(channel: Channel, elapsedFraction: number) {
+    const freqMap: Readonly<Record<string, number | undefined>> = {
         gw: 12,
         em: 18,
         neutrino: 15,
@@ -62,7 +112,7 @@ function channelShaderParams(channel: any, elapsedFraction: number) {
         metric_slipstream: 3,
         warpMetric: 2
     };
-    const strainScale: any = {
+    const strainScale: Readonly<Record<string, number | undefined>> = {
         gw: 0.04,
         em: 0.06,
         neutrino: 0.02,
@@ -79,7 +129,7 @@ function channelShaderParams(channel: any, elapsedFraction: number) {
     };
 }
 
-function isMetricSlipstreamChannel(channel) {
+function isMetricSlipstreamChannel(channel: Channel) {
     return H29_CHANNELS.has(channel?.key);
 }
 
@@ -94,46 +144,62 @@ function isMetricSlipstreamChannel(channel) {
  * @param {Object} solarResponder  - flare callback interface:
  *   { triggerFlareBurst(intensity, count), triggerMassiveAgnFlare(intensity) }
  */
-export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
+export function createAgnShockwaveEngine(
+    gwDisplayer: GwDisplayer | null,
+    solarResponder: SolarResponder | null,
+    { random = Math.random, onReset }: { random?: () => number; onReset?: () => void } = {}
+) {
     let isActive = false;
     let elapsedSec = 0;
     let currentDistanceUnits = 0;
 
-    let currentSourceKey = 'SagittariusA';
-    let currentSource = SGR_A;
-    let currentTimeline = null;
-    let currentPhysics = null;
+    let currentSourceKey: SourceKey = 'SagittariusA';
+    let currentSource: Source = SGR_A;
+    let currentTimeline: DisplayTimeline | null = null;
+    let currentPhysics: Physics | null = null;
     let currentEnergyErg = 1e56;
     let currentThetaRad = toRadians(35);
-
-    let shutdownTimer = null;
+    let currentEventIntensity = 1;
 
     let stochasticActive = false;
-    let stochasticFlares = [];
+    let stochasticFlares: StochasticFlare[] = [];
     let stochasticElapsed = 0;
     let stochasticIndex = 0;
+    const stochasticWindowSec = 120;
 
     const frontStartUnits = 180.0;
     let direction = SAGITTARIUS_A_DIR.clone();
 
-    function clearShutdownTimer() {
-        if (shutdownTimer) { clearTimeout(shutdownTimer); shutdownTimer = null; }
-    }
-
     function resetVisuals() {
         if (gwDisplayer) {
+            gwDisplayer.reset?.();
             gwDisplayer.setParams({ isAgnEvent: 0.0, strain: 0.0, shockwaveDist: frontStartUnits });
             gwDisplayer.toggle(false);
         }
+        onReset?.();
     }
 
     function finalizeEvent() {
         isActive = false;
-        clearShutdownTimer();
-        shutdownTimer = setTimeout(resetVisuals, 2500);
+        resetVisuals();
     }
 
-    function triggerSolarResponse(channel) {
+    function resetEvent() {
+        finalizeEvent();
+        currentTimeline = null;
+        currentPhysics = null;
+        elapsedSec = 0;
+        currentDistanceUnits = frontStartUnits;
+        currentEventIntensity = 1;
+    }
+
+    function nextStochasticWindow() {
+        stochasticFlares = generateStochasticFlares(stochasticWindowSec, 0.3, SGR_A.flarePowerLawIndex,
+            undefined, undefined, random);
+        stochasticIndex = 0;
+    }
+
+    function triggerSolarResponse(channel: Channel) {
         if (!solarResponder) return;
         if (isMetricSlipstreamChannel(channel) || channel.key === 'warpMetric') return; // Warp wave is "silent"
         const amp = channel.baseAmplitude;
@@ -144,7 +210,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         }
 
         if (solarResponder.triggerFlareBurst) {
-            const intensityMap = {
+            const intensityMap: Readonly<Record<string, number | undefined>> = {
                 gw: 0.35,
                 em: 0.55,
                 neutrino: 0.1,
@@ -154,7 +220,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
                 metric_slipstream: 0.0,
                 blast: 1.0
             };
-            const countMap = {
+            const countMap: Readonly<Record<string, number | undefined>> = {
                 gw: 1,
                 em: 2,
                 neutrino: 0,
@@ -164,18 +230,18 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
                 metric_slipstream: 0,
                 blast: 2
             };
-            const intensity = (intensityMap[channel.key] || 0.3) * amp;
-            const count = countMap[channel.key] || 1;
+            const intensity = (intensityMap[channel.key] ?? 0.3) * amp;
+            const count = countMap[channel.key] ?? 1;
             if (count > 0) solarResponder.triggerFlareBurst(Math.max(0.2, intensity), count);
         }
     }
 
-    function emitChannel(channel, elapsedFraction) {
+    function emitChannel(channel: DisplayChannel, elapsedFraction: number) {
         channel.fired = true;
 
         // Let the sunController know if the warp wave hit
         if (isMetricSlipstreamChannel(channel) && solarResponder?.triggerWarpWaveImpact) {
-            solarResponder.triggerWarpWaveImpact(currentEnergyErg, SGR_A.massG);
+            solarResponder.triggerWarpWaveImpact(currentEnergyErg, currentSource.massG);
         }
 
         triggerSolarResponse(channel);
@@ -195,7 +261,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         });
     }
 
-    function buildDisplayTimeline(physics, impactTimeSec) {
+    function buildDisplayTimeline(physics: Physics, impactTimeSec: number): DisplayTimeline {
         const channels = physics.channels.map(ch => {
             const displaySec = yearsToDisplaySeconds(ch.arrivalTimeYr);
             return { ...ch, arrivalDisplaySec: displaySec };
@@ -240,25 +306,19 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
          * @param {string} [options.hypothesis]   - 'compound' | 'h29'
          * @param {string} [options.scenario]     - alias for hypothesis
          */
-        triggerEvent(source = 'SagittariusA', impactTimeSec = 10, eventIntensity = 1.0, options = {}) {
-            const hypothesis = `${options.hypothesis || options.scenario || 'compound'}`.toLowerCase().trim();
-            const sourceModel = SOURCE_CATALOG[source] || SGR_A;
-            currentSourceKey = source;
+        triggerEvent(source = 'SagittariusA', impactTimeSec = 10, eventIntensity = 1.0, options: AgnEventOptions = {}) {
+            resetEvent();
+            const selection = resolveAgnSelection(source, options);
+            const sourceModel = SOURCE_CATALOG[selection.sourceKey];
+            currentSourceKey = selection.sourceKey;
             currentSource = sourceModel;
-
-            if (options.preset && EVENT_PRESETS[options.preset]) {
-                const preset = EVENT_PRESETS[options.preset];
-                currentEnergyErg = preset.energyErg;
-            } else {
-                currentEnergyErg = options.energyErg || 1e56;
-            }
-
-            currentThetaRad = toRadians(options.thetaObsDeg || sourceModel.jetThetaDeg || 35);
+            currentEnergyErg = selection.energyErg;
+            currentThetaRad = toRadians(options.thetaObsDeg ?? sourceModel.jetThetaDeg ?? 35);
             const intensity = clamp(eventIntensity, 0.1, 3.0);
+            currentEventIntensity = intensity;
 
             currentPhysics = computeMultiMessengerTimeline(sourceModel, currentEnergyErg, currentThetaRad, {
-                scenario: hypothesis,
-                sourceHypothesis: options.sourceHypothesis
+                scenario: selection.hypothesis
             });
             currentTimeline = buildDisplayTimeline(currentPhysics, impactTimeSec);
 
@@ -270,8 +330,7 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
             isActive = true;
             elapsedSec = 0;
             currentDistanceUnits = frontStartUnits;
-            direction.copy(SOURCE_DIRECTIONS[source] || SAGITTARIUS_A_DIR);
-            clearShutdownTimer();
+            direction.copy(SOURCE_DIRECTIONS[currentSourceKey]);
 
             if (gwDisplayer) {
                 gwDisplayer.toggle(true);
@@ -286,46 +345,45 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         },
 
         /**
-         * Kept so the UI switch stays wired. It no longer changes the front: when a radial front
+         * Deprecated compatibility API; the no-op UI control has been removed. When a radial front
          * reaches the observer does not depend on the frame, and apparent superluminal speed is a
          * transverse (sky-plane) effect.
          */
-        setObserverFrameMode(_enabled) {},
+        setObserverFrameMode(_enabled: boolean) {},
 
         /**
          * Start/stop continuous stochastic flaring background (H6).
          */
-        setStochasticFlaring(enabled) {
+        setStochasticFlaring(enabled: boolean) {
+            if (stochasticActive === Boolean(enabled)) return;
             stochasticActive = Boolean(enabled);
             if (enabled) {
-                stochasticFlares = generateStochasticFlares(120, 0.3, SGR_A.flarePowerLawIndex);
+                nextStochasticWindow();
                 stochasticElapsed = 0;
-                stochasticIndex = 0;
             }
         },
 
         /**
          * Main update loop — called every frame.
          */
-        update(dtSec) {
-            const dt = Math.max(0, Number(dtSec) || 0);
+        update(dtSec: number) {
+            const dt = Number.isFinite(dtSec) ? Math.max(0, dtSec) : 0;
             if (dt <= 0) return;
 
             if (stochasticActive) {
                 stochasticElapsed += dt;
-                while (stochasticIndex < stochasticFlares.length &&
-                    stochasticFlares[stochasticIndex].time <= stochasticElapsed) {
-                    const flare = stochasticFlares[stochasticIndex];
-                    const scaledIntensity = Math.log10(flare.energy) / 43;
-                    if (solarResponder?.triggerFlareBurst) {
-                        solarResponder.triggerFlareBurst(clamp(scaledIntensity, 0.1, 1.5), 1);
+                // Keep the entire window, including its quiet tail; retain overshoot
+                // across windows so a batched update matches many smaller updates.
+                while (true) {
+                    const windowTime = Math.min(stochasticElapsed, stochasticWindowSec);
+                    while (stochasticIndex < stochasticFlares.length && stochasticFlares[stochasticIndex].time <= windowTime) {
+                        const flare = stochasticFlares[stochasticIndex++];
+                        const scaledIntensity = Math.log10(flare.energy) / 43;
+                        solarResponder?.triggerFlareBurst?.(clamp(scaledIntensity, 0.1, 1.5), 1);
                     }
-                    stochasticIndex++;
-                }
-                if (stochasticIndex >= stochasticFlares.length) {
-                    stochasticFlares = generateStochasticFlares(120, 0.3, SGR_A.flarePowerLawIndex);
-                    stochasticElapsed = 0;
-                    stochasticIndex = 0;
+                    if (stochasticElapsed < stochasticWindowSec) break;
+                    stochasticElapsed -= stochasticWindowSec;
+                    nextStochasticWindow();
                 }
             }
 
@@ -359,6 +417,8 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
         },
 
         isActive() { return isActive; },
+        reset: resetEvent,
+        dispose() { stochasticActive = false; stochasticFlares = []; resetEvent(); },
         getDistanceAu() { return currentDistanceUnits; },
         getTimeToImpact() {
             if (!currentTimeline) return 0;
@@ -419,8 +479,8 @@ export function createAgnShockwaveEngine(gwDisplayer, solarResponder) {
                 smbhMassG: currentSource.massG,
                 sourceDistanceCm: currentSource.distanceCm,
                 timeSec: currentPhysicalTimeSec,
-                positionCm: currentDistanceUnits * 1.496e13, // Rough conversion AU -> cm for simple visual scaling
-                amplitude: 1.0, // base physical amplitude handled by smbhPropagation, this is just a modifier
+                positionCm: currentDistanceUnits * AU_CM,
+                amplitude: clamp((currentPhysics?.h29?.shiftStrength ?? 0) * currentEventIntensity, 0, 1),
                 thickness: 0.05
             };
         }

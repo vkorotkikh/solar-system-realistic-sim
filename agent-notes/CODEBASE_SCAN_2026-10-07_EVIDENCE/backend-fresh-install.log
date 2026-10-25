@@ -1,0 +1,463 @@
+backend/tests/test_benchmark_accuracy.py::test_benchmark_uses_strict_reference_integrity
+backend/tests/test_benchmark_accuracy.py::test_benchmark_reports_pass_fail_metrics
+backend/tests/test_benchmark_accuracy.py::test_benchmark_fails_on_checksum_mismatch
+backend/tests/test_benchmark_accuracy.py::test_benchmark_rejects_horizons_before_scenario_evaluation
+backend/tests/test_benchmark_accuracy.py::test_reference_file_byte_limit_precedes_json_parse_and_ephemeris_creation
+backend/tests/test_benchmark_accuracy.py::test_reference_scenario_count_limit_precedes_scenario_iteration
+backend/tests/test_benchmark_accuracy.py::test_direct_benchmark_cancellation_precedes_reference_io
+backend/tests/test_benchmark_accuracy.py::test_reference_artifact_cannot_escape_reference_directory
+backend/tests/test_ephemeris_service_safety.py::test_auto_is_network_free_and_pins_kepler
+backend/tests/test_ephemeris_service_safety.py::test_request_memo_avoids_recomputation_and_charges_context_once
+backend/tests/test_ephemeris_service_safety.py::test_sample_and_contract_are_immutable
+backend/tests/test_ephemeris_service_safety.py::test_auto_rejects_orbitless_body_instead_of_returning_zero_state
+backend/tests/test_ephemeris_service_safety.py::test_explicit_provider_failure_never_falls_back
+backend/tests/test_ephemeris_service_safety.py::test_spice_requests_ecliptic_j2000_and_normalizes_units
+backend/tests/test_ephemeris_service_safety.py::test_failed_spice_import_is_latched
+backend/tests/test_ephemeris_service_safety.py::test_concurrent_spice_callers_wait_for_one_initialization
+backend/tests/test_ephemeris_service_safety.py::test_spice_initialization_wait_obeys_planning_deadline
+backend/tests/test_ephemeris_service_safety.py::test_contextless_spice_initialization_wait_has_an_absolute_cap
+backend/tests/test_ephemeris_service_safety.py::test_horizons_uses_strict_query_bounded_timeout_and_context_budget
+backend/tests/test_ephemeris_service_safety.py::test_all_providers_require_exact_planning_context_before_work
+backend/tests/test_ephemeris_service_safety.py::test_horizons_external_request_budget_stops_unique_epoch_loop
+backend/tests/test_ephemeris_service_safety.py::test_identical_horizons_requests_across_sessions_are_single_flight
+backend/tests/test_ephemeris_service_safety.py::test_single_flight_follower_obeys_its_own_deadline
+backend/tests/test_ephemeris_service_safety.py::test_horizons_outage_cooldown_allows_only_one_half_open_probe
+backend/tests/test_ephemeris_service_safety.py::test_horizons_retry_after_is_clamped_to_published_cooldown_window
+backend/tests/test_ephemeris_service_safety.py::test_single_flight_owner_cancellation_allows_waiter_to_retry
+backend/tests/test_ephemeris_service_safety.py::test_horizons_control_failure_is_not_cached
+backend/tests/test_ephemeris_service_safety.py::test_horizons_success_cache_is_bounded_and_uses_full_contract_key
+backend/tests/test_ephemeris_service_safety.py::test_horizons_slow_transport_stops_waiting_at_absolute_deadline
+backend/tests/test_ephemeris_service_safety.py::test_horizons_transport_is_globally_serialized
+backend/tests/test_ephemeris_service_safety.py::test_horizons_refuses_display_name_fallback_without_network
+backend/tests/test_ephemeris_service_safety.py::test_provider_preflight_rejects_any_unsupported_target_before_network
+backend/tests/test_ephemeris_service_safety.py::test_spice_preflight_checks_all_target_mappings_before_kernel_loading
+backend/tests/test_ephemeris_service_safety.py::test_preflight_rejects_unbounded_and_oversized_inputs_before_iteration
+backend/tests/test_ephemeris_service_safety.py::test_spice_native_call_cancellation_and_deadline_do_not_leak_workers
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (301) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\n\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (399) {source: DE441}\nCenter body name: Sun (0) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\n\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (399) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : ICRF equatorial\n\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (399) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\n\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460401.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (301) alias (399) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\n\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (399) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\nTime scale      : UTC\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_rejects_incompatible_protocol_and_opens_request_circuit[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Earth (399) {source: DE441}\nCenter body name: Sun (10) {source: DE441}\nStart time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nStop  time      : A.D. 2024-Mar-31 00:00:00.0000 TDB\nOutput units    : AU-D\nOutput type     : GEOMETRIC cartesian states\nReference frame : Ecliptic of J2000.0\nVector correction : LT+S\n            JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,\n$$SOE\n2460400.500000000, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\nABERRATIONS AND CORRECTIONS\n Geometric state vectors have NO corrections or aberrations applied.\n"}]
+backend/tests/test_ephemeris_service_safety.py::test_horizons_timeout_opens_request_circuit_after_one_attempt
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_engine_activates
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_binary_pairs_generated
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_binary_pairs_have_valid_indices
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_binary_pairs_are_close
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_binary_pairs_no_overlap
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_state_format_backwards_compatible
+backend/tests/test_kuiper_binary.py::TestBinaryKBOGeneration::test_deactivate_clears_binary_pairs
+backend/tests/test_kuiper_binary.py::TestKuiperBeltEngineLifecycle::test_step_without_crash
+backend/tests/test_kuiper_binary.py::TestKuiperBeltEngineLifecycle::test_should_send_cadence
+backend/tests/test_kuiper_velocity_units.py::test_engine_declares_its_velocity_units
+backend/tests/test_kuiper_velocity_units.py::test_perturbers_are_bound_when_units_are_honoured
+backend/tests/test_kuiper_velocity_units.py::test_wrong_units_are_rejected_rather_than_silently_mis_scaled
+backend/tests/test_kuiper_velocity_units.py::test_unknown_units_are_rejected
+backend/tests/test_kuiper_velocity_units.py::test_engine_is_left_inactive_after_a_rejected_activation
+backend/tests/test_kuiper_velocity_units.py::test_native_units_remain_the_backward_compatible_default
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_rebound_engine_declares_velocity_units
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_tudatpy_engine_declares_the_same_contract_fields
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_non_string_units_raise_activation_error_not_typeerror
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_unit_spellings_are_normalised[au/day]
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_unit_spellings_are_normalised[AU/DAY]
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_unit_spellings_are_normalised[ AU/day ]
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_unit_spellings_are_normalised[AU/d]
+backend/tests/test_kuiper_velocity_units.py::TestUnitDeclarationContract::test_unit_spellings_are_normalised[au/days]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_matches_fixed_endpoint_reference_cases[earth_mars_2024_fixed_endpoints]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_matches_fixed_endpoint_reference_cases[earth_venus_2024_fixed_endpoints]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_matches_fixed_endpoint_reference_cases[earth_jupiter_2024_fixed_endpoints]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_an_exhausted_uncertified_root
+backend/tests/test_lambert_solver_reference.py::test_lambert_vector_validation_reads_at_most_four_values[solver]
+backend/tests/test_lambert_solver_reference.py::test_lambert_vector_validation_reads_at_most_four_values[state_vectors]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_meets_a_strict_time_of_flight_certificate
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_close_but_unbracketed_coarse_sample
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs0]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs1]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs2]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs3]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs4]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs5]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unsafe_numerical_controls[kwargs6]
+backend/tests/test_lambert_solver_reference.py::test_state_vector_wrapper_rejects_nonfinite_velocity
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unbracketed_short_tof[0.1]
+backend/tests/test_lambert_solver_reference.py::test_lambert_solver_rejects_unbracketed_short_tof[1.0]
+backend/tests/test_lambert_solver_reference.py::test_short_tof_solution_must_still_be_bracketed_and_certified[2.0]
+backend/tests/test_lambert_solver_reference.py::test_short_tof_solution_must_still_be_bracketed_and_certified[5.0]
+backend/tests/test_lambert_solver_reference.py::test_short_tof_solution_must_still_be_bracketed_and_certified[10.0]
+backend/tests/test_lambert_solver_reference.py::test_original_short_tof_wrapper_regression_fails_explicitly[2.0]
+backend/tests/test_lambert_solver_reference.py::test_original_short_tof_wrapper_regression_fails_explicitly[5.0]
+backend/tests/test_lambert_solver_reference.py::test_original_short_tof_wrapper_regression_fails_explicitly[10.0]
+backend/tests/test_lambert_state_contract.py::test_direct_leg_publishes_auditable_state_contract_and_targets
+backend/tests/test_lambert_state_contract.py::test_direct_horizons_preflights_both_targets_before_any_network
+backend/tests/test_lambert_state_contract.py::test_low_level_leg_preflights_both_targets_before_any_state_sampling
+backend/tests/test_lambert_state_contract.py::test_public_low_level_leg_charges_budget_before_a_second_evaluation
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-wrong body]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-wrong epoch]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-canonical trajectory]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-mixed across providers]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-provider revisions0]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-provider revisions1]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_incompatible_ephemeris_pairs[<lambda>-target definition]
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_noncanonical_custom_state_objects
+backend/tests/test_lambert_state_contract.py::test_lambert_rejects_contextless_injected_session
+backend/tests/test_lambert_state_contract.py::test_public_operations_reject_session_from_a_different_context
+backend/tests/test_lambert_state_contract.py::test_public_operations_reject_duck_typed_unmetered_sessions
+backend/tests/test_local_system_manifests.py::test_alpha_centauri_manifest_keeps_only_archive_listed_planets
+backend/tests/test_local_system_manifests.py::test_barnards_star_manifest_tracks_current_confirmed_compact_system
+backend/tests/test_local_system_manifests.py::test_sirius_manifest_excludes_unconfirmed_planets
+backend/tests/test_local_system_manifests.py::test_local_system_manifest_orbits_are_kepler_consistent[alpha-centauri.json-0.02]
+backend/tests/test_local_system_manifests.py::test_local_system_manifest_orbits_are_kepler_consistent[barnards-star.json-0.02]
+backend/tests/test_local_system_manifests.py::test_local_system_manifest_orbits_are_kepler_consistent[sirius.json-0.05]
+backend/tests/test_mga_acceptance_quality.py::test_frontier_is_global_twelve_with_two_per_prefix_and_diversity_first
+backend/tests/test_mga_acceptance_quality.py::test_known_feasible_synthetic_two_assist_route_is_retained
+backend/tests/test_mga_acceptance_quality.py::test_synthetic_two_assist_route_fails_closed_when_second_turn_is_impossible
+backend/tests/test_mga_bounded_search.py::test_exact_seed_vinf_roots_are_capped_at_two
+backend/tests/test_mga_bounded_search.py::test_bracketed_vinf_root_is_refined_and_certified
+backend/tests/test_mga_bounded_search.py::test_two_distinct_bracketed_vinf_roots_are_retained
+backend/tests/test_mga_bounded_search.py::test_same_sign_residual_without_near_minimum_has_no_root
+backend/tests/test_mga_bounded_search.py::test_vinf_root_outside_sampled_domain_is_not_extrapolated
+backend/tests/test_mga_bounded_search.py::test_flyby_vinf_continuity_accepts_inside_and_rejects_outside_tolerance
+backend/tests/test_mga_bounded_search.py::test_flyby_rejects_turn_limit_after_vinf_magnitude_match
+backend/tests/test_mga_bounded_search.py::test_near_tangential_vinf_root_is_bounded_and_certified
+backend/tests/test_mga_bounded_search.py::test_distinct_bracketed_and_tangential_vinf_roots_are_both_retained
+backend/tests/test_mga_bounded_search.py::test_exact_sampled_root_is_not_refined_again_as_a_tangent
+backend/tests/test_mga_bounded_search.py::test_bracket_refinement_caps_failed_secant_and_midpoint_probes
+backend/tests/test_mga_bounded_search.py::test_bracket_refinement_iteration_exhaustion_fails_closed
+backend/tests/test_mga_bounded_search.py::test_root_refinement_attempts_are_capped_even_when_flybys_fail
+backend/tests/test_mga_bounded_search.py::test_leg_memo_caches_failures_without_spending_another_evaluation
+backend/tests/test_mga_bounded_search.py::test_runtime_state_cache_hits_remain_visible_to_shared_budget
+backend/tests/test_mga_bounded_search.py::test_leg_memo_skips_whole_leg_but_not_state_cache_telemetry
+backend/tests/test_mga_bounded_search.py::test_per_depth_reservations_preserve_work_for_deeper_routes
+backend/tests/test_mga_bounded_search.py::test_small_unpruned_search_matches_exhaustive_topology_oracle
+backend/tests/test_mga_bounded_search.py::test_shuffled_assist_pool_has_identical_output_and_counters
+backend/tests/test_mga_bounded_search.py::test_ten_repeated_searches_have_identical_output_and_counters
+backend/tests/test_mga_bounded_search.py::test_pre_cancelled_search_makes_zero_lambert_calls
+backend/tests/test_mga_bounded_search.py::test_mid_root_cancellation_stops_before_next_refinement_iteration
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_non_sequences_without_consuming_them
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_oversized_pool_before_reading_entries
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_malformed_entries[assist_pool0-trajectory_duplicate_assist]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_malformed_entries[assist_pool1-trajectory_invalid_assist_pool]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_malformed_entries[assist_pool2-trajectory_invalid_assist_pool]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_invalid_assist_depth[-1]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_invalid_assist_depth[4]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_invalid_assist_depth[1.5]
+backend/tests/test_mga_bounded_search.py::test_route_generator_rejects_invalid_assist_depth[True]
+backend/tests/test_mga_bounded_search.py::test_route_generator_is_bounded_even_if_sequence_iterator_is_poisoned
+backend/tests/test_mga_bounded_search.py::test_route_generator_fails_closed_if_topology_estimator_exceeds_limit
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_oversized_pool_before_reading_entries
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_generator_pool_without_consuming_it
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides0-trajectory_unknown_body]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides1-trajectory_invalid_endpoint_body]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides2-trajectory_same_body]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides3-trajectory_invalid_departure_jd]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides4-trajectory_invalid_departure_jd]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides5-trajectory_invalid_objective]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides6-trajectory_invalid_assist_depth]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides7-trajectory_invalid_assist_depth]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides8-trajectory_invalid_assist_depth]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides9-trajectory_invalid_assist_pool]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides10-trajectory_duplicate_assist]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides11-trajectory_invalid_assist_body]
+backend/tests/test_mga_bounded_search.py::test_mga_core_applies_shared_contract_before_ephemeris_work[overrides12-trajectory_invalid_assist_body]
+backend/tests/test_mga_bounded_search.py::test_mga_core_enforces_route_topology_ceiling_before_ephemeris_work
+backend/tests/test_mga_bounded_search.py::test_real_kepler_assist_is_independently_revalidated
+backend/tests/test_mga_bounded_search.py::test_injected_ephemeris_provider_must_match_requested_label
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_a_session_resolved_to_horizons
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_session_from_a_different_context
+backend/tests/test_mga_bounded_search.py::test_direct_only_search_does_not_preflight_an_unused_assist_pool
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_untrusted_duck_typed_sessions
+backend/tests/test_mga_bounded_search.py::test_mga_core_rejects_non_exact_supplied_context
+backend/tests/test_mga_bounded_search.py::test_maximum_eight_body_request_stays_inside_shared_query_budget
+backend/tests/test_mga_bounded_search.py::test_shared_budget_exhaustion_returns_certified_direct_best_so_far
+backend/tests/test_mga_bounded_search.py::test_shared_budget_exhaustion_before_any_solution_is_not_hidden
+backend/tests/test_mga_bounded_search.py::test_rejected_leg_request_does_not_overstate_admitted_search_usage
+backend/tests/test_mga_bounded_search.py::test_certified_assist_yielded_before_budget_stop_is_retained
+backend/tests/test_mga_bounded_search.py::test_auto_search_never_calls_horizons_or_urlopen[0]
+backend/tests/test_mga_bounded_search.py::test_auto_search_never_calls_horizons_or_urlopen[1]
+backend/tests/test_mga_bounded_search.py::test_auto_search_never_calls_horizons_or_urlopen[2]
+backend/tests/test_mga_bounded_search.py::test_auto_search_never_calls_horizons_or_urlopen[3]
+backend/tests/test_mga_flyby_physics.py::test_unpowered_flyby_rejects_free_vinf_magnitude_change
+backend/tests/test_mga_flyby_physics.py::test_flyby_turn_limit_uses_incoming_vinf_not_an_average
+backend/tests/test_mga_flyby_physics.py::test_numerically_equal_vinf_and_feasible_turn_are_accepted
+backend/tests/test_mga_flyby_physics.py::test_conserved_vinf_still_rejects_turn_beyond_hyperbolic_limit
+backend/tests/test_mga_flyby_physics.py::test_missing_body_parameters_fail_closed_with_diagnostics
+backend/tests/test_mission_agents.py::test_mission_planner_agent_emits_recommendation_and_logs
+backend/tests/test_mission_agents.py::test_trajectory_agent_passes_prograde_to_route_planner
+backend/tests/test_mission_agents.py::test_mission_planner_forwards_prograde_to_trajectory_agent
+backend/tests/test_mission_agents.py::test_mission_planner_reuses_parent_context_and_ephemeris_for_return_searches
+backend/tests/test_mission_agents.py::test_mission_retains_verified_candidate_when_later_return_exhausts_budget
+backend/tests/test_mission_agents.py::test_mission_planner_returns_no_verified_candidate_when_all_fail_verifier
+backend/tests/test_mission_agents.py::test_mission_cannot_turn_cancelled_child_result_into_success
+backend/tests/test_mission_agents.py::test_mission_checks_cancelled_parent_before_parsing_payload
+backend/tests/test_mission_agents.py::test_mission_preflights_unsupported_return_before_outbound_search
+backend/tests/test_mission_agents.py::test_mission_marks_outbound_budget_stop_as_inconclusive
+backend/tests/test_mission_agents.py::test_mission_preserves_inconclusive_return_search_telemetry
+backend/tests/test_mission_agents.py::test_invalid_candidate_plus_incomplete_later_search_is_inconclusive
+backend/tests/test_mission_schemas.py::test_parse_mission_request_defaults_and_bounds
+backend/tests/test_mission_schemas.py::test_parse_mission_request_vehicle_schema
+backend/tests/test_mission_schemas.py::test_parse_mission_request_prograde_bool_coercion
+backend/tests/test_mission_schemas.py::test_parse_mission_request_preserves_explicit_empty_assist_pool
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_oversized_assist_pool_before_iteration
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_oversized_vehicle_before_iteration
+backend/tests/test_mission_schemas.py::test_parse_mission_request_clamps_direct_call_risk_work
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_direct_call_values[departure_jd-inf]
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_direct_call_values[payload_mass_kg-nan]
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_direct_call_values[mining_days-inf]
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_direct_call_values[extraction_rate_kg_day--inf]
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_direct_call_values[available_power_kw-nan]
+backend/tests/test_mission_schemas.py::test_parse_mission_request_rejects_nonfinite_vehicle_values
+backend/tests/test_nbody_ephemeris_generator.py::test_generator_validates_mercury_command_alias_against_resolved_id
+backend/tests/test_nbody_ephemeris_generator.py::test_generator_rejects_mislabeled_horizons_responses[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Mercury Barycenter (1) {source: DE441}\nCenter body name: Solar System Barycenter (0)     {source: DE441}\nOutput units    : AU-D\nReference frame : Ecliptic of J2000.0\n$$SOE\n2451545.000000000, A.D. 2000-Jan-01 12:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\n"}-unexpected Horizons target]
+backend/tests/test_nbody_ephemeris_generator.py::test_generator_rejects_mislabeled_horizons_responses[{"signature": {"source": "NASA/JPL Horizons API", "version": "1.2"}, "result": "\nTarget body name: Mercury Barycenter (199)        {source: DE441}\nCenter body name: Solar System Barycenter (0)     {source: DE441}\nOutput units    : AU-D\nReference frame : ICRF equatorial\n$$SOE\n2451545.000000000, A.D. 2000-Jan-01 12:00:00.0000, 1, 2, 3, 4, 5, 6,\n$$EOE\n"}-unexpected Horizons frame]
+backend/tests/test_nbody_horizons_accuracy.py::test_default_ias15_model_stays_inside_multi_epoch_horizons_envelope[1990-01-01]
+backend/tests/test_nbody_horizons_accuracy.py::test_default_ias15_model_stays_inside_multi_epoch_horizons_envelope[2026-08-23]
+backend/tests/test_nbody_horizons_accuracy.py::test_default_ias15_model_stays_inside_multi_epoch_horizons_envelope[2050-01-01]
+backend/tests/test_nbody_horizons_accuracy.py::test_hidden_moon_preserves_the_earth_moon_relative_state
+backend/tests/test_nbody_horizons_accuracy.py::test_checkpoint_seek_reproduces_the_direct_2026_solution
+backend/tests/test_nbody_initial_conditions.py::test_committed_initial_conditions_have_complete_provenance
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-missing=.*saturn]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-epoch.jd_tdb]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-velocity_unit]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-velocity_au_per_day]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-horizons_target_id]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-provenance.query.CENTER]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_fail_closed_on_invalid_scientific_inputs[<lambda>-scientific_payload_sha256]
+backend/tests/test_nbody_initial_conditions.py::test_initial_conditions_reject_duplicate_json_keys
+backend/tests/test_nbody_initial_conditions.py::test_engine_seeds_cartesian_states_with_matching_gm_and_units
+backend/tests/test_nbody_initial_conditions.py::test_non_j2000_start_integrates_once_from_canonical_epoch
+backend/tests/test_nbody_initial_conditions.py::test_failed_fixture_reload_does_not_destroy_live_simulation
+backend/tests/test_nbody_initial_conditions.py::test_readiness_requires_valid_initial_conditions
+backend/tests/test_nbody_initial_conditions.py::test_state_metadata_discloses_targets_scope_and_output_origin
+backend/tests/test_nearby_systems_catalog.py::test_nearby_systems_catalog_loads_ranked_rows
+backend/tests/test_nearby_systems_catalog.py::test_nearby_systems_catalog_query_filters_and_limits
+backend/tests/test_pfss_cache.py::test_pfss_cache_identity_includes_every_output_affecting_input[jd-2460011.0]
+backend/tests/test_pfss_cache.py::test_pfss_cache_identity_includes_every_output_affecting_input[activity-0.75]
+backend/tests/test_pfss_cache.py::test_pfss_cache_identity_includes_every_output_affecting_input[n_lines-80]
+backend/tests/test_pfss_cache.py::test_pfss_cache_identity_includes_every_output_affecting_input[lmax-12]
+backend/tests/test_pfss_cache.py::test_pfss_cache_identity_includes_every_output_affecting_input[gong_timeout_s-4.0]
+backend/tests/test_pfss_cache.py::test_pfss_cache_canonicalizes_effective_solver_inputs
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[jd-nan]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[jd-inf]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[activity-nan]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[activity--inf]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[n_lines-nan]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[lmax-0]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[lmax-9.5]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[gong_timeout_s-0.0]
+backend/tests/test_pfss_cache.py::test_pfss_cache_rejects_invalid_key_inputs[gong_timeout_s-inf]
+backend/tests/test_pfss_cache.py::test_pfss_cache_is_bounded_lru
+backend/tests/test_pfss_cache.py::test_pfss_cache_singleflights_identical_concurrent_misses
+backend/tests/test_porkchop_core_bounds.py::test_porkchop_points_retain_lambert_certificates_and_honest_counts
+backend/tests/test_porkchop_core_bounds.py::test_low_level_porkchop_rejects_contextless_session
+backend/tests/test_porkchop_core_bounds.py::test_low_level_porkchop_rejects_oversized_grid_before_sampling
+backend/tests/test_porkchop_core_bounds.py::test_unique_state_estimator_matches_runtime_float_association
+backend/tests/test_porkchop_core_bounds.py::test_low_level_porkchop_rejects_horizons_before_sampling
+backend/tests/test_porkchop_core_bounds.py::test_porkchop_retains_certified_best_so_far_after_later_budget_stop
+backend/tests/test_seek_optimizations.py::test_rebound_set_julian_date_uses_checkpoints_for_backward_seek
+backend/tests/test_seek_optimizations.py::test_tudat_set_julian_date_reuses_existing_chunk
+backend/tests/test_sim_contracts.py::test_normalize_state_update_contract_shape
+backend/tests/test_sim_contracts.py::test_attach_runtime_telemetry_contract_shape
+backend/tests/test_sim_registry.py::test_engine_classes_expose_known_ids
+backend/tests/test_sim_registry.py::test_engine_factory_contains_rebound
+backend/tests/test_sim_registry.py::test_create_engine_returns_simulation_engine_instance
+backend/tests/test_sim_registry.py::test_create_engine_rejects_unknown_engine
+backend/tests/test_sim_registry.py::test_engine_availability_schema
+backend/tests/test_sim_registry.py::test_rebound_engine_exports_self_describing_barycentric_states
+backend/tests/test_solar_physics_model.py::test_hathaway_activity_curve_has_strong_asymmetry
+backend/tests/test_solar_physics_model.py::test_hale_leading_polarity_flips_between_adjacent_cycles
+backend/tests/test_solar_physics_model.py::test_cme_speed_distribution_covers_slow_and_fast_populations
+backend/tests/test_solar_physics_model.py::test_parker_spiral_extends_to_multi_au_domain
+backend/tests/test_solar_physics_model.py::test_synthetic_coronal_holes_present_at_solar_minimum
+backend/tests/test_solar_physics_model.py::test_synthetic_coronal_holes_coverage_decreases_at_solar_max
+backend/tests/test_solar_physics_model.py::test_parker_spiral_fast_wind_in_coronal_holes
+backend/tests/test_solar_physics_model.py::test_sample_state_is_deterministic_for_fixed_epoch
+backend/tests/test_solar_physics_model.py::test_carrington_rotation_number
+backend/tests/test_solar_physics_model.py::test_pfss_synthetic_produces_open_and_closed_lines
+backend/tests/test_solar_physics_model.py::test_pfss_open_lines_reach_source_surface
+backend/tests/test_solar_physics_model.py::test_wsa_velocity_bounds
+backend/tests/test_solar_physics_model.py::test_wsa_velocity_map_produces_speeds
+backend/tests/test_solar_physics_model.py::test_parker_spiral_uses_wsa_model
+backend/tests/test_solar_realtime_data_cache.py::test_snapshot_cache_isolated_by_requested_julian_date
+backend/tests/test_solar_realtime_data_cache.py::test_latest_and_explicit_epoch_have_distinct_cache_identities
+backend/tests/test_solar_realtime_data_cache.py::test_same_epoch_reuses_snapshot_until_refresh
+backend/tests/test_solar_realtime_data_cache.py::test_snapshot_cache_is_bounded_and_uses_lru_eviction
+backend/tests/test_solar_realtime_data_cache.py::test_nonfinite_julian_date_is_rejected_before_fetch[nan]
+backend/tests/test_solar_realtime_data_cache.py::test_nonfinite_julian_date_is_rejected_before_fetch[inf]
+backend/tests/test_solar_realtime_data_cache.py::test_nonfinite_julian_date_is_rejected_before_fetch[-inf]
+backend/tests/test_trajectory_contracts.py::test_route_count_matches_ordered_no_repeat_topologies
+backend/tests/test_trajectory_contracts.py::test_plan_contract_preserves_explicit_empty_pool
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_bare_string_pool[overrides0]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_bare_string_pool[overrides1]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_unknown_or_identical_endpoints_for_non_http_callers
+backend/tests/test_trajectory_contracts.py::test_plan_contract_removes_endpoints_before_counting
+backend/tests/test_trajectory_contracts.py::test_plan_contract_sorts_effective_pool_for_deterministic_search
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_assist_depth[True]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_assist_depth[3]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_assist_depth[3.0]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_assist_depth[-1]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_assist_depth[4]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_departure_epoch[nan]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_departure_epoch[inf]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_departure_epoch[2460500.5]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_departure_epoch[True]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_objective[fastest]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_objective[]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_objective[1]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_rejects_invalid_objective[True]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_returns_normalized_epoch_and_objective
+backend/tests/test_trajectory_contracts.py::test_plan_contract_caps_body_identifier_length
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_orbitless_endpoint_but_not_massless_orbiting_endpoint
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_missing_or_malformed_orbital_elements[orbit0]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_missing_or_malformed_orbital_elements[orbit1]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_missing_or_malformed_orbital_elements[orbit2]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_missing_or_malformed_orbital_elements[orbit3]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_duplicates_instead_of_silently_deduplicating
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_ninth_assist_before_route_generation
+backend/tests/test_trajectory_contracts.py::test_plan_contract_consumes_only_the_declared_bounded_sequence_length
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_ineligible_or_unknown_assists[sun]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_rejects_ineligible_or_unknown_assists[unknown-world]
+backend/tests/test_trajectory_contracts.py::test_plan_contract_hard_clamps_caller_supplied_limits
+backend/tests/test_trajectory_contracts.py::test_planning_context_group_reservation_is_atomic
+backend/tests/test_trajectory_contracts.py::test_planning_context_cancellation_is_cooperative
+backend/tests/test_trajectory_contracts.py::test_planning_context_uses_monotonic_deadline
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[ephemeris_queries-4000]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[unique_ephemeris_states-2000]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[remote_ephemeris_states-128]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[external_requests-16]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[leg_requests-2400]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[leg_evaluations-2000]
+backend/tests/test_trajectory_contracts.py::test_planning_limits_reject_values_above_compile_time_ceiling[route_prefixes-256]
+backend/tests/test_trajectory_contracts.py::test_planning_context_rejects_deadline_beyond_hard_span
+backend/tests/test_trajectory_contracts.py::test_planning_context_start_anchor_cannot_be_spoofed
+backend/tests/test_trajectory_contracts.py::test_planning_context_owner_fields_and_counter_snapshots_are_read_only
+backend/tests/test_trajectory_contracts.py::test_planning_context_rejects_wrong_owner_types_and_nonzero_initial_stats
+backend/tests/test_trajectory_contracts.py::test_planning_context_cancellation_cannot_be_cleared_after_cancel
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_invalid_pair_and_times_before_session_work[overrides0-trajectory_same_body]
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_invalid_pair_and_times_before_session_work[overrides1-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_invalid_pair_and_times_before_session_work[overrides2-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_invalid_pair_and_times_before_session_work[overrides3-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_invalid_pair_and_times_before_session_work[overrides4-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides0-trajectory_same_body]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides1-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides2-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides3-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides4-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides5-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides6-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_porkchop_rejects_invalid_pair_and_times_before_session_work[overrides7-trajectory_invalid_time_range]
+backend/tests/test_trajectory_entry_validation.py::test_direct_rejects_orbitless_and_moon_endpoints_before_session_work
+backend/tests/test_trajectory_entry_validation.py::test_low_level_direct_validation_precedes_session_access[kwargs0]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_direct_validation_precedes_session_access[kwargs1]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_direct_validation_precedes_session_access[kwargs2]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_direct_validation_precedes_session_access[kwargs3]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_porkchop_validation_precedes_session_access[overrides0]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_porkchop_validation_precedes_session_access[overrides1]
+backend/tests/test_trajectory_entry_validation.py::test_low_level_porkchop_validation_precedes_session_access[overrides2]
+backend/tests/test_trajectory_entry_validation.py::test_valid_low_level_porkchop_rejects_duck_session_before_property_access
+backend/tests/test_trajectory_entry_validation.py::test_low_level_porkchop_uses_estimated_counts_for_huge_single_tof
+backend/tests/test_trajectory_regression.py::test_route_planner_is_deterministic
+backend/tests/test_trajectory_regression.py::test_direct_lambert_solution_exists
+backend/tests/test_trajectory_regression.py::test_auto_ephemeris_is_local_only_and_never_attempts_horizons
+backend/tests/test_trajectory_regression.py::test_porkchop_scan_returns_ranked_points
+
+==================================== ERRORS ====================================
+_______ ERROR collecting backend/tests/test_benchmark_endpoint_budget.py _______
+backend/tests/test_benchmark_endpoint_budget.py:8: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+______ ERROR collecting backend/tests/test_benchmark_report_overwrite.py _______
+backend/tests/test_benchmark_report_overwrite.py:14: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+____________ ERROR collecting backend/tests/test_compute_budget.py _____________
+backend/tests/test_compute_budget.py:9: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+______ ERROR collecting backend/tests/test_nearby_systems_api_contract.py ______
+backend/tests/test_nearby_systems_api_contract.py:5: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+___________ ERROR collecting backend/tests/test_server_validation.py ___________
+backend/tests/test_server_validation.py:3: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+___________ ERROR collecting backend/tests/test_solar_physics_api.py ___________
+backend/tests/test_solar_physics_api.py:3: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+______ ERROR collecting backend/tests/test_trajectory_endpoint_budget.py _______
+backend/tests/test_trajectory_endpoint_budget.py:9: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+_________ ERROR collecting backend/tests/test_ws_resource_contract.py __________
+backend/tests/test_ws_resource_contract.py:8: in <module>
+    from fastapi.testclient import TestClient
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/solar-codebase-scan-2026-10-07/lib/python3.12/site-packages/starlette/testclient.py:41: in <module>
+    raise RuntimeError(
+E   RuntimeError: The starlette.testclient module requires the httpx2 package to be installed.
+E   You can install this with:
+E       $ pip install httpx2
+=========================== short test summary info ============================
+ERROR backend/tests/test_benchmark_endpoint_budget.py - RuntimeError: The sta...
+ERROR backend/tests/test_benchmark_report_overwrite.py - RuntimeError: The st...
+ERROR backend/tests/test_compute_budget.py - RuntimeError: The starlette.test...
+ERROR backend/tests/test_nearby_systems_api_contract.py - RuntimeError: The s...
+ERROR backend/tests/test_server_validation.py - RuntimeError: The starlette.t...
+ERROR backend/tests/test_solar_physics_api.py - RuntimeError: The starlette.t...
+ERROR backend/tests/test_trajectory_endpoint_budget.py - RuntimeError: The st...
+ERROR backend/tests/test_ws_resource_contract.py - RuntimeError: The starlett...
+!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!
+362 tests collected, 8 errors in 0.72s

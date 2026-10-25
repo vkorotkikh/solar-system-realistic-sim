@@ -4,9 +4,8 @@ import {
   describeRoute,
   planInterplanetaryRoute as planLocalRoute
 } from './localPlanner';
+import type { PlannerModel, PlannerBody } from './localPlanner';
 
-const DEFAULT_BACKEND_HOST = 'localhost';
-const DEFAULT_BACKEND_PORT = 8042;
 const PLAN_REQUEST_TIMEOUT_MS = 10_000;
 const LAMBERT_REQUEST_TIMEOUT_MS = 8_000;
 const PORKCHOP_REQUEST_TIMEOUT_MS = 10_000;
@@ -123,12 +122,6 @@ interface MissionOptions {
   prograde?: boolean;
 }
 
-function backendBaseUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-  const host = window.location.hostname || DEFAULT_BACKEND_HOST;
-  return `${protocol}://${host}:${DEFAULT_BACKEND_PORT}`;
-}
-
 async function trajectoryApiError(response: Response, operation: string): Promise<TrajectoryApiError> {
   let detail: TrajectoryApiErrorDetail | undefined;
   try {
@@ -194,7 +187,12 @@ function hydrateLeg(leg: RouteLeg | null) {
   };
 }
 
-async function requestBackendRoute(options: RouteOptions) {
+export function createTrajectoryClient({
+  backendBaseUrl
+}: {
+  backendBaseUrl: () => string;
+}) {
+  async function requestBackendRoute(options: RouteOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), PLAN_REQUEST_TIMEOUT_MS);
   const requestBody = JSON.stringify({
@@ -240,9 +238,9 @@ async function requestBackendRoute(options: RouteOptions) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-}
+  }
 
-async function requestBackendLambert(options: LambertOptions) {
+  async function requestBackendLambert(options: LambertOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), LAMBERT_REQUEST_TIMEOUT_MS);
 
@@ -274,9 +272,9 @@ async function requestBackendLambert(options: LambertOptions) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-}
+  }
 
-async function requestBackendPorkchop(options: PorkchopOptions) {
+  async function requestBackendPorkchop(options: PorkchopOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), PORKCHOP_REQUEST_TIMEOUT_MS);
 
@@ -310,9 +308,9 @@ async function requestBackendPorkchop(options: PorkchopOptions) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-}
+  }
 
-async function requestMissionPlan(options: MissionOptions) {
+  async function requestMissionPlan(options: MissionOptions) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), MISSION_REQUEST_TIMEOUT_MS);
 
@@ -352,40 +350,52 @@ async function requestMissionPlan(options: MissionOptions) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-}
-
-export async function planInterplanetaryRoute(
-  model: unknown,
-  bodyById: Map<string, unknown>,
-  options: RouteOptions
-) {
-  try {
-    return await requestBackendRoute(options);
-  } catch (error) {
-    const provider = (options.ephemerisProvider ?? 'auto').trim().toLowerCase();
-    if (provider !== 'auto' || !isOfflineConnectionFailure(error)) {
-      throw error;
-    }
-    const localResult = planLocalRoute(model, bodyById, options);
-    return {
-      ...localResult,
-      source: 'local',
-      degraded: true,
-      fallbackReason: 'backend_unreachable'
-    };
   }
-}
 
-export async function solveLambertTransfer(options: LambertOptions) {
-  return requestBackendLambert(options);
-}
+  async function planInterplanetaryRoute(
+    model: unknown,
+    bodyById: ReadonlyMap<string, PlannerBody>,
+    options: RouteOptions
+  ) {
+    try {
+      return await requestBackendRoute(options);
+    } catch (error) {
+      const provider = (options.ephemerisProvider ?? 'auto').trim().toLowerCase();
+      if (provider !== 'auto' || !isOfflineConnectionFailure(error)) {
+        throw error;
+      }
+      if (model == null || typeof model !== 'object'
+        || !('sampleBodyStateAt' in model) || typeof model.sampleBodyStateAt !== 'function') {
+        throw new TypeError('Local trajectory fallback requires a body-state sampling model');
+      }
+      const localResult = planLocalRoute(model as PlannerModel, bodyById, options);
+      return {
+        ...localResult,
+        source: 'local',
+        degraded: true,
+        fallbackReason: 'backend_unreachable'
+      };
+    }
+  }
 
-export async function scanPorkchopWindow(options: PorkchopOptions) {
-  return requestBackendPorkchop(options);
-}
+  async function solveLambertTransfer(options: LambertOptions) {
+    return requestBackendLambert(options);
+  }
 
-export async function planMissionProfile(options: MissionOptions) {
-  return requestMissionPlan(options);
+  async function scanPorkchopWindow(options: PorkchopOptions) {
+    return requestBackendPorkchop(options);
+  }
+
+  async function planMissionProfile(options: MissionOptions) {
+    return requestMissionPlan(options);
+  }
+
+  return {
+    planInterplanetaryRoute,
+    solveLambertTransfer,
+    scanPorkchopWindow,
+    planMissionProfile
+  };
 }
 
 export { buildTransferCurvePoints, describeRoute };

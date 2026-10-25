@@ -54,3 +54,7 @@ Screenshot *.png
 # Temporary local validation artifacts
 /artifacts/
 my-notes/ACCURACY_REPORT_smoke.md
+
+# Browser test output
+/test-results/
+/playwright-report/

@@ -1,466 +1,231 @@
 #!/usr/bin/env python3
-"""Build Phase-1 deterministic asteroid dataset artifacts.
+"""Reproduce the Phase-1 asteroid bundle offline from pinned REAL JPL inputs.
 
-This queries the JPL Small-Body Database for the largest asteroids,
-filters to the main-belt population, packs the selected orbital/physical
-fields into the canonical ACBF binary format, and writes compact JSON metadata.
+Refresh inputs explicitly with capture_catalog_sources.py. All three artifacts
+are staged and published as one directory generation; --check never writes.
 """
-
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
-import hashlib
 import re
 import struct
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fetch_utils import load_or_fetch
-from fetch_jpl_sbdb import SBDB_API_URL, SBDB_FIELDS, fetch_sbdb
+from catalog_sources import SOURCE_DIR, SourceStore, json_bytes, publish_directory, request_url
+from fetch_jpl_sbdb import SBDB_API_URL, phase1_query_params
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "public" / "data" / "asteroid-phase1"
 DEFAULT_BIN_NAME = "asteroid_phase1_main_100000.bin"
 DEFAULT_META_NAME = "asteroid_phase1_main_100000.meta.json"
-
 ACBF_MAGIC = b"ACBF"
 ACBF_VERSION = 1
 ACBF_STRIDE_BYTES = 36
 ANGLE_SCALE_U16 = 65535
-ANGLE_BOUNDS = {
-    "eccentricity": (0.0, 1.0),
-    "inclination": (0.0, 180.0),
-    "angle": (0.0, 360.0),
-    "albedo": (0.0, 1.0),
-}
-
 MAIN_BELT_CLASS_WHITELIST = {"MBA", "IMB", "OMB"}
 MAIN_BELT_AU_MIN = 2.0
 MAIN_BELT_AU_MAX = 3.5
-DEFAULT_MAIN_BELT_FETCH_LIMIT = 20_000
-MAX_MAIN_BELT_FETCH_LIMIT = 1_000_000
-
-
-@dataclass(frozen=True)
-class TaxonomyMapping:
-    name: str
-    material_index: int
-
-
-TAXONOMY_BY_CHAR = {
-    # Carbonaceous / volatile-rich / dark classes
-    "C": TaxonomyMapping("C", 0),
-    "B": TaxonomyMapping("C", 0),
-    "G": TaxonomyMapping("C", 0),
-    "F": TaxonomyMapping("C", 0),
-    "P": TaxonomyMapping("C", 0),
-    "D": TaxonomyMapping("C", 0),
-    "T": TaxonomyMapping("C", 0),
-    "X": TaxonomyMapping("M", 2),
-    # Silicaceous classes
-    "S": TaxonomyMapping("S", 1),
-    "Q": TaxonomyMapping("S", 1),
-    "L": TaxonomyMapping("S", 1),
-    "K": TaxonomyMapping("S", 1),
-    "A": TaxonomyMapping("S", 1),
-    "V": TaxonomyMapping("S", 1),
-    "R": TaxonomyMapping("S", 1),
-    # Metallic classes
-    "M": TaxonomyMapping("M", 2),
-    "E": TaxonomyMapping("M", 2),
-}
-
-
-TAXONOMY_ALBEDO_RANGES = {
-    0: (0.03, 0.10),  # C-type
-    1: (0.10, 0.22),  # S-type
-    2: (0.10, 0.18),  # M-type
-}
+UNKNOWN_TAXONOMY = 255
+# These are coarse VISUAL families, not composition determinations. In
+# particular SMASS X and Tholen E must not be reported as metallic M.
+VISUAL_FAMILIES = {**dict.fromkeys("CBGFPDT", ("C", 0)), **dict.fromkeys("SQLKAVR", ("S", 1))}
 
 
 def _safe_number(value: Any, default: float | None = None) -> float | None:
     try:
-        if value in (None, "", "null"):
-            return default
-        num = float(value)
+        number = float(value)
+        return number if math.isfinite(number) else default
     except (TypeError, ValueError):
         return default
-    if not math.isfinite(num):
-        return default
-    return num
 
 
-def _is_main_belt(row: dict[str, Any]) -> bool:
-    raw_class = row.get("class")
-    orbit_class = str(raw_class).strip().upper() if isinstance(raw_class, str) else ""
-    a_au = _safe_number(row.get("a"), None)
-
-    if orbit_class and orbit_class not in MAIN_BELT_CLASS_WHITELIST:
-        return False
-
-    if a_au is None:
-        return False
-
-    return MAIN_BELT_AU_MIN <= a_au <= MAIN_BELT_AU_MAX
+def _is_main_belt(row: dict) -> bool:
+    a = _safe_number(row.get("a"))
+    return (row.get("class") in MAIN_BELT_CLASS_WHITELIST and a is not None
+            and MAIN_BELT_AU_MIN <= a <= MAIN_BELT_AU_MAX)
 
 
-def _clean_orbit_value(raw: Any, default: float) -> float:
-    value = _safe_number(raw, default)
-    if value is None:
-        return default
+def _taxonomy(row: dict) -> tuple[str, int]:
+    tholen = str(row.get("spec_t") or "").strip().upper()
+    if tholen == "M":
+        return "M", 2
+    for field in ("spec_t", "spec_b"):
+        value = str(row.get(field) or "").strip().upper()
+        # A qualified/ambiguous label is not an unambiguous measurement.
+        if value and ":" not in value and "?" not in value and value[0] in VISUAL_FAMILIES:
+            return VISUAL_FAMILIES[value[0]]
+    return "unknown", UNKNOWN_TAXONOMY
+
+
+def _estimate_diameter_km(h_mag: float | None, diameter_km: float | None,
+                          albedo: float | None) -> float | None:
+    if diameter_km is not None and math.isfinite(diameter_km) and diameter_km > 0:
+        return diameter_km
+    if h_mag is None or not math.isfinite(h_mag) or albedo is None or not 0 < albedo <= 1:
+        return None
+    # D (not radius) in km: Harris & Harris 1997; JPL CNEOS size estimator.
+    return 1329.0 / math.sqrt(albedo) * 10.0 ** (-h_mag / 5.0)
+
+
+def _required(row: dict, name: str, lo: float = -math.inf, hi: float = math.inf) -> float:
+    value = _safe_number(row.get(name))
+    if value is None or not lo <= value <= hi:
+        raise ValueError(f"invalid/missing {name} for source {row.get('spkid')}")
     return value
 
 
-def _taxon_from_spec(spec_b: Any, spec_t: Any, a_au: float | None) -> TaxonomyMapping:
-    for spec in (spec_t, spec_b):
-        if isinstance(spec, str):
-            key = spec.strip().upper()[:1]
-            mapped = TAXONOMY_BY_CHAR.get(key)
-            if mapped:
-                return mapped
-
-    if a_au is None:
-        return TAXONOMY_BY_CHAR["C"]
-    if a_au < 2.5:
-        return TAXONOMY_BY_CHAR["S"]
-    if a_au > 2.7:
-        return TAXONOMY_BY_CHAR["C"]
-    return TAXONOMY_BY_CHAR["M"]
-
-
-def _estimate_albedo(spec_b: Any, spec_t: Any, a_au: float | None) -> float:
-    tax = _taxon_from_spec(spec_b, spec_t, a_au)
-    lo, hi = TAXONOMY_ALBEDO_RANGES[tax.material_index]
-    return (lo + hi) * 0.5
-
-
-def _estimate_diameter_km(h_mag: float | None, diameter_km: float | None, albedo: float) -> float:
-    if diameter_km is not None and diameter_km > 0:
-        return diameter_km
-    if h_mag is None or h_mag <= 0 or not math.isfinite(h_mag):
-        return 1.0
-    if not math.isfinite(albedo) or albedo <= 0:
-        albedo = 0.1
-    return max(0.001, 664.5 / math.sqrt(albedo) * (10.0 ** (-h_mag / 5.0)))
-
-
-def _estimate_period_days(a_au: float) -> float:
-    if a_au <= 0 or not math.isfinite(a_au):
-        return 365.25
-    return 365.25 * (a_au ** 1.5)
-
-
-def _strip_space_name(full_name: str) -> str:
-    clean = (full_name or "").strip()
-    clean = re.sub(r"\s+", " ", clean)
-    return clean.strip()
-
-
-def _fetch_asteroids(
-    limit: int,
-    *,
-    initial_fetch_limit: int | None = None
-) -> list[dict[str, Any]]:
-    if limit <= 0:
-        return []
-
-    initial_fetch = DEFAULT_MAIN_BELT_FETCH_LIMIT if initial_fetch_limit is None else initial_fetch_limit
-    fetch_limit = max(limit, initial_fetch)
-    while True:
-        limited_fetch = min(fetch_limit, MAX_MAIN_BELT_FETCH_LIMIT)
-        cache_name = f"sbdb_phase1_diameter_{limited_fetch}"
-        cache_path = PROJECT_ROOT / "scripts" / ".cache" / f"phase1_diameter_{limited_fetch}.json"
-
-        def _fetch():
-            return fetch_sbdb(sb_kind="a", sort="-diameter", limit=limited_fetch, cache_name=cache_name)
-
-        rows = load_or_fetch(
-            cache_path,
-            _fetch,
-            max_age_hours=24.0,
-        )
-
-        filtered_rows = [row for row in rows if _is_main_belt(row)]
-        if len(filtered_rows) >= limit:
-            return filtered_rows[:limit]
-        if limited_fetch >= MAX_MAIN_BELT_FETCH_LIMIT or len(rows) < limited_fetch:
-            return filtered_rows
-
-        fetch_limit = min(fetch_limit * 2, MAX_MAIN_BELT_FETCH_LIMIT)
-        if fetch_limit <= limited_fetch:
-            return filtered_rows
-
-
-def _build_records(rows: list[dict[str, Any]]) -> tuple[list[dict[str, float]], dict[str, int], dict[str, int]]:
-    records: list[dict[str, float]] = []
+def _build_records(rows: list[dict]) -> tuple[list[dict], dict[str, int], dict[str, int]]:
+    records: list[dict] = []
+    taxonomy_counts = {"C": 0, "S": 0, "M": 0, "unknown": 0}
     class_counts: dict[str, int] = {}
-    taxonomy_counts: dict[str, int] = {"C": 0, "S": 0, "M": 0}
-
+    seen: set[int] = set()
     for row in rows:
         if not _is_main_belt(row):
             continue
-        a_au = _safe_number(row.get("a"), None)
-        e = _clean_orbit_value(row.get("e"), 0.0)
-        i_deg = _clean_orbit_value(row.get("i"), 0.0)
-        om = _clean_orbit_value(row.get("om"), 0.0)
-        w = _clean_orbit_value(row.get("w"), 0.0)
-        ma = _clean_orbit_value(row.get("ma"), 0.0)
-        normalized_a_au = a_au if a_au is not None else 2.8
-        period_default = _estimate_period_days(normalized_a_au)
-        per = _clean_orbit_value(row.get("per"), period_default)
-        if per <= 0.0:
-            per = period_default
-        diameter = _clean_orbit_value(row.get("diameter"), None)
-        h_mag = _safe_number(row.get("h"), None)
-
-        spec_b = row.get("spec_b")
-        spec_t = row.get("spec_t")
-        taxonomy = _taxon_from_spec(spec_b, spec_t, a_au)
-        class_name = row.get("class")
-        if isinstance(class_name, str) and class_name:
-            class_counts[class_name] = class_counts.get(class_name, 0) + 1
-
-        albedo = _estimate_albedo(spec_b, spec_t, a_au)
-        diameter_km = _estimate_diameter_km(h_mag, diameter, albedo)
-
-        records.append({
-            "epoch_jd": _clean_orbit_value(row.get("epoch"), 2_451_545.0),
-            "a_au": normalized_a_au,
-            "e": e,
-            "i_deg": i_deg,
-            "ascending_node_deg": om,
-            "arg_periapsis_deg": w,
-            "mean_anomaly_deg": ma,
-            "period_days": per,
-            "diameter_km": max(0.001, diameter_km),
-            "albedo": albedo,
-            "taxonomy_index": float(taxonomy.material_index),
-            "taxonomy_name": taxonomy.name,
-            "orbit_class": class_name,
-            "source_id": float(_clean_orbit_value(row.get("spkid"), 0.0)),
-            "name": _strip_space_name(row.get("full_name", "")),
-        })
-
-        taxonomy_counts[taxonomy.name] += 1
-
+        source_id = _required(row, "spkid", 1, 0xFFFFFFFF)
+        if not source_id.is_integer():
+            raise ValueError("noninteger source identity")
+        if int(source_id) in seen:
+            raise ValueError(f"duplicate source identity: {int(source_id)}")
+        seen.add(int(source_id))
+        albedo = _safe_number(row.get("albedo"))
+        if albedo is not None and not 0 < albedo <= 1:
+            raise ValueError(f"invalid albedo for source {int(source_id)}")
+        diameter = _safe_number(row.get("diameter"))
+        diameter_km = _estimate_diameter_km(_safe_number(row.get("h")), diameter, albedo)
+        if diameter_km is None or not math.isfinite(diameter_km) or diameter_km <= 0:
+            raise ValueError(f"unknown diameter for source {int(source_id)}")
+        taxonomy_name, taxonomy_index = _taxonomy(row)
+        record = {
+            "source_id": int(source_id), "name": re.sub(r"\s+", " ", str(row.get("full_name") or "")).strip(),
+            "epoch_jd": _required(row, "epoch", 1), "a_au": _required(row, "a", 2, 3.5),
+            "e": _required(row, "e", 0, math.nextafter(1.0, 0)),
+            "i_deg": _required(row, "i", 0, 180),
+            "ascending_node_deg": _required(row, "om") % 360,
+            "arg_periapsis_deg": _required(row, "w") % 360,
+            "mean_anomaly_deg": _required(row, "ma") % 360,
+            "period_days": _required(row, "per", math.nextafter(0.0, 1)),
+            "diameter_km": diameter_km, "diameter_origin": "SBDB" if diameter and diameter > 0 else "H-and-observed-albedo-estimate",
+            "albedo": albedo, "taxonomy_index": taxonomy_index, "taxonomy_name": taxonomy_name,
+            "spec_b": row.get("spec_b"), "spec_t": row.get("spec_t"), "orbit_class": row["class"],
+        }
+        records.append(record)
+        taxonomy_counts[taxonomy_name] += 1
+        class_counts[row["class"]] = class_counts.get(row["class"], 0) + 1
+    records.sort(key=lambda record: (-record["diameter_km"], record["source_id"]))
     return records, taxonomy_counts, class_counts
 
 
-def _pack_u16(raw: Any, min_value: float, max_value: float) -> int:
-    value = _safe_number(raw, min_value)
-    if value is None:
-        value = min_value
-    value = max(min_value, min(max_value, value))
-    ratio = (value - min_value) / (max_value - min_value)
-    return int(round(ratio * ANGLE_SCALE_U16))
+def _pack_u16(value: float, maximum: float) -> int:
+    return round(value / maximum * ANGLE_SCALE_U16)
 
 
-def _pack_source_id(value: Any) -> int:
-    source_id = int(_safe_number(value, 0.0) or 0)
-    if source_id < 0:
-        return 0
-    if source_id > 0xFFFF_FFFF:
-        return 0xFFFF_FFFF
-    return source_id
-
-
-def _pack_binary(records: list[dict[str, float]]) -> bytes:
-    header = struct.pack("<4sBBBBI", ACBF_MAGIC, ACBF_VERSION, 0, ACBF_STRIDE_BYTES, 0, len(records))
-    payload = bytearray()
-    for record in records:
-        e_q = _pack_u16(record["e"], *ANGLE_BOUNDS["eccentricity"])
-        i_q = _pack_u16(record["i_deg"], *ANGLE_BOUNDS["inclination"])
-        asc_q = _pack_u16(record["ascending_node_deg"], *ANGLE_BOUNDS["angle"])
-        arg_q = _pack_u16(record["arg_periapsis_deg"], *ANGLE_BOUNDS["angle"])
-        ma_q = _pack_u16(record["mean_anomaly_deg"], *ANGLE_BOUNDS["angle"])
-        albedo_q = _pack_u16(record["albedo"], *ANGLE_BOUNDS["albedo"])
-        taxonomy = int(record["taxonomy_index"])
-        if taxonomy < 0:
-            taxonomy = 0
-        elif taxonomy > 255:
-            taxonomy = 255
-
+def _pack_binary(records: list[dict]) -> bytes:
+    payload = bytearray(struct.pack("<4sBBBBI", ACBF_MAGIC, ACBF_VERSION, 0, ACBF_STRIDE_BYTES, 0, len(records)))
+    for r in records:
+        # Existing ACBF v1 layout is unchanged. 0 albedo means unknown;
+        # positive source albedo is at least code 1. 255 is unknown taxonomy.
+        albedo_code = 0 if r["albedo"] is None else max(1, _pack_u16(r["albedo"], 1))
         payload.extend(struct.pack(
-            "<IffHHHHHffHBBH",
-            _pack_source_id(record["source_id"]),
-            float(record["epoch_jd"]),
-            float(record["a_au"]),
-            e_q,
-            i_q,
-            asc_q,
-            arg_q,
-            ma_q,
-            float(record["period_days"]),
-            float(record["diameter_km"]),
-            albedo_q,
-            taxonomy,
-            0,
-            0
+            "<IffHHHHHffHBBH", r["source_id"], r["epoch_jd"], r["a_au"],
+            _pack_u16(r["e"], 1), _pack_u16(r["i_deg"], 180),
+            _pack_u16(r["ascending_node_deg"], 360), _pack_u16(r["arg_periapsis_deg"], 360),
+            _pack_u16(r["mean_anomaly_deg"], 360), r["period_days"], r["diameter_km"],
+            albedo_code, r["taxonomy_index"], 0, 0,
         ))
+    return bytes(payload)
 
-    return header + payload
 
-
-def _write_meta(
-    meta_path: Path,
-    records: list[dict[str, float]],
-    taxonomy_counts: dict[str, int],
-    class_counts: dict[str, int],
-    source_rows: int,
-    checksum: str | None = None,
-    checksum_sha256: str | None = None,
-    warnings: list[str] | None = None,
-) -> None:
-    warnings = warnings or []
-    payload = {
-        "version": 1,
-        "generated_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "description": "Phase-1 deterministic main-belt-oriented asteroid corpus.",
-        "query": {
-            "endpoint": SBDB_API_URL,
-            "fields": SBDB_FIELDS.split(","),
-            "sb_kind": "a",
-            "sort": "-diameter",
-            "limit": len(records),
-            "filters": {
-                "main_belt_class_whitelist": sorted(MAIN_BELT_CLASS_WHITELIST),
-                "main_belt_au_min": MAIN_BELT_AU_MIN,
-                "main_belt_au_max": MAIN_BELT_AU_MAX,
-            },
-        },
-        "source_rows": source_rows,
-        "stored_count": len(records),
-        "record_layout": {
-            "format": "acbf_v1",
-            "fields": [
-                "source_id",
-                "epoch_jd",
-                "a_au",
-                "e",
-                "i_deg",
-                "ascending_node_deg",
-                "arg_periapsis_deg",
-                "mean_anomaly_deg",
-                "period_days",
-                "diameter_km",
-                "albedo",
-                "taxonomy_index",
-            ],
-            "header": {
-                "magic": "ACBF",
-                "version": ACBF_VERSION,
-                "count_u32": True,
-                "stride_bytes": ACBF_STRIDE_BYTES,
-            },
-        },
-        "taxonomy_map": {
-            "C": 0,
-            "S": 1,
-            "M": 2,
-        },
-        "counts": {
-            "taxonomy": taxonomy_counts,
-            "orbit_class": dict(sorted(class_counts.items(), key=lambda item: (-item[1], item[0]))),
-        },
-        "warnings": warnings,
+def _population(records: list[dict]) -> dict:
+    def histogram(field: str, edges: list[float]) -> list[int]:
+        return [sum(lo <= r[field] < hi for r in records) for lo, hi in zip(edges, edges[1:])]
+    return {
+        "count": len(records), "diameter_min_km": min(r["diameter_km"] for r in records),
+        "diameter_max_km": max(r["diameter_km"] for r in records),
+        "taxonomy": {name: sum(r["taxonomy_name"] == name for r in records) for name in ("C", "S", "M", "unknown")},
+        "unknown_albedo_count": sum(r["albedo"] is None for r in records),
+        "a_au_edges": [2, 2.5, 2.82, 3.500001], "a_au_counts": histogram("a_au", [2, 2.5, 2.82, 3.500001]),
+        "inclination_deg_edges": [0, 5, 10, 20, 180.000001], "inclination_deg_counts": histogram("i_deg", [0, 5, 10, 20, 180.000001]),
     }
-    if checksum is not None:
-        payload["checksum"] = checksum
-        payload["checksum_algorithm"] = "fnv1a32"
-    if checksum_sha256 is not None:
-        payload["checksum_sha256"] = checksum_sha256
-        payload["checksum_algorithm_sha256"] = "sha256"
-
-    meta_path.parent.mkdir(parents=True, exist_ok=True)
-    meta_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str) -> None:
-    rows = _fetch_asteroids(limit)
-    if not rows:
-        raise RuntimeError("SBDB query returned zero asteroid rows")
-
-    records, taxonomy_counts, class_counts = _build_records(rows)
-    warnings: list[str] = []
-    if len(records) < limit:
-        warnings.append(
-            f"Filtered dataset contains {len(records)} objects, below requested limit={limit}."
-            " Non-belt rows were excluded."
-        )
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    bin_path = output_dir / bin_name
-    meta_path = output_dir / meta_name
-
+def dataset_artifacts(limit: int, bin_name: str, meta_name: str, source_dir: Path = SOURCE_DIR) -> dict[str, bytes]:
+    if not 1 <= limit <= 100_000:
+        raise ValueError("limit must be between 1 and the pinned population of 100000")
+    if len({bin_name, meta_name, "sample_top_10.json"}) != 3:
+        raise ValueError("artifact filenames must be distinct")
+    for name in (bin_name, meta_name):
+        if Path(name).name != name or name in ("", ".", ".."):
+            raise ValueError("artifact names must be simple filenames")
+    store = SourceStore(source_dir)
+    params = phase1_query_params()
+    raw = store.read(SBDB_API_URL, params)
+    source = json.loads(raw)
+    if source.get("signature", {}).get("version") != "1.0":
+        raise ValueError("unsupported SBDB API source version")
+    if source.get("fields") != params["fields"].split(","):
+        raise ValueError("unexpected SBDB source fields")
+    fields = [field.lower() for field in source["fields"]]
+    if any(len(values) != len(fields) for values in source["data"]):
+        raise ValueError("incomplete SBDB source row")
+    rows = [dict(zip(fields, values)) for values in source["data"]]
+    all_records, _, _ = _build_records(rows)
+    if len(all_records) != 100_000:
+        raise ValueError(f"pinned source population incomplete: {len(all_records)} != 100000")
+    if any(r["diameter_origin"] != "SBDB" for r in all_records):
+        raise ValueError("largest-first catalog requires SBDB-supplied diameters")
+    records = all_records[:limit]
     binary = _pack_binary(records)
-    bin_path.parent.mkdir(parents=True, exist_ok=True)
-    bin_path.write_bytes(binary)
-    checksum_sha256 = hashlib.sha256(binary).hexdigest()
-    checksum_fnv = 0x811C9DC5
-    for byte in binary:
-        checksum_fnv ^= byte
-        checksum_fnv = (checksum_fnv * 0x01000193) % (1 << 32)
-    checksum_fnv_hex = f"0x{checksum_fnv:08x}"
-    _write_meta(
-        meta_path,
-        records,
-        taxonomy_counts,
-        class_counts,
-        source_rows=len(rows),
-        checksum=checksum_fnv_hex,
-        checksum_sha256=checksum_sha256,
-        warnings=warnings,
-    )
-
-    output_dir.joinpath("sample_top_10.json").write_text(
-        json.dumps(records[:10], indent=2), encoding="utf-8"
-    )
-
-    print(f"[phase1] Built: {_display_path(bin_path)} ({len(records):,} records)")
-    if warnings:
-        for warning in warnings:
-            print(f"[phase1] warning: {warning}")
-    print(f"[phase1] Metadata: {_display_path(meta_path)}")
-    print(f"[phase1] Taxonomy counts: {taxonomy_counts}")
-    print(f"[phase1] Orbit class sample: {dict(list(class_counts.items())[:10])}")
+    url = request_url(SBDB_API_URL, params)
+    entry = store.manifest["responses"][hashlib.sha256(url.encode("ascii")).hexdigest()]
+    coverage = _population(records)
+    prefix = records[:50_000]
+    meta = {
+        "version": 1, "generated_utc": entry["capturedUtc"],
+        "description": "Largest-first prefix of diameter-bearing JPL main-belt asteroids; not a representative population sample.",
+        "query": {"endpoint": SBDB_API_URL, **params},
+        "source_rows": len(rows), "stored_count": len(records),
+        "source": {"url": url, "sha256": entry["sha256"], "signature": source["signature"], "captured_utc": entry["capturedUtc"], "matching_database_rows": int(source["count"])},
+        "checksum_sha256": hashlib.sha256(binary).hexdigest(), "checksum_algorithm_sha256": "sha256",
+        "population_policy": {"selection": "largest-first-prefix", "order": ["diameter_km descending", "source_id ascending for ties"], "representative": False, "scope": "known SBDB diameters, MBA/IMB/OMB, 2 <= a <= 3.5 AU", "stored": coverage, "display_prefix_50000": {**_population(prefix), "fraction_of_stored": len(prefix) / len(records)}},
+        "fidelity": {"status": "not-independently-validated", "integrity": "SHA-256 binds artifact bytes only, not scientific accuracy", "period": "SBDB full-prec=true per (days), rounded only to ACBF float32", "taxonomy": "coarse visual families from observed spec_T/spec_B; original labels remain in pinned input; no semimajor-axis inference; X/E are not metallic M", "albedo": "SBDB source value or unknown; no assumed albedo", "diameter": "SBDB-supplied diameter in km; no magnitude-derived diameters in this population", "dynamics": "quantized fixed osculating elements with two-body propagation, not a validated multi-epoch ephemeris", "appearance": "colors and irregularity are illustrative"},
+        "record_layout": {"format": "acbf_v1", "stride_bytes": 36, "unknown_taxonomy_u8": 255, "unknown_albedo_u16": 0, "positive_albedo_min_code": 1, "quantization": {"float32": ["epoch_jd", "a_au", "period_days", "diameter_km"], "u16_ranges": {"e": [0, 1], "i_deg": [0, 180], "angles_deg": [0, 360], "albedo": [0, 1]}}},
+        "taxonomy_map": {"C": 0, "S": 1, "M": 2, "unknown": 255},
+        "counts": {"taxonomy": coverage["taxonomy"], "orbit_class": {key: sum(r["orbit_class"] == key for r in records) for key in sorted(MAIN_BELT_CLASS_WHITELIST)}},
+        "scientific_references": ["https://ssd-api.jpl.nasa.gov/doc/sbdb_query.html", "https://cneos.jpl.nasa.gov/tools/ast_size_est.html"],
+    }
+    return {bin_name: binary, meta_name: json_bytes(meta), "sample_top_10.json": json_bytes(records[:10])}
 
 
-def _display_path(path: Path) -> str:
-    """Repository-relative when the output sits inside the checkout, absolute otherwise.
-
-    `relative_to` raised ValueError for an external --output-dir, after the
-    artifacts had already been written (tracker SCN-034).
-    """
-    try:
-        return str(path.relative_to(PROJECT_ROOT))
-    except ValueError:
-        return str(path)
+def build_dataset(output_dir: Path, limit: int, bin_name: str, meta_name: str,
+                  source_dir: Path = SOURCE_DIR, *, check: bool = False, dry_run: bool = False) -> None:
+    artifacts = dataset_artifacts(limit, bin_name, meta_name, source_dir)
+    if check:
+        for name, content in artifacts.items():
+            if not (output_dir / name).exists() or (output_dir / name).read_bytes() != content:
+                raise ValueError(f"artifact differs: {output_dir / name}")
+    elif not dry_run:
+        publish_directory(output_dir, artifacts)
+    print(f"[phase1] {'byte-identical' if check else 'validated' if dry_run else 'built'} {limit:,} records: {output_dir}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build phase-1 deterministic asteroid dataset")
-    parser.add_argument("--limit", type=int, default=100_000, help="Top N asteroids by diameter")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Output directory")
-    parser.add_argument("--bin-name", type=str, default=DEFAULT_BIN_NAME, help="Binary filename")
-    parser.add_argument("--meta-name", type=str, default=DEFAULT_META_NAME, help="Metadata filename")
-    parser.add_argument("--dry-run", action="store_true", help="Validate query only; don't write artifacts")
-
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--limit", type=int, default=100_000)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--bin-name", default=DEFAULT_BIN_NAME)
+    parser.add_argument("--meta-name", default=DEFAULT_META_NAME)
+    parser.add_argument("--source-dir", type=Path, default=SOURCE_DIR)
+    parser.add_argument("--offline", action="store_true", help="explicit default; generation never accesses the network")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="byte-compare without writing")
+    mode.add_argument("--dry-run", action="store_true", help="validate all pinned inputs and serialize without writing")
     args = parser.parse_args()
-
-    if args.limit <= 0:
-        raise ValueError("--limit must be > 0")
-
-    if args.dry_run:
-        probe_limit = min(args.limit, 10)
-        rows = _fetch_asteroids(probe_limit, initial_fetch_limit=probe_limit)
-        print(f"[phase1] dry-run OK (query works, got {len(rows)} sample rows)")
-        return
-
-    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name)
+    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name, args.source_dir, check=args.check, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

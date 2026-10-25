@@ -1,0 +1,146 @@
+[
+  {
+    "run": 0,
+    "createdAt": 466.19999999995343,
+    "renders": 5,
+    "catalog": {
+      "loadMs": 162.19999999995343,
+      "budgetMs": 2000,
+      "passed": true,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 948.3999999999069,
+    "firstRenderAt": 1875.3999999999069,
+    "firstFullRenderAt": 1875.3999999999069,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 1,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 6543.299999999814,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request."
+    ],
+    "loadStart": [
+      2.39,
+      4.79,
+      6.04
+    ],
+    "loadEnd": [
+      2.44,
+      4.76,
+      6.02
+    ]
+  },
+  {
+    "run": 1,
+    "createdAt": 487.5,
+    "renders": 5,
+    "catalog": {
+      "loadMs": 182.30000000004657,
+      "budgetMs": 2000,
+      "passed": true,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 993.8000000000466,
+    "firstRenderAt": 1948.3000000000466,
+    "firstFullRenderAt": 1948.3000000000466,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 1,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 6872,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request."
+    ],
+    "loadStart": [
+      2.44,
+      4.76,
+      6.02
+    ],
+    "loadEnd": [
+      2.99,
+      4.8,
+      6.02
+    ]
+  },
+  {
+    "run": 2,
+    "createdAt": 437.80000000004657,
+    "renders": 5,
+    "catalog": {
+      "loadMs": 165.10000000009313,
+      "budgetMs": 2000,
+      "passed": true,
+      "accepted": true,
+      "sourceCount": 100000,
+      "loadedCount": 100000,
+      "checksum": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+    },
+    "catalogAdoptedAt": 930.1999999999534,
+    "firstRenderAt": 1891,
+    "firstFullRenderAt": 1891,
+    "asteroidInstances": 50000,
+    "kuiperInstances": 5000,
+    "renderStats": {
+      "frame": 1,
+      "calls": 41,
+      "triangles": 619144,
+      "points": 14360,
+      "lines": 1143
+    },
+    "graphics": {
+      "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+      "antialias": true,
+      "parallelCompile": true
+    },
+    "fullSceneGpuCompleteAt": 6918.5,
+    "webglError": 0,
+    "status": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+    "errors": [],
+    "warnings": [
+      "[solar] Sun: procedural fallback (solar server sent an invalid response)\nCheck the backend log for the failing /solar/physics request."
+    ],
+    "loadStart": [
+      2.99,
+      4.8,
+      6.02
+    ],
+    "loadEnd": [
+      3.07,
+      4.79,
+      6.01
+    ]
+  }
+]

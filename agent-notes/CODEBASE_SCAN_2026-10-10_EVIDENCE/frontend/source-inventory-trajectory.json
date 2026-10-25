@@ -1,0 +1,353 @@
+{
+  "note": "Lexical local import/worker URL traversal includes type-only edges; inventory is not a claim every line or execution path was tested. .test.ts files are inventory only; root runs suites.",
+  "files": [
+    {
+      "path": "index.html",
+      "lines": 403,
+      "sha256": "a79d50400cd4e45073198464ce41448a7164db430198d8eb8e1ef960fbd8039b",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/animationLoop.ts",
+      "lines": 213,
+      "sha256": "12ea1cc4678361b5bd7e1fdf36238159f9f1ec4a71448d03c1f3aa3527be8334",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/bodyManager.ts",
+      "lines": 171,
+      "sha256": "3a5f71e1563f11211573180ba022ab4fdc8d6c430c75a43929966f5a5d2d9960",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/app/cameraController.ts",
+      "lines": 207,
+      "sha256": "29ad62a3a0542fca11c41518f54106a43791020920c907fa9aa58d2781ad4feb",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/inputHandler.ts",
+      "lines": 37,
+      "sha256": "a1688fc4e841f9e3e3f148e53361d90d810d5c5067110e546514bfcdd77fc9c2",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/labelSystem.ts",
+      "lines": 275,
+      "sha256": "c8fd5ca3b4a5c6ab45d4a157219da5537bedc5629096854d747b5619a3122cf7",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/localSystemRenderer.ts",
+      "lines": 663,
+      "sha256": "1851282e841afade7afbbb93b33dc93489cd0a50d19cac8799073d3c3bd1c284",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/nearbySystemsRenderer.ts",
+      "lines": 656,
+      "sha256": "eb95cdfac58465e3a342ba7ce263c83f42f461e53fe12a75365731c4a632b5ef",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/plannerController.test.ts",
+      "lines": 208,
+      "sha256": "dd3510f9b0475077d56496342b8f51e8bcc302fea424ff934f0ce36de66939ab",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/plannerController.ts",
+      "lines": 619,
+      "sha256": "fc3ee6a6236e69f77f5ea09ae66b25d186c1a7fb832c2c30352065c82d8373f7",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/routeRenderer.ts",
+      "lines": 155,
+      "sha256": "b98cbdb6c842fab302222f9370cb052a24e4aca2fe003d6404acd9e36a04fc0b",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/sceneSetup.ts",
+      "lines": 228,
+      "sha256": "2d7a0fb7034fb950102f3ff3a3b2b23243443447a6c19ae93cc977e1231330bb",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/app/simulationClient.ts",
+      "lines": 313,
+      "sha256": "1156c35fbf49ba6cb50586ef43144a24f69caeaf099c829c3c030593985de4e7",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/stateStore.test.ts",
+      "lines": 46,
+      "sha256": "c41fae1356ba416b316706da8b401039828fe1111639c9a764be5140d13780a8",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/app/stateStore.ts",
+      "lines": 184,
+      "sha256": "44d0077aef98610d2ca29313f25fdff7f6bc932c20fe3ab1506c37be0fafbb3a",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/app/textureManager.ts",
+      "lines": 74,
+      "sha256": "5ae770ca19890b6a0c6204d8f6bc7864f0322755f233f8db3f22059fd44173c0",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/app/timeController.ts",
+      "lines": 94,
+      "sha256": "7e130508bd3da8b576ed68a4ba9e8cc4b47e36c048e6c5d400494c0288026fbd",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/app/uiBindings.ts",
+      "lines": 274,
+      "sha256": "838866cf57c0156aebe2d14d6e840d0e36cc26b701007bc112910f5a33e7d3f7",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/camera/transitions.ts",
+      "lines": 106,
+      "sha256": "907664c090f4f9c532a310eca1d53fa4a30f2dc260b8005116f7be549cff863f",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/asteroids/beltRenderer.ts",
+      "lines": 668,
+      "sha256": "5138cf775b829a235789942e98310d24636eb0d2475dddbc328aa2de84c64666",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/asteroids/catalogSourceStatus.ts",
+      "lines": 59,
+      "sha256": "1bd6087373bdc6edd4cbe9bc7ccec3a90a737df00d4f896c8dd5d2c761c9b745",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/planetary/cloudDataPipeline.ts",
+      "lines": 254,
+      "sha256": "4d349d87461c8f87b36cd21df00ec51a9ed4fe66c38cdeb54a5a1e165706b518",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/moonTextureCatalog.ts",
+      "lines": 146,
+      "sha256": "885bacac4a7f3c0330dae12876b8f43ca17b4af918c41d33e5d4a7cf75a4cb32",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/moonTexturePipeline.ts",
+      "lines": 126,
+      "sha256": "ad28045ef5de827c29846b6a737a4b563cd4d221e0fb486de1bd4bf2d6d48ab2",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/planetShaders.ts",
+      "lines": 376,
+      "sha256": "11b0faf1334620d38fedfe591400557eff5fcb4088c010c87b51a13f9384e8db",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/planetary/quadtreeLOD.ts",
+      "lines": 186,
+      "sha256": "efdb2b9f7a56abc9ed5a0db9d7daf5466144bce5707d65727fcce46cd3a02cd5",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/planetary/satellitePropagationCore.ts",
+      "lines": 171,
+      "sha256": "f488a81c4c4b4190d41c0804df2814bb1661ab92aba3135436f38fcf590973fe",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/satellitePropagationWorker.ts",
+      "lines": 59,
+      "sha256": "8d8463c1a1874cd13c42cad3d3bab8028cf86e33c21aee7d9887a553e2042be0",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/satelliteSystem.ts",
+      "lines": 1055,
+      "sha256": "9c4a3b96136c8068761890db4201329a5b3607db41c06d7dfa2d2cc859b00703",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/terrainSynthesis.ts",
+      "lines": 114,
+      "sha256": "405187c9dbde6f8c9d0fd7a0dc0e4af1f6057f899bad9430d76c1ccae101029a",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/planetary/visualProfiles.ts",
+      "lines": 330,
+      "sha256": "5d7dd122f0b1f4c5bbeb371ca7df1858b53de874457a310a8876100039fff964",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/solar/gravitationalWaves.ts",
+      "lines": 241,
+      "sha256": "d753e882d1d30dcaced0b059ff8889df5297a74b064caba558dcdf2a6c183041",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarFeatureBlending.ts",
+      "lines": 396,
+      "sha256": "3fd402f7f0b3b0f131c542ca819537891afe06431a74cdb83d6c344e54a1d3d7",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarFlares.ts",
+      "lines": 472,
+      "sha256": "4326365fba8c61e76ff0caec5ef061f17a395e6c99017f41f0744c696a31f89e",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarMagnetics.ts",
+      "lines": 503,
+      "sha256": "4d64c6ad9d44740dfb735fe0ba571ecc4f2dea14b410343ec507e0b0e24ee25a",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarObservationTexture.ts",
+      "lines": 235,
+      "sha256": "6692437f03fa7d83c299b176a191be5296ec1f377d43075b378db7df00794fe6",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarPhysicsClient.ts",
+      "lines": 164,
+      "sha256": "ad44c139cd6ad51f75a6f7a45bcef3918c264faec02a0408bf885bc8ea6145b6",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/solar/solarProminences.ts",
+      "lines": 372,
+      "sha256": "6222a66f537d59f3be88f2a66a63c07a769f98d7f65ca7103204539505daf3b7",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/solar/solarWind.ts",
+      "lines": 193,
+      "sha256": "3f3aa48ae01659406e93fb1054bf0cc956276709180a86f55fcbd5655c6704d0",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/solar/sunVisuals.ts",
+      "lines": 1733,
+      "sha256": "61f65441150c0b18739b5034283571354367cf0270494a7132b89fa613a23481",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "lines": 434,
+      "sha256": "c54fd00c567fcc9630cfb0b35d15bd8e51e8c4bdb489eb281db612e11cffe06e",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "lines": 395,
+      "sha256": "e8fec58f56465a3a83545126a79899688a9ef90f90405a53b7ce87ed11101b33",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/superluminal-modeling/smbhPropagation.ts",
+      "lines": 693,
+      "sha256": "5b46c52902ef2a97fc473dcd4f61ad364fe1a9508014cacf2d967fe9c3457199",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts",
+      "lines": 182,
+      "sha256": "49d071ea3373d9bdf1b7c8582bd3993d0ba00e2f260293640e0f5f5d6c244565",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/frontend/features/trajectory/index.test.ts",
+      "lines": 183,
+      "sha256": "502836f8f44c38d24150ff9e3613462aa8f356a9629aca612441f8dfc9861287",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/trajectory/index.ts",
+      "lines": 391,
+      "sha256": "239f8fa06a8be767b7f0a5eab21bb7be9c4855ad75ca694072435987359a49c1",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/trajectory/localPlanner.test.ts",
+      "lines": 222,
+      "sha256": "263d5feb919b90e175b09c9c7d362f28cb024af27f2d65e78948aca09152cdea",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/features/trajectory/localPlanner.ts",
+      "lines": 479,
+      "sha256": "669cd7e383e28c153ab130593c044caafa1630be64f54653dc9f266de61b890d",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/rendering/lodManager.ts",
+      "lines": 44,
+      "sha256": "00c12636291c7d9ff0c38d71047007ce2bfc085abe57eac85c1fb855d661f8fc",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/rendering/milkyWay.ts",
+      "lines": 463,
+      "sha256": "83f4bde70fee26454c9b964a8bb00d310828ac30b6096801d130217594bdce1d",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/frontend/rendering/orbitRenderer.ts",
+      "lines": 62,
+      "sha256": "91a9d15898a31220535c7563d6c9c3c19a54f88a556719758351dedb1e6abbca",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/main.ts",
+      "lines": 1500,
+      "sha256": "149d7c4efaf56f2996e0c894d085bb53756fa23c73a8f2b72924a2f77d422394",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/style.css",
+      "lines": 1311,
+      "sha256": "952173dba967ec065bda8284b105ec174138b4c210d004a6a12bc9b811f1e88e",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/sunController.ts",
+      "lines": 600,
+      "sha256": "f0f4ce982bcf9c65c5e30f16f0269b42783eb21190f372a830192a33e603c4fc",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/textures.ts",
+      "lines": 470,
+      "sha256": "d6277f868411d27cb7192b0e39cccf1d949cfc9d661dd586cd742bbac01d8739",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/workers/modelWorker.ts",
+      "lines": 160,
+      "sha256": "529c8185a77c1925df81b517d432b108701d640e667f10698f7cd3c3b354302a",
+      "bootstrap_import_reachable_including_types": true
+    },
+    {
+      "path": "src/workers/modelWorkerContract.test.ts",
+      "lines": 83,
+      "sha256": "950f6485636b7bc77f1ebc5e320104d46df7a506fabdf3262b5dfdae302a80f0",
+      "bootstrap_import_reachable_including_types": false
+    },
+    {
+      "path": "src/workers/modelWorkerContract.ts",
+      "lines": 158,
+      "sha256": "793ecc47ce47de78aabc1d7ee64053b2df31969c6e7a862b3c3c916aedb1f556",
+      "bootstrap_import_reachable_including_types": true
+    }
+  ]
+}

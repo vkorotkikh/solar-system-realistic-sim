@@ -1,3 +1,4 @@
+import planetSecularModel from '../../backend/data/ephemerides/planet_secular_model.json';
 import { J2000_JD } from '../constants';
 
 export const SUN = {
@@ -43,14 +44,7 @@ export const PLANETS = [
       argPeriapsisDeg: 29.12703035,
       meanAnomalyDeg: 174.79252722,
       periodDays: 87.9691,
-      secularRates: {
-        aAuPerCentury: 0.00000037,
-        ePerCentury: 0.00001906,
-        iDegPerCentury: -0.00594749,
-        ascendingNodeDegPerCentury: -0.12534081,
-        argPeriapsisDegPerCentury: 0.2858177,
-        meanLongitudeDegPerCentury: 149472.67411175
-      }
+      secularRates: planetSecularModel.rates.mercury
     }
   },
   {
@@ -71,14 +65,7 @@ export const PLANETS = [
       argPeriapsisDeg: 54.92262463,
       meanAnomalyDeg: 50.37663232,
       periodDays: 224.701,
-      secularRates: {
-        aAuPerCentury: 0.0000039,
-        ePerCentury: -0.00004107,
-        iDegPerCentury: -0.0007889,
-        ascendingNodeDegPerCentury: -0.27769418,
-        argPeriapsisDegPerCentury: 0.28037747,
-        meanLongitudeDegPerCentury: 58517.81538729
-      }
+      secularRates: planetSecularModel.rates.venus
     }
   },
   {
@@ -103,14 +90,7 @@ export const PLANETS = [
       argPeriapsisDeg: 102.93768193,
       meanAnomalyDeg: 357.52688973,
       periodDays: 365.256,
-      secularRates: {
-        aAuPerCentury: 0.00000562,
-        ePerCentury: -0.00004392,
-        iDegPerCentury: -0.01294668,
-        ascendingNodeDegPerCentury: 0,
-        argPeriapsisDegPerCentury: 0.32327364,
-        meanLongitudeDegPerCentury: 35999.37244981
-      }
+      secularRates: planetSecularModel.rates.earth
     }
   },
   {
@@ -131,14 +111,7 @@ export const PLANETS = [
       argPeriapsisDeg: 286.4968315,
       meanAnomalyDeg: 19.39019754,
       periodDays: 686.98,
-      secularRates: {
-        aAuPerCentury: 0.00001847,
-        ePerCentury: 0.00007882,
-        iDegPerCentury: -0.00813131,
-        ascendingNodeDegPerCentury: -0.29257343,
-        argPeriapsisDegPerCentury: 0.73698431,
-        meanLongitudeDegPerCentury: 19140.30268499
-      }
+      secularRates: planetSecularModel.rates.mars
     }
   },
   {
@@ -159,14 +132,7 @@ export const PLANETS = [
       argPeriapsisDeg: 274.25457074,
       meanAnomalyDeg: 19.66796068,
       periodDays: 4_332.589,
-      secularRates: {
-        aAuPerCentury: -0.00011607,
-        ePerCentury: -0.00013253,
-        iDegPerCentury: -0.00183714,
-        ascendingNodeDegPerCentury: 0.20469106,
-        argPeriapsisDegPerCentury: 0.00783562,
-        meanLongitudeDegPerCentury: 3034.74612775
-      }
+      secularRates: planetSecularModel.rates.jupiter
     }
   },
   {
@@ -189,14 +155,7 @@ export const PLANETS = [
       argPeriapsisDeg: 338.93645383,
       meanAnomalyDeg: 317.35536592,
       periodDays: 10_759.22,
-      secularRates: {
-        aAuPerCentury: -0.0012506,
-        ePerCentury: -0.00050991,
-        iDegPerCentury: 0.00193609,
-        ascendingNodeDegPerCentury: -0.28867794,
-        argPeriapsisDegPerCentury: -0.13029422,
-        meanLongitudeDegPerCentury: 1222.49362201
-      }
+      secularRates: planetSecularModel.rates.saturn
     }
   },
   {
@@ -219,14 +178,7 @@ export const PLANETS = [
       argPeriapsisDeg: 96.93735127,
       meanAnomalyDeg: 142.28382821,
       periodDays: 30_685.4,
-      secularRates: {
-        aAuPerCentury: -0.00196176,
-        ePerCentury: -0.00004397,
-        iDegPerCentury: -0.00242939,
-        ascendingNodeDegPerCentury: 0.04240589,
-        argPeriapsisDegPerCentury: 0.36564692,
-        meanLongitudeDegPerCentury: 428.48202785
-      }
+      secularRates: planetSecularModel.rates.uranus
     }
   },
   {
@@ -247,14 +199,7 @@ export const PLANETS = [
       argPeriapsisDeg: 273.18053653,
       meanAnomalyDeg: 259.91520804,
       periodDays: 60_189,
-      secularRates: {
-        aAuPerCentury: 0.00026291,
-        ePerCentury: 0.00005105,
-        iDegPerCentury: 0.00035372,
-        ascendingNodeDegPerCentury: -0.00508664,
-        argPeriapsisDegPerCentury: -0.317328,
-        meanLongitudeDegPerCentury: 218.45945325
-      }
+      secularRates: planetSecularModel.rates.neptune
     }
   },
   {
@@ -276,14 +221,7 @@ export const PLANETS = [
       meanAnomalyDeg: 14.86012204,
       periodDays: 90_560,
       // Standish Table 1 rates, same set as the planets above (varpidot -0.04062942).
-      secularRates: {
-        aAuPerCentury: -0.00031596,
-        ePerCentury: 0.0000517,
-        iDegPerCentury: 0.00004818,
-        ascendingNodeDegPerCentury: -0.01183482,
-        argPeriapsisDegPerCentury: -0.0287946,
-        meanLongitudeDegPerCentury: 145.20780515
-      }
+      secularRates: planetSecularModel.rates.pluto
     }
   }
 ];
@@ -722,7 +660,7 @@ export const ASTEROID_BELT_OBJECTS = [
 ];
 
 // Known Kuiper Belt Objects / trans-Neptunian dwarf planets.
-// Orbital elements referenced to J2000 epoch (approximate).
+// Osculating elements at JD 2461000.5 in the ecliptic-of-J2000 reference frame.
 export const KUIPER_BELT_OBJECTS = [
   {
     id: 'eris',
@@ -732,14 +670,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 1_163,
     color: '#c7c0b7',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 67.864,
-      e: 0.4366,
-      iDeg: 44.04,
-      ascendingNodeDeg: 35.951,
-      argPeriapsisDeg: 151.639,
-      meanAnomalyDeg: 205.989,
-      periodDays: 203_830
+      epochJd: 2_461_000.5,
+      aAu: 67.99639935320742,
+      e: 0.4369651041795099,
+      iDeg: 43.86893139068314,
+      ascendingNodeDeg: 36.0271731547851,
+      argPeriapsisDeg: 150.7321829638727,
+      meanAnomalyDeg: 211.4496226780759,
+      periodDays: 204_798.7496024734
     }
   },
   {
@@ -750,14 +688,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 715,
     color: '#c9b8a0',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 45.43,
-      e: 0.1613,
-      iDeg: 28.984,
-      ascendingNodeDeg: 79.382,
-      argPeriapsisDeg: 297.24,
-      meanAnomalyDeg: 153.27,
-      periodDays: 111_845
+      epochJd: 2_461_000.5,
+      aAu: 45.51068333601364,
+      e: 0.1604252103708474,
+      iDeg: 29.03230610125816,
+      ascendingNodeDeg: 79.26892160912695,
+      argPeriapsisDeg: 297.0756686869052,
+      meanAnomalyDeg: 169.3199425473393,
+      periodDays: 112_142.0424076039
     }
   },
   {
@@ -768,14 +706,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 816,
     color: '#d5cdc3',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 43.218,
-      e: 0.1951,
-      iDeg: 28.213,
-      ascendingNodeDeg: 122.167,
-      argPeriapsisDeg: 239.041,
-      meanAnomalyDeg: 205.22,
-      periodDays: 103_774
+      epochJd: 2_461_000.5,
+      aAu: 43.00550070466122,
+      e: 0.1957749348643283,
+      iDeg: 28.2084058575333,
+      ascendingNodeDeg: 121.7972912148725,
+      argPeriapsisDeg: 240.8882499146523,
+      meanAnomalyDeg: 222.327773674086,
+      periodDays: 103_011.1983717244
     }
   },
   {
@@ -786,14 +724,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 498,
     color: '#d4735e',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 506.8,
-      e: 0.8496,
-      iDeg: 11.929,
-      ascendingNodeDeg: 144.514,
-      argPeriapsisDeg: 311.122,
-      meanAnomalyDeg: 358.117,
-      periodDays: 4_163_000
+      epochJd: 2_461_000.5,
+      aAu: 549.5557484700445,
+      e: 0.8613012757344123,
+      iDeg: 11.9259170100237,
+      ascendingNodeDeg: 144.4787538737016,
+      argPeriapsisDeg: 311.0097768302501,
+      meanAnomalyDeg: 358.6073191231379,
+      periodDays: 4_705_611.401375764
     }
   },
   {
@@ -804,14 +742,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 555,
     color: '#b8a090',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 43.694,
-      e: 0.0389,
-      iDeg: 7.985,
-      ascendingNodeDeg: 188.927,
-      argPeriapsisDeg: 147.48,
-      meanAnomalyDeg: 282.48,
-      periodDays: 105_480
+      epochJd: 2_461_000.5,
+      aAu: 43.1476797896999,
+      e: 0.03583878345045522,
+      iDeg: 7.991371294756977,
+      ascendingNodeDeg: 188.9632801280419,
+      argPeriapsisDeg: 163.9231380423773,
+      meanAnomalyDeg: 291.4818848560664,
+      periodDays: 103_522.463310922
     }
   },
   {
@@ -822,14 +760,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 458,
     color: '#a0a0a0',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 39.419,
-      e: 0.2271,
-      iDeg: 20.573,
-      ascendingNodeDeg: 268.799,
-      argPeriapsisDeg: 73.1,
-      meanAnomalyDeg: 181.735,
-      periodDays: 90_470
+      epochJd: 2_461_000.5,
+      aAu: 39.33577773786809,
+      e: 0.2217299048615294,
+      iDeg: 20.5555257981466,
+      ascendingNodeDeg: 268.3859440319268,
+      argPeriapsisDeg: 73.72224931783963,
+      meanAnomalyDeg: 188.1114996171732,
+      periodDays: 90_111.46262610896
     }
   },
   {
@@ -840,14 +778,14 @@ export const KUIPER_BELT_OBJECTS = [
     radiusKm: 615,
     color: '#c47060',
     orbit: {
-      epochJd: J2000_JD,
-      aAu: 67.485,
-      e: 0.501,
-      iDeg: 30.739,
-      ascendingNodeDeg: 336.859,
-      argPeriapsisDeg: 207.667,
-      meanAnomalyDeg: 107.46,
-      periodDays: 202_370
+      epochJd: 2_461_000.5,
+      aAu: 66.8932285981878,
+      e: 0.5031647192772432,
+      iDeg: 30.86624793783273,
+      ascendingNodeDeg: 336.8400983527928,
+      argPeriapsisDeg: 206.6408306823951,
+      meanAnomalyDeg: 111.3923083021873,
+      periodDays: 199_835.0499342
     }
   },
   {

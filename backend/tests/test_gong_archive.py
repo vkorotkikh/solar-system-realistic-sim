@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Phase-budget unit tests execute the worker-side adapter with deterministic
+# clocks/sockets. Public kill/reap behavior is gated by test_solar_http_deadline.
+
 import gzip
 import hashlib
 import socket
@@ -7,6 +10,12 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def worker_side_phase_adapter(monkeypatch):
+    from sim.gong_magnetogram import StdlibGongTransport
+    monkeypatch.setattr(StdlibGongTransport, "open", StdlibGongTransport._open_in_worker)
 from astropy.time import Time
 
 from gong_fixture_helpers import COMPRESSED, EXPANDED, MANIFEST, gong_module

@@ -52,6 +52,10 @@
           "https://docs.tudat.space/en/latest/"
         ]
       }
+    },
+    "independent_reference": {
+      "artifact_path": "artifacts/earth_mars_2024_window__independent.json",
+      "artifact_sha256": "811b123c1b232db630b187fb7eca3bf5313a99d819b7fbdaaaf002d4de75ca85"
     }
   },
   {
@@ -107,6 +111,10 @@
           "https://docs.tudat.space/en/latest/"
         ]
       }
+    },
+    "independent_reference": {
+      "artifact_path": "artifacts/earth_venus_2024_window__independent.json",
+      "artifact_sha256": "f9c702af8e3439cbaa8e47c97cd25759b0c95b4635295fcfb4595ac6ce9d09c9"
     }
   },
   {
@@ -162,6 +170,10 @@
           "https://docs.tudat.space/en/latest/"
         ]
       }
+    },
+    "independent_reference": {
+      "artifact_path": "artifacts/earth_jupiter_2024_window__independent.json",
+      "artifact_sha256": "b4ca2a8a85d02c77690e12b71e9d4b079a6d6bd17305060912abfe0354b5caf3"
     }
   }
 ]

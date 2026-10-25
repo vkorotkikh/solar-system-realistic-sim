@@ -1,19 +1,36 @@
 import {
   AsteroidDef,
   AsteroidTaxonomy,
-  colorForTaxonomy,
-  albedoForTaxonomy
+  colorForTaxonomy
 } from './asteroidBelt';
 import { readAsteroidCatalogBinary, type PackedAsteroidRecord } from '../data/asteroidCatalogLoader';
 
-export type Phase1TaxonomyCode = 'C' | 'S' | 'M';
+export type Phase1TaxonomyCode = 'C' | 'S' | 'M' | 'unknown';
 
 export interface Phase1CatalogLoadOptions {
   url?: string;
   metaUrl?: string;
   maxRecords?: number;
   loadLatencyBudgetMs?: number;
+  /** Absolute network/body/hash deadline, shared by concurrent equivalent loads. */
+  timeoutMs?: number;
+  /** Bypass both completed and in-flight cache entries, e.g. for an explicit refresh. */
+  cache?: boolean;
 }
+
+export class Phase1CatalogLoadError extends Error {
+  constructor(public readonly code: 'timeout' | 'network-failed' | 'binary-invalid' | 'capacity-exceeded', message: string) {
+    super(message);
+    this.name = 'Phase1CatalogLoadError';
+  }
+}
+
+const inFlightLoads = new Map<string, Promise<Phase1CatalogLoadResult>>();
+const completedLoads = new Map<string, { result: Phase1CatalogLoadResult; expires: number }>();
+const MAX_ACTIVE_LOADS = 4;
+const MAX_COMPLETED_LOADS = 2;
+const CACHE_LIFETIME_MS = 300_000;
+let activeLoads = 0;
 
 export interface Phase1CatalogMeta {
   version?: number;
@@ -77,6 +94,7 @@ export interface Phase1CatalogTaxonomyAcceptance {
   counts: Record<Phase1TaxonomyCode, number>;
   present: Phase1TaxonomyCode[];
   expected: Phase1TaxonomyCode[];
+  /** Fraction of rows assignable to a coarse visual family; not class diversity. */
   completeness: number;
   passed: boolean;
   code?: Phase1CatalogRejectionCode;
@@ -119,6 +137,15 @@ export interface Phase1CatalogAcceptance {
 }
 
 export interface Phase1Bundle {
+  /** Integrity acceptance never certifies scientific fidelity. */
+  fidelity: { status: 'not-independently-validated' };
+  population: {
+    policy: 'largest-first-prefix';
+    representative: false;
+    storedCount: number;
+    selectedCount: number;
+    fraction: number;
+  };
   asteroids: AsteroidDef[];
   sourceCount: number;
   loadedCount: number;
@@ -160,7 +187,8 @@ const DEFAULT_PHASE1_EPOCH_JD = 2_451_545.0;
 const TAXONOMY_LABEL_BY_VALUE: Record<AsteroidTaxonomy, Phase1TaxonomyCode> = {
   [AsteroidTaxonomy.C]: 'C',
   [AsteroidTaxonomy.S]: 'S',
-  [AsteroidTaxonomy.M]: 'M'
+  [AsteroidTaxonomy.M]: 'M',
+  [AsteroidTaxonomy.Unknown]: 'unknown'
 };
 
 function nowMs(): number {
@@ -218,29 +246,16 @@ function safePeriodDays(value: number, fallbackAu: number): number {
   return value;
 }
 
-interface SourceOrbitRecord {
-  sourceIdRaw: number;
-  epochJd: number;
-  aAu: number;
-  e: number;
-  iDeg: number;
-  ascendingNodeDeg: number;
-  argPeriapsisDeg: number;
-  meanAnomalyDeg: number;
-  periodDays: number;
-  diameterKm: number;
-  albedo: number;
-  taxonomyIndex: number;
-}
-
-function toAsteroidDef(record: SourceOrbitRecord, index: number): AsteroidDef {
+function toAsteroidDef(record: PackedAsteroidRecord, index: number): AsteroidDef {
   const aAu = safePositiveOrbitNumber(record.aAu, 2.8);
-  const taxonomy = taxonomyFromIndex(record.taxonomyIndex, aAu);
+  const taxonomy = taxonomyFromIndex(record.taxonomyIndex);
   const taxonomySeed = buildOrbitSeed(aAu, index, taxonomy, record.meanAnomalyDeg);
   const safeE = clampRange(record.e, 0, 1);
   const safeDiameter = safePositiveOrbitNumber(record.diameterKm, 1.0);
-  const safeAlbedo = safeOrbitNumber(record.albedo, albedoForTaxonomy(taxonomy, mulberry32(taxonomySeed + 2)));
-  const safeAlbedoFinal = safeAlbedo <= 0 ? albedoForTaxonomy(taxonomy, mulberry32(taxonomySeed + 3)) : safeAlbedo;
+  // ACBF zero is the missing-albedo sentinel. Appearance is carried by color,
+  // separately from this source field; no inferred science is inserted here.
+  const safeAlbedoFinal = Number.isFinite(record.albedo) && record.albedo > 0 && record.albedo <= 1
+    ? record.albedo : null;
   const color = buildPaletteColor(taxonomy, taxonomySeed);
 
   return {
@@ -259,46 +274,13 @@ function toAsteroidDef(record: SourceOrbitRecord, index: number): AsteroidDef {
     albedo: safeAlbedoFinal,
     color,
     irregularity: irregularityFromDiameter(safeDiameter),
-    sourceId: String(record.sourceIdRaw),
+    sourceId: String(record.sourceId),
   };
 }
 
-function parseAcbfRecord(record: PackedAsteroidRecord, index: number): AsteroidDef {
-  return toAsteroidDef({
-    sourceIdRaw: record.sourceId,
-    epochJd: record.epochJd,
-    aAu: record.aAu,
-    e: record.e,
-    iDeg: record.iDeg,
-    ascendingNodeDeg: record.ascendingNodeDeg,
-    argPeriapsisDeg: record.argPeriapsisDeg,
-    meanAnomalyDeg: record.meanAnomalyDeg,
-    periodDays: record.periodDays,
-    diameterKm: record.diameterKm,
-    albedo: record.albedo,
-    taxonomyIndex: record.taxonomyIndex,
-  }, index);
-}
-
-interface ParsedAsphRecord {
-  version: number;
-  sourceIdRaw: number;
-  epochJd: number;
-  aAu: number;
-  e: number;
-  iDeg: number;
-  ascendingNodeDeg: number;
-  argPeriapsisDeg: number;
-  meanAnomalyDeg: number;
-  periodDays: number;
-  diameterKm: number;
-  albedo: number;
-  taxonomyIndex: number;
-}
-
-function parseAsphRecord(payload: DataView, dataOffset: number, index: number, version: number): ParsedAsphRecord {
+function parseAsphRecord(payload: DataView, dataOffset: number, index: number, version: number): PackedAsteroidRecord {
   const read = (offset: number) => payload.getFloat32(offset, true);
-  const sourceIdRaw = version === 2 ? payload.getUint32(dataOffset, true) : index + 1;
+  const sourceId = version === 2 ? payload.getUint32(dataOffset, true) : index + 1;
   const baseOffset = version === 2 ? dataOffset + 4 : dataOffset;
   const epochJd = read(baseOffset);
   const aAu = read(baseOffset + 4);
@@ -313,8 +295,7 @@ function parseAsphRecord(payload: DataView, dataOffset: number, index: number, v
   const taxonomyIndex = read(baseOffset + 40);
 
   return {
-    version,
-    sourceIdRaw,
+    sourceId,
     epochJd,
     aAu,
     e,
@@ -329,15 +310,13 @@ function parseAsphRecord(payload: DataView, dataOffset: number, index: number, v
   };
 }
 
-function taxonomyFromIndex(raw: number, aAu: number): AsteroidTaxonomy {
+function taxonomyFromIndex(raw: number): AsteroidTaxonomy {
   const index = Math.round(raw);
   if (index === 1) return AsteroidTaxonomy.S;
   if (index === 2) return AsteroidTaxonomy.M;
   if (index === 0) return AsteroidTaxonomy.C;
 
-  if (aAu < 2.5) return AsteroidTaxonomy.S;
-  if (aAu > 2.7) return AsteroidTaxonomy.C;
-  return AsteroidTaxonomy.M;
+  return AsteroidTaxonomy.Unknown;
 }
 
 function irregularityFromDiameter(diameterKm: number): number {
@@ -362,7 +341,7 @@ async function checksumSHA256(buffer: ArrayBuffer): Promise<string> {
 }
 
 function parseTaxonomyCounts(asteroids: readonly AsteroidDef[]): Phase1TaxonomyCounts {
-  const counts: Phase1TaxonomyCounts = { C: 0, S: 0, M: 0 };
+  const counts: Phase1TaxonomyCounts = { C: 0, S: 0, M: 0, unknown: 0 };
   for (const asteroid of asteroids) {
     const label = TAXONOMY_LABEL_BY_VALUE[asteroid.taxonomy];
     if (counts[label] == null) continue;
@@ -443,7 +422,7 @@ function buildRowAcceptance(
   if (sourceCount <= 0) reasons.push('sourceCount=0');
   if (parsedCount <= 0) reasons.push('parsedCount=0');
   if (!parsedMatchesExpectation) reasons.push(`parsedCount ${parsedCount} != min(requestedMax, sourceCount)=${Math.min(requestedMax, sourceCount)}`);
-  if (metaSourceRows != null && metaSourceRows !== sourceCount) reasons.push(`meta.source_rows=${metaSourceRows} != sourceCount=${sourceCount}`);
+  if (metaSourceRows != null && metaSourceRows < sourceCount) reasons.push(`meta.source_rows=${metaSourceRows} < sourceCount=${sourceCount}`);
   if (metaStoredCount != null && metaStoredCount !== sourceCount) reasons.push(`meta.stored_count=${metaStoredCount} != sourceCount=${sourceCount}`);
 
   const passed = reasons.length === 0;
@@ -463,12 +442,11 @@ function buildRowAcceptance(
 function buildTaxonomyAcceptance(asteroids: readonly AsteroidDef[]): Phase1CatalogTaxonomyAcceptance {
   const counts = parseTaxonomyCounts(asteroids);
   const present = EXPECTED_TAXONOMIES.filter((code) => counts[code] > 0);
-  const completeness = present.length / EXPECTED_TAXONOMIES.length;
+  const completeness = asteroids.length ? (asteroids.length - counts.unknown) / asteroids.length : 0;
 
   const reasons: string[] = [];
-  for (const code of EXPECTED_TAXONOMIES) {
-    if (counts[code] === 0) reasons.push(`missing taxonomy ${code}`);
-  }
+  // Family diversity is descriptive telemetry, never an integrity requirement:
+  // an honest small/largest-first prefix may contain only unknown taxonomy.
   if (!asteroids.length) reasons.push('no asteroid rows');
 
   const passed = reasons.length === 0;
@@ -626,7 +604,8 @@ interface Phase1CatalogMetadataLoadResult {
 }
 
 async function loadPhase1CatalogMetadata(
-  url?: string
+  url?: string,
+  signal?: AbortSignal
 ): Promise<Phase1CatalogMetadataLoadResult> {
   if (!url) {
     return {
@@ -641,7 +620,7 @@ async function loadPhase1CatalogMetadata(
 
   let response: Response;
   try {
-    response = await fetch(url, { cache: 'no-cache' });
+    response = await fetch(url, { cache: 'no-cache', signal });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -699,6 +678,9 @@ function parseOrbitCatalog(
   if (buffer.byteLength < HEADER_SIZE_BYTES) {
     throw new Error('Phase-1 binary payload is too small for header.');
   }
+  if (buffer.byteLength > HEADER_SIZE_BYTES + 100_000 * 48 || new DataView(buffer).getUint32(8, true) > 100_000) {
+    throw new Error('Phase-1 catalog exceeds the 100,000-row resource limit.');
+  }
 
   const headerBytes = new Uint8Array(buffer, 0, 4);
   const magic = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
@@ -743,12 +725,10 @@ function parseOrbitCatalog(
   }
 
   if (magic === ACBF_MAGIC) {
-    const parsed = readAsteroidCatalogBinary(buffer, { maxRecords: maxCount });
-    const limit = Math.max(0, Math.min(maxCount, parsed.records.length));
-    const asteroids = Array.from({ length: limit }, (_, i) => parseAcbfRecord(parsed.records[i], i));
+    const parsed = readAsteroidCatalogBinary(buffer, { maxRecords: maxCount }, toAsteroidDef);
 
     return {
-      asteroids,
+      asteroids: parsed.records,
       sourceCount: parsed.header.recordCount,
       catalogVersion: parsed.header.version,
       catalogMagic: ACBF_MAGIC
@@ -758,8 +738,9 @@ function parseOrbitCatalog(
   throw new Error(`Unknown phase-1 magic "${magic}". Expected ${ASPH_MAGIC} or ${ACBF_MAGIC}.`);
 }
 
-export async function loadPhase1AsteroidCatalog(
-  options: Phase1CatalogLoadOptions = {}
+async function fetchPhase1AsteroidCatalog(
+  options: Phase1CatalogLoadOptions,
+  signal: AbortSignal
 ): Promise<Phase1CatalogLoadResult> {
   const url = options.url ?? PHASE1_DEFAULT_URL;
   const metaUrl = options.metaUrl ?? PHASE1_DEFAULT_META_URL;
@@ -767,17 +748,34 @@ export async function loadPhase1AsteroidCatalog(
   const latencyBudgetMs = options.loadLatencyBudgetMs ?? PHASE1_LOAD_LATENCY_BUDGET_MS;
   const loadStarted = nowMs();
 
-  const [binaryResponse, metadataLoad] = await Promise.all([
-    fetch(url),
-    loadPhase1CatalogMetadata(metaUrl),
+  const [binaryLoad, metadataLoad] = await Promise.all([
+    fetch(url, { signal, cache: 'no-cache' }).then(async (response) => {
+      // Consume the binary while metadata is loading. Retain HTTP/body errors
+      // until metadata settles, preserving the existing error/deadline ordering
+      // without leaving an early body rejection unhandled. Fetch rejection still
+      // rejects Promise.all immediately, as it did before body reads overlapped.
+      try {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch phase-1 catalog (${response.status}): ${response.statusText}`);
+        }
+        return { ok: true as const, buffer: await response.arrayBuffer() };
+      } catch (error) {
+        return { ok: false as const, error };
+      }
+    }),
+    loadPhase1CatalogMetadata(metaUrl, signal),
   ]);
 
-  if (!binaryResponse.ok) {
-    throw new Error(`Failed to fetch phase-1 catalog (${binaryResponse.status}): ${binaryResponse.statusText}`);
-  }
+  if (!binaryLoad.ok) throw binaryLoad.error;
 
-  const buffer = await binaryResponse.arrayBuffer();
-  const parsed = parseOrbitCatalog(buffer, maxRecords);
+  const buffer = binaryLoad.buffer;
+  signal.throwIfAborted();
+  let parsed: ParsedPhase1Catalog;
+  try {
+    parsed = parseOrbitCatalog(buffer, maxRecords);
+  } catch (error) {
+    throw new Phase1CatalogLoadError('binary-invalid', error instanceof Error ? error.message : String(error));
+  }
   const metadata = metadataLoad.metadata;
   const checksumResolution = extractExpectedChecksum(metadata);
   let checksumActual = '';
@@ -789,6 +787,7 @@ export async function loadPhase1AsteroidCatalog(
     checksumFailureReason = `Unable to compute SHA-256 for the Phase-1 catalog: ${message}`;
   }
   const loadMs = nowMs() - loadStarted;
+  signal.throwIfAborted();
   const acceptance = buildAcceptance(parsed, {
     requestedMax: maxRecords,
     metadata,
@@ -804,6 +803,14 @@ export async function loadPhase1AsteroidCatalog(
   const taxonomyCheck = acceptance.taxonomy;
 
   return {
+    fidelity: { status: 'not-independently-validated' },
+    population: {
+      policy: 'largest-first-prefix',
+      representative: false,
+      storedCount: parsed.sourceCount,
+      selectedCount: parsed.asteroids.length,
+      fraction: parsed.sourceCount ? parsed.asteroids.length / parsed.sourceCount : 0,
+    },
     asteroids: parsed.asteroids,
     sourceCount: parsed.sourceCount,
     loadedCount: parsed.asteroids.length,
@@ -819,6 +826,69 @@ export async function loadPhase1AsteroidCatalog(
     loadLatencyBudgetMs: latencyBudgetMs,
     meta: metadata
   };
+}
+
+export async function loadPhase1AsteroidCatalog(
+  options: Phase1CatalogLoadOptions = {}
+): Promise<Phase1CatalogLoadResult> {
+  const maxRecords = options.maxRecords ?? PHASE1_DEFAULT_MAX_RECORDS;
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  if (!Number.isInteger(maxRecords) || maxRecords <= 0 || maxRecords > 100_000) {
+    throw new RangeError('maxRecords must be an integer from 1 to 100000');
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 60_000) {
+    throw new RangeError('timeoutMs must be positive and at most 60000');
+  }
+  const key = JSON.stringify([
+    options.url ?? PHASE1_DEFAULT_URL, options.metaUrl ?? PHASE1_DEFAULT_META_URL,
+    maxRecords, timeoutMs, options.loadLatencyBudgetMs ?? PHASE1_LOAD_LATENCY_BUDGET_MS,
+  ]);
+  const useCache = options.cache !== false;
+  if (useCache) {
+    const completed = completedLoads.get(key);
+    if (completed && completed.expires > Date.now()) return completed.result;
+    completedLoads.delete(key);
+    const pending = inFlightLoads.get(key);
+    if (pending) return pending;
+  }
+  if (activeLoads >= MAX_ACTIVE_LOADS) {
+    throw new Phase1CatalogLoadError('capacity-exceeded', 'Four catalog loads are already in flight.');
+  }
+  activeLoads += 1;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const error = new Phase1CatalogLoadError('timeout', `Catalog load exceeded ${timeoutMs} ms.`);
+      reject(error);
+      controller.abort(error);
+    }, timeoutMs);
+  });
+  // Promise.race bounds the caller even if a transport/body ignores abort.
+  // Only this raced result can enter the completed cache; late success cannot.
+  const pending = Promise.race([fetchPhase1AsteroidCatalog(options, controller.signal), deadline])
+    .then(result => {
+      if (useCache && result.accepted) {
+        if (completedLoads.size >= MAX_COMPLETED_LOADS) {
+          const oldest = completedLoads.keys().next().value;
+          if (oldest !== undefined) completedLoads.delete(oldest);
+        }
+        completedLoads.set(key, { result, expires: Date.now() + CACHE_LIFETIME_MS });
+      }
+      return result;
+    })
+    .catch((error: unknown) => {
+      controller.abort();
+      if (error instanceof Phase1CatalogLoadError) throw error;
+      throw new Phase1CatalogLoadError('network-failed', error instanceof Error ? error.message : String(error));
+    })
+    .finally(() => {
+      clearTimeout(timer);
+      activeLoads -= 1;
+      if (useCache) inFlightLoads.delete(key);
+    });
+  if (useCache) inFlightLoads.set(key, pending);
+  return pending;
 }
 
 export const PHASE1_CATALOG_URL = PHASE1_DEFAULT_URL;

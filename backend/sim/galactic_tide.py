@@ -137,6 +137,7 @@ def rebound_galactic_tide_callback(reb_sim):
     Note: Assumes REBOUND simulation uses AU, solar masses, yr units, in heliocentric
     ecliptic J2000 coordinates (rotated onto galactic axes internally).
     """
+    reb_sim = reb_sim.contents
     sun = reb_sim.particles[0]
     
     for i in range(1, reb_sim.N):
@@ -158,7 +159,7 @@ def rebound_galactic_tide_callback(reb_sim):
         p.az += az
 
 
-def combined_forces_callback(reb_sim):
+def combined_forces_callback(reb_sim, *, beta_by_index=None):
     """
     Combined REBOUND additional_forces callback for both
     radiation pressure and galactic tides.
@@ -167,7 +168,7 @@ def combined_forces_callback(reb_sim):
     """
     from .radiation_pressure import rebound_radiation_pressure_callback
     
-    rebound_radiation_pressure_callback(reb_sim)
+    rebound_radiation_pressure_callback(reb_sim, beta_by_index=beta_by_index)
     rebound_galactic_tide_callback(reb_sim)
 
 

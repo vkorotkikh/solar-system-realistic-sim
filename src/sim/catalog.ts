@@ -10,6 +10,7 @@ import {
 } from '../data/planets';
 import type { MoonChebyshevEphemeris } from './moonEphemeris';
 import type { KeplerOrbit } from './orbitMath';
+import { planetaryRotationFields, type IauPlanetRotation } from '../data/planetaryRotation';
 
 export interface RawMoonRecord {
   id: number;
@@ -46,6 +47,8 @@ export interface CreateSolarSystemCatalogOptions {
    * so the normal planet-only application does not pay its download/parse cost.
    */
   moonEphemerides?: MoonEphemerisMap;
+  /** Whether moon orbits should constrain their visible parent body's display radius. */
+  moonsVisible?: boolean;
 }
 
 export interface CatalogBody {
@@ -65,6 +68,9 @@ export interface CatalogBody {
   reference?: string;
   orbitFrameSource?: string;
   orbitEphemerisSource?: string;
+  iauRotation?: IauPlanetRotation;
+  axialObliquityDeg?: number;
+  /** Scene pole colatitude in ecliptic J2000; not orbital obliquity. */
   axialTiltDeg?: number;
   spinAxisLongitudeDeg?: number;
   rotationPhaseDeg?: number;
@@ -459,7 +465,13 @@ const MEASURED_ORBITS: Record<
 > = {
   Io: { periodDays: 1.769138, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
   Europa: { periodDays: 3.551181, periodIsMeanLongitudePeriod: true, apsisRegresses: true },
-  Triton: { periodDays: 5.876715, nodeDegPerCentury: 53.126 }
+  Triton: { periodDays: 5.876715, nodeDegPerCentury: 53.126 },
+  // Mean-anomaly slope fitted to 183 JPL Horizons/JUP347 ELEMENTS samples,
+  // 2000-2030 at 60-day cadence: 0.4901747981374377 deg/day. The table's
+  // 719.2806-day value plus a wrong node sign concealed a phase error.
+  // Capture: backend/tests/fixtures/carme_elements_horizons_capture.json.
+  // This remains a coarse mean-element model; position budgets are unchanged.
+  Carme: { periodDays: 734.431883009745 }
 };
 
 function precessionRateDegreesPerCentury(
@@ -492,7 +504,7 @@ function precessionRateDegreesPerCentury(
 
 export function resolveMoonSecularRates(
   moon: Pick<RawMoonRecord, 'apsisPrecessionYears' | 'nodePrecessionYears'> &
-    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris' | 'name'>>
+    Partial<Pick<RawMoonRecord, 'periodDays' | 'ephemeris' | 'name' | 'inclinationDeg'>>
 ): KeplerOrbit['secularRates'] | undefined {
   const measured = moon.name === undefined ? undefined : MEASURED_ORBITS[moon.name];
   const argRate = precessionRateDegreesPerCentury(
@@ -500,8 +512,15 @@ export function resolveMoonSecularRates(
     measured?.apsisRegresses ? -1 : 1,
     moon.periodDays
   );
-  const nodeRate =
-    measured?.nodeDegPerCentury ?? precessionRateDegreesPerCentury(moon.nodePrecessionYears, -1, moon.periodDays);
+  // The JPL table gives period magnitudes and inclinations in its native
+  // reference plane. The quadrupole nodal rate is proportional to -cos(i):
+  // regression for prograde, advance for retrograde, zero for a polar orbit.
+  // This is a mean-element fallback, not an accurate satellite ephemeris.
+  // Preserve signed measured rates (Triton) ahead of this generic convention.
+  const cosineInclination = Math.cos((moon.inclinationDeg ?? 0) * DEG_TO_RAD);
+  const nodeDirection = Math.abs(cosineInclination) < 1e-12 ? 0 : -Math.sign(cosineInclination);
+  const nodeRate = measured?.nodeDegPerCentury ??
+    precessionRateDegreesPerCentury(moon.nodePrecessionYears, nodeDirection, moon.periodDays);
 
   if (argRate === undefined && nodeRate === undefined) {
     return undefined;
@@ -621,7 +640,7 @@ function makeMoonId(moon: RawMoonRecord, usedIds: Set<string>): string {
   return id;
 }
 
-function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
+function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boolean): void {
   const minMoonOrbitByParent = new Map();
 
   for (const body of bodies) {
@@ -641,6 +660,8 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
     }
   }
 
+  if (!moonsVisible) return;
+
   for (const body of bodies) {
     const closestMoonOrbit = minMoonOrbitByParent.get(body.id);
     if (closestMoonOrbit === undefined) {
@@ -654,8 +675,60 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[]): void {
   }
 }
 
+export interface SunDisplayConstraintBody {
+  id: string;
+  parentId: string | null;
+  type: string;
+  displayRadiusAu: number;
+  orbit: Pick<KeplerOrbit, 'aAu' | 'e'> | null;
+}
+
+const SUN_PERIHELION_DISPLAY_CLEARANCE = 0.8;
+
+export function applySunPerihelionDisplayConstraint(
+  bodies: readonly SunDisplayConstraintBody[],
+): void {
+  const sun = bodies.find((body) => body.id === 'sun');
+  if (!sun) return;
+
+  let minimumPerihelionAu = Number.POSITIVE_INFINITY;
+  for (const body of bodies) {
+    if (
+      body.parentId !== sun.id
+      || (body.type !== 'planet' && body.type !== 'dwarf')
+      || !body.orbit
+    ) {
+      continue;
+    }
+
+    const aAu = body.orbit.aAu;
+    const eccentricity = body.orbit.e ?? 0;
+    if (
+      !Number.isFinite(aAu)
+      || aAu <= 0
+      || !Number.isFinite(eccentricity)
+      || eccentricity < 0
+      || eccentricity >= 1
+    ) {
+      continue;
+    }
+
+    const perihelionAu = aAu * (1 - eccentricity);
+    if (Number.isFinite(perihelionAu) && perihelionAu > 0) {
+      minimumPerihelionAu = Math.min(minimumPerihelionAu, perihelionAu);
+    }
+  }
+
+  if (Number.isFinite(minimumPerihelionAu)) {
+    sun.displayRadiusAu = Math.min(
+      sun.displayRadiusAu,
+      minimumPerihelionAu * SUN_PERIHELION_DISPLAY_CLEARANCE,
+    );
+  }
+}
+
 export function createSolarSystemCatalog(
-  { moonEphemerides = {} }: CreateSolarSystemCatalogOptions = {}
+  { moonEphemerides = {}, moonsVisible = true }: CreateSolarSystemCatalogOptions = {}
 ): SolarCatalog {
   const usedIds = new Set<string>();
   const bodies: CatalogBody[] = [];
@@ -684,6 +757,10 @@ export function createSolarSystemCatalog(
     usedIds.add(planet.id);
     bodies.push({
       ...planet,
+      // Keep raw orbital obliquities (also used by moon frame code) separate
+      // from the scene's pole colatitude and longitude.
+      axialObliquityDeg: planet.axialTiltDeg,
+      ...planetaryRotationFields(planet.id),
       parentId: 'sun',
       isMajor: true,
       equatorialRadiusKm,
@@ -778,7 +855,8 @@ export function createSolarSystemCatalog(
     earth.orbit = { ...earth.orbit, barycentreCompanion: { orbit: moon.orbit, massFraction: 0.01215058 } };
   }
 
-  applyDisplayScaleConstraints(bodies);
+  applyDisplayScaleConstraints(bodies, moonsVisible);
+  applySunPerihelionDisplayConstraint(bodies);
 
   const jumpBodyIds = [
     ...MAJOR_BODY_IDS,

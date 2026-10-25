@@ -1,0 +1,47 @@
+{
+  "total_moons": 424,
+  "retrograde": 287,
+  "node_regressing_negative": 286,
+  "node_prograde_positive": [
+    "Triton"
+  ],
+  "node_rate_undefined_filtered": 0,
+  "node_rate_zero": 0,
+  "sample_negative": [
+    {
+      "name": "Pasiphae",
+      "i": 148.3,
+      "nodePrecessionYears": 79.2,
+      "nodeRateDegPerCy": -454.5454545454545,
+      "argRateDegPerCy": 594.059405940594
+    },
+    {
+      "name": "Sinope",
+      "i": 157.3,
+      "nodePrecessionYears": 93.1,
+      "nodeRateDegPerCy": -386.6809881847476,
+      "argRateDegPerCy": 631.578947368421
+    },
+    {
+      "name": "Carme",
+      "i": 164.6,
+      "nodePrecessionYears": 89,
+      "nodeRateDegPerCy": -404.4943820224719,
+      "argRateDegPerCy": 707.2691552062869
+    },
+    {
+      "name": "Ananke",
+      "i": 147.6,
+      "nodePrecessionYears": 115.5,
+      "nodeRateDegPerCy": -311.68831168831167,
+      "argRateDegPerCy": 445.54455445544556
+    },
+    {
+      "name": "Callirrhoe",
+      "i": 144.9,
+      "nodePrecessionYears": 92.7,
+      "nodeRateDegPerCy": -388.34951456310677,
+      "argRateDegPerCy": 512.0910384068279
+    }
+  ]
+}

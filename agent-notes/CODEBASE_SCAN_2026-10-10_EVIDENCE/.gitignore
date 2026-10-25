@@ -1,0 +1,2 @@
+# These logs are intentional audit evidence, unlike disposable runtime logs.
+!*.log

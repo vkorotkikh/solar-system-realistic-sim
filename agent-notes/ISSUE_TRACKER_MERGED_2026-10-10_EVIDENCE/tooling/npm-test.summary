@@ -1,0 +1,9 @@
+npm test exit=1
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/solarPhysicsClient.h1.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/tests/vitest/sunController.h1.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-client.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-adv-controller.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-advtests.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-advtests.test.ts ]
+ FAIL  agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-branchtests.test.ts [ agent-notes/H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE/h1/verify/code/tests/h1v-fixed-branchtests.test.ts ]
+ Test Files  6 failed | 27 passed (33)
+      Tests  384 passed (384)

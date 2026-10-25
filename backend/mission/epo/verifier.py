@@ -28,7 +28,8 @@ class DemoVerifier:
 
         status = str(result.get("status", ""))
         recommendation = result.get("recommendation") if isinstance(result.get("recommendation"), dict) else None
-        verification = result.get("verification") if isinstance(result.get("verification"), dict) else None
+        embedded = recommendation.get("verification") if recommendation is not None else None
+        verification = embedded if isinstance(embedded, dict) else None
 
         if not recommendation:
             reasons.append("missing_recommendation")
@@ -45,7 +46,7 @@ class DemoVerifier:
             reasons.append(f"mission_score_below_threshold_{mission_score:.2f}")
 
         if policy and verification is not None:
-            verifier_valid = bool(verification.get("valid"))
+            verifier_valid = verification.get("valid") is True
             if policy.require_verifier_valid and not verifier_valid:
                 reasons.append("embedded_verifier_rejected")
         elif policy and policy.require_verifier_valid and recommendation is not None:
