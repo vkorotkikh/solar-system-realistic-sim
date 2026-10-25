@@ -503,8 +503,8 @@ function parseMpcLine(line: string): MpcParsedLine | null {
   const g = normalizeNumber(line.slice(14, 19));
   const epoch = normalizeString(line.slice(20, 25));
   const meanAnomalyDeg = normalizeNumber(line.slice(26, 35));
-  const argPeriapsisDeg = normalizeNumber(line.slice(38, 47));
-  const ascendingNodeDeg = normalizeNumber(line.slice(49, 58));
+  const argPeriapsisDeg = normalizeNumber(line.slice(37, 46));
+  const ascendingNodeDeg = normalizeNumber(line.slice(48, 57));
   const inclinationDeg = normalizeNumber(line.slice(59, 68));
   const eccentricity = normalizeNumber(line.slice(70, 79));
   const meanMotionDegPerDay = normalizeNumber(line.slice(80, 91));
