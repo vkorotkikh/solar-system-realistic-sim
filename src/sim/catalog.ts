@@ -70,6 +70,8 @@ export interface CatalogBody {
   type: string;
   massKg: number | null;
   radiusKm: number;
+  /** Moon radius selection source; a catalog entry is not a measurement claim. */
+  radiusSource?: 'catalog-table' | 'synthetic';
   color: string;
   equatorialRadiusKm: number;
   polarRadiusKm: number;
@@ -590,10 +592,10 @@ function stableHash(input: string): number {
   return Math.abs(hash);
 }
 
-function estimateMoonRadiusKm(moon: RawMoonRecord): number {
+function resolveMoonRadius(moon: RawMoonRecord): { radiusKm: number; radiusSource: 'catalog-table' | 'synthetic' } {
   const knownRadius = (MAJOR_MOON_RADII_KM as Record<string, number | undefined>)[moon.name];
   if (knownRadius) {
-    return knownRadius;
+    return { radiusKm: knownRadius, radiusSource: 'catalog-table' };
   }
 
   const hash = stableHash(`${moon.planet}:${moon.name}`);
@@ -613,7 +615,7 @@ function estimateMoonRadiusKm(moon: RawMoonRecord): number {
 
   // Distant irregular moons tend to be small; taper with semimajor axis.
   const distanceFactor = Math.max(0.25, 1 / Math.sqrt(Math.max(1, moon.aKm / 400_000)));
-  return Math.max(1.5, base * distanceFactor);
+  return { radiusKm: Math.max(1.5, base * distanceFactor), radiusSource: 'synthetic' };
 }
 
 function displayRadiusAu(radiusKm: number, type: string): number {
@@ -833,7 +835,7 @@ export function createSolarSystemCatalog(
       continue;
     }
 
-    const radiusKm = estimateMoonRadiusKm(moon);
+    const { radiusKm, radiusSource } = resolveMoonRadius(moon);
     const moonShape = (MAJOR_MOON_SHAPE_KM as Record<string, { equatorialRadiusKm: number; polarRadiusKm: number } | undefined>)[moon.name];
     const equatorialRadiusKm = Number.isFinite(moonShape?.equatorialRadiusKm) ? moonShape!.equatorialRadiusKm : radiusKm;
     const polarRadiusKm = Number.isFinite(moonShape?.polarRadiusKm) ? moonShape!.polarRadiusKm : radiusKm;
@@ -854,6 +856,7 @@ export function createSolarSystemCatalog(
       parentId,
       massKg: null,
       radiusKm,
+      radiusSource,
       equatorialRadiusKm,
       polarRadiusKm,
       displayRadiusAu: displayRadiusAu(radiusKm, 'moon'),

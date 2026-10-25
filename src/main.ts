@@ -755,6 +755,10 @@ function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
   if (!body) return;
   const typeLabel = body.type.charAt(0).toUpperCase() + body.type.slice(1);
+  const radiusSourceSuffix = body.type !== 'moon' ? ''
+    : body.radiusSource === 'synthetic' ? ' (synthetic visualization value)'
+    : body.radiusSource === 'catalog-table' ? ' (catalog value)'
+    : ' (source unspecified)';
 
   dom.bodyInfo.dataset.bodyId = body.id;
   dom.bodyInfoName.textContent = body.name;
@@ -762,7 +766,7 @@ function updateBodyInfoPanel(bodyId: string) {
   dom.bodyInfoRadius.textContent = `${body.radiusKm.toLocaleString(undefined, {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
-  })} km`;
+  })} km${radiusSourceSuffix}`;
   updateBodyInfoDistance(body.id);
   dom.bodyInfoPeriod.textContent = body.orbit
     ? `${body.orbit.periodDays.toLocaleString(undefined, { maximumFractionDigits: 1 })} days`
