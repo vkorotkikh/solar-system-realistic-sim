@@ -542,6 +542,11 @@ for (const body of catalog.bodies) {
 
 for (const body of catalog.bodies) {
   if (body.type === 'moon' && !showMoons) continue;
+  if (body.type === 'moon' && body.parentId) {
+    const node = bodyNodes.get(body.id);
+    const parentNode = bodyNodes.get(body.parentId);
+    if (node && parentNode) parentNode.add(node);
+  }
   createOrbitLine(body);
 }
 
