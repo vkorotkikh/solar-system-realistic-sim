@@ -466,7 +466,9 @@ function normalizeJplRow(raw: SbdbRawRow, queryId: string, sourceVersion: string
       ascendingNodeDeg: nodeDeg ?? 0,
       argPeriapsisDeg: periDeg ?? 0,
       meanAnomalyDeg: meanAnomalyDeg ?? 0,
-      periodDays: estimatePeriodDays(aAu, periodFromN ?? periodPerQuery),
+      periodDays: periodPerQuery !== null && periodPerQuery > 0
+        ? periodPerQuery
+        : estimatePeriodDays(aAu, periodFromN),
       epochSource: 'jpl',
     },
     raw: {
