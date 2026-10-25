@@ -312,7 +312,7 @@ function selectionPriority(source: Source, absMag: number | null, aAu: number | 
   const brightness = absMag === null ? 0 : Math.max(0, 12 - absMag) * 30;
   const beltBias = aAu !== null && aAu >= 2.0 && aAu <= 3.5 ? 80 : 0;
   const eccentricityPenalty = e !== null && e > 0.5 ? 20 : 0;
-  return Math.round(sourceBias + brightness + beltBias + eccentricityPenalty);
+  return Math.round(sourceBias + brightness + beltBias - eccentricityPenalty);
 }
 
 function nowIso(): string {
