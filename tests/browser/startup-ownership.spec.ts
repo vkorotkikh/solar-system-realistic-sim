@@ -158,7 +158,7 @@ async function snapshot(page: Page) {
     canvasInert: document.querySelector<HTMLCanvasElement>('#space-canvas')!.inert,
     canvasAriaHidden: document.querySelector('#space-canvas')!.getAttribute('aria-hidden'),
     playDisabled: document.querySelector<HTMLButtonElement>('#toggle-play')!.disabled,
-    session: document.querySelector('#session-label')!.textContent,
+    sessionLabel: document.querySelector('#session-label')!.textContent,
     range: document.querySelector('#status-zoom')!.textContent,
     catalogStatus: document.querySelector('#status-catalog')!.textContent,
   }));
@@ -187,7 +187,7 @@ async function attach(testInfo: TestInfo, value: unknown) {
 function recovered(c: Awaited<ReturnType<typeof snapshot>>, errors: string[]) {
   expect(c.recoveryHidden).toBe(false); expect(c.alert).toBeTruthy(); expect(c.retryFocused).toBe(true);
   expect(c.canvasInert).toBe(true); expect(c.canvasAriaHidden).toBe('true'); expect(c.playDisabled).toBe(true);
-  expect(c.session).toBe('Visualization unavailable'); expect(c.renders).toBe(0);
+  expect(c.sessionLabel).toBe('Visualization unavailable'); expect(c.renders).toBe(0);
   expect(errors).toEqual([]); expect(c.unhandled).toEqual([]);
   expect(c.rendererDisposed).toBe(1); expect(c.keyAdds).toBe(c.keyRemoves);
 }

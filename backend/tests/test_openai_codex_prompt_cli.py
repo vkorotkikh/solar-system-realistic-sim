@@ -19,7 +19,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'scripts/openai_codex_prompt.py'
-KEY = 'synthetic-tool060-environment-not-a-real-key-Q7'
+KEY = 'test-key-tool060-environment-not-a-real-key-Q7'
 INLINE = 'synthetic-tool060-inline-not-a-real-key-Z8'
 MODEL = 'owned-model'
 

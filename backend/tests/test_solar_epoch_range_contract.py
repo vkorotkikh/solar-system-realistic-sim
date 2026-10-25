@@ -88,7 +88,7 @@ def test_control_unrelated_parser_errors_do_not_advertise_bounds(owned, query, s
 ])
 def test_control_network_auth_and_refresh_precedence_remain(owned, monkeypatch, authenticated, refresh, expected, code):
     client, _, maximum, calls = owned
-    key = "owned-epoch-range-key-not-a-secret"
+    key = "test-key-owned-epoch-range-not-a-secret"
     monkeypatch.setattr(server, "SOLAR_SECURITY_CONFIG", replace(server.SOLAR_SECURITY_CONFIG, profile="network", api_key_hashes=frozenset({server._api_key_digest(key)})))
     response = client.get("/solar/physics", params={"jd_tdb": repr(maximum + 1), "force_data_refresh": str(refresh).lower()}, headers={"X-API-Key": key} if authenticated else {})
     assert response.status_code == expected

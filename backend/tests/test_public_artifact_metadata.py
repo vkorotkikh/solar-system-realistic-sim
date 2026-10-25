@@ -17,7 +17,7 @@ from sim.rebound_nbody import REBOUNDEngine
 import server
 
 
-KEY = "bkp007-owned-synthetic-key"
+KEY = "test-key-bkp007-owned-synthetic"
 PROFILES = ("local", "network")
 
 

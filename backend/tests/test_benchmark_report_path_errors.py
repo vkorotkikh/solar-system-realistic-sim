@@ -23,7 +23,7 @@ import server
 
 ROUTE = "/benchmark/accuracy/report"
 SENTINEL = "# owned original report\n"
-KEY = "peer-g-owned-synthetic-key"
+KEY = "test-key-peer-g-owned-synthetic"
 
 
 class Admission:

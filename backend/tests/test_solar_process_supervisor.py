@@ -758,7 +758,7 @@ def test_wrapped_outcome_is_observed_and_detached_failure_logged_once(
         ProcessCancelled, ProcessCrashed, ProcessReapFailed, SupervisedProcessRunner,
     )
 
-    secret = "synthetic-token=https://private.invalid/data?token=hidden /private/path"
+    secret = "<synthetic-token=https://private.invalid/data?token=hidden> /private/path"
 
     async def scenario():
         owner = _SubmittedFutureOwner()

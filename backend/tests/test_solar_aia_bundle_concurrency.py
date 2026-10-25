@@ -27,7 +27,6 @@ NOW = datetime(2020, 1, 1, 12, tzinfo=timezone.utc)
 JD = float(Time(NOW, scale="utc").tdb.jd)
 IHDR = b"IHDR" + (512).to_bytes(4, "big") * 2 + b"\x08\x06\x00\x00\x00"
 PNG = b"\x89PNG\r\n\x1a\n" + (13).to_bytes(4, "big") + IHDR + (zlib.crc32(IHDR) & 0xffffffff).to_bytes(4, "big")
-KEY = "owned-aia-bundle-isolation-synthetic-key"
 
 
 @pytest.fixture
