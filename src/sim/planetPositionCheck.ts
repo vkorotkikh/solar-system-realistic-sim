@@ -521,3 +521,62 @@ export function evaluatePlanetPositions(
     ungated
   };
 }
+
+export interface EarthVelocityRow {
+  jd: number;
+  errMs: number;
+  budgetMs: number;
+  ok: boolean;
+}
+
+export interface EarthVelocityReport {
+  bodyId: 'earth';
+  hid: '399';
+  budgetMs: number;
+  /** Empty only when the catalog lacks Earth; the positional report owns that failure. */
+  rows: EarthVelocityRow[];
+}
+
+/** Apply the existing independent Horizons test's strict Earth399 <2 m/s gate. */
+export function evaluateEarthVelocity(
+  catalog: SolarCatalog,
+  propagate: PropagateFn,
+  fixture: PlanetPositionFixture
+): EarthVelocityReport {
+  const truth = fixture.bodies?.earth;
+  if (!truth || truth.hid !== '399') {
+    throw new Error('Earth velocity check requires Earth399 truth.');
+  }
+  if (!Array.isArray(truth.states) || truth.states.length === 0) {
+    throw new Error('Earth velocity check requires nonempty Earth399 states.');
+  }
+  const report: EarthVelocityReport = { bodyId: 'earth', hid: '399', budgetMs: 2, rows: [] };
+  const earth = planetsById(catalog).get('earth');
+  if (!earth) return report;
+  const orbit = earth.orbit;
+  if (!orbit || !Number.isFinite(orbit.epochJd)) {
+    throw new Error('earth: catalog orbit has no finite epochJd');
+  }
+  if (earth.parentId !== null && earth.parentId !== 'sun') {
+    throw new Error('Earth velocity check requires a heliocentric catalog orbit.');
+  }
+
+  const p = makeVector();
+  const v = makeVector();
+  const kmPerSecond = AU_KM / DAY_SEC;
+  report.rows = truth.states.map(state => {
+    // Missing output must not reuse a previous sample or look like zero velocity.
+    v.set(Number.NaN, Number.NaN, Number.NaN);
+    if (propagate(orbit, state.jd - orbit.epochJd, p, v) === false) {
+      throw new Error(`Earth state unavailable at JD ${state.jd}`);
+    }
+    const errMs = 1000 * Math.hypot(
+      v.x * kmPerSecond - state.vx,
+      v.y * kmPerSecond - state.vy,
+      v.z * kmPerSecond - state.vz
+    );
+    return { jd: state.jd, errMs, budgetMs: report.budgetMs,
+      ok: Number.isFinite(errMs) && errMs < report.budgetMs };
+  });
+  return report;
+}

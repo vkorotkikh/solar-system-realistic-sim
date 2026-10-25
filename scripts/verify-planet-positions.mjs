@@ -24,6 +24,7 @@
  *   drift  -- worst (errKm - errKm at J2000) over the distant epochs; cancels that
  *             offset, so it stays sharp exactly where the absolute budget goes soft
  * plus an aggregate budget on the summed error over all 54 rows (eight planets + Pluto).
+ * Earth399 velocity is also gated at every epoch by the existing strict <2 m/s bound.
  *
  * The same comparison runs inside `npm test` as src/sim/planetPositions.horizons.test.ts.
  * This runner exists for the full table and for debugging without vitest.
@@ -71,7 +72,7 @@ async function loadSim() {
     entry,
     `export { createSolarSystemCatalog } from ${from('src/sim/catalog.ts')};\n` +
       `export { propagateKeplerOrbit } from ${from('src/sim/orbitMath.ts')};\n` +
-      `export { evaluatePlanetPositions, validateFixture } from ${from('src/sim/planetPositionCheck.ts')};\n`
+      `export { evaluatePlanetPositions, evaluateEarthVelocity, validateFixture } from ${from('src/sim/planetPositionCheck.ts')};\n`
   );
   const outfile = path.join(dir, 'bundle.cjs');
   await build({
@@ -150,16 +151,26 @@ async function main() {
 
   const catalog = sim.createSolarSystemCatalog();
   const report = sim.evaluatePlanetPositions(catalog, sim.propagateKeplerOrbit, fixture);
+  const earthVelocity = sim.evaluateEarthVelocity(catalog, sim.propagateKeplerOrbit, fixture);
 
   const radialWarnings = report.rows.map((r) => r.radialWarning).filter(Boolean);
   const overBudget = report.summaries.filter((s) => !s.ok);
-  const failures = overBudget.length + report.missing.length + (report.totalOk ? 0 : 1);
+  const velocityFailures = earthVelocity.rows.filter((row) => !row.ok);
+  const failures = overBudget.length + report.missing.length + (report.totalOk ? 0 : 1) + velocityFailures.length;
 
   if (AS_JSON) {
-    console.log(JSON.stringify({ ...report, radialWarnings }, null, 2));
+    console.log(JSON.stringify({ ...report, radialWarnings, earthVelocity }, null, 2));
   } else if (VERBOSE || failures) {
     for (const id of report.missing) console.error(`  MISSING from catalog: ${id}`);
     printTable(fixture, report);
+    console.log(`Earth399 velocity error (required <${earthVelocity.budgetMs} m/s):`);
+    for (const row of earthVelocity.rows) {
+      console.log(`  JD ${row.jd}: ${row.errMs.toPrecision(8)} m/s ${row.ok ? 'ok' : 'FAIL'}`);
+    }
+    if (!earthVelocity.rows.length) console.log('  unavailable: Earth is missing from the catalog');
+  }
+  for (const row of velocityFailures) {
+    console.error(`  Earth399 velocity @ JD ${row.jd}: ${row.errMs} m/s (required <${row.budgetMs} m/s)`);
   }
 
   if (report.ungated.length) {
@@ -182,7 +193,8 @@ async function main() {
   if (failures) {
     console.error(
       `planet-position check FAILED: ${overBudget.length} of ${report.summaries.length} planets ` +
-        `outside budget${report.totalOk ? '' : ', aggregate over budget'}.\n` +
+        `outside budget${report.totalOk ? '' : ', aggregate over budget'}, ` +
+        `${velocityFailures.length} Earth399 velocity rows outside budget.\n` +
         'This gate measures accuracy against JPL Horizons at six epochs from 1900 to 2100.\n' +
         'A failure that is small at 2000 and large at 1900/2100 is a SECULAR RATE defect in\n' +
         'src/sim/orbitMath.ts (resolveKeplerOrbitAtElapsedDays) -- most likely the mean anomaly\n' +
