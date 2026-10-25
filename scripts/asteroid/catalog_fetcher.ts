@@ -1052,6 +1052,9 @@ async function main(): Promise<void> {
   const jobs = buildJobs(options, limiter);
   const runTag = nowIso().replace(/[:.]/g, '-');
   const { records, sourceRuns, scheduleState } = await runSchedule(jobs, options);
+  if (records.some((record) => !Number.isFinite(record.selectionPriority))) {
+    throw new Error('Non-finite asteroid selection priority.');
+  }
   const merged = dedupeBySourcePriority(records);
   merged.sort((a, b) => b.selectionPriority - a.selectionPriority);
   console.log(`Total rows before dedupe: ${records.length}, after dedupe: ${merged.length}`);
