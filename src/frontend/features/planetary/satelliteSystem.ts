@@ -740,7 +740,7 @@ export class OrbitalSatelliteSystem {
 
     this.worker.postMessage({
       type: 'init',
-      primaryId: this.primaryId,
+      primaryId: this.primaryModel.id,
       satellites: this.satellites
     });
   }
