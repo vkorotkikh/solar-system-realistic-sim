@@ -115,7 +115,7 @@ export function albedoForTaxonomy(tax: AsteroidTaxonomy, rand: () => number): nu
   }
 }
 
-// Cumulative size-frequency distribution N(>D) ∝ D^−2.5 (Bottke+ 2005)
+// Illustrative truncated diameter density p(D) ∝ D^-2.5 over 0.8–300 km; not a survey-calibrated population.
 function sampleDiameterKm(rand: () => number): number {
   const u = rand();
   const dMin = 0.8;
