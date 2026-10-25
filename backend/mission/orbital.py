@@ -32,21 +32,186 @@ def normalize_radians(angle: float) -> float:
     return reduced if reduced >= 0 else reduced + TWO_PI
 
 
+# Private support for the direct helper only; propagation/model policies below
+# retain their existing contracts and arithmetic.
+_KEPLER_ANOMALY_TARGET = 1e-10
+_KEPLER_UNIT_ROUNDOFF = 2.0**-53
+_KEPLER_GAMMA64 = (64 * _KEPLER_UNIT_ROUNDOFF) / (1 - 64 * _KEPLER_UNIT_ROUNDOFF)
+_KEPLER_UNDERFLOW_ALLOWANCE = 64 * math.ulp(0.0)
+
+
+def _kepler_up(value: float) -> float:
+    return math.nextafter(value, math.inf)
+
+
+def _kepler_down(value: float) -> float:
+    return math.nextafter(value, -math.inf)
+
+
+def _kepler_sine_allowance(value: float) -> float:
+    # One adjacent spacing is a practical libm assumption, not a correctly
+    # rounded transcendental or all-platform interval guarantee.
+    return _kepler_up(max(_kepler_up(value) - value, value - _kepler_down(value)))
+
+
+def _evaluate_direct_kepler(anomaly: float, mean: float, e: float) -> Tuple[float, float, float, float]:
+    one_minus_e = 1 - e
+    if abs(anomaly) <= 1:
+        square = anomaly * anomaly
+        # E-sin(E), alternating through E^19/19!: 9 coefficient divisions,
+        # 16 Horner operations and 8 surrounding operations, plus at most8
+        # reused-square error factors. The absolute-term condition is at most
+        # 400/361 on square<=1; gamma41 times that factor fits below gamma64.
+        polynomial = 1 / 121645100408832000
+        polynomial = 1 / 355687428096000 - square * polynomial
+        polynomial = 1 / 1307674368000 - square * polynomial
+        polynomial = 1 / 6227020800 - square * polynomial
+        polynomial = 1 / 39916800 - square * polynomial
+        polynomial = 1 / 362880 - square * polynomial
+        polynomial = 1 / 5040 - square * polynomial
+        polynomial = 1 / 120 - square * polynomial
+        polynomial = 1 / 6 - square * polynomial
+        difference = (anomaly * square) * polynomial
+        linear = one_minus_e * anomaly
+        nonlinear = e * difference
+        residual = (linear + nonlinear) - mean
+        scale = _kepler_up(_kepler_up(abs(linear) + abs(nonlinear)) + abs(mean))
+        # |E|^21/21! <= |E|^3/21! for |E|<=1. The looser outward cube avoids
+        # rounded high-power underestimation;21! is exactly binary64.
+        cube_upper = _kepler_up(abs(anomaly) * _kepler_up(square))
+        tail = _kepler_up(cube_upper / 51090942171709440000)
+        residual_error = _kepler_up(_kepler_up(_kepler_up(_KEPLER_GAMMA64 * scale) + tail)
+                                    + _KEPLER_UNDERFLOW_ALLOWANCE)
+    else:
+        sine = math.sin(anomaly)
+        difference = anomaly - mean
+        sine_term = e * sine
+        residual = difference - sine_term
+        scale = _kepler_up(abs(difference) + abs(sine_term))
+        sine_error = _kepler_up(e * _kepler_sine_allowance(sine))
+        # gamma64 dominates these3 basic operations, without a unit scale floor.
+        residual_error = _kepler_up(_kepler_up(_kepler_up(_KEPLER_GAMMA64 * scale) + sine_error)
+                                    + _KEPLER_UNDERFLOW_ALLOWANCE)
+
+    half_sine = math.sin(anomaly / 2)
+    curved = (2 * e * half_sine) * half_sine
+    derivative = one_minus_e + curved
+    sine_error = _kepler_up(_kepler_sine_allowance(half_sine) + math.ulp(0.0))
+    square_error = _kepler_up(_kepler_up(2 * abs(half_sine) * sine_error)
+                              + _kepler_up(sine_error * sine_error))
+    trig_error = _kepler_up(2 * e * square_error)
+    # Six basic operations including1-e/halving; the extra minimum subnormal
+    # above covers half-angle underflow before the sine-spacing allowance.
+    derivative_error = _kepler_up(_kepler_up(_kepler_up(_KEPLER_GAMMA64 * derivative) + trig_error)
+                                  + _KEPLER_UNDERFLOW_ALLOWANCE)
+    return residual, residual_error, derivative, derivative_error
+
+
 def solve_kepler(mean_anomaly_rad: float, eccentricity: float, max_iter: int = 24) -> float:
-    e = max(0.0, min(0.9999999, eccentricity))
-    eccentric_anomaly = mean_anomaly_rad if e < 0.8 else math.pi
+    """Return whole E for E-e*sin(E)=M, or report unestablishable precision.
 
-    for _ in range(max_iter):
-        f = eccentric_anomaly - e * math.sin(eccentric_anomaly) - mean_anomaly_rad
-        f_prime = 1.0 - e * math.cos(eccentric_anomaly)
-        if abs(f_prime) < 1e-15:
-            break
-        delta = f / f_prime
-        eccentric_anomaly -= delta
-        if abs(delta) < 1e-10:
+    The fixed1e-10 target is absolute anomaly error, not a step/residual test.
+    Iteration requires lossless binary64 inputs; original Real identities are
+    exact. Error allowances are practical libm checks, not formal certification.
+    """
+    from numbers import Real
+
+    # Compare original Real values rather than converting first: finite huge
+    # integers/Fractions must not be misclassified by float conversion overflow.
+    if (isinstance(mean_anomaly_rad, bool) or not isinstance(mean_anomaly_rad, Real)
+            or not -math.inf < mean_anomaly_rad < math.inf
+            or isinstance(eccentricity, bool) or not isinstance(eccentricity, Real)
+            or not 0 <= eccentricity < 1
+            or isinstance(max_iter, bool) or not isinstance(max_iter, int) or max_iter <= 0):
+        raise ValueError("Invalid elliptic Kepler solver arguments.")
+    # Domain and budget validation precede exact identities and |E-M|<=e.
+    if mean_anomaly_rad == 0 or eccentricity <= _KEPLER_ANOMALY_TARGET:
+        return mean_anomaly_rad
+    try:
+        mean = float(mean_anomaly_rad)
+        e = float(eccentricity)
+    except (OverflowError, TypeError, ValueError):
+        raise RuntimeError("Kepler solver requires lossless binary64 inputs for iteration.") from None
+    if (not math.isfinite(mean) or not math.isfinite(e)
+            or mean != mean_anomaly_rad or e != eccentricity):
+        raise RuntimeError("Kepler solver requires lossless binary64 inputs for iteration.")
+
+    lower = _kepler_down(mean - e)
+    upper = _kepler_up(mean + e)
+    anomaly = mean
+    previous = math.nan
+    certified_fallback = None
+    cycle_lower = cycle_upper = math.nan
+    checkpoint_anomaly = checkpoint_previous = math.nan
+    cycle_power = 1
+    cycle_length = 0
+    cycle_safeguarded = False
+    global_derivative_lower = _kepler_down(1 - e)
+    # range is lazy even for huge positive Python ints: initial evaluation plus
+    # at most max_iter refinements, including any optional certified polish.
+    for iteration in range(max_iter + 1):
+        residual, residual_error, derivative, derivative_error = _evaluate_direct_kepler(anomaly, mean, e)
+        if residual > residual_error:
+            upper = anomaly
+        elif residual < -residual_error:
+            lower = anomaly
+
+        # Bounds concern the actual returned float, with outward distances and
+        # quotient and downward derivative lower bounds; no rounded f==0 exit.
+        radius = _kepler_up(max(anomaly - lower, upper - anomaly))
+        local_derivative_lower = _kepler_down(_kepler_down(derivative - derivative_error) - _kepler_up(e * radius))
+        derivative_lower = max(global_derivative_lower, local_derivative_lower)
+        residual_upper = _kepler_up(abs(residual) + residual_error)
+        error_upper = _kepler_up(residual_upper / derivative_lower)
+        certified = radius <= _KEPLER_ANOMALY_TARGET or error_upper <= _KEPLER_ANOMALY_TARGET
+        if certified_fallback is not None:
+            return anomaly if certified else certified_fallback
+        if certified:
+            polished = anomaly - residual / derivative
+            if (iteration < max_iter and math.isfinite(polished)
+                    and polished != anomaly and lower < polished < upper):
+                certified_fallback = anomaly
+                previous, anomaly = anomaly, polished
+                continue
+            return anomaly
+        if iteration == max_iter or not (math.isfinite(lower) and math.isfinite(upper)):
             break
 
-    return eccentric_anomaly
+        # Constant-space Brent checkpoints only within an unchanged bracket.
+        # A genuinely tighter endpoint permits revisiting a candidate. A cycle
+        # gets one midpoint safeguard, then must tighten the bracket or fail.
+        force_safeguard = False
+        if lower != cycle_lower or upper != cycle_upper:
+            cycle_lower, cycle_upper = lower, upper
+            checkpoint_anomaly, checkpoint_previous = anomaly, previous
+            cycle_power, cycle_length, cycle_safeguarded = 1, 0, False
+        else:
+            cycle_length += 1
+            if anomaly == checkpoint_anomaly and previous == checkpoint_previous:
+                if cycle_safeguarded:
+                    break
+                cycle_safeguarded = force_safeguard = True
+                # Restart after the forced transition, retaining its used flag.
+                checkpoint_anomaly, checkpoint_previous = anomaly, previous
+                cycle_power, cycle_length = 1, 0
+            elif cycle_length == cycle_power:
+                checkpoint_anomaly, checkpoint_previous = anomaly, previous
+                cycle_power = min(2 * cycle_power, max_iter)
+                cycle_length = 0
+
+        next_anomaly = anomaly - residual / derivative
+        if (force_safeguard or not math.isfinite(next_anomaly)
+                or not lower < next_anomaly < upper or next_anomaly == anomaly):
+            next_anomaly = lower + (upper - lower) / 2
+            if next_anomaly == anomaly:
+                next_anomaly = (lower + (anomaly - lower) / 2 if anomaly - lower >= upper - anomaly
+                                else anomaly + (upper - anomaly) / 2)
+            if not lower < next_anomaly < upper or next_anomaly == anomaly:
+                next_anomaly = upper if anomaly == lower else lower
+                if next_anomaly == anomaly or next_anomaly == previous:
+                    break
+        previous, anomaly = anomaly, next_anomaly
+    raise RuntimeError("Kepler solver could not establish the requested precision.")
 
 
 def propagate_kepler_orbit(orbit: Dict[str, Any], elapsed_days: float) -> Tuple[List[float], List[float]]:
