@@ -126,7 +126,7 @@ function sampleDiameterKm(rand: () => number): number {
 
 function sampleSemiMajorAu(rand: () => number): number {
   for (let attempt = 0; attempt < 40; attempt++) {
-    // Bimodal peak near 2.35 AU and 2.85 AU with overall smooth distribution
+    // Uniform trial across the belt; reject the fixed illustrative gap intervals.
     const t = rand();
     const aAu = BELT_INNER_AU + (BELT_OUTER_AU - BELT_INNER_AU) * t;
     if (!isInKirkwoodGap(aAu)) return aAu;
