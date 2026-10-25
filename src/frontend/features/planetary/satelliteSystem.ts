@@ -81,6 +81,7 @@ interface NormalizedSatellite extends PropagatedSatellite {
 interface SatelliteWorkerSnapshot {
   jd0: number;
   jd1: number;
+  applyJ2?: unknown;
   positions0: Float32Array;
   positions1: Float32Array;
   count: number;
@@ -95,6 +96,7 @@ interface SatelliteWorkerSnapshotMessage {
   type: 'snapshot';
   jd0: number;
   jd1: number;
+  applyJ2?: unknown;
   count: number;
   positions0: Float32Array | ArrayLike<number>;
   positions1: Float32Array | ArrayLike<number>;
@@ -123,10 +125,6 @@ interface OrbitalSatelliteSystemOptions {
   markerPixelSize?: Partial<MarkerPixelSize> | null;
   markerBaseScaleAu?: number | null;
   markerColorOverrides?: MarkerColorOverrides | null;
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
 }
 
 function nowMs() {
@@ -726,6 +724,7 @@ export class OrbitalSatelliteSystem {
         this.workerSnapshot = {
           jd0: Number(message.jd0),
           jd1: Number(message.jd1),
+          applyJ2: message.applyJ2,
           positions0,
           positions1,
           count
@@ -938,18 +937,17 @@ export class OrbitalSatelliteSystem {
   applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
-    if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
+    if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
     if (snapshot.count !== this.satellites.length) return false;
+    if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return false;
 
-    const span = snapshot.jd1 - snapshot.jd0;
-    const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
+    const positions = jd === snapshot.jd0 ? snapshot.positions0
+      : jd === snapshot.jd1 ? snapshot.positions1 : null;
+    if (!positions) return false;
 
     for (let i = 0; i < this.satellites.length; i += 1) {
       const base = i * 3;
-      const x = snapshot.positions0[base] + (snapshot.positions1[base] - snapshot.positions0[base]) * alpha;
-      const y = snapshot.positions0[base + 1] + (snapshot.positions1[base + 1] - snapshot.positions0[base + 1]) * alpha;
-      const z = snapshot.positions0[base + 2] + (snapshot.positions1[base + 2] - snapshot.positions0[base + 2]) * alpha;
-      this.applyMarkerPositionByIndex(i, x, y, z);
+      this.applyMarkerPositionByIndex(i, positions[base], positions[base + 1], positions[base + 2]);
     }
 
     this.flushMarkerPositionUpdates();

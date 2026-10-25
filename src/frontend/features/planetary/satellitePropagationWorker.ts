@@ -75,6 +75,7 @@ self.onmessage = (event) => {
         type: 'snapshot',
         jd0,
         jd1,
+        applyJ2,
         count,
         positions0,
         positions1
