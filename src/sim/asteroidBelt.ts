@@ -1,4 +1,4 @@
-import { J2000_JD } from '../constants';
+import { J2000_JD, MU_SUN_AU3_DAY2 } from '../constants';
 import { NAMED_ASTEROID_ORBITS } from '../data/namedAsteroidOrbits';
 import { solveKeplerFast } from './orbitMath';
 import type { KeplerOrbit } from './orbitMath';
@@ -189,7 +189,7 @@ export function generateAsteroidBelt(
     const ascendingNodeDeg = rand() * 360;
     const argPeriapsisDeg = rand() * 360;
     const meanAnomalyDeg = rand() * 360;
-    const periodDays = 365.25 * Math.pow(aAu, 1.5);
+    const periodDays = 2 * Math.PI * Math.sqrt((aAu * aAu * aAu) / MU_SUN_AU3_DAY2);
 
     const taxonomy = taxonomyFromSemiMajor(aAu, rand());
     const diameterKm = sampleDiameterKm(rand);
