@@ -831,6 +831,7 @@ def test_real_rebound_websocket_recovers_only_read_only_command_failures(monkeyp
             payload = json.loads(message["text"])
             messages.append(payload)
             if payload["type"] == "connected":
+                guard.reschedule(asyncio.get_running_loop().time() + 3)
                 command = (
                     {"type": "get_orbital_elements", "body_id": "earth"}
                     if failure == "read_only" else
@@ -848,7 +849,11 @@ def test_real_rebound_websocket_recovers_only_read_only_command_failures(monkeyp
                 await incoming.put({"type": "websocket.disconnect", "code": 1000})
 
         socket = WebSocket(scope, incoming.get, send)
-        await asyncio.wait_for(server.simulation_websocket(socket), 3)
+        # Real initialization integrates each catalog epoch group (~2 s on a
+        # fast desktop, more on CI runners), so it gets its own bound. The
+        # command protocol keeps its 3 s budget, restarted at `connected`.
+        async with asyncio.timeout(60) as guard:
+            await server.simulation_websocket(socket)
         assert server._ws_sim_active_connections == 0
         assert not instances[0]._thread.is_alive()
 
