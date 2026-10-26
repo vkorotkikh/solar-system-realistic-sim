@@ -1,0 +1,5 @@
+
+> solar-system-realistic-sim@0.0.0 verify:planet-positions
+> node ./scripts/verify-planet-positions.mjs
+
+planet-position check passed: 9 planets within budget at 6 epochs (54 rows, total 4.207e+7 km).

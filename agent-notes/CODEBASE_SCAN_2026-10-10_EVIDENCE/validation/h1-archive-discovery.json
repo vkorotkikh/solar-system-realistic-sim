@@ -1,0 +1,14 @@
+[
+  {
+    "branch": "main",
+    "returncode": 1,
+    "log": "main-with-h1-archive.log",
+    "archive": "H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE"
+  },
+  {
+    "branch": "trajectory",
+    "returncode": 1,
+    "log": "trajectory-with-h1-archive.log",
+    "archive": "H1_SOLAR_DELIVERY_PLAN_2026-09-25_EVIDENCE"
+  }
+]

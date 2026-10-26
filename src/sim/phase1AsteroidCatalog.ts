@@ -246,22 +246,7 @@ function safePeriodDays(value: number, fallbackAu: number): number {
   return value;
 }
 
-interface SourceOrbitRecord {
-  sourceIdRaw: number;
-  epochJd: number;
-  aAu: number;
-  e: number;
-  iDeg: number;
-  ascendingNodeDeg: number;
-  argPeriapsisDeg: number;
-  meanAnomalyDeg: number;
-  periodDays: number;
-  diameterKm: number;
-  albedo: number;
-  taxonomyIndex: number;
-}
-
-function toAsteroidDef(record: SourceOrbitRecord, index: number): AsteroidDef {
+function toAsteroidDef(record: PackedAsteroidRecord, index: number): AsteroidDef {
   const aAu = safePositiveOrbitNumber(record.aAu, 2.8);
   const taxonomy = taxonomyFromIndex(record.taxonomyIndex);
   const taxonomySeed = buildOrbitSeed(aAu, index, taxonomy, record.meanAnomalyDeg);
@@ -289,46 +274,13 @@ function toAsteroidDef(record: SourceOrbitRecord, index: number): AsteroidDef {
     albedo: safeAlbedoFinal,
     color,
     irregularity: irregularityFromDiameter(safeDiameter),
-    sourceId: String(record.sourceIdRaw),
+    sourceId: String(record.sourceId),
   };
 }
 
-function parseAcbfRecord(record: PackedAsteroidRecord, index: number): AsteroidDef {
-  return toAsteroidDef({
-    sourceIdRaw: record.sourceId,
-    epochJd: record.epochJd,
-    aAu: record.aAu,
-    e: record.e,
-    iDeg: record.iDeg,
-    ascendingNodeDeg: record.ascendingNodeDeg,
-    argPeriapsisDeg: record.argPeriapsisDeg,
-    meanAnomalyDeg: record.meanAnomalyDeg,
-    periodDays: record.periodDays,
-    diameterKm: record.diameterKm,
-    albedo: record.albedo,
-    taxonomyIndex: record.taxonomyIndex,
-  }, index);
-}
-
-interface ParsedAsphRecord {
-  version: number;
-  sourceIdRaw: number;
-  epochJd: number;
-  aAu: number;
-  e: number;
-  iDeg: number;
-  ascendingNodeDeg: number;
-  argPeriapsisDeg: number;
-  meanAnomalyDeg: number;
-  periodDays: number;
-  diameterKm: number;
-  albedo: number;
-  taxonomyIndex: number;
-}
-
-function parseAsphRecord(payload: DataView, dataOffset: number, index: number, version: number): ParsedAsphRecord {
+function parseAsphRecord(payload: DataView, dataOffset: number, index: number, version: number): PackedAsteroidRecord {
   const read = (offset: number) => payload.getFloat32(offset, true);
-  const sourceIdRaw = version === 2 ? payload.getUint32(dataOffset, true) : index + 1;
+  const sourceId = version === 2 ? payload.getUint32(dataOffset, true) : index + 1;
   const baseOffset = version === 2 ? dataOffset + 4 : dataOffset;
   const epochJd = read(baseOffset);
   const aAu = read(baseOffset + 4);
@@ -343,8 +295,7 @@ function parseAsphRecord(payload: DataView, dataOffset: number, index: number, v
   const taxonomyIndex = read(baseOffset + 40);
 
   return {
-    version,
-    sourceIdRaw,
+    sourceId,
     epochJd,
     aAu,
     e,
@@ -774,12 +725,10 @@ function parseOrbitCatalog(
   }
 
   if (magic === ACBF_MAGIC) {
-    const parsed = readAsteroidCatalogBinary(buffer, { maxRecords: maxCount });
-    const limit = Math.max(0, Math.min(maxCount, parsed.records.length));
-    const asteroids = Array.from({ length: limit }, (_, i) => parseAcbfRecord(parsed.records[i], i));
+    const parsed = readAsteroidCatalogBinary(buffer, { maxRecords: maxCount }, toAsteroidDef);
 
     return {
-      asteroids,
+      asteroids: parsed.records,
       sourceCount: parsed.header.recordCount,
       catalogVersion: parsed.header.version,
       catalogMagic: ACBF_MAGIC

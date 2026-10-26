@@ -58,6 +58,14 @@ export interface ResolvedSourceFrameOrbit {
   centuriesSinceEpoch: number;
 }
 
+/** A valid-at-epoch secular model has drifted outside the elliptic domain. */
+export class OrbitModelRangeError extends RangeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OrbitModelRangeError';
+  }
+}
+
 function magnitude(vector: CartesianVector): number {
   return Math.hypot(vector.x, vector.y, vector.z);
 }
@@ -164,7 +172,7 @@ function integratedMeanMotion(
 
   const relativeChange = (aRateAuPerDay * elapsedDays) / baseAAu;
   if (relativeChange <= -1) {
-    throw new RangeError('semimajor-axis drift reaches a non-positive value');
+    throw new OrbitModelRangeError('semimajor-axis drift reaches a non-positive value');
   }
 
   const oneMinusInverseSqrt = -Math.expm1(-0.5 * Math.log1p(relativeChange));
@@ -197,7 +205,7 @@ export function resolveSourceFrameOrbitAtElapsedDays(
   const aAu = baseA + aRateAuPerDay * elapsedDays;
   const e = baseE + eRatePerDay * elapsedDays;
   if (aAu <= 0 || e < 0 || e >= 1) {
-    throw new RangeError('secular drift produced an invalid elliptic orbit');
+    throw new OrbitModelRangeError('secular drift produced an invalid elliptic orbit');
   }
 
   const iRad = (orbit.iDeg ?? 0) * DEG_TO_RAD + iRateRadPerDay * elapsedDays;

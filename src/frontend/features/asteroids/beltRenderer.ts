@@ -66,8 +66,10 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
     uniform float uElapsedDays;
     uniform float uOrbitScaleAu;
-    const float TWO_PI = 6.283185307179586;
-    const float PI = 3.141592653589793;
+    // This header follows Three.js <common>, which already defines PI.
+    // Namespaced constants also keep standalone numerical probes independent.
+    const float ASTEROID_TWO_PI = 6.283185307179586;
+    const float ASTEROID_PI = 3.141592653589793;
 
     vec3 vOrbitOffset;
 
@@ -76,7 +78,7 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     float orbitSin(float angle) {
       float x = angle;
       // Adding pi to an already small angle destroys its low-order bits.
-      if (x > PI || x < -PI) x -= TWO_PI * floor((x + PI) / TWO_PI);
+      if (x > ASTEROID_PI || x < -ASTEROID_PI) x -= ASTEROID_TWO_PI * floor((x + ASTEROID_PI) / ASTEROID_TWO_PI);
       if (x > 1.570796326794897) x = 3.141592653589793 - x;
       if (x < -1.570796326794897) x = -3.141592653589793 - x;
       float y = x * x;
@@ -87,7 +89,7 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
     float orbitCos(float angle) {
       float x = angle;
-      if (x > PI || x < -PI) x -= TWO_PI * floor((x + PI) / TWO_PI);
+      if (x > ASTEROID_PI || x < -ASTEROID_PI) x -= ASTEROID_TWO_PI * floor((x + ASTEROID_PI) / ASTEROID_TWO_PI);
       float signValue = 1.0;
       if (x > 1.570796326794897) { x = 3.141592653589793 - x; signValue = -1.0; }
       if (x < -1.570796326794897) { x = -3.141592653589793 - x; signValue = -1.0; }
@@ -103,7 +105,7 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
       // Odd symmetry retains tiny negative anomalies without adding 2*pi.
       float mean = abs(meanAnomaly);
       float lower = 0.0;
-      float upper = PI;
+      float upper = ASTEROID_PI;
       float eccentricAnomaly = eccentricity < 0.8 ? mean : min(
         mean / (1.0 - eccentricity), pow(6.0 * mean / eccentricity, 1.0 / 3.0)
       );
@@ -164,11 +166,11 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     float argPeriapsis = aOrbitParams2.x;
     float meanAnomaly0 = aOrbitParams2.y;
     float periodDays = max(aOrbitParams2.z, 1.0);
-    float meanMotion = (TWO_PI / periodDays);
+    float meanMotion = (ASTEROID_TWO_PI / periodDays);
     float deltaDays = uElapsedDays;
     float meanAnomaly = meanAnomaly0 + meanMotion * deltaDays;
-    if (meanAnomaly > PI || meanAnomaly < -PI) {
-      meanAnomaly -= TWO_PI * floor((meanAnomaly + PI) / TWO_PI);
+    if (meanAnomaly > ASTEROID_PI || meanAnomaly < -ASTEROID_PI) {
+      meanAnomaly -= ASTEROID_TWO_PI * floor((meanAnomaly + ASTEROID_PI) / ASTEROID_TWO_PI);
     }
     float eccentricAnomaly = solveKepler(meanAnomaly, e);
 
@@ -261,8 +263,7 @@ function createOrbitMaterial() {
   const material = new MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.08,
-    flatShading: true,
-    vertexColors: true
+    flatShading: true
   });
 
   // WARNING: Fragile shader patching — uses string replacement on Three.js

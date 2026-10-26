@@ -16,6 +16,7 @@ import {
   Vector3
 } from 'three';
 import { PlanetQuadtree } from '../features/planetary/quadtreeLOD';
+import { applyBodySpin } from '../features/planetary/bodySpin';
 import type { SimulationStateStore } from './stateStore';
 
 interface ToggleLike {
@@ -107,7 +108,6 @@ interface LocalSystemManifest {
 interface LocalSystemConstants {
   AU_KM: number;
   J2000_JD: number;
-  TWO_PI: number;
 }
 
 interface LocalSystemControls {
@@ -123,7 +123,7 @@ interface GeometryCache {
 interface LocalBodySceneEntry {
   body: LocalSystemBody;
   node: Group;
-  mesh: Mesh;
+  mesh: Object3D;
   label: Sprite;
   glow: Object3D | null;
 }
@@ -160,7 +160,6 @@ interface TextureTools {
 
 interface MathTools {
   stableHash: (value: string) => number;
-  normalizeRadians: (angle: number) => number;
 }
 
 interface OrbitTools {
@@ -206,8 +205,7 @@ export function createLocalSystemRenderer({
 }: CreateLocalSystemRendererArgs) {
   const {
     AU_KM,
-    J2000_JD,
-    TWO_PI
+    J2000_JD
   } = constants;
 
   const {
@@ -217,10 +215,7 @@ export function createLocalSystemRenderer({
     generatePlanetTexture
   } = textureTools;
 
-  const {
-    stableHash,
-    normalizeRadians
-  } = mathTools;
+  const { stableHash } = mathTools;
 
   const {
     propagateKeplerOrbit
@@ -401,11 +396,47 @@ export function createLocalSystemRenderer({
   }
 
   function clearActiveLocalSystemScene(): void {
+    const disposedMaterials = new Set<unknown>();
+    const disposedTextures = new Set<Texture>();
+    const disposeMaterial = (material: unknown, disposeMap: boolean): void => {
+      if (Array.isArray(material)) {
+        for (const entry of material) disposeMaterial(entry, disposeMap);
+        return;
+      }
+      if (!material || disposedMaterials.has(material)) return;
+      disposedMaterials.add(material);
+      if (disposeMap) {
+        const map = (material as { map?: unknown }).map;
+        if (map instanceof Texture && !disposedTextures.has(map)) {
+          disposedTextures.add(map);
+          map.dispose();
+        }
+      }
+      disposeThreeMaterial(material as Mesh['material'] | Line['material']);
+    };
+    const disposeTransientObject = (root: Object3D | null): void => {
+      root?.traverse((node) => {
+        disposeMaterial((node as Object3D & { material?: unknown }).material, true);
+      });
+    };
+
     for (const orbitLine of state.localOrbitLines) {
       if (orbitLine.geometry && typeof orbitLine.geometry.dispose === 'function') {
         orbitLine.geometry.dispose();
       }
-      disposeThreeMaterial(orbitLine.material);
+      disposeMaterial(orbitLine.material, false);
+    }
+    for (const entry of state.localBodyEntries) {
+      const quadtree = entry.mesh.userData.isQuadtree
+        ? entry.mesh.userData.quadtree as { dispose?: () => void }
+        : null;
+      if (typeof quadtree?.dispose === 'function') {
+        quadtree.dispose();
+      } else {
+        disposeMaterial((entry.mesh as Object3D & { material?: unknown }).material, false);
+      }
+      disposeTransientObject(entry.label);
+      disposeTransientObject(entry.glow);
     }
     localSystemGroup.clear();
     state.localOrbitLines.length = 0;
@@ -493,8 +524,8 @@ export function createLocalSystemRenderer({
       label.visible = Boolean(dom.toggleLabels?.checked);
       node.add(label);
 
-      nodesById.set(body.id, { body, node, mesh: mesh as Mesh, label, glow });
-      state.localBodyEntries.push({ body, node, label, mesh: mesh as Mesh, glow });
+      nodesById.set(body.id, { body, node, mesh, label, glow });
+      state.localBodyEntries.push({ body, node, label, mesh, glow });
       state.localBodyMeshById.set(body.id, mesh);
       state.localBodyNodeById.set(body.id, node);
     }
@@ -559,11 +590,10 @@ export function createLocalSystemRenderer({
 
       const rotationPeriodHours = entry.mesh?.userData?.rotationPeriodHours;
       if (entry.mesh && Number.isFinite(rotationPeriodHours) && Math.abs(rotationPeriodHours) > 0.01) {
-        const angularSpeed = TWO_PI / (rotationPeriodHours * 3_600);
         const rotationOffset = Number.isFinite(entry.mesh.userData.rotationOffsetRad)
           ? entry.mesh.userData.rotationOffsetRad
           : 0;
-        entry.mesh.rotation.y = normalizeRadians(rotationOffset + angularSpeed * elapsedSeconds);
+        applyBodySpin(entry.mesh, elapsedSeconds, rotationPeriodHours, rotationOffset);
       }
 
       if (entry.mesh && entry.mesh.userData.isQuadtree) {

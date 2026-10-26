@@ -1,5 +1,9 @@
 # Construction closure checkpoint - 2026-10-15
 
+> Scope clarification (2026-10-17): `SimulationClient` is **API/library-only; not integrated into the default UI.** The [consolidated tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17) separates backend, client-library and active-browser acceptance. The dated execution results below are preserved.
+
+> Subsequent repair (2026-10-17): the shader and sampling corrections described below are now implemented on `remediation/scn-followup-20261017`, with scoped 6/6 hardware rendering acceptance. Full-catalog startup coordination passes the unchanged catalog timing gate in three DEV measurements, but observed complete-scene readiness remains 6.5–6.9 s and SCN-005 stays partial. See the [rendering repair](SCN042_RENDERING_REPAIR_2026-10-17.md), [startup repair](REMEDIATION_STARTUP_WARMUP_2026-10-17.md) and maintained tracker. The October 15 failures and approval requests below are historical, not the current disposition of those repairs.
+
 **Progress checkpoint, not complete resolution of the canonical register.**
 
 Branch: `remediation/canonical-register-20261014`. Production source:
@@ -42,7 +46,7 @@ Evidence: [scientific summary](scientific-gate-2026-10-15/summary.json),
 ## Independent review and scope
 
 Kuiper review reported no Critical or Important findings, with 91 backend
-checks, 69 client checks and six additional native captures across paused/running
+checks, 69 frontend checks (client and frame-lifecycle suites) and six additional native captures across paused/running
 and tagged/legacy transitions. Its client rerun used Node 24; the integrated
 Node 22 frontend result above supplies the pinned-toolchain gate. These captures
 use an in-memory transport and do not certify a deployed browser/network.
@@ -67,7 +71,7 @@ responses passed the unchanged budgets in the [PFSS report](SCN041_NUMERICAL_REV
 | `SCN-043` | All 424 records are prepared locally, but only 13 are integrated here. Two new independent loader findings, storage approval, promotion and final validation remain. |
 | `SCN-047` | Global release acceptance still needs rendering, startup/delivery, remaining moon work, final browser and applicable manual/deployment gates. Green unit/build lanes are not complete acceptance. |
 | `SCN-048` | Scalar-JD leap-boundary policy, implementation and tests; owner deployment URL/auth/TLS; observed spatial/calibration acceptance. |
-| `SCN-049` | Stale-Kuiper implementation and native/client verification are integrated. Final actual-browser coverage and remaining Section 7 visual/lifecycle children are not automatically closed. |
+| `SCN-049` | Stale-Kuiper implementation and native/client-library verification are integrated into the construction branch. Final actual-browser requirements remain for active visual/lifecycle children. This evidence does not establish default-UI N-body delivery; retirement or opt-in UI integration requires the separate decision recorded in the consolidated tracker. |
 
 ## Moon promotion: prepared, not accepted
 

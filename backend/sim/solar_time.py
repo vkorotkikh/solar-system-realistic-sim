@@ -105,7 +105,21 @@ def mean_carrington_rotation_range_jd_tdb(rotation_number: int) -> tuple[float, 
 def mean_carrington_rotation_number_from_jd_tdb(jd_tdb: float) -> int:
     """Return the mean rotation search hint for an explicitly JDTDB input."""
 
-    return mean_carrington_rotation_number(Time(float(jd_tdb), format="jd", scale="tdb"))
+    scalar_jd_tdb = float(jd_tdb)
+    estimate = mean_carrington_rotation_estimate(
+        Time(scalar_jd_tdb, format="jd", scale="tdb")
+    )
+    candidate = estimate.rotation_number
+    candidate_start, candidate_end = mean_carrington_rotation_range_jd_tdb(candidate)
+
+    # A scalar Julian date has only about 40 microseconds of precision at
+    # contemporary epochs.  Partition this compatibility API by the same
+    # scalar boundaries it emits instead of flooring conversion noise.
+    if scalar_jd_tdb < candidate_start:
+        return candidate - 1
+    if scalar_jd_tdb >= candidate_end:
+        return candidate + 1
+    return candidate
 
 
 def provider_carrington_state_from_crnow(crnow: float) -> ProviderCarringtonState:

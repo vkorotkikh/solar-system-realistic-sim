@@ -55,7 +55,16 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket,
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictBool,
+    StrictStr,
+    field_validator,
+)
 from starlette.responses import JSONResponse
 
 from benchmark import (
@@ -350,7 +359,7 @@ class _RequestBodyLimitMiddleware:
 
 
 class _TrajectoryRateLimitMiddleware:
-    """Bound trajectory ingress by authenticated subject or local peer."""
+    """Bound trajectory ingress by authenticated subject or validated peer."""
 
     IDENTITY_MAX_BYTES = 255
 
@@ -385,13 +394,7 @@ class _TrajectoryRateLimitMiddleware:
                     subject_bytes = b""
                 if len(subject_bytes) <= _TrajectoryRateLimitMiddleware.IDENTITY_MAX_BYTES:
                     return authenticated_subject
-
-        client = scope.get("client")
-        if isinstance(client, (tuple, list)) and client:
-            host = str(client[0]).strip()
-            if host:
-                return host[:255]
-        return "anonymous"
+        return _peer_identity_from_scope(scope)
 
     def _retry_after(self, identity: str) -> int | None:
         now = float(self.clock())
@@ -400,9 +403,9 @@ class _TrajectoryRateLimitMiddleware:
             queue = self._requests.get(identity)
             if queue is None:
                 if len(self._requests) >= self.max_identities:
-                    # Bound memory even under high-cardinality peer churn. Peer
-                    # identity comes from the ASGI transport, not spoofable
-                    # forwarding headers.
+                    # Bound memory even under high-cardinality peer churn.
+                    # Forwarding data contributes only behind a configured
+                    # trusted ASGI peer and after the whole chain validates.
                     self._requests.popitem(last=False)
                 queue = deque()
                 self._requests[identity] = queue
@@ -611,6 +614,7 @@ def _load_solar_security_config(
         try:
             parsed = urlsplit(origin)
             parsed_port = parsed.port
+            canonical_url = AnyHttpUrl(origin)
         except ValueError as exc:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS contains an invalid origin."
@@ -629,6 +633,11 @@ def _load_solar_security_config(
             or parsed.query
             or parsed.fragment
         ):
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
+            )
+        canonical_origin = str(canonical_url).removesuffix("/")
+        if origin != canonical_origin:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
             )
@@ -1576,19 +1585,6 @@ def _local_benchmark_writer_rejection(
     return None
 
 
-def _bounded_unique_request_header(
-    request: Request,
-    name: bytes,
-    *,
-    max_bytes: int,
-) -> tuple[bool, str | None]:
-    return _bounded_unique_scope_header(
-        request.scope,
-        name,
-        max_bytes=max_bytes,
-    )
-
-
 def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
     api_key_valid, header_key = _bounded_unique_scope_header(
         scope,
@@ -1662,6 +1658,57 @@ def _parse_ip_address(
         return None
 
 
+def _peer_identity_from_scope(
+    scope: Mapping[str, Any],
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str:
+    """Resolve a bounded peer identity through an explicitly trusted chain."""
+
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    client = scope.get("client")
+    peer_host = (
+        str(client[0]).strip()
+        if isinstance(client, (tuple, list)) and client and str(client[0]).strip()
+        else "anonymous"
+    )
+    peer_address = _parse_ip_address(peer_host)
+    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
+
+    forwarded_header_valid, forwarded_for = _bounded_unique_scope_header(
+        scope,
+        b"x-forwarded-for",
+        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
+    )
+    if (
+        not forwarded_header_valid
+        or not forwarded_for
+        or peer_address is None
+        or not _address_in_trusted_proxy_networks(peer_address, active_config)
+    ):
+        return peer_identity
+
+    raw_chain = forwarded_for.split(",")
+    if (
+        not raw_chain
+        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
+        or any(not item.strip() for item in raw_chain)
+    ):
+        return peer_identity
+    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
+    if any(address is None for address in parsed_chain):
+        return peer_identity
+
+    complete_chain = [
+        *(address for address in parsed_chain if address is not None),
+        peer_address,
+    ]
+    for address in reversed(complete_chain):
+        if not _address_in_trusted_proxy_networks(address, active_config):
+            return str(address)
+    return str(complete_chain[0])
+
+
 def _client_identity(
     request: Request,
     *,
@@ -1685,47 +1732,7 @@ def _client_identity(
     if isinstance(authenticated_subject, str) and authenticated_subject:
         return authenticated_subject
 
-    active_config = SOLAR_SECURITY_CONFIG if config is None else config
-    peer_host = (
-        request.client.host.strip()
-        if request.client and request.client.host
-        else "anonymous"
-    )
-    peer_address = _parse_ip_address(peer_host)
-    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
-
-    forwarded_header_valid, forwarded_for = _bounded_unique_request_header(
-        request,
-        b"x-forwarded-for",
-        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
-    )
-    if (
-        not forwarded_header_valid
-        or not forwarded_for
-        or peer_address is None
-        or not _address_in_trusted_proxy_networks(peer_address, active_config)
-    ):
-        return f"peer:{peer_identity}"
-
-    raw_chain = forwarded_for.split(",")
-    if (
-        not raw_chain
-        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
-        or any(not item.strip() for item in raw_chain)
-    ):
-        return f"peer:{peer_identity}"
-    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
-    if any(address is None for address in parsed_chain):
-        return f"peer:{peer_identity}"
-
-    complete_chain = [
-        *(address for address in parsed_chain if address is not None),
-        peer_address,
-    ]
-    for address in reversed(complete_chain):
-        if not _address_in_trusted_proxy_networks(address, active_config):
-            return f"peer:{address}"
-    return f"peer:{complete_chain[0]}"
+    return f"peer:{_peer_identity_from_scope(request.scope, config=config)}"
 
 
 def _require_optional_solar_api_key(
@@ -2767,6 +2774,24 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
             },
         )
 
+    energy_kwh_per_kg = max(1e-9, float(payload.power_required_kw_per_kg_day))
+    effective_extraction_rate_kg_day = min(
+        float(payload.extraction_rate_kg_day),
+        float(payload.available_power_kw) / energy_kwh_per_kg,
+    )
+    effective_mined_ore_kg = effective_extraction_rate_kg_day * float(payload.mining_days)
+    if not math.isfinite(effective_mined_ore_kg):
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            "Effective mined ore must remain finite.",
+            context={
+                "extractionRateKgDay": float(payload.extraction_rate_kg_day),
+                "effectiveExtractionRateKgDay": effective_extraction_rate_kg_day,
+                "miningDays": float(payload.mining_days),
+            },
+        )
+
     if int(payload.risk_samples) > MISSION_PLAN_MAX_RISK_SAMPLES:
         raise _trajectory_http_exception(
             413,
@@ -2938,9 +2963,9 @@ class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
 
 class MissionStageRequest(StrictRequestModel):
     name: StrictStr | None = None
-    dry_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    propellant_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    isp_s: FiniteFloat = Field(default=0.0, ge=0.0)
+    dry_mass_kg: FiniteFloat = Field(gt=0.0)
+    propellant_mass_kg: FiniteFloat = Field(gt=0.0)
+    isp_s: FiniteFloat = Field(gt=0.0)
 
     @field_validator("name")
     @classmethod
@@ -4214,7 +4239,7 @@ async def mission_plan(request: Request, payload: MissionPlanRequest):
             503,
             "trajectory_compute_budget_exhausted",
             "Mission trajectory search stopped at a bounded work limit before reaching a conclusive outcome.",
-            retryable=True,
+            retryable=False,
             context={"trajectorySearch": result.get("trajectorySearch", {})},
         )
     if result.get("recommendation") is None:
@@ -4366,6 +4391,8 @@ class SimulationRunner:
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
         self._kuiper_subscription_id: str | None = None
+        self._latest_kuiper_payload: dict | None = None
+        self._kuiper_refresh_pending: bool = False
         self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
         self.response_queue: queue.Queue = queue.Queue(maxsize=MAX_RESPONSE_QUEUE)
         self._state_lock = threading.Lock()
@@ -4449,14 +4476,28 @@ class SimulationRunner:
         except queue.Full:
             self._dropped_responses += 1
 
-    def _push_error(self, message: str, *, action: str = "", code: str = "bad_request") -> None:
+    def _push_error(
+        self,
+        message: str,
+        *,
+        action: str = "",
+        code: str = "bad_request",
+        kuiper_subscription_id: str | None = None,
+    ) -> None:
         payload = {"type": "error", "message": message, "code": code}
         if action:
             payload["action"] = action
+        if kuiper_subscription_id is not None:
+            payload["kuiper_subscription_id"] = kuiper_subscription_id
         self._push_response(payload)
+
+    def _clear_kuiper_payload(self) -> None:
+        self._latest_kuiper_payload = None
+        self._kuiper_refresh_pending = False
 
     def _latch_runtime_error(self, message: str) -> None:
         self.paused = True
+        self._clear_kuiper_payload()
         if self._runtime_error is None:
             self._runtime_error = message
             self._push_error(message, code="runtime_error")
@@ -4513,13 +4554,44 @@ class SimulationRunner:
                 )
 
             # ── Step simulation ───────────────────────────────────────
+            kuiper_stepped = False
             if not self.paused and self._runtime_error is None:
                 try:
                     dt_days = self.time_scale * frame_time
-                    self.engine.step(dt_days)
+                    bounded_dt_days = dt_days
+                    reached_epoch_boundary = False
+                    supported_range = getattr(self.engine, "supported_jd_range", None)
+                    if supported_range is not None:
+                        min_jd, max_jd = supported_range
+                        current_jd = self.engine.get_julian_date()
+                        target_jd = current_jd + dt_days
+                        if target_jd < min_jd:
+                            bounded_dt_days = min_jd - current_jd
+                            reached_epoch_boundary = True
+                        elif target_jd > max_jd:
+                            bounded_dt_days = max_jd - current_jd
+                            reached_epoch_boundary = True
 
-                    if self.kuiper.active:
-                        self.kuiper.step(dt_days)
+                    # Keep the main and optional Kuiper integrations on the
+                    # exact same signed playback increment, including a final
+                    # partial frame at an inclusive engine epoch boundary.
+                    # Preserve ordinary zero-time stepping. Only an outward
+                    # frame already at a declared boundary suppresses both
+                    # engines' zero-duration calls.
+                    if bounded_dt_days != 0.0 or not reached_epoch_boundary:
+                        self.engine.step(bounded_dt_days)
+
+                        if self.kuiper.active:
+                            self.kuiper.step(bounded_dt_days)
+                            kuiper_stepped = True
+
+                    if reached_epoch_boundary:
+                        self.paused = True
+                        self._kuiper_refresh_pending = self.kuiper.active
+                        self._push_error(
+                            "Playback reached the engine's validated epoch boundary.",
+                            code="epoch_out_of_range",
+                        )
                 except Exception as exc:
                     _log_operational_failure("simulation_step_failed", exc)
                     self._latch_runtime_error("Simulation step failed.")
@@ -4532,13 +4604,22 @@ class SimulationRunner:
                 fidelity=self.engine.fidelity_level,
                 jd_fallback=self.engine.get_julian_date(),
             )
-            kuiper_particles = None
-            if self.kuiper.active and self.kuiper.should_send():
-                try:
-                    kuiper_particles = self.kuiper.get_state()
-                except Exception as exc:
-                    _log_operational_failure("kuiper_state_failed", exc)
-                    self._latch_runtime_error("Kuiper state failed.")
+            if self.kuiper.active and self._runtime_error is None:
+                refresh_kuiper = (
+                    self._latest_kuiper_payload is None
+                    or self._kuiper_refresh_pending
+                    or (kuiper_stepped and self.kuiper.should_send())
+                )
+                if refresh_kuiper:
+                    try:
+                        self._latest_kuiper_payload = self.kuiper.get_state()
+                        self._kuiper_refresh_pending = False
+                    except Exception as exc:
+                        _log_operational_failure("kuiper_state_failed", exc)
+                        self._latch_runtime_error("Kuiper state failed.")
+            kuiper_particles = (
+                self._latest_kuiper_payload if self.kuiper.active else None
+            )
 
             state = attach_runtime_telemetry(
                 normalized_state,
@@ -4601,6 +4682,8 @@ class SimulationRunner:
             self.time_scale = max(-365.0, min(365.0, days_per_sec))
 
         elif action == "pause":
+            if not self.paused and self.kuiper.active:
+                self._kuiper_refresh_pending = True
             self.paused = True
 
         elif action == "resume":
@@ -4645,6 +4728,7 @@ class SimulationRunner:
             if self.kuiper.active:
                 self.kuiper.deactivate()
                 self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "activate_kuiper":
             try:
@@ -4676,9 +4760,11 @@ class SimulationRunner:
                     "`velocity_units` in its state payload; refusing to guess",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
 
+            self._clear_kuiper_payload()
             try:
                 self.kuiper.activate(
                     sun_pos=sun["pos"], sun_vel=sun["vel"],
@@ -4702,14 +4788,22 @@ class SimulationRunner:
                     f"`activate_kuiper` rejected: {exc}",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
+            except Exception:
+                self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
+                self._clear_kuiper_payload()
+                raise
 
             self._kuiper_subscription_id = subscription_id
+            self._kuiper_refresh_pending = True
 
         elif action == "deactivate_kuiper":
             self.kuiper.deactivate()
             self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "get_orbital_elements":
             body_id = cmd.get("body_id")
@@ -4747,6 +4841,35 @@ async def _ws_send_text(websocket: WebSocket, text: str) -> None:
 
 async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
     await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+class _KuiperPayloadDeliveryTracker:
+    """Remove an unchanged Kuiper snapshot only after its first delivery."""
+
+    def __init__(self) -> None:
+        self._last_payload: dict | None = None
+        self._last_subscription_id: str | None = None
+
+    def prepare(self, state: dict) -> dict:
+        if "kuiper" not in state:
+            return state
+        payload = state["kuiper"]
+        subscription_id = state.get("kuiper_subscription_id")
+        if (
+            payload is self._last_payload
+            and subscription_id == self._last_subscription_id
+        ):
+            outbound = state.copy()
+            outbound.pop("kuiper", None)
+            outbound.pop("kuiper_subscription_id", None)
+            return outbound
+        return state
+
+    async def send(self, websocket: WebSocket, state: dict, outbound: dict) -> None:
+        await _ws_send_text(websocket, json.dumps(outbound))
+        if "kuiper" in outbound:
+            self._last_payload = state["kuiper"]
+            self._last_subscription_id = state.get("kuiper_subscription_id")
 
 
 async def _ws_fail(
@@ -4930,6 +5053,7 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
     idle_send_interval = max(1, int(stream_hz // 3))
     last_progress = time.monotonic()
     last_snapshot: dict | None = None
+    kuiper_delivery = _KuiperPayloadDeliveryTracker()
 
     while True:
         # A producer can refill a bounded queue while it is drained. Bound the
@@ -4954,8 +5078,9 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
             if state is not last_snapshot:
                 last_progress = time.monotonic()
                 last_snapshot = state
-            jd = float(state.get("jd", 0.0))
-            has_kuiper_payload = "kuiper" in state
+            outbound_state = kuiper_delivery.prepare(state)
+            jd = float(outbound_state.get("jd", 0.0))
+            has_kuiper_payload = "kuiper" in outbound_state
             should_send = (
                 has_kuiper_payload
                 or last_jd is None
@@ -4963,7 +5088,7 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
                 or idle_frames >= idle_send_interval
             )
             if should_send:
-                await _ws_send_text(websocket, json.dumps(state))
+                await kuiper_delivery.send(websocket, state, outbound_state)
                 last_jd = jd
                 idle_frames = 0
             else:
@@ -4977,6 +5102,45 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
+
+def _prepare_simulation_engine(
+    engine_requested: str,
+    integrator: str,
+    enable_j2: bool,
+    warnings: list[str],
+) -> tuple[SimulationEngine, dict, list[str], float] | None:
+    """Initialize and read native state before handing ownership to the runner."""
+    engine: Optional[SimulationEngine] = None
+    rebound_status = _rebound_readiness()
+    rebound_ready = bool(rebound_status.get("available", False))
+    tudatpy_ready = _tudatpy_available()
+    if engine_requested == "tudatpy":
+        if tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+        elif rebound_ready:
+            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
+            engine = REBOUNDEngine(integrator=integrator)
+    elif engine_requested == "rebound":
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    else:
+        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    if engine is None:
+        return None
+    engine.initialize(ALL_BODIES)
+    # Keep every initial native read on this thread; no runner exists yet.
+    initial_state = engine.get_state()
+    initial_body_ids = engine.list_body_ids()
+    initial_jd = engine.get_julian_date()
+    return engine, initial_state, initial_body_ids, initial_jd
+
 
 async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     # Select engine and integrator from query params
@@ -5006,49 +5170,42 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    engine: Optional[SimulationEngine] = None
     try:
-        rebound_status = _rebound_readiness()
-        rebound_ready = bool(rebound_status.get("available", False))
-        tudatpy_ready = _tudatpy_available()
-        if engine_requested == "tudatpy":
-            if tudatpy_ready and TudatPyEngine is not None:
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-            elif rebound_ready:
-                warnings.append("Engine `tudatpy` unavailable; using `rebound`")
-                engine = REBOUNDEngine(integrator=integrator)
-        elif engine_requested == "rebound":
-            if rebound_ready:
-                engine = REBOUNDEngine(integrator=integrator)
-            elif tudatpy_ready and TudatPyEngine is not None:
-                warnings.append("Engine `rebound` unavailable; using `tudatpy`")
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-        else:
-            warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
-            if rebound_ready:
-                engine = REBOUNDEngine(integrator=integrator)
-            elif tudatpy_ready and TudatPyEngine is not None:
-                enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-                engine = TudatPyEngine(enable_j2=enable_j2)
-        if engine is not None:
-            engine.initialize(ALL_BODIES)
-            # Capture handshake metadata before transferring engine ownership to
-            # the simulation thread. Native engine reads are not thread-safe.
-            initial_state = engine.get_state()
-            initial_body_ids = engine.list_body_ids()
-            initial_jd = engine.get_julian_date()
+        initialization = asyncio.create_task(asyncio.to_thread(
+            _prepare_simulation_engine,
+            engine_requested,
+            integrator,
+            websocket.query_params.get("j2", "true").lower() == "true",
+            warnings,
+        ))
+        cancellation: asyncio.CancelledError | None = None
+        while not initialization.done():
+            try:
+                await asyncio.shield(initialization)
+            except asyncio.CancelledError as exc:
+                # A cancelled waiter cannot stop native initialization. Retain
+                # the admission lease until the worker has actually finished.
+                cancellation = exc
+            except Exception:
+                if cancellation is not None:
+                    raise cancellation
+                raise
+        try:
+            prepared = initialization.result()
+        finally:
+            if cancellation is not None:
+                raise cancellation
     except Exception as exc:
         _log_operational_failure("engine_init_failed", exc)
         await _ws_fail(websocket, code="engine_init_failed",
                        message="Simulation engine initialization failed.", close_code=1011)
         return
 
-    if engine is None:
+    if prepared is None:
         await _ws_fail(websocket, code="engine_unavailable",
                        message="No simulation engines are available.", close_code=1013)
         return
+    engine, initial_state, initial_body_ids, initial_jd = prepared
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
@@ -5073,6 +5230,7 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         "protocol_version": WS_PROTOCOL_VERSION,
         "protocol_version_requested": protocol_requested,
         "kuiper_subscription_version": 1,
+        "kuiper_activation_error_version": 1,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,

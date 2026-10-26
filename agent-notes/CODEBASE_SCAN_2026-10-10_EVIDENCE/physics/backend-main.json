@@ -1,0 +1,292 @@
+{
+  "snapshot": "/tmp/solar-sweep-2026-10-10-j1gnowo_/main",
+  "reserve_partition": {
+    "input": {
+      "dry": 100,
+      "propellant": 1000,
+      "payload": 100,
+      "isp_s": 300,
+      "reserve_fraction": 0.05
+    },
+    "single_4_8": {
+      "feasible": false,
+      "vehicle": {
+        "name": "single",
+        "stages": [
+          {
+            "name": "stage",
+            "dry_mass_kg": 100,
+            "propellant_mass_kg": 1000,
+            "isp_s": 300
+          }
+        ]
+      },
+      "payloadMassKg": 100,
+      "reserveFraction": 0.05,
+      "burns": [
+        {
+          "burnIndex": 0,
+          "requestedDeltaV_km_s": 4.8,
+          "unmetDeltaV_km_s": 0.18513981257705744,
+          "propellantUsedKg": 950.0,
+          "stagesUsed": [
+            "stage"
+          ]
+        }
+      ],
+      "totalRequestedDeltaV_km_s": 4.8,
+      "totalUnmetDeltaV_km_s": 0.18513981257705744,
+      "totalPropellantInitialKg": 1000,
+      "totalPropellantUsedKg": 950.0,
+      "propellantMarginKg": 50.0,
+      "finalMassKg": 100.0,
+      "stageTelemetry": [
+        {
+          "name": "stage",
+          "dry_mass_kg": 100.0,
+          "propellant_mass_kg": 1000.0,
+          "isp_s": 300.0,
+          "propellant_used_kg": 950.0,
+          "delta_v_delivered_km_s": 4.614860187422942,
+          "jettisoned": true
+        }
+      ]
+    },
+    "two_2_4": {
+      "feasible": true,
+      "vehicle": {
+        "name": "single",
+        "stages": [
+          {
+            "name": "stage",
+            "dry_mass_kg": 100,
+            "propellant_mass_kg": 1000,
+            "isp_s": 300
+          }
+        ]
+      },
+      "payloadMassKg": 100,
+      "reserveFraction": 0.05,
+      "burns": [
+        {
+          "burnIndex": 0,
+          "requestedDeltaV_km_s": 2.4,
+          "unmetDeltaV_km_s": 0.0,
+          "propellantUsedKg": 669.2432250336485,
+          "stagesUsed": [
+            "stage"
+          ]
+        },
+        {
+          "burnIndex": 1,
+          "requestedDeltaV_km_s": 2.4,
+          "unmetDeltaV_km_s": 0.0,
+          "propellantUsedKg": 296.0044798224496,
+          "stagesUsed": [
+            "stage"
+          ]
+        }
+      ],
+      "totalRequestedDeltaV_km_s": 4.8,
+      "totalUnmetDeltaV_km_s": 0.0,
+      "totalPropellantInitialKg": 1000,
+      "totalPropellantUsedKg": 965.2477048560982,
+      "propellantMarginKg": 34.75229514390185,
+      "finalMassKg": 234.7522951439019,
+      "stageTelemetry": [
+        {
+          "name": "stage",
+          "dry_mass_kg": 100.0,
+          "propellant_mass_kg": 1000.0,
+          "isp_s": 300.0,
+          "propellant_used_kg": 965.2477048560982,
+          "delta_v_delivered_km_s": 4.8,
+          "jettisoned": false
+        }
+      ]
+    },
+    "required_reserved_kg": 50
+  },
+  "infeasible_risk": {
+    "logistics": {
+      "feasible": false,
+      "vehicle": {
+        "name": "baseline-chemical-2stage",
+        "stages": [
+          {
+            "name": "departure_stage",
+            "dry_mass_kg": 6500.0,
+            "propellant_mass_kg": 18000.0,
+            "isp_s": 360.0
+          },
+          {
+            "name": "return_stage",
+            "dry_mass_kg": 2600.0,
+            "propellant_mass_kg": 7500.0,
+            "isp_s": 340.0
+          }
+        ]
+      },
+      "payloadMassKg": 1000,
+      "reserveFraction": 0.05,
+      "burns": [
+        {
+          "burnIndex": 0,
+          "requestedDeltaV_km_s": 100.0,
+          "unmetDeltaV_km_s": 94.26507217294514,
+          "propellantUsedKg": 24225.0,
+          "stagesUsed": [
+            "departure_stage",
+            "return_stage"
+          ]
+        },
+        {
+          "burnIndex": 1,
+          "requestedDeltaV_km_s": 100.0,
+          "unmetDeltaV_km_s": 100.0,
+          "propellantUsedKg": 0.0,
+          "stagesUsed": []
+        }
+      ],
+      "totalRequestedDeltaV_km_s": 200.0,
+      "totalUnmetDeltaV_km_s": 194.26507217294514,
+      "totalPropellantInitialKg": 25500.0,
+      "totalPropellantUsedKg": 24225.0,
+      "propellantMarginKg": 1275.0,
+      "finalMassKg": 1000.0,
+      "stageTelemetry": [
+        {
+          "name": "departure_stage",
+          "dry_mass_kg": 6500.0,
+          "propellant_mass_kg": 18000.0,
+          "isp_s": 360.0,
+          "propellant_used_kg": 17100.0,
+          "delta_v_delivered_km_s": 2.310907319894056,
+          "jettisoned": true
+        },
+        {
+          "name": "return_stage",
+          "dry_mass_kg": 2600.0,
+          "propellant_mass_kg": 7500.0,
+          "isp_s": 340.0,
+          "propellant_used_kg": 7125.0,
+          "delta_v_delivered_km_s": 3.4240205071608005,
+          "jettisoned": true
+        }
+      ]
+    },
+    "risk": {
+      "samples": 30,
+      "seed": 7,
+      "failureProbability": 0.0,
+      "envelopes": {
+        "deltaV_km_s": {
+          "p05": 200.0,
+          "p50": 200.0,
+          "p95": 200.0
+        },
+        "timeDays": {
+          "p05": 100.0,
+          "p50": 100.0,
+          "p95": 100.0
+        },
+        "returnedPayloadKg": {
+          "p05": 1000.0,
+          "p50": 1000.0,
+          "p95": 1000.0
+        },
+        "arrivalJd": {
+          "p05": 2451645.0,
+          "p50": 2451645.0,
+          "p95": 2451645.0
+        },
+        "propellantMarginKg": {
+          "p05": 1275.0,
+          "p50": 1275.0,
+          "p95": 1275.0
+        }
+      }
+    },
+    "remaining_onboard_propellant": 0
+  },
+  "benchmark": {
+    "scenarioCount": 3,
+    "comparableScenarioCount": 0,
+    "validationCoverage": 0.0,
+    "meanAbsErrorKmS": 0.0,
+    "passRate": 0.0
+  },
+  "binary_initializer": {
+    "separation_au": 6.684587122268446e-06,
+    "mass_ratio_companion_to_primary": 0.35,
+    "relative_speed_au_year": 2.969883807415961e-05,
+    "expected_circular_speed_au_year": 0.0017184131069415856,
+    "center_of_mass_offset_au": [
+      -3.2185049107218436e-06,
+      0.0,
+      0.0
+    ],
+    "center_of_mass_velocity_au_year": [
+      0.0,
+      -1.4299440554224996e-05,
+      0.0
+    ],
+    "primary_offset": [
+      -4.951546016495145e-06,
+      -0.0,
+      -0.0
+    ],
+    "companion_offset": [
+      1.7330411057733012e-06,
+      0.0,
+      0.0
+    ]
+  },
+  "tudat_energy_translation": {
+    "no_sun_offset_energy_j": -2.651370644640641e+33,
+    "sun_offset_0_01_au_energy_j": -2.7049009473380214e+33,
+    "relative_change": -0.020189671634776477,
+    "expected_change": 0,
+    "note": "Injected documented Tudat mixed central-body state; no TudatPy runtime required."
+  },
+  "rebound_range_step": {
+    "max_supported_jd": 2469807.5,
+    "after_step_jd": 2469808.5,
+    "fidelity_after_step": "high",
+    "same_epoch_seek": "Julian date is outside the validated REBOUND interval [2447892.5, 2469807.5] JDTDB"
+  },
+  "epo_family_policy": {
+    "direct_run_family": {
+      "family": "strict",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "exception_count": 0,
+      "average_score": -100.0,
+      "reason_counts": {}
+    },
+    "run_families": {
+      "totals": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "exceptions": 0
+      },
+      "families": {
+        "strict": {
+          "family": "strict",
+          "total": 1,
+          "passed": 0,
+          "failed": 1,
+          "exception_count": 0,
+          "average_score": -100.0,
+          "reason_counts": {
+            "mission_score_below_threshold_-100.00": 1,
+            "embedded_verifier_rejected": 1,
+            "failure_probability_exceeds_threshold": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+[WebServer] (node:116741) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 44 tests using 1 worker
+
+(node:116779) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/44] [chromium] › tests/browser/accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus
+[2/44] [chromium] › tests/browser/accessibility.spec.ts:11:1 › 195px viewport reflows the production page
+[3/44] [chromium] › tests/browser/app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin
+[chromium] › tests/browser/app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin
+Actual application WebGL: {"renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"}
+
+[4/44] [chromium] › tests/browser/app-smoke.spec.ts:26:1 › no-WebGL constructor failure exposes an accessible reload path and working drawer
+[5/44] [chromium] › tests/browser/app-smoke.spec.ts:31:1 › actual WebGL context loss stops rendering and leaves keyboard recovery available
+[6/44] [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+[chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+Production asteroid shader: {"antialias":true,"samples":4,"renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","material":"MeshStandardMaterial","linked":true,"linkLog":"","stages":[{"compiled":true,"log":""},{"compiled":true,"log":""}],"webglError":0}
+
+[7/44] [chromium] › tests/browser/camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal
+[8/44] [chromium] › tests/browser/camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan
+[9/44] [chromium] › tests/browser/camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation
+[10/44] [chromium] › tests/browser/camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context
+[11/44] [chromium] › tests/browser/experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model
+[12/44] [chromium] › tests/browser/experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy
+[13/44] [chromium] › tests/browser/explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches
+[14/44] [chromium] › tests/browser/explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate
+[15/44] [chromium] › tests/browser/explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable
+[16/44] [chromium] › tests/browser/frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+[17/44] [chromium] › tests/browser/frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+[18/44] [chromium] › tests/browser/frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+[19/44] [chromium] › tests/browser/frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+[20/44] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions
+[21/44] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions
+[22/44] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions
+[23/44] [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions
+[24/44] [chromium] › tests/browser/panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus
+[25/44] [chromium] › tests/browser/panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes
+[26/44] [chromium] › tests/browser/panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus
+[27/44] [chromium] › tests/browser/panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable
+[28/44] [chromium] › tests/browser/panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner
+[29/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 195x422
+[30/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 320x568
+[31/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 390x844
+[32/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 844x390
+[33/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800
+[34/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800
+[35/44] [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900
+[36/44] [chromium] › tests/browser/reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action
+[37/44] [chromium] › tests/browser/shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs
+[38/44] [chromium] › tests/browser/startup-warmup.spec.ts:43:1 › a startup shader failure exposes accessible recovery before any scene draw
+[39/44] [chromium] › tests/browser/startup-warmup.spec.ts:56:1 › context loss cancels pending warmup and restoration cannot restart it
+[40/44] [chromium] › tests/browser/startup-warmup.spec.ts:80:1 › unload disposes materials only after cancelling pending warmup
+[41/44] [chromium] › tests/browser/startup-warmup.spec.ts:91:1 › the complete catalog scene still draws without parallel compilation support
+[42/44] [chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+[chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+Native tab zoom evidence: {"factor":2,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":640,"height":436,"outerWidth":1280,"outerHeight":960,"dpr":2,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":640},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+
+[43/44] [chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+[chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+Native tab zoom evidence: {"factor":4,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":320,"height":218,"outerWidth":1280,"outerHeight":960,"dpr":4,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":320},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+
+[44/44] [chromium] › tests/browser/tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+  1 skipped
+  43 passed (1.9m)

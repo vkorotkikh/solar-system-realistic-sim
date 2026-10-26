@@ -1,0 +1,5 @@
+
+> solar-system-realistic-sim@0.0.0 typecheck:ratchet
+> node ./scripts/ci/typescript-error-ratchet.mjs
+
+TypeScript error ratchet passed: 219/226 legacy diagnostics; no bucket exceeded its baseline.

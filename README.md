@@ -70,6 +70,13 @@ has no engine selector or Connect control for it: that engine is reachable
 through the `SimulationClient` class and the WebSocket API below, not
 through the shipped page.
 
+`SimulationClient` status: **API/library-only; not integrated into the default UI.**
+The client, its protocol tests, and the backend repairs are retained. Starting
+the backend does not activate N-body simulation in the page. Either retiring
+the client or adding an opt-in N-body UI requires a separate, explicit product
+decision and a scoped implementation/acceptance plan. See the
+[scope decision and verification boundaries](agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17).
+
 | Engine | Description | Reachable from the shipped UI |
 |---|---|---|
 | Local (Keplerian) | No backend required; two-body element propagation in-browser | Yes (always on) |
@@ -122,7 +129,8 @@ does not add route-wide authentication or replace production TLS/proxy policy.
 
 ### WebSocket tuning
 
-The frontend WebSocket connection accepts query parameters:
+The optional N-body WebSocket API accepts query parameters:
+
 - `fps` — simulation thread target rate
 - `stream_hz` — outbound state update rate
 

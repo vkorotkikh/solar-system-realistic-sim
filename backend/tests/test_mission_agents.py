@@ -54,6 +54,33 @@ def test_mission_planner_agent_emits_recommendation_and_logs() -> None:
     assert recommendation["verification"]["valid"] is True
 
 
+@pytest.mark.parametrize(
+    "stage",
+    [
+        {"name": "stage", "propellant_mass_kg": 1_000_000.0, "isp_s": 10_000.0},
+        {},
+    ],
+)
+def test_mission_planner_returns_no_recommendation_for_sparse_vehicle_budget(stage: dict) -> None:
+    result = MissionPlannerAgent(ALL_BODIES).plan(
+        {
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "max_assists": 0,
+            "ephemeris_provider": "kepler",
+            "risk_samples": 30,
+            "mining_days": 10.0,
+            "storage_loss_rate_per_day": 0.0,
+            "vehicle": {"name": "sparse", "stages": [stage]},
+        }
+    )
+
+    assert result["recommendation"] is None
+    assert result["status"] == "no_verified_candidate"
+
+
 def test_trajectory_agent_passes_prograde_to_route_planner(monkeypatch) -> None:
     observed: dict = {}
 

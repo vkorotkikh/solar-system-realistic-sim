@@ -458,6 +458,41 @@ class SolarRealtimeDataProvider:
             return None
         return _clamp(weighted_sum / weight_total, 0.0, 1.0)
 
+    @staticmethod
+    def _cache_state_from_source_status(source_status: Any) -> str:
+        """Summarize which enabled sources are usable in this delivery.
+
+        Refresh health is intentionally separate: a last-known-good payload is
+        still delivered data, while ``refresh_ok`` and the cache lifetime retain
+        the degraded/retry signal.
+        """
+        if not isinstance(source_status, Mapping):
+            return "failed"
+        eligible = [
+            status
+            for status in source_status.values()
+            if not (
+                isinstance(status, Mapping)
+                and status.get("runtime_eligible") is False
+            )
+        ]
+        if not eligible:
+            return "failed"
+        usable = sum(
+            isinstance(status, Mapping) and status.get("ok") is True
+            for status in eligible
+        )
+        if usable == len(eligible):
+            return "complete"
+        if usable:
+            return "partial"
+        return "failed"
+
+    def _update_cache_state(self, snapshot: dict[str, Any]) -> None:
+        snapshot["cache_state"] = self._cache_state_from_source_status(
+            snapshot.get("source_status")
+        )
+
     def _retain_or_restore_swpc(self, key: Any, snapshot: dict[str, Any], now: float, now_utc: datetime) -> None:
         """Retain only a fresh SWPC component, bounded by epoch, count and age.
 
@@ -491,9 +526,7 @@ class SolarRealtimeDataProvider:
                 "refresh_error": status.get("error", "SWPC refresh unavailable"),
             }
             snapshot["combined_activity_proxy"] = self._combined_activity_proxy(snapshot)
-        eligible = [s for s in statuses.values() if isinstance(s, Mapping) and s.get("runtime_eligible") is not False]
-        good = sum(s.get("ok") is True and s.get("refresh_ok") is not False for s in eligible)
-        snapshot["cache_state"] = "complete" if good == len(eligible) else "partial" if good else "failed"
+        self._update_cache_state(snapshot)
 
     def _aia_channel_times(self, aia: Any) -> list[datetime] | None:
         """Require a complete, dated AIA bundle before cache reuse."""
@@ -552,12 +585,6 @@ class SolarRealtimeDataProvider:
                     else "invalid_aia_metadata: cached AIA channel dates are invalid"
                 ),
             })
-            remaining_ok = any(
-                name != "sdo_aia" and isinstance(value, Mapping)
-                and value.get("runtime_eligible") is not False and value.get("ok") is True
-                for name, value in statuses.items()
-            )
-            snapshot["cache_state"] = "partial" if remaining_ok else "failed"
         else:
             latest = max(timestamps)
             freshness_s = max(0.0, (now_utc - latest).total_seconds())
@@ -672,85 +699,92 @@ class SolarRealtimeDataProvider:
                 snapshot["source_status"] = delivered_statuses
 
         swpc = snapshot.get("swpc")
-        if not isinstance(swpc, dict):
-            return snapshot
-        statuses = snapshot.get("source_status")
-        delivered_statuses = dict(statuses) if isinstance(statuses, Mapping) else {}
-        prior_status = delivered_statuses.get("swpc")
-        swpc_status = dict(prior_status) if isinstance(prior_status, Mapping) else {}
-        times = self._snapshot_swpc_times(snapshot)
-        if times is None:
-            if swpc_status.get("ok") is not True:
-                return snapshot
-            delivered_at_utc = self._canonical_utc_time_tag(now_utc)
-            delivered = dict(snapshot)
-            delivered["swpc"] = None
-            delivered["combined_activity_proxy"] = None
-            swpc_status.update(
-                {
-                    "ok": False,
-                    "error": "NOAA SWPC RTSW component timestamps are invalid at delivery",
-                    "delivered_at_utc": delivered_at_utc,
-                    "endpoint": self.NOAA_WIND_URL,
-                }
+        if isinstance(swpc, dict):
+            statuses = snapshot.get("source_status")
+            delivered_statuses = (
+                dict(statuses) if isinstance(statuses, Mapping) else {}
             )
-            delivered_statuses["swpc"] = swpc_status
-            delivered["source_status"] = delivered_statuses
-            return delivered
-
-        if swpc_status.get("ok") is not True:
-            return snapshot
-
-        wind_time, mag_time = times
-        wind_age_s = (now_utc - wind_time).total_seconds()
-        mag_age_s = (now_utc - mag_time).total_seconds()
-        maximum_age_s = max(wind_age_s, mag_age_s)
-        minimum_age_s = min(wind_age_s, mag_age_s)
-        delivered_at_utc = self._canonical_utc_time_tag(now_utc)
-
-        delivered = dict(snapshot)
-
-        if (
-            maximum_age_s > self.SWPC_MAX_SAMPLE_AGE_S
-            or minimum_age_s < -self.SWPC_MAX_FUTURE_OFFSET_S
-        ):
-            # This is reachable only at a wall/monotonic clock edge or when a
-            # source becomes invalid while slower companion sources are being
-            # acquired. Do not deliver expired measurements or their proxy.
-            delivered["swpc"] = None
-            delivered["combined_activity_proxy"] = None
-            swpc_status.update(
-                {
-                    "ok": False,
-                    "error": "NOAA SWPC RTSW sample is outside its delivery-time window",
-                    "updated": self._canonical_utc_time_tag(min(wind_time, mag_time)),
-                    "age_s": maximum_age_s,
-                    "delivered_at_utc": delivered_at_utc,
-                    "endpoint": self.NOAA_WIND_URL,
-                }
+            prior_status = delivered_statuses.get("swpc")
+            swpc_status = (
+                dict(prior_status) if isinstance(prior_status, Mapping) else {}
             )
-        else:
-            delivered_swpc = dict(swpc)
-            delivered_swpc.update(
-                {
-                    "age_s": maximum_age_s,
-                    "wind_age_s": wind_age_s,
-                    "mag_age_s": mag_age_s,
-                    "delivered_at_utc": delivered_at_utc,
-                }
-            )
-            delivered["swpc"] = delivered_swpc
-            swpc_status.update(
-                {
-                    "age_s": maximum_age_s,
-                    "wind_age_s": wind_age_s,
-                    "mag_age_s": mag_age_s,
-                    "delivered_at_utc": delivered_at_utc,
-                }
-            )
-        delivered_statuses["swpc"] = swpc_status
-        delivered["source_status"] = delivered_statuses
-        return delivered
+            times = self._snapshot_swpc_times(snapshot)
+            if times is None:
+                if swpc_status.get("ok") is True:
+                    snapshot["swpc"] = None
+                    snapshot["combined_activity_proxy"] = None
+                    swpc_status.update(
+                        {
+                            "ok": False,
+                            "error": (
+                                "NOAA SWPC RTSW component timestamps are "
+                                "invalid at delivery"
+                            ),
+                            "delivered_at_utc": self._canonical_utc_time_tag(
+                                now_utc
+                            ),
+                            "endpoint": self.NOAA_WIND_URL,
+                        }
+                    )
+                    delivered_statuses["swpc"] = swpc_status
+                    snapshot["source_status"] = delivered_statuses
+            elif swpc_status.get("ok") is True:
+                wind_time, mag_time = times
+                wind_age_s = (now_utc - wind_time).total_seconds()
+                mag_age_s = (now_utc - mag_time).total_seconds()
+                maximum_age_s = max(wind_age_s, mag_age_s)
+                minimum_age_s = min(wind_age_s, mag_age_s)
+                delivered_at_utc = self._canonical_utc_time_tag(now_utc)
+
+                if (
+                    maximum_age_s > self.SWPC_MAX_SAMPLE_AGE_S
+                    or minimum_age_s < -self.SWPC_MAX_FUTURE_OFFSET_S
+                ):
+                    # This is reachable only at a wall/monotonic clock edge or
+                    # when a source becomes invalid while slower companion
+                    # sources are acquired. Do not deliver expired measurements
+                    # or their proxy.
+                    snapshot["swpc"] = None
+                    snapshot["combined_activity_proxy"] = None
+                    swpc_status.update(
+                        {
+                            "ok": False,
+                            "error": (
+                                "NOAA SWPC RTSW sample is outside its "
+                                "delivery-time window"
+                            ),
+                            "updated": self._canonical_utc_time_tag(
+                                min(wind_time, mag_time)
+                            ),
+                            "age_s": maximum_age_s,
+                            "delivered_at_utc": delivered_at_utc,
+                            "endpoint": self.NOAA_WIND_URL,
+                        }
+                    )
+                else:
+                    delivered_swpc = dict(swpc)
+                    delivered_swpc.update(
+                        {
+                            "age_s": maximum_age_s,
+                            "wind_age_s": wind_age_s,
+                            "mag_age_s": mag_age_s,
+                            "delivered_at_utc": delivered_at_utc,
+                        }
+                    )
+                    snapshot["swpc"] = delivered_swpc
+                    swpc_status.update(
+                        {
+                            "age_s": maximum_age_s,
+                            "wind_age_s": wind_age_s,
+                            "mag_age_s": mag_age_s,
+                            "delivered_at_utc": delivered_at_utc,
+                        }
+                    )
+                delivered_statuses["swpc"] = swpc_status
+                snapshot["source_status"] = delivered_statuses
+
+        self._update_cache_state(snapshot)
+        return snapshot
 
     def latest(
         self,
@@ -2293,8 +2327,7 @@ class SolarRealtimeDataProvider:
         raise RuntimeError("SILSO acquisition unavailable") from None
 
     def _fetch_silso(self) -> dict[str, Any]:
-        with self._acquisition_scope():
-            return self._fetch_silso_with_deadline()
+        return self._fetch_silso_with_deadline()
 
     def _fetch_silso_with_deadline(self) -> dict[str, Any]:
         call_reference_date = self._utc_now().astimezone(timezone.utc).date()
@@ -2399,8 +2432,9 @@ class SolarRealtimeDataProvider:
                         time.monotonic() + self.SILSO_FAILURE_BACKOFF_S
                     ),
                 )
-                with self._lock:
-                    self._silso_failure = failure
+                if failure.code != "acquisition_deadline":
+                    with self._lock:
+                        self._silso_failure = failure
                 raise
 
             with self._lock:
@@ -2409,12 +2443,13 @@ class SolarRealtimeDataProvider:
             return entry, cache_status, response_reference_date
 
         try:
-            entry, cache_status, response_reference_date = self._singleflight_fetch(
-                key=("silso_source",),
-                fetch_fn=refresh,
-                wait_timeout_s=self._remaining_provider_budget(),
-                allow_cached_failure=False,
-            )
+            with self._acquisition_scope():
+                entry, cache_status, response_reference_date = self._singleflight_fetch(
+                    key=("silso_source",),
+                    fetch_fn=refresh,
+                    wait_timeout_s=self._remaining_provider_budget(),
+                    allow_cached_failure=False,
+                )
             return self._silso_cache_value(
                 entry,
                 cache_status=cache_status,
@@ -2756,7 +2791,6 @@ class SolarRealtimeDataProvider:
             }
 
         try:
-            self._remaining_provider_budget()
             silso = self._fetch_silso()
             snapshot["silso"] = silso
             snapshot["source_status"]["silso"] = {

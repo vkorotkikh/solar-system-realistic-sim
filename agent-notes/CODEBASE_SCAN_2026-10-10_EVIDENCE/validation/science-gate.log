@@ -1,0 +1,64 @@
+{
+  "base_commit": "e7de6cc20ea0880da230432ea0c44f8f6ae93829",
+  "baseline": {
+    "collected": 6,
+    "passed": 6
+  },
+  "baseline_worktree": "detached-head",
+  "manifest_path": "ci/r3-r4-science-verification.json",
+  "manifest_sha256": "750bc5ad5aa06b14e6b7a4158f41c4b844a2e047a308c8630b970df04505d581",
+  "mutations": [
+    {
+      "id": "old-legendre-recurrence",
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "status": "killed"
+    },
+    {
+      "id": "uniform-theta-area-weights",
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "status": "killed"
+    },
+    {
+      "id": "extra-m-normalization",
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "status": "killed"
+    },
+    {
+      "id": "corrupt-source-surface-factor",
+      "node": "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
+      "status": "killed"
+    },
+    {
+      "id": "omit-exact-boundary-crossing",
+      "node": "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
+      "status": "killed"
+    },
+    {
+      "id": "wsa-vector-magnitude-expansion",
+      "node": "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
+      "status": "killed"
+    }
+  ],
+  "python_socket_guard": true,
+  "requirements": {
+    "path": "ci/r3-r4-requirements.txt",
+    "sha256": "74d61522ae710cc068ad965ebd7ca9192b8ff89c9e65e5d7c898ff54c9d0c1f1"
+  },
+  "resolved_fixed_commits": {
+    "corrupt-source-surface-factor": "99b323166f2b51c3f44e8e9adf01b2fe36fefdc7",
+    "extra-m-normalization": "70af7c81ea40d0fd090423922d767949fb30c3e3",
+    "old-legendre-recurrence": "1a6fcaaaf37e2be711a2a81533f8d28b4f171787",
+    "omit-exact-boundary-crossing": "487a0efc13ceab74d769dd03f9a456f3772298ac",
+    "uniform-theta-area-weights": "70af7c81ea40d0fd090423922d767949fb30c3e3",
+    "wsa-vector-magnitude-expansion": "8fd45d5fd20588edb7bcc7fcb585ce3ac3777799"
+  },
+  "schema_version": 1,
+  "scope_gaps": [
+    "independent-real-GONG-PFSS-corpus",
+    "playwright-and-load-lanes",
+    "global-typescript-zero-error-gate",
+    "multi-worker-global-coordinator-and-process-release-integration",
+    "immutable-action-container-and-os-network-attestation",
+    "github-required-check-and-branch-protection-configuration"
+  ]
+}

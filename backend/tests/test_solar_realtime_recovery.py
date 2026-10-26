@@ -60,6 +60,7 @@ def test_last_good_wind_survives_failure_but_never_outlives_source_age(clocked_p
     assert fallback['swpc']['age_s'] == 301
     assert fallback['source_status']['swpc']['acquisition'] == 'last_known_good'
     assert fallback['source_status']['swpc']['refresh_ok'] is False
+    assert fallback['cache_state'] == 'partial'
     fallback['swpc']['solar_wind_speed_kms'] = 999
     elapsed[0] = 302
     assert provider.latest()['swpc']['solar_wind_speed_kms'] == 450
@@ -67,6 +68,27 @@ def test_last_good_wind_survives_failure_but_never_outlives_source_age(clocked_p
     expired = provider.latest()
     assert expired['swpc'] is None
     assert expired['combined_activity_proxy'] is None
+
+
+def test_last_good_wind_is_usable_when_every_refresh_source_failed(clocked_provider, monkeypatch):
+    provider, elapsed, epoch = clocked_provider
+    responses = iter([
+        snapshot(epoch, partial=True),
+        snapshot(epoch, good=False, partial=True),
+    ])
+    monkeypatch.setattr(provider, '_fetch_snapshot', lambda _jd: next(responses))
+
+    provider.latest()
+    elapsed[0] = 6
+    fallback = provider.latest()
+
+    assert fallback['swpc']['solar_wind_speed_kms'] == 450
+    assert fallback['source_status']['swpc']['ok'] is True
+    assert fallback['source_status']['swpc']['acquisition'] == 'last_known_good'
+    assert fallback['source_status']['swpc']['refresh_ok'] is False
+    assert fallback['source_status']['silso']['ok'] is False
+    assert fallback['source_status']['sdo_aia']['ok'] is False
+    assert fallback['cache_state'] == 'partial'
 
 
 def test_last_good_wind_cannot_cross_epoch_cache_identity(clocked_provider, monkeypatch):

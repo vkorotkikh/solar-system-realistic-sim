@@ -91,7 +91,22 @@ async function fixture() {
 }
 
 describe('actual controller snapshot and decorative-clock ownership', () => {
-  it.each(['pause', 'reverse', 'reduced motion'] as const)('freezes feature interpolation during %s without wall-clock catch-up', async mode => {
+  it.each(['pause', 'reverse', 'reduced motion'] as const)('applies a newly admitted feature snapshot during %s', async mode => {
+    const f = await fixture();
+    if (mode === 'pause') f.state.paused = true;
+    if (mode === 'reverse') f.state.timeScaleDaysPerSec = -1;
+    if (mode === 'reduced motion') f.setReduced(true);
+    const next = payload();
+    next.activity_index = 0.9;
+    next.corona.features[0].arc[0] = [1, 0, 0];
+    await f.refresh(next);
+    f.tick(mode === 'reverse' ? -0.1 : mode === 'pause' ? 0 : 0.1, 60);
+    expect(f.blend().blendAlpha).toBe(1);
+    expect(f.blend().activityIndex).toBe(0.9);
+    expect(f.material.uniforms.activity.value).toBe(0.9);
+  });
+
+  it.each(['pause', 'reverse', 'reduced motion'] as const)('promotes an in-flight feature snapshot during %s without wall-clock catch-up', async mode => {
     const f = await fixture();
     const next = payload();
     next.corona.features[0].arc[0] = [1, 0, 0];
@@ -105,14 +120,13 @@ describe('actual controller snapshot and decorative-clock ownership', () => {
     if (mode === 'reverse') f.state.timeScaleDaysPerSec = -1;
     if (mode === 'reduced motion') f.setReduced(true);
     f.tick(mode === 'reverse' ? -0.1 : mode === 'pause' ? 0 : 0.1, 60);
-    expect(f.blend().blendAlpha).toBe(before);
-    expect(f.firstLoopPoint().distanceTo(point)).toBe(0);
+    expect(f.blend().blendAlpha).toBe(1);
+    expect(f.firstLoopPoint().distanceTo(point)).toBeGreaterThan(0);
     f.controller.onScaleChange();
-    expect(f.blend().blendAlpha).toBe(before);
+    expect(f.blend().blendAlpha).toBe(1);
     f.state.paused = false; f.state.timeScaleDaysPerSec = 1; f.setReduced(false);
     f.tick();
-    expect(f.blend().blendAlpha).toBeGreaterThan(before);
-    expect(f.blend().blendAlpha).toBeLessThan(0.1);
+    expect(f.blend().blendAlpha).toBe(1);
   });
 
   it('replaces a same-epoch PFSS snapshot and preserves its independent CSPICE orientation', async () => {

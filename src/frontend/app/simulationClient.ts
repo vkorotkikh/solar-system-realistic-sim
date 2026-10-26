@@ -33,6 +33,7 @@ interface ConnectedMessage {
   type: 'connected';
   protocol_version?: number;
   kuiper_subscription_version?: number;
+  kuiper_activation_error_version?: number;
   jd_time_scale?: 'TDB' | string;
   warnings?: string[];
 }
@@ -41,6 +42,7 @@ interface ErrorMessage {
   type: 'error';
   code?: string;
   message?: string;
+  kuiper_subscription_id?: string;
 }
 
 type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage | ErrorMessage;
@@ -111,13 +113,19 @@ function decodeMessage(data: string): IncomingMessage {
     if (message.kuiper_subscription_version !== undefined && message.kuiper_subscription_version !== 1) {
       throw new Error('Unsupported WebSocket Kuiper subscription version');
     }
+    if (message.kuiper_activation_error_version !== undefined
+      && message.kuiper_activation_error_version !== 1) {
+      throw new Error('Unsupported WebSocket Kuiper activation error version');
+    }
     if (message.warnings !== undefined && (!Array.isArray(message.warnings)
       || !message.warnings.every(warning => typeof warning === 'string'))) {
       throw new Error('Invalid WebSocket connected warnings');
     }
   } else if (message.type === 'error') {
     if ((message.code !== undefined && typeof message.code !== 'string')
-      || (message.message !== undefined && typeof message.message !== 'string')) {
+      || (message.message !== undefined && typeof message.message !== 'string')
+      || (message.kuiper_subscription_id !== undefined
+        && typeof message.kuiper_subscription_id !== 'string')) {
       throw new Error('Invalid WebSocket error message');
     }
   } else {
@@ -165,6 +173,8 @@ export class SimulationClient {
   private kuiperRequest: { type: 'activate_kuiper'; center: number[]; spread: number } | null = null;
 
   private kuiperSubscriptionSupported = false;
+
+  private kuiperActivationErrorsCorrelated = false;
 
   private kuiperSubscriptionSerial = 0;
 
@@ -261,9 +271,19 @@ export class SimulationClient {
         return;
       }
       if (msg.type === 'error') {
+        if (msg.code === 'kuiper_activation_failed'
+          && (this.kuiperActivationErrorsCorrelated
+            ? msg.kuiper_subscription_id === this.kuiperSubscriptionId
+            : msg.kuiper_subscription_id === undefined)) {
+          this.kuiperActive = false;
+          this.kuiperSubscriptionId = null;
+          this.latestKuiper = null;
+          this.latestKuiperSnapshot = null;
+        }
         this.reportFailure(`${msg.code ?? 'server_error'}: ${msg.message ?? 'WebSocket server error'}`);
         return;
       }
+      if (msg.type === 'state_update') this.reconnectAttempt = 0;
       this.markFresh();
       if (this.ws !== socket) return;
       if (msg.type === 'state_update') {
@@ -302,7 +322,9 @@ export class SimulationClient {
   private handleConnectedMessage(message: ConnectedMessage): void {
     const socket = this.ws;
     if (!this.serverReady) {
-      this.kuiperSubscriptionSupported = message.kuiper_subscription_version === 1;
+      const subscriptionVersion = message.kuiper_subscription_version;
+      this.kuiperSubscriptionSupported = subscriptionVersion === 1;
+      this.kuiperActivationErrorsCorrelated = message.kuiper_activation_error_version === 1;
     }
     if (Array.isArray(message.warnings)) {
       for (const warning of message.warnings) {
@@ -361,7 +383,6 @@ export class SimulationClient {
 
   private markFresh(): void {
     this.lastError = null;
-    this.reconnectAttempt = 0;
     // Install owned work before notifying observers; disconnect can then revoke it.
     this.armStaleTimer();
     if (this.connected) {
@@ -408,6 +429,7 @@ export class SimulationClient {
     this.connected = false;
     this.serverReady = false;
     this.kuiperSubscriptionSupported = false;
+    this.kuiperActivationErrorsCorrelated = false;
     this.kuiperSubscriptionId = null;
     this.latestState = null;
     this.latestKuiper = null;
@@ -482,8 +504,18 @@ export class SimulationClient {
   }
 
   activateKuiper(center: Vector3Like, spread: number): void {
+    const request = { type: 'activate_kuiper' as const, center: [center.x, center.y, center.z], spread };
+    const requestChanged = this.kuiperRequest === null
+      || this.kuiperRequest.spread !== request.spread
+      || this.kuiperRequest.center.some((value, index) => value !== request.center[index]);
     this.kuiperRevoked = false;
-    this.kuiperRequest = { type: 'activate_kuiper', center: [center.x, center.y, center.z], spread };
+    this.kuiperRequest = request;
+    if (requestChanged) {
+      this.kuiperActive = false;
+      this.kuiperSubscriptionId = null;
+      this.latestKuiper = null;
+      this.latestKuiperSnapshot = null;
+    }
     this.replayKuiperRequest();
   }
 
