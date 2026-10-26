@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import replace
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -35,6 +36,25 @@ def acceptance_report():
     return build_report()
 
 
+# OpenBLAS picks AVX-512, AVX2, AVX or SSE kernels from the host CPU, so the
+# report's floats agree across machines only to the last few bits (at most
+# 1.2e-14 relative here). Floats must match to 1e-12; everything else exactly.
+def _assert_report_matches(actual: object, expected: object, path: str = "report") -> None:
+    assert type(actual) is type(expected), path
+    if isinstance(expected, dict):
+        assert actual.keys() == expected.keys(), path
+        for key in expected:
+            _assert_report_matches(actual[key], expected[key], f"{path}.{key}")
+    elif isinstance(expected, list):
+        assert len(actual) == len(expected), path
+        for index, (item, reference) in enumerate(zip(actual, expected)):
+            _assert_report_matches(item, reference, f"{path}[{index}]")
+    elif isinstance(expected, float):
+        assert math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-15), (path, actual, expected)
+    else:
+        assert actual == expected, path
+
+
 def test_pinned_real_gong_identity_and_offline_manifest(acceptance_report) -> None:
     compressed, expanded = pinned_observation_bytes()
     manifest = json.loads(MANIFEST.read_text())
@@ -50,10 +70,8 @@ def test_pinned_real_gong_identity_and_offline_manifest(acceptance_report) -> No
     report = (CORPUS / manifest["generated_report"]["file"]).read_bytes()
     assert hashlib.sha256(report).hexdigest() == manifest["generated_report"]["sha256"]
     assert manifest["generated_report"]["acceptance_passed"] is True
-    regenerated = (
-        json.dumps(acceptance_report, indent=2, sort_keys=True, allow_nan=False) + "\n"
-    ).encode()
-    assert regenerated == report
+    regenerated = json.loads(json.dumps(acceptance_report, sort_keys=True, allow_nan=False))
+    _assert_report_matches(regenerated, json.loads(report))
 
 
 def test_real_gong_ingestion_uses_bounded_disclosed_polarity_scaling(observed_snapshot) -> None:

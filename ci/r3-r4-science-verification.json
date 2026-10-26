@@ -110,7 +110,7 @@
     },
     {
       "path": "backend/tests/test_solar_observational_acceptance.py",
-      "sha256": "aa8d7fddf7c545e7a880ae7a67117c9716c9030930ad1fc68db6633134601400"
+      "sha256": "de7ba12989caaac611f8e80d80ffcdc21c023d7f9affb76b006df1fdc1e146d3"
     },
     {
       "path": "agent-notes/solar-observational-acceptance-2026-10-17/nso_gong_zqs_202610121744.fits.gz",
