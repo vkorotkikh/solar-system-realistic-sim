@@ -1,0 +1,41 @@
+{
+  "snapshot": "/tmp/solar-sweep-2026-10-10-j1gnowo_/trajectory",
+  "dormant_callbacks": {
+    "radiation": {
+      "actual_rebound_argument_types": [
+        "LP_Simulation"
+      ],
+      "errors": [
+        "AttributeError: 'LP_Simulation' object has no attribute 'particles'"
+      ]
+    },
+    "galactic": {
+      "actual_rebound_argument_types": [
+        "LP_Simulation"
+      ],
+      "errors": [
+        "AttributeError: 'LP_Simulation' object has no attribute 'particles'"
+      ]
+    }
+  },
+  "dormant_tudat_srp": {
+    "reported_enabled_without_initialization": true
+  },
+  "moon_help_empty_table": {
+    "exit": 0,
+    "stdout": "Saved 0 satellite records to /tmp/solar-empty-moon-help-ykvvf8h3/src/data/moons.json\n",
+    "stderr": "",
+    "catalog_after": "[]\n",
+    "source_unchanged": true,
+    "only_temp_copy_executed": true
+  },
+  "asteroid_external_output": {
+    "result": "ValueError: '/tmp/solar-external-asteroid-jolqksgi/audit.bin' is not in the subpath of '/tmp/solar-sweep-2026-10-10-j1gnowo_/trajectory'",
+    "created_files": [
+      "audit.bin",
+      "audit.meta.json",
+      "sample_top_10.json"
+    ],
+    "encoding_substituted": true
+  }
+}

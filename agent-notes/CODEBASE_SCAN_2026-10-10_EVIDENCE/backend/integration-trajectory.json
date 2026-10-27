@@ -1,0 +1,65 @@
+{
+  "branch": "trajectory",
+  "origins": [
+    {
+      "origin": "http://localhost:4173",
+      "status": 400,
+      "allow_origin": null
+    },
+    {
+      "origin": "http://127.0.0.1:4173",
+      "status": 400,
+      "allow_origin": null
+    },
+    {
+      "origin": "http://localhost:5173",
+      "status": 200,
+      "allow_origin": "http://localhost:5173"
+    },
+    {
+      "origin": "https://untrusted.invalid",
+      "status": 400,
+      "allow_origin": null
+    }
+  ],
+  "epochs": [
+    {
+      "jd": 2451545.0,
+      "status": 200,
+      "body": {
+        "probe_epoch": 2451545.0
+      },
+      "admitted_to_fake_compute": true
+    },
+    {
+      "jd": 1e+30,
+      "status": 200,
+      "body": {
+        "probe_epoch": 1e+30
+      },
+      "admitted_to_fake_compute": true
+    },
+    {
+      "jd": -1e+30,
+      "status": 200,
+      "body": {
+        "probe_epoch": -1e+30
+      },
+      "admitted_to_fake_compute": true
+    }
+  ],
+  "identity": {
+    "xff": {
+      "accepted": 50,
+      "rejected": 0,
+      "rate_store_entries": 50,
+      "client_identity_count": 50
+    },
+    "key": {
+      "accepted": 50,
+      "rejected": 0,
+      "rate_store_entries": 50,
+      "client_identity_count": 1
+    }
+  }
+}

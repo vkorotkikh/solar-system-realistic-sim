@@ -30,10 +30,19 @@ from astropy.time import Time, TimeDelta
 from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
-from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
+from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
+from .solar_active_regions import (
+    J2000_JD,
+    ActiveRegionSeed,
+    build_active_regions,
+    region_lifetime,
+    region_polarity_dirs,
+)
+from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
     provider_carrington_state_from_crnow,
@@ -60,6 +69,8 @@ WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
 WSA_RADIAL_FIELD_FLOOR = 1e-15
 
 def _clamp(value: float, lower: float, upper: float) -> float:
+    if not all(math.isfinite(item) for item in (value, lower, upper)):
+        raise ValueError("clamp inputs must be finite")
     return min(upper, max(lower, value))
 
 
@@ -94,8 +105,14 @@ def synthetic_magnetogram(
     amplitudes, plus the same persistent active regions used by coronal features.
     Defaults to equal-area sine-latitude centers. An explicit grid supplies
     both coordinates and dimensions, overriding n_lat and n_lon.
+    Activity and JDTDB must be finite; finite activity saturates to [0, 1].
     """
-    activity = _clamp(float(activity), 0.0, 1.0)
+    activity = float(activity)
+    if not math.isfinite(activity):
+        raise ValueError("activity must be finite")
+    if not math.isfinite(jd):
+        raise ValueError("jd must be finite")
+    activity = _clamp(activity, 0.0, 1.0)
     if grid is None:
         grid = equal_area_sine_latitude_grid(n_lat, n_lon)
     theta = np.arccos(grid.mu)
@@ -111,7 +128,11 @@ def synthetic_magnetogram(
     # Dipole tilt: g_1^1 (tilted component, increases at solar max)
     tilt_angle = 0.2 * activity  # ~12° at solar max
     g11 = g10 * math.sin(tilt_angle)
-    br += g11 * sin_theta * np.cos(phi_grid)
+    tilt_phase = (
+        math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY)
+        * (jd - J2000_JD)
+    ) % math.tau
+    br += g11 * sin_theta * np.cos(phi_grid - tilt_phase)
 
     # Quadrupole: g_2^0
     g20 = 2.5 * activity
@@ -162,7 +183,8 @@ def decompose_spherical_harmonics(
     fit includes the monopole; flux-balance policy is outside this projection.
     """
     br_map = grid.validate_map(br_map)
-    plm = schmidt_legendre(lmax, grid.mu)
+    # Validate degree before dimensions/allocation; retain the existing SVD gate.
+    schmidt_latitude_design(lmax, 0, grid.mu[:1])
     n_lat, n_lon = br_map.shape
     if n_lat < lmax + 1 or n_lon < 2 * lmax + 1:
         raise ValueError("grid undersamples the requested harmonic degree")
@@ -172,17 +194,17 @@ def decompose_spherical_harmonics(
     h_lm = np.zeros((lmax + 1, lmax + 1))
     sqrt_weight = np.sqrt(grid.area_weights)
     for m in range(lmax + 1):
-        design = np.column_stack([plm[(l, m)] for l in range(m, lmax + 1)])
+        design = schmidt_latitude_design(lmax, m, grid.mu)
         weighted = design * sqrt_weight[:, None]
-        condition = np.linalg.cond(weighted, p=2)
-        if not np.isfinite(condition) or condition > condition_limit:
-            raise ValueError(f"latitude design for m={m} has condition {condition:g} above limit {condition_limit:g}")
         # Factor 2 extracts real Fourier amplitudes for m>0; it is not an
         # extra Schmidt normalization applied to the recovered coefficients.
         factor = (1 if m == 0 else 2) / n_lon
         rhs = np.column_stack((br_map @ np.cos(m * grid.phi_rad),
                                br_map @ np.sin(m * grid.phi_rad))) * factor
-        coefficients, _, rank, _ = np.linalg.lstsq(weighted, rhs * sqrt_weight[:, None], rcond=None)
+        coefficients, _, rank, singular = np.linalg.lstsq(weighted, rhs * sqrt_weight[:, None], rcond=None)
+        condition = singular[0] / singular[-1] if singular[-1] > 0 else float('inf')
+        if not np.isfinite(condition) or condition > condition_limit:
+            raise ValueError(f"latitude design for m={m} has condition {condition:g} above limit {condition_limit:g}")
         if rank != design.shape[1]:
             raise ValueError(f"latitude design for m={m} is rank deficient")
         g_lm[m:, m], h_lm[m:, m] = coefficients.T
@@ -218,72 +240,25 @@ class PFSSField:
         self.h = h_lm.copy()
         self.lmax = lmax
         self.r_ss = r_ss
+        self._streaming = StreamingPFSS(self.g, self.h, lmax, r_ss)
+        # Preserve the public coefficient arrays used by scalar callers.
+        self.g, self.h = self._streaming.g, self._streaming.h
 
     def evaluate(self, r: float, theta: float, phi: float) -> tuple[float, float, float]:
         """Evaluate B(r, θ, φ) → (Br, Bθ, Bφ) in spherical coordinates.
 
         Units match the input coefficient units (typically Gauss for g_lm).
         """
-        cos_t = math.cos(theta)
-        sin_t = math.sin(theta)
-
-        # Compute Legendre functions at this colatitude
-        plm_vals: dict[tuple[int, int], float] = {}
-        dplm_vals: dict[tuple[int, int], float] = {}
-        self._legendre_at_point(cos_t, sin_t, plm_vals, dplm_vals)
-
-        br_val = 0.0
-        bt_val = 0.0
-        bp_val = 0.0
-
-        for l in range(1, self.lmax + 1):
-            # B=-grad(Psi), with each unit-coefficient potential mode
-            # Psi_l = [r^(-l-1) - r^l/rss^(2l+1)] / D_l * Y_lm,
-            # D_l = l+1 + l/rss^(2l+1). Thus Psi_l(rss)=0,
-            # Br(1)=Y_lm, and Btheta(rss)=Bphi(rss)=0.
-            # Br(rss)=(2l+1)*rss^(-l-2)/D_l * Y_lm is generally nonzero.
-            rss = self.r_ss
-
-            r_ratio = r  # r in solar radii, photosphere = 1
-            rss_pow = (1.0 / rss) ** (2 * l + 1)
-
-            # c_l: radial decay factor for Br
-            # At r=1: c_l = (l+1+l*rss^{-(2l+1)}) / (l+1+l*rss^{-(2l+1)}) = 1 — correct
-            denominator = (l + 1) + l * rss_pow
-            if abs(denominator) < 1e-30:
-                continue
-
-            # Br coefficient
-            cl_br = ((l + 1) * r_ratio ** (-(l + 2)) + l * rss_pow * r_ratio ** (l - 1)) / denominator
-            # Btheta coefficient
-            cl_bt = -(r_ratio ** (-(l + 2)) - rss_pow * r_ratio ** (l - 1)) / denominator
-            # Bphi coefficient is similar to Btheta
-            cl_bp = cl_bt  # Same radial factor for Bφ
-
-            for m in range(l + 1):
-                plm = plm_vals.get((l, m), 0.0)
-                dplm = dplm_vals.get((l, m), 0.0)
-
-                cos_mp = math.cos(m * phi)
-                sin_mp = math.sin(m * phi)
-                glm = self.g[l, m] if l < self.g.shape[0] and m < self.g.shape[1] else 0.0
-                hlm = self.h[l, m] if l < self.h.shape[0] and m < self.h.shape[1] else 0.0
-
-                gh_cos = glm * cos_mp + hlm * sin_mp
-                gh_sin = -glm * sin_mp + hlm * cos_mp
-
-                br_val += cl_br * plm * gh_cos
-                bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * float(schmidt_azimuthal_factor(m, cos_t, plm, dplm)) * gh_sin
-
-        return (br_val, bt_val, bp_val)
+        # Keep scalar and batch coordinate handling identical, including
+        # resolved near-pole sine terms at degrees below the legacy cap.
+        return tuple(float(v) for v in self._streaming.evaluate(r, theta, phi))
 
     def evaluate_cartesian(self, x: float, y: float, z: float) -> tuple[float, float, float]:
         """Evaluate B at Cartesian position (x, y, z) in solar radii → (Bx, By, Bz)."""
         r = math.sqrt(x * x + y * y + z * z)
         if r < 0.01:
             return (0.0, 0.0, 0.0)
-        theta = math.acos(_clamp(z / r, -1.0, 1.0))
+        theta = math.atan2(math.hypot(x, y), z)
         phi = math.atan2(y, x)
 
         br, bt, bp = self.evaluate(r, theta, phi)
@@ -318,7 +293,7 @@ class PFSSField:
         
         # Avoid division by zero at origin
         r_safe = np.where(r < 0.01, 1.0, r)
-        theta = np.arccos(np.clip(z / r_safe, -1.0, 1.0))
+        theta = np.arctan2(np.hypot(x, y), z)
         phi = np.arctan2(y, x)
         
         br, bt, bp = self._evaluate_batch(r_safe, theta, phi)
@@ -340,51 +315,8 @@ class PFSSField:
         return bx, by, bz
 
     def _evaluate_batch(self, r: np.ndarray, theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Vectorized B(r, θ, φ) integration."""
-        cos_t = np.cos(theta)
-        sin_t = np.sin(theta)
-        n_points = len(r)
-        
-        plm_vals, dplm_vals = self._legendre_batch(cos_t, sin_t)
-
-        br_val = np.zeros(n_points)
-        bt_val = np.zeros(n_points)
-        bp_val = np.zeros(n_points)
-        
-        for l in range(1, self.lmax + 1):
-            # Same -grad(Psi_l) factors and normalization as evaluate().
-            rss_pow = (1.0 / self.r_ss) ** (2 * l + 1)
-            denominator = (l + 1) + l * rss_pow
-            if abs(denominator) < 1e-30:
-                continue
-
-            r_ratio_inv_l2 = r ** (-(l + 2))
-            r_ratio_l1 = r ** (l - 1)
-            
-            cl_br = ((l + 1) * r_ratio_inv_l2 + l * rss_pow * r_ratio_l1) / denominator
-            cl_bt = -(r_ratio_inv_l2 - rss_pow * r_ratio_l1) / denominator
-            cl_bp = cl_bt
-
-            for m in range(l + 1):
-                plm = plm_vals.get((l, m))
-                dplm = dplm_vals.get((l, m))
-                if plm is None:
-                    continue
-
-                cos_mp = np.cos(m * phi)
-                sin_mp = np.sin(m * phi)
-                
-                glm = self.g[l, m] if l < self.g.shape[0] and m < self.g.shape[1] else 0.0
-                hlm = self.h[l, m] if l < self.h.shape[0] and m < self.h.shape[1] else 0.0
-                
-                gh_cos = glm * cos_mp + hlm * sin_mp
-                gh_sin = -glm * sin_mp + hlm * cos_mp
-                
-                br_val += cl_br * plm * gh_cos
-                bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * schmidt_azimuthal_factor(m, cos_t, plm, dplm) * gh_sin
-                
-        return br_val, bt_val, bp_val
+        """Exact full-degree evaluation with bounded streaming workspace."""
+        return self._streaming.evaluate(r, theta, phi)
 
     def _legendre_batch(self, cos_t: np.ndarray, sin_t: np.ndarray) -> tuple[dict[tuple[int, int], np.ndarray], dict[tuple[int, int], np.ndarray]]:
         """Legacy batch delegate; sin_t is retained only for call compatibility."""
@@ -414,18 +346,16 @@ def trace_field_lines(
 
     # Generate seed footpoints
     seeds = _generate_seed_footpoints(safe_n, br_map, grid=grid)
+    theta, phi = np.asarray(seeds).T
+    starts = 1.005 * _unit_vectors(theta, phi)
+    result = trace_field_batch(field, starts, max_steps=max_steps, step_size=step_size, record_arcs=True)
 
     for idx, (theta_0, phi_0) in enumerate(seeds):
-        # Start slightly above photosphere
-        r_start = 1.005
-        x = r_start * math.sin(theta_0) * math.cos(phi_0)
-        y = r_start * math.sin(theta_0) * math.sin(phi_0)
-        z = r_start * math.cos(theta_0)
-
-        result = trace_field(field, [x, y, z], max_steps=max_steps, step_size=step_size)
-        termination = result.termination
-        is_open = {"open": True, "closed": False, "indeterminate": None}[termination.state]
-        arc = np.round(result.arc, 4).tolist()
+        state = result.states[idx]
+        is_open = {"open": True, "closed": False, "indeterminate": None}[state]
+        arc = np.round(result.arcs[idx], 4).tolist()
+        endpoint_field = result.endpoint_fields[idx]
+        residual = result.endpoint_radius_residuals[idx]
 
         # Convert footpoint to lat/lon
         fp_lat_deg = round(90.0 - math.degrees(theta_0), 1)
@@ -433,14 +363,14 @@ def trace_field_lines(
 
         lines.append({
             "id": f"pfss-{idx:03d}",
-            "state": termination.state,
+            "state": state,
             "is_open": is_open,
-            "termination_reason": termination.reason,
-            "steps": termination.steps,
-            "endpoint": result.endpoint.tolist(),
-            "endpoint_field": result.endpoint_field.tolist() if result.endpoint_field is not None else None,
-            "endpoint_radius_residual": termination.endpoint_radius_residual,
-            "polarity": result.polarity,
+            "termination_reason": result.reasons[idx],
+            "steps": int(result.steps[idx]),
+            "endpoint": result.endpoints[idx].tolist(),
+            "endpoint_field": endpoint_field.tolist() if np.isfinite(endpoint_field).all() else None,
+            "endpoint_radius_residual": float(residual) if np.isfinite(residual) else None,
+            "polarity": int(result.polarities[idx]),
             "footpoint_lat_deg": fp_lat_deg,
             "footpoint_lon_deg": fp_lon_deg,
             "arc": arc,
@@ -943,7 +873,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v2"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v3"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
@@ -1214,6 +1144,59 @@ def _serialize_observed_provenance(
 DEFAULT_INFLIGHT_WAIT_S = 30.0
 
 
+def compute_pfss_from_coefficients(
+    coefficients_schmidt_gauss: np.ndarray,
+    *,
+    source_surface_radii: float,
+    line_count: int = 120,
+    wsa_n_lat: int = 36,
+    wsa_n_lon: int = 72,
+) -> dict[str, Any]:
+    """Compute production products from an explicit native spectral boundary.
+
+    Input is ``[g/h, degree, order]``, in Gauss, real Schmidt quasi-normalized
+    without the Condon-Shortley phase. No coordinate rotation, amplitude fit,
+    or spectral truncation is performed. The source-surface radius is mandatory.
+    This numerical entry point does not establish observational/frame provenance
+    and does not enable the guarded observed-forcing HTTP route.
+
+    The grid-decomposition degree policy remains separate: a sampled grid may
+    not contain enough well-conditioned information to recover these modes.
+    At most 500 display lines and 2592 WSA cells are retained per solve; field
+    evaluation has its own fixed-size scratch buffers. No global cache is added.
+    """
+    coefficients = np.asarray(coefficients_schmidt_gauss, dtype=float)
+    if (coefficients.ndim != 3 or coefficients.shape[0] != 2
+            or coefficients.shape[1] != coefficients.shape[2]
+            or not 2 <= coefficients.shape[1] <= 91):
+        raise ValueError("spectral coefficients must have shape (2, L+1, L+1), 1 <= L <= 90")
+    if not np.isfinite(coefficients).all():
+        raise ValueError("spectral coefficients must be finite")
+    if np.any(np.triu(coefficients, k=1)):
+        raise ValueError("spectral coefficients with order greater than degree must be zero")
+    if not np.isfinite(source_surface_radii) or source_surface_radii <= 1.0:
+        raise ValueError("source_surface_radii must be finite and greater than one")
+    for name, value, upper in (("line_count", line_count, 500),
+                               ("wsa_n_lat", wsa_n_lat, 2592),
+                               ("wsa_n_lon", wsa_n_lon, 2592)):
+        if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or not 1 <= value <= upper:
+            raise ValueError(f"{name} must be an integer in [1, {upper}]")
+    if wsa_n_lat < 2 or wsa_n_lon < 2 or wsa_n_lat * wsa_n_lon > 2592:
+        raise ValueError("WSA grid requires at least two cells per axis and at most 2592 cells")
+    # This config supplies the existing bounded tracing/WSA settings only. Its
+    # grid lmax cap is deliberately not used for the native spectral boundary.
+    config = PFSSSolutionConfig(
+        line_count=int(line_count), source_surface_radii=float(source_surface_radii),
+        wsa_n_lat=int(wsa_n_lat), wsa_n_lon=int(wsa_n_lon),
+    )
+    degree = coefficients.shape[1] - 1
+    field = PFSSField(coefficients[0], coefficients[1], degree, float(source_surface_radii))
+    products = PFSSCache._compute_field_products(field, config)
+    products["lmax"] = degree
+    products["boundary_representation"] = "native-real-schmidt-gauss-no-cs-v1"
+    return products
+
+
 class PFSSCache:
     """Bounded, thread-safe snapshot and PFSS solution cache.
 
@@ -1388,6 +1371,11 @@ class PFSSCache:
             provenance_payload = None
         result.update({
             "source": snapshot.source_kind,
+            "geometry_frame": (
+                synthetic_geometry_frame(snapshot.snapshot_id.jd_tdb)
+                if snapshot.source_kind == "synthetic"
+                else unresolved_observed_geometry_frame()
+            ),
             "fallback_reason": fallback_reason,
             "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
             "snapshot_sha256": snapshot.snapshot_id.sha256,
@@ -1800,6 +1788,12 @@ class PFSSCache:
         field = pfss_solve(
             g_lm, h_lm, lmax=config.lmax, r_ss=config.source_surface_radii
         )
+
+        return self._compute_field_products(field, config, br_map=br_map, grid=grid)
+
+    @staticmethod
+    def _compute_field_products(field, config, *, br_map=None, grid=None):
+        """Common production tracing/WSA path for grid and native spectral inputs."""
 
         # Trace field lines (for visualization)
         lines = trace_field_lines(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -195,11 +196,15 @@ class VehicleService:
         available = max(0.0, float(available_cargo_kg))
         if not closes(0.0):
             return None
-        if closes(available):
-            return available
-        lo, hi = 0.0, available  # more cargo never makes a burn easier, so bisect
+        # Overflowed cargo bounds still need a finite interval to bisect.
+        hi = min(available, sys.float_info.max)
+        if closes(hi):
+            return hi
+        lo = 0.0  # more cargo never makes a burn easier, so bisect
         while hi - lo > tolerance_kg:
-            mid = 0.5 * (lo + hi)
+            mid = lo + 0.5 * (hi - lo)
+            if not lo < mid < hi:
+                break
             if closes(mid):
                 lo = mid
             else:

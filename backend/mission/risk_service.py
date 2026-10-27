@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import math
 import random
+from statistics import NormalDist
 from typing import Any, Callable, Dict, List
+
+DEFAULT_EPHEMERIS_SIGMA_FRACTION = 0.01
+DEFAULT_THRUST_SIGMA_FRACTION = 0.04
+DEFAULT_EXTRACTION_SIGMA_FRACTION = 0.12
 
 
 def _quantile(sorted_values: List[float], q: float) -> float:
@@ -22,6 +28,20 @@ def _quantile(sorted_values: List[float], q: float) -> float:
 class RiskService:
     """Runs deterministic-seed Monte Carlo sweeps over mission uncertainties."""
 
+    @staticmethod
+    def cargo_sizing_delta_v_factor(failure_probability_threshold: float) -> float:
+        """Return the one-sided delta-v capacity margin for the risk threshold."""
+        threshold = float(failure_probability_threshold)
+        if not math.isfinite(threshold) or threshold <= 0.0:
+            quantile = math.nextafter(1.0, 0.0)
+        elif threshold >= 0.5:
+            return 1.0
+        else:
+            quantile = 1.0 - threshold
+        return 1.0 + NormalDist().inv_cdf(quantile) * (
+            DEFAULT_EPHEMERIS_SIGMA_FRACTION + DEFAULT_THRUST_SIGMA_FRACTION
+        )
+
     def run_monte_carlo(
         self,
         *,
@@ -32,9 +52,9 @@ class RiskService:
         reclose: Callable[[float, float], Dict[str, Any]],
         samples: int = 300,
         seed: int = 7,
-        ephemeris_sigma_fraction: float = 0.01,
-        thrust_sigma_fraction: float = 0.04,
-        extraction_sigma_fraction: float = 0.12,
+        ephemeris_sigma_fraction: float = DEFAULT_EPHEMERIS_SIGMA_FRACTION,
+        thrust_sigma_fraction: float = DEFAULT_THRUST_SIGMA_FRACTION,
+        extraction_sigma_fraction: float = DEFAULT_EXTRACTION_SIGMA_FRACTION,
     ) -> Dict[str, Any]:
         samples = max(30, min(50_000, int(samples)))
         rng = random.Random(int(seed))

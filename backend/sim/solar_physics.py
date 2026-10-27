@@ -7,6 +7,7 @@ from random import Random
 from typing import Any
 
 from .solar_time import current_jd_tdb
+from .solar_frames import synthetic_geometry_frame
 from .solar_active_regions import (
     ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
     region_lifetime, region_polarity_dirs,
@@ -39,6 +40,8 @@ def utc_now_to_julian_date() -> float:
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
+    if not all(math.isfinite(item) for item in (value, lower, upper)):
+        raise ValueError("clamp inputs must be finite")
     return min(upper, max(lower, value))
 
 
@@ -124,6 +127,8 @@ def _slerp(
 
 
 def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     if t_months <= 0.0:
         return 0.0
     ratio = t_months / max(1e-6, b)
@@ -137,6 +142,8 @@ def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C)
 
 @lru_cache(maxsize=8)
 def _hathaway_peak_months(b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # d/dx [x^3 / (exp(x^2) - c)] = 0 with x = t/b  <=>  exp(s) * (3 - 2s) = 3c, s = x^2.
     # The left side falls monotonically from 2*e^0.5 (> 3c for c < 1) at s = 0.5 to 0 at s = 1.5,
     # so bisect there. Only c = 0 gives the textbook b*sqrt(3/2); c = 0.71 peaks at 58.4 months.
@@ -154,6 +161,8 @@ HATHAWAY_PEAK_MONTHS = _hathaway_peak_months()
 
 
 def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # Normalise by the true maximum. Dividing by the value at b*sqrt(3/2) (the c = 0 peak)
     # overshot 1 by 3.4% and the clamp flattened the top of every cycle.
     t_peak = _hathaway_peak_months(b, c)
@@ -380,7 +389,10 @@ class SolarCoronaPhysicsModel:
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
         cycle_phase = (t_months / CYCLE_LENGTH_MONTHS) * 2.0 * math.pi
+        # Solar cycles overlap: while the new cycle rises, the preceding cycle's
+        # Hathaway envelope continues down its tail instead of vanishing at wrap.
         hathaway = _hathaway_normalized(t_months, HATHAWAY_B, HATHAWAY_C)
+        hathaway += _hathaway_normalized(t_months + CYCLE_LENGTH_MONTHS, HATHAWAY_B, HATHAWAY_C)
         rotation_mod = 0.5 + 0.5 * math.sin(((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi + 0.17)
         activity = 0.06 + hathaway * 0.82 + rotation_mod * 0.10
         return _clamp(activity, 0.02, 0.98), cycle_phase
@@ -415,8 +427,12 @@ class SolarCoronaPhysicsModel:
         eruption_gate = 0.0
         if tube.family == "cme":
             eruption_gate = _clamp((rapid - 0.7) / 0.3, 0.0, 1.0) * _clamp((micro - 0.6) / 0.4, 0.0, 1.0)
-        lifetime, _, _ = region_lifetime(self.active_regions[tube.region_idx], jd)
-        return emergence * lifetime, eruption_gate * lifetime
+        lifetime_envelope, _, _ = region_lifetime(
+            self.active_regions[tube.region_idx], jd
+        )
+        if lifetime_envelope <= 0.0:
+            return 0.0, 0.0
+        return emergence, eruption_gate
 
     def _feature_score(
         self,
@@ -557,6 +573,8 @@ class SolarCoronaPhysicsModel:
             width = 0.02 + region.strength * 0.1 + emergence * 0.03
 
         peak = _clamp(peak, 1.02, 4.8)
+        peak = 1.0 + (peak - 1.0) * lifetime_envelope
+        width *= lifetime_envelope
 
         field_strength_gauss, temperature_mk, electron_density_m3, alfven_speed_kms, sound_speed_kms = self._thermodynamic_state(
             tube,
@@ -588,6 +606,7 @@ class SolarCoronaPhysicsModel:
                 20.0,
                 650.0,
             )
+        speed_kms *= lifetime_envelope
 
         arc: list[list[float]] = []
         pair_normal = _normalize(_cross(source_dir, sink_dir))
@@ -675,7 +694,7 @@ class SolarCoronaPhysicsModel:
             "alfven_speed_kms": alfven_speed_kms,
             "expansion_speed_kms": speed_kms,
             "brightness": brightness,
-            "emergence": emergence,
+            "emergence": emergence * lifetime_envelope,
             "peak_extent_solar_radii": peak,
             "arc": arc,
         }
@@ -1029,6 +1048,11 @@ class SolarCoronaPhysicsModel:
             "epoch_jd_tdb": float(jd),
             "wall_epoch_jd_tdb": float(response_wall_jd),
             "jd_time_scale": "TDB",
+            "geometry_frames": {
+                **{layer: synthetic_geometry_frame(jd) for layer in
+                   ("loops", "spots", "parker", "cme", "coronal_holes")},
+                "pfss": pfss_public.get("geometry_frame") if isinstance(pfss_public, dict) else None,
+            },
             # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
             "wall_epoch_jd": float(response_wall_jd),

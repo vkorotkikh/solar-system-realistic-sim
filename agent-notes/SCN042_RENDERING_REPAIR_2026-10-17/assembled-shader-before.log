@@ -1,0 +1,45 @@
+[WebServer] (node:75431) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:75465) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing (9.0s)
+
+
+  1) [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+
+    Error: Vertex shader is not compiled.
+
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      45 |   expect(report.antialias).toBe(true);
+      46 |   expect(report.samples).toBeGreaterThan(0);
+    > 47 |   expect(report.linked, report.linkLog).toBe(true);
+         |                                         ^
+      48 |   expect(report.stages).toHaveLength(2);
+      49 |   expect(report.stages.every(stage => stage.compiled), JSON.stringify(report.stages)).toBe(true);
+      50 |   expect(report.webglError).toBe(0);
+        at /home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/tests/browser/asteroid-shader.spec.ts:47:41
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/5195/asteroid-shader-actual-mai-ade71-ith-production-antialiasing-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/5195/asteroid-shader-actual-mai-ade71-ith-production-antialiasing-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/5195/asteroid-shader-actual-mai-ade71-ith-production-antialiasing-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/5195/asteroid-shader-actual-mai-ade71-ith-production-antialiasing-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing

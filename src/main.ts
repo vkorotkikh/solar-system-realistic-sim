@@ -55,6 +55,7 @@ import { generatePlanetTexture } from './textures';
 import { updateSceneBodiesFromModel } from './frontend/app/bodyManager';
 import { createSimulationState } from './frontend/app/stateStore';
 import { PlanetQuadtree } from './frontend/features/planetary/quadtreeLOD';
+import { applyBodySpin } from './frontend/features/planetary/bodySpin';
 import { planetViewDistances } from './frontend/features/planetary/planetView';
 import {
   buildCatalogIndexContract,
@@ -76,6 +77,7 @@ import {
   addDefaultLighting
 } from './frontend/app/sceneSetup';
 import { createTextureManager } from './frontend/app/textureManager';
+import { warmupRenderer } from './frontend/app/rendererWarmup';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
 import { generateAsteroidBelt, type AsteroidBeltPopulation } from './sim/asteroidBelt';
@@ -181,7 +183,7 @@ const showMoons: boolean = false;
   const moonEphemerides: MoonEphemerisMap | undefined = showMoons
     ? await (await import('./sim/loadMoonEphemerides')).loadMoonEphemerides()
     : undefined;
-const catalog = createSolarSystemCatalog({ moonEphemerides });
+const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
 });
@@ -222,11 +224,6 @@ function bodyBaseRadiusAu(body: CatalogBody) {
   return simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
 }
 
-function normalizeRadians(angle: number) {
-  const wrapped = angle % TWO_PI;
-  return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
-}
-
 function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
   if (typeof massKg !== 'number' || !Number.isFinite(massKg) || massKg <= 0) return 0;
   return (G_SI * massKg * DAY_SECONDS * DAY_SECONDS) / (AU_M * AU_M * AU_M);
@@ -234,7 +231,8 @@ function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-let stopVisualization = () => {};
+const startup = new AbortController();
+let stopVisualization = () => startup.abort();
 const recovery = createRendererRecovery({
   canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
   create: () => {
@@ -539,6 +537,7 @@ function refreshAsteroidBeltRenderer(population: AsteroidBeltPopulation) {
   asteroidPop = population;
   asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
   asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
+  asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
   solarSystemGroup.add(asteroidBeltRenderer.mesh);
 }
 
@@ -563,11 +562,12 @@ function syncAsteroidBeltInputs() {
 }
 
 function initPhaseOneAsteroids() {
-  loadPhase1AsteroidCatalog({
+  return loadPhase1AsteroidCatalog({
     maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
     loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
     metaUrl: PHASE1_CATALOG_META_URL
   }).then((catalog) => {
+    if (startup.signal.aborted || !recovery.available) return;
     const gate = catalog.acceptance;
     if (!catalog.accepted) {
       const reasons = gate.rejections.map(({ code, message }) => `[${code}] ${message}`);
@@ -612,13 +612,14 @@ function initPhaseOneAsteroids() {
       `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
     );
   }).catch((error) => {
+    if (startup.signal.aborted || !recovery.available) return;
     renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
     console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
   });
 }
 
 kuiperBeltUpdater.update(simState.julianDate);
-initPhaseOneAsteroids();
+const catalogReady = initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
@@ -636,7 +637,7 @@ function focusBody(bodyId: string, hardSnap = false) {
   const preferredDistance = body.type === 'star'
     ? (simState.useRealisticScale ? 0.14 : 2.6)
     : planetViewDistances(radius).focus;
-  controls.minDistance = body.type === 'star' ? 0.0002 : planetViewDistances(radius).minimum;
+  controls.minDistance = planetViewDistances(radius).minimum;
 
   if (offset.lengthSq() < 1e-9) offset.set(0, -preferredDistance, preferredDistance * 0.6);
 
@@ -684,11 +685,33 @@ function updateFollowTarget() {
   camera.position.copy(tempVec).add(offset);
 }
 
+const BODY_INFO_DISTANCE_REFRESH_INTERVAL_MS = 250;
+let lastBodyInfoDistanceRefreshTimestamp: number | null = null;
+
+function updateBodyInfoDistance(bodyId = dom.bodyInfo.dataset.bodyId) {
+  if (!bodyId) return;
+  const state = model.getState(bodyId);
+  const distanceText = !state || state.available === false
+    ? 'State unavailable'
+    : `${state.worldPosition.length().toFixed(4)} AU`;
+  if (dom.bodyInfoDistance.textContent !== distanceText) {
+    dom.bodyInfoDistance.textContent = distanceText;
+  }
+}
+
+function refreshBodyInfoDistance(timestamp: number) {
+  const bodyId = dom.bodyInfo.dataset.bodyId;
+  if (dom.bodyInfo.hidden || !bodyId) return;
+  if (lastBodyInfoDistanceRefreshTimestamp !== null
+    && timestamp - lastBodyInfoDistanceRefreshTimestamp
+      < BODY_INFO_DISTANCE_REFRESH_INTERVAL_MS) return;
+  lastBodyInfoDistanceRefreshTimestamp = timestamp;
+  updateBodyInfoDistance(bodyId);
+}
+
 function updateBodyInfoPanel(bodyId: string) {
   const body = bodyById.get(bodyId);
   if (!body) return;
-  const state = model.getState(bodyId);
-  const dist = !state || state.available === false ? null : state.worldPosition.length();
   const typeLabel = body.type.charAt(0).toUpperCase() + body.type.slice(1);
 
   dom.bodyInfo.dataset.bodyId = body.id;
@@ -698,7 +721,7 @@ function updateBodyInfoPanel(bodyId: string) {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
   })} km`;
-  dom.bodyInfoDistance.textContent = dist === null ? 'State unavailable' : `${dist.toFixed(4)} AU`;
+  updateBodyInfoDistance(body.id);
   dom.bodyInfoPeriod.textContent = body.orbit
     ? `${body.orbit.periodDays.toLocaleString(undefined, { maximumFractionDigits: 1 })} days`
     : '—';
@@ -760,7 +783,7 @@ function updateBodyRotations(julianDate: number) {
       const offset = Number.isFinite(child.userData.rotationOffsetRad)
         ? child.userData.rotationOffsetRad
         : ((body.rotationPhaseDeg ?? 0) * Math.PI) / 180;
-      child.rotation.y = normalizeRadians(offset + (TWO_PI / (rotH * 3_600)) * elapsedSeconds);
+      applyBodySpin(child, elapsedSeconds, rotH, offset);
     }
   }
 }
@@ -1216,7 +1239,6 @@ for (const entry of labels) entry.sprite.visible = Boolean((dom.toggleLabels as 
 sunCtrl.maybeRefreshPhysics(Date.now(), true);
 
 resizeRenderer();
-renderer.render(scene, camera);
 
 // ── Animation Loop ───────────────────────────────────────────────────────────
 
@@ -1251,6 +1273,7 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'clip-planes', run: updateCameraClipPlanes },
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
+    { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },
     { name: 'zoom-status', run: () => {
       if (dom.statusZoom) {
         const dist = camera.position.distanceTo(controls.target);
@@ -1261,14 +1284,15 @@ const frameLifecycle = createFrameLifecycle({
 });
 
 stopVisualization = () => {
+  startup.abort();
   frameLifecycle.dispose(); controls.enabled = false;
   viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
 };
-frameLifecycle.start();
 
 // ── Resource Cleanup ──────────────────────────────────────────────────────────
 
 window.addEventListener('beforeunload', () => {
+  startup.abort();
   frameLifecycle.dispose();
   window.removeEventListener('resize', resizeRenderer);
   refreshPanelLayout = () => {};
@@ -1321,6 +1345,22 @@ window.addEventListener('beforeunload', () => {
   if (sunTexture) sunTexture.dispose();
   renderer.dispose();
 });
+
+try {
+  // Keep the original fetch-to-parse/hash timer and the complete catalog.
+  // Adoption replaces/disposes asteroid materials, so compile only afterward.
+  await catalogReady;
+  if (startup.signal.aborted || !recovery.available) return;
+  syncAsteroidBeltInputs();
+  await warmupRenderer(renderer, scene, camera, { signal: startup.signal });
+  if (startup.signal.aborted || !recovery.available) return;
+  renderer.render(scene, camera);
+  frameLifecycle.start();
+} catch (error) {
+  if (startup.signal.aborted || !recovery.available) return;
+  console.error('[visualization] shader initialization failed:', error);
+  recovery.reportFailure('The visualization could not finish preparing its graphics. Reload the visualization to try again.');
+}
 
 }
 

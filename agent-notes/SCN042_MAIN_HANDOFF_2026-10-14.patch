@@ -1,0 +1,20 @@
+diff --git a/src/main.ts b/src/main.ts
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -328,3 +328,6 @@
+   ).normalize();
+-  spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
++  // SunController owns the Sun's complete NAIF/IAU orientation and prime meridian.
++  if (body.id !== 'sun') {
++    spinGroup.quaternion.setFromUnitVectors(BODY_LOCAL_SPIN_AXIS, spinAxisWorld);
++  }
+   node.add(spinGroup);
+@@ -736,3 +739,8 @@
+     const spinGroup = bodySpinGroups.get(body.id);
+     if (!spinGroup) continue;
++    // Do not superimpose the catalog's scalar spin on already-oriented solar layers.
++    if (body.id === 'sun') {
++      sunCtrl.updateSurfaceFrame(julianDate);
++      continue;
++    }
+     for (const child of spinGroup.children) {

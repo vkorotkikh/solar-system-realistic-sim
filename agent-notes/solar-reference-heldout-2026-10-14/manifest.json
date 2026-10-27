@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "source": "NASA CCMC ISWA WSA6 GONG_Z",
+  "retrievedAtUtc": "2026-10-14T23:15:25.749Z",
+  "qualification": "Fresh GET captures with response headers; byte-identical to earlier agent captures that lacked headers. Epochs not used for solver tuning before this checkpoint.",
+  "acceptanceThresholds": {
+    "tangentMedianDegrees": 2,
+    "tangentP90Degrees": 10,
+    "balancedTopologyAccuracy": 0.95,
+    "determinateFraction": 0.99
+  },
+  "applicationCalibrationPassed": false,
+  "files": [
+    {
+      "file": "202610140814.fits",
+      "bytes": 754560,
+      "sha256": "5a65bf897a8f493abc4c570f8eb2c7cd4ad154e2eabf59ae95e9419afce647fd",
+      "headers": "202610140814.fits.headers",
+      "headersSha256": "8d05cf5b1f022c24dd25f113bed7d426b5c4122fc96c5a3d7606cb2a41cf05bc",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/WSA_OUT/GONG_Z/2026/10/wsa_202610140814R000_gongz.fits",
+      "matchesEarlierCapture": true
+    },
+    {
+      "file": "202610140814.osfls",
+      "bytes": 180644,
+      "sha256": "77ac5d4d212d5c65f22c4448ef09f347bf8cc41d7cb596a9b1c91ce30822a2e8",
+      "headers": "202610140814.osfls.headers",
+      "headersSha256": "eeb75c2f009383e1a9c7f1ea08cc502d8126b4b7a0508f1b6b6cca2c888c5048",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/fieldlines/GONG_Z/trace_pfss_intoout/2026/10/2026-10-14T08-14-00.000.osfls",
+      "matchesEarlierCapture": true
+    },
+    {
+      "file": "202610142114.fits",
+      "bytes": 754560,
+      "sha256": "de1f6c5f22b04ee7c8e71bb8ea7980e0fe821c59c33fe2bf2bc0dba0e6fed289",
+      "headers": "202610142114.fits.headers",
+      "headersSha256": "babbefa7dbc2b6a1bef082b9a19a05bfc149840f62ee29a876c651793ccdaddf",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/WSA_OUT/GONG_Z/2026/10/wsa_202610142114R000_gongz.fits",
+      "matchesEarlierCapture": true
+    },
+    {
+      "file": "202610142114.osfls",
+      "bytes": 190380,
+      "sha256": "be60933db93075dbe99e83d5e13abeb07e445222d44195b755706505727a1c15",
+      "headers": "202610142114.osfls.headers",
+      "headersSha256": "ee54fd762c874c7bd339114f5297223215b2971e34348ab77863c48e4f1781d7",
+      "url": "https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/fieldlines/GONG_Z/trace_pfss_intoout/2026/10/2026-10-14T21-14-00.000.osfls",
+      "matchesEarlierCapture": true
+    }
+  ]
+}

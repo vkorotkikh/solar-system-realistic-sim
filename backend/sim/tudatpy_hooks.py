@@ -31,11 +31,14 @@ unchanged.
 
 import logging
 import math
+import threading
+from copy import copy
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from .base import SimulationEngine
+from .epoch_contract import SUPPORTED_JD_MAX_TDB, SUPPORTED_JD_MIN_TDB
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +56,9 @@ STATE_VELOCITY_UNITS = "AU/day"
 STATE_JD_TIME_SCALE = "TDB"
 J2000_JD = 2_451_545.0
 GM_SUN_SI = 1.32712440018e20   # m^3 s^-2
-J2000_OBLIQUITY_RAD = math.radians(23.439291111)
+# Exact fixed IAU76/80 obliquity used by SPICE ECLIPJ2000, not a truncated degree value.
+# https://ssd.jpl.nasa.gov/horizons/manual.html#frames
+J2000_OBLIQUITY_RAD = math.radians(84381.448 / 3600.0)
 
 # ── Lazy TudatPy imports ──────────────────────────────────────────────────────
 
@@ -144,7 +149,10 @@ def _saturn_harmonic_coefficients():
 
 
 def _jd_to_seconds(jd: float) -> float:
-    return (jd - J2000_JD) * DAY_S
+    epoch_s = (jd - J2000_JD) * DAY_S
+    if not math.isfinite(epoch_s):
+        raise ValueError("Julian date must yield finite JDTDB seconds")
+    return epoch_s
 
 
 def _seconds_to_jd(epoch_s: float) -> float:
@@ -177,6 +185,10 @@ def _equatorial_to_ecliptic_j2000(vector: np.ndarray) -> np.ndarray:
         ],
         dtype=np.float64,
     )
+
+
+class TudatSeekCancelledError(RuntimeError):
+    """Raised when a cooperative Tudat seek is cancelled by its owner."""
 
 
 # ── Engine ────────────────────────────────────────────────────────────────────
@@ -234,6 +246,7 @@ class TudatPyEngine(SimulationEngine):
         self._body_system: Any = None
         self._acceleration_models: Any = None
         self._initial_energy: float = 0.0
+        self._seek_cancel_event = threading.Event()
 
     # ── SimulationEngine interface ────────────────────────────────────
 
@@ -252,7 +265,47 @@ class TudatPyEngine(SimulationEngine):
     def list_body_ids(self) -> List[str]:
         return list(self._body_ids)
 
+    @property
+    def supported_jd_range(self) -> tuple[float, float]:
+        return (SUPPORTED_JD_MIN_TDB, SUPPORTED_JD_MAX_TDB)
+
+    def cancel_pending_operation(self) -> None:
+        self._seek_cancel_event.set()
+
+    def _raise_if_seek_cancelled(self) -> None:
+        if self._seek_cancel_event.is_set():
+            raise TudatSeekCancelledError("Tudat epoch seek was cancelled")
+
+    @staticmethod
+    def _validate_supported_jd(jd: float) -> float:
+        try:
+            requested_jd = float(jd)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Julian date must be finite JDTDB") from exc
+        if not math.isfinite(requested_jd):
+            raise ValueError("Julian date must be finite JDTDB")
+        _jd_to_seconds(requested_jd)
+        if not SUPPORTED_JD_MIN_TDB <= requested_jd <= SUPPORTED_JD_MAX_TDB:
+            raise ValueError(
+                "Julian date is outside the validated TudatPy interval "
+                f"[{SUPPORTED_JD_MIN_TDB}, {SUPPORTED_JD_MAX_TDB}] JDTDB"
+            )
+        return requested_jd
+
     def initialize(self, bodies: List[Dict], start_jd: float = J2000_JD) -> None:
+        # Validate before entering native code. Failed setup must not leave the
+        # old trajectory paired with a new body list, origin, or epoch.
+        requested_start_jd = self._validate_supported_jd(start_jd)
+        selected_ids = [body["id"] for body in bodies if body["id"] in _ID_TO_SPICE]
+        if "sun" not in selected_ids:
+            raise ValueError("TudatPy initialization requires the Sun")
+        if len(set(selected_ids)) != len(selected_ids):
+            raise ValueError("TudatPy initialization requires unique body IDs")
+        candidate = copy(self)
+        candidate._initialize_candidate(bodies, requested_start_jd)
+        self.__dict__.update(candidate.__dict__)
+
+    def _initialize_candidate(self, bodies: List[Dict], start_jd: float) -> None:
         if not _load_tudatpy():
             raise RuntimeError(
                 f"TudatPy is not installed ({_IMPORT_ERROR}).\n"
@@ -260,7 +313,7 @@ class TudatPyEngine(SimulationEngine):
                 "  conda install -c tudat-team tudatpy"
             )
 
-        self._stored_bodies = bodies
+        self._stored_bodies = [dict(body) for body in bodies]
         self._jd = start_jd
 
         # 1 ── Load SPICE kernels ──────────────────────────────────────
@@ -459,17 +512,43 @@ class TudatPyEngine(SimulationEngine):
         return self._jd
 
     def set_julian_date(self, jd: float) -> None:
-        if not math.isfinite(jd):
-            raise ValueError("Julian date must be finite JDTDB")
-        target_s = _jd_to_seconds(jd)
+        requested_jd = self._validate_supported_jd(jd)
+        target_s = _jd_to_seconds(requested_jd)
         if (
             self._chunk_epochs is None
             or target_s > self._chunk_end_s
             or target_s < self._chunk_start_s
         ):
-            self._propagate_chunk(target_s)
+            self._seek_cancel_event.clear()
+            candidate = copy(self)
+            candidate._raise_if_seek_cancelled()
+            while (
+                candidate._chunk_epochs is None
+                or target_s > candidate._chunk_end_s
+                or target_s < candidate._chunk_start_s
+            ):
+                candidate._propagate_chunk(target_s)
+                candidate._raise_if_seek_cancelled()
+            candidate_state = candidate._interpolate_at(target_s)
+            candidate._raise_if_seek_cancelled()
+            (
+                self._chunk_epochs,
+                self._chunk_states,
+                self._chunk_start_s,
+                self._chunk_end_s,
+                self._current_state,
+                self._jd,
+            ) = (
+                candidate._chunk_epochs,
+                candidate._chunk_states,
+                candidate._chunk_start_s,
+                candidate._chunk_end_s,
+                candidate_state,
+                requested_jd,
+            )
+            return
         self._current_state = self._interpolate_at(target_s)
-        self._jd = jd
+        self._jd = requested_jd
 
     def get_energy(self) -> float:
         """Point-mass energy in SI, SSB/J2000 (excludes harmonic potential)."""
@@ -488,14 +567,19 @@ class TudatPyEngine(SimulationEngine):
         n = len(self._body_ids)
         G_SI = 6.67430e-11
 
-        masses = []
-        for bid in self._body_ids:
-            for b in self._stored_bodies:
-                if b["id"] == bid:
-                    masses.append(b.get("mass_kg") or 0.0)
-                    break
-            else:
-                masses.append(0.0)
+        if self._body_system is not None:
+            # Native accelerations use these GMs, not the descriptive catalog
+            # masses. In particular Pluto's field represents the whole system.
+            masses = [
+                self._body_system.get(name).gravity_field_model.gravitational_parameter / G_SI
+                for name in self._spice_names
+            ]
+        else:
+            # Retain the explicit-mass contract for standalone adapter states
+            # that have no native environment (not a native-fidelity claim).
+            catalog_masses = {body["id"]: body.get("mass_kg") or 0.0
+                              for body in self._stored_bodies}
+            masses = [catalog_masses.get(bid, 0.0) for bid in self._body_ids]
 
         ke = 0.0
         pe = 0.0
@@ -518,7 +602,7 @@ class TudatPyEngine(SimulationEngine):
     # ── Optional: orbital elements from state vector ──────────────────
 
     def get_orbital_elements(self, body_id: str) -> Optional[Dict]:
-        """Compute osculating Keplerian elements from current state."""
+        """Compute heliocentric, ecliptic-J2000 osculating Keplerian elements."""
         if (
             self._current_state is None
             or body_id not in self._body_ids
@@ -528,12 +612,16 @@ class TudatPyEngine(SimulationEngine):
 
         idx = self._body_ids.index(body_id)
         si = idx * 6
-        pos = self._current_state[si: si + 3].astype(float)
-        vel = self._current_state[si + 3: si + 6].astype(float)
+        pos = _equatorial_to_ecliptic_j2000(self._current_state[si: si + 3])
+        vel = _equatorial_to_ecliptic_j2000(self._current_state[si + 3: si + 6])
 
         r = np.linalg.norm(pos)
         v_mag = np.linalg.norm(vel)
         mu = GM_SUN_SI
+        if self._body_system is not None:
+            # Relative two-body osculating elements use G(M_sun + M_body).
+            mu = sum(self._body_system.get(name).gravity_field_model.gravitational_parameter
+                     for name in ("Sun", self._spice_names[idx]))
 
         # Semi-major axis from vis-viva
         energy = 0.5 * v_mag ** 2 - mu / r
@@ -616,6 +704,10 @@ class TudatPyEngine(SimulationEngine):
     def _propagate_chunk(self, center_epoch_s: float) -> None:
         """Extend the trajectory from its integrated boundary, in either direction."""
         chunk_s = self.CHUNK_DAYS * DAY_S
+        if not math.isfinite(chunk_s) or chunk_s <= 0.0:
+            raise ValueError("TudatPy CHUNK_DAYS must be finite and positive")
+        supported_start_s = _jd_to_seconds(SUPPORTED_JD_MIN_TDB)
+        supported_end_s = _jd_to_seconds(SUPPORTED_JD_MAX_TDB)
         direction = 1
         if self._chunk_epochs is None or self._chunk_states is None:
             start_s = center_epoch_s
@@ -625,6 +717,8 @@ class TudatPyEngine(SimulationEngine):
                 body_system=self._body_system,
                 initial_time=start_s,
             )
+            if start_s + chunk_s > supported_end_s:
+                direction = -1
         elif center_epoch_s < self._chunk_start_s:
             direction = -1
             start_s = self._chunk_start_s
@@ -632,8 +726,11 @@ class TudatPyEngine(SimulationEngine):
         else:
             start_s = self._chunk_end_s
             initial_state = self._chunk_states[-1].copy()
-        end_s = (max(center_epoch_s, start_s + chunk_s) if direction > 0
-                 else min(center_epoch_s, start_s - chunk_s))
+        end_s = (
+            min(start_s + chunk_s, supported_end_s)
+            if direction > 0
+            else max(start_s - chunk_s, supported_start_s)
+        )
 
         # Termination
         termination = _propagation_setup.propagator.time_termination(
@@ -659,14 +756,27 @@ class TudatPyEngine(SimulationEngine):
         simulator = _numerical_simulation.create_dynamics_simulator(
             self._body_system, propagator_settings
         )
+        if not getattr(simulator, "integration_completed_successfully", True):
+            raise RuntimeError("TudatPy propagation did not complete successfully")
         history = simulator.state_history
 
-        # Store as sorted numpy arrays for fast interpolation
+        # Validate the complete candidate before replacing the last good arc.
+        # Clamping a truncated history would otherwise silently report a state
+        # from the past under the requested future Julian date.
         epochs_sorted = sorted(history.keys())
-        self._chunk_epochs = np.array(epochs_sorted, dtype=np.float64)
-        self._chunk_states = np.array(
+        epochs = np.array(epochs_sorted, dtype=np.float64)
+        states = np.array(
             [history[e] for e in epochs_sorted], dtype=np.float64
         )
+        if (len(epochs) < 2 or not np.all(np.isfinite(epochs))
+                or states.shape != (len(epochs), 6 * len(self._spice_names))
+                or not np.all(np.isfinite(states))):
+            raise RuntimeError("TudatPy propagation returned invalid state history")
+        if (epochs[0] > min(start_s, end_s) + 1e-6
+                or epochs[-1] < max(start_s, end_s) - 1e-6):
+            raise RuntimeError("TudatPy propagation returned incomplete state history")
+        self._chunk_epochs = epochs
+        self._chunk_states = states
         self._chunk_start_s = epochs_sorted[0]
         self._chunk_end_s = epochs_sorted[-1]
 

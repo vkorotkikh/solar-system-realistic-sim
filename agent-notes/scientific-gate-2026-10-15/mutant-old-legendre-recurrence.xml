@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.259" timestamp="2026-10-15T05:42:45.739460+00:00" hostname="Athena"><testcase classname="backend.tests.test_pfss_harmonics" name="test_all_modes_against_immutable_oracle" time="0.004"><failure message="AssertionError: R4-LEGENDRE-RECURRENCE streaming value mode=(2, 0)&#10;assert np.False_&#10; +  where np.False_ = &lt;function all at 0x6ffc8d909bf0&gt;(array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) &lt;= (5e-13 * array([1., 1., 1., 1., 1.])))&#10; +    where &lt;function all at 0x6ffc8d909bf0&gt; = np.all&#10; +    and   array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) = abs((array([ 0.45052427, -0.63391107, -1.11803399, -0.63391107,  0.45052427]) - array([ 0.715, -0.125, -0.5  , -0.125,  0.715])))&#10; +    and   array([1., 1., 1., 1., 1.]) = &lt;ufunc 'maximum'&gt;(1, array([0.715, 0.125, 0.5  , 0.125, 0.715]))&#10; +      where &lt;ufunc 'maximum'&gt; = np.maximum&#10; +      and   array([0.715, 0.125, 0.5  , 0.125, 0.715]) = abs(array([ 0.715, -0.125, -0.5  , -0.125,  0.715]))">def test_all_modes_against_immutable_oracle():
+        mu = np.array(ORACLE["mu"])
+        values, derivatives = field()._legendre_batch(mu, np.sqrt(1 - mu**2))
+        for mode in ORACLE["modes"]:
+            key = mode["l"], mode["m"]
+            reference = np.array(mode["values"])
+            assert np.all(abs(values[key] - reference) &lt;= 5e-13 * np.maximum(1, abs(reference))), (
+                f"R4-LEGENDRE-RECURRENCE mode={key}"
+            )
+            reference = np.array(mode["theta_derivatives"])
+            assert np.all(abs(derivatives[key] - reference) &lt;= 1e-8), key
+    
+            # Keep the immutable helper oracle and also exercise the production
+            # streaming evaluator. The monopole is intentionally absent from PFSS.
+            if key == (0, 0):
+                continue
+            lmax = ORACLE["lmax"]
+            g = np.zeros((lmax + 1, lmax + 1))
+            g[key] = 1.0
+            solver = PFSSField(g, np.zeros_like(g), lmax, 2.5)
+            sin_theta = np.sqrt((1 - mu) * (1 + mu))
+            bx, by, bz = solver.evaluate_cartesian_batch(sin_theta, np.zeros_like(mu), mu)
+            radial = bx * sin_theta + bz * mu
+            expected_radial = np.array(mode["values"])
+&gt;           assert np.all(abs(radial - expected_radial) &lt;= 5e-13 * np.maximum(1, abs(expected_radial))), (
+                f"R4-LEGENDRE-RECURRENCE streaming value mode={key}"
+            )
+E           AssertionError: R4-LEGENDRE-RECURRENCE streaming value mode=(2, 0)
+E           assert np.False_
+E            +  where np.False_ = &lt;function all at 0x6ffc8d909bf0&gt;(array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) &lt;= (5e-13 * array([1., 1., 1., 1., 1.])))
+E            +    where &lt;function all at 0x6ffc8d909bf0&gt; = np.all
+E            +    and   array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) = abs((array([ 0.45052427, -0.63391107, -1.11803399, -0.63391107,  0.45052427]) - array([ 0.715, -0.125, -0.5  , -0.125,  0.715])))
+E            +    and   array([1., 1., 1., 1., 1.]) = &lt;ufunc 'maximum'&gt;(1, array([0.715, 0.125, 0.5  , 0.125, 0.715]))
+E            +      where &lt;ufunc 'maximum'&gt; = np.maximum
+E            +      and   array([0.715, 0.125, 0.5  , 0.125, 0.715]) = abs(array([ 0.715, -0.125, -0.5  , -0.125,  0.715]))
+
+backend/tests/test_pfss_harmonics.py:61: AssertionError</failure></testcase></testsuite></testsuites>

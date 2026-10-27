@@ -32,6 +32,7 @@ from data.initial_conditions import (
 )
 
 from .base import SimulationEngine
+from .epoch_contract import SUPPORTED_JD_MAX_TDB, SUPPORTED_JD_MIN_TDB
 
 MSUN_KG = 1.98847e30
 J2000_JD = J2000_JD_TDB
@@ -47,11 +48,6 @@ CHECKPOINT_INTERVAL_YEARS = 10.0
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
 MAX_CHECKPOINTS = 8
-# This is the interval covered by the committed multi-epoch Horizons oracle.
-# Refuse to imply high-fidelity behavior outside the range that is actually
-# tested rather than accepting an arbitrarily expensive or unvalidated seek.
-SUPPORTED_JD_MIN_TDB = 2_447_892.5  # 1990-01-01 TDB
-SUPPORTED_JD_MAX_TDB = 2_469_807.5  # 2050-01-01 TDB
 _FALLBACK_VALIDATION = json.loads(
     (Path(__file__).resolve().parents[1] / "data/ephemerides/fallback_validation.json").read_text()
 )
@@ -341,12 +337,14 @@ class REBOUNDEngine(SimulationEngine):
             elif body.get("orbit"):
                 orbit = body["orbit"]
                 mean_anomaly_deg = orbit["mean_anomaly_deg"]
+                if orbit.get("epoch_jd") is None:
+                    raise ValueError(f"Body `{body_id}` requires a declared orbit.epoch_jd")
                 epoch_jd = self._validate_supported_jd(
-                    orbit.get("epoch_jd", initial_conditions.epoch_jd_tdb))
+                    orbit["epoch_jd"])
                 body_quality[body_id] = {
                     "fidelity": "approximate",
                     "initial_epoch_jd_tdb": epoch_jd,
-                    "epoch_provenance": "declared" if "epoch_jd" in orbit else "catalog_assumed_j2000",
+                    "epoch_provenance": "declared",
                     "input_frame": "heliocentric_ecliptic_j2000",
                     "initialization": "osculating_elements_at_source_epoch_then_nbody",
                     "accuracy_status": "not_independently_bounded",

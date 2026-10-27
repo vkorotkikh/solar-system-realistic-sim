@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+Date: Wed, 14 Oct 2026 06:34:33 GMT
+Server: Apache
+X-Frame-Options: sameorigin
+Strict-Transport-Security: max-age=31536000; includeSubDomains;
+Vary: Accept-Encoding
+Content-Length: 307
+Content-Type: application/json
+

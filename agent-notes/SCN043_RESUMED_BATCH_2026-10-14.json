@@ -1,0 +1,286 @@
+{
+  "catalogDenominator": 424,
+  "qualifiedReferencedRecords": 424,
+  "candidateGatePassedRecords": 422,
+  "remainingUnrepaired": [
+    "Daphnis",
+    "S2023_S38"
+  ],
+  "records": [
+    {
+      "name": "amalthea",
+      "status": "candidate_only_not_promoted",
+      "candidateSha256": "df47640b67946f6b37608450bf02b153ba2ab3c66278385d25c6e4e9589dc154",
+      "candidateBytes": 396873,
+      "target": "505",
+      "sourceHash": "334e278113a106a43895a31bca84c2dbe9f38c9f73650273a87b3eda3523ce95",
+      "heldOutHash": "8aae974b74dcf23eac997f57abf6374ac5f13f969b97e0ad2906d5f5ca690809",
+      "excludedTrainingEpochs": [
+        2451545,
+        2451575,
+        2451725,
+        2451910.25,
+        2453371.25,
+        2460676.5,
+        2461327.5,
+        2469807.5
+      ],
+      "validation": {
+        "method": "Independent half-step ELEMENTS and exact endpoints, plus separate seven-epoch VECTORS; no oracle state fitted",
+        "sampleCount": 146100,
+        "heldOutSampleCount": 146098,
+        "coverageEndpointSampleCount": 2,
+        "trainingDisjointFromValidation": true,
+        "coverageEndpointErrors": [
+          {
+            "jdTdb": 2451545,
+            "positionErrorKm": 3.379839409516898,
+            "velocityErrorMPerS": 0.08966674210831027
+          },
+          {
+            "jdTdb": 2469807.5,
+            "positionErrorKm": 4.217640321881467,
+            "velocityErrorMPerS": 0.6464393538677996
+          }
+        ],
+        "accuracyLimits": {
+          "positionKm": 181.4,
+          "velocityMPerS": 10
+        },
+        "positionErrorKm": {
+          "p50": 4.208154226195945,
+          "p95": 7.363098423361647,
+          "p99": 7.903941440053001,
+          "max": 8.827552090008254
+        },
+        "velocityErrorMPerS": {
+          "p50": 0.4932681277746361,
+          "p95": 0.6851560982293086,
+          "p99": 0.7412744333307578,
+          "max": 1.1099062800167514
+        },
+        "vectorOracle": {
+          "sampleCount": 7,
+          "positionErrorKm": {
+            "p50": 5.941310876557297,
+            "p95": 8.095462491727,
+            "p99": 8.095462491727,
+            "max": 8.095462491727
+          },
+          "velocityErrorMPerS": {
+            "p50": 0.4895963678399746,
+            "p95": 0.7029926873221203,
+            "p99": 0.7029926873221203,
+            "max": 0.7029926873221203
+          },
+          "fixture": "backend/tests/fixtures/all_moons_horizons_oracle.json"
+        },
+        "boundaryContinuity": {
+          "runtimeStateContinuous": true,
+          "method": "existing smooth-step feature cross-fade"
+        }
+      }
+    },
+    {
+      "name": "methone",
+      "status": "candidate_only_not_promoted",
+      "candidateSha256": "9ad9982c1ef9792e199386cdbda0dfdfa7f57d8f49d5dcd09f97233f4b668e32",
+      "candidateBytes": 200213,
+      "target": "632",
+      "sourceHash": "cbfd554ede86e9eb5fe5bcfdaf52cef2eb5f505c23f3929abdc98d0bd7a64947",
+      "heldOutHash": "db187b37b7c394d54e25a6d4ab703f271c467385d6e5ade2cb1832794b1c4185",
+      "excludedTrainingEpochs": [
+        2451545,
+        2451575,
+        2451725,
+        2451910.25,
+        2453371.25,
+        2460676.5,
+        2461327.5,
+        2469807.5
+      ],
+      "validation": {
+        "method": "Independent half-step ELEMENTS and exact endpoints, plus separate seven-epoch VECTORS; no oracle state fitted",
+        "sampleCount": 146100,
+        "heldOutSampleCount": 146098,
+        "coverageEndpointSampleCount": 2,
+        "trainingDisjointFromValidation": true,
+        "coverageEndpointErrors": [
+          {
+            "jdTdb": 2451545,
+            "positionErrorKm": 22.713123196614642,
+            "velocityErrorMPerS": 1.5155693112479336
+          },
+          {
+            "jdTdb": 2469807.5,
+            "positionErrorKm": 30.137034209294654,
+            "velocityErrorMPerS": 2.120564015498556
+          }
+        ],
+        "accuracyLimits": {
+          "positionKm": 194.70000000000002,
+          "velocityMPerS": 10
+        },
+        "positionErrorKm": {
+          "p50": 18.65825676230722,
+          "p95": 54.269066151899395,
+          "p99": 73.68118620957753,
+          "max": 120.70859045473867
+        },
+        "velocityErrorMPerS": {
+          "p50": 1.3191089878475883,
+          "p95": 3.8251573029595707,
+          "p99": 5.182550650403675,
+          "max": 9.091211412709935
+        },
+        "vectorOracle": {
+          "sampleCount": 7,
+          "positionErrorKm": {
+            "p50": 25.850839800134516,
+            "p95": 55.57345824759765,
+            "p99": 55.57345824759765,
+            "max": 55.57345824759765
+          },
+          "velocityErrorMPerS": {
+            "p50": 1.9017686348399412,
+            "p95": 3.7827867606437056,
+            "p99": 3.7827867606437056,
+            "max": 3.7827867606437056
+          },
+          "fixture": "backend/tests/fixtures/all_moons_horizons_oracle.json"
+        },
+        "boundaryContinuity": {
+          "runtimeStateContinuous": true,
+          "method": "existing smooth-step feature cross-fade"
+        }
+      }
+    },
+    {
+      "name": "nereid",
+      "status": "candidate_only_not_promoted",
+      "candidateSha256": "8cb82b84d320247c8293642dfa6b281dd96f3137d876e58b702b47489688ddff",
+      "candidateBytes": 937443,
+      "target": "802",
+      "sourceHash": "34fad838ed34bb30982d7bbb766d615fc97046a2bd5d54c4f438cebaa6005b8e",
+      "heldOutHash": "795bf1b59a69698f4c5dcbc6d2943cbecc4947410421c54e597e09aff2b98850",
+      "excludedTrainingEpochs": [],
+      "validation": {
+        "method": "Independent half-step ELEMENTS and exact endpoints, plus separate seven-epoch VECTORS; no oracle state fitted",
+        "sampleCount": 9133,
+        "heldOutSampleCount": 9131,
+        "coverageEndpointSampleCount": 2,
+        "coverageEndpointErrors": [
+          {
+            "jdTdb": 2451545,
+            "positionErrorKm": 4.822626482787867,
+            "velocityErrorMPerS": 0.05839711102731964
+          },
+          {
+            "jdTdb": 2469807.5,
+            "positionErrorKm": 2.7701199397928136,
+            "velocityErrorMPerS": 0.11553487580536347
+          }
+        ],
+        "accuracyLimits": {
+          "positionKm": 500,
+          "velocityMPerS": 10
+        },
+        "positionErrorKm": {
+          "p50": 1.0283270258607657,
+          "p95": 5.023707242486444,
+          "p99": 5.16771446924343,
+          "max": 8.84433958426345
+        },
+        "velocityErrorMPerS": {
+          "p50": 0.09310648042073613,
+          "p95": 0.12692832010470434,
+          "p99": 0.14238644819913934,
+          "max": 0.27975313975723454
+        },
+        "vectorOracle": {
+          "sampleCount": 7,
+          "positionErrorKm": {
+            "p50": 3.478096324950431,
+            "p95": 7.191577837357717,
+            "p99": 7.191577837357717,
+            "max": 7.191577837357717
+          },
+          "velocityErrorMPerS": {
+            "p50": 0.04002075536868874,
+            "p95": 0.1574617596003783,
+            "p99": 0.1574617596003783,
+            "max": 0.1574617596003783
+          },
+          "fixture": "backend/tests/fixtures/all_moons_horizons_oracle.json"
+        },
+        "boundaryContinuity": {
+          "runtimeStateContinuous": true,
+          "method": "existing smooth-step feature cross-fade"
+        }
+      }
+    },
+    {
+      "name": "s2025_u_1",
+      "status": "pinned_reproducible_shipped_extension",
+      "candidateSha256": "f715db9afabe50b8cb18e323042ee46f3b4dfcf31e76274c95d108d381fbf2d8",
+      "candidateBytes": 270432,
+      "target": "75052",
+      "sourceHash": "f99e70f0473b79acae8f0c3ed295467d160821ed758667defaf1bf3b856eb3e9",
+      "heldOutHash": "c5ab31d5d7a8535556b70e7b753bc6ebe60b0f56210752496c80e87f43de5485",
+      "excludedTrainingEpochs": [],
+      "validation": {
+        "method": "Disjoint native SPK input and held-out windows; exact endpoints and separate vector oracle; analytic trajectory derivatives",
+        "sampleCount": 9130,
+        "heldOutSampleCount": 9128,
+        "coverageEndpointSampleCount": 2,
+        "coverageEndpointErrors": [
+          {
+            "jdTdb": 2451545,
+            "positionErrorKm": 9.857926536044983,
+            "velocityErrorMPerS": 3.2464248594803147
+          },
+          {
+            "jdTdb": 2469807.5,
+            "positionErrorKm": 3.5331306238910054,
+            "velocityErrorMPerS": 1.7656575284120342
+          }
+        ],
+        "accuracyLimits": {
+          "positionKm": 57.844,
+          "velocityMPerS": 10
+        },
+        "positionErrorKm": {
+          "p50": 1.6048912467311818,
+          "p95": 2.9185767219118057,
+          "p99": 4.34519736170029,
+          "max": 9.955643606084731
+        },
+        "velocityErrorMPerS": {
+          "p50": 0.35421990069582193,
+          "p95": 1.4438075580460648,
+          "p99": 2.4134687105877513,
+          "max": 6.430594446471564
+        },
+        "vectorOracle": {
+          "sampleCount": 7,
+          "positionErrorKm": {
+            "p50": 2.2333545167464433,
+            "p95": 9.857926536044983,
+            "p99": 9.857926536044983,
+            "max": 9.857926536044983
+          },
+          "velocityErrorMPerS": {
+            "p50": 0.4911166695791316,
+            "p95": 3.2464248594803147,
+            "p99": 3.2464248594803147,
+            "max": 3.2464248594803147
+          }
+        },
+        "boundaryContinuity": {
+          "runtimeStateContinuous": true,
+          "method": "analytic derivative of smooth cross-fade"
+        }
+      }
+    }
+  ]
+}

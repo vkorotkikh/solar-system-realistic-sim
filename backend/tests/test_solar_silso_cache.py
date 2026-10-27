@@ -103,6 +103,229 @@ def _freeze_silso_clock(
     monkeypatch.setattr(provider, "_utc_now", lambda: SILSO_REFERENCE_NOW)
 
 
+def _expire_after_next_silso_parse(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: SolarRealtimeDataProvider,
+    monotonic_now: list[float],
+    *,
+    expired_at: float,
+) -> None:
+    parse_silso_document = provider._parse_silso_document
+    expire_next = True
+
+    def parse_then_expire(
+        text: str,
+        *,
+        reference_date: date | None = None,
+    ) -> dict[str, Any]:
+        nonlocal expire_next
+        parsed = parse_silso_document(text, reference_date=reference_date)
+        if expire_next:
+            expire_next = False
+            monotonic_now[0] = expired_at
+        return parsed
+
+    monkeypatch.setattr(provider, "_parse_silso_document", parse_then_expire)
+
+
+def test_snapshot_serves_fresh_silso_cache_after_swpc_exhausts_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+    provider._fetch_silso()
+    unexpected_http: list[str] = []
+
+    def exhaust_budget() -> dict[str, Any]:
+        monotonic_now[0] = 202.0
+        raise TimeoutError("SWPC stalled")
+
+    def forbid_silso_http(_request, *, timeout_s: float):
+        unexpected_http.append(f"timeout={timeout_s}")
+        raise AssertionError("fresh SILSO cache attempted HTTP")
+
+    monotonic_now[0] = 200.0
+    monkeypatch.setattr(provider, "_fetch_swpc", exhaust_budget)
+    monkeypatch.setattr(provider, "_open_response", forbid_silso_http)
+    monkeypatch.setattr(
+        provider,
+        "_fetch_sdo_aia",
+        lambda _jd: (_ for _ in ()).throw(AssertionError("AIA started after deadline")),
+    )
+
+    snapshot = provider._fetch_snapshot(None)
+
+    assert snapshot["source_status"]["swpc"]["ok"] is False
+    assert snapshot["source_status"]["silso"]["ok"] is True
+    assert snapshot["silso"]["daily_sunspot_number"] == 58.0
+    assert snapshot["silso"]["acquisition"]["cache_status"] == "fresh"
+    assert snapshot["source_status"]["sdo_aia"]["ok"] is False
+    assert "acquisition_deadline" in snapshot["source_status"]["sdo_aia"]["error"]
+    assert unexpected_http == []
+
+
+def test_snapshot_serves_stale_silso_lkg_after_swpc_exhausts_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+    provider._fetch_silso()
+    unexpected_http: list[str] = []
+
+    def exhaust_budget() -> dict[str, Any]:
+        monotonic_now[0] = 21_703.0
+        raise TimeoutError("SWPC stalled")
+
+    def forbid_silso_http(_request, *, timeout_s: float):
+        unexpected_http.append(f"timeout={timeout_s}")
+        raise AssertionError("stale SILSO LKG attempted HTTP")
+
+    monotonic_now[0] = 21_701.0
+    monkeypatch.setattr(provider, "_fetch_swpc", exhaust_budget)
+    monkeypatch.setattr(provider, "_open_response", forbid_silso_http)
+    monkeypatch.setattr(
+        provider,
+        "_fetch_sdo_aia",
+        lambda _jd: (_ for _ in ()).throw(AssertionError("AIA started after deadline")),
+    )
+
+    snapshot = provider._fetch_snapshot(None)
+
+    assert snapshot["source_status"]["swpc"]["ok"] is False
+    assert snapshot["source_status"]["silso"]["ok"] is True
+    assert snapshot["silso"]["daily_sunspot_number"] == 58.0
+    assert snapshot["silso"]["acquisition"]["cache_status"] == "stale_lkg"
+    assert snapshot["silso"]["acquisition"]["failure_code"] == "acquisition_deadline"
+    assert provider._silso_failure is None
+    assert unexpected_http == []
+
+
+def test_silso_fresh_cache_precedes_expired_inherited_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+    provider._fetch_silso()
+    unexpected_http: list[str] = []
+
+    def forbid_silso_http(_request, *, timeout_s: float):
+        unexpected_http.append(f"timeout={timeout_s}")
+        raise AssertionError("fresh SILSO cache attempted HTTP")
+
+    monkeypatch.setattr(provider, "_open_response", forbid_silso_http)
+    monotonic_now[0] = 200.0
+    with provider._acquisition_scope():
+        monotonic_now[0] = 202.0
+        result = provider._fetch_silso()
+
+    assert result["daily_sunspot_number"] == 58.0
+    assert result["acquisition"]["cache_status"] == "fresh"
+    assert unexpected_http == []
+
+
+def test_silso_missing_cache_fails_expired_inherited_deadline_without_http(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    unexpected_http: list[str] = []
+
+    def forbid_silso_http(_request, *, timeout_s: float):
+        unexpected_http.append(f"timeout={timeout_s}")
+        raise AssertionError("expired SILSO refresh attempted HTTP")
+
+    monkeypatch.setattr(provider, "_open_response", forbid_silso_http)
+
+    with provider._acquisition_scope():
+        monotonic_now[0] = 102.0
+        with pytest.raises(SolarRealtimeFetchError) as exc_info:
+            provider._fetch_silso()
+
+    assert exc_info.value.code == "acquisition_deadline"
+    assert provider._silso_cache is None
+    assert provider._silso_failure is None
+    assert unexpected_http == []
+
+
+def test_silso_refresh_inherits_only_parent_scope_remainder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=10.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    http_timeouts: list[float] = []
+
+    def open_response(_request, *, timeout_s: float):
+        http_timeouts.append(timeout_s)
+        return _ok_response(provider)
+
+    monkeypatch.setattr(provider, "_open_response", open_response)
+
+    with provider._acquisition_scope():
+        monotonic_now[0] = 104.0
+        result = provider._fetch_silso()
+
+    assert result["acquisition"]["cache_status"] == "refreshed"
+    assert http_timeouts == [pytest.approx(6.0)]
+
+
+def test_standalone_silso_refresh_creates_bounded_acquisition_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=7.5)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    http_timeouts: list[float] = []
+
+    def open_response(_request, *, timeout_s: float):
+        http_timeouts.append(timeout_s)
+        return _ok_response(provider)
+
+    monkeypatch.setattr(provider, "_open_response", open_response)
+
+    result = provider._fetch_silso()
+
+    assert result["acquisition"]["cache_status"] == "refreshed"
+    assert http_timeouts == [pytest.approx(7.5)]
+
+
 def test_snapshot_force_refresh_does_not_bypass_independent_silso_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -468,6 +691,180 @@ def test_silso_singleflight_waiters_share_response_reference_date(
     assert results[0] is not results[1]
     assert results[0]["coverage"] is not results[1]["coverage"]
     assert clock_reads == [before_midnight] * 4
+
+
+def test_silso_post_parse_deadline_without_cache_allows_immediate_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [_ok_response(provider), _ok_response(provider)],
+    )
+    _expire_after_next_silso_parse(
+        monkeypatch,
+        provider,
+        monotonic_now,
+        expired_at=102.0,
+    )
+
+    with pytest.raises(SolarRealtimeFetchError) as exc_info:
+        provider._fetch_silso()
+    assert exc_info.value.code == "acquisition_deadline"
+
+    retried = provider._fetch_silso()
+
+    assert retried["daily_sunspot_number"] == 58.0
+    assert retried["acquisition"]["cache_status"] == "refreshed"
+    assert provider._silso_failure is None
+    assert len(opened) == 2
+
+
+def test_silso_post_parse_deadline_serves_lkg_without_mutating_canonical_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [_ok_response(provider), _ok_response(provider, etag='"silso-v2"')],
+    )
+    provider._fetch_silso()
+    retained = provider._silso_cache
+    assert retained is not None
+    canonical_value = retained.value
+    monotonic_now[0] = 21_701.0
+    _expire_after_next_silso_parse(
+        monkeypatch,
+        provider,
+        monotonic_now,
+        expired_at=21_703.0,
+    )
+
+    stale = provider._fetch_silso()
+
+    assert stale["daily_sunspot_number"] == 58.0
+    assert stale["acquisition"]["cache_status"] == "stale_lkg"
+    assert stale["acquisition"]["failure_code"] == "acquisition_deadline"
+    assert provider._silso_cache is retained
+    assert retained.value is canonical_value
+    assert retained.validated_monotonic == 100.0
+    assert provider._silso_failure is None
+    assert len(opened) == 2
+
+
+def test_silso_post_parse_deadline_preserves_expired_failure_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SolarRealtimeDataProvider(timeout_s=1.0)
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    _install_responses(monkeypatch, provider, [_ok_response(provider)])
+    provider._fetch_silso()
+    retained_cache = provider._silso_cache
+    assert retained_cache is not None
+
+    monotonic_now[0] = 21_701.0
+    opened = _install_responses(
+        monkeypatch,
+        provider,
+        [TimeoutError("ordinary outage"), _ok_response(provider)],
+    )
+    ordinary_failure_result = provider._fetch_silso()
+    ordinary_failure = provider._silso_failure
+    assert ordinary_failure is not None
+    assert ordinary_failure_result["acquisition"]["failure_code"] == "upstream_timeout"
+    assert ordinary_failure.code == "upstream_timeout"
+    assert ordinary_failure.expires_monotonic == 22_001.0
+
+    monotonic_now[0] = 22_002.0
+    _expire_after_next_silso_parse(
+        monkeypatch,
+        provider,
+        monotonic_now,
+        expired_at=22_004.0,
+    )
+    deadline_result = provider._fetch_silso()
+
+    assert deadline_result["acquisition"]["cache_status"] == "stale_lkg"
+    assert deadline_result["acquisition"]["failure_code"] == "acquisition_deadline"
+    assert provider._silso_failure is ordinary_failure
+    assert provider._silso_cache is retained_cache
+    assert len(opened) == 2
+
+
+@pytest.mark.parametrize(
+    ("failure_kind", "expected_exception", "expected_code", "expected_detail"),
+    (
+        (
+            "timeout",
+            TimeoutError,
+            "upstream_timeout",
+            "Solar realtime upstream acquisition timed out",
+        ),
+        (
+            "parser",
+            RuntimeError,
+            "upstream_failure",
+            "Solar realtime upstream acquisition failed",
+        ),
+    ),
+)
+def test_silso_ordinary_refresh_failures_keep_active_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+    failure_kind: str,
+    expected_exception: type[Exception],
+    expected_code: str,
+    expected_detail: str,
+) -> None:
+    provider = SolarRealtimeDataProvider()
+    _freeze_silso_clock(monkeypatch, provider)
+    monotonic_now = [100.0]
+    monkeypatch.setattr(
+        solar_realtime_data.time,
+        "monotonic",
+        lambda: monotonic_now[0],
+    )
+    response: _Response | BaseException = (
+        TimeoutError("secret timeout")
+        if failure_kind == "timeout"
+        else _ok_response(provider, row="not a SILSO record\n")
+    )
+    opened = _install_responses(monkeypatch, provider, [response])
+
+    with pytest.raises(expected_exception):
+        provider._fetch_silso()
+    failure = provider._silso_failure
+    assert failure is not None
+
+    with pytest.raises(RuntimeError, match="^SILSO acquisition unavailable$"):
+        provider._fetch_silso()
+
+    assert provider._silso_failure is failure
+    assert failure.code == expected_code
+    assert failure.detail == expected_detail
+    assert failure.expires_monotonic == 400.0
+    assert len(opened) == 1
 
 
 def test_silso_failure_backoff_serves_lkg_only_within_bounded_age(

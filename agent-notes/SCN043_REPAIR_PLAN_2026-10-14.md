@@ -1,0 +1,11 @@
+# SCN-043 repair plan and preregistered gates
+
+The 190 bodies with sampled error above one semimajor axis are implementation/model defects, not provider blockers. Preserve the 424-body denominator. Available reference bodies are 422 full-span plus partial Daphnis; S/2025 U 1 has no valid live Horizons response.
+
+Root-cause evidence before fitting: Phobos is accurate to 9.367 km at J2000 but 5794.692 km off after 30 days; its published rounded 0.3187-day period cannot retain phase. Multiple SAT441 bodies have order-orbit phase errors already at their declared epoch. Uranian inner moons use rounded periods back-propagated from 2025. Irregular moons require time-dependent eccentricity/plane/apsis/phase rather than one mean ellipse over decades. Existing source-frame rates cannot recover omitted numerical perturbations. JPL explicitly warns that its descriptive satellite mean elements are not ephemerides.
+
+Repair approach: extend the existing parent-relative osculating-feature ephemeris architecture to the remaining captured bodies using a separate numerical fitting driver. Do not change the catalog agent's general generator transactionality. Preserve the existing four fitted bodies and their budgets. Do not use the seven-epoch all-moon oracle as training data. Fetch independent source and held-out grids, preserve provenance and hashes, and gate actual position and velocity, not only element self-consistency. New fitting inputs use fractional-day offsets disjoint from the seven existing oracle epochs.
+
+Preregistered NEW model limits: position error <= min(500 km, 0.001 * catalog semimajor axis in km); velocity error <= 10 m/s. Existing fitted-body limits and existing external regression tests remain unchanged. These are explicit sampled numerical approximation budgets, not continuous or observational-uncertainty claims. Failures require denser source sampling or a better model, never larger limits. Full J2000-through-2050 coverage is the target for provider-supported bodies; Daphnis remains restricted to the actual provider interval.
+
+Checkpoint policy: publish only models that satisfy their independent gates. Report unrepaired bodies as unrepaired, not as external blockers or verified. Record all missing states and preserve the S/2025 U 1 unavailable record.

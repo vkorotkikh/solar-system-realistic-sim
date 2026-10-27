@@ -1,0 +1,137 @@
+173:async def _app_lifespan(_application: FastAPI):
+192:class _RequestBodyLimitMiddleware:
+346:class _TrajectoryRateLimitMiddleware:
+475:class SolarSecurityConfig:
+500:def _api_key_digest(token: str) -> str:
+504:def _load_solar_security_config(
+648:def _merge_network_protected_response_headers(message: dict[str, Any]) -> None:
+708:class _NetworkAuthenticationMiddleware:
+765:def _load_env_csv(name: str, default: list[str]) -> list[str]:
+775:def _load_env_int(name: str, default: int, *, min_value: int) -> int:
+786:def _load_env_float(name: str, default: float, *, min_value: float) -> float:
+797:def _load_bounded_env_int(
+808:def _load_bounded_env_float(
+915:def _load_solar_physics_compute_timeout() -> float:
+943:def _load_solar_physics_result_byte_limit() -> int:
+1007:def _load_solar_aia_tile_concurrent_request_limit() -> int:
+1016:def _load_solar_aia_tile_request_timeout() -> float:
+1284:def _configured_default_assist_pool(
+1319:@app.exception_handler(RequestValidationError)
+1320:async def _bounded_request_validation_error(
+1403:class _WebSocketAdmissionLease:
+1428:def _new_solar_physics_runner() -> SupervisedProcessRunner:
+1441:def _get_solar_physics_runner():
+1463:def _shutdown_solar_physics_runner() -> None:
+1481:def _bounded_unique_scope_header(
+1508:def _bounded_unique_request_header(
+1521:def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
+1547:def _extract_solar_api_key(request: Request) -> str | None:
+1553:def _authenticated_api_subject_from_scope(
+1575:def _address_in_trusted_proxy_networks(
+1585:def _parse_ip_address(
+1594:def _client_identity(
+1660:def _require_optional_solar_api_key(
+1689:def _reject_network_refresh_get(requested: bool) -> None:
+1704:def _pop_oldest_rate_identity(
+1715:def _move_rate_identity_to_end(
+1724:def _record_solar_rate_request(
+1768:def _enforce_solar_rate_limit(
+1796:def _enforce_solar_request_rate_limit(request: Request) -> None:
+1807:def _enforce_solar_realtime_rate_limit(request: Request) -> None:
+1818:def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
+1829:def _resolve_jd_tdb_query(
+1878:def _observed_solar_input_http_error(
+1895:def _build_solar_physics_state(
+1917:def _acquire_nonblocking(sem: threading.BoundedSemaphore) -> bool:
+1921:def _try_acquire_ws_sim_slot(
+1946:def _release_ws_sim_slot(lease: _WebSocketAdmissionLease) -> None:
+1972:def _websocket_origin_allowed(websocket: WebSocket) -> bool:
+1983:def _websocket_query_has_safe_shape(websocket: WebSocket) -> bool:
+2007:def _network_websocket_subject(websocket: WebSocket) -> str | None:
+2016:def _release_guard_when_work_finishes(
+2032:async def _run_owned_thread(
+2072:class _RequestOwnerDisconnected(asyncio.CancelledError):
+2076:async def _wait_for_request_disconnect(request: Request, *, poll_seconds: float = 0.05) -> None:
+2083:async def _run_request_owned_process(
+2141:async def _run_request_owned_thread(
+2212:def _trajectory_http_exception(
+2233:def _ephemeris_http_exception(exc: EphemerisError) -> HTTPException:
+2269:def _trajectory_plan_limits() -> PlanningLimits:
+2281:def _trajectory_lambert_limits() -> PlanningLimits:
+2293:def _trajectory_porkchop_limits() -> PlanningLimits:
+2310:def _mission_plan_limits() -> PlanningLimits:
+2316:def _benchmark_limits() -> PlanningLimits:
+2330:def _validate_trajectory_plan_payload(payload: TrajectoryPlanRequest) -> ValidatedTrajectoryPlan:
+2345:def _validate_trajectory_endpoint_pair(
+2367:def _validate_mission_trajectory_payload(payload: MissionPlanRequest) -> None:
+2417:def _enforce_trajectory_remote_search_policy(provider: str, operation: str) -> None:
+2431:def _canonical_aia_header_date(value: Any) -> str | None:
+2457:def _build_aia_tile_payload(
+2475:def _build_solar_realtime_snapshot(force_refresh: bool = False) -> dict[str, Any]:
+2479:def _aia_identity_conflict(
+2495:def _run_mission_plan(
+2505:def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
+2626:def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
+2686:def _rebound_readiness() -> Dict[str, Any]:
+2698:def _rebound_available() -> bool:
+2702:def _tudatpy_available() -> bool:
+2711:class StrictRequestModel(BaseModel):
+2715:def _normalize_body_id(value: str) -> str:
+2724:def _normalize_objective(value: str) -> str:
+2731:def _normalize_ephemeris_provider(value: str) -> str:
+2738:def _normalize_assist_pool(value: list[str] | None) -> list[str] | None:
+2755:def _ensure_bodies_known(*body_ids: tuple[str, str]) -> None:
+2766:def _resolve_benchmark_report_path(output_path: str | None, default_filename: str) -> Path:
+2792:class TrajectoryBodyPairRequest(StrictRequestModel):
+2809:class TrajectoryPlanRequest(TrajectoryBodyPairRequest):
+2826:class TrajectoryLambertRequest(TrajectoryBodyPairRequest):
+2831:class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
+2840:class MissionStageRequest(StrictRequestModel):
+2857:class MissionVehicleRequest(StrictRequestModel):
+2877:class MissionPlanRequest(StrictRequestModel):
+2926:class AccuracyReportRequest(StrictRequestModel):
+2949:@app.api_route("/health/live", methods=["GET", "HEAD"], include_in_schema=False)
+2950:def health_liveness():
+2956:@app.get("/health")
+2957:def health():
+2969:@app.get("/info")
+2970:def info():
+2983:@app.get("/bodies")
+2984:def bodies():
+3004:@app.get("/solar/capabilities")
+3005:def solar_capabilities():
+3012:@app.get("/solar/realtime")
+3013:async def solar_realtime_data(request: Request, force_refresh: bool = False):
+3063:@app.get("/solar/realtime/aia-tile")
+3064:async def solar_realtime_aia_tile(
+3276:@app.get("/solar/physics")
+3277:async def solar_physics_state(
+3432:@app.get("/nearby-systems")
+3433:def nearby_systems(limit: int = 354, max_distance_ly: float = 20.0):
+3458:@app.get("/nearby-systems/{system_ref}")
+3459:def nearby_system_detail(system_ref: str):
+3480:@app.get("/trajectory/capabilities")
+3481:def trajectory_capabilities():
+3711:@app.post("/trajectory/plan")
+3712:async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
+3815:@app.post("/trajectory/lambert")
+3816:async def trajectory_lambert(request: Request, payload: TrajectoryLambertRequest):
+3914:@app.post("/trajectory/porkchop")
+3915:async def trajectory_porkchop(request: Request, payload: TrajectoryPorkchopRequest):
+4000:@app.get("/mission/capabilities")
+4001:def mission_capabilities():
+4038:@app.post("/mission/plan")
+4039:async def mission_plan(request: Request, payload: MissionPlanRequest):
+4113:@app.get("/benchmark/accuracy")
+4114:async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto"):
+4167:@app.post("/benchmark/accuracy/report")
+4168:async def benchmark_accuracy_report(request: Request, payload: AccuracyReportRequest):
+4227:class SimulationRunner:
+4558:def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
+4591:async def _send_ws_command_error(
+4604:async def _close_ws_command_too_large(websocket: WebSocket) -> None:
+4610:async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
+4679:async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_hz: float):
+4713:async def _serve_simulation_websocket(websocket: WebSocket) -> None:
+4860:@app.websocket("/ws/sim")
+4861:async def simulation_websocket(websocket: WebSocket):

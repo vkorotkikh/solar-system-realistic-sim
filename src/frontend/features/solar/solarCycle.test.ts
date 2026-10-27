@@ -23,8 +23,24 @@ describe('shared analytic Hathaway envelope', () => {
     for (const cycle of [-1, 0, 1]) {
       const jd = 2458849.5 + cycle * 132 * 30.44 + 60 * 30.44;
       const rotation = .5 + .5 * Math.sin((jd - 2451545) / 27.2753 * 2 * Math.PI + .17);
-      const expected = .06 + .82 * shape.values[6] + .1 * rotation;
+      const expected = .06 + .82 * (shape.values[6] + 0.000288484678398785) + .1 * rotation;
       expect(fallbackSolarActivityFromJulianDate(jd)).toBeCloseTo(expected, 11);
     }
+  });
+
+  it('carries the previous cycle tail continuously across solar minimum', () => {
+    const boundaryJd = 2458849.5 + 132 * 30.44;
+    const before = fallbackSolarActivityFromJulianDate(boundaryJd - 0.01);
+    const atBoundary = fallbackSolarActivityFromJulianDate(boundaryJd);
+    const after = fallbackSolarActivityFromJulianDate(boundaryJd + 0.01);
+
+    expect(before).toBeCloseTo(0.210739831890143, 11);
+    expect(atBoundary).toBeCloseTo(0.210806770259572, 11);
+    expect(after).toBeCloseTo(0.210873502743775, 11);
+    expect(after - before).toBeLessThan(1e-3);
+    expect(fallbackSolarActivityFromJulianDate(2458849.5 + 12 * 30.44))
+      .toBeCloseTo(0.237060195980691, 11);
+    expect(fallbackSolarActivityFromJulianDate(2458849.5 + reference.shapes[0].peak_months * 30.44))
+      .toBeCloseTo(0.929678329312317, 11);
   });
 });

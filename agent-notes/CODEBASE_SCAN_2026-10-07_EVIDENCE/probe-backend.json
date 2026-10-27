@@ -1,0 +1,50 @@
+{
+  "pfss_basis": {
+    "P2_at_half": -0.6339110704739678,
+    "expected_P2": -0.125,
+    "P3_at_half": -1.1342198219363284,
+    "expected_P3": -0.4375,
+    "integral_P0_P2": -0.9450735287639677,
+    "expected_cross_integral": 0.0
+  },
+  "fits_reader": {
+    "error": "AttributeError",
+    "message": "type object 'numpy.float32' has no attribute 'newbyteorder'",
+    "numpy": "2.5.3"
+  },
+  "benchmark": {
+    "scenarioCount": 3,
+    "comparableScenarioCount": 0,
+    "validationCoverage": 0.0,
+    "meanAbsErrorKmS": 0.0,
+    "passRate": 0.0
+  },
+  "solar_rate_identity": {
+    "accepted_rotating_xff": 50,
+    "identities_retained": 50,
+    "configured_limit": 36,
+    "api_keys_configured": false,
+    "identities_from_unvalidated_keys": 50
+  },
+  "preview_cors": {
+    "status": 400,
+    "allow_origin": null
+  },
+  "infeasible_risk_service_composition": {
+    "vehicle_feasible": false,
+    "propellant_margin_kg": 1275.0,
+    "failureProbability": 0.0,
+    "scope": "Service composition with zero uncertainty; not a full mission endpoint result"
+  },
+  "zero_confidence_assimilation": {
+    "applied": true,
+    "observed_confidence": 0.0,
+    "blend_weight": 0.25,
+    "blended_activity_index": 0.6250000000000001
+  },
+  "solar_cold_offline": {
+    "seconds": 4.094141718000174,
+    "frontend_timeout_seconds": 2.6,
+    "network": "disabled; GONG unavailable; no realtime data"
+  }
+}

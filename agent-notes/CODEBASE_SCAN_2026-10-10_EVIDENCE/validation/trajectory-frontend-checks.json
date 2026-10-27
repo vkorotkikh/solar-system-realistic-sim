@@ -1,0 +1,79 @@
+[
+  {
+    "command": [
+      "node",
+      "--version"
+    ],
+    "returncode": 0,
+    "seconds": 0.016,
+    "log": "trajectory-00-node---version.log"
+  },
+  {
+    "command": [
+      "npm",
+      "--version"
+    ],
+    "returncode": 0,
+    "seconds": 0.115,
+    "log": "trajectory-01-npm---version.log"
+  },
+  {
+    "command": [
+      "npm",
+      "test"
+    ],
+    "returncode": 0,
+    "seconds": 1.893,
+    "log": "trajectory-02-npm-test.log"
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    "returncode": 2,
+    "seconds": 3.832,
+    "log": "trajectory-03-npm-run-typecheck.log"
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "returncode": 0,
+    "seconds": 2.423,
+    "log": "trajectory-04-npm-run-build.log"
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "verify:planet-positions"
+    ],
+    "returncode": 0,
+    "seconds": 0.316,
+    "log": "trajectory-05-npm-run-verify-planet-positions.log"
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "verify:moon-frames"
+    ],
+    "returncode": 0,
+    "seconds": 0.315,
+    "log": "trajectory-06-npm-run-verify-moon-frames.log"
+  },
+  {
+    "command": [
+      "npm",
+      "audit",
+      "--json"
+    ],
+    "returncode": 1,
+    "seconds": 0.717,
+    "log": "trajectory-07-npm-audit---json.log"
+  }
+]

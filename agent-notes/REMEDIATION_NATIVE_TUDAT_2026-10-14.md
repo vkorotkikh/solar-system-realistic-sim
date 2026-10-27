@@ -68,3 +68,14 @@ Sources: [Tudat migration](https://docs.tudat.space/en/stable/user-guide/project
 [default gravity models](https://docs.tudat.space/en/latest/user-guide/state-propagation/environment-setup/default-env-models.html),
 [normalized harmonic API](https://py.api.tudat.space/en/latest/dynamics/environment_setup/gravity_field.html),
 and [Iess et al. Table 1, PDS copy](https://atmos.nmsu.edu/data_and_services/atmospheres_data/Cassini/logs/Iess-Science-2019.pdf).
+
+## Independent review follow-up
+
+Commit `5e29af9` adds native frame/GM diagnostic corrections and fail-closed
+initialization/solver-history recovery. The parent integrated it and ran
+`SOLAR_REQUIRE_TUDAT=1 /tmp/solar-remediation-tudat-20261014/bin/python -m pytest -q
+backend/tests/test_tudat_native_runtime.py backend/tests/test_tudat_science_review.py`:
+17 passed, no skips. The full reviewer reported 56 native/adapter passes; the
+17-case parent run is a subset and is not added to that count. See
+[the wave-three ledger](REMEDIATION_WAVE3_2026-10-14.md) for exact commit scope and
+logs. Point-mass diagnostic energy still excludes the harmonic potential.

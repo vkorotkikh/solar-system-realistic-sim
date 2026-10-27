@@ -1,0 +1,249 @@
+{
+  "capturedAt": "2026-10-10T07:24:15.679Z",
+  "environment": "Chromium headless software WebGL; backend requests explicitly aborted to avoid existing sessions; Vite isolated snapshots",
+  "main": {
+    "errors": [],
+    "requests": [
+      "http://127.0.0.1:8042/solar/realtime",
+      "http://127.0.0.1:8042/solar/physics?jd_tdb=2461323.80931797&fidelity=high&max_features=180&forcing=hybrid&live_data=true"
+    ],
+    "startup": {
+      "status": "Focused · Sun\nBodies · 55,010\nRange · 2.60 AU\nAsteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+      "body": "SOLAR OBSERVATORY\n\nSUN MODEL LAB\n\nReal-time heliocentric model and solar observation workspace.\n\nLIVE SIMULATION\nJ2000 FRAME\nTIME\nSIMULATION DATE\n2026-10-25\nResume\nJump to now\nSimulation speed\n+4.0 d/s\n−120 reverse\n0\n+120 forward\nDISPLAY\nNAVIGATION\nEXPLORER\nFind a major body\nMajor bodies\n10 bodies\nSun · Star\nMercury · Planet\nVenus · Planet\nEarth · Planet\nMars · Planet\nJupiter · Planet\nSaturn · Planet\nUranus · Planet\nNeptune · Planet\nPluto · Dwarf\n\nSelect a target, then choose a camera action.\n\nFocus\nFollow\nFree cam\n\nSELECTED TARGET\n\nSun\nSTAR\nRadius\n696,340 km\nSolar distance\n0.0000 AU\nOrbital period\n—\nCATACLYSMIC EVENTS\nADVANCED\nHELIOCENTRIC VIEW\n\nDrag orbit\nScroll zoom\nDouble-click follow body\n\nFocused · Sun\nBodies · 55,010\nRange · 2.60 AU\nAsteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+      "canvasTabIndex": -1,
+      "canvasSize": [
+        1088,
+        900
+      ]
+    },
+    "paused": {
+      "milliseconds": 1800,
+      "before": {
+        "uploads": 84,
+        "bytes": 9229696,
+        "writes": {
+          "status-catalog": 2,
+          "body-match-count": 2,
+          "body-info-name": 3,
+          "body-info-type": 3,
+          "body-info-radius": 3,
+          "body-info-distance": 3,
+          "body-info-period": 3,
+          "status-bodies": 2,
+          "status-focus": 1,
+          "time-scale-value": 28,
+          "time-date": 28,
+          "status-zoom": 28
+        },
+        "date": "2026-10-25"
+      },
+      "after": {
+        "uploads": 87,
+        "bytes": 9559328,
+        "writes": {
+          "status-catalog": 2,
+          "body-match-count": 2,
+          "body-info-name": 3,
+          "body-info-type": 3,
+          "body-info-radius": 3,
+          "body-info-distance": 3,
+          "body-info-period": 3,
+          "status-bodies": 2,
+          "status-focus": 1,
+          "time-scale-value": 29,
+          "time-date": 29,
+          "status-zoom": 29
+        },
+        "date": "2026-10-25"
+      }
+    },
+    "quadtree": {
+      "initial": 6,
+      "close": 36,
+      "farAgain": 0,
+      "retainedFaceMeshes": [
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        }
+      ]
+    },
+    "breakpoint": {
+      "activeId": "",
+      "panelInert": true,
+      "activeInsidePanel": false
+    },
+    "drawer": {
+      "viewportInert": false,
+      "panelRole": null,
+      "ariaModal": null,
+      "focus": "panel-close"
+    },
+    "narrow": {
+      "innerWidth": 240,
+      "scrollWidth": 280,
+      "bodyWidth": 280,
+      "panelWidth": 240
+    },
+    "noWebgl": {
+      "errors": [
+        "Error: Error creating WebGL context."
+      ],
+      "ui": {
+        "date": "—",
+        "options": 0,
+        "alerts": [],
+        "status": "Focused · Sun\nBodies · —\nRange · —\nAsteroids: procedural fallback (catalog verification pending)"
+      }
+    }
+  },
+  "trajectory": {
+    "errors": [],
+    "requests": [
+      "http://127.0.0.1:8042/solar/physics?jd=2461323.80985906&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "http://127.0.0.1:8042/solar/physics?jd=2461347.94231506&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "http://127.0.0.1:8042/solar/physics?jd=2461347.94231506&fidelity=high&max_features=180&forcing=hybrid&live_data=true"
+    ],
+    "startup": {
+      "status": "Focused · Sun\nBodies · 55,010\nRange · 2.60 AU\nAsteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+      "body": "SOLAR OBSERVATORY\n\nSUN MODEL LAB\n\nReal-time heliocentric model and solar observation workspace.\n\nLIVE SIMULATION\nJ2000 FRAME\nTIME\nSIMULATION DATE\n2026-11-03\nResume\nJump to now\nSimulation speed\n+4.0 d/s\n−120 reverse\n0\n+120 forward\nDISPLAY\nNAVIGATION\nEXPLORER\nFind a major body\nMajor bodies\n10 bodies\nSun · Star\nMercury · Planet\nVenus · Planet\nEarth · Planet\nMars · Planet\nJupiter · Planet\nSaturn · Planet\nUranus · Planet\nNeptune · Planet\nPluto · Dwarf\n\nSelect a target, then choose a camera action.\n\nFocus\nFollow\nFree cam\n\nSELECTED TARGET\n\nSun\nSTAR\nRadius\n696,340 km\nSolar distance\n0.0000 AU\nOrbital period\n—\nCATACLYSMIC EVENTS\nADVANCED\nHELIOCENTRIC VIEW\n\nDrag orbit\nScroll zoom\nDouble-click follow body\n\nFocused · Sun\nBodies · 55,010\nRange · 2.60 AU\nAsteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+      "canvasTabIndex": -1,
+      "canvasSize": [
+        1088,
+        900
+      ]
+    },
+    "paused": {
+      "milliseconds": 1800,
+      "before": {
+        "uploads": 84,
+        "bytes": 9229696,
+        "writes": {
+          "status-catalog": 2,
+          "body-match-count": 2,
+          "body-info-name": 3,
+          "body-info-type": 3,
+          "body-info-radius": 3,
+          "body-info-distance": 3,
+          "body-info-period": 3,
+          "status-bodies": 2,
+          "status-focus": 1,
+          "time-scale-value": 28,
+          "time-date": 28,
+          "status-zoom": 28
+        },
+        "date": "2026-11-03"
+      },
+      "after": {
+        "uploads": 87,
+        "bytes": 9559328,
+        "writes": {
+          "status-catalog": 2,
+          "body-match-count": 2,
+          "body-info-name": 3,
+          "body-info-type": 3,
+          "body-info-radius": 3,
+          "body-info-distance": 3,
+          "body-info-period": 3,
+          "status-bodies": 2,
+          "status-focus": 1,
+          "time-scale-value": 29,
+          "time-date": 29,
+          "status-zoom": 29
+        },
+        "date": "2026-11-03"
+      }
+    },
+    "quadtree": {
+      "initial": 6,
+      "close": 36,
+      "farAgain": 0,
+      "retainedFaceMeshes": [
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        },
+        {
+          "meshPresent": true,
+          "meshParentPresent": false,
+          "split": false
+        }
+      ]
+    },
+    "breakpoint": {
+      "activeId": "body-search",
+      "panelInert": false,
+      "activeInsidePanel": true
+    },
+    "drawer": {
+      "viewportInert": false,
+      "panelRole": null,
+      "ariaModal": null,
+      "focus": "panel-close"
+    },
+    "narrow": {
+      "innerWidth": 240,
+      "scrollWidth": 280,
+      "bodyWidth": 280,
+      "panelWidth": 240
+    },
+    "noWebgl": {
+      "errors": [
+        "Error: Error creating WebGL context."
+      ],
+      "ui": {
+        "date": "—",
+        "options": 0,
+        "alerts": [],
+        "status": "Focused · Sun\nBodies · —\nRange · —\nAsteroids: procedural fallback (catalog verification pending)"
+      }
+    }
+  }
+}

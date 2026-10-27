@@ -46,6 +46,29 @@ def test_all_modes_against_immutable_oracle():
         reference = np.array(mode["theta_derivatives"])
         assert np.all(abs(derivatives[key] - reference) <= 1e-8), key
 
+        # Keep the immutable helper oracle and also exercise the production
+        # streaming evaluator. The monopole is intentionally absent from PFSS.
+        if key == (0, 0):
+            continue
+        lmax = ORACLE["lmax"]
+        g = np.zeros((lmax + 1, lmax + 1))
+        g[key] = 1.0
+        solver = PFSSField(g, np.zeros_like(g), lmax, 2.5)
+        sin_theta = np.sqrt((1 - mu) * (1 + mu))
+        bx, by, bz = solver.evaluate_cartesian_batch(sin_theta, np.zeros_like(mu), mu)
+        radial = bx * sin_theta + bz * mu
+        expected_radial = np.array(mode["values"])
+        assert np.all(abs(radial - expected_radial) <= 5e-13 * np.maximum(1, abs(expected_radial))), (
+            f"R4-LEGENDRE-RECURRENCE streaming value mode={key}"
+        )
+        degree = key[0]
+        reflected = 2.5**(-2 * degree - 1)
+        tangent_factor = -(1 - reflected) / (degree + 1 + degree * reflected)
+        theta_derivative = (bx * mu - bz * sin_theta) / tangent_factor
+        assert np.all(abs(theta_derivative - reference) <= 1e-8), (
+            f"R4-LEGENDRE-RECURRENCE streaming derivative mode={key}"
+        )
+
 
 def test_gauss_legendre_orthogonality():
     mu, weights = np.polynomial.legendre.leggauss(64)

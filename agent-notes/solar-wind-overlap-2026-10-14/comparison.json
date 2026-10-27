@@ -1,0 +1,91 @@
+{
+  "schema": "external_wsa_ace_overlap_v1",
+  "spacecraft": "ACE",
+  "forecastModel": "NASA WSA AGONG ensemble, four-day-ahead product",
+  "observationProduct": "NOAA ACE SWEPAM hourly, dsflag=0",
+  "pairing": "exact UTC tag, no lag/interpolation/fit",
+  "forecastRows": 17,
+  "usableForecastRows": 13,
+  "acceptedObservationRows": 499,
+  "matchedRows": 11,
+  "coverageOfUsableForecast": 0.8461538461538461,
+  "missingObservationTimes": [
+    "2026-10-10T00:00:00+00:00",
+    "2026-10-11T06:00:00+00:00"
+  ],
+  "pairs": [
+    {
+      "timeUtc": "2026-10-10T06:00:00+00:00",
+      "forecastKmS": 376.65000000000003,
+      "observedKmS": 407.69357,
+      "residualKmS": -31.04356999999999
+    },
+    {
+      "timeUtc": "2026-10-10T12:00:00+00:00",
+      "forecastKmS": 394.7105263157895,
+      "observedKmS": 415.33539,
+      "residualKmS": -20.62486368421054
+    },
+    {
+      "timeUtc": "2026-10-10T18:00:00+00:00",
+      "forecastKmS": 377.42592592592587,
+      "observedKmS": 749.62317,
+      "residualKmS": -372.1972440740741
+    },
+    {
+      "timeUtc": "2026-10-11T00:00:00+00:00",
+      "forecastKmS": 422.8733333333334,
+      "observedKmS": 680.62988,
+      "residualKmS": -257.75654666666657
+    },
+    {
+      "timeUtc": "2026-10-11T12:00:00+00:00",
+      "forecastKmS": 403.0026315789474,
+      "observedKmS": 607.13617,
+      "residualKmS": -204.1335384210526
+    },
+    {
+      "timeUtc": "2026-10-11T18:00:00+00:00",
+      "forecastKmS": 355.8733333333333,
+      "observedKmS": 559.34723,
+      "residualKmS": -203.4738966666667
+    },
+    {
+      "timeUtc": "2026-10-12T00:00:00+00:00",
+      "forecastKmS": 353.81388888888887,
+      "observedKmS": 520.07269,
+      "residualKmS": -166.2588011111111
+    },
+    {
+      "timeUtc": "2026-10-12T06:00:00+00:00",
+      "forecastKmS": 374.09024390243906,
+      "observedKmS": 498.00089,
+      "residualKmS": -123.91064609756097
+    },
+    {
+      "timeUtc": "2026-10-12T12:00:00+00:00",
+      "forecastKmS": 330.98199999999997,
+      "observedKmS": 473.73123,
+      "residualKmS": -142.74923
+    },
+    {
+      "timeUtc": "2026-10-12T18:00:00+00:00",
+      "forecastKmS": 317.6166666666666,
+      "observedKmS": 470.75833,
+      "residualKmS": -153.14166333333338
+    },
+    {
+      "timeUtc": "2026-10-13T00:00:00+00:00",
+      "forecastKmS": 320.236,
+      "observedKmS": 532.53003,
+      "residualKmS": -212.29403000000002
+    }
+  ],
+  "meanBiasKmS": -171.59854818678875,
+  "meanAbsoluteErrorKmS": 171.59854818678875,
+  "rootMeanSquareErrorKmS": 195.70960543857925,
+  "applicationCalibrationPassed": false,
+  "scope": "External-model observational comparison only. No production PFSS/WSA outputs were evaluated.",
+  "forecastSha256": "3eeb807edca46fc8206387f40797de80aaf59ca4ff667ee60255a7b04c6755c0",
+  "observationSha256": "814ba7b31342ecb4805c5ad52d03b564074bc53c82542df475d23a9fe1f25223"
+}

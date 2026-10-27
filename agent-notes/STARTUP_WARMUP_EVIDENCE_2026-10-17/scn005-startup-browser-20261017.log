@@ -1,0 +1,19 @@
+[WebServer] (node:109096) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 5 tests using 1 worker
+
+(node:109123) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+[chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing
+Production asteroid shader: {"antialias":true,"samples":4,"renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","material":"MeshStandardMaterial","linked":true,"linkLog":"","stages":[{"compiled":true,"log":""},{"compiled":true,"log":""}],"webglError":0}
+
+[2/5] [chromium] › tests/browser/startup-warmup.spec.ts:43:1 › a startup shader failure exposes accessible recovery before any scene draw
+[3/5] [chromium] › tests/browser/startup-warmup.spec.ts:56:1 › context loss cancels pending warmup and restoration cannot restart it
+[4/5] [chromium] › tests/browser/startup-warmup.spec.ts:80:1 › unload disposes materials only after cancelling pending warmup
+[5/5] [chromium] › tests/browser/startup-warmup.spec.ts:91:1 › the complete catalog scene still draws without parallel compilation support
+  5 passed (18.7s)

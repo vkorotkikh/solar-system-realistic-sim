@@ -211,6 +211,29 @@ def test_synthetic_identity_includes_every_output_affecting_input(
     assert len(calls) == 2
 
 
+def test_synthetic_dipole_phase_has_a_versioned_cache_identity() -> None:
+    cache = pfss.PFSSCache(active_regions=())
+    j2000_jd = 2_451_545.0
+    quarter_cycle_jd = j2000_jd + (360.0 / 14.1844) / 4.0
+
+    first = cache._resolve_synthetic_snapshot(j2000_jd, 0.8)
+    reused = cache._resolve_synthetic_snapshot(j2000_jd, 0.8)
+    rotated = cache._resolve_synthetic_snapshot(quarter_cycle_jd, 0.8)
+
+    assert first is reused
+    assert first.snapshot_id.transform_version == "synthetic-persistent-bipoles-v3"
+    with pytest.raises(ValueError, match="transform_version is not implemented"):
+        replace(
+            first.snapshot_id,
+            transform_version="synthetic-persistent-bipoles-v2",
+        )
+    assert rotated is not first
+    assert rotated.snapshot_id.sha256 != first.snapshot_id.sha256
+    assert rotated.snapshot_id.normalized_content_sha256 != (
+        first.snapshot_id.normalized_content_sha256
+    )
+
+
 def test_timeout_is_request_metadata_not_solution_identity(
     monkeypatch: pytest.MonkeyPatch,
     observed_snapshot: gong.MagnetogramSnapshot,
