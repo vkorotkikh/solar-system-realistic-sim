@@ -1,0 +1,69 @@
+{
+  "node": "v22.23.2",
+  "indexSha256": "2e40645b28e180337c791493fafae884d6d9e81700c8d0aa23abc2721783cf91",
+  "sourceManifestSha256": "235714411f6ec2bd897608b1fbd6cea8cdaddb3ba810fa3f9938f41550869b0d",
+  "original13Artifacts": [
+    {
+      "bodyKeys": [
+        "cordelia",
+        "iapetus",
+        "phoebe",
+        "titan"
+      ],
+      "bytes": 4118909,
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/data/moonEphemerisChebyshev.json",
+      "sha256": "9331771c6ae51983c21efcea2bb07191055c2d7891db5f702006487f54e0b9f4"
+    },
+    {
+      "bodyKeys": [
+        "carme",
+        "dione",
+        "mimas",
+        "neso",
+        "phobos",
+        "s2021_n1"
+      ],
+      "bytes": 737611,
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/data/moonEphemerisRepairs.json",
+      "sha256": "d65c466ce3fb84a46f15af89388abe34f0239df3382de4de59a9af3e6a8cb3d7"
+    },
+    {
+      "bodyKeys": [
+        "s2025_u_1"
+      ],
+      "bytes": 270686,
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/data/moonEphemerisSpkRepairs.json",
+      "sha256": "b3f2cff1db399908475129505dea7e317fada4c47f13e005aef95c66d79434f9"
+    },
+    {
+      "bodyKeys": [
+        "daphnis"
+      ],
+      "bytes": 219401,
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/data/moonEphemerisDaphnis.json",
+      "sha256": "d7709853c059884f20763ace6aacd50a34c38e26b924e20c9f5a6b943f02a7c8"
+    },
+    {
+      "bodyKeys": [
+        "s2023_s38"
+      ],
+      "bytes": 1418551,
+      "path": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/data/moonEphemerisS2023S38.json",
+      "sha256": "b3410184508f68eff0add063f4f7eb4f9a5ac349a61ecec8c6f324c39f06e1e8"
+    }
+  ],
+  "build": {
+    "totalBytes": 65767858,
+    "fileCount": 431,
+    "assets": {
+      "index-BRehrQiv.js": 938094,
+      "index-DJ77x5uO.css": 22744,
+      "modelWorker-DC7iGepg.js": 26961
+    },
+    "byteIdenticalToPriorNode24Build": true
+  },
+  "workerGraph": {
+    "moduleCount": 11,
+    "eagerMoonCoefficientInputs": []
+  }
+}

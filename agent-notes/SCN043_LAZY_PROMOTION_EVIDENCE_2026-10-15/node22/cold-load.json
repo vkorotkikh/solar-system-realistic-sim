@@ -1,0 +1,43 @@
+{
+  "node": "v22.23.2",
+  "execPath": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+  "measurement": "Production lazy loader with local asset-backed Fetch Responses; decoded body bytes, no live HTTP headers or negotiated compression",
+  "measurements": [
+    {
+      "key": "amalthea",
+      "requests": [
+        {
+          "url": "/moon-ephemerides/manifest.json",
+          "cache": "no-cache",
+          "bytes": 303149
+        },
+        {
+          "url": "/moon-ephemerides/839dc566e612f9c7ac16cf4136b6cf4fa140c35264c8d35010f0282065010f27.json",
+          "cache": "force-cache",
+          "bytes": 403584
+        }
+      ],
+      "coldResponseBodyBytes": 706733,
+      "emptyLoadRequests": 0,
+      "warmRepeatRequests": 0
+    },
+    {
+      "key": "metis",
+      "requests": [
+        {
+          "url": "/moon-ephemerides/manifest.json",
+          "cache": "no-cache",
+          "bytes": 303149
+        },
+        {
+          "url": "/moon-ephemerides/be028fde6eb5b9ceb008e3c2093ac952e512d33e07618031dc57da6afec234a5.json",
+          "cache": "force-cache",
+          "bytes": 1624520
+        }
+      ],
+      "coldResponseBodyBytes": 1927669,
+      "emptyLoadRequests": 0,
+      "warmRepeatRequests": 0
+    }
+  ]
+}

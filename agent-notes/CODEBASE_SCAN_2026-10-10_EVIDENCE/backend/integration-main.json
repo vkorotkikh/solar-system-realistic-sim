@@ -1,0 +1,73 @@
+{
+  "branch": "main",
+  "origins": [
+    {
+      "origin": "http://localhost:4173",
+      "status": 200,
+      "allow_origin": "http://localhost:4173"
+    },
+    {
+      "origin": "http://127.0.0.1:4173",
+      "status": 200,
+      "allow_origin": "http://127.0.0.1:4173"
+    },
+    {
+      "origin": "http://localhost:5173",
+      "status": 200,
+      "allow_origin": "http://localhost:5173"
+    },
+    {
+      "origin": "https://untrusted.invalid",
+      "status": 400,
+      "allow_origin": null
+    }
+  ],
+  "epochs": [
+    {
+      "jd": 2451545.0,
+      "status": 200,
+      "body": {
+        "probe_epoch": 2451545.0
+      },
+      "admitted_to_fake_compute": true
+    },
+    {
+      "jd": 1e+30,
+      "status": 400,
+      "body": {
+        "detail": {
+          "code": "jd_out_of_range",
+          "message": "'jd_tdb' must be within [2378495.0, 2524595.0] JDTDB (the corona model validity window).",
+          "retryable": false
+        }
+      },
+      "admitted_to_fake_compute": false
+    },
+    {
+      "jd": -1e+30,
+      "status": 400,
+      "body": {
+        "detail": {
+          "code": "jd_out_of_range",
+          "message": "'jd_tdb' must be within [2378495.0, 2524595.0] JDTDB (the corona model validity window).",
+          "retryable": false
+        }
+      },
+      "admitted_to_fake_compute": false
+    }
+  ],
+  "identity": {
+    "xff": {
+      "accepted": 36,
+      "rejected": 14,
+      "rate_store_entries": 1,
+      "client_identity_count": 1
+    },
+    "key": {
+      "accepted": 36,
+      "rejected": 14,
+      "rate_store_entries": 1,
+      "client_identity_count": 1
+    }
+  }
+}

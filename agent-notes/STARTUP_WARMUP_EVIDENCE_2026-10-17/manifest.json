@@ -1,0 +1,85 @@
+{
+  "scope": "Author startup measurements and validation; dates/revisions/limits retained in REMEDIATION_STARTUP_WARMUP_2026-10-17.md. Historical baseline and expected red tests are not current passes.",
+  "files": [
+    {
+      "path": "scn005-browser-hardware-baseline-20261017.json",
+      "bytes": 4430,
+      "sha256": "8d9c1a46f11e0ae8f4484a7b8b43b756141e2817f246896da93b63fbf482efee"
+    },
+    {
+      "path": "scn005-browser-hardware-baseline-0-20261017.png",
+      "bytes": 350418,
+      "sha256": "1be4be56b76f6ec20712a8695a2470d8a295b36022133230ed256ef9b121a6f5"
+    },
+    {
+      "path": "scn005-browser-hardware-baseline-1-20261017.png",
+      "bytes": 352314,
+      "sha256": "1dfc05e8b3ec3e764f6fd46409b15d1ba1633c7005c0d598b25b1d3a1355243c"
+    },
+    {
+      "path": "scn005-browser-hardware-baseline-2-20261017.png",
+      "bytes": 346106,
+      "sha256": "14fedab8d85a877dc4dbaa5d8d44642c1a798b1f47bf1d3c928e0777a390cc68"
+    },
+    {
+      "path": "scn005-browser-hardware-candidate-20261017.json",
+      "bytes": 4106,
+      "sha256": "fa1e9b70018158300641974fe5b4d83805a3fe622c07b50cdcca5d88bc0ca819"
+    },
+    {
+      "path": "scn005-browser-hardware-candidate-0-20261017.png",
+      "bytes": 351354,
+      "sha256": "81cca5ebba9947850230c4a8f8f91c52b5b81ea71683e08f78dc9d62d14e83f3"
+    },
+    {
+      "path": "scn005-browser-hardware-candidate-1-20261017.png",
+      "bytes": 353048,
+      "sha256": "e5aea09b77f85415b91d8598fd1f8938dabb696a2b6bf63bb8bd919aef59fe77"
+    },
+    {
+      "path": "scn005-browser-hardware-candidate-2-20261017.png",
+      "bytes": 346440,
+      "sha256": "94707926bb536205bcbd1e21418f0cacd7af272fa66ff40a07eb60bb278ca8da"
+    },
+    {
+      "path": "scn005-browser-startup-20261017.mjs",
+      "bytes": 3958,
+      "sha256": "8d4ebafcf9e9c1b9fc4b54d87e5cab879d5786073063ecfbb407dc13cd38cf19"
+    },
+    {
+      "path": "scn005-startup-browser-20261017.log",
+      "bytes": 1536,
+      "sha256": "cc9947fd7ea4ec6c0af52cff3c571b78ec73e8ba545f5eaf83270e2f7666bd3b"
+    },
+    {
+      "path": "scn005-startup-full-20261017.log",
+      "bytes": 257,
+      "sha256": "b0afeaddc9b92a41c4c359f524a16350ad9ac00e5ea6f258b50a1639848996b8"
+    },
+    {
+      "path": "scn005-startup-build-20261017.log",
+      "bytes": 744,
+      "sha256": "1db7b4e7a451dfea9716f744e80c42af43d033a187080a4d205f5a03e77b3218"
+    },
+    {
+      "path": "scn005-startup-strict-20261017.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scn005-startup-ui-types-20261017.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scn005-warmup-red-20261017.log",
+      "bytes": 6431,
+      "sha256": "c2e4b98b725dfd95050597f88c38522586c01ec3feb35bf7f0b9a2cd5d6cb0a3"
+    },
+    {
+      "path": "scn005-warmup-null-red-20261017.log",
+      "bytes": 1230,
+      "sha256": "acbf0953d2b18ff901560fa83695e0308c1b9d06ddb75894df502ab1f0076b24"
+    }
+  ]
+}

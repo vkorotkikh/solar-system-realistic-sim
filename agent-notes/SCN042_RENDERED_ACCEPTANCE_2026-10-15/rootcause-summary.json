@@ -1,0 +1,988 @@
+[
+  {
+    "run": "rootcause-msaa",
+    "singleSample": false,
+    "harnessExitCode": 1,
+    "caseCounts": [
+      {
+        "case": "0-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "1-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "2-none",
+        "pixelComparisonPassed": false,
+        "markersPassed": 25,
+        "failures": [
+          "lon90_lat0"
+        ],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "3-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "4-none",
+        "pixelComparisonPassed": false,
+        "markersPassed": 25,
+        "failures": [
+          "lon270_lat0"
+        ],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "5-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "0-legacy_axis",
+        "pixelComparisonPassed": false,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 42
+      },
+      {
+        "case": "3-double_spin",
+        "pixelComparisonPassed": false,
+        "markersPassed": 5,
+        "failures": [
+          "lon135_lat-45",
+          "lon180_lat-45",
+          "lon225_lat-45",
+          "lon270_lat-45",
+          "lon315_lat-45",
+          "lon0_lat0",
+          "lon45_lat0",
+          "lon135_lat0",
+          "lon180_lat0",
+          "lon225_lat0",
+          "lon315_lat0",
+          "lon0_lat45",
+          "lon45_lat45",
+          "lon90_lat45",
+          "lon135_lat45",
+          "lon180_lat45",
+          "lon225_lat45",
+          "lon270_lat45",
+          "lon315_lat45",
+          "north",
+          "south"
+        ],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "2-handedness",
+        "pixelComparisonPassed": false,
+        "markersPassed": 12,
+        "failures": [
+          "lon135_lat-45",
+          "lon225_lat-45",
+          "lon45_lat0",
+          "lon90_lat0",
+          "lon135_lat0",
+          "lon225_lat0",
+          "lon270_lat0",
+          "lon315_lat0",
+          "lon45_lat45",
+          "lon90_lat45",
+          "lon135_lat45",
+          "lon225_lat45",
+          "lon270_lat45",
+          "lon315_lat45"
+        ],
+        "surfaceFailures": 0
+      }
+    ],
+    "caseDetails": [
+      {
+        "index": 0,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 1282,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 1,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 2,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380354074099e-08,
+        "maxProjectionError": 6.2264396256462026e-06
+      },
+      {
+        "index": 3,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 4,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.8713803117186524e-08,
+        "maxProjectionError": 6.224870150035765e-06
+      },
+      {
+        "index": 5,
+        "antialias": true,
+        "samples": 4,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.8713803082951126e-08,
+        "maxProjectionError": 6.2283453867584895e-06
+      }
+    ],
+    "limbPixels": [
+      {
+        "case": "2-none",
+        "name": "lon90_lat0",
+        "markerRgb": [
+          210,
+          85,
+          80
+        ],
+        "expectedPixels": [
+          {
+            "pixel": [
+              243,
+              271
+            ],
+            "actualRgb": [
+              210,
+              85,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              243,
+              272
+            ],
+            "actualRgb": [
+              197,
+              74,
+              100
+            ]
+          },
+          {
+            "pixel": [
+              243,
+              273
+            ],
+            "actualRgb": [
+              197,
+              74,
+              100
+            ]
+          }
+        ]
+      },
+      {
+        "case": "4-none",
+        "name": "lon270_lat0",
+        "markerRgb": [
+          210,
+          195,
+          80
+        ],
+        "expectedPixels": [
+          {
+            "pixel": [
+              543,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              231
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              232
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              232
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              232
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              233
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              233
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              233
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              234
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              234
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              235
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              235
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              236
+            ],
+            "actualRgb": [
+              185,
+              117,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              236
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              237
+            ],
+            "actualRgb": [
+              157,
+              146,
+              60
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              238
+            ],
+            "actualRgb": [
+              102,
+              69,
+              40
+            ]
+          }
+        ]
+      }
+    ],
+    "shaderErrors": [
+      {
+        "linkLog": "Vertex shader is not compiled.\n",
+        "owners": [
+          {
+            "objectName": "",
+            "bodyId": null,
+            "materialType": "MeshStandardMaterial",
+            "materialName": ""
+          }
+        ],
+        "shaders": [
+          {
+            "type": "vertex",
+            "compileStatus": false,
+            "compileLog": "ERROR: 0:155: '3.141592653589793' : syntax error\n"
+          },
+          {
+            "type": "fragment",
+            "compileStatus": true,
+            "compileLog": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "run": "rootcause-single-sample",
+    "singleSample": true,
+    "harnessExitCode": 1,
+    "caseCounts": [
+      {
+        "case": "0-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "1-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "2-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "3-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "4-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "5-none",
+        "pixelComparisonPassed": true,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "0-legacy_axis",
+        "pixelComparisonPassed": false,
+        "markersPassed": 26,
+        "failures": [],
+        "surfaceFailures": 42
+      },
+      {
+        "case": "3-double_spin",
+        "pixelComparisonPassed": false,
+        "markersPassed": 5,
+        "failures": [
+          "lon135_lat-45",
+          "lon180_lat-45",
+          "lon225_lat-45",
+          "lon270_lat-45",
+          "lon315_lat-45",
+          "lon0_lat0",
+          "lon45_lat0",
+          "lon135_lat0",
+          "lon180_lat0",
+          "lon225_lat0",
+          "lon315_lat0",
+          "lon0_lat45",
+          "lon45_lat45",
+          "lon90_lat45",
+          "lon135_lat45",
+          "lon180_lat45",
+          "lon225_lat45",
+          "lon270_lat45",
+          "lon315_lat45",
+          "north",
+          "south"
+        ],
+        "surfaceFailures": 0
+      },
+      {
+        "case": "2-handedness",
+        "pixelComparisonPassed": false,
+        "markersPassed": 12,
+        "failures": [
+          "lon135_lat-45",
+          "lon225_lat-45",
+          "lon45_lat0",
+          "lon90_lat0",
+          "lon135_lat0",
+          "lon225_lat0",
+          "lon270_lat0",
+          "lon315_lat0",
+          "lon45_lat45",
+          "lon90_lat45",
+          "lon135_lat45",
+          "lon225_lat45",
+          "lon270_lat45",
+          "lon315_lat45"
+        ],
+        "surfaceFailures": 0
+      }
+    ],
+    "caseDetails": [
+      {
+        "index": 0,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 1282,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 1,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 2,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380354074099e-08,
+        "maxProjectionError": 6.2264396256462026e-06
+      },
+      {
+        "index": 3,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.871380323985591e-08,
+        "maxProjectionError": 6.228345137909625e-06
+      },
+      {
+        "index": 4,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.8713803117186524e-08,
+        "maxProjectionError": 6.224870150035765e-06
+      },
+      {
+        "index": 5,
+        "antialias": false,
+        "samples": 0,
+        "geometry": {
+          "radius": 1,
+          "widthSegments": 128,
+          "heightSegments": 96,
+          "phiStart": 0,
+          "phiLength": 6.283185307179586,
+          "thetaStart": 0,
+          "thetaLength": 3.141592653589793
+        },
+        "webglError": 0,
+        "maxWorldError": 3.8713803082951126e-08,
+        "maxProjectionError": 6.2283453867584895e-06
+      }
+    ],
+    "limbPixels": [
+      {
+        "case": "2-none",
+        "name": "lon90_lat0",
+        "markerRgb": [
+          210,
+          85,
+          80
+        ],
+        "expectedPixels": [
+          {
+            "pixel": [
+              243,
+              271
+            ],
+            "actualRgb": [
+              210,
+              85,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              243,
+              272
+            ],
+            "actualRgb": [
+              210,
+              85,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              243,
+              273
+            ],
+            "actualRgb": [
+              210,
+              85,
+              80
+            ]
+          }
+        ]
+      },
+      {
+        "case": "4-none",
+        "name": "lon270_lat0",
+        "markerRgb": [
+          210,
+          195,
+          80
+        ],
+        "expectedPixels": [
+          {
+            "pixel": [
+              543,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              231
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              232
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              232
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              232
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              544,
+              233
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              233
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              233
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              234
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              234
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              235
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              235
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              545,
+              236
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              236
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              237
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          },
+          {
+            "pixel": [
+              546,
+              238
+            ],
+            "actualRgb": [
+              210,
+              195,
+              80
+            ]
+          }
+        ]
+      }
+    ],
+    "shaderErrors": [
+      {
+        "linkLog": "Vertex shader is not compiled.\n",
+        "owners": [
+          {
+            "objectName": "",
+            "bodyId": null,
+            "materialType": "MeshStandardMaterial",
+            "materialName": ""
+          }
+        ],
+        "shaders": [
+          {
+            "type": "vertex",
+            "compileStatus": false,
+            "compileLog": "ERROR: 0:155: '3.141592653589793' : syntax error\n"
+          },
+          {
+            "type": "fragment",
+            "compileStatus": true,
+            "compileLog": ""
+          }
+        ]
+      }
+    ]
+  }
+]

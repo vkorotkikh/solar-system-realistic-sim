@@ -150,6 +150,101 @@ def test_websocket_admission_is_bounded_and_reusable(monkeypatch) -> None:
     server._release_ws_sim_slot(second_lease)
 
 
+def test_websocket_engine_setup_runs_off_event_loop_before_worker_handoff(
+    monkeypatch,
+) -> None:
+    setup_calls: dict[str, tuple[bool, int]] = {}
+
+    def record_first_call(name: str) -> None:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            on_event_loop = False
+        else:
+            on_event_loop = True
+        setup_calls.setdefault(name, (on_event_loop, threading.get_ident()))
+
+    class _ProbeEngine(REBOUNDEngine):
+        def __init__(self, *args, **kwargs):
+            record_first_call("construct")
+            super().__init__(*args, **kwargs)
+
+        def initialize(self, bodies, **kwargs):
+            record_first_call("initialize")
+            return super().initialize(bodies, **kwargs)
+
+        def get_state(self):
+            record_first_call("get_state")
+            return super().get_state()
+
+        def list_body_ids(self):
+            record_first_call("list_body_ids")
+            return super().list_body_ids()
+
+        def get_julian_date(self):
+            record_first_call("get_julian_date")
+            return super().get_julian_date()
+
+    monkeypatch.setattr(server, "REBOUNDEngine", _ProbeEngine)
+    with client.websocket_connect("/ws/sim?engine=rebound") as websocket:
+        assert websocket.receive_json()["type"] == "connected"
+
+    assert set(setup_calls) == {
+        "construct", "initialize", "get_state", "list_body_ids", "get_julian_date",
+    }
+    assert all(not on_event_loop for on_event_loop, _ in setup_calls.values())
+    assert len({thread_id for _, thread_id in setup_calls.values()}) == 1
+
+
+def test_websocket_cancelled_initialization_retains_admission_until_worker_exits(
+    monkeypatch,
+) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    exited = threading.Event()
+    monkeypatch.setattr(server, "_ws_sim_connection_guard", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(server, "_ws_sim_active_connections", 0)
+    monkeypatch.setattr(server, "_ws_sim_active_connections_by_subject", {})
+    monkeypatch.setattr(server, "_ws_sim_active_leases", set())
+
+    class _BlockedEngine(REBOUNDEngine):
+        def initialize(self, bodies, **kwargs):
+            entered.set()
+            try:
+                assert release.wait(timeout=5), "initialization was never released"
+                raise RuntimeError("initialization failed after cancellation")
+            finally:
+                exited.set()
+
+    monkeypatch.setattr(server, "REBOUNDEngine", _BlockedEngine)
+    websocket, sent = _scope_websocket([])
+
+    async def exercise() -> None:
+        session = asyncio.create_task(server.simulation_websocket(websocket))
+        try:
+            assert await asyncio.to_thread(entered.wait, 2)
+            for _ in range(2):
+                session.cancel()
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                assert not session.done()
+                assert server._ws_sim_active_connections == 1
+                assert server._try_acquire_ws_sim_slot() is None
+        finally:
+            release.set()
+            with pytest.raises(asyncio.CancelledError):
+                await session
+        assert exited.is_set()
+        assert server._ws_sim_active_connections == 0
+        assert server._ws_sim_active_leases == set()
+        replacement = server._try_acquire_ws_sim_slot()
+        assert replacement is not None
+        server._release_ws_sim_slot(replacement)
+
+    asyncio.run(exercise())
+    assert sent == [{"type": "websocket.accept", "subprotocol": None, "headers": []}]
+
+
 def test_websocket_admission_preserves_global_cap_with_per_subject_fairness(
     monkeypatch,
 ) -> None:

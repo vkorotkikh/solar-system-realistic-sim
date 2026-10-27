@@ -84,3 +84,31 @@ not declared resolved by this commit.
 62 files passed, 1 file skipped. Skipped coverage is not counted as passing.
 This configured-suite result does not erase the separately reproduced
 out-of-scope zero-alpha failure above.
+
+## Authorized zero-alpha follow-up
+
+Parent extended the write set to `sunVisuals.ts` for the reproduced blend defect.
+The loop renderer now uses a finite numeric fallback rather than `|| 1`: valid
+zero remains zero, finite out-of-range values retain clamping, and nonfinite
+values fall back to the target (alpha one).
+
+`sunVisuals.blendAlpha.test.ts` exercises actual generated geometry for seven
+cases: zero from the real feature blender, one, finite values below/above the
+range, NaN, positive infinity and negative infinity. The original first-endpoint
+absolute position budget remains **1e-9 AU**. The initial expanded test also
+asserted the final endpoint, incorrectly ignoring the existing arc sampler's
+0.999999 phase cap; that unrelated assertion was removed without changing the
+sampler or any numerical budget. The isolated first-endpoint regression then
+produced **2 failures, 5 passes** before the production fix (zero and negative
+infinity), both with 0.0065828041928929605 AU error.
+
+After the fix:
+
+- Full configured Vitest: **652 passed, 415 skipped**, 63 files passed and one
+  skipped. All seven new actual-geometry cases pass. Skips remain unverified.
+- `npm run test:types:ui`: passed without diagnostics.
+- `git diff --check`: passed before commit.
+
+This resolves the previously recorded zero-alpha failure. No controller,
+`main.ts`, backend, sampler, parent harness, shader, or scientific threshold
+changed. No headful browser or server was started; parent retains the GPU window.

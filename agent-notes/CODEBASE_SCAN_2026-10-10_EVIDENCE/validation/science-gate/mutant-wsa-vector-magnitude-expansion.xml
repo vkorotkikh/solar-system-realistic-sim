@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.318" timestamp="2026-10-10T07:24:08.694752+00:00" hostname="Athena"><testcase classname="backend.tests.test_wsa_semantics" name="test_expansion_uses_exact_radial_components_not_tangential_magnitude" time="0.004"><failure message="AssertionError: &#10;Not equal to tolerance rtol=0, atol=1e-12&#10;R4-WSA-RADIAL-COMPONENT&#10;Mismatched elements: 4 / 4 (100%)&#10;Mismatch at indices:&#10; [0]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)&#10; [1]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)&#10; [2]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)&#10; [3]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)&#10;Max absolute difference among violations: 0.93432267&#10;Max relative difference among violations: 0.93432267&#10; ACTUAL: array([0.065677, 0.065677, 0.065677, 0.065677])&#10; DESIRED: array(1)">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x71131ebe3680&gt;
+
+    def test_expansion_uses_exact_radial_components_not_tangential_magnitude(monkeypatch):
+        field = RadialTube(tangent=5)
+        result = controlled_map(monkeypatch, [['open'] * 4, ['closed'] * 4], field)
+&gt;       np.testing.assert_allclose(
+            result['fs_map'][0], 1, atol=1e-12, rtol=0,
+            err_msg="R4-WSA-RADIAL-COMPONENT",
+        )
+E       AssertionError: 
+E       Not equal to tolerance rtol=0, atol=1e-12
+E       R4-WSA-RADIAL-COMPONENT
+E       Mismatched elements: 4 / 4 (100%)
+E       Mismatch at indices:
+E        [0]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)
+E        [1]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)
+E        [2]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)
+E        [3]: 0.06567732510136146 (ACTUAL), 1 (DESIRED)
+E       Max absolute difference among violations: 0.93432267
+E       Max relative difference among violations: 0.93432267
+E        ACTUAL: array([0.065677, 0.065677, 0.065677, 0.065677])
+E        DESIRED: array(1)
+
+backend/tests/test_wsa_semantics.py:66: AssertionError</failure></testcase></testsuite></testsuites>

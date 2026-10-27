@@ -17,8 +17,12 @@ function rendered(element: HTMLElement): boolean {
   return true;
 }
 export function createPanelController({ app, panel, viewport, toggle, close, backdrop, breakpoint, onLayoutChange }: PanelControllerArgs) {
-  const state: PanelState = { mobile: breakpoint.matches, desktopOpen: true, mobileOpen: false };
   const doc = panel.ownerDocument;
+  const view = doc.defaultView;
+  // WebKit can retain the old matches value until its queued change event.
+  // A fresh query keeps an intervening action in the correct remembered state.
+  const isMobile = () => view?.matchMedia(breakpoint.media).matches ?? breakpoint.matches;
+  const state: PanelState = { mobile: isMobile(), desktopOpen: true, mobileOpen: false };
   let modal = false;
   let disposed = false;
   panel.tabIndex = -1;
@@ -54,14 +58,19 @@ export function createPanelController({ app, panel, viewport, toggle, close, bac
     onLayoutChange();
   }
   function setOpen(open: boolean) {
-    state.mobile = breakpoint.matches;
+    state.mobile = isMobile();
     if (state.mobile) state.mobileOpen = open; else state.desktopOpen = open;
     apply(true);
   }
   const openPanel = () => setOpen(true);
   const closePanel = () => setOpen(false);
   const onBackdrop = () => { if (state.mobile) closePanel(); };
-  const onBreakpoint = () => { state.mobile = breakpoint.matches; apply(); };
+  const onBreakpoint = () => {
+    const mobile = isMobile();
+    if (state.mobile === mobile) return;
+    state.mobile = mobile;
+    apply();
+  };
   const onFocus = (event: FocusEvent) => { if (modal && !panel.contains(event.target as Node)) focusInside(); };
   function onKey(event: KeyboardEvent) {
     if (event.defaultPrevented || event.isComposing) return;
@@ -79,6 +88,8 @@ export function createPanelController({ app, panel, viewport, toggle, close, bac
   }
   toggle.addEventListener('click', openPanel); close.addEventListener('click', closePanel);
   backdrop.addEventListener('click', onBackdrop); breakpoint.addEventListener('change', onBreakpoint);
+  // A rapid round trip can coalesce away the media-query change event entirely.
+  view?.addEventListener('resize', onBreakpoint);
   doc.addEventListener('keydown', onKey); doc.addEventListener('focusin', onFocus);
   apply();
   return { setOpen, dispose() {
@@ -86,6 +97,7 @@ export function createPanelController({ app, panel, viewport, toggle, close, bac
     setOpen(false); disposed = true; modal = false;
     toggle.removeEventListener('click', openPanel); close.removeEventListener('click', closePanel);
     backdrop.removeEventListener('click', onBackdrop); breakpoint.removeEventListener('change', onBreakpoint);
+    view?.removeEventListener('resize', onBreakpoint);
     doc.removeEventListener('keydown', onKey); doc.removeEventListener('focusin', onFocus);
     viewport.inert = false; viewport.removeAttribute('aria-hidden');
     panel.inert = false; panel.removeAttribute('aria-hidden'); panel.removeAttribute('aria-modal'); panel.removeAttribute('role');

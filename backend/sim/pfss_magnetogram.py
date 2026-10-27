@@ -31,11 +31,18 @@ from . import gong_magnetogram as gong
 from .magnetogram_grid import MagnetogramGrid, equal_area_sine_latitude_grid
 from .pfss_tracing import safe_norm, trace_field, trace_field_batch
 from .pfss_evaluation import StreamingPFSS, schmidt_latitude_design
-from .solar_active_regions import ActiveRegionSeed, build_active_regions, region_lifetime, region_polarity_dirs
+from .solar_active_regions import (
+    J2000_JD,
+    ActiveRegionSeed,
+    build_active_regions,
+    region_lifetime,
+    region_polarity_dirs,
+)
 from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
+    CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY,
     mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_number_from_jd_tdb,
     provider_carrington_state_from_crnow,
@@ -121,7 +128,11 @@ def synthetic_magnetogram(
     # Dipole tilt: g_1^1 (tilted component, increases at solar max)
     tilt_angle = 0.2 * activity  # ~12° at solar max
     g11 = g10 * math.sin(tilt_angle)
-    br += g11 * sin_theta * np.cos(phi_grid)
+    tilt_phase = (
+        math.radians(CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY)
+        * (jd - J2000_JD)
+    ) % math.tau
+    br += g11 * sin_theta * np.cos(phi_grid - tilt_phase)
 
     # Quadrupole: g_2^0
     g20 = 2.5 * activity
@@ -238,68 +249,16 @@ class PFSSField:
 
         Units match the input coefficient units (typically Gauss for g_lm).
         """
-        if self.lmax > 64:
-            return tuple(float(v) for v in self._streaming.evaluate(r, theta, phi))
-        cos_t = math.cos(theta)
-        sin_t = math.sin(theta)
-
-        # Compute Legendre functions at this colatitude
-        plm_vals: dict[tuple[int, int], float] = {}
-        dplm_vals: dict[tuple[int, int], float] = {}
-        self._legendre_at_point(cos_t, sin_t, plm_vals, dplm_vals)
-
-        br_val = 0.0
-        bt_val = 0.0
-        bp_val = 0.0
-
-        for l in range(1, self.lmax + 1):
-            # B=-grad(Psi), with each unit-coefficient potential mode
-            # Psi_l = [r^(-l-1) - r^l/rss^(2l+1)] / D_l * Y_lm,
-            # D_l = l+1 + l/rss^(2l+1). Thus Psi_l(rss)=0,
-            # Br(1)=Y_lm, and Btheta(rss)=Bphi(rss)=0.
-            # Br(rss)=(2l+1)*rss^(-l-2)/D_l * Y_lm is generally nonzero.
-            rss = self.r_ss
-
-            r_ratio = r  # r in solar radii, photosphere = 1
-            rss_pow = (1.0 / rss) ** (2 * l + 1)
-
-            # c_l: radial decay factor for Br
-            # At r=1: c_l = (l+1+l*rss^{-(2l+1)}) / (l+1+l*rss^{-(2l+1)}) = 1 — correct
-            denominator = (l + 1) + l * rss_pow
-            if abs(denominator) < 1e-30:
-                continue
-
-            # Br coefficient
-            cl_br = ((l + 1) * r_ratio ** (-(l + 2)) + l * rss_pow * r_ratio ** (l - 1)) / denominator
-            # Btheta coefficient
-            cl_bt = -(r_ratio ** (-(l + 2)) - rss_pow * r_ratio ** (l - 1)) / denominator
-            # Bphi coefficient is similar to Btheta
-            cl_bp = cl_bt  # Same radial factor for Bφ
-
-            for m in range(l + 1):
-                plm = plm_vals.get((l, m), 0.0)
-                dplm = dplm_vals.get((l, m), 0.0)
-
-                cos_mp = math.cos(m * phi)
-                sin_mp = math.sin(m * phi)
-                glm = self.g[l, m] if l < self.g.shape[0] and m < self.g.shape[1] else 0.0
-                hlm = self.h[l, m] if l < self.h.shape[0] and m < self.h.shape[1] else 0.0
-
-                gh_cos = glm * cos_mp + hlm * sin_mp
-                gh_sin = -glm * sin_mp + hlm * cos_mp
-
-                br_val += cl_br * plm * gh_cos
-                bt_val += cl_bt * dplm * gh_cos
-                bp_val += cl_bp * float(schmidt_azimuthal_factor(m, cos_t, plm, dplm)) * gh_sin
-
-        return (br_val, bt_val, bp_val)
+        # Keep scalar and batch coordinate handling identical, including
+        # resolved near-pole sine terms at degrees below the legacy cap.
+        return tuple(float(v) for v in self._streaming.evaluate(r, theta, phi))
 
     def evaluate_cartesian(self, x: float, y: float, z: float) -> tuple[float, float, float]:
         """Evaluate B at Cartesian position (x, y, z) in solar radii → (Bx, By, Bz)."""
         r = math.sqrt(x * x + y * y + z * z)
         if r < 0.01:
             return (0.0, 0.0, 0.0)
-        theta = math.acos(_clamp(z / r, -1.0, 1.0))
+        theta = math.atan2(math.hypot(x, y), z)
         phi = math.atan2(y, x)
 
         br, bt, bp = self.evaluate(r, theta, phi)
@@ -334,7 +293,7 @@ class PFSSField:
         
         # Avoid division by zero at origin
         r_safe = np.where(r < 0.01, 1.0, r)
-        theta = np.arccos(np.clip(z / r_safe, -1.0, 1.0))
+        theta = np.arctan2(np.hypot(x, y), z)
         phi = np.arctan2(y, x)
         
         br, bt, bp = self._evaluate_batch(r_safe, theta, phi)
@@ -914,7 +873,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v2"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v3"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"

@@ -21,6 +21,8 @@ from sim.solar_time import (
     jd_tdb_to_utc_datetime,
     mean_carrington_rotation_estimate,
     mean_carrington_rotation_number,
+    mean_carrington_rotation_number_from_jd_tdb,
+    mean_carrington_rotation_range_jd_tdb,
     mean_carrington_rotation_start,
     provider_carrington_state_from_crnow,
 )
@@ -115,6 +117,39 @@ def test_mean_rotation_uses_floor_at_each_boundary(rotation: int) -> None:
     assert mean_carrington_rotation_number(boundary - epsilon) == rotation - 1
     assert mean_carrington_rotation_number(boundary) == rotation
     assert mean_carrington_rotation_number(boundary + epsilon) == rotation
+
+
+@pytest.mark.filterwarnings("ignore:ERFA function .*dubious year.*")
+def test_mean_rotation_jd_adapters_round_trip_boundaries() -> None:
+    for rotation in range(2200, 2400):
+        start_jd_tdb, end_jd_tdb = mean_carrington_rotation_range_jd_tdb(rotation)
+
+        assert (
+            mean_carrington_rotation_number_from_jd_tdb(
+                math.nextafter(start_jd_tdb, -math.inf)
+            )
+            == rotation - 1
+        )
+        assert mean_carrington_rotation_number_from_jd_tdb(start_jd_tdb) == rotation
+        assert (
+            mean_carrington_rotation_number_from_jd_tdb(
+                math.nextafter(start_jd_tdb, math.inf)
+            )
+            == rotation
+        )
+        assert (
+            mean_carrington_rotation_number_from_jd_tdb(
+                math.nextafter(end_jd_tdb, -math.inf)
+            )
+            == rotation
+        )
+        assert mean_carrington_rotation_number_from_jd_tdb(end_jd_tdb) == rotation + 1
+        assert (
+            mean_carrington_rotation_number_from_jd_tdb(
+                math.nextafter(end_jd_tdb, math.inf)
+            )
+            == rotation + 1
+        )
 
 
 def test_one_physical_instant_has_one_mean_rotation_across_scales() -> None:

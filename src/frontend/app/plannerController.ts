@@ -291,6 +291,16 @@ export function createPlannerController({
   } = planners;
   const { formatJulianAsDate, parseDateInputToJulian } = dateUtils;
   const { plotRoute, clearRouteVisualization } = routeApi;
+  let plannerRequestSequence = 0;
+
+  function beginPlannerRequest(): number {
+    plannerRequestSequence += 1;
+    return plannerRequestSequence;
+  }
+
+  function ownsPlannerRequest(requestSequence: number): boolean {
+    return requestSequence === plannerRequestSequence;
+  }
 
   function fillPlannerSelects(): void {
     dom.plannerFrom.innerHTML = '';
@@ -387,6 +397,7 @@ export function createPlannerController({
   }
 
   async function runPlanner({ directOnly }: { directOnly: boolean }): Promise<void> {
+    const requestSequence = beginPlannerRequest();
     const {
       fromId,
       toId,
@@ -416,7 +427,9 @@ export function createPlannerController({
         ephemerisProvider,
         prograde
       });
+      if (!ownsPlannerRequest(requestSequence)) return;
     } catch (error) {
+      if (!ownsPlannerRequest(requestSequence)) return;
       dom.plannerOutput.textContent = formatPlannerFailure(error, 'Planner');
       clearRouteVisualization();
       return;
@@ -438,6 +451,7 @@ export function createPlannerController({
   }
 
   async function runLambertPlanner(): Promise<void> {
+    const requestSequence = beginPlannerRequest();
     const {
       fromId,
       toId,
@@ -466,6 +480,7 @@ export function createPlannerController({
         ephemerisProvider,
         prograde
       });
+      if (!ownsPlannerRequest(requestSequence)) return;
 
       if (!result.solution) {
         dom.plannerOutput.textContent = 'Lambert solver did not return a solution.';
@@ -478,12 +493,14 @@ export function createPlannerController({
       dom.plannerOutput.textContent =
         `${describeRoute(route, bodyById)}\nSolver: Lambert (${result.ephemerisProvider ?? ephemerisProvider})`;
     } catch (error) {
+      if (!ownsPlannerRequest(requestSequence)) return;
       dom.plannerOutput.textContent = formatPlannerFailure(error, 'Lambert');
       clearRouteVisualization();
     }
   }
 
   async function runPorkchopPlanner(): Promise<void> {
+    const requestSequence = beginPlannerRequest();
     const {
       fromId,
       toId,
@@ -511,6 +528,7 @@ export function createPlannerController({
         ephemerisProvider,
         prograde
       });
+      if (!ownsPlannerRequest(requestSequence)) return;
 
       if (!window.best) {
         dom.plannerOutput.textContent = 'Porkchop scan found no feasible transfer in this window.';
@@ -526,6 +544,7 @@ export function createPlannerController({
         ephemerisProvider,
         prograde
       });
+      if (!ownsPlannerRequest(requestSequence)) return;
       if (!lambert.solution) {
         dom.plannerOutput.textContent = 'Porkchop best point could not be reconstructed as a Lambert arc.';
         clearRouteVisualization();
@@ -548,12 +567,14 @@ export function createPlannerController({
         `Solver: Porkchop + Lambert (${window.ephemerisProvider ?? ephemerisProvider})`
       ].filter((line): line is string => line != null).join('\n');
     } catch (error) {
+      if (!ownsPlannerRequest(requestSequence)) return;
       dom.plannerOutput.textContent = formatPlannerFailure(error, 'Porkchop scan');
       clearRouteVisualization();
     }
   }
 
   async function runMissionPlanner(): Promise<void> {
+    const requestSequence = beginPlannerRequest();
     const {
       fromId,
       toId,
@@ -583,6 +604,7 @@ export function createPlannerController({
         prograde,
         payloadMassKg
       });
+      if (!ownsPlannerRequest(requestSequence)) return;
 
       const recommendation = result?.recommendation;
       if (!recommendation?.outbound) {
@@ -594,6 +616,7 @@ export function createPlannerController({
       plotRoute(recommendation.outbound);
       dom.plannerOutput.textContent = `${formatMissionSummary(recommendation, result?.missionSearch)}\nSolver: MissionPlannerAgent`;
     } catch (error) {
+      if (!ownsPlannerRequest(requestSequence)) return;
       dom.plannerOutput.textContent = formatPlannerFailure(error, 'Mission planner');
       clearRouteVisualization();
     }
@@ -607,6 +630,7 @@ export function createPlannerController({
     dom.planMission.addEventListener('click', () => runMissionPlanner());
 
     dom.clearRoute.addEventListener('click', () => {
+      beginPlannerRequest();
       clearRouteVisualization();
       dom.plannerOutput.textContent = 'No plotted route.';
     });

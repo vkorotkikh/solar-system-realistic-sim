@@ -1,0 +1,6 @@
+Using Python 3.12.13 environment at: /tmp/solar-sweep-2026-10-10-j1gnowo_/venv-trajectory
+Resolved 7 packages in 66ms
+Installed 3 packages in 11ms
+ + httpcore2==2.13.1
+ + httpx2==2.13.1
+ + truststore==0.10.4

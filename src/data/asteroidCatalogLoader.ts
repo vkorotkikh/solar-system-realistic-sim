@@ -25,9 +25,9 @@ export interface AsteroidCatalogReaderOptions {
   maxRecords?: number;
 }
 
-export interface AsteroidCatalogBinary {
+export interface AsteroidCatalogBinary<TRecord = PackedAsteroidRecord> {
   header: AsteroidCatalogBinaryHeader;
-  records: PackedAsteroidRecord[];
+  records: TRecord[];
 }
 
 export interface RoundTripTestResult {
@@ -214,8 +214,18 @@ export function writeAsteroidCatalogBinary(records: readonly PackedAsteroidRecor
 
 export function readAsteroidCatalogBinary(
   buffer: ArrayBuffer,
-  options: AsteroidCatalogReaderOptions = {}
-): AsteroidCatalogBinary {
+  options?: AsteroidCatalogReaderOptions
+): AsteroidCatalogBinary;
+export function readAsteroidCatalogBinary<TRecord>(
+  buffer: ArrayBuffer,
+  options: AsteroidCatalogReaderOptions,
+  mapRecord: (record: PackedAsteroidRecord, index: number) => TRecord
+): AsteroidCatalogBinary<TRecord>;
+export function readAsteroidCatalogBinary<TRecord>(
+  buffer: ArrayBuffer,
+  options: AsteroidCatalogReaderOptions = {},
+  mapRecord?: (record: PackedAsteroidRecord, index: number) => TRecord
+): AsteroidCatalogBinary<TRecord | PackedAsteroidRecord> {
   throwIfInvalidBuffer(buffer, HEADER_BYTES);
   const header = readHeaderView(buffer);
   const maxBytes = HEADER_BYTES + header.recordCount * header.strideBytes;
@@ -225,7 +235,7 @@ export function readAsteroidCatalogBinary(
     ? header.recordCount
     : Math.max(0, Math.min(options.maxRecords, header.recordCount));
   const view = new DataView(buffer, HEADER_BYTES);
-  const records: PackedAsteroidRecord[] = [];
+  const records: (TRecord | PackedAsteroidRecord)[] = [];
   records.length = recordCount;
 
   for (let i = 0; i < recordCount; i += 1) {
@@ -243,7 +253,7 @@ export function readAsteroidCatalogBinary(
     const albedo = unpackUnsignedShort(view.getUint16(baseOffset + 30, true), 0, 1);
     const taxonomyIndex = view.getUint8(baseOffset + 32);
 
-    records[i] = {
+    const record: PackedAsteroidRecord = {
       sourceId,
       epochJd: Number.isFinite(epochJd) ? epochJd : 0,
       aAu: Number.isFinite(aAu) ? aAu : 0,
@@ -257,6 +267,9 @@ export function readAsteroidCatalogBinary(
       albedo,
       taxonomyIndex
     };
+    // Convert each decoded row immediately so consumers need not retain a
+    // second 100,000-object catalog while building their final representation.
+    records[i] = mapRecord ? mapRecord(record, i) : record;
   }
 
   return {

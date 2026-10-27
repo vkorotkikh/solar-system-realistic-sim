@@ -163,3 +163,114 @@ cache access when epoch coverage fails. Spatial eligibility remains false.
 No production AIA helper change was needed within the assigned scope. Frozen
 captures, scientific thresholds, other providers, solar_physics, controllers,
 Moon artifacts, and the canonical master register were not modified.
+
+## Follow-up: live AIA cache handoff resolved
+
+The live-cache handoff above is now implemented in the evidence-review worktree.
+Every successful AIA delivery revalidates all five channel timestamps, including
+cache hits and tile requests. A live cache entry expires at the oldest channel's
+six-hour coverage limit. A wall-clock jump cannot bypass the delivery guard, and
+malformed channel collections fail closed without reaching binary acquisition.
+Malformed acquisitions retain bounded retry backoff rather than creating a hot
+loop. Acquisition errors are preserved rather than replaced by delivery errors.
+
+The symmetric, inclusive +/-21600-second request window and whole-second request
+normalization are unchanged. Explicit dated requests retain their own epoch
+coverage regardless of today's date; their wall-clock freshness is recomputed on
+every delivery. Historical data is not reclassified as live, spatial eligibility
+remains false, and AIA metadata still supplies no activity/calibration inference.
+Delivery changes are made on a deep copy, not on retained cache payloads.
+
+Validation:
+
+- New `backend/tests/test_solar_aia_live_cache.py`: 14 passing cases. Running the
+  same suite against the pre-fix `6b443d7` provider module gives 12 failures and
+  two passes, with no skips. This baseline execution was in-memory only.
+- Combined AIA live-cache/epoch, realtime cache/transport/recovery, and security
+  suites: **231 passed, zero skipped**, two existing dependency deprecations.
+- The dated-cache identity assertion now compares channels and request epoch,
+  while explicitly requiring freshness to advance rather than remain frozen.
+- No other providers, solar physics, controller, main, or moon files changed.
+
+The scalar-JD leap-boundary handoff remains open pending the explicitly requested
+precision-policy decision; this cache fix does not alter `solar_time.py`.
+
+## Follow-up: scalar-JD policy decision required before implementation
+
+Live-cache implementation commit:
+`0ca6788452d5728a77460922b0b3856f4d2231e1`.
+
+The independent time investigation used actual Astropy 8.0.1 and four positive
+leap boundaries, with known UTC/TAI offsets (25, 35, 36, 37 seconds after the
+1990, 2012, 2015, 2017 boundaries) as a separate scale-identity oracle.
+`backend/tests/test_solar_time_precision_evidence.py` records 30 executable
+cases covering both leap boundaries, genuine leap-second interiors, ordinary
+UTC/TDB conversions, and preservation of identity using two-part TDB JD.
+These are precision evidence and safety tests, not a claim that the scalar
+midnight conversion defect is fixed.
+
+For scalar binary64 JD `x`, let `p` and `n` be its adjacent floats. The interval
+that can round to `x` is bounded by `x - (x-p)/2` and `x + (n-x)/2`, subject to
+round-to-even endpoint ownership. These are representational bounds, not a new
+scientific tolerance. Constructing those endpoints requires two-part JD;
+ordinary scalar addition can round the half-gaps away. At all four examined
+modern dates the full spacing is 40.233135223388672 microseconds, so the
+half-ULP is 20.116567611694336 microseconds. Python datetime additionally rounds
+to a one-microsecond quantum, independently of the scalar-JD quantization.
+
+Actual UTC-midnight -> scalar TDB -> decoded TDB errors:
+
+| UTC midnight | Scalar JD TDB | Error (microseconds) |
+| --- | --- | --- |
+| 1990-01-01 | 2447892.500661851 | -12.2939674441 |
+| 2012-07-01 | 2456109.500777594 | -15.3290180549 |
+| 2015-07-01 | 2457204.500789168 | -11.7425621227 |
+| 2017-01-01 | 2457754.50080074 | -16.7684714114 |
+
+At each boundary, the exact midnight and the genuine leap instant ten
+microseconds before midnight produce **the same scalar JD**. For example,
+`2017-01-01T00:00:00 UTC` and `2016-12-31T23:59:60.99999 UTC` both encode as
+`2457754.50080074`. No scalar-only function can distinguish their provenance.
+Snapping this value to midnight would also remap a genuine leap-second instant.
+Even a snap smaller than half an ULP at the decoded center does not preserve
+the original half-ULP error guarantee for every possible originating instant.
+
+There is a second boundary risk: at all four dates the exact **start** of the
+leap second shares its scalar with the ordinary instant ten microseconds before
+the leap. The decoded center is outside the leap second. The current adapter
+therefore silently returns, for example, `2016-12-31T23:59:59.999989+00:00` for
+the scalar originating at `2016-12-31T23:59:60 UTC`. Merely catching Astropy's
+midnight exception or checking the decoded center cannot establish safety.
+
+Recommended owner decision: reject scalar rounding intervals that intersect a
+leap second with an explicit precision/representation error; retain strict
+rejection of unrepresentable genuine leap seconds; provide an explicit two-part
+TDB-JD conversion path for callers that possess sufficient precision. This
+preserves scientific precision and never guesses an instant. It also means
+ambiguous scalar-only midnight requests remain unavailable until their callers
+supply higher-precision input. That interface/availability tradeoff requires
+owner approval before changing or committing `solar_time.py` behavior.
+
+No automatic snap, `leap_second_strict='silent'`, widened request window, changed
+scientific threshold, or time-policy implementation is included in this evidence
+commit. The time handoff remains open; two-part precision cannot be recovered
+from a scalar that already discarded it.
+
+Final combined scoped validation: **330 passed, zero skipped**, two pre-existing
+FastAPI/Starlette dependency deprecation warnings. The 30 precision evidence
+cases pass while documenting the still-open runtime ambiguity; they must not be
+reported as a completed time-policy repair. No full backend or native rerun.
+
+```sh
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q -ra \
+  scripts/test_wsa_observation_overlap.py \
+  backend/tests/test_solar_aia_live_cache.py \
+  backend/tests/test_solar_aia_epoch_coverage.py \
+  backend/tests/test_solar_realtime_data_cache.py \
+  backend/tests/test_solar_realtime_data_transport.py \
+  backend/tests/test_solar_realtime_recovery.py \
+  backend/tests/test_solar_security.py \
+  backend/tests/test_solar_time_precision_evidence.py \
+  backend/tests/test_carrington_semantics.py \
+  backend/tests/test_planning_epoch_contract.py
+```

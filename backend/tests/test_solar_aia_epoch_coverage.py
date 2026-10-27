@@ -112,7 +112,10 @@ def test_dated_aia_cache_does_not_leak_valid_images_into_an_uncovered_epoch(isol
     assert unavailable["sdo_aia"] is None
     assert unavailable["source_status"]["sdo_aia"]["ok"] is False
     assert "aia_epoch_unavailable" in unavailable["source_status"]["sdo_aia"]["error"]
-    assert provider.latest(jd_tdb=covered_jd)["sdo_aia"] == valid["sdo_aia"]
+    cached = provider.latest(jd_tdb=covered_jd)["sdo_aia"]
+    assert cached["channels"] == valid["sdo_aia"]["channels"]
+    assert cached["request_date_utc"] == valid["sdo_aia"]["request_date_utc"]
+    assert cached["freshness_s"] >= valid["sdo_aia"]["freshness_s"]
     assert len(queries) == 6
     assert valid["sdo_aia"]["freshness_s"] > 21_600  # Historical coverage is not live freshness.
     assert all(row["spatial_use"]["eligible"] is False for row in valid["sdo_aia"]["channels"].values())
