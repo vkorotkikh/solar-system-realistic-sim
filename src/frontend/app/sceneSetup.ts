@@ -101,6 +101,7 @@ export function createSceneSetup({
   scene.background = new Color(backgroundColor);
 
   const camera = new PerspectiveCamera(58, 1, 0.0001, 20_000);
+  camera.up.set(0, 0, 1);
   camera.position.set(0, -10, 6);
 
   const controls = new OrbitControls(camera, canvas);

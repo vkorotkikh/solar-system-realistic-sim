@@ -1,0 +1,33 @@
+{
+  "head": "68c3f85",
+  "rebound_version": "5.1.1",
+  "callbacks": {
+    "radiation": {
+      "actual_argument_types": [
+        "LP_Simulation"
+      ],
+      "errors_with_actual_argument": [
+        "AttributeError: 'LP_Simulation' object has no attribute 'particles'"
+      ],
+      "errors_with_arg_contents": []
+    },
+    "galactic": {
+      "actual_argument_types": [
+        "LP_Simulation"
+      ],
+      "errors_with_actual_argument": [
+        "AttributeError: 'LP_Simulation' object has no attribute 'particles'"
+      ],
+      "errors_with_arg_contents": []
+    },
+    "combined": {
+      "actual_argument_types": [
+        "LP_Simulation"
+      ],
+      "errors_with_actual_argument": [
+        "AttributeError: 'LP_Simulation' object has no attribute 'particles'"
+      ],
+      "errors_with_arg_contents": []
+    }
+  }
+}

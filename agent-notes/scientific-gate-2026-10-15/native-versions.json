@@ -1,0 +1,16 @@
+{
+  "python": "3.12.15",
+  "executable": "/tmp/solar-closure-tudat-20261015/env/bin/python",
+  "tudatpy": "1.0.0",
+  "native_kernel": "/tmp/solar-closure-tudat-20261015/env/lib/python3.12/site-packages/tudatpy/kernel.so",
+  "numpy": "1.26.4",
+  "pytest": "9.1.1",
+  "tudat_resources_package": "2.4",
+  "resource_build": "h68c723b_5",
+  "adapter": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-pfss-streaming-review/backend/sim/tudatpy_hooks.py",
+  "native_load": true,
+  "resource_paths": {
+    "get_resource_path": "/home/nomad/.tudat/resource",
+    "get_spice_kernel_path": "/home/nomad/.tudat/resource/spice_kernels"
+  }
+}

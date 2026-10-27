@@ -1,0 +1,555 @@
+{
+  "snapshot": "/tmp/solar-sweep-2026-10-10-j1gnowo_/trajectory",
+  "float32_jd": {
+    "jd": 2461320.125,
+    "rounded": 2461320,
+    "error_days": -0.125,
+    "ulp_days": 0.25
+  },
+  "acbf_roundtrip": {
+    "version": 1,
+    "sourceCount": 100000,
+    "encodedBytes": 3600012,
+    "mismatchedRecords": 99916,
+    "maxEpochErrorDays": 0.12499989662319422,
+    "maxAUError": 1.1920928955078125e-7,
+    "maxECCError": 0.000007629437868231573,
+    "maxAngleErrorDeg": 0.0027466201120773803,
+    "maxDiameterErrorKm": 0.00000762939453125,
+    "maxAlbedoError": 0.00000762949169624827,
+    "ok": false
+  },
+  "fast_kepler": {
+    "eccentricity": 0.99,
+    "max_residual_radians": 138741190.50303063,
+    "mean_anomaly": 6.157521601035994
+  },
+  "schwarzschild": [
+    {
+      "source": "SagittariusA",
+      "stored_cm": 12400000000,
+      "stored_au": 0.0008288770053475936,
+      "from_local_G_M_c_cm": 1227027274220.1716,
+      "ratio": 98.95381243711063
+    },
+    {
+      "source": "M87",
+      "stored_cm": 19000000000000,
+      "stored_au": 1.2700534759358288,
+      "from_local_G_M_c_cm": 1919999345794684,
+      "ratio": 101.05259714708863
+    }
+  ],
+  "secular_velocity_derivatives": [
+    {
+      "id": "mercury",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.06061205796206447
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.06247669597965094
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.062495784319644476
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.05833280390197176
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.0604022007244168
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.05964607904940863
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.035832642240003
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.043761321326305926
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.044238018068126196
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "venus",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.0034015557049863463
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.003327802673091662
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.003327828359955541
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.004867313202369925
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.005201347802083454
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.004765319589493265
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.008849691644027486
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.008861517729710808
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.008942742469786349
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "earth",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.2632432098707256
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.263398680853389
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.2634104138127332
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.2714233496658374
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.2715801218761115
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.27138597284183025
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.2632826849425503
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.26342720591534774
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.2640996249877418
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mars",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.5161971522367913
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.5162445537736896
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.5162526615945853
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.5863877212087122
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.5864077902774754
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.5860572870093638
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.5895037801450383
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.5895227217880143
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.5895620127243448
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jupiter",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.8499988694611686
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.8499968271338851
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.8499760350353271
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.8743556107622926
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.8743651255302001
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.874120397067165
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 0.8582221552212256
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 0.8582273567133237
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 0.858519279276589
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "saturn",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 2.8478866885734218
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 2.8478836841125945
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 2.8478393582832124
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 2.8141020155638787
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 2.814099627231237
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 2.8143448546918646
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 3.2661578821902117
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 3.266164004885106
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 3.266034656492418
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "uranus",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 6.680778972948731
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 6.680790272139715
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 6.681086718814582
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 6.638687464194548
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 6.638691173219837
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 6.638510915044942
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 6.17857863724379
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 6.1786066441449465
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 6.1785253312734625
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "neptune",
+      "epochs": [
+        {
+          "elapsedDays": 0,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 8.176897265259441
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 8.17691842251653
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 8.176492594723495
+            }
+          ]
+        },
+        {
+          "elapsedDays": 9775.12345,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 8.06742782040119
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 8.06742558641498
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 8.067452239661522
+            }
+          ]
+        },
+        {
+          "elapsedDays": 18262.5,
+          "stepResults": [
+            {
+              "h": 0.01,
+              "velocity_derivative_difference_m_s": 7.92949476808859
+            },
+            {
+              "h": 0.001,
+              "velocity_derivative_difference_m_s": 7.929476133526522
+            },
+            {
+              "h": 0.0001,
+              "velocity_derivative_difference_m_s": 7.929519786062963
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "warp_canonical_state": {
+    "world_position_displacement_au": [
+      0.002003988804100021,
+      0,
+      0
+    ],
+    "world_versus_sample_au": [
+      0.002003988804100021,
+      0,
+      0
+    ]
+  },
+  "catalog_actual": {
+    "accepted": true,
+    "loaded": 100000,
+    "source": 100000,
+    "sha": "a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d",
+    "eccentricity_max": 0.5555046921492333,
+    "epoch_distinct": [
+      2461000.5,
+      2458979.5,
+      2455328.5,
+      2455285.5,
+      2455231.5,
+      2455313.5,
+      2455287.5,
+      2455382.5,
+      2455317.5,
+      2455223.5,
+      2455353.5,
+      2455324.5,
+      2455337.5,
+      2455360.5,
+      2455293.5,
+      2455300.5,
+      2455375.5,
+      2455352.5,
+      2455386.5,
+      2455391.5,
+      2455359.5,
+      2455415.5,
+      2455321.5,
+      2455336.5,
+      2455244.5,
+      2455361.5,
+      2455298.5,
+      2455272.5,
+      2455238.5,
+      2455404.5
+    ]
+  },
+  "moons": {
+    "count": 424,
+    "fitted_count": 4,
+    "required_count": 4,
+    "fits": [
+      "cordelia",
+      "iapetus",
+      "phoebe",
+      "titan"
+    ]
+  }
+}

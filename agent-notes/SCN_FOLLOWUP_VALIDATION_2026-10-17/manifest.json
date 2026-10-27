@@ -1,0 +1,70 @@
+{
+  "source_revision": "66ef13c969f62f48ec7aafbd5d11afc1afccc5df",
+  "files": [
+    {
+      "path": "browser.log",
+      "bytes": 9951,
+      "sha256": "bb262734abb9d69db3cf28733c8f72f519cf607f89480b04a19de70d815ce44d"
+    },
+    {
+      "path": "frame.log",
+      "bytes": 51794,
+      "sha256": "3e34f0885015712d83390b358111710f7678a5952eee16c1b1515069fa50aab1"
+    },
+    {
+      "path": "hardware-frame/0-legacy_axis.png",
+      "bytes": 16426,
+      "sha256": "1e35231145d88eb91e3ad7598c19d140a9332346f6d8a83a297f2503b9771fe7"
+    },
+    {
+      "path": "hardware-frame/0-none.png",
+      "bytes": 16239,
+      "sha256": "6e23f050794f36ffc68ce550df19211a2b4aba6aee4a1cd870a87e2f461fdc17"
+    },
+    {
+      "path": "hardware-frame/1-none.png",
+      "bytes": 16239,
+      "sha256": "6e23f050794f36ffc68ce550df19211a2b4aba6aee4a1cd870a87e2f461fdc17"
+    },
+    {
+      "path": "hardware-frame/2-handedness.png",
+      "bytes": 16145,
+      "sha256": "cc1bedbf43d147f03759b4c031ec8ba745b4da09b1e7cfe2d81def41f73f5af4"
+    },
+    {
+      "path": "hardware-frame/2-none.png",
+      "bytes": 16144,
+      "sha256": "af6955379e8362e4d85712adf837bd3f303847a07ac194537582b415e79c087a"
+    },
+    {
+      "path": "hardware-frame/3-double_spin.png",
+      "bytes": 16166,
+      "sha256": "5cc9a1fc75bc0d34531fd786ddc302e244e33eb1368cceec99a09567082b460b"
+    },
+    {
+      "path": "hardware-frame/3-none.png",
+      "bytes": 16123,
+      "sha256": "73f1be2cd3bc6d17152d50baca052a4b298892ddbcad953fd881e9a4e8f14c4b"
+    },
+    {
+      "path": "hardware-frame/4-none.png",
+      "bytes": 16332,
+      "sha256": "0fa2a1f0a65a9b8fa6f27c43e3a42791fb812684ea900dc844571b2b331ab0c8"
+    },
+    {
+      "path": "hardware-frame/5-none.png",
+      "bytes": 16304,
+      "sha256": "8f9a16b4316b1d10cf1cefdaeb5c051a3c00aa2205bd7e496850a6ddd11a8229"
+    },
+    {
+      "path": "hardware-frame/results.json",
+      "bytes": 51794,
+      "sha256": "3e34f0885015712d83390b358111710f7678a5952eee16c1b1515069fa50aab1"
+    },
+    {
+      "path": "vitest.log",
+      "bytes": 255,
+      "sha256": "53d4e52453aecfd7783aa56a4cea397ed8212cfcefe3317c357afcb3076418c5"
+    }
+  ]
+}

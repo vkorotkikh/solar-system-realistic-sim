@@ -1,0 +1,279 @@
+
+> solar-system-realistic-sim@0.0.0 typecheck
+> tsc --project tsconfig.json --strict --noEmit
+
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(51,20): error TS7006: Parameter 'deg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(84,36): error TS7006: Parameter 'channel' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(99,42): error TS7006: Parameter 'gwDisplayer' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(99,55): error TS7006: Parameter 'solarResponder' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(106,9): error TS7034: Variable 'currentTimeline' implicitly has type 'any' in some locations where its type cannot be determined.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(107,9): error TS7034: Variable 'currentPhysics' implicitly has type 'any' in some locations where its type cannot be determined.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(112,9): error TS7034: Variable 'shutdownTimer' implicitly has type 'any' in some locations where its type cannot be determined.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(115,9): error TS7034: Variable 'stochasticFlares' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(123,13): error TS7005: Variable 'shutdownTimer' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(139,35): error TS7006: Parameter 'channel' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(170,32): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ gw: number; em: number; neutrino: number; uhecr: number; cr_tsunami: number; alfven: number; metric_slipstream: number; blast: number; }'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(171,27): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ gw: number; em: number; neutrino: number; uhecr: number; cr_tsunami: number; alfven: number; metric_slipstream: number; blast: number; }'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(176,26): error TS7006: Parameter 'channel' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(176,35): error TS7006: Parameter 'elapsedFraction' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(201,35): error TS7006: Parameter 'physics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(201,44): error TS7006: Parameter 'impactTimeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(202,47): error TS7006: Parameter 'ch' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(207,41): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(208,49): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(224,47): error TS7006: Parameter 'mx' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(224,51): error TS7006: Parameter 'ch' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(247,43): error TS2339: Property 'hypothesis' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(247,65): error TS2339: Property 'scenario' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(248,33): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Readonly<{ SagittariusA: Readonly<{ key: "SagittariusA"; label: "Sagittarius A*"; galaxy: "Milky Way"; type: "quiescent SMBH"; massMsun: 4154000; massG: number; distanceKpc: 8.178; distanceCm: number; distanceLy: 26673; ... 16 more ...; direction: number[]; }>; CentaurusA: Readonly<...>; Maffei1: Readonly<...>; M87:...'.
+  No index signature with a parameter of type 'string' was found on type 'Readonly<{ SagittariusA: Readonly<{ key: "SagittariusA"; label: "Sagittarius A*"; galaxy: "Milky Way"; type: "quiescent SMBH"; massMsun: 4154000; massG: number; distanceKpc: 8.178; distanceCm: number; distanceLy: 26673; ... 16 more ...; direction: number[]; }>; CentaurusA: Readonly<...>; Maffei1: Readonly<...>; M87:...'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(252,25): error TS2339: Property 'preset' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(252,35): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Readonly<{ SgrA_CurrentFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; SgrA_SuperFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; ... 6 more ...; SgrA_WarpWave_H29: { ...; }; }>'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(252,57): error TS2339: Property 'preset' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(253,32): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Readonly<{ SgrA_CurrentFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; SgrA_SuperFlare: { label: string; sourceKey: string; energyErg: number; lorentzFactor: number; description: string; }; ... 6 more ...; SgrA_WarpWave_H29: { ...; }; }>'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(253,54): error TS2339: Property 'preset' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(256,44): error TS2339: Property 'energyErg' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(259,49): error TS2339: Property 'thetaObsDeg' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(264,43): error TS2339: Property 'sourceHypothesis' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(276,28): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ SagittariusA: Vector3; CentaurusA: Vector3; Maffei1: Vector3; M87: Vector3; }'.
+  No index signature with a parameter of type 'string' was found on type '{ SagittariusA: Vector3; CentaurusA: Vector3; Maffei1: Vector3; M87: Vector3; }'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(294,30): error TS7006: Parameter 'enabled' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(301,30): error TS7006: Parameter 'enabled' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(313,16): error TS7006: Parameter 'dtSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(320,21): error TS7005: Variable 'stochasticFlares' implicitly has an 'any[]' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(321,35): error TS7005: Variable 'stochasticFlares' implicitly has an 'any[]' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(335,31): error TS7005: Variable 'currentTimeline' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(340,35): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(341,43): error TS2339: Property 'jetBetaSpine' does not exist on type 'Readonly<{ key: "SagittariusA"; label: "Sagittarius A*"; galaxy: "Milky Way"; type: "quiescent SMBH"; massMsun: 4154000; massG: number; distanceKpc: 8.178; distanceCm: number; distanceLy: 26673; rSchwarzschildCm: 12400000000; ... 15 more ...; direction: number[]; }>'.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(370,18): error TS7005: Variable 'currentTimeline' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(378,31): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(384,18): error TS7005: Variable 'currentTimeline' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(389,56): error TS7006: Parameter 'ch' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(398,22): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(399,31): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(400,38): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(401,28): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(402,28): error TS7005: Variable 'currentPhysics' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(413,31): error TS7005: Variable 'currentTimeline' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts(415,69): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(34,18): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(38,20): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(44,33): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(51,35): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(51,46): error TS7006: Parameter 'source' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(51,54): error TS7006: Parameter 'thetaObsRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(66,33): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(66,44): error TS7006: Parameter 'source' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(66,52): error TS7006: Parameter 'thetaObsRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(66,65): error TS7006: Parameter 'lightTravelTimeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(86,40): error TS7006: Parameter 'arrivalTimeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(86,56): error TS7006: Parameter 'propagation' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(86,69): error TS7006: Parameter 'h29' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(86,74): error TS7006: Parameter 'lightTravelTimeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(90,25): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ lightspeed: number; near_ballistic: number; diffusive: number; alfven: number; sedov_taylor: number; }'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(120,25): error TS2304: Cannot find name 'SGR_A'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(162,35): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(162,46): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(162,58): error TS7006: Parameter 'timeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(172,37): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(172,48): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(172,60): error TS7006: Parameter 'timeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(181,40): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(181,51): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(181,63): error TS7006: Parameter 'distanceCm' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(192,37): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(192,48): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(192,60): error TS7006: Parameter 'timeSec' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(206,39): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(206,50): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(235,40): error TS7006: Parameter 'energyEV' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(254,33): error TS7006: Parameter 'distanceCm' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(254,45): error TS7006: Parameter 'energyEV' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(268,46): error TS7006: Parameter 'energyEV' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(278,28): error TS7006: Parameter 'energyEV' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(278,38): error TS7006: Parameter 'chargeZ' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(278,47): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(287,33): error TS7006: Parameter 'betaShock' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(287,44): error TS7006: Parameter 'chargeZ' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(287,53): error TS7006: Parameter 'bFieldMicroG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(287,67): error TS7006: Parameter 'radiusKpc' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(295,39): error TS7006: Parameter 'nCrOverNi' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(295,50): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(295,59): error TS7006: Parameter 'ionDensityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(295,74): error TS7006: Parameter 'vDriftCmS' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(295,85): error TS7006: Parameter 'vAlfvenCmS' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(308,29): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(308,38): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(317,39): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(317,48): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(317,60): error TS7006: Parameter 'temperatureK' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(331,39): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(331,48): error TS7006: Parameter 'densityCgs' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(344,30): error TS7006: Parameter 'beta' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(344,36): error TS7006: Parameter 'thetaRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(354,33): error TS7006: Parameter 'lorentzGamma' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(363,31): error TS7006: Parameter 'beta' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(363,37): error TS7006: Parameter 'thetaRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(372,27): error TS7006: Parameter 'beta' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(372,33): error TS7006: Parameter 'thetaRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(381,39): error TS7006: Parameter 'beta' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(381,45): error TS7006: Parameter 'thetaRad' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(388,30): error TS7006: Parameter 'beta' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(403,34): error TS7006: Parameter 'pressureFactor' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(415,37): error TS7006: Parameter 'blastVelocityCmS' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(427,44): error TS7006: Parameter 'pressureFactor' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(442,32): error TS7006: Parameter 'hPeak' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(452,36): error TS7006: Parameter 'energyGW_erg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(452,50): error TS7006: Parameter 'distanceCm' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(460,32): error TS7006: Parameter 'strain' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(460,40): error TS7006: Parameter 'baselineCm' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(476,42): error TS7006: Parameter 'bFieldG' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(476,51): error TS7006: Parameter 'pathLengthCm' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(497,47): error TS7006: Parameter 'source' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(497,55): error TS7006: Parameter 'energyErg' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(500,53): error TS2339: Property 'scenario' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(500,73): error TS2339: Property 'mode' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(500,89): error TS2339: Property 'hypothesis' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(500,111): error TS2339: Property 'model' does not exist on type '{}'.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(658,39): error TS7006: Parameter 'years' implicitly has an 'any' type.
+src/frontend/features/superluminal-modeling/smbhPropagation.ts(674,42): error TS7006: Parameter 'durationSec' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(9,30): error TS7006: Parameter 'massKg' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(14,27): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(14,30): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(20,28): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(20,35): error TS7006: Parameter 'fromId' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(20,43): error TS7006: Parameter 'toId' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(20,49): error TS7006: Parameter 'departureJd' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(76,25): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(76,32): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(76,38): error TS7006: Parameter 'incomingLeg' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(76,51): error TS7006: Parameter 'outgoingLeg' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(154,21): error TS7006: Parameter 'route' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(154,28): error TS7006: Parameter 'objective' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(220,41): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(220,48): error TS7006: Parameter 'bodyById' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(220,58): error TS7006: Parameter 'options' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(383,11): error TS2339: Property 'score' does not exist on type '{ bodyRoute: string[]; legs: { fromId: any; toId: any; departureJd: any; arrivalJd: any; tofDays: number; pathLengthAu: any; pathMetric: string; approximateTransferArcLengthAu: number; transferSemiMajorAu: number; ... 5 more ...; arrivalVelocityApprox: any; }[]; ... 9 more ...; turnDeficitPenalty: number; }'.
+src/frontend/features/trajectory/localPlanner.ts(387,36): error TS2339: Property 'score' does not exist on type '{ bodyRoute: string[]; legs: { fromId: any; toId: any; departureJd: any; arrivalJd: any; tofDays: number; pathLengthAu: any; pathMetric: string; approximateTransferArcLengthAu: number; transferSemiMajorAu: number; ... 5 more ...; arrivalVelocityApprox: any; }[]; ... 9 more ...; turnDeficitPenalty: number; }'.
+src/frontend/features/trajectory/localPlanner.ts(387,46): error TS2339: Property 'score' does not exist on type '{ bodyRoute: string[]; legs: { fromId: any; toId: any; departureJd: any; arrivalJd: any; tofDays: number; pathLengthAu: any; pathMetric: string; approximateTransferArcLengthAu: number; transferSemiMajorAu: number; ... 5 more ...; arrivalVelocityApprox: any; }[]; ... 9 more ...; turnDeficitPenalty: number; }'.
+src/frontend/features/trajectory/localPlanner.ts(414,42): error TS7006: Parameter 'leg' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(454,31): error TS7006: Parameter 'route' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(454,38): error TS7006: Parameter 'bodyById' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(459,43): error TS7006: Parameter 'bodyId' implicitly has an 'any' type.
+src/frontend/features/trajectory/localPlanner.ts(462,15): error TS7006: Parameter 'assist' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(2,3): error TS7031: Binding element 'bodyId' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(3,3): error TS7031: Binding element 'profile' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(4,3): error TS7031: Binding element 'lodGeometries' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(5,3): error TS7031: Binding element 'currentLevel' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(6,3): error TS7031: Binding element 'surfaceMesh' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(10,3): error TS7031: Binding element 'bodyNodes' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(11,3): error TS7031: Binding element 'camera' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(12,3): error TS7031: Binding element 'tempVector' implicitly has an 'any' type.
+src/frontend/rendering/lodManager.ts(35,28): error TS2339: Property 'geometry' does not exist on type 'never'.
+src/frontend/rendering/lodManager.ts(36,38): error TS2339: Property 'geometry' does not exist on type 'never'.
+src/frontend/rendering/lodManager.ts(39,12): error TS2339: Property 'geometry' does not exist on type 'never'.
+src/frontend/rendering/milkyWay.ts(34,22): error TS7006: Parameter 'bvValue' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(48,30): error TS7006: Parameter 'raDeg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(48,37): error TS7006: Parameter 'decDeg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(59,35): error TS7006: Parameter 'xg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(59,39): error TS7006: Parameter 'yg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(59,43): error TS7006: Parameter 'zg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(67,35): error TS7006: Parameter 'xEq' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(67,40): error TS7006: Parameter 'yEq' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(67,45): error TS7006: Parameter 'zEq' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(75,35): error TS7006: Parameter 'xEcl' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(75,41): error TS7006: Parameter 'yEcl' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(75,47): error TS7006: Parameter 'zEcl' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(83,42): error TS7006: Parameter 'raDeg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(83,49): error TS7006: Parameter 'decDeg' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(83,57): error TS7006: Parameter 'radius' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(93,30): error TS7006: Parameter 'lRad' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(93,36): error TS7006: Parameter 'bRad' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(93,42): error TS7006: Parameter 'radius' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,31): error TS7006: Parameter 'ax' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,35): error TS7006: Parameter 'ay' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,39): error TS7006: Parameter 'az' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,43): error TS7006: Parameter 'bx' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,47): error TS7006: Parameter 'by' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(103,51): error TS7006: Parameter 'bz' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(127,22): error TS7006: Parameter 'angle' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(132,34): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(132,37): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(137,29): error TS7006: Parameter 'distance' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(137,39): error TS7006: Parameter 'sigma' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(148,34): error TS7006: Parameter 'lRad' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(158,38): error TS7006: Parameter 'radius' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(221,38): error TS7006: Parameter 'radius' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(326,33): error TS7006: Parameter 'starsCatalog' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(346,39): error TS2345: Argument of type 'number' is not assignable to parameter of type 'never'.
+src/frontend/rendering/milkyWay.ts(347,36): error TS2345: Argument of type 'number' is not assignable to parameter of type 'never'.
+src/frontend/rendering/milkyWay.ts(385,37): error TS7006: Parameter 'surveyTexture' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(418,3): error TS7031: Binding element 'scene' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(419,3): error TS7031: Binding element 'starsCatalog' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(420,3): error TS7031: Binding element 'surveyTexture' implicitly has an 'any' type.
+src/frontend/rendering/milkyWay.ts(454,7): error TS2349: This expression is not callable.
+  Type 'never' has no call signatures.
+src/main.ts(197,27): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/main.ts(201,27): error TS7006: Parameter 'angle' implicitly has an 'any' type.
+src/main.ts(207,35): error TS18049: 'massKg' is possibly 'null' or 'undefined'.
+src/main.ts(208,18): error TS18049: 'massKg' is possibly 'null' or 'undefined'.
+src/main.ts(247,5): error TS7034: Variable 'sunTexture' implicitly has type 'any' in some locations where its type cannot be determined.
+src/main.ts(262,3): error TS2322: Type 'SimulationStateStore' is not assignable to type '{ [key: string]: unknown; julianDate: number; }'.
+  Index signature for type 'string' is missing in type 'SimulationStateStore'.
+src/main.ts(332,5): error TS2322: Type 'Material' is not assignable to type 'MeshStandardMaterial | MeshBasicMaterial'.
+  Type 'Material' is missing the following properties from type 'MeshBasicMaterial': isMeshBasicMaterial, color, map, lightMap, and 15 more.
+src/main.ts(332,42): error TS7005: Variable 'sunTexture' implicitly has an 'any' type.
+src/main.ts(347,17): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ mercury: string; venus: string; earth: string; mars: string; jupiter: string; saturn: string; uranus: string; neptune: string; pluto: string; }'.
+  No index signature with a parameter of type 'string' was found on type '{ mercury: string; venus: string; earth: string; mars: string; jupiter: string; saturn: string; uranus: string; neptune: string; pluto: string; }'.
+src/main.ts(384,26): error TS7006: Parameter 'body' implicitly has an 'any' type.
+src/main.ts(481,38): error TS7006: Parameter 'population' implicitly has an 'any' type.
+src/main.ts(722,30): error TS7006: Parameter 'julianDate' implicitly has an 'any' type.
+src/main.ts(834,29): error TS7006: Parameter 'deltaSeconds' implicitly has an 'any' type.
+src/main.ts(850,34): error TS7006: Parameter 'deltaSeconds' implicitly has an 'any' type.
+src/main.ts(1003,27): error TS7006: Parameter 'deltaSeconds' implicitly has an 'any' type.
+src/main.ts(1029,5): error TS2322: Type 'SolarCatalog' is not assignable to type 'SceneCatalogLike'.
+  Types of property 'bodies' are incompatible.
+    Type 'CatalogBody[]' is not assignable to type 'SceneBodyLike[]'.
+      Type 'CatalogBody' is not assignable to type 'SceneBodyLike'.
+        Types of property 'orbit' are incompatible.
+          Type 'KeplerOrbit | null' is not assignable to type '{ [key: string]: unknown; epochJd: number; } | null | undefined'.
+            Type 'KeplerOrbit' is not assignable to type '{ [key: string]: unknown; epochJd: number; }'.
+              Index signature for type 'string' is missing in type 'KeplerOrbit'.
+src/main.ts(1340,23): error TS2339: Property 'preset' does not exist on type '{}'.
+src/main.ts(1341,42): error TS2339: Property 'hypothesis' does not exist on type '{}'.
+src/sunController.ts(183,50): error TS2345: Argument of type 'SolarPhysicsStatePayload | null' is not assignable to parameter of type 'SolarPhysicsStateLike | null | undefined'.
+  Type 'SolarPhysicsStatePayload' is not assignable to type 'SolarPhysicsStateLike'.
+    Types of property 'heliosphere' are incompatible.
+      Type 'unknown' is not assignable to type '{ parker_spiral?: { lines?: unknown; } | null | undefined; } | null | undefined'.
+src/sunController.ts(191,32): error TS2322: Type 'Material | null' is not assignable to type 'ShaderMaterial | null | undefined'.
+  Type 'Material' is missing the following properties from type 'ShaderMaterial': isShaderMaterial, uniforms, uniformsGroups, vertexShader, and 12 more.
+src/sunController.ts(320,5): error TS2322: Type 'Material | Material[]' is not assignable to type 'Material | null'.
+  Type 'Material[]' is missing the following properties from type 'Material': isMaterial, uuid, type, version, and 57 more.
+src/sunController.ts(327,34): error TS2345: Argument of type 'Object3D<Object3DEventMap>' is not assignable to parameter of type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>'.
+  Type 'Object3D<Object3DEventMap>' is missing the following properties from type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>': isPoints, geometry, material, updateMorphTargets
+src/sunController.ts(362,69): error TS2345: Argument of type 'SolarPhysicsStatePayload | null' is not assignable to parameter of type 'SolarPhysicsStateLike | null | undefined'.
+  Type 'SolarPhysicsStatePayload' is not assignable to type 'SolarPhysicsStateLike'.
+    Types of property 'heliosphere' are incompatible.
+      Type 'unknown' is not assignable to type '{ parker_spiral?: { lines?: unknown; } | null | undefined; } | null | undefined'.
+src/sunController.ts(427,7): error TS2322: Type 'Material | null' is not assignable to type 'ShaderMaterial | null | undefined'.
+  Type 'Material' is missing the following properties from type 'ShaderMaterial': isShaderMaterial, uniforms, uniformsGroups, vertexShader, and 12 more.
+src/sunController.ts(428,7): error TS2322: Type 'Material | null' is not assignable to type 'ShaderMaterial | null | undefined'.
+  Type 'Material' is missing the following properties from type 'ShaderMaterial': isShaderMaterial, uniforms, uniformsGroups, vertexShader, and 12 more.
+src/sunController.ts(438,27): error TS2345: Argument of type 'Material | null' is not assignable to parameter of type 'ShaderMaterial | null | undefined'.
+  Type 'Material' is missing the following properties from type 'ShaderMaterial': isShaderMaterial, uniforms, uniformsGroups, vertexShader, and 12 more.
+src/sunController.ts(442,31): error TS2345: Argument of type 'Material | null' is not assignable to parameter of type 'ShaderMaterial | null | undefined'.
+  Type 'Material' is missing the following properties from type 'ShaderMaterial': isShaderMaterial, uniforms, uniformsGroups, vertexShader, and 12 more.
+src/sunController.ts(453,69): error TS2345: Argument of type 'SolarPhysicsStatePayload | null' is not assignable to parameter of type 'SolarPhysicsStateLike | null | undefined'.
+  Type 'SolarPhysicsStatePayload' is not assignable to type 'SolarPhysicsStateLike'.
+    Types of property 'heliosphere' are incompatible.
+      Type 'unknown' is not assignable to type '{ parker_spiral?: { lines?: unknown; } | null | undefined; } | null | undefined'.
+src/sunController.ts(463,7): error TS2322: Type 'Object3D<Object3DEventMap> | null' is not assignable to type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap> | null | undefined'.
+  Type 'Object3D<Object3DEventMap>' is missing the following properties from type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>': isPoints, geometry, material, updateMorphTargets
+src/sunController.ts(470,29): error TS2345: Argument of type 'Object3D<Object3DEventMap> | null' is not assignable to parameter of type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap> | null | undefined'.
+  Type 'Object3D<Object3DEventMap>' is missing the following properties from type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>': isPoints, geometry, material, updateMorphTargets
+src/sunController.ts(539,34): error TS2345: Argument of type 'Object3D<Object3DEventMap> | null' is not assignable to parameter of type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap> | null | undefined'.
+  Type 'Object3D<Object3DEventMap>' is missing the following properties from type 'Points<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>': isPoints, geometry, material, updateMorphTargets
+src/sunController.ts(560,69): error TS2345: Argument of type 'SolarPhysicsStatePayload | null' is not assignable to parameter of type 'SolarPhysicsStateLike | null | undefined'.
+  Type 'SolarPhysicsStatePayload' is not assignable to type 'SolarPhysicsStateLike'.
+    Types of property 'heliosphere' are incompatible.
+      Type 'unknown' is not assignable to type '{ parker_spiral?: { lines?: unknown; } | null | undefined; } | null | undefined'.

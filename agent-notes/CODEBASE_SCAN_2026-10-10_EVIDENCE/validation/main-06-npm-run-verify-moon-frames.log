@@ -1,0 +1,5 @@
+
+> solar-system-realistic-sim@0.0.0 verify:moon-frames
+> node ./scripts/verify-moon-frames.mjs
+
+moon check passed: 140 moon x epoch rows within budget (20 moons x 7 epochs), utilisation 50.0/100.

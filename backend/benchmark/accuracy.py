@@ -702,14 +702,14 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
             comparison_contract = ref.get("comparisonContract", {})
             note = comparison_contract.get("compatibilityNote", "")
             lines.append(
-                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.3f} | - | - |"
+                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.2e} | - | - |"
             )
             if note:
                 lines.append(f"|  |  |  |  |  |  |  |  | note: {note} |")
             continue
 
         lines.append(
-            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.3f} | {tol:.3f} | {passed} |".format(
+            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.2e} | {tol:.2e} | {passed} |".format(
                 id=row.get("id"),
                 source=row.get("source", ""),
                 model=float(row.get("modelTotalDeltaVKmS", 0.0)),
@@ -757,8 +757,8 @@ def generate_accuracy_report(
     path = Path(output_path)
 
     # Refuse to clobber an existing report unless the caller explicitly opts in.
-    # This endpoint is unauthenticated, and its target directory holds
-    # hand-written notes; silently replacing a file there destroys user data.
+    # Its target directory holds hand-written notes; authentication or local
+    # trust does not authorize silently replacing those files.
     # Check before benchmarking so a rejected call costs no work. Include
     # dangling symlinks, which Path.exists() alone deliberately ignores.
     if not allow_overwrite and (path.exists() or path.is_symlink()):

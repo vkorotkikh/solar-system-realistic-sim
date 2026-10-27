@@ -19,10 +19,8 @@ import { J2000_JD, AU_KM } from '../../../constants';
 // ── Geometry generation ──────────────────────────────────────────────────────
 
 const DEG_TO_RAD = Math.PI / 180;
-// Kepler propagation is the declared model. An age-squared acceleration offset
-// is not a validated N-body integrator, so it must not alter scientific motion.
-const DEFAULT_PERTURBATION_SCALE_AU = 0;
-const MAX_PERTURB_AGE_DAYS = 40_000;
+// Fixed heliocentric Kepler elements define the model. Planet positions/masses
+// do not participate: an age-squared acceleration offset is not an integrator.
 const ORBIT_TIME_WINDOW_DAYS = 8;
 
 function mulberry32(seed: number) {
@@ -58,30 +56,29 @@ function createIrregularGeometry(
   return base;
 }
 
-// Shader source for Kepler propagation + perturbation.
+// Shader source for two-body Kepler propagation.
 const ASTEROID_ORBIT_VERTEX_SHADER = {
   header: /* glsl */`
     attribute vec4 aOrbitParams1; // x = aAu, y = e, z = iRad, w = Omega
-    attribute vec4 aOrbitParams2; // omega, mean anomaly at window start, period, age at window start
+    attribute vec4 aOrbitParams2; // omega, signed mean anomaly at window start, period, reserved
     attribute vec4 aSpinParams;   // xyz = spinAxis, w = spinRateRadPerDay
     attribute float aSpinPhase;   // spin phase at window start
 
     uniform float uElapsedDays;
-    uniform vec3 uJupiterPositionAu;
-    uniform vec3 uSaturnPositionAu;
-    uniform float uJupiterMuAu3Day2;
-    uniform float uSaturnMuAu3Day2;
-    uniform float uPerturbationScale;
     uniform float uOrbitScaleAu;
-    const float TWO_PI = 6.283185307179586;
-    const float MAX_PERTURB_AGE_DAYS = ${MAX_PERTURB_AGE_DAYS.toFixed(1)};
+    // This header follows Three.js <common>, which already defines PI.
+    // Namespaced constants also keep standalone numerical probes independent.
+    const float ASTEROID_TWO_PI = 6.283185307179586;
+    const float ASTEROID_PI = 3.141592653589793;
 
     vec3 vOrbitOffset;
 
     // Range-reduced Taylor polynomials keep orbital coordinates independent of
     // implementation-defined GPU transcendental accuracy (including SwiftShader).
     float orbitSin(float angle) {
-      float x = mod(angle + 3.141592653589793, TWO_PI) - 3.141592653589793;
+      float x = angle;
+      // Adding pi to an already small angle destroys its low-order bits.
+      if (x > ASTEROID_PI || x < -ASTEROID_PI) x -= ASTEROID_TWO_PI * floor((x + ASTEROID_PI) / ASTEROID_TWO_PI);
       if (x > 1.570796326794897) x = 3.141592653589793 - x;
       if (x < -1.570796326794897) x = -3.141592653589793 - x;
       float y = x * x;
@@ -91,7 +88,8 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     }
 
     float orbitCos(float angle) {
-      float x = mod(angle + 3.141592653589793, TWO_PI) - 3.141592653589793;
+      float x = angle;
+      if (x > ASTEROID_PI || x < -ASTEROID_PI) x -= ASTEROID_TWO_PI * floor((x + ASTEROID_PI) / ASTEROID_TWO_PI);
       float signValue = 1.0;
       if (x > 1.570796326794897) { x = 3.141592653589793 - x; signValue = -1.0; }
       if (x < -1.570796326794897) { x = -3.141592653589793 - x; signValue = -1.0; }
@@ -103,21 +101,40 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
 
     float solveKepler(float meanAnomaly, float eccentricity) {
       if (meanAnomaly == 0.0) return 0.0;
+      // Input: signed binary32 mean anomaly in [-PI, PI], 0 <= e <= 0.999999.
+      // Odd symmetry retains tiny negative anomalies without adding 2*pi.
+      float mean = abs(meanAnomaly);
       float lower = 0.0;
-      float upper = TWO_PI;
-      float eccentricAnomaly = eccentricity < 0.8 ? meanAnomaly : 3.141592653589793;
+      float upper = ASTEROID_PI;
+      float eccentricAnomaly = eccentricity < 0.8 ? mean : min(
+        mean / (1.0 - eccentricity), pow(6.0 * mean / eccentricity, 1.0 / 3.0)
+      );
       for (int i = 0; i < 32; i++) {
-        float f = eccentricAnomaly - eccentricity * orbitSin(eccentricAnomaly) - meanAnomaly;
-        if (f == 0.0) return eccentricAnomaly;
+        float f;
+        if (eccentricAnomaly <= 1.0) {
+          // E - e*sin(E) = (1-e)*E + e*(E-sin(E)). Evaluate the small
+          // difference directly; subtracting two rounded sines is ill-conditioned.
+          float y = eccentricAnomaly * eccentricAnomaly;
+          float difference = eccentricAnomaly * y * (0.166666666666667
+            + y * (-0.008333333333333 + y * (0.000198412698413
+            + y * (-0.000002755731922 + y * (0.000000025052108
+            - y * 0.000000000160590)))));
+          f = (1.0 - eccentricity) * eccentricAnomaly + eccentricity * difference - mean;
+        } else {
+          f = eccentricAnomaly - eccentricity * orbitSin(eccentricAnomaly) - mean;
+        }
+        if (f == 0.0) return sign(meanAnomaly) * eccentricAnomaly;
         if (f > 0.0) upper = eccentricAnomaly;
         else lower = eccentricAnomaly;
-        float fPrime = 1.0 - eccentricity * orbitCos(eccentricAnomaly);
-        float candidate = eccentricAnomaly - f / max(fPrime, 1e-7);
+        float halfSine = orbitSin(0.5 * eccentricAnomaly);
+        float fPrime = (1.0 - eccentricity) + 2.0 * eccentricity * halfSine * halfSine;
+        float candidate = eccentricAnomaly - f / fPrime;
+        // Stop at float convergence, not an absolute 1e-6-radian step cutoff.
+        if (candidate == eccentricAnomaly) return sign(meanAnomaly) * eccentricAnomaly;
         if (candidate <= lower || candidate >= upper) candidate = 0.5 * (lower + upper);
-        if (abs(candidate - eccentricAnomaly) < 1e-6) return candidate;
         eccentricAnomaly = candidate;
       }
-      return eccentricAnomaly;
+      return sign(meanAnomaly) * eccentricAnomaly;
     }
 
     vec3 rotateAroundAxis(vec3 value, vec3 axis, float angle) {
@@ -129,13 +146,6 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
         + axis * dot(axis, value) * oc;
     }
 
-    vec3 gravityPerturbation(vec3 planetPositionAu, float planetMu, vec3 currentPositionAu) {
-      vec3 offset = planetPositionAu - currentPositionAu;
-      float distSq = max(dot(offset, offset), 1e-12);
-      float invDist = inversesqrt(distSq);
-      float invDist3 = invDist * invDist * invDist;
-      return planetMu * (offset * invDist3);
-    }
   `,
 
   normalVertex: /* glsl */`
@@ -156,12 +166,11 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
     float argPeriapsis = aOrbitParams2.x;
     float meanAnomaly0 = aOrbitParams2.y;
     float periodDays = max(aOrbitParams2.z, 1.0);
-    float meanMotion = (TWO_PI / periodDays);
+    float meanMotion = (ASTEROID_TWO_PI / periodDays);
     float deltaDays = uElapsedDays;
     float meanAnomaly = meanAnomaly0 + meanMotion * deltaDays;
-    meanAnomaly = mod(meanAnomaly, TWO_PI);
-    if (meanAnomaly < 0.0) {
-      meanAnomaly += TWO_PI;
+    if (meanAnomaly > ASTEROID_PI || meanAnomaly < -ASTEROID_PI) {
+      meanAnomaly -= ASTEROID_TWO_PI * floor((meanAnomaly + ASTEROID_PI) / ASTEROID_TWO_PI);
     }
     float eccentricAnomaly = solveKepler(meanAnomaly, e);
 
@@ -184,16 +193,6 @@ const ASTEROID_ORBIT_VERTEX_SHADER = {
       orbital.x * (sinArg * sinI) + orbital.y * (cosArg * sinI)
     );
 
-    vec3 perturb = vec3(0.0);
-    if (uJupiterMuAu3Day2 > 0.0) {
-      perturb += gravityPerturbation(uJupiterPositionAu, uJupiterMuAu3Day2, orbitPosition);
-    }
-    if (uSaturnMuAu3Day2 > 0.0) {
-      perturb += gravityPerturbation(uSaturnPositionAu, uSaturnMuAu3Day2, orbitPosition);
-    }
-
-    float age = clamp(abs(aOrbitParams2.w + deltaDays), 0.0, MAX_PERTURB_AGE_DAYS);
-    orbitPosition += perturb * (age * age) * uPerturbationScale;
     vOrbitOffset = orbitPosition * uOrbitScaleAu;
 
     float spinLenSqLocal = dot(aSpinParams.xyz, aSpinParams.xyz);
@@ -252,30 +251,19 @@ function getOrbitFloat(value: number | null | undefined, fallback: number): numb
 
 interface OrbitUniforms {
   uElapsedDays: { value: number };
-  uJupiterPositionAu: { value: Vector3 };
-  uSaturnPositionAu: { value: Vector3 };
-  uJupiterMuAu3Day2: { value: number };
-  uSaturnMuAu3Day2: { value: number };
-  uPerturbationScale: { value: number };
   uOrbitScaleAu: { value: number };
 }
 
 function createOrbitMaterial() {
   const uniforms: OrbitUniforms = {
     uElapsedDays: { value: 0 },
-    uJupiterPositionAu: { value: new Vector3(0, 0, 0) },
-    uSaturnPositionAu: { value: new Vector3(0, 0, 0) },
-    uJupiterMuAu3Day2: { value: 0 },
-    uSaturnMuAu3Day2: { value: 0 },
-    uPerturbationScale: { value: DEFAULT_PERTURBATION_SCALE_AU },
     uOrbitScaleAu: { value: 1 },
   };
 
   const material = new MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.08,
-    flatShading: true,
-    vertexColors: true
+    flatShading: true
   });
 
   // WARNING: Fragile shader patching — uses string replacement on Three.js
@@ -283,11 +271,6 @@ function createOrbitMaterial() {
   // across Three.js versions. Verify after any Three.js upgrade.
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uElapsedDays = uniforms.uElapsedDays;
-    shader.uniforms.uJupiterPositionAu = uniforms.uJupiterPositionAu;
-    shader.uniforms.uSaturnPositionAu = uniforms.uSaturnPositionAu;
-    shader.uniforms.uJupiterMuAu3Day2 = uniforms.uJupiterMuAu3Day2;
-    shader.uniforms.uSaturnMuAu3Day2 = uniforms.uSaturnMuAu3Day2;
-    shader.uniforms.uPerturbationScale = uniforms.uPerturbationScale;
     shader.uniforms.uOrbitScaleAu = uniforms.uOrbitScaleAu;
 
     shader.vertexShader = shader.vertexShader.replace(
@@ -340,7 +323,9 @@ export interface BeltRendererHandle {
   updatePositions: (positions: Float32Array) => void;
   updateBinaryPositions?: (companionPositions: Float32Array) => void;
   setJulianDate: (julianDate: number) => void;
+  /** Compatibility no-op: fixed two-body elements, no planetary perturbation integration. */
   setPerturberPositions: (jupiterPositionAu: Vector3, saturnPositionAu: Vector3) => void;
+  /** Compatibility no-op: fixed two-body elements, no planetary perturbation integration. */
   setPerturberMasses: (jupiterMuAu3Day2: number, saturnMuAu3Day2: number) => void;
   setScaleMode: (useRealisticScale: boolean) => void;
   setVisible: (visible: boolean) => void;
@@ -384,7 +369,7 @@ function fillAsteroidOrbits(
     orbitParam2[offset4 + 1] = getOrbitFloat(orbit.meanAnomalyDeg, 0) * DEG_TO_RAD;
     const period = getOrbitFloat(orbit.periodDays, 0);
     orbitParam2[offset4 + 2] = period < 1 ? 365.25 : period;
-    orbitParam2[offset4 + 3] = getOrbitFloat(orbit.epochJd, J2000_JD);
+    orbitParam2[offset4 + 3] = 0; // Reserved; no age-squared perturbation model.
 
     addInstanceColorData(colors, i, ast.color);
   }
@@ -427,7 +412,11 @@ export function createAsteroidBeltRenderer(
 
   const spinPhases = new Float32Array(count);
   let referenceJd = Number.NaN;
-  const wrapPhase = (phase: number) => ((phase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const wrapPhase = (phase: number) => {
+    const wrapped = phase % (2 * Math.PI);
+    return wrapped > Math.PI ? wrapped - 2 * Math.PI
+      : wrapped < -Math.PI ? wrapped + 2 * Math.PI : wrapped;
+  };
   function rebaseTime(julianDate: number) {
     const nextReference = Math.floor(julianDate / ORBIT_TIME_WINDOW_DAYS) * ORBIT_TIME_WINDOW_DAYS;
     if (nextReference !== referenceJd) {
@@ -441,7 +430,6 @@ export function createAsteroidBeltRenderer(
         orbitParam2[i * 4 + 1] = wrapPhase(
           getOrbitFloat(orbit.meanAnomalyDeg, 0) * DEG_TO_RAD + 2 * Math.PI * ((age % period) / period),
         );
-        orbitParam2[i * 4 + 3] = age;
         spinPhases[i] = wrapPhase(spinParams[i * 4 + 3] * age);
       }
       const orbitAttribute = geometry.getAttribute('aOrbitParams2');
@@ -524,14 +512,8 @@ export function createAsteroidBeltRenderer(
       const safe = Number.isFinite(julianDate) ? julianDate : J2000_JD;
       rebaseTime(safe);
     },
-    setPerturberPositions(jupiterPositionAu: Vector3, saturnPositionAu: Vector3) {
-      uniforms.uJupiterPositionAu.value.copy(jupiterPositionAu);
-      uniforms.uSaturnPositionAu.value.copy(saturnPositionAu);
-    },
-    setPerturberMasses(jupiterMuAu3Day2: number, saturnMuAu3Day2: number) {
-      uniforms.uJupiterMuAu3Day2.value = getOrbitFloat(jupiterMuAu3Day2, 0);
-      uniforms.uSaturnMuAu3Day2.value = getOrbitFloat(saturnMuAu3Day2, 0);
-    },
+    setPerturberPositions() { return; },
+    setPerturberMasses() { return; },
     setScaleMode(useRealisticScale: boolean) {
       rebuildInstanceScales(useRealisticScale);
     },

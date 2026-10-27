@@ -186,3 +186,12 @@ temporary logs.
 SCN-063's initial mission report incorrectly described lost-capacity behavior
 as an accepted policy. The owner did not approve that tradeoff. It remains open
 pending the terminable-transport work, and the master is authoritative.
+
+## Third integration checkpoint
+
+See [REMEDIATION_WAVE3_2026-10-14.md](REMEDIATION_WAVE3_2026-10-14.md) for the
+continued six-worker ownership map, new AIA epoch coverage repair, solar finite
+input policy, operational soak evidence and precise remaining requirements.
+The full backend checkpoint at `938bca0` is 2,966 passed / 5 skipped; the later
+combined operational/numerical/AIA gate is 339 passed. These are scoped results,
+not complete closure of the canonical register or a merge into `main`.

@@ -1,5 +1,11 @@
+import { Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { resolveKeplerOrbitAtElapsedDays, solveKeplerFast, type KeplerOrbit } from './orbitMath';
+import {
+  propagateKeplerOrbit,
+  resolveKeplerOrbitAtElapsedDays,
+  solveKeplerFast,
+  type KeplerOrbit
+} from './orbitMath';
 
 describe('orbitMath secular drift support', () => {
   it('applies configured secular rates when resolving orbit elements', () => {
@@ -28,6 +34,39 @@ describe('orbitMath secular drift support', () => {
     expect(resolved.iRad).toBeCloseTo((1.5 * Math.PI) / 180, 10);
     expect(resolved.ascendingNodeRad).toBeCloseTo((25 * Math.PI) / 180, 10);
     expect(resolved.argPeriapsisRad).toBeCloseTo((15 * Math.PI) / 180, 10);
+  });
+
+  it('reports secular model range exhaustion atomically through the propagation adapter', () => {
+    const orbit: KeplerOrbit = {
+      epochJd: 2_451_545,
+      aAu: 1,
+      periodDays: 365.25,
+      e: 0.1,
+      secularRates: { ePerCentury: -0.2 }
+    };
+    const position = new Vector3(1, 2, 3);
+    const velocity = new Vector3(4, 5, 6);
+
+    expect(propagateKeplerOrbit(orbit, 36_525, position, velocity)).toBe(false);
+    expect(position.toArray()).toEqual([1, 2, 3]);
+    expect(velocity.toArray()).toEqual([4, 5, 6]);
+    expect(() => resolveKeplerOrbitAtElapsedDays(orbit, 36_525)).toThrow(
+      'secular drift produced an invalid elliptic orbit'
+    );
+  });
+
+  it('keeps malformed secular inputs as programmer errors', () => {
+    const malformed: KeplerOrbit = {
+      epochJd: 2_451_545,
+      aAu: 1,
+      periodDays: 365.25,
+      e: -0.1,
+      secularRates: {}
+    };
+
+    expect(() => propagateKeplerOrbit(malformed, 0, new Vector3())).toThrow(
+      'source-frame orbit requires'
+    );
   });
 
 });

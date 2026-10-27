@@ -1,0 +1,109 @@
+{
+  "scope": "local real two-worker network profile; no remote deployment claim",
+  "passed": true,
+  "baseline": {
+    "1361563": {
+      "pid": 1361563,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    },
+    "1361564": {
+      "pid": 1361564,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 2,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    }
+  },
+  "report_writer": {
+    "unauthenticated": 401,
+    "create": 200,
+    "overwrite_guard": 409,
+    "nul": 422,
+    "report_sha256": "05ce57e450ca31964a046ec8b20c003003e8a2a51d810b6bebefbe6b37ec6db2"
+  },
+  "persistent_worker_pids": [
+    1361563,
+    1361564
+  ],
+  "kuiper": {
+    "keys": [
+      "binary_model",
+      "binary_pairs",
+      "position_units",
+      "positions",
+      "velocities",
+      "velocity_units"
+    ],
+    "positions": 3589,
+    "velocities": 3589,
+    "binary_pairs": 589,
+    "position_units": "AU",
+    "velocity_units": "AU/yr",
+    "sha256": "fbf4d67db397cff5aa4b482a6a976cc0d0ceb56a853006e7611db10f0912e92a"
+  },
+  "soak": {
+    "elapsed_seconds": 300.24103872300475,
+    "requested_seconds": 300.0,
+    "frames": [
+      1759,
+      2874
+    ],
+    "last_jd": [
+      2452735.4,
+      2452691.8
+    ],
+    "churn_cycles": 60,
+    "http_requests": 555,
+    "max_http_seconds": 0.014681544009363279,
+    "samples": 555
+  },
+  "final": {
+    "1361563": {
+      "pid": 1361563,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    },
+    "1361564": {
+      "pid": 1361564,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 4,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    }
+  },
+  "process_returncode": 0,
+  "log_errors": []
+}

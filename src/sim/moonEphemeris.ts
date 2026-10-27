@@ -15,6 +15,19 @@
  *   - public propagator units: AU, AU/day
  */
 
+import moonCatalog from '../data/moons.json';
+
+let moonIdentities: Map<string, (typeof moonCatalog)[number]> | undefined;
+
+// Keep catalog validation behind the parser. Propagation-only workers must not
+// retain the catalog merely because they import this module's numerical helpers.
+function moonIdentityFor(bodyId: string) {
+  moonIdentities ??= new Map(moonCatalog.map(moon => [moon.name.toLowerCase(), moon]));
+  return moonIdentities.get(bodyId);
+}
+const PARENT_CENTERS: Record<string, string> = {
+  Earth: '399', Mars: '499', Jupiter: '599', Saturn: '699', Uranus: '799', Neptune: '899', Pluto: '999'
+};
 const AU_KM = 149_597_870.7;
 const DAY_SECONDS = 86_400;
 const DEG_TO_RAD = Math.PI / 180;
@@ -47,11 +60,15 @@ export interface MoonEphemerisProvenance {
 }
 
 export interface MoonChebyshevEphemeris {
-  kind: 'horizons-chebyshev-elements-v1';
+  kind: 'horizons-chebyshev-elements-v1' | 'horizons-chebyshev-cartesian-v1';
   coverageStartJd: number;
   coverageEndJd: number;
   meanLongitudeBaseDeg: number;
   meanLongitudeRateDegPerDay: number;
+  /** Cartesian Fourier carrier: 0 is a direct XYZ polynomial; n adds n cos/sin pairs. */
+  carrierHarmonics?: number;
+  /** Dated provider fit changes, not physical impulses. Right-hand state wins. */
+  sourceDiscontinuities?: number[];
   /** Spacing of the source-element grid; also the continuity blend width. */
   sourceStepDays: number;
   segments: MoonEphemerisSegment[];
@@ -90,8 +107,8 @@ export interface GeneratedMoonChebyshevEphemeris extends MoonChebyshevEphemeris 
 }
 
 export interface MoonEphemerisArtifact {
-  schemaVersion: 1;
-  kind: 'horizons-chebyshev-elements-v1';
+  schemaVersion: 1 | 2;
+  kind: 'horizons-chebyshev-elements-v1' | 'horizons-chebyshev-mixed-v2';
   coverageTimeScale: 'TDB';
   referenceFrame: string;
   featureOrder: string[];
@@ -129,8 +146,9 @@ function requireFiniteNumber(
  */
 export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifact {
   if (!isRecord(value)) throw new Error('moon ephemeris artifact must be an object');
-  if (value.schemaVersion !== 1) throw new Error('unsupported moon ephemeris schemaVersion');
-  if (value.kind !== 'horizons-chebyshev-elements-v1') {
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) throw new Error('unsupported moon ephemeris schemaVersion');
+  if (!((value.schemaVersion === 1 && value.kind === 'horizons-chebyshev-elements-v1') ||
+        (value.schemaVersion === 2 && value.kind === 'horizons-chebyshev-mixed-v2'))) {
     throw new Error('unsupported moon ephemeris artifact kind');
   }
   if (value.coverageTimeScale !== 'TDB') {
@@ -166,7 +184,15 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     if (bodyId !== bodyId.toLowerCase() || !isRecord(untypedBody)) {
       throw new Error(`${context} must be keyed by a lower-case id and contain an object`);
     }
-    if (untypedBody.kind !== value.kind) throw new Error(`${context}.kind is inconsistent`);
+    const cartesian = untypedBody.kind === 'horizons-chebyshev-cartesian-v1';
+    if (untypedBody.kind !== 'horizons-chebyshev-elements-v1' && !(value.schemaVersion === 2 && cartesian)) {
+      throw new Error(`${context}.kind is inconsistent`);
+    }
+    const harmonics = cartesian ? requireFiniteNumber(untypedBody, 'carrierHarmonics', context) : 0;
+    if (!Number.isInteger(harmonics) || harmonics < 0 || harmonics > 4) {
+      throw new Error(`${context}.carrierHarmonics is invalid`);
+    }
+    const featureCount = cartesian ? 3 * (1 + 2 * harmonics) : MOON_EPHEMERIS_FEATURE_COUNT;
     const coverageStartJd = requireFiniteNumber(untypedBody, 'coverageStartJd', context);
     const coverageEndJd = requireFiniteNumber(untypedBody, 'coverageEndJd', context);
     const sourceStepDays = requireFiniteNumber(untypedBody, 'sourceStepDays', context);
@@ -185,6 +211,36 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     }
     if (provenance.frame !== 'ECLIPJ2000' || provenance.timeScale !== 'TDB') {
       throw new Error(`${context} has an incompatible frame or time scale`);
+    }
+    const identity = moonIdentityFor(bodyId);
+    if ((identity && (provenance.targetId !== String(identity.iauCode) ||
+        provenance.centerId !== PARENT_CENTERS[identity.planet])) ||
+        (untypedBody.targetId !== undefined && untypedBody.targetId !== provenance.targetId)) {
+      throw new Error(`${context}.provenance contradicts its catalog target or parent center`);
+    }
+    // These two exceptional sources require their explicit scientific domain.
+    // Neither a generic continuity flag nor a nonempty provenance string replaces it.
+    const domain = untypedBody.sourceDomain;
+    if (bodyId === 'daphnis') {
+      if (!isRecord(domain) ||
+          domain.kind !== 'piecewise legacy Cassini imaging fit, not a current numerical solution' ||
+          domain.kernelRelease !== '2016-10-11' || domain.observationsThrough !== '2016-07-16' ||
+          domain.handoffMeaning !== 'provider fit changes, not physical impulses; right-hand state at shared epoch' ||
+          !Array.isArray(domain.modelCoverageJd) || domain.modelCoverageJd.length !== 2 ||
+          domain.modelCoverageJd[0] !== coverageStartJd || domain.modelCoverageJd[1] !== coverageEndJd ||
+          !Array.isArray(domain.descriptorCoverageJd) || domain.descriptorCoverageJd.length !== 2 ||
+          domain.descriptorCoverageJd[0] !== 2433276.5 || domain.descriptorCoverageJd[1] !== 2469816.5 ||
+          coverageStartJd < domain.descriptorCoverageJd[0] || coverageEndJd > domain.descriptorCoverageJd[1] ||
+          provenance.sourceEphemeris !== 'SAT393 Daphnis, legacy Cassini-fit type 17') {
+        throw new Error(`${context} must retain its dated legacy source qualification and native domain`);
+      }
+    }
+    if (bodyId === 's2023_s38' && (!isRecord(domain) ||
+        domain.kind !== 'geometric Cartesian states; no elliptic-conic assumption' ||
+        !Array.isArray(domain.coverageJd) || domain.coverageJd.length !== 2 ||
+        domain.coverageJd[0] !== coverageStartJd || domain.coverageJd[1] !== coverageEndJd ||
+        !cartesian || provenance.sourceEphemeris !== 'sat455_merged_DE440')) {
+      throw new Error(`${context} must retain its geometric Cartesian source domain`);
     }
 
     for (const hashField of ['sourceRowsSha256', 'heldOutRowsSha256']) {
@@ -266,11 +322,49 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     ) {
       throw new Error(`${context}.validation exceeds its declared accuracy limit`);
     }
-    if (
-      !isRecord(validation.boundaryContinuity) ||
-      validation.boundaryContinuity.runtimeStateContinuous !== true
-    ) {
+    const handoffs = untypedBody.sourceDiscontinuities;
+    const audit = validation.postSelectionCrossValidation;
+    if (audit !== undefined || bodyId === 's2023_s38') {
+      if (!isRecord(audit) || audit.usedForFitOrSubdivision !== false ||
+          typeof audit.sampleCount !== 'number' || !Number.isInteger(audit.sampleCount) || audit.sampleCount <= 0 ||
+          typeof audit.rowsSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(audit.rowsSha256)) {
+        throw new Error(`${context}.validation must retain an independent post-selection audit`);
+      }
+      for (const [field, limit] of [['positionErrorKm', positionLimit], ['velocityErrorMPerS', velocityLimit]] as const) {
+        const stats = audit[field];
+        if (!isRecord(stats)) throw new Error(`${context}.validation audit statistics are missing`);
+        let previous = 0;
+        for (const percentile of ['p50', 'p95', 'p99', 'max']) {
+          const statistic = requireFiniteNumber(stats, percentile, `${context}.validation.audit.${field}`);
+          if (statistic < previous || statistic > limit) {
+            throw new Error(`${context}.validation audit exceeds its accuracy limit or has invalid statistics`);
+          }
+          previous = statistic;
+        }
+      }
+    }
+    if (handoffs !== undefined && (!cartesian || !Array.isArray(handoffs) || handoffs.length === 0 ||
+        handoffs.some((jd, index) => typeof jd !== 'number' || !Number.isFinite(jd) ||
+          jd <= coverageStartJd || jd >= coverageEndJd || (index > 0 && jd <= handoffs[index - 1])))) {
+      throw new Error(`${context}.sourceDiscontinuities must be ordered internal Cartesian handoffs`);
+    }
+    if (!isRecord(validation.boundaryContinuity) ||
+        validation.boundaryContinuity.runtimeStateContinuous !== (handoffs === undefined)) {
       throw new Error(`${context}.validation does not certify runtime state continuity`);
+    }
+    if ((handoffs === undefined && validation.boundaryContinuity.sourceDiscontinuities !== undefined) ||
+        (bodyId === 'daphnis' && (!Array.isArray(handoffs) || handoffs.length !== 2 ||
+          handoffs[0] !== 2455197.5 || handoffs[1] !== 2457388.5))) {
+      throw new Error(`${context}.validation contradicts the native source handoffs`);
+    }
+    if (Array.isArray(handoffs)) {
+      const evidence = validation.boundaryContinuity.sourceDiscontinuities;
+      if (!Array.isArray(evidence) || evidence.length !== handoffs.length || evidence.some((item, index) =>
+          !isRecord(item) || item.jdTdb !== handoffs[index] || item.selection !== 'right-hand' ||
+          typeof item.positionJumpKm !== 'number' || !Number.isFinite(item.positionJumpKm) || item.positionJumpKm < 0 ||
+          typeof item.velocityJumpMPerS !== 'number' || !Number.isFinite(item.velocityJumpMPerS) || item.velocityJumpMPerS < 0)) {
+        throw new Error(`${context}.validation must identify each native source handoff`);
+      }
     }
 
     if (!Array.isArray(untypedBody.segments) || untypedBody.segments.length === 0) {
@@ -289,9 +383,9 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
       expectedStart = endJd;
       if (
         !Array.isArray(untypedSegment.coefficients) ||
-        untypedSegment.coefficients.length !== MOON_EPHEMERIS_FEATURE_COUNT
+        untypedSegment.coefficients.length !== featureCount
       ) {
-        throw new Error(`${segmentContext} must contain ${MOON_EPHEMERIS_FEATURE_COUNT} coefficient series`);
+        throw new Error(`${segmentContext} must contain ${featureCount} coefficient series`);
       }
       for (const [featureIndex, coefficients] of untypedSegment.coefficients.entries()) {
         if (
@@ -305,6 +399,11 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     }
     if (Math.abs(expectedStart - coverageEndJd) > 1e-9) {
       throw new Error(`${context}.segments do not cover the declared end date`);
+    }
+    const validatedSegments = untypedBody.segments;
+    if (Array.isArray(handoffs) && handoffs.some(jd =>
+        !validatedSegments.some((segment: unknown) => isRecord(segment) && segment.startJd === jd))) {
+      throw new Error(`${context}.sourceDiscontinuities must coincide with segment boundaries`);
     }
   }
 
@@ -445,6 +544,9 @@ export function propagateMoonEphemeris(
   outPosition: MutableVector3,
   outVelocity: MutableVector3 | null = null
 ): boolean {
+  if (ephemeris.kind === 'horizons-chebyshev-cartesian-v1') {
+    return propagateCartesianEphemeris(ephemeris, jd, outPosition, outVelocity);
+  }
   const feature = featuresAt(ephemeris, jd);
   if (!feature) return false;
 
@@ -564,4 +666,82 @@ export function canPropagateMoonEphemeris(
 /** Convert the public AU/day velocity contract to km/s in diagnostics. */
 export function auPerDayToKmPerSecond(value: number): number {
   return (value * AU_KM) / DAY_SECONDS;
+}
+
+/** Cartesian fits avoid cancellation between rapidly varying osculating elements.
+ * Coefficients are grouped XYZ for [1, cos(phi), sin(phi), cos(2phi), ...].
+ * Both the polynomial amplitude and phase carrier are differentiated analytically.
+ */
+function cartesianSegmentState(
+  ephemeris: MoonChebyshevEphemeris, segment: MoonEphemerisSegment, jd: number
+): { p: number[]; v: number[] } | null {
+  const harmonics = ephemeris.carrierHarmonics ?? 0;
+  if (!Number.isInteger(harmonics) || harmonics < 0 || harmonics > 4 ||
+      segment.coefficients.length !== 3 * (1 + 2 * harmonics)) return null;
+  const span = segment.endJd - segment.startJd;
+  if (!(span > 0)) return null;
+  const x = 2 * (jd - segment.startJd) / span - 1;
+  const omega = ephemeris.meanLongitudeRateDegPerDay * DEG_TO_RAD;
+  const phase = normalizeRadians((ephemeris.meanLongitudeBaseDeg +
+    ephemeris.meanLongitudeRateDegPerDay * (jd - ephemeris.coverageStartJd)) * DEG_TO_RAD);
+  const carriers = [1];
+  const carrierRates = [0];
+  for (let k = 1; k <= harmonics; k++) {
+    carriers.push(Math.cos(k * phase), Math.sin(k * phase));
+    carrierRates.push(-k * omega * Math.sin(k * phase), k * omega * Math.cos(k * phase));
+  }
+  const p = [0, 0, 0];
+  const v = [0, 0, 0];
+  for (let feature = 0; feature < segment.coefficients.length; feature++) {
+    const c = segment.coefficients[feature];
+    if (!c.length) return null;
+    // Simultaneous Chebyshev recurrence for T_n and dT_n/dx.
+    let t0 = 1, t1 = x, d0 = 0, d1 = 1;
+    let amplitude = c[0], derivative = 0;
+    for (let k = 1; k < c.length; k++) {
+      amplitude += c[k] * t1;
+      derivative += c[k] * d1;
+      const t2 = 2 * x * t1 - t0;
+      const d2 = 2 * t1 + 2 * x * d1 - d0;
+      t0 = t1; t1 = t2; d0 = d1; d1 = d2;
+    }
+    const axis = feature % 3;
+    const carrier = Math.floor(feature / 3);
+    p[axis] += amplitude * carriers[carrier];
+    v[axis] += derivative * (2 / span) * carriers[carrier] + amplitude * carrierRates[carrier];
+  }
+  return [...p, ...v].every(Number.isFinite) ? { p, v } : null;
+}
+
+function propagateCartesianEphemeris(
+  ephemeris: MoonChebyshevEphemeris, jd: number,
+  outPosition: MutableVector3, outVelocity: MutableVector3 | null
+): boolean {
+  const index = segmentIndexAt(ephemeris, jd);
+  if (index < 0) return false;
+  const segment = ephemeris.segments[index];
+  let state = cartesianSegmentState(ephemeris, segment, jd);
+  if (!state) return false;
+  const half = ephemeris.sourceStepDays / 2;
+  let left = -1;
+  if (half > 0 && index > 0 && jd < segment.startJd + half) left = index - 1;
+  else if (half > 0 && index + 1 < ephemeris.segments.length && jd > segment.endJd - half) left = index;
+  if (left >= 0 && ephemeris.sourceDiscontinuities?.includes(ephemeris.segments[left].endJd)) left = -1;
+  if (left >= 0) {
+    const boundary = ephemeris.segments[left].endJd;
+    const a = cartesianSegmentState(ephemeris, ephemeris.segments[left], jd);
+    const b = cartesianSegmentState(ephemeris, ephemeris.segments[left + 1], jd);
+    if (!a || !b) return false;
+    const u = clamp((jd - boundary + half) / (2 * half), 0, 1);
+    const w = u * u * (3 - 2 * u);
+    const dw = 6 * u * (1 - u) / (2 * half);
+    state = {
+      p: a.p.map((value, axis) => value + w * (b.p[axis] - value)),
+      v: a.v.map((value, axis) => value + w * (b.v[axis] - value) + dw * (b.p[axis] - a.p[axis]))
+    };
+  }
+  if (![...state.p, ...state.v].every(Number.isFinite)) return false;
+  outPosition.set(state.p[0] / AU_KM, state.p[1] / AU_KM, state.p[2] / AU_KM);
+  outVelocity?.set(state.v[0] / AU_KM, state.v[1] / AU_KM, state.v[2] / AU_KM);
+  return true;
 }

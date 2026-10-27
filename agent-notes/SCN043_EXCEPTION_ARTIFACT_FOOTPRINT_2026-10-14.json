@@ -1,0 +1,55 @@
+{
+  "artifacts": {
+    "moonEphemerisChebyshev.json": {
+      "bytes": 4118909,
+      "gzipBytes": 1740027,
+      "sha256": "9331771c6ae51983c21efcea2bb07191055c2d7891db5f702006487f54e0b9f4",
+      "models": 4
+    },
+    "moonEphemerisRepairs.json": {
+      "bytes": 737611,
+      "gzipBytes": 348254,
+      "sha256": "d65c466ce3fb84a46f15af89388abe34f0239df3382de4de59a9af3e6a8cb3d7",
+      "models": 6
+    },
+    "moonEphemerisSpkRepairs.json": {
+      "bytes": 270686,
+      "gzipBytes": 132646,
+      "sha256": "b3f2cff1db399908475129505dea7e317fada4c47f13e005aef95c66d79434f9",
+      "models": 1
+    },
+    "moonEphemerisDaphnis.json": {
+      "bytes": 219401,
+      "gzipBytes": 101412,
+      "sha256": "d7709853c059884f20763ace6aacd50a34c38e26b924e20c9f5a6b943f02a7c8",
+      "models": 1
+    },
+    "moonEphemerisS2023S38.json": {
+      "bytes": 1418551,
+      "gzipBytes": 635790,
+      "sha256": "b3410184508f68eff0add063f4f7eb4f9a5ac349a61ecec8c6f324c39f06e1e8",
+      "models": 1
+    }
+  },
+  "pinnedS2023S38Inputs": {
+    "dense_source.f64.gz": 915337,
+    "manifest.json": 325632,
+    "audit.f64.gz": 344315,
+    "endpoints.f64.gz": 135,
+    "source.f64.gz": 1797447,
+    "README.md": 2362,
+    "dense_held.f64.gz": 915317,
+    "held.f64.gz": 1797477,
+    "hyperbolic.f64.gz": 79
+  },
+  "pinnedS2023S38InputBytes": 6098101,
+  "shippedModels": 13,
+  "catalogDenominator": 424,
+  "pendingPromotionRecords": 411,
+  "compressionMeasurement": {
+    "format": "gzip",
+    "compressionLevel": 9,
+    "mtime": 0,
+    "source": "actual JSON file bytes, not a bundler transfer estimate"
+  }
+}

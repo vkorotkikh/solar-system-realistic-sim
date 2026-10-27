@@ -21,8 +21,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
+from contextlib import closing
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+
+from sim.solar_http_transport import DeadlineHttpResponse, SolarHttpError
 
 from .orbital import AU_M, DAY_SECONDS, J2000_JD, sample_body_state_from_elements
 
@@ -133,15 +136,10 @@ class EphemerisProtocolError(EphemerisError):
     default_retryable = False
 
 
-class _NoHorizonsRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        # Let HTTPError expose the redirect to the bounded owner. The default
-        # handler silently follows cross-host and HTTPS-downgrade redirects.
-        return None
-
-
 def _horizons_urlopen(request: urllib.request.Request, *, timeout: float):
-    return urllib.request.build_opener(_NoHorizonsRedirect()).open(request, timeout=timeout)
+    # The shared transport disables redirects and owns kill/reap of all DNS,
+    # TLS, header and body I/O. Its response status is data, not an HTTPError.
+    return DeadlineHttpResponse(request, timeout)
 
 
 def _validate_horizons_url(url: str) -> None:
@@ -240,10 +238,10 @@ _SPICE_IMPORT_ERROR = ""
 _SPICE_CONDITION = threading.Condition()
 _spice = None
 
-# A blocked or slow-dripping upstream must not multiply into one orphaned
-# transport per request.  The thread performing the actual stdlib I/O owns this
-# permit until it really exits, even if its requesting planning worker has
-# already reached its absolute deadline.
+# The supervisor retains this permit until its owned HTTP child is killed and
+# reaped. Planning cancellation can stop waiting sooner, but the child still
+# has the original absolute deadline, so a stalled read cannot starve capacity
+# permanently or multiply into abandoned transports across reconnects.
 _HORIZONS_CONCURRENCY_GUARD = threading.BoundedSemaphore(HORIZONS_CONCURRENCY_LIMIT)
 _SPICE_CALL_CONCURRENCY_GUARD = threading.BoundedSemaphore(1)
 
@@ -428,6 +426,7 @@ def _has_canonical_kepler_orbit(body: Mapping[str, Any]) -> bool:
         "arg_periapsis_deg",
         "mean_anomaly_deg",
         "period_days",
+        "epoch_jd",
     )
     parsed: Dict[str, float] = {}
     for name in required:
@@ -436,12 +435,6 @@ def _has_canonical_kepler_orbit(body: Mapping[str, Any]) -> bool:
             return False
         parsed[name] = float(value)
         if not math.isfinite(parsed[name]):
-            return False
-    epoch_jd = orbit.get("epoch_jd")
-    if epoch_jd is not None:
-        if isinstance(epoch_jd, bool) or not isinstance(epoch_jd, Real):
-            return False
-        if not math.isfinite(float(epoch_jd)):
             return False
     return (
         parsed["a_au"] > 0.0
@@ -944,7 +937,7 @@ class EphemerisService:
                 provider_revision="catalog_elements",
                 model_metadata=dict(model) if model else {
                     "quality": "approximate_fixed_elements",
-                    "initial_epoch_jd_tdb": orbit.get("epoch_jd", J2000_JD),
+                    "initial_epoch_jd_tdb": orbit["epoch_jd"],
                     "supported_jd_tdb_range": None,
                     "accuracy_scope": "unvalidated_no_error_bound",
                 },
@@ -1220,47 +1213,45 @@ class EphemerisService:
         body_id: str,
         jd: float,
     ) -> bytes:
-        """Run one stdlib request behind an absolute, globally bounded owner.
+        """Supervise terminable HTTP I/O under an admitted upstream deadline.
 
-        ``urlopen``'s timeout is a socket-operation timeout, not a total request
-        deadline. A peer that continuously trickles bytes can therefore keep a
-        plain ``response.read`` alive indefinitely. Python cannot safely kill a
-        blocked I/O thread, so the transport thread retains the one global
-        remote permit until it *actually* exits while the planning worker stops
-        waiting at the absolute deadline. This bounds leakage to one daemon
-        transport and prevents it from multiplying across reconnects.
+        Queueing for the local permit is governed by the owning planning
+        context.  Once admitted, every redirect consumes the configured
+        upstream deadline (capped by that same context) and an external request
+        reservation. The supervisor can outlive a cancelled waiter only until
+        that deadline; child kill/reap always precedes permit release.
         """
 
         _validate_horizons_url(request.full_url)
-        absolute_deadline = time.monotonic() + max(0.0, float(timeout_s))
         acquired = False
         while not acquired:
             self._context_checkpoint()
-            remaining = absolute_deadline - time.monotonic()
-            if remaining <= 0.0:
-                raise EphemerisUpstreamTimeout(
-                    "Horizons transport capacity was unavailable before the request deadline",
-                    provider="horizons",
-                    body_id=body_id,
-                    jd=jd,
-                )
+            # Local admission must never consume the configured upstream
+            # timeout: a healthy request may wait behind another local caller.
+            # Bound each poll by the owning context instead, so expiry and
+            # cancellation retain their owner-control classification.
+            remaining = self._context_remaining_seconds()
+            if remaining is not None and remaining <= 0.0:
+                self._context_checkpoint()
             acquired = _HORIZONS_CONCURRENCY_GUARD.acquire(
-                timeout=min(HORIZONS_WAIT_POLL_S, remaining)
+                timeout=(
+                    HORIZONS_WAIT_POLL_S
+                    if remaining is None
+                    else min(HORIZONS_WAIT_POLL_S, max(0.001, remaining))
+                )
             )
 
         handed_to_transport = False
         try:
-            # Admission can race the request deadline/cancellation. Re-check
-            # after acquiring so a permit becoming free at the boundary cannot
-            # authorize a brand-new outbound call.
+            # Admission can race context expiry/cancellation. Re-check after
+            # acquiring so a permit becoming free at the boundary cannot
+            # authorize a brand-new outbound call, then start the upstream
+            # timeout only for admitted transport work.
             self._context_checkpoint()
-            if time.monotonic() >= absolute_deadline:
-                raise EphemerisUpstreamTimeout(
-                    "Horizons transport capacity was unavailable before the request deadline",
-                    provider="horizons",
-                    body_id=body_id,
-                    jd=jd,
-                )
+            absolute_deadline = min(
+                time.monotonic() + max(0.0, float(timeout_s)),
+                self._context.deadline_monotonic,
+            )
             # Charge only after global admission and immediately before the
             # outbound thread is started. A failed expensive call still owns
             # its reservation.
@@ -1280,21 +1271,52 @@ class EphemerisService:
                             raise EphemerisUpstreamTimeout("Horizons redirect deadline exceeded", provider="horizons")
                         if hop:
                             self._context_reserve(external_requests=1)
-                        try:
-                            with _horizons_urlopen(current, timeout=max(0.001, remaining)) as response:
-                                outcome["raw"] = response.read(HORIZONS_MAX_RESPONSE_BYTES + 1)
-                            break
-                        except urllib.error.HTTPError as exc:
-                            if exc.code not in (301, 302, 303, 307, 308):
-                                raise
-                            location = exc.headers.get("Location")
-                            exc.close()
-                            if not location or hop >= HORIZONS_MAX_REDIRECTS:
-                                raise EphemerisProtocolError("Horizons redirect limit or missing Location", provider="horizons") from exc
-                            target = urllib.parse.urljoin(current.full_url, location)
-                            _validate_horizons_url(target)
-                            current = urllib.request.Request(target, headers={"User-Agent": HORIZONS_USER_AGENT})
+                        with closing(_horizons_urlopen(current, timeout=remaining)) as response:
+                            self._context_checkpoint()
+                            _validate_horizons_url(response.geturl())
+                            status = response.status
+                            if status in (301, 302, 303, 307, 308):
+                                locations = response.headers.get_all("Location", [])
+                                if len(locations) != 1 or not locations[0].strip() or hop >= HORIZONS_MAX_REDIRECTS:
+                                    raise EphemerisProtocolError("Horizons redirect limit or missing/ambiguous Location", provider="horizons")
+                                target = urllib.parse.urljoin(current.full_url, locations[0])
+                                _validate_horizons_url(target)
+                                current = urllib.request.Request(target, headers={"User-Agent": HORIZONS_USER_AGENT})
+                                continue
+                            if status != 200:
+                                # Preserve the existing 429/5xx/query-rejection
+                                # classification without reading an error body.
+                                raise urllib.error.HTTPError(
+                                    current.full_url, status, "Horizons HTTP failure",
+                                    response.headers, None,
+                                )
+                            chunks = []
+                            received = 0
+                            while received <= HORIZONS_MAX_RESPONSE_BYTES:
+                                self._context_checkpoint()
+                                chunk = response.read(min(64 * 1024, HORIZONS_MAX_RESPONSE_BYTES + 1 - received))
+                                if not chunk:
+                                    break
+                                chunks.append(chunk)
+                                received += len(chunk)
+                            if received > HORIZONS_MAX_RESPONSE_BYTES:
+                                raise EphemerisProtocolError(
+                                    "Horizons response exceeded the configured size limit",
+                                    provider="horizons", body_id=body_id, jd=jd,
+                                )
+                            outcome["raw"] = b"".join(chunks)
+                        break
                 except BaseException as exc:  # Preserve exact transport classification upstream.
+                    if isinstance(exc, SolarHttpError):
+                        error_type = EphemerisProviderUnavailable
+                        if exc.code == "acquisition_deadline":
+                            error_type = EphemerisUpstreamTimeout
+                        elif exc.code in ("response_byte_limit", "response_metadata_limit"):
+                            error_type = EphemerisProtocolError
+                        exc = error_type(
+                            f"Horizons owned transport failed ({exc.code})",
+                            provider="horizons", body_id=body_id, jd=jd,
+                        )
                     outcome["error"] = exc
                 finally:
                     outcome["finishedMonotonic"] = time.monotonic()
@@ -1319,7 +1341,7 @@ class EphemerisService:
             remaining = absolute_deadline - time.monotonic()
             if remaining <= 0.0:
                 # Prefer a result that finished at the boundary; otherwise the
-                # still-running daemon retains the global permit until exit.
+                # supervisor retains the permit until child kill/reap finishes.
                 if done.is_set():
                     break
                 raise EphemerisUpstreamTimeout(
@@ -1330,6 +1352,7 @@ class EphemerisService:
                 )
             done.wait(timeout=min(HORIZONS_WAIT_POLL_S, remaining))
 
+        self._context_checkpoint()
         finished = float(outcome.get("finishedMonotonic", math.inf))
         if finished > absolute_deadline:
             raise EphemerisUpstreamTimeout(
@@ -1338,7 +1361,6 @@ class EphemerisService:
                 body_id=body_id,
                 jd=jd,
             )
-        self._context_checkpoint()
         error = outcome.get("error")
         if isinstance(error, BaseException):
             raise error
@@ -1582,18 +1604,28 @@ def _parse_horizons_payload(
         row = rows[0]
         returned_jd = float(row[0])
         if not math.isfinite(returned_jd) or not math.isclose(
-            returned_jd, expected_jd, rel_tol=0.0, abs_tol=5e-10
+            returned_jd, expected_jd, rel_tol=0.0, abs_tol=2e-9
         ):
             raise ValueError("response returned a different Julian date")
         vector = tuple(float(row[index]) for index in range(2, 8))
         if not all(math.isfinite(value) for value in vector):
             raise ValueError("response returned a non-finite state")
 
-        source_match = re.search(r"\{source:\s*([^}]+)\}", target_header)
-        if source_match is None:
+        target_source_match = re.search(r"\{source:\s*([^}]*)\}", target_header)
+        if target_source_match is None or not target_source_match.group(1).strip():
             raise ValueError("target header omitted the source ephemeris")
-        api_version = str(signature.get("version", "unknown")).strip() or "unknown"
-        provider_revision = f"{source_match.group(1).strip()}; horizons-api-{api_version}"
+        center_source_match = re.search(r"\{source:\s*([^}]*)\}", center_header)
+        if center_source_match is None or not center_source_match.group(1).strip():
+            raise ValueError("center header omitted the source ephemeris")
+        # Horizons may select a target-system kernel for both target and center
+        # headers (for example jup365_merged). That per-query provenance cannot
+        # serve as a cross-body compatibility revision. The validated API
+        # signature and canonical state contract are shared by every sample.
+        raw_api_version = signature.get("version")
+        if not isinstance(raw_api_version, str) or not raw_api_version.strip():
+            raise ValueError("provider signature omitted a valid API version")
+        api_version = raw_api_version.strip()
+        provider_revision = f"horizons-api-{api_version}"
     except (TypeError, ValueError, IndexError, csv.Error) as exc:
         raise EphemerisProtocolError(
             f"Horizons returned an invalid state for `{body_id}`: {exc}",

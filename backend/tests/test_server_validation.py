@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 
 import server
 from mission import MissionPlannerAgent
 from server import app
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000))
 
 
 def test_set_julian_date_requires_the_engine_time_scale() -> None:
@@ -100,6 +101,72 @@ def test_mission_plan_rejects_non_numeric_payload_mass() -> None:
     assert "payload_mass_kg" in response.text
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("dry_mass_kg", None),
+        ("dry_mass_kg", 0.0),
+        ("propellant_mass_kg", None),
+        ("propellant_mass_kg", 0.0),
+        ("isp_s", None),
+        ("isp_s", 0.0),
+    ],
+)
+def test_mission_plan_rejects_incomplete_or_nonpropulsive_custom_stages(
+    monkeypatch, field: str, value: float | None,
+) -> None:
+    stage = {
+        "name": "stage",
+        "dry_mass_kg": 100.0,
+        "propellant_mass_kg": 1_000.0,
+        "isp_s": 300.0,
+    }
+    if value is None:
+        del stage[field]
+    else:
+        stage[field] = value
+
+    def mission_worker_must_not_run(*_args, **_kwargs):
+        raise AssertionError("invalid mission stages must not reach the mission worker")
+
+    monkeypatch.setattr(server, "_run_mission_plan", mission_worker_must_not_run)
+    invalid_client = TestClient(app, raise_server_exceptions=False)
+    response = invalid_client.post(
+        "/mission/plan",
+        json={
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "max_assists": 0,
+            "ephemeris_provider": "kepler",
+            "vehicle": {"name": "custom", "stages": [stage]},
+        },
+    )
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]["context"]["errors"]
+    assert any(error["location"][-1] == field for error in errors)
+
+
+def test_mission_stage_request_accepts_fully_positive_custom_stage() -> None:
+    stage = server.MissionStageRequest.model_validate(
+        {
+            "name": "stage",
+            "dry_mass_kg": 100.0,
+            "propellant_mass_kg": 1_000.0,
+            "isp_s": 300.0,
+        }
+    )
+
+    assert stage.model_dump() == {
+        "name": "stage",
+        "dry_mass_kg": 100.0,
+        "propellant_mass_kg": 1_000.0,
+        "isp_s": 300.0,
+    }
+
+
 def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch) -> None:
     monkeypatch.setattr(
         MissionPlannerAgent,
@@ -129,7 +196,7 @@ def test_mission_plan_returns_422_when_no_verified_candidate_exists(monkeypatch)
     assert "no_verified_candidate" in response.text
 
 
-def test_mission_plan_maps_inconclusive_trajectory_search_to_503(monkeypatch) -> None:
+def test_mission_plan_marks_deterministic_search_budget_exhaustion_non_retryable(monkeypatch) -> None:
     search = {
         "truncated": True,
         "budgetExhausted": True,
@@ -163,6 +230,7 @@ def test_mission_plan_maps_inconclusive_trajectory_search_to_503(monkeypatch) ->
     assert response.status_code == 503
     detail = response.json()["detail"]
     assert detail["code"] == "trajectory_compute_budget_exhausted"
+    assert detail["retryable"] is False
     assert detail["context"]["trajectorySearch"]["outbound"] == search
 
 

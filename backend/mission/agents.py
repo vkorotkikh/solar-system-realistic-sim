@@ -202,14 +202,19 @@ class LogisticsAgent:
         propulsion: Dict[str, Any],
         reserve_fraction: float,
         return_cargo_available_kg: float,
+        failure_probability_threshold: float,
         decision_log: DecisionLog,
     ) -> Dict[str, Any]:
         burns = [event["deltaVKmS"] for event in propulsion["events"]]
+        cargo_sizing_delta_v_factor = RiskService.cargo_sizing_delta_v_factor(
+            failure_probability_threshold
+        )
+        design_burns = [burn * cargo_sizing_delta_v_factor for burn in burns]
         # The return burn carries the mined cargo: load as much as still closes.
         cargo_kg = self._vehicle_service.max_closable_cargo_kg(
             vehicle,
             payload_mass_kg=payload_mass_kg,
-            burns_km_s=burns,
+            burns_km_s=design_burns,
             cargo_burn_index=2,
             available_cargo_kg=return_cargo_available_kg,
             reserve_fraction=reserve_fraction,
@@ -223,6 +228,7 @@ class LogisticsAgent:
         )
         budget["returnCargoAvailableKg"] = max(0.0, float(return_cargo_available_kg))
         budget["returnCargoKg"] = cargo_kg or 0.0
+        budget["cargoSizingDeltaVFactor"] = cargo_sizing_delta_v_factor
         budget["propulsion"] = propulsion
         decision_log.add(
             agent=self.name,
@@ -232,6 +238,7 @@ class LogisticsAgent:
                 "feasible": budget.get("feasible", False),
                 "propellantUsedKg": budget.get("totalPropellantUsedKg", 0.0),
                 "propellantMarginKg": budget.get("propellantMarginKg", 0.0),
+                "cargoSizingDeltaVFactor": cargo_sizing_delta_v_factor,
             },
         )
         return budget
@@ -523,6 +530,7 @@ class MissionPlannerAgent:
                 return_cargo_available_kg=MiningService.deliverable_cargo_kg(
                     mining_result, mission_inputs["handling_loss_fraction"]
                 ),
+                failure_probability_threshold=mission_inputs["risk_failure_probability_threshold"],
                 decision_log=candidate_log,
             )
             if not candidate_checkpoint():
@@ -543,7 +551,7 @@ class MissionPlannerAgent:
             if not candidate_checkpoint():
                 break
 
-            total_delta_v = float(logistics["totalRequestedDeltaV_km_s"])
+            total_delta_v = float(logistics.get("totalRequestedDeltaV_km_s", 0.0))
             total_time_days = float(outbound["totalTimeDays"]) + float(mission_inputs["mining_days"]) + float(return_route["totalTimeDays"])
             arrival_jd = float(return_route["legs"][-1]["arrivalJd"])
             burns_km_s = [float(b["requestedDeltaV_km_s"]) for b in burns]
