@@ -76,34 +76,100 @@ does not certify the candidate as fixed.
 Every command below runs from the assigned delivery worktree. The parent must
 first coordinate its refresh to the approved integrated production source; this
 runbook deliberately does not merge, fetch, reset, or modify production files.
-Set `SOLAR_DELIVERY_FINAL_REV` to the parent's approved full 40-character commit.
+Set `SOLAR_DELIVERY_FINAL_REV` to the parent's approved full 40-character commit
+and `SOLAR_DELIVERY_FINAL_REF` to the approved existing full ref name (for example,
+`refs/heads/main` or `refs/remotes/origin/main`). The ref must still resolve to
+that exact commit at preparation and capture; a moved or deleted ref requires a
+new approved preparation. No particular historical branch is required.
 Do not run these commands against the older diagnostic source and label them as
 final integration. Preserve the same `RUN_ROOT` across the serving/capture sessions.
 
+Set `SOLAR_DELIVERY_WORKTREE` to the assigned delivery checkout and provide
+absolute paths in `SOLAR_DELIVERY_NODE`, `SOLAR_DELIVERY_NPM_CLI`, and
+`SOLAR_DELIVERY_CHROMIUM` for the installed Node executable, npm CLI JavaScript
+entry point, and Chromium executable. Use the versions declared in `package.json`;
+do not install or replace dependencies during a measurement window. The Chromium
+path may come from the local Playwright installation's `chromium.executablePath()`.
+An executable browser alone does not prove that hardware rendering is available.
+
+Run this shared setup in every preparation, server, and capture shell, using the
+same exported inputs. The functions validate source identity without refreshing
+refs or modifying the checkout.
+
 ```bash
-cd /home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery
-export PATH="/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH"
+: "${SOLAR_DELIVERY_WORKTREE:?Set the assigned delivery checkout}"
+cd "$SOLAR_DELIVERY_WORKTREE" || exit 1
+test "$(git rev-parse --show-toplevel)" = "$PWD" || exit 1
 : "${SOLAR_DELIVERY_FINAL_REV:?Set the parent-approved final integrated commit}"
-test "$(git rev-parse "$SOLAR_DELIVERY_FINAL_REV^{commit}")" = "$SOLAR_DELIVERY_FINAL_REV" || exit 1
-test "$(git rev-parse remediation/canonical-register-20261014)" = "$SOLAR_DELIVERY_FINAL_REV" || exit 1
-git diff --quiet "$SOLAR_DELIVERY_FINAL_REV" -- . ':!scripts/**' ':!agent-notes/**' || exit 1
+: "${SOLAR_DELIVERY_FINAL_REF:?Set the parent-approved full source ref}"
+: "${SOLAR_DELIVERY_NODE:?Set the absolute installed Node executable path}"
+: "${SOLAR_DELIVERY_NPM_CLI:?Set the absolute installed npm CLI entry-point path}"
+: "${SOLAR_DELIVERY_CHROMIUM:?Set the absolute installed Chromium executable path}"
+[[ "$SOLAR_DELIVERY_NODE" = /* && -x "$SOLAR_DELIVERY_NODE" ]] || exit 1
+[[ "$SOLAR_DELIVERY_NPM_CLI" = /* && -f "$SOLAR_DELIVERY_NPM_CLI" && -r "$SOLAR_DELIVERY_NPM_CLI" ]] || exit 1
+[[ "$SOLAR_DELIVERY_CHROMIUM" = /* && -x "$SOLAR_DELIVERY_CHROMIUM" ]] || exit 1
+export PATH="$(dirname "$SOLAR_DELIVERY_NODE"):$PATH"
+test "$("$SOLAR_DELIVERY_NODE" --version)" = "v$("$SOLAR_DELIVERY_NODE" -p 'require("./package.json").engines.node')" || exit 1
+test "$("$SOLAR_DELIVERY_NODE" "$SOLAR_DELIVERY_NPM_CLI" --version)" = "$("$SOLAR_DELIVERY_NODE" -p 'require("./package.json").engines.npm')" || exit 1
+
+assert_delivery_source() {
+  [[ "$SOLAR_DELIVERY_FINAL_REV" =~ ^[0-9a-f]{40}$ ]] || return 1
+  git check-ref-format "$SOLAR_DELIVERY_FINAL_REF" || return 1
+  test "$(git rev-parse --verify --end-of-options "${SOLAR_DELIVERY_FINAL_REV}^{commit}")" = "$SOLAR_DELIVERY_FINAL_REV" || return 1
+  test "$(git rev-parse --verify --end-of-options "${SOLAR_DELIVERY_FINAL_REF}^{commit}")" = "$SOLAR_DELIVERY_FINAL_REV" || return 1
+  git diff --quiet "$SOLAR_DELIVERY_FINAL_REV" -- . ':!scripts/**' ':!agent-notes/**'
+}
+
+assert_delivery_preparation() {
+  local runner_revision
+  test -n "${RUN_ROOT:-}" && test -d "$RUN_ROOT" || return 1
+  test "$(cat "$RUN_ROOT/approved-parent-revision.txt")" = "$SOLAR_DELIVERY_FINAL_REV" || return 1
+  test "$(cat "$RUN_ROOT/approved-source-ref.txt")" = "$SOLAR_DELIVERY_FINAL_REF" || return 1
+  runner_revision=$(git rev-parse --verify HEAD) || return 1
+  test "$(cat "$RUN_ROOT/runner-revision.txt")" = "$runner_revision" || return 1
+  test "$(cat "$RUN_ROOT/built-source-revision.txt")" = "$SOLAR_DELIVERY_FINAL_REV" || return 1
+  assert_delivery_source
+}
+
+assert_delivery_source || exit 1
+```
+
+Prepare once, after the shared setup. Keep these pin files unchanged throughout
+the run; a later approval or checkout revision needs a new `RUN_ROOT` and build.
+
+```bash
+assert_delivery_source || exit 1
 export RUN_ROOT="$PWD/artifacts/solar-delivery-final-${SOLAR_DELIVERY_FINAL_REV}-$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$RUN_ROOT"
+mkdir -p "$PWD/artifacts" || exit 1
+mkdir "$RUN_ROOT" || exit 1
 printf '%s\n' "$SOLAR_DELIVERY_FINAL_REV" > "$RUN_ROOT/approved-parent-revision.txt"
+printf '%s\n' "$SOLAR_DELIVERY_FINAL_REF" > "$RUN_ROOT/approved-source-ref.txt"
 git rev-parse HEAD > "$RUN_ROOT/runner-revision.txt"
 git status --short > "$RUN_ROOT/worktree-status.txt"
 git ls-files --others --exclude-standard > "$RUN_ROOT/untracked-files.txt"
-node --version > "$RUN_ROOT/node-version.txt"
-node /tmp/solar-remediation-toolchain-20261014/node_modules/npm/bin/npm-cli.js --version > "$RUN_ROOT/npm-version.txt"
-node /tmp/solar-remediation-toolchain-20261014/node_modules/npm/bin/npm-cli.js run build > "$RUN_ROOT/build.log" 2>&1 || exit 1
+printf '%s\n' "$SOLAR_DELIVERY_NODE" "$SOLAR_DELIVERY_NPM_CLI" "$SOLAR_DELIVERY_CHROMIUM" > "$RUN_ROOT/toolchain-paths.txt"
+"$SOLAR_DELIVERY_NODE" --version > "$RUN_ROOT/node-version.txt"
+"$SOLAR_DELIVERY_NODE" "$SOLAR_DELIVERY_NPM_CLI" --version > "$RUN_ROOT/npm-version.txt"
+"$SOLAR_DELIVERY_CHROMIUM" --version > "$RUN_ROOT/chromium-version.txt"
+VITE_BACKEND_ORIGIN=http://127.0.0.1:9196 \
+  "$SOLAR_DELIVERY_NODE" "$SOLAR_DELIVERY_NPM_CLI" run build > "$RUN_ROOT/build.log" 2>&1 || exit 1
+assert_delivery_source || exit 1
+test "$(cat "$RUN_ROOT/runner-revision.txt")" = "$(git rev-parse --verify HEAD)" || exit 1
+printf '%s\n' "$SOLAR_DELIVERY_FINAL_REV" > "$RUN_ROOT/built-source-revision.txt" || exit 1
+assert_delivery_preparation || exit 1
 ```
 
 Review any untracked application inputs before capture. The source-equality guard
 intentionally excludes instrumentation scripts and agent notes, not application
 source or build configuration. Record both revisions: the harness `baseCommit`
 is the delivery checkout's HEAD; `approved-parent-revision.txt` identifies the
-parent source whose application tree was compared. Never silently relabel one
-as the other. Freeze the serving worktree throughout both captures.
+parent source whose application tree was compared. `approved-source-ref.txt`
+records the selected ref, and capture rejects changed revision inputs, a changed
+runner HEAD, a moved/deleted ref, changed application source, or a preparation
+without a successful build marker. Never silently relabel one revision as the
+other. Freeze the serving worktree throughout both
+captures. Vite embeds `VITE_BACKEND_ORIGIN` at build time; setting it only on the
+preview server cannot change the built bundle's backend origin.
 
 ## Owned servers
 
@@ -119,7 +185,7 @@ not purged filesystem/provider caches. Preserve inherited BLAS settings in the
 host evidence rather than silently changing them between modes.
 
 ```bash
-cd /home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery
+assert_delivery_preparation || exit 1
 env -u SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS -u SOLAR_REALTIME_REQUEST_TIMEOUT_SECONDS \
   SOLAR_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5176,http://127.0.0.1:4176 \
   uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
@@ -130,19 +196,16 @@ env -u SOLAR_PHYSICS_COMPUTE_TIMEOUT_SECONDS -u SOLAR_REALTIME_REQUEST_TIMEOUT_S
 DEV server, in its own owned session:
 
 ```bash
-cd /home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery
-export PATH="/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH"
+assert_delivery_preparation || exit 1
 VITE_BACKEND_ORIGIN=http://127.0.0.1:9196 \
-  node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5176 --strictPort
+  "$SOLAR_DELIVERY_NODE" node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5176 --strictPort
 ```
 
 PREVIEW server, using the final-source build above, in its own owned session:
 
 ```bash
-cd /home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery
-export PATH="/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH"
-VITE_BACKEND_ORIGIN=http://127.0.0.1:9196 \
-  node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4176 --strictPort
+assert_delivery_preparation || exit 1
+"$SOLAR_DELIVERY_NODE" node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4176 --strictPort
 ```
 
 Retain each owned server's complete stdout/stderr with its mode. Confirm from
@@ -162,15 +225,14 @@ Process command lines are deliberately excluded from this additional snapshot.
 The harness also records host and actual graphics evidence itself.
 
 ```bash
-cd /home/nomad/ai/projects/worktrees/solar-remediation-20261014-delivery
-export PATH="/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH"
 : "${RUN_ROOT:?Use the pinned preparation output directory}"
 : "${SOLAR_DELIVERY_FINAL_REV:?Use the approved parent revision}"
 test "${SOLAR_DELIVERY_HEADFUL_WINDOW:-}" = granted || exit 1
+assert_delivery_preparation || exit 1
 
 record_host() {
   local label="$1"
-  node --input-type=module -e '
+  "$SOLAR_DELIVERY_NODE" --input-type=module -e '
     import os from "node:os";
     const keys = ["OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"];
     console.log(JSON.stringify({utc:new Date().toISOString(),host:os.hostname(),platform:os.platform(),release:os.release(),cpu:os.cpus()[0]?.model,cpuCount:os.cpus().length,loadAverage:os.loadavg(),totalMemory:os.totalmem(),freeMemory:os.freemem(),threadEnvironment:Object.fromEntries(keys.map(k=>[k,process.env[k]??null]))},null,2));
@@ -181,21 +243,25 @@ record_host() {
 capture_delivery() {
   local mode="$1" url="$2" status
   test "${SOLAR_DELIVERY_HEADFUL_WINDOW:-}" = granted || return 1
-  test "$(git rev-parse remediation/canonical-register-20261014)" = "$SOLAR_DELIVERY_FINAL_REV" || return 1
-  git diff --quiet "$SOLAR_DELIVERY_FINAL_REV" -- . ':!scripts/**' ':!agent-notes/**' || return 1
+  assert_delivery_preparation || return 1
   test ! -e "$RUN_ROOT/$mode" || return 1
   record_host "$mode-before"
   if GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
     LD_LIBRARY_PATH="/usr/lib/wsl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-    node scripts/verify-solar-delivery-browser.mjs \
+    "$SOLAR_DELIVERY_NODE" scripts/verify-solar-delivery-browser.mjs \
       --mode "$mode" --url "$url" --backend http://127.0.0.1:9196 \
-      --chromium /home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome \
+      --chromium "$SOLAR_DELIVERY_CHROMIUM" \
       --out "$RUN_ROOT/$mode" > "$RUN_ROOT/$mode-harness.log" 2>&1; then
     status=0
   else
     status=$?
   fi
+  printf '%s\n' "$status" > "$RUN_ROOT/$mode-harness-exit-status.txt"
   record_host "$mode-after"
+  if ! assert_delivery_preparation; then
+    printf '%s\n' 'Source identity changed during capture; this run is invalid.' >&2
+    status=1
+  fi
   printf '%s\n' "$status" > "$RUN_ROOT/$mode-exit-status.txt"
   return "$status"
 }
