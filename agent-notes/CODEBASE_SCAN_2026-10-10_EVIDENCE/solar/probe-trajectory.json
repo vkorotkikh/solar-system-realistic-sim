@@ -1,0 +1,54 @@
+{
+  "branch": "trajectory",
+  "numpy": "2.5.3",
+  "basis": {
+    "P2_at_half": -0.6339110704739678,
+    "P3_at_half": -1.1342198219363284,
+    "P0_P2_integral": -0.9450735287639677
+  },
+  "hathaway": {
+    "b": 54.0,
+    "c": 0.71,
+    "actual_peak_month": 58.38975912570092,
+    "normalization_peak_month": 66.1362230551458,
+    "actual_to_normalization_amplitude_ratio": 1.0343309710520274,
+    "clamped_plateau_month_range": [
+      51.03,
+      66.13
+    ]
+  },
+  "fits": {
+    "error": "AttributeError",
+    "message": "type object 'numpy.float32' has no attribute 'newbyteorder'"
+  },
+  "stale_forcing": {
+    "activity": 0.6250000000000001,
+    "assimilation": {
+      "mode": "hybrid",
+      "applied": true,
+      "synthetic_activity_index": 0.8,
+      "observed_activity_index": 0.1,
+      "blended_activity_index": 0.6250000000000001,
+      "observed_confidence": 0.0,
+      "blend_weight": 0.25,
+      "live_data_available": true,
+      "source_status": {
+        "swpc": {
+          "ok": true
+        }
+      },
+      "proxy_breakdown": {
+        "combined": 0.1
+      },
+      "sources": {
+        "swpc": {
+          "time_tag": "2000-01-01T00:00:00Z",
+          "activity_proxy": 0.1
+        },
+        "silso": null,
+        "sdo_aia": null
+      }
+    },
+    "wind_override": null
+  }
+}

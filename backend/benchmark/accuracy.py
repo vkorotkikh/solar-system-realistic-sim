@@ -702,14 +702,14 @@ def render_accuracy_report_markdown(summary: Dict[str, Any]) -> str:
             comparison_contract = ref.get("comparisonContract", {})
             note = comparison_contract.get("compatibilityNote", "")
             lines.append(
-                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.3f} | - | - |"
+                f"| {row.get('id')} | {row.get('source','')} | {row.get('status')} | - | - | - | {float(spread):.2e} | - | - |"
             )
             if note:
                 lines.append(f"|  |  |  |  |  |  |  |  | note: {note} |")
             continue
 
         lines.append(
-            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.3f} | {tol:.3f} | {passed} |".format(
+            "| {id} | {source} | ok | {model:.3f} | {ref:.3f} | {err:.3f} | {spread:.2e} | {tol:.2e} | {passed} |".format(
                 id=row.get("id"),
                 source=row.get("source", ""),
                 model=float(row.get("modelTotalDeltaVKmS", 0.0)),

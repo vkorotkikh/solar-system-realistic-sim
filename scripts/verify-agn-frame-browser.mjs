@@ -10,8 +10,16 @@ import { execFileSync } from 'node:child_process';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(root, process.env.AGN_ORACLE_OUTPUT ?? 'agent-notes/artifacts/events-scn042/after');
 if (relative(root, output).startsWith('..')) throw new Error('Capture output must stay inside this worktree');
-const playwrightPath = process.env.AGN_PLAYWRIGHT_MODULE ?? '/tmp/solar-remediation-toolchain-20261014/node_modules/playwright/index.mjs';
-const executablePath = process.env.AGN_CHROMIUM_EXECUTABLE ?? '/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
+// Hardware evidence-capture tool: the operator names the Playwright module,
+// the Chromium binary and the expected GPU. No host-specific defaults.
+function required(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set (this gate captures evidence on a named GPU host; it is not a portable test)`);
+  return value;
+}
+const playwrightPath = required('AGN_PLAYWRIGHT_MODULE');
+const executablePath = required('AGN_CHROMIUM_EXECUTABLE');
+const expectedGpuPattern = required('AGN_EXPECT_GPU');
 const { chromium } = await import(pathToFileURL(playwrightPath).href);
 const args = ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'];
 // Vite normalizes configured port=0 to 5173 rather than asking the OS for a port.
@@ -32,7 +40,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/scripts/oracles/agn-frame.html`);
   await page.waitForFunction(() => typeof window.runAgnFrameOracle === 'function');
   const result = await page.evaluate(() => window.runAgnFrameOracle());
-  const expectedGpu = new RegExp(process.env.AGN_EXPECT_GPU ?? 'RTX 5090', 'i');
+  const expectedGpu = new RegExp(expectedGpuPattern, 'i');
   const hardware = expectedGpu.test(result.gpu.renderer) && !/swiftshader|llvmpipe|softpipe|software/i.test(result.gpu.renderer);
   result.checks.unshift({ name: 'verified-hardware-renderer', pass: hardware, actual: result.gpu, requirement: `${expectedGpu}; no software renderer` });
   result.checks.push({ name: 'browser-and-gl-errors', pass: errors.length === 0 && result.glError === 0,

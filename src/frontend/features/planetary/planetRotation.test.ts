@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Matrix4, Quaternion, Vector3 } from 'three';
+import { Group, Matrix4, Vector3 } from 'three';
 import { createSolarSystemCatalog } from '../../../sim/catalog';
 import fixture from '../../../../scripts/fixtures/planetary-poles-iau-j2000.json';
+import { applyBodySpin } from './bodySpin';
 
 // Independent IAU/NAIF fixtures: pck00011.tpc BODY*_POLE_RA/DEC and BODY*_PM.
 // These four poles have no periodic terms. Rates are degrees / TDB day.
@@ -40,13 +41,36 @@ describe('IAU cartographic poles and signed rotation', () => {
     expect(angularVelocity.distanceTo(expectedOmega)).toBeLessThan(1e-10);
     expect(Math.sign(angularVelocity.z)).toBe(id === 'earth' ? 1 : -1);
 
-    // Actual transformed equatorial markers must sweep in the signed direction.
-    const poleRotation = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), scenePole);
-    const start = new Vector3(1, 0, 0).applyQuaternion(poleRotation);
-    const dt = 1e-5;
-    const angle = 2 * Math.PI * 24 / body.rotationPeriodHours! * dt;
-    const end = new Vector3(Math.cos(angle), 0, -Math.sin(angle)).applyQuaternion(poleRotation);
-    const measuredOmega = start.clone().cross(end).divideScalar(dt);
-    expect(measuredOmega.distanceTo(expectedOmega)).toBeLessThan(2e-8);
+    // Exercise the production spin step on a real child beneath the cited pole frame.
+    const poleFrame = new Group();
+    poleFrame.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), scenePole);
+    const surface = new Group();
+    poleFrame.add(surface);
+    const localMarker = new Vector3(1, 0, 0);
+    const unspunWorldMarker = localMarker.clone().applyQuaternion(poleFrame.quaternion);
+    const rotationOffsetRad = 0.37;
+
+    applyBodySpin(surface, 0, body.rotationPeriodHours!, rotationOffsetRad);
+    poleFrame.updateMatrixWorld(true);
+    const atEpoch = localMarker.clone().applyMatrix4(surface.matrixWorld);
+    const expectedAtEpoch = unspunWorldMarker.clone().applyAxisAngle(scenePole, rotationOffsetRad);
+    expect(atEpoch.distanceTo(expectedAtEpoch)).toBeLessThan(1e-12);
+
+    const elapsedDays = 0.125;
+    applyBodySpin(surface, elapsedDays * 86_400, body.rotationPeriodHours!, rotationOffsetRad);
+    poleFrame.updateMatrixWorld(true);
+    const afterSpin = localMarker.clone().applyMatrix4(surface.matrixWorld);
+    expect(surface.rotation.y).toBeGreaterThanOrEqual(0);
+    expect(surface.rotation.y).toBeLessThan(2 * Math.PI);
+    const expectedAfterSpin = unspunWorldMarker.clone().applyAxisAngle(
+      scenePole,
+      rotationOffsetRad + rate * radians * elapsedDays
+    );
+    expect(afterSpin.distanceTo(expectedAfterSpin)).toBeLessThan(1e-10);
+
+    // Absolute time updates must not accumulate a second spin step.
+    applyBodySpin(surface, 0, body.rotationPeriodHours!, rotationOffsetRad);
+    poleFrame.updateMatrixWorld(true);
+    expect(localMarker.clone().applyMatrix4(surface.matrixWorld).distanceTo(atEpoch)).toBeLessThan(1e-12);
   });
 });

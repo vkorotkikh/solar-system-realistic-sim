@@ -30,6 +30,7 @@ interface LocatorHaloEntry {
 
 interface LocalBodyEntry {
   body: unknown;
+  node?: Object3D | null;
   label: Sprite | null;
 }
 
@@ -234,6 +235,16 @@ export function createLabelSystemOps({ pointerTipOffsetNorm }: { pointerTipOffse
       for (const entry of localBodyEntries) {
         if (!entry?.label || !entry?.body) continue;
         const radius = localBodyRenderRadiusAu(entry.body, simState.useRealisticScale);
+        const anchor = entry.node ?? entry.label.parent ?? entry.label;
+        anchor.getWorldPosition(tempVecA);
+        const distance = Math.max(1e-6, camera.position.distanceTo(tempVecA));
+        const unitPerPixel = worldUnitsPerPixelAt(distance, camera, renderer);
+        const labelHeightWorld = 21 * unitPerPixel;
+        const minHeightWorld = radius * 1.1;
+        const maxHeightWorld = simState.useRealisticScale ? 0.16 : 2.0;
+        const clampedHeight = Math.max(minHeightWorld, Math.min(maxHeightWorld, labelHeightWorld));
+        const aspect = entry.label.userData.aspect ?? 4.0;
+        entry.label.scale.set(clampedHeight * aspect, clampedHeight, 1);
         const pointerTipNorm = entry.label.userData.pointerTipOffsetNorm ?? labelPointerTipOffsetNorm;
         const pointerTipWorld = entry.label.scale.y * pointerTipNorm;
         const localOffsetDist = radius * 2.4 + 0.015 + pointerTipWorld;

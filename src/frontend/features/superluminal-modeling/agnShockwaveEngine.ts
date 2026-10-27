@@ -14,7 +14,7 @@ import { Vector3 } from 'three';
 import { clamp } from '../../../constants';
 import {
     SOURCE_CATALOG, EVENT_PRESETS,
-    SGR_A, CEN_A, MAFFEI_1, M87, C_CM_S
+    SGR_A, CEN_A, MAFFEI_1, M87, AU_CM, C_CM_S
 } from './smbhPhysicsConstants';
 import {
     computeMultiMessengerTimeline,
@@ -159,6 +159,7 @@ export function createAgnShockwaveEngine(
     let currentPhysics: Physics | null = null;
     let currentEnergyErg = 1e56;
     let currentThetaRad = toRadians(35);
+    let currentEventIntensity = 1;
 
     let stochasticActive = false;
     let stochasticFlares: StochasticFlare[] = [];
@@ -189,6 +190,7 @@ export function createAgnShockwaveEngine(
         currentPhysics = null;
         elapsedSec = 0;
         currentDistanceUnits = frontStartUnits;
+        currentEventIntensity = 1;
     }
 
     function nextStochasticWindow() {
@@ -313,6 +315,7 @@ export function createAgnShockwaveEngine(
             currentEnergyErg = selection.energyErg;
             currentThetaRad = toRadians(options.thetaObsDeg ?? sourceModel.jetThetaDeg ?? 35);
             const intensity = clamp(eventIntensity, 0.1, 3.0);
+            currentEventIntensity = intensity;
 
             currentPhysics = computeMultiMessengerTimeline(sourceModel, currentEnergyErg, currentThetaRad, {
                 scenario: selection.hypothesis
@@ -476,8 +479,8 @@ export function createAgnShockwaveEngine(
                 smbhMassG: currentSource.massG,
                 sourceDistanceCm: currentSource.distanceCm,
                 timeSec: currentPhysicalTimeSec,
-                positionCm: currentDistanceUnits * 1.496e13, // Rough conversion AU -> cm for simple visual scaling
-                amplitude: 1.0, // base physical amplitude handled by smbhPropagation, this is just a modifier
+                positionCm: currentDistanceUnits * AU_CM,
+                amplitude: clamp((currentPhysics?.h29?.shiftStrength ?? 0) * currentEventIntensity, 0, 1),
                 thickness: 0.05
             };
         }

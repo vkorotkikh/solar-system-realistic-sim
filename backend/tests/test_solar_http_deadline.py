@@ -174,7 +174,7 @@ def test_interrupted_body_reader_reaps_child(monkeypatch, origin, children):
     response = SolarRealtimeDataProvider()._open_response(urllib.request.Request(origin + '/body'), timeout_s=1)
     def interrupt(*args):
         raise KeyboardInterrupt
-    monkeypatch.setattr(http.select, 'select', interrupt)
+    monkeypatch.setattr(http, '_wait_readable', interrupt)
     with pytest.raises(KeyboardInterrupt):
         response.read(65536)
     assert children[-1].poll() is not None

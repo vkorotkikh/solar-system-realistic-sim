@@ -1,30 +1,54 @@
 import type { Object3D, Vector3 } from 'three';
 import type { SolarSystemModel } from '../../../sim/solarSystemModel';
-import { evaluateLocalMetricShift, metricFrameDragPeak } from './smbhPropagation';
+import { AU_CM } from './smbhPhysicsConstants';
+import { warpBubbleProfile } from './smbhPropagation';
+import { H29_DISPLAY_PEAK_AU, h29DisplayThicknessAu } from './h29DisplayScale';
 
 interface WarpDisplayState {
   direction: Vector3;
-  timeSec: number;
-  energyErg: number;
-  smbhMassG: number;
-  sourceDistanceCm: number;
+  positionCm: number;
+  amplitude: number;
+  thickness: number;
 }
 
-/** Rebuild node positions from canonical state, then add independent display offsets.
- * One display-second of shift is an illustrative exposure, not frame integration.
- * This makes a frozen event independent of frame rate and prevents accumulated drift.
+function metricDisplayOffsets(
+  model: SolarSystemModel,
+  warp: WarpDisplayState
+): Map<string, Vector3> | undefined {
+  const direction = warp.direction.clone();
+  const directionLengthSq = direction.lengthSq();
+  if (![direction.x, direction.y, direction.z, warp.positionCm, warp.amplitude, warp.thickness].every(Number.isFinite)
+      || !Number.isFinite(directionLengthSq) || directionLengthSq === 0) return undefined;
+
+  direction.normalize();
+  // Follow the compressed front shown by warpSlipstreamVisuals. The physical
+  // beta profile is both sub-kilometre and effectively common-mode here, so it
+  // cannot provide an observable Solar-System-scale illustration.
+  const frontPositionAu = warp.positionCm / AU_CM;
+  const thicknessAu = h29DisplayThicknessAu(warp.thickness);
+  const amplitude = Math.min(1, Math.max(0, warp.amplitude));
+  const offsets = new Map<string, Vector3>();
+
+  for (const body of model.getBodies()) {
+    const state = model.getState(body.id);
+    if (!state?.available) continue;
+    const xi = (state.worldPosition.dot(direction) - frontPositionAu) / thicknessAu;
+    const displacementAu = H29_DISPLAY_PEAK_AU * amplitude * warpBubbleProfile(xi);
+    if (displacementAu > 0) offsets.set(body.id, direction.clone().multiplyScalar(displacementAu));
+  }
+  return offsets;
+}
+
+/** Rebuild node positions from canonical state, then sample the illustrative front.
+ * Offsets are absolute display values, not frame integration, so a frozen event is
+ * frame-rate independent and repeated rendering cannot accumulate drift.
  */
 export function applyMetricDisplayOffsets(
   model: SolarSystemModel,
   bodyNodes: ReadonlyMap<string, Object3D>,
   warp: WarpDisplayState | null
 ): void {
-  let offsets: Map<string, Vector3> | undefined;
-  if (warp) {
-    const peak = metricFrameDragPeak(warp.timeSec, warp.energyErg, warp.smbhMassG);
-    offsets = model.applyMetricKinematics(warp.direction, 1,
-      distance => evaluateLocalMetricShift(distance, peak), warp.sourceDistanceCm, 1e12);
-  }
+  const offsets = warp ? metricDisplayOffsets(model, warp) : undefined;
   for (const body of model.getBodies()) {
     const state = model.getState(body.id);
     const node = bodyNodes.get(body.id);

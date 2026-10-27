@@ -1,0 +1,18 @@
+import { expect, it } from 'vitest';
+import canonical from '../data/moonEphemerisChebyshev.json';
+import repairs from '../data/moonEphemerisRepairs.json';
+import native from '../data/moonEphemerisSpkRepairs.json';
+import daphnis from '../data/moonEphemerisDaphnis.json';
+import s2023s38 from '../data/moonEphemerisS2023S38.json';
+import { loadMoonEphemerides } from './loadMoonEphemerides';
+
+it('loads both versioned artifacts without replacing any canonical record', async () => {
+  const bodies = await loadMoonEphemerides();
+  expect(Object.keys(canonical.bodies).sort()).toEqual(['cordelia', 'iapetus', 'phoebe', 'titan']);
+  expect(Object.keys(bodies)).toHaveLength(4 + Object.keys(repairs.bodies).length + Object.keys(native.bodies).length + 2);
+  for (const [key, body] of Object.entries(canonical.bodies)) expect(bodies[key]).toEqual(body);
+  for (const [key, body] of Object.entries(repairs.bodies)) expect(bodies[key]).toEqual(body);
+  for (const [key, body] of Object.entries(native.bodies)) expect(bodies[key]).toEqual(body);
+  expect(bodies.daphnis).toEqual(daphnis.bodies.daphnis);
+  expect(bodies.s2023_s38).toEqual(s2023s38.bodies.s2023_s38);
+});

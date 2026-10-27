@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.290" timestamp="2026-10-10T07:24:02.220499+00:00" hostname="Athena"><testcase classname="backend.tests.test_pfss_harmonics" name="test_all_modes_against_immutable_oracle" time="0.001"><failure message="AssertionError: R4-LEGENDRE-RECURRENCE mode=(2, 0)&#10;assert np.False_&#10; +  where np.False_ = &lt;function all at 0x7f6ea71cea70&gt;(array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) &lt;= (5e-13 * array([1., 1., 1., 1., 1.])))&#10; +    where &lt;function all at 0x7f6ea71cea70&gt; = np.all&#10; +    and   array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) = abs((array([ 0.45052427, -0.63391107, -1.11803399, -0.63391107,  0.45052427]) - array([ 0.715, -0.125, -0.5  , -0.125,  0.715])))&#10; +    and   array([1., 1., 1., 1., 1.]) = &lt;ufunc 'maximum'&gt;(1, array([0.715, 0.125, 0.5  , 0.125, 0.715]))&#10; +      where &lt;ufunc 'maximum'&gt; = np.maximum&#10; +      and   array([0.715, 0.125, 0.5  , 0.125, 0.715]) = abs(array([ 0.715, -0.125, -0.5  , -0.125,  0.715]))">def test_all_modes_against_immutable_oracle():
+        mu = np.array(ORACLE["mu"])
+        values, derivatives = field()._legendre_batch(mu, np.sqrt(1 - mu**2))
+        for mode in ORACLE["modes"]:
+            key = mode["l"], mode["m"]
+            reference = np.array(mode["values"])
+&gt;           assert np.all(abs(values[key] - reference) &lt;= 5e-13 * np.maximum(1, abs(reference))), (
+                f"R4-LEGENDRE-RECURRENCE mode={key}"
+            )
+E           AssertionError: R4-LEGENDRE-RECURRENCE mode=(2, 0)
+E           assert np.False_
+E            +  where np.False_ = &lt;function all at 0x7f6ea71cea70&gt;(array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) &lt;= (5e-13 * array([1., 1., 1., 1., 1.])))
+E            +    where &lt;function all at 0x7f6ea71cea70&gt; = np.all
+E            +    and   array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) = abs((array([ 0.45052427, -0.63391107, -1.11803399, -0.63391107,  0.45052427]) - array([ 0.715, -0.125, -0.5  , -0.125,  0.715])))
+E            +    and   array([1., 1., 1., 1., 1.]) = &lt;ufunc 'maximum'&gt;(1, array([0.715, 0.125, 0.5  , 0.125, 0.715]))
+E            +      where &lt;ufunc 'maximum'&gt; = np.maximum
+E            +      and   array([0.715, 0.125, 0.5  , 0.125, 0.715]) = abs(array([ 0.715, -0.125, -0.5  , -0.125,  0.715]))
+
+backend/tests/test_pfss_harmonics.py:43: AssertionError</failure></testcase></testsuite></testsuites>

@@ -26,6 +26,17 @@ MAX_CHUNK_BYTES = 64 * 1024
 WORKER_PATH = Path(__file__).resolve()
 
 
+def _wait_readable(stream: object, timeout_s: float) -> bool:
+    """Wait until the worker pipe is readable or the timeout passes.
+
+    poll(), not select(): select() raises ValueError for any descriptor
+    numbered >= FD_SETSIZE (1024), which a busy worker process reaches.
+    """
+    poller = select.poll()
+    poller.register(stream, select.POLLIN | select.POLLHUP | select.POLLERR)
+    return bool(poller.poll(max(0.0, timeout_s) * 1000.0))
+
+
 class SolarHttpError(RuntimeError):
     def __init__(self, code: str, detail: str):
         self.code = code
@@ -71,7 +82,7 @@ class DeadlineHttpResponse:
         chunks = []
         while count:
             remaining = self._deadline - time.monotonic()
-            if remaining <= 0 or not select.select([self._process.stdout], [], [], remaining)[0]:
+            if remaining <= 0 or not _wait_readable(self._process.stdout, remaining):
                 raise SolarHttpError("acquisition_deadline", "Solar realtime acquisition deadline expired")
             chunk = os.read(self._process.stdout.fileno(), count)
             if not chunk:

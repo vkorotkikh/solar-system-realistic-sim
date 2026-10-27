@@ -1,0 +1,156 @@
+{
+  "schema": "solar-independent-degree-diagnostic-v1",
+  "input_map": "mrzql261012t1744c2316_079",
+  "fits_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+  "lines_sha256": "c76da8e6f8322ba4c55703f52f0991fac7bd48864a0661583467d07c99aee520",
+  "source_surface_radii": 2.51,
+  "provider_degree": 90,
+  "provider_line_epoch_seconds": 845099040.0000169,
+  "tangent_samples": 3065,
+  "frame": "provider-native Cartesian; no fitted angles, signs, or amplitudes",
+  "tangent": {
+    "15": {
+      "all": {
+        "count": 3065,
+        "median_deg": 17.299997980730755,
+        "p90_deg": 55.57863943310498,
+        "max_deg": 89.88976305045252
+      },
+      "radius_lt_1_2": {
+        "count": 2509,
+        "median_deg": 22.995028564469628,
+        "p90_deg": 60.10705963978407,
+        "max_deg": 89.88976305045252
+      },
+      "radius_ge_1_2": {
+        "count": 556,
+        "median_deg": 0.15865835626747682,
+        "p90_deg": 2.9711892076415074,
+        "max_deg": 16.28795383054441
+      },
+      "evaluation_seconds": 0.03321495800003049
+    },
+    "30": {
+      "all": {
+        "count": 3065,
+        "median_deg": 7.981517373718293,
+        "p90_deg": 36.112492320309,
+        "max_deg": 89.44370022808083
+      },
+      "radius_lt_1_2": {
+        "count": 2509,
+        "median_deg": 11.523102466725053,
+        "p90_deg": 40.47714886754152,
+        "max_deg": 89.44370022808083
+      },
+      "radius_ge_1_2": {
+        "count": 556,
+        "median_deg": 0.08387251811850746,
+        "p90_deg": 0.35583208541405753,
+        "max_deg": 1.672812570635403
+      },
+      "evaluation_seconds": 0.09810774400000355
+    },
+    "64": {
+      "all": {
+        "count": 3065,
+        "median_deg": 1.7804346410073704,
+        "p90_deg": 11.368267880456248,
+        "max_deg": 75.76234858340884
+      },
+      "radius_lt_1_2": {
+        "count": 2509,
+        "median_deg": 2.793545000715097,
+        "p90_deg": 13.011788393696046,
+        "max_deg": 75.76234858340884
+      },
+      "radius_ge_1_2": {
+        "count": 556,
+        "median_deg": 0.07973842756415395,
+        "p90_deg": 0.32664552183183104,
+        "max_deg": 1.6777200449791843
+      },
+      "evaluation_seconds": 0.3992989950000947
+    },
+    "90": {
+      "all": {
+        "count": 3065,
+        "median_deg": 0.7895985004544357,
+        "p90_deg": 5.022379924328424,
+        "max_deg": 35.99569947670104
+      },
+      "radius_lt_1_2": {
+        "count": 2509,
+        "median_deg": 1.1313310691442093,
+        "p90_deg": 5.726463042529435,
+        "max_deg": 35.99569947670104
+      },
+      "radius_ge_1_2": {
+        "count": 556,
+        "median_deg": 0.07973598966210005,
+        "p90_deg": 0.32663507939472547,
+        "max_deg": 1.6777200492950186
+      },
+      "evaluation_seconds": 0.8318961100000024
+    }
+  },
+  "independent_vs_production": {
+    "15": {
+      "max_relative_vector_error": 1.4535815047335548e-14,
+      "production_evaluation_seconds": 0.015241442000046845
+    },
+    "30": {
+      "max_relative_vector_error": 4.766493746861944e-14,
+      "production_evaluation_seconds": 0.0527883469999324
+    },
+    "64": {
+      "max_relative_vector_error": 5.452050860168592e-14,
+      "production_evaluation_seconds": 0.2453588179999997
+    }
+  },
+  "topology_degree90": {
+    "degree": 90,
+    "lines": 622,
+    "reference_open": 82,
+    "reference_closed": 540,
+    "determinate_fraction": 1.0,
+    "open_recall": 1.0,
+    "closed_recall": 0.9962962962962963,
+    "confusion": {
+      "open_as_closed": 0,
+      "closed_as_open": 2
+    },
+    "indeterminate": 0,
+    "trace_seconds": 49.35797410200007,
+    "max_steps": 600,
+    "step_size_solar_radii": 0.01,
+    "field_evaluations": 1584,
+    "evaluated_positions": 183620,
+    "balanced_accuracy": 0.9981481481481482,
+    "open_endpoint_error": {
+      "count": 82,
+      "median_deg": 0.2225597579369886,
+      "p90_deg": 1.1581602211668467,
+      "max_deg": 2.1854918054589163
+    }
+  },
+  "accuracy_budget": {
+    "tangent_median_deg": 2.0,
+    "tangent_p90_deg": 10.0,
+    "balanced_topology_accuracy": 0.95,
+    "determinate_fraction": 0.99
+  },
+  "degree90_diagnostic_accuracy_passed": true,
+  "production_degree": 15,
+  "production_accuracy_budget_passed": false,
+  "empirical_speed_calibrated": false,
+  "basis_chunk_size": 128,
+  "max_basis_allocation_bytes": 33732608,
+  "process_peak_rss_kib": 193820,
+  "coverage_limits": [
+    "One GONG-Z epoch; no production degree change.",
+    "Runtime latency must include decomposition, line tracing, and WSA mapping.",
+    "Provider tangents are finite line segments, not exact derivatives.",
+    "This measures PFSS consistency, not observed wind-speed calibration."
+  ]
+}

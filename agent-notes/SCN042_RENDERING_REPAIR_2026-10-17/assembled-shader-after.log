@@ -1,0 +1,11 @@
+[WebServer] (node:78977) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:79043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Production asteroid shader: {"antialias":true,"samples":4,"renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","material":"MeshStandardMaterial","linked":true,"linkLog":"","stages":[{"compiled":true,"log":""},{"compiled":true,"log":""}],"webglError":0}
+  ✓  1 [chromium] › tests/browser/asteroid-shader.spec.ts:3:1 › actual main links the assembled asteroid material with production antialiasing (8.9s)
+
+  1 passed (10.0s)

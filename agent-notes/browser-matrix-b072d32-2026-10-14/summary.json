@@ -1,0 +1,285 @@
+{
+  "revision": "b072d32191217492714ed869a04aa03500cd48f6",
+  "exportRoot": "/tmp/solar-browser-b072d32-20261014",
+  "stats": {
+    "startTime": "2026-10-14T23:35:59.862Z",
+    "duration": 291850.719,
+    "expected": 97,
+    "skipped": 14,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "totalCases": 111,
+  "projects": {
+    "chromium": {
+      "passed": 39
+    },
+    "firefox": {
+      "passed": 29,
+      "skipped": 7
+    },
+    "webkit": {
+      "passed": 29,
+      "skipped": 7
+    }
+  },
+  "coverage": {
+    "accessibility.spec.ts": {
+      "passed": 6
+    },
+    "app-smoke.spec.ts": {
+      "passed": 3
+    },
+    "camera.spec.ts": {
+      "passed": 12
+    },
+    "experiment.spec.ts": {
+      "passed": 6
+    },
+    "explorer.spec.ts": {
+      "passed": 9
+    },
+    "frame-lifecycle.spec.ts": {
+      "passed": 4,
+      "skipped": 8
+    },
+    "panel.spec.ts": {
+      "passed": 27
+    },
+    "reflow.spec.ts": {
+      "passed": 24
+    },
+    "shell.spec.ts": {
+      "passed": 3
+    },
+    "tab-zoom.spec.ts": {
+      "passed": 3,
+      "skipped": 6
+    }
+  },
+  "globalErrors": [],
+  "skipped": [
+    {
+      "project": "firefox",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a foreground timestamp stall cannot create an unbounded local simulation jump",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a nonfinite available worker state is quarantined without stopping the actual scene",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a persistently failing stage cannot starve camera, render, HUD, or later frames",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > native hidden-tab resume discards hidden elapsed time",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a foreground timestamp stall cannot create an unbounded local simulation jump",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a nonfinite available worker state is quarantined without stopping the actual scene",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > a persistently failing stage cannot starve camera, render, HUD, or later frames",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "frame-lifecycle.spec.ts > active app frame lifecycle > native hidden-tab resume discards hidden elapsed time",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chromium frame/worker gate",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/frame-lifecycle.spec.ts",
+            "line": 71,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > 200% genuine tab zoom preserves reflow and keyboard focus",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > 400% genuine tab zoom preserves reflow and keyboard focus",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "firefox",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > zoom evidence rejects viewport-only, CSS and pinch substitutes",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > 200% genuine tab zoom preserves reflow and keyboard focus",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > 400% genuine tab zoom preserves reflow and keyboard focus",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    },
+    {
+      "project": "webkit",
+      "title": "tab-zoom.spec.ts > native Chromium tab zoom > zoom evidence rejects viewport-only, CSS and pinch substitutes",
+      "annotations": [
+        {
+          "type": "skip",
+          "description": "Chrome tabs API is Chromium-specific, not Safari/Firefox zoom evidence",
+          "location": {
+            "file": "/tmp/solar-browser-b072d32-20261014/tests/browser/tab-zoom.spec.ts",
+            "line": 5,
+            "column": 8
+          }
+        }
+      ]
+    }
+  ],
+  "projectExclusions": {
+    "firefox": [
+      "**/app-smoke.spec.ts"
+    ],
+    "webkit": [
+      "**/app-smoke.spec.ts"
+    ]
+  },
+  "scope": "Functional browser regression gate; no startup-policy change or new 2-second startup performance claim.",
+  "softwareWebGL": true,
+  "nativeDisplay": ":0",
+  "artifacts": "artifacts.tar.gz is a 444-byte archive containing only empty result directories and .last-run.json, with no screenshots. Four PNG screenshots are preserved inline as base64 body attachments in cases.json and playwright-results.json; their encoded body lengths are 193164, 190968, 177300, and 292384 characters."
+}
