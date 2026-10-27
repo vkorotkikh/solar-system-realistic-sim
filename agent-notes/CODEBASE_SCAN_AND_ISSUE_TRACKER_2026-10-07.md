@@ -1,5 +1,7 @@
 # Codebase scan and issue / problem / bug tracker — 2026-10-07
 
+> **Historical record — superseded for maintenance on 2026-10-17.** Use the [consolidated October 10 tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md), including the [approved SimulationClient scope and verification boundaries](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17). The original dated content below is preserved; it is not a fresh status report.
+
 > Current status (2026-10-14): see [the master tracker](MASTER_ISSUE_TRACKER_2026-10-11.md) and [active remediation effort](REMEDIATION_EFFORT_2026-10-14.md). The dated findings below preserve their original snapshot; they are not current merge status.
 
 

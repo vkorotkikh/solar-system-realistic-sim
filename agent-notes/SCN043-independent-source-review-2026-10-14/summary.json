@@ -1,0 +1,27 @@
+{
+  "reviewedRevision": "4b55dff10c556572ed06393b9739adcd6c3c07eb",
+  "reviewedImplementation": "acc9cebb51f6e9f9bc787d6cc98373c6861bd568",
+  "reviewedHandoff": "e6c75ce55a111063139a1fbd4d34da6a20b749e4",
+  "status": "unmodified numerical evidence passes; fail-closed integrity regressions remain",
+  "productionFilesChanged": [],
+  "browserLaunched": false,
+  "externalSourceAcquisition": false,
+  "python": { "passed": 7, "failed": 4, "skipped": 0, "exitCode": 1, "seconds": 10.35 },
+  "typescriptRuntimeTests": { "passed": 5, "failed": 6, "skipped": 0, "exitCode": 1, "vitestDurationMs": 294 },
+  "targetedStrictTypecheck": { "exitCode": 0, "diagnostics": 0 },
+  "findings": [
+    { "id": "F1", "severity": "high", "owner": "Herschel/parent", "summary": "Erased Daphnis handoffs plus relabeled continuity are accepted and blend across native discontinuity", "jdTdb": 2455197.5, "runtimePositionErrorKm": 322.4903539181378, "runtimeVelocityErrorMPerS": 45.52755995897258, "positionCapKm": 136.5, "velocityCapMPerS": 10 },
+    { "id": "F2", "severity": "medium", "owner": "Herschel/parent", "summary": "Runtime parser accepts contradictory target/center and missing legacy sourceDomain" },
+    { "id": "F3", "severity": "medium", "owner": "Herschel/parent", "summary": "Runtime parser ignores failed or selection-contaminated post-selection audit certification" },
+    { "id": "F4", "severity": "medium", "owner": "Herschel/parent", "summary": "Offline input loader accepts contradictory header/request epochs, malformed raw-response digest, and unsupported manifest schema" }
+  ],
+  "unmodifiedNumericalEvidence": {
+    "daphnis": { "originalSpkBytes": 9216, "samples": 212, "freshRandomEpochs": 192, "maxPositionKm": 7.471213046084918, "maxVelocityMPerS": 0.9216652697405276, "positionCapKm": 136.5, "velocityCapMPerS": 10, "offlineByteIdentical": true },
+    "s2023s38Audit": { "samples": 6891, "maxPositionKm": 42.041700680744654, "maxVelocityMPerS": 3.442211291536285, "positionCapKm": 500, "velocityCapMPerS": 10, "offlineByteIdentical": true },
+    "s2023s38HyperbolicAndEndpoints": { "samples": 3, "maxPositionKm": 2.5229512958838156, "maxVelocityMPerS": 0.3385856076707202, "sourceSpecificEnergyKm2S2": 0.023333231964077328, "runtimeSpecificEnergyKm2S2": 0.023333170260883662, "sourceEccentricity": 1.0013962854620226 }
+  },
+  "postSelectionControl": { "disjointAuditEpochs": 6891, "baselineFitIterations": 9, "failedAuditFitIterations": 9, "identicalIntervalEdgeHashSequence": true, "failedAuditRejectedWithoutRefit": true, "historicalPreregistrationEstablished": false },
+  "sourceProvenance": { "normalizedRequestChunksChecked": 115, "originalCacheEnvelopesAvailableAtInitialInspection": 0, "originalCacheEnvelopeRehashPerformed": false },
+  "host": { "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor", "startUtc": "2026-10-14T23:41:46.838Z", "endUtc": "2026-10-14T23:42:26.250Z", "load1Start": 2.55, "load1End": 1.77, "blasThreads": 1, "exclusiveCpuWindow": false },
+  "canonicalClosureClaim": false
+}

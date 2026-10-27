@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
+import { localViteInvocation, spawnObserved } from './dev-launcher-process.mjs';
 
 function printHelp() {
   console.log(`Usage:
@@ -82,7 +82,7 @@ if (config.height !== null) env.VITE_UI_HEIGHT = String(config.height);
 if (config.renderScale !== null) env.VITE_RENDER_SCALE = String(config.renderScale);
 if (config.maxPixelRatio !== null) env.VITE_MAX_PIXEL_RATIO = String(config.maxPixelRatio);
 
-const viteArgs = ['vite', '--host', config.host, '--port', String(config.port), '--strictPort'];
+const viteArgs = ['--host', config.host, '--port', String(config.port), '--strictPort'];
 if (config.open) {
   viteArgs.push('--open');
 }
@@ -93,16 +93,25 @@ console.log(
     ` renderScale=${config.renderScale ?? '1.0'} maxPixelRatio=${config.maxPixelRatio ?? '2.0'}`
 );
 
-const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-const child = spawn(npxCmd, viteArgs, {
+const vite = localViteInvocation(viteArgs);
+let spawnFailed = false;
+const child = spawnObserved(vite.command, vite.args, {
   stdio: 'inherit',
-  env
+  env,
+}, (error) => {
+  spawnFailed = true;
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[dev:ui] Failed to start Vite: ${message}`);
+  process.exitCode = 1;
 });
 
-child.on('exit', (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
-    return;
-  }
-  process.exit(code ?? 0);
-});
+if (child) {
+  child.on('exit', (code, signal) => {
+    if (spawnFailed) return;
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+    process.exit(code ?? 0);
+  });
+}

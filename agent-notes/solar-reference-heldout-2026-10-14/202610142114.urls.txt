@@ -1,0 +1,2 @@
+https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/R5.0/WSA_OUT/GONG_Z/2026/10/wsa_202610142114R000_gongz.fits
+https://iswa.ccmc.gsfc.nasa.gov/iswa_data_tree/model/solar/WSA6/fieldlines/GONG_Z/trace_pfss_intoout/2026/10/2026-10-14T21-14-00.000.osfls

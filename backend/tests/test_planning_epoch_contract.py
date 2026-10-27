@@ -47,11 +47,30 @@ def test_derived_and_arrival_epochs_fail_before_work(path,payload,monkeypatch):
     assert response.json()["detail"]["code"] == "trajectory_epoch_out_of_range"
 
 
-def test_search_generated_arrival_epoch_has_same_structured_error():
+@pytest.mark.parametrize("departure_jd,max_assists", [
+    (2464842.5, 0),
+    (2464842.5, 1),
+    (2464842.5, 2),
+    (2468592.5, 0),
+])
+def test_plan_skips_out_of_window_generated_arrivals(departure_jd,max_assists):
+    response=client.post("/trajectory/plan",json=dict(from_id="earth",to_id="mars",
+        departure_jd=departure_jd,max_assists=max_assists,ephemeris_provider="kepler"))
+    assert response.status_code == 200,response.text
+    body=response.json()
+    assert body["best"] is not None
+    assert all(
+        leg["arrivalJd"] <= 2469807.5
+        for route in [body["best"],*body["alternatives"]]
+        for leg in route["legs"]
+    )
+
+
+def test_search_with_no_in_range_arrival_reports_no_feasible_route():
     response=client.post("/trajectory/plan",json=dict(from_id="earth",to_id="mars",
         departure_jd=2469807.,max_assists=0,ephemeris_provider="kepler"))
     assert response.status_code == 422,response.text
-    assert response.json()["detail"]["code"] == "trajectory_epoch_out_of_range"
+    assert response.json()["detail"]["code"] == "trajectory_no_feasible_route"
 
 
 @pytest.mark.parametrize("epoch",[2447892.5,2469807.5])

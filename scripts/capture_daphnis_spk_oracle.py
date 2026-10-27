@@ -26,7 +26,7 @@ def evaluate(payload, jds=JDS):
     raw = base64.b64decode(payload['kernel_base64'],validate=True)
     if hashlib.sha256(raw).hexdigest() != payload['sha256']:
         raise ValueError('Kernel integrity failure')
-    with tempfile.TemporaryDirectory(dir=ROOT/'node_modules/.cache/scn043') as tmp:
+    with tempfile.TemporaryDirectory(prefix='solar-daphnis-spk-') as tmp:
         path=Path(tmp)/'sat393_daphnis.bsp'
         path.write_bytes(raw)
         handle=spice.dafopr(str(path))

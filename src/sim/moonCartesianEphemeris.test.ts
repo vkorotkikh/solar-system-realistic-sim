@@ -55,4 +55,17 @@ describe('Cartesian Chebyshev moon states', () => {
     expect(p.toArray()).toEqual([1, 2, 3]);
     expect(v.toArray()).toEqual([4, 5, 6]);
   });
+  it('preserves a declared provider handoff and selects the right-hand state at its epoch', () => {
+    const orbit = { ...synthetic(0, [[1], [0], [0]]), sourceDiscontinuities: [2451550] };
+    orbit.segments = [
+      { startJd: 2451545, endJd: 2451550, coefficients: [[1], [0], [0]] },
+      { startJd: 2451550, endJd: 2451555, coefficients: [[2], [0], [0]] }
+    ];
+    const p = new Vector3(), v = new Vector3();
+    for (const [jd, expected] of [[2451550 - 1e-6, 1], [2451550, 2], [2451550 + 1e-6, 2]]) {
+      expect(propagateMoonEphemeris(orbit, jd, p, v)).toBe(true);
+      expect(p.x * AU_KM).toBeCloseTo(expected, 12);
+      expect(v.length()).toBe(0);
+    }
+  });
 });

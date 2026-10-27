@@ -1,0 +1,142 @@
+src/sunController.ts:224:      revokedTexture.dispose();
+src/sunController.ts:269:        geometry?: { dispose(): void };
+src/sunController.ts:273:        line.geometry.dispose();
+src/sunController.ts:278:            if (material && typeof material.dispose === 'function') material.dispose();
+src/sunController.ts:281:          line.material.dispose();
+src/sunController.ts:358:          if (typeof loaded.dispose === 'function') loaded.dispose();
+src/sunController.ts:368:          solarObservationTexture.dispose();
+src/sunController.ts:745:    solarPhysicsClient.dispose();
+src/sunController.ts:746:    solarRealtimeClient.dispose();
+src/frontend/app/localSystemRenderer.ts:406:        orbitLine.geometry.dispose();
+src/frontend/app/localSystemRenderer.ts:642:    const response = await fetch(manifestPath, { cache: 'no-store' });
+src/frontend/features/solar/solarProminences.ts:279:        dispose() {
+src/frontend/features/solar/solarProminences.ts:280:            geometry.dispose();
+src/frontend/features/solar/solarProminences.ts:281:            material.dispose();
+src/frontend/features/solar/solarProminences.ts:320:                prom.dispose();
+src/frontend/features/solar/solarProminences.ts:365:    dispose(): void {
+src/frontend/features/solar/solarProminences.ts:367:            prom.dispose();
+src/main.ts:483:  asteroidBeltRenderer.dispose();
+src/main.ts:761:    modelWorker = new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' });
+src/main.ts:817:  modelWorker.onerror = (event) => {
+src/main.ts:1079:window.addEventListener('resize', resizeRenderer);
+src/main.ts:1151:dom.panelToggle.addEventListener('click', () => setPanelOpen(true));
+src/main.ts:1152:dom.panelClose.addEventListener('click', () => setPanelOpen(false));
+src/main.ts:1153:dom.panelBackdrop.addEventListener('click', () => {
+src/main.ts:1157:panelBreakpoint.addEventListener('change', () => {
+src/main.ts:1161:document.addEventListener('keydown', (event) => {
+src/main.ts:1189:  disclosure.addEventListener('toggle', syncDisclosureState);
+src/main.ts:1218:dom.togglePlay.addEventListener('click', () => {
+src/main.ts:1223:dom.toggleOrbits.addEventListener('change', () => {
+src/main.ts:1230:dom.toggleLabels.addEventListener('change', () => {
+src/main.ts:1235:dom.toggleRealisticScale.addEventListener('change', () => {
+src/main.ts:1240:dom.aiaChannel.addEventListener('change', () => {
+src/main.ts:1244:dom.zoomSensitivity.addEventListener('input', () => {
+src/main.ts:1252:dom.bodySearch.addEventListener('input', () => {
+src/main.ts:1256:dom.bodySearch.addEventListener('keydown', (event) => {
+src/main.ts:1264:dom.focusBody.addEventListener('click', () => {
+src/main.ts:1275:dom.followBody.addEventListener('click', () => {
+src/main.ts:1286:dom.clearFollow.addEventListener('click', () => {
+src/main.ts:1291:dom.bodyList.addEventListener('change', () => {
+src/main.ts:1296:dom.canvas.addEventListener('dblclick', (e) => {
+src/main.ts:1319:dom.triggerAgnShockwave?.addEventListener('click', () => {
+src/main.ts:1346:dom.agnObserverFrame.addEventListener('change', () => {
+src/main.ts:1350:dom.agnStochastic.addEventListener('change', () => {
+src/main.ts:1354:dom.agnHypothesis.addEventListener('change', () => {
+src/main.ts:1453:window.addEventListener('beforeunload', () => {
+src/main.ts:1463:  asteroidBeltRenderer.dispose();
+src/main.ts:1464:  kuiperBeltRenderer.dispose();
+src/main.ts:1467:    if (mesh.geometry) mesh.geometry.dispose();
+src/main.ts:1470:        mesh.material.forEach((m: { dispose: () => void }) => m.dispose());
+src/main.ts:1472:        mesh.material.dispose();
+src/main.ts:1478:    line.geometry.dispose();
+src/main.ts:1480:      line.material.forEach((m: { dispose: () => void }) => m.dispose());
+src/main.ts:1482:      line.material.dispose();
+src/main.ts:1488:    if (sprite.material.map) sprite.material.map.dispose();
+src/main.ts:1489:    sprite.material.dispose();
+src/main.ts:1492:  backgroundStars.geometry.dispose();
+src/main.ts:1494:    backgroundStars.material.forEach((m: { dispose: () => void }) => m.dispose());
+src/main.ts:1496:    backgroundStars.material.dispose();
+src/main.ts:1499:  if (sunTexture) sunTexture.dispose();
+src/main.ts:1500:  renderer.dispose();
+src/frontend/app/uiBindings.ts:94:  dom.togglePlay.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:105:    zoomSensitivity.addEventListener('input', () => {
+src/frontend/app/uiBindings.ts:116:    preset.element?.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:136:    toggle.addEventListener('change', handlers.applyRenderVisibility);
+src/frontend/app/uiBindings.ts:139:  dom.bodySearch.addEventListener('input', () => {
+src/frontend/app/uiBindings.ts:143:  dom.starSystemList?.addEventListener('change', () => {
+src/frontend/app/uiBindings.ts:154:  dom.canvas.addEventListener('pointerdown', (event: Event) => {
+src/frontend/app/uiBindings.ts:163:  dom.canvas.addEventListener('pointermove', (event: Event) => {
+src/frontend/app/uiBindings.ts:180:  dom.canvas.addEventListener('pointerup', (event: Event) => {
+src/frontend/app/uiBindings.ts:202:  dom.canvas.addEventListener('pointercancel', () => {
+src/frontend/app/uiBindings.ts:208:  dom.canvas.addEventListener('pointerleave', () => {
+src/frontend/app/uiBindings.ts:212:  dom.bodyList.addEventListener('change', () => {
+src/frontend/app/uiBindings.ts:217:  dom.focusBody.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:223:  dom.followBody.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:229:  dom.clearFollow.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:235:  dom.returnSolarSystem?.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:239:  dom.simConnect.addEventListener('click', () => {
+src/frontend/app/uiBindings.ts:256:  dom.simBackend.addEventListener('change', () => {
+src/frontend/app/uiBindings.ts:266:    toggleRealisticScale.addEventListener('change', () => {
+src/frontend/features/solar/solarFlares.ts:161:    dispose(): void;
+src/frontend/features/solar/solarFlares.ts:274:        dispose() {
+src/frontend/features/solar/solarFlares.ts:275:            flareSprite.material.dispose();
+src/frontend/features/solar/solarFlares.ts:276:            cmeMesh.material.dispose();
+src/frontend/features/solar/solarFlares.ts:332:                event.dispose();
+src/frontend/features/solar/solarFlares.ts:465:    dispose() {
+src/frontend/features/solar/solarFlares.ts:467:            e.dispose();
+src/frontend/app/nearbySystemsRenderer.ts:526:      const response = await fetch(url, { cache: 'no-store' });
+src/frontend/app/timeController.ts:43:    dom.nowTime?.addEventListener('click', () => {
+src/frontend/app/timeController.ts:57:      dom.timeScale.addEventListener('input', () => {
+src/frontend/app/routeRenderer.ts:63:        routeNode.geometry.dispose();
+src/frontend/features/solar/solarPhysicsClient.ts:253:  dispose(): void {
+src/frontend/features/solar/solarPhysicsClient.ts:303:      timeoutHandle = setTimeout(() => controller.abort(), this.timeoutMs);
+src/frontend/features/solar/solarPhysicsClient.ts:305:      const response = await fetch(url, {
+src/frontend/features/solar/solarRealtimeClient.ts:822:  dispose(): void {
+src/frontend/features/solar/solarRealtimeClient.ts:852:        timeoutHandle = setTimeout(() => {
+src/frontend/features/solar/solarRealtimeClient.ts:858:        fetch(url, { cache: 'no-store', signal: controller.signal }),
+src/frontend/app/simulationClient.ts:171:    this.ws.onerror = () => {
+src/frontend/app/simulationClient.ts:226:    this.reconnectTimerId = window.setTimeout(() => {
+src/frontend/app/simulationClient.ts:244:    this.staleTimerId = window.setTimeout(() => {
+src/frontend/app/simulationClient.ts:271:    this.ws.onerror = null;
+src/frontend/app/plannerController.ts:296:    dom.plannerFrom.innerHTML = '';
+src/frontend/app/plannerController.ts:297:    dom.plannerTo.innerHTML = '';
+src/frontend/app/plannerController.ts:603:    dom.planDirect.addEventListener('click', () => runPlanner({ directOnly: true }));
+src/frontend/app/plannerController.ts:604:    dom.planOptimal.addEventListener('click', () => runPlanner({ directOnly: false }));
+src/frontend/app/plannerController.ts:605:    dom.planLambert.addEventListener('click', () => runLambertPlanner());
+src/frontend/app/plannerController.ts:606:    dom.planPorkchop.addEventListener('click', () => runPorkchopPlanner());
+src/frontend/app/plannerController.ts:607:    dom.planMission.addEventListener('click', () => runMissionPlanner());
+src/frontend/app/plannerController.ts:609:    dom.clearRoute.addEventListener('click', () => {
+src/frontend/app/textureManager.ts:33:    maybeDisposable.dispose();
+src/frontend/features/solar/gravitationalWaves.ts:236:        dispose() {
+src/frontend/features/solar/gravitationalWaves.ts:237:            geometry.dispose();
+src/frontend/features/solar/gravitationalWaves.ts:238:            material.dispose();
+src/frontend/features/planetary/satelliteSystem.ts:385:  const response = await fetch(url, { cache: 'no-store' });
+src/frontend/features/planetary/satelliteSystem.ts:691:      this.worker = new Worker(new URL('./satellitePropagationWorker.ts', import.meta.url), { type: 'module' });
+src/frontend/features/planetary/satelliteSystem.ts:734:    this.worker.onerror = () => {
+src/frontend/features/planetary/cloudDataPipeline.ts:224:    const response = await fetch(url, { cache: 'no-store' });
+src/frontend/features/solar/sunVisuals.ts:1268:      loop.geometry.dispose();
+src/frontend/features/solar/sunVisuals.ts:1274:          entry.dispose();
+src/frontend/features/solar/sunVisuals.ts:1278:      material.dispose();
+src/frontend/features/solar/sunVisuals.ts:1293:      line.geometry.dispose();
+src/frontend/features/solar/sunVisuals.ts:1299:          entry.dispose();
+src/frontend/features/solar/sunVisuals.ts:1303:      material.dispose();
+src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts:136:        shutdownTimer = setTimeout(resetVisuals, 2500);
+src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:177:        dispose() {
+src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:178:            geometry.dispose();
+src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts:179:            material.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:478:    dispose() {
+src/frontend/features/asteroids/beltRenderer.ts:479:      geometry.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:480:      material.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:659:    dispose() {
+src/frontend/features/asteroids/beltRenderer.ts:660:      geometry.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:661:      material.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:663:        companionMesh.geometry.dispose();
+src/frontend/features/asteroids/beltRenderer.ts:664:        (companionMesh.material as MeshStandardMaterial).dispose();
+src/frontend/features/trajectory/index.ts:199:  const timeoutId = window.setTimeout(() => controller.abort(), PLAN_REQUEST_TIMEOUT_MS);
+src/frontend/features/trajectory/index.ts:214:      response = await fetch(`${backendBaseUrl()}/trajectory/plan`, {
+src/frontend/features/trajectory/index.ts:247:  const timeoutId = window.setTimeout(() => controller.abort(), LAMBERT_REQUEST_TIMEOUT_MS);
+src/frontend/features/trajectory/index.ts:250:    const response = await fetch(`${backendBaseUrl()}/trajectory/lambert`, {
+src/frontend/features/trajectory/index.ts:281:  const timeoutId = window.setTimeout(() => controller.abort(), PORKCHOP_REQUEST_TIMEOUT_MS);
+src/frontend/features/trajectory/index.ts:284:    const response = await fetch(`${backendBaseUrl()}/trajectory/porkchop`, {
+src/frontend/features/trajectory/index.ts:317:  const timeoutId = window.setTimeout(() => controller.abort(), MISSION_REQUEST_TIMEOUT_MS);
+src/frontend/features/trajectory/index.ts:320:    const response = await fetch(`${backendBaseUrl()}/mission/plan`, {

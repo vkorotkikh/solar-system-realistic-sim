@@ -29,19 +29,21 @@ export const SUN_SURFACE_VERTEX_SHADER = `
 varying vec2 vUv;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
-varying vec3 vWorldPosition;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 varying float vLatitude;
 
 void main() {
   vUv = uv;
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+  vViewPosition = viewPosition.xyz;
+  vViewNormal = normalize(normalMatrix * normal);
   // The mesh hangs from the Sun's spin group, whose local +Y is the true spin axis, so the
   // object-space normal gives heliographic latitude; the world normal's y does not.
   vSunNormal = normalize(normal);
   vLatitude = asin(clamp(vSunNormal.y, -1.0, 1.0));
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  gl_Position = projectionMatrix * viewPosition;
 }
 `;
 
@@ -55,12 +57,14 @@ uniform float observationEmission;
 // Sunspot seed positions: xy = (lon, lat) in radians, z = size (0.01..0.08), w = intensity
 // w == 0.0 means the slot is inactive (no sunspot)
 uniform vec4 sunspotSeeds[8];
+uniform float sunspotPatternSeeds[8];
 uniform vec4 flarePoints[3];
 
 varying vec2 vUv;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
-varying vec3 vWorldPosition;
+varying vec3 vViewNormal;
+varying vec3 vViewPosition;
 varying float vLatitude;
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
@@ -141,9 +145,10 @@ vec2 voronoiGranulation(vec2 uv, float scale, float t) {
     for (int x = -1; x <= 1; x++) {
       vec2 neighbor = vec2(float(x), float(y));
       vec2 nId = cellId + neighbor;
+      vec2 wrappedId = vec2(mod(nId.x, scale), nId.y);
       // Drift cell centers slowly over time (granule lifetime ~8-10 min -> normalised to ~0.08 time units)
       float drift = t * 0.042;
-      vec2 centerOffset = hash22(nId + vec2(drift, drift * 0.71)) * 0.62 + 0.19;
+      vec2 centerOffset = hash22(wrappedId + vec2(drift, drift * 0.71)) * 0.62 + 0.19;
       vec2 r = neighbor + centerOffset - cellFr;
       float d = dot(r, r);
       if (d < minDist) { secDist = minDist; minDist = d; minCell = centerOffset; }
@@ -179,8 +184,7 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   if (angDist > spotSize * 2.5) return 1.0; // outside spot entirely
 
   // ─── Wilson Depression: foreshorten spot near limb (600 km depression) ────
-  float spotMu = max(0.0, dot(spotDir, normalize(cameraPosition - vWorldPosition)));
-  float wilsonFactor = 0.65 + 0.35 * spotMu;
+  float wilsonFactor = 0.65 + 0.35 * mu;
   float umbra = spotSize * 0.45 * wilsonFactor;
   float penumbra = spotSize * wilsonFactor;
   
@@ -218,7 +222,7 @@ float sunspotDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 // Each uniform slot represents a sunspot GROUP, not an individual spot.
 // Generates 2-5 sub-spots per group at slightly offset positions with varying sizes.
 // At solar max with 8 groups × 5 spots = up to 40 visible spots.
-float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
+float sunspotGroupDarkening(vec3 nDir, vec4 seed, float patternSeed, float timeSec, float mu) {
   if (seed.w < 0.001) return 1.0;
   float dark = 1.0;
   // Cluster count: 2-5 based on group intensity
@@ -226,9 +230,9 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
   for (int c = 0; c < 5; c++) {
     if (c >= clusterCount) break;
     float cSeed = float(c) * 0.618033;
-    float lonOff = (hash12(vec2(seed.x, cSeed)) - 0.5) * seed.z * 1.5;
-    float latOff = (hash12(vec2(seed.y, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
-    float subSize = seed.z * (0.3 + hash12(vec2(cSeed, seed.x)) * 0.7);
+    float lonOff = (hash12(vec2(patternSeed, cSeed)) - 0.5) * seed.z * 1.5;
+    float latOff = (hash12(vec2(patternSeed + 0.37, cSeed + 0.3)) - 0.5) * seed.z * 1.0;
+    float subSize = seed.z * (0.3 + hash12(vec2(cSeed, patternSeed + 0.73)) * 0.7);
     vec4 subSpot = vec4(seed.x + lonOff, seed.y + latOff, subSize, seed.w);
     dark = min(dark, sunspotDarkening(nDir, subSpot, timeSec, mu));
   }
@@ -238,8 +242,9 @@ float sunspotGroupDarkening(vec3 nDir, vec4 seed, float timeSec, float mu) {
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 sunNormal = normalize(vSunNormal); // body frame: latitude, spots and flares
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float mu = max(0.0, dot(normalDir, viewDir));
+  vec3 viewNormal = normalize(vViewNormal);
+  vec3 viewDir = normalize(-vViewPosition);
+  float mu = max(0.0, dot(viewNormal, viewDir));
   
   // ─── Phase A1: Neckel-Labs Limb Darkening (per-channel RGB) ────────────────
   vec3 limbDark = neckellLimbDarkRGB(mu);
@@ -274,14 +279,14 @@ void main() {
   // Unrolled fixed loop (GLSL ES 1.0 requires constant loop bounds)
   // Each slot is a sunspot GROUP producing 2-5 clustered spots
   float spotDark = 1.0;
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[0], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[1], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[2], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[3], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[4], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[5], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[6], time, mu));
-  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[7], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[0], sunspotPatternSeeds[0], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[1], sunspotPatternSeeds[1], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[2], sunspotPatternSeeds[2], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[3], sunspotPatternSeeds[3], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[4], sunspotPatternSeeds[4], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[5], sunspotPatternSeeds[5], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[6], sunspotPatternSeeds[6], time, mu));
+  spotDark = min(spotDark, sunspotGroupDarkening(sunNormal, sunspotSeeds[7], sunspotPatternSeeds[7], time, mu));
   
   // ─── Base texture + observation overlay ────────────────────────────────────
   vec2 uvAdj = fract(uvRotated + vec2(time * 0.003, 0.0));
@@ -350,12 +355,14 @@ export const SUN_CORONA_VERTEX_SHADER = `
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
+varying vec3 vSunCenterWorld;
 
 void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPosition.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
   vSunNormal = normalize(normal); // body frame, as in the surface shader
+  vSunCenterWorld = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
 `;
@@ -383,6 +390,7 @@ uniform float coronalHoleCount;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying vec3 vSunNormal;
+varying vec3 vSunCenterWorld;
 
 float hash13(vec3 p) {
   p = fract(p * 0.1031);
@@ -460,11 +468,14 @@ float demChannelResponse(float temperatureMK, float channelId) {
 void main() {
   vec3 normalDir = normalize(vWorldNormal);
   vec3 sunNormal = normalize(vSunNormal); // body frame: streamer belt and coronal holes
-  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-  float ndotv = clamp(abs(dot(normalDir, viewDir)), 0.0, 1.0);
-  float limb = clamp(1.0 - ndotv, 0.0, 1.0);
-  float offLimb = smoothstep(0.78, 0.998, limb);
+  vec3 ray = vWorldPosition - cameraPosition;
+  vec3 rayDirection = ray / max(length(ray), 1e-6);
+  vec3 centerFromCamera = vSunCenterWorld - cameraPosition;
+  float impactR = length(centerFromCamera - rayDirection * dot(centerFromCamera, rayDirection))
+    / max(sunRadius, 0.0001);
+  float offLimb = smoothstep(1.0, 1.02, impactR);
   float rim = pow(offLimb, 1.8);
+  float fragR = max(impactR, 1.001);
   float turbulence = fbm(normalDir * 9.0 + vec3(time * 0.38, -time * 0.26, time * 0.19));
   float burst = smoothstep(0.72, 0.95, turbulence);
   float pulse = 0.78 + 0.22 * sin(time * 1.4 + turbulence * 6.8);
@@ -474,7 +485,6 @@ void main() {
   // ─── K-Corona Radial Intensity Falloff (Baumbach/van de Hulst 1950) ────────
   // N(r) = 10^8 * (0.036*r^-1.5 + 1.55*r^-6 + 2.99*r^-16)
   // Simplified to two dominant terms for real-time rendering.
-  float fragR = max(length(vWorldPosition) / max(sunRadius, 0.0001), 1.001);
   float coronaRadial = 0.036 * pow(fragR, -1.5) + 1.55 * pow(fragR, -6.0);
   coronaRadial = coronaRadial / 1.586; // normalize to ~1.0 at r=1
   alpha *= coronaRadial;
@@ -599,7 +609,8 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
           new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0),
           new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0), new Vector4(0, 0, 0, 0)
         ]
-      }
+      },
+      sunspotPatternSeeds: { value: new Float32Array(8) }
     }
   });
   material.toneMapped = false;
@@ -658,7 +669,14 @@ function collectPhysicsDrivenSunspotGroups(physicsState: SolarPhysicsStateLike |
     const regionId = `${feature?.active_region_id ?? feature?.region_id ?? feature?.id ?? `sunspot-${grouped.size}`}`;
     const existing = grouped.get(regionId);
     if (!existing || score > existing.score) {
-      grouped.set(regionId, { lon, lat, angularRadius, intensity, score });
+      grouped.set(regionId, {
+        lon,
+        lat,
+        angularRadius,
+        intensity,
+        score,
+        patternSeed: stableHash01(regionId)
+      });
     }
   }
 
@@ -677,11 +695,13 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
 
   const TWO_PI = Math.PI * 2;
   const seeds = sunSurfaceMaterial.uniforms.sunspotSeeds.value;
+  const patternSeeds = sunSurfaceMaterial.uniforms.sunspotPatternSeeds?.value as Float32Array | number[] | undefined;
   const physicsDrivenGroups = collectPhysicsDrivenSunspotGroups(physicsState, activity);
   let seedIndex = 0;
 
   for (const group of physicsDrivenGroups) {
     seeds[seedIndex].set(group.lon, group.lat, group.angularRadius, group.intensity);
+    if (patternSeeds) patternSeeds[seedIndex] = group.patternSeed;
     seedIndex += 1;
     if (seedIndex >= seeds.length) return;
   }
@@ -692,6 +712,7 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
   for (let i = seedIndex; i < 8; i++) {
     if (i >= targetCount) {
       seeds[i].set(0, 0, 0, 0);
+      if (patternSeeds) patternSeeds[i] = 0;
       continue;
     }
 
@@ -705,6 +726,7 @@ export function updateSunspotUniforms(sunSurfaceMaterial: ShaderMaterial | null 
     const angularRadius = 0.025 + s * 0.08 * activity;
     const intensity = 0.55 + s2 * 0.35;
     seeds[i].set(baseLon, baseLat, angularRadius, intensity);
+    if (patternSeeds) patternSeeds[i] = stableHash01(`synthetic-sunspot-${syntheticIndex}`);
   }
 }
 
@@ -734,6 +756,7 @@ uniform float time;
 uniform float sunRadius;
 uniform float chromoActivity;
 uniform float chromoOpacity;  // driven from JS, not material.opacity
+uniform float viewportHeight; // active drawing-buffer viewport height in pixels
 
 varying float vAlpha;
 varying float vHeight; // 0 = base, 1 = tip
@@ -765,20 +788,28 @@ void main() {
   vec3 spiculePos = position + aAxis * height * sunRadius;
 
   // Limb fade: spicules are most visible at the limb (edge) of the disk
-  vec3 viewDelta = cameraPosition - vec3(modelMatrix[3]);
-  float ndotv = abs(dot(normalize(aAxis), normalize(viewDelta)));
+  vec3 viewAxis = normalize(normalMatrix * aAxis);
+  vec3 viewCenter = (modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 viewDir = normalize(-viewCenter);
+  float ndotv = abs(dot(viewAxis, viewDir));
   float limbFade = clamp(1.0 - ndotv * 0.65, 0.0, 1.0);
 
   vAlpha = rise * limbFade * (0.45 + chromoActivity * 0.55) * chromoOpacity;
   // Type II fade faster overall
   if (isTypeII) vAlpha *= 0.7;
 
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(spiculePos, 1.0);
+  vec4 viewPosition = modelViewMatrix * vec4(spiculePos, 1.0);
+  gl_Position = projectionMatrix * viewPosition;
 
-  // Distance-scaled point size (perspective attenuation)
-  float dist = length(cameraPosition - (modelMatrix * vec4(spiculePos, 1.0)).xyz);
-  float baseSize = isTypeII ? 1.2 : 2.0; // Type II are thinner (~200 km vs ~660 km)
-  gl_PointSize = clamp(baseSize * (300.0 / max(dist, 0.001)), 0.5, 6.0);
+  // Project the rendered physical width to framebuffer pixels. The direction
+  // transform carries the layer's display/activity scale without translation.
+  float objectWidth = sunRadius * (
+    isTypeII ? (200.0 / 696340.0) : (660.0 / 696340.0)
+  );
+  float viewWidth = length((modelViewMatrix * vec4(aAxis * objectWidth, 0.0)).xyz);
+  float projectedSize = viewWidth * projectionMatrix[1][1] * viewportHeight * 0.5
+    / max(-viewPosition.z, 0.000001);
+  gl_PointSize = clamp(projectedSize, 0.5, 6.0);
 }
 `;
 
@@ -853,6 +884,7 @@ export function createChromosphereLayer(sunDisplayRadius: number, count = 8000):
       sunRadius: { value: sunDisplayRadius },
       chromoActivity: { value: 0.5 },
       chromoOpacity: { value: 0.3 },  // controlled via updateChromosphereLayer
+      viewportHeight: { value: 1 },
       chromoColor: { value: new Color('#ff8842') }  // default warm orange
     },
     transparent: true,
@@ -867,6 +899,11 @@ export function createChromosphereLayer(sunDisplayRadius: number, count = 8000):
   points.userData.activityScale = 1.004;
   points.renderOrder = 4;
   points.frustumCulled = false;
+  const activeViewport = new Vector4();
+  points.onBeforeRender = (renderer) => {
+    renderer.getCurrentViewport(activeViewport);
+    material.uniforms.viewportHeight.value = Math.max(1, activeViewport.w);
+  };
   return points;
 }
 

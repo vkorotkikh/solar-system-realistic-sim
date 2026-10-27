@@ -639,3 +639,9 @@ src/sim/loadMoonEphemerides.ts
 src/sim/moonCatalogIdentity.horizons.test.ts
 src/sim/moonCatalogRepair.horizons.test.ts
 src/sim/moonRepairTestInputs.mjs
+
+## Clean-checkout native generation fix (2026-10-14)
+
+The two new regression tests first reproduced both parent integration failures with a genuinely missing cache root. Offline `repair_spk_moon_ephemeris.generate()` no longer publishes a candidate or creates persistent cache directories. Candidate publication now requires CLI `--cache-candidate`; `--write` remains explicit artifact publication. Online source acquisition alone creates its cache parent when needed. Daphnis native evaluation uses an operating-system temporary directory, independent of the repository cache.
+
+Validation: `scripts/test_moon_spk_clean_checkout.py scripts/test_moon_spk_repairs.py`: **4 passed**, SpiceyPy 8.3.0, Python 3.12.13. Both clean-checkout regressions forbid network and assert the missing cache/repository root remains absent. `repair_spk_moon_ephemeris.py --target 75052 --offline --check`: byte-identical shipped native artifact. Canonical four-body and all coefficient artifacts unchanged. The separately pending Cartesian source-handoff regression is intentionally excluded from this bounded commit.

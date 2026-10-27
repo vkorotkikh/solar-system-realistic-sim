@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.310" timestamp="2026-10-10T07:24:03.625936+00:00" hostname="Athena"><testcase classname="backend.tests.test_pfss_decomposition" name="test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]" time="0.005"><failure message="AssertionError: &#10;Not equal to tolerance rtol=0, atol=1e-12&#10;R4-THETA-AREA-WEIGHTS&#10;Mismatched elements: 1 / 1 (100%)&#10;Max absolute difference among violations: 0.09313264&#10;Max relative difference among violations: 0.15585242&#10; ACTUAL: array(0.504437)&#10; DESIRED: array(0.597569)">factory = &lt;function equal_area_sine_latitude_grid at 0x7bb7d6941800&gt;
+
+    @pytest.mark.parametrize("factory", [equal_area_sine_latitude_grid, uniform_colatitude_grid])
+    def test_non_band_limited_fit_minimizes_correct_area_weighted_residual(factory):
+        grid = factory(24, 48)
+        # A cubic projected only through l=1 has a nonzero residual, so incorrect
+        # latitude weights change the fit (unlike exactly band-limited recovery).
+        br = np.broadcast_to(grid.mu[:, None]**3, (24, 48))
+        g, h = decompose_spherical_harmonics(br, 1, grid=grid)
+        weights = (np.full(24, 2 / 24) if factory is equal_area_sine_latitude_grid
+                   else -np.diff(np.cos(np.arange(25) * np.pi / 24)))
+        expected_dipole = np.sum(weights * grid.mu**4) / np.sum(weights * grid.mu**2)
+&gt;       np.testing.assert_allclose(
+            g[1, 0], expected_dipole, rtol=0, atol=1e-12,
+            err_msg="R4-THETA-AREA-WEIGHTS",
+        )
+E       AssertionError: 
+E       Not equal to tolerance rtol=0, atol=1e-12
+E       R4-THETA-AREA-WEIGHTS
+E       Mismatched elements: 1 / 1 (100%)
+E       Max absolute difference among violations: 0.09313264
+E       Max relative difference among violations: 0.15585242
+E        ACTUAL: array(0.504437)
+E        DESIRED: array(0.597569)
+
+backend/tests/test_pfss_decomposition.py:81: AssertionError</failure></testcase></testsuite></testsuites>

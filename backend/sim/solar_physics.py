@@ -389,7 +389,10 @@ class SolarCoronaPhysicsModel:
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
         cycle_phase = (t_months / CYCLE_LENGTH_MONTHS) * 2.0 * math.pi
+        # Solar cycles overlap: while the new cycle rises, the preceding cycle's
+        # Hathaway envelope continues down its tail instead of vanishing at wrap.
         hathaway = _hathaway_normalized(t_months, HATHAWAY_B, HATHAWAY_C)
+        hathaway += _hathaway_normalized(t_months + CYCLE_LENGTH_MONTHS, HATHAWAY_B, HATHAWAY_C)
         rotation_mod = 0.5 + 0.5 * math.sin(((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi + 0.17)
         activity = 0.06 + hathaway * 0.82 + rotation_mod * 0.10
         return _clamp(activity, 0.02, 0.98), cycle_phase
@@ -424,8 +427,12 @@ class SolarCoronaPhysicsModel:
         eruption_gate = 0.0
         if tube.family == "cme":
             eruption_gate = _clamp((rapid - 0.7) / 0.3, 0.0, 1.0) * _clamp((micro - 0.6) / 0.4, 0.0, 1.0)
-        lifetime, _, _ = region_lifetime(self.active_regions[tube.region_idx], jd)
-        return emergence * lifetime, eruption_gate * lifetime
+        lifetime_envelope, _, _ = region_lifetime(
+            self.active_regions[tube.region_idx], jd
+        )
+        if lifetime_envelope <= 0.0:
+            return 0.0, 0.0
+        return emergence, eruption_gate
 
     def _feature_score(
         self,
@@ -566,6 +573,8 @@ class SolarCoronaPhysicsModel:
             width = 0.02 + region.strength * 0.1 + emergence * 0.03
 
         peak = _clamp(peak, 1.02, 4.8)
+        peak = 1.0 + (peak - 1.0) * lifetime_envelope
+        width *= lifetime_envelope
 
         field_strength_gauss, temperature_mk, electron_density_m3, alfven_speed_kms, sound_speed_kms = self._thermodynamic_state(
             tube,
@@ -597,6 +606,7 @@ class SolarCoronaPhysicsModel:
                 20.0,
                 650.0,
             )
+        speed_kms *= lifetime_envelope
 
         arc: list[list[float]] = []
         pair_normal = _normalize(_cross(source_dir, sink_dir))
@@ -684,7 +694,7 @@ class SolarCoronaPhysicsModel:
             "alfven_speed_kms": alfven_speed_kms,
             "expansion_speed_kms": speed_kms,
             "brightness": brightness,
-            "emergence": emergence,
+            "emergence": emergence * lifetime_envelope,
             "peak_extent_solar_radii": peak,
             "arc": arc,
         }

@@ -23,6 +23,7 @@
     "ingest:moon-textures": "node ./scripts/ingest-moon-textures.mjs",
     "verify:moon-frames": "node ./scripts/verify-moon-frames.mjs",
     "verify:planet-positions": "node ./scripts/verify-planet-positions.mjs",
+    "verify:asteroid-gpu": "node ./scripts/verify-asteroid-gpu.mjs",
     "test:browser": "playwright test",
     "test:types:ui": "tsc -p tsconfig.ui-tests.json --noEmit",
     "typecheck:ui-delta": "node scripts/check-ui-types.mjs"

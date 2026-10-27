@@ -94,7 +94,7 @@ describe('simulation client reconnection', () => {
     vi.advanceTimersByTime(600);
     socket().open(); socket().message(ready);
     expect(socket().send).toHaveBeenCalledTimes(1);
-    client.deactivateKuiper(); socket().onclose?.(); vi.advanceTimersByTime(600);
+    socket().message(state()); client.deactivateKuiper(); socket().onclose?.(); vi.advanceTimersByTime(600);
     socket().open(); socket().message(ready);
     expect(socket().send).not.toHaveBeenCalled();
   });
@@ -123,13 +123,30 @@ describe('simulation client reconnection', () => {
     expect(socket().close).not.toHaveBeenCalled();
   });
 
-  it('retains exponential backoff until valid traffic and cancels retries on disconnect', () => {
-    client.connect(); socket().open(); socket().onclose?.(); vi.advanceTimersByTime(600);
-    socket().open(); socket().onclose?.(); vi.advanceTimersByTime(600);
-    expect(Socket.instances).toHaveLength(2);
-    vi.advanceTimersByTime(600); expect(Socket.instances).toHaveLength(3);
+  it('retains exponential backoff through handshakes until valid state arrives', () => {
+    const acceptThenClose = () => {
+      socket().open();
+      socket().message(ready);
+      socket().onclose?.();
+    };
+    client.connect();
+    const delays = [600, 1_200, 2_400, 4_800, 9_600, 15_000, 15_000];
+    for (const [attempt, delay] of delays.entries()) {
+      acceptThenClose();
+      vi.advanceTimersByTime(delay - 1);
+      expect(Socket.instances).toHaveLength(attempt + 1);
+      vi.advanceTimersByTime(1);
+      expect(Socket.instances).toHaveLength(attempt + 2);
+    }
+
+    socket().open(); socket().message(ready); socket().message(state()); socket().onclose?.();
+    vi.advanceTimersByTime(599);
+    expect(Socket.instances).toHaveLength(delays.length + 1);
+    vi.advanceTimersByTime(1);
+    expect(Socket.instances).toHaveLength(delays.length + 2);
+
     socket().onerror?.(); client.disconnect(); vi.advanceTimersByTime(60_000);
-    expect(Socket.instances).toHaveLength(3);
+    expect(Socket.instances).toHaveLength(delays.length + 2);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -139,5 +156,97 @@ describe('simulation client reconnection', () => {
     expect(client.getStatus()).toBe('reconnecting');
     vi.stubGlobal('WebSocket', Socket); vi.advanceTimersByTime(600);
     expect(Socket.instances).toHaveLength(1);
+  });
+});
+
+describe('simulation client Kuiper activation lifecycle', () => {
+  const negotiatedReady = {
+    ...ready,
+    kuiper_subscription_version: 1,
+    kuiper_activation_error_version: 1,
+  };
+  const sentCommands = () => socket().send.mock.calls.map(([text]) => JSON.parse(text));
+
+  it('supersedes a changed active request and filters the old subscription', () => {
+    client.connect(); socket().open(); socket().message(negotiatedReady);
+    client.activateKuiper({ x: 42, y: 0, z: 0 }, 5);
+    socket().message({ ...state(), kuiper: [[1, 1, 1]], kuiper_subscription_id: '1' });
+    expect(client.latestKuiper).toEqual([[1, 1, 1]]);
+
+    client.activateKuiper({ x: -40, y: 10, z: 0 }, 2);
+
+    expect(sentCommands()).toEqual([
+      { type: 'activate_kuiper', center: [42, 0, 0], spread: 5, subscription_id: '1' },
+      { type: 'activate_kuiper', center: [-40, 10, 0], spread: 2, subscription_id: '2' },
+    ]);
+    expect(client.latestKuiper).toBeNull();
+    socket().message({ ...state(), kuiper: [[2, 2, 2]], kuiper_subscription_id: '1' });
+    expect(client.latestKuiper).toBeNull();
+    socket().message({ ...state(), kuiper: [[3, 3, 3]], kuiper_subscription_id: '2' });
+    expect(client.latestKuiper).toEqual([[3, 3, 3]]);
+  });
+
+  it('allows an explicit retry only after an activation rejection', () => {
+    client.connect(); socket().open(); socket().message(negotiatedReady);
+    const activate = () => client.activateKuiper({ x: 42, y: 0, z: 0 }, 5);
+
+    activate();
+    activate();
+    socket().message({ type: 'error', code: 'bad_request', message: 'unrelated' });
+    activate();
+    expect(sentCommands()).toHaveLength(1);
+
+    socket().message({
+      type: 'error',
+      code: 'kuiper_activation_failed',
+      message: 'fixture rejection',
+      kuiper_subscription_id: '1',
+    });
+    expect(sentCommands()).toHaveLength(1);
+
+    activate();
+    expect(sentCommands()).toEqual([
+      { type: 'activate_kuiper', center: [42, 0, 0], spread: 5, subscription_id: '1' },
+      { type: 'activate_kuiper', center: [42, 0, 0], spread: 5, subscription_id: '2' },
+    ]);
+  });
+
+  it('allows retry after an untagged rejection from a version-1 server', () => {
+    client.connect(); socket().open();
+    socket().message({ ...ready, kuiper_subscription_version: 1 });
+    const activate = () => client.activateKuiper({ x: 42, y: 0, z: 0 }, 5);
+
+    activate();
+    socket().message({
+      type: 'error',
+      code: 'kuiper_activation_failed',
+      message: 'legacy rejection',
+    });
+    activate();
+
+    expect(sentCommands()).toEqual([
+      { type: 'activate_kuiper', center: [42, 0, 0], spread: 5, subscription_id: '1' },
+      { type: 'activate_kuiper', center: [42, 0, 0], spread: 5, subscription_id: '2' },
+    ]);
+  });
+
+  it('does not let a delayed failure revoke a superseding activation', () => {
+    client.connect(); socket().open(); socket().message(negotiatedReady);
+    client.activateKuiper({ x: 42, y: 0, z: 0 }, 5);
+    client.activateKuiper({ x: -40, y: 10, z: 0 }, 2);
+
+    socket().message({
+      type: 'error',
+      code: 'kuiper_activation_failed',
+      message: 'old request rejected',
+      kuiper_subscription_id: '1',
+    });
+    socket().message({
+      ...state(),
+      kuiper: [[3, 3, 3]],
+      kuiper_subscription_id: '2',
+    });
+
+    expect(client.latestKuiper).toEqual([[3, 3, 3]]);
   });
 });

@@ -1,0 +1,44 @@
+{
+  "hunks": [
+    {
+      "executed_lines": [
+        189,
+        190
+      ],
+      "lines": [
+        189,
+        190
+      ],
+      "path": "backend/sim/pfss_magnetogram.py"
+    }
+  ],
+  "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+  "reports": [
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "outcome": "passed",
+      "phase": "setup"
+    },
+    {
+      "exception_message": "\nNot equal to tolerance rtol=0, atol=1e-10\nR4-M-NORMALIZATION\nMismatched elements: 1 / 4 (25%)\nMismatch at index:\n [1, 1]: 2.0000000000000004 (ACTUAL), 1.0 (DESIRED)\nMax absolute difference among violations: 1.\nMax relative difference among violations: 1.\n ACTUAL: array([[-3.06836e-17,  0.00000e+00],\n       [ 3.09395e-19,  2.00000e+00]])\n DESIRED: array([[0., 0.],\n       [0., 1.]])",
+      "exception_type": "builtins.AssertionError",
+      "is_assertion_error": true,
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "outcome": "failed",
+      "phase": "call"
+    },
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
+      "outcome": "passed",
+      "phase": "teardown"
+    }
+  ],
+  "schema_version": 1,
+  "trace_intact": true
+}

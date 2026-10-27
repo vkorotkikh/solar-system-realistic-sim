@@ -1,0 +1,4218 @@
+{
+  "schema": {
+    "name": "solar_delivery_evidence",
+    "version": 1
+  },
+  "harnessCommit": "4ce724b4ddbc2fa6623bf95f345779827afb4255",
+  "applicationCommit": "fc3b6a0f34e1da2ff720ba7ea55d28cfd27e0c93",
+  "parentAiaCommit": "938bca0dd2d71d8bc9ffdb49e8bd9d17d380f975",
+  "harnessFiles": {
+    "scripts/solar-delivery-metrics.mjs": "a957a7b579dc961e946d4b7353f89b99cd4f6973b2bfcfe64ef4998a8f75b8ab",
+    "scripts/solar-delivery-metrics.test.mjs": "59691b83a9bbe563c2c709da19131745c2154f13eeef57fe8c517c63a360e2c2",
+    "scripts/verify-solar-delivery-browser.mjs": "5d8096d41d726c6f887015e9a6a9fde7c09aa0916545f528c6c5125a8914bb55"
+  },
+  "quietWindowClearedAt": "2026-10-14T23:01:40.947Z",
+  "concurrencyEvents": [
+    {
+      "at": "2026-10-14T22:47:45.204Z",
+      "source": "parent message",
+      "context": "Parent full backend suite has finished; no parent CPU-heavy job currently. Other agents may fit moons or run focused tests. Parent avoids headed browsers until delivery completion."
+    },
+    {
+      "at": "2026-10-14T23:01:27.250Z",
+      "source": "parent message",
+      "context": "Parent continues non-browser work; other agents may use CPU. Parent plans a later full-scene GPU gate after Peirce main handoff and requested explicit headed-browser clearance."
+    }
+  ],
+  "hostContext": "Shared WSL host, not an isolated CPU benchmark. Parent avoided headed browsers. Initial parent backend test process was observed, then parent reported completion. Other agents may run moon fits or focused tests.",
+  "graphicsDriverVersion": "610.88",
+  "tests": {
+    "vitest": {
+      "passed": 570,
+      "skipped": 2,
+      "failed": 0
+    },
+    "backendAia": {
+      "passed": 99,
+      "skipped": 0,
+      "failed": 0
+    },
+    "typecheckRatchet": {
+      "diagnostics": 0,
+      "passed": true
+    },
+    "build": {
+      "passed": true,
+      "warning": "Main chunk exceeds 500 kB"
+    }
+  },
+  "checkedResponseBodies": 42,
+  "runs": [
+    {
+      "run": "dev",
+      "reportSha256": "5647b56d2d39cc9711425b510a886899067eea4177e1a83b9ffbca740592fe49",
+      "report": "artifacts/solar-delivery/dev/report.json",
+      "mode": "dev",
+      "baseCommit": "fc3b6a0f34e1da2ff720ba7ea55d28cfd27e0c93",
+      "node": "v22.23.2",
+      "browserVersion": "153.0.8010.12",
+      "host": {
+        "hostname": "Athena",
+        "platform": "linux",
+        "release": "6.18.33.2-microsoft-standard-WSL2",
+        "arch": "x64",
+        "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+        "logicalCpus": 32,
+        "totalMemoryBytes": 100975398912,
+        "loadAtStart": [
+          3.23,
+          1.69,
+          0.74
+        ],
+        "graphicsEnvironment": {
+          "DISPLAY": ":0",
+          "GALLIUM_DRIVER": "d3d12",
+          "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+          "LD_LIBRARY_PATH": "/usr/lib/wsl/lib"
+        },
+        "loadAtEnd": [
+          8.69,
+          5,
+          2.42
+        ]
+      },
+      "graphics": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+      },
+      "url": "http://127.0.0.1:5176",
+      "backend": "http://127.0.0.1:9196",
+      "startedAt": "2026-10-14T22:44:11.412Z",
+      "observationMs": 300000,
+      "observationEndedAt": "2026-10-14T22:49:11.412Z",
+      "capturedAt": "2026-10-14T22:49:17.391Z",
+      "productionDefaults": {
+        "physicsPollMs": 30000,
+        "physicsBrowserDeadlineMs": 20000,
+        "physicsBackendDeadlineMs": 18000,
+        "realtimePollMs": 120000,
+        "realtimeBrowserDeadlineMs": 15000,
+        "realtimeBackendDeadlineMs": 12000,
+        "backendGeometryValidated": false
+      },
+      "allPhysics": {
+        "attempted": 11,
+        "delivered": 11,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 11
+        },
+        "latencyMs": {
+          "count": 11,
+          "min": 9113.725,
+          "median": 9903.736,
+          "p95": 11658.402,
+          "p99": 11658.402,
+          "max": 11658.402
+        }
+      },
+      "warmPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 9113.725,
+          "median": 9855.215,
+          "p95": 11658.402,
+          "p99": 11658.402,
+          "max": 11658.402
+        }
+      },
+      "timedWindowPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 9113.725,
+          "median": 9855.215,
+          "p95": 11658.402,
+          "p99": 11658.402,
+          "max": 11658.402
+        }
+      },
+      "startupPhysics": {
+        "attempted": 1,
+        "delivered": 1,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 1
+        },
+        "latencyMs": {
+          "count": 1,
+          "min": 10468.32,
+          "median": 10468.32,
+          "p95": 10468.32,
+          "p99": 10468.32,
+          "max": 10468.32
+        }
+      },
+      "denominatorDefinition": "Every browser request initiated through the five-minute cutoff, including startup, failures and pending requests; warm excludes only the first physics attempt. Timed-window counts exclude startup. Outcomes may drain for at most 25 seconds with unchanged application deadlines.",
+      "nominalPhysicsPollIntervals": 10,
+      "realtime": {
+        "attempted": 3,
+        "delivered": 3,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 3
+        },
+        "latencyMs": {
+          "count": 3,
+          "min": 1284.765,
+          "median": 1651.578,
+          "p95": 3266.888,
+          "p99": 3266.888,
+          "max": 3266.888
+        }
+      },
+      "imageRequests": [],
+      "backendChipSeen": true,
+      "activityMatches": 7,
+      "validPhysics": 11,
+      "effectiveEpochTransitions": 6,
+      "frameIntervalsMs": {
+        "count": 18340,
+        "min": 16.5,
+        "median": 16.69999999999709,
+        "p95": 16.79999999998836,
+        "p99": 16.800000000017462,
+        "max": 6783.23
+      },
+      "pageErrors": [],
+      "consoleMessages": [
+        {
+          "at": 1792017850827,
+          "type": "warning",
+          "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=6900.5 exceeded budgetMs=2000",
+          "location": {
+            "url": "http://127.0.0.1:5176/src/main.ts",
+            "line": 526,
+            "column": 16,
+            "lineNumber": 526,
+            "columnNumber": 16
+          }
+        }
+      ],
+      "deliveryGate": {
+        "passed": false,
+        "failures": [
+          "backend-activity-uniform-delivery-not-demonstrated-for-every-valid-payload"
+        ]
+      },
+      "exclusions": [
+        "No backend geometry enablement or independent geometry correctness claim",
+        "No provider mock or deterministic fixture substitute",
+        "30-second production cadence is not the historical shortened-policy 20-cycle fixture acceptance",
+        "No pending/retry fault injection or multi-tab release gate",
+        "Observed texture eligibility and provider outcomes must be reviewed separately; HTTP success is not observation rendering"
+      ],
+      "coldPhysics": {
+        "id": 2,
+        "latencyMs": 10468.32,
+        "delivered": true
+      },
+      "frameClock": {
+        "actualDays": 461,
+        "expectedDays": 460.5160000000001,
+        "ratio": 1.0010509949708586
+      },
+      "requests": [
+        {
+          "id": 1,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792017850682,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017850730,
+          "latencyMs": 3266.888,
+          "bytes": 8194,
+          "sha256": "42c48977b141424d8afc09909d851eba3bdc1609b6d0adcf550b4c529ef86eec",
+          "bodyFile": "responses/001-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:37:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 427.28625,
+              "wind_age_s": 427.28625,
+              "mag_age_s": 367.28625,
+              "delivered_at_utc": "2026-10-14T22:44:07.286250Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "refreshed",
+                "last_validated_at_utc": "2026-10-14T22:44:05.870023Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:44:07.286250Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:18:17Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 2,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.44806091&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017850682,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017854494,
+          "latencyMs": 10468.32,
+          "bytes": 679810,
+          "sha256": "ce1d48c3273780a2883b754526e05ed44cc55e85121459174b834264d119b846",
+          "bodyFile": "responses/002-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803999464347728,
+          "epochJdTdb": 2461328.44806091,
+          "wallEpochJdTdb": 2461328.448073385,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792017854503,
+            "name": "activity",
+            "program": 1,
+            "value": 0.6803999464347728
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 3,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.44815498&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017874023,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017883468,
+          "latencyMs": 9441.722,
+          "bytes": 679741,
+          "sha256": "ea1c66930803d2aaae582cb3f8337187f73f00bd281815cc07af090537b0b325",
+          "bodyFile": "responses/003-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803996962365256,
+          "epochJdTdb": 2461328.44815498,
+          "wallEpochJdTdb": 2461328.4484202606,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792017883478,
+            "name": "activity",
+            "program": 1,
+            "value": 0.6803999464085185
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 4,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.44815498&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017904031,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017913619,
+          "latencyMs": 9585.843,
+          "bytes": 679739,
+          "sha256": "42475d19f401ba23c5f3cd73bd40522a85555fc7ed692cb07996dada3f2a18d2",
+          "bodyFile": "responses/004-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803996962365256,
+          "epochJdTdb": 2461328.44815498,
+          "wallEpochJdTdb": 2461328.448767653,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": null,
+          "minimumActivityDifference": null
+        },
+        {
+          "id": 5,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461418.40535505&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017934040,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017943155,
+          "latencyMs": 9113.725,
+          "bytes": 678001,
+          "sha256": "e06e90d342bba4861747a5213c3424fb6dc1baf1fbf6d0559125533553dc8f32",
+          "bodyFile": "responses/005-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.691315845464721,
+          "epochJdTdb": 2461418.40535505,
+          "wallEpochJdTdb": 2461328.449115363,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792017943874,
+            "name": "activity",
+            "program": 1,
+            "value": 0.6863906933715406
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 6,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461538.43655514&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017964048,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017974098,
+          "latencyMs": 10048.148,
+          "bytes": 685775,
+          "sha256": "9ca25d415bc31769b3711d14cc47916d91160ddfc136e016e470ab04e2fe18a7",
+          "bodyFile": "responses/006-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6501734094909544,
+          "epochJdTdb": 2461538.43655514,
+          "wallEpochJdTdb": 2461328.449462668,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792017975166,
+            "name": "activity",
+            "program": 1,
+            "value": 0.6549305977723918
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 7,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792017970733,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792017972384,
+          "latencyMs": 1651.578,
+          "bytes": 8200,
+          "sha256": "0c0c50b5be18a0e5909a23d9428cb81ac9edfe7d319493462f150d08f25b57c8",
+          "bodyFile": "responses/007-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:40:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 372.381091,
+              "wind_age_s": 372.381091,
+              "mag_age_s": 312.381091,
+              "delivered_at_utc": "2026-10-14T22:46:12.381091Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:44:05.870023Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:46:12.381091Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:18:17Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 8,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461658.40095522&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792017994064,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018005718,
+          "latencyMs": 11658.402,
+          "bytes": 696277,
+          "sha256": "23de87411c4e3b9652aab8835fd5166d5708faa1c293fa3c8138e4f557c5b001",
+          "bodyFile": "responses/008-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5197703961278961,
+          "epochJdTdb": 2461658.40095522,
+          "wallEpochJdTdb": 2461328.4498103587,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792018006924,
+            "name": "activity",
+            "program": 1,
+            "value": 0.5239049637290677
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 9,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461778.49895531&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018024064,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018034470,
+          "latencyMs": 10404.393,
+          "bytes": 617263,
+          "sha256": "0cb416a497d77e3fad54cd088f9fea54d7e3b4e2f4d71e019ae09e7cd35bf9d8",
+          "bodyFile": "responses/009-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5556952513852506,
+          "epochJdTdb": 2461778.49895531,
+          "wallEpochJdTdb": 2461328.450157019,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792018035513,
+            "name": "activity",
+            "program": 1,
+            "value": 0.5509667488344993
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 10,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45024248&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018054070,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018063976,
+          "latencyMs": 9903.736,
+          "bytes": 679503,
+          "sha256": "920b4e8bbd971beb63a95dca4bcf1d83306ced4bd31868340d34019015276ed9",
+          "bodyFile": "responses/010-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803941500171222,
+          "epochJdTdb": 2461328.45024248,
+          "wallEpochJdTdb": 2461328.4505043067,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": {
+            "at": 1792018065171,
+            "name": "activity",
+            "program": 1,
+            "value": 0.6758401155759419
+          },
+          "minimumActivityDifference": 0
+        },
+        {
+          "id": 11,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45024248&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018084078,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018093934,
+          "latencyMs": 9855.215,
+          "bytes": 679501,
+          "sha256": "f5297d646266fada2c8d9e06c07678e185756aca915cf8eabc5062c2e2d37a9d",
+          "bodyFile": "responses/011-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803941500171222,
+          "epochJdTdb": 2461328.45024248,
+          "wallEpochJdTdb": 2461328.450851978,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": null,
+          "minimumActivityDifference": null
+        },
+        {
+          "id": 12,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018092396,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018093681,
+          "latencyMs": 1284.765,
+          "bytes": 8200,
+          "sha256": "7d9ba5f1c1d610ce8594f7fb0f9dce8e87dbb6892c3b990105913ed0cbd109ba",
+          "bodyFile": "responses/012-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:40:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 493.677335,
+              "wind_age_s": 493.677335,
+              "mag_age_s": 433.677335,
+              "delivered_at_utc": "2026-10-14T22:48:13.677335Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:44:05.870023Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:48:13.677335Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:18:17Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 13,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45024248&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018114085,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018123236,
+          "latencyMs": 9149.901,
+          "bytes": 679501,
+          "sha256": "dac58231b0874dd8fa3dd2953cfc9f458ddd411e65a7a6275ef9d121fc9971c2",
+          "bodyFile": "responses/013-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803941500171222,
+          "epochJdTdb": 2461328.45024248,
+          "wallEpochJdTdb": 2461328.451198683,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": null,
+          "minimumActivityDifference": null
+        },
+        {
+          "id": 14,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45024248&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018144094,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018155297,
+          "latencyMs": 11202.113,
+          "bytes": 679503,
+          "sha256": "f4a8945537654e385c83f6153538305d66a11ac10de55a8d7c7564474fa08091",
+          "bodyFile": "responses/014-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803941500171222,
+          "epochJdTdb": 2461328.45024248,
+          "wallEpochJdTdb": 2461328.4515462834,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformMatch": null,
+          "minimumActivityDifference": null
+        }
+      ],
+      "postWindowRequestCount": 0
+    },
+    {
+      "run": "preview",
+      "reportSha256": "d75bbbb982722d91a96f07939af2ecdeb28f7e7163dfba847f220adf5de20fae",
+      "report": "artifacts/solar-delivery/preview/report.json",
+      "mode": "preview",
+      "baseCommit": "fc3b6a0f34e1da2ff720ba7ea55d28cfd27e0c93",
+      "node": "v22.23.2",
+      "browserVersion": "153.0.8010.12",
+      "host": {
+        "hostname": "Athena",
+        "platform": "linux",
+        "release": "6.18.33.2-microsoft-standard-WSL2",
+        "arch": "x64",
+        "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+        "logicalCpus": 32,
+        "totalMemoryBytes": 100975398912,
+        "loadAtStart": [
+          19.23,
+          9.47,
+          4.22
+        ],
+        "graphicsEnvironment": {
+          "DISPLAY": ":0",
+          "GALLIUM_DRIVER": "d3d12",
+          "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+          "LD_LIBRARY_PATH": "/usr/lib/wsl/lib"
+        },
+        "loadAtEnd": [
+          5.54,
+          7.84,
+          5.22
+        ]
+      },
+      "graphics": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+      },
+      "url": "http://127.0.0.1:4176",
+      "backend": "http://127.0.0.1:9196",
+      "startedAt": "2026-10-14T22:50:54.451Z",
+      "observationMs": 300000,
+      "observationEndedAt": "2026-10-14T22:55:54.451Z",
+      "capturedAt": "2026-10-14T22:55:57.653Z",
+      "productionDefaults": {
+        "physicsPollMs": 30000,
+        "physicsBrowserDeadlineMs": 20000,
+        "physicsBackendDeadlineMs": 18000,
+        "realtimePollMs": 120000,
+        "realtimeBrowserDeadlineMs": 15000,
+        "realtimeBackendDeadlineMs": 12000,
+        "backendGeometryValidated": false
+      },
+      "allPhysics": {
+        "attempted": 11,
+        "delivered": 11,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 11
+        },
+        "latencyMs": {
+          "count": 11,
+          "min": 8805.199,
+          "median": 10899.819,
+          "p95": 12193.211,
+          "p99": 12193.211,
+          "max": 12193.211
+        }
+      },
+      "warmPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 8805.199,
+          "median": 9840.739,
+          "p95": 11692.003,
+          "p99": 11692.003,
+          "max": 11692.003
+        }
+      },
+      "timedWindowPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 8805.199,
+          "median": 9840.739,
+          "p95": 11692.003,
+          "p99": 11692.003,
+          "max": 11692.003
+        }
+      },
+      "startupPhysics": {
+        "attempted": 1,
+        "delivered": 1,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 1
+        },
+        "latencyMs": {
+          "count": 1,
+          "min": 12193.211,
+          "median": 12193.211,
+          "p95": 12193.211,
+          "p99": 12193.211,
+          "max": 12193.211
+        }
+      },
+      "denominatorDefinition": "Every browser request initiated through the five-minute cutoff, including startup, failures and pending requests; warm excludes only the first physics attempt. Timed-window counts exclude startup. Outcomes may drain for at most 25 seconds with unchanged application deadlines.",
+      "nominalPhysicsPollIntervals": 10,
+      "realtime": {
+        "attempted": 3,
+        "delivered": 3,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 3
+        },
+        "latencyMs": {
+          "count": 3,
+          "min": 1337.561,
+          "median": 1785.619,
+          "p95": 2815.457,
+          "p99": 2815.457,
+          "max": 2815.457
+        }
+      },
+      "imageRequests": [],
+      "backendChipSeen": true,
+      "activityMatches": 11,
+      "validPhysics": 11,
+      "effectiveEpochTransitions": 6,
+      "frameIntervalsMs": {
+        "count": 18186,
+        "min": 16.5,
+        "median": 16.69999999999709,
+        "p95": 16.79999999998836,
+        "p99": 16.800000000017462,
+        "max": 8737.3
+      },
+      "pageErrors": [],
+      "consoleMessages": [
+        {
+          "at": 1792018253817,
+          "type": "warning",
+          "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=8106.5 exceeded budgetMs=2000",
+          "location": {
+            "url": "http://127.0.0.1:4176/assets/index-DZ1bIhK1.js",
+            "line": 5473,
+            "column": 4058,
+            "lineNumber": 5473,
+            "columnNumber": 4058
+          }
+        }
+      ],
+      "deliveryGate": {
+        "passed": true,
+        "failures": []
+      },
+      "exclusions": [
+        "No backend geometry enablement or independent geometry correctness claim",
+        "No provider mock or deterministic fixture substitute",
+        "30-second production cadence is not the historical shortened-policy 20-cycle fixture acceptance",
+        "No pending/retry fault injection or multi-tab release gate",
+        "Observed texture eligibility and provider outcomes must be reviewed separately; HTTP success is not observation rendering"
+      ],
+      "coldPhysics": {
+        "id": 2,
+        "latencyMs": 12193.211,
+        "delivered": true
+      },
+      "frameClock": {
+        "actualDays": 461,
+        "expectedDays": 460.44400000000013,
+        "ratio": 1.0012075301230983
+      },
+      "requests": [
+        {
+          "id": 1,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018253667,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018253699,
+          "latencyMs": 2815.457,
+          "bytes": 8207,
+          "sha256": "7874d91746fd00a75148149748c35b7006d165d0abd2d4c8b35f4459872b79b6",
+          "bodyFile": "responses/001-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:43:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 468.645653,
+              "wind_age_s": 468.645653,
+              "mag_age_s": 408.645653,
+              "delivered_at_utc": "2026-10-14T22:50:48.645653Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "refreshed",
+                "last_validated_at_utc": "2026-10-14T22:50:47.457165Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:50:48.645653Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:31:47Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 2,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45270894&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018253667,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018258030,
+          "latencyMs": 12193.211,
+          "bytes": 677386,
+          "sha256": "d26b98d8a325f083977b33b8fe810edd614bf366fc1d9b71f28edb409984f41d",
+          "bodyFile": "responses/002-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803876115801334,
+          "epochJdTdb": 2461328.45270894,
+          "wallEpochJdTdb": 2461328.4527237103,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018258044,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258044
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018258045,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258045
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018258045,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258045
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018258044,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258044
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018258045,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258045
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018258045,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803876115801334,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018258045
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45281949&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018275845,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018286748,
+          "latencyMs": 10899.819,
+          "bytes": 678893,
+          "sha256": "9d01de23a629307ca41f11078cb40c28275a137039a0b31baf3641f1663c5c69",
+          "bodyFile": "responses/003-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803873188902798,
+          "epochJdTdb": 2461328.45281949,
+          "wallEpochJdTdb": 2461328.4530716203,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018286762,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.680387611532192,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018286762
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45281949&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018305852,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018316763,
+          "latencyMs": 10907.857,
+          "bytes": 678891,
+          "sha256": "eb1806a4614abf4571cfff3760edae3467df34723d5ea5dbbc5c9e2a5aae1c4c",
+          "bodyFile": "responses/004-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803873188902798,
+          "epochJdTdb": 2461328.45281949,
+          "wallEpochJdTdb": 2461328.453418851,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018288112,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803873188902798,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018316763
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461413.74161956&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018335862,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018347556,
+          "latencyMs": 11692.003,
+          "bytes": 690605,
+          "sha256": "61999e46b7e00bb3d6225e8c4862a056e9bfd3a06a3323e3dcfefa688cc14891",
+          "bodyFile": "responses/005-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.647012380286886,
+          "epochJdTdb": 2461413.74161956,
+          "wallEpochJdTdb": 2461328.4537663627,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018348580,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6519382436038584,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018348580
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461533.77281964&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018365869,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018375612,
+          "latencyMs": 9741.789,
+          "bytes": 689990,
+          "sha256": "346445acea11101f5fe8b5acdaaa74228dcc5fcaad68460e543a511c23be0701",
+          "bodyFile": "responses/006-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6780172820663226,
+          "epochJdTdb": 2461533.77281964,
+          "wallEpochJdTdb": 2461328.4541129735,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018376621,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6730559833299091,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018376621
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018373705,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018375490,
+          "latencyMs": 1785.619,
+          "bytes": 8201,
+          "sha256": "0a795040eaa6c1946d5804b02e641551292da2fba1699e7b312f3f4c51929cd8",
+          "bodyFile": "responses/007-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:46:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 415.486412,
+              "wind_age_s": 415.486412,
+              "mag_age_s": 355.486412,
+              "delivered_at_utc": "2026-10-14T22:52:55.486412Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:50:47.457165Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:52:55.486412Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:31:47Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 8,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461653.80401972&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018395877,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018405720,
+          "latencyMs": 9840.739,
+          "bytes": 696870,
+          "sha256": "5c86e07e7e8d3f94b2bdb2f5c52e521a2590dbd6e0aa83ebbde7dc0b5b5c44aa",
+          "bodyFile": "responses/008-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5276007163298083,
+          "epochJdTdb": 2461653.80401972,
+          "wallEpochJdTdb": 2461328.4544601394,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018406929,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5321181500037006,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018406929
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461773.83521981&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018425885,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018436786,
+          "latencyMs": 10900.433,
+          "bytes": 655335,
+          "sha256": "f47b68fce59676683de4d9dc24304c43995e0801bb53ab2431c15fd78b09dade",
+          "bodyFile": "responses/009-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5239666641080034,
+          "epochJdTdb": 2461773.83521981,
+          "wallEpochJdTdb": 2461328.4548076415,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018436801,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.527599711865441,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018436801
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 10,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45490631&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018455891,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018464883,
+          "latencyMs": 8990.563,
+          "bytes": 677023,
+          "sha256": "ea403b6ec6c8c60477a0bf5a863bea3f4cdbee0390964a65a14fe04764e24d66",
+          "bodyFile": "responses/010-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803817998360243,
+          "epochJdTdb": 2461328.45490631,
+          "wallEpochJdTdb": 2461328.4551547035,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466092,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6755541643069592,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018466092
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 11,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45490631&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018485898,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018497023,
+          "latencyMs": 11121.84,
+          "bytes": 677023,
+          "sha256": "78f21f779568bda6680369342c4ac4a2694d4e127dc8505f79c33c8ec4b59dd8",
+          "bodyFile": "responses/011-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803817998360243,
+          "epochJdTdb": 2461328.45490631,
+          "wallEpochJdTdb": 2461328.4555022013,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018497023
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 12,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018495501,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018496838,
+          "latencyMs": 1337.561,
+          "bytes": 8202,
+          "sha256": "effcb34309ed2fe037c338b10058ff600963ba714bdaff877d844d3102765f77",
+          "bodyFile": "responses/012-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:50:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 296.834928,
+              "wind_age_s": 296.834928,
+              "mag_age_s": 236.834928,
+              "delivered_at_utc": "2026-10-14T22:54:56.834928Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:50:47.457165Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:54:56.834928Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:33:53Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 13,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45490631&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018515906,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018524713,
+          "latencyMs": 8805.199,
+          "bytes": 677023,
+          "sha256": "ddce9e75d5e682e1d6021906bc8f387e65edadcf7cbe7aa26090ca39e595dfe5",
+          "bodyFile": "responses/013-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803817998360243,
+          "epochJdTdb": 2461328.45490631,
+          "wallEpochJdTdb": 2461328.4558494603,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018524713
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 14,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45490631&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018545915,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018555568,
+          "latencyMs": 9651.342,
+          "bytes": 677023,
+          "sha256": "1dc2c9cf1bc2247921667caa6dd1a02e21aa91524d4670f368fc1313ab76ceb9",
+          "bodyFile": "responses/014-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803817998360243,
+          "epochJdTdb": 2461328.45490631,
+          "wallEpochJdTdb": 2461328.4561971123,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018466242,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803817998360243,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018555568
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        }
+      ],
+      "postWindowRequestCount": 0
+    },
+    {
+      "run": "dev-confirmed",
+      "reportSha256": "50bd13ecfa5a5121814c5584938a0e99659ab2f5f171997bcdfe0a04d1d3f34d",
+      "report": "artifacts/solar-delivery/dev-confirmed/report.json",
+      "mode": "dev",
+      "baseCommit": "fc3b6a0f34e1da2ff720ba7ea55d28cfd27e0c93",
+      "node": "v22.23.2",
+      "browserVersion": "153.0.8010.12",
+      "host": {
+        "hostname": "Athena",
+        "platform": "linux",
+        "release": "6.18.33.2-microsoft-standard-WSL2",
+        "arch": "x64",
+        "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+        "logicalCpus": 32,
+        "totalMemoryBytes": 100975398912,
+        "loadAtStart": [
+          4.79,
+          7.57,
+          5.17
+        ],
+        "graphicsEnvironment": {
+          "DISPLAY": ":0",
+          "GALLIUM_DRIVER": "d3d12",
+          "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+          "LD_LIBRARY_PATH": "/usr/lib/wsl/lib"
+        },
+        "loadAtEnd": [
+          8.35,
+          7.61,
+          5.72
+        ]
+      },
+      "graphics": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+      },
+      "url": "http://127.0.0.1:5176",
+      "backend": "http://127.0.0.1:9196",
+      "startedAt": "2026-10-14T22:56:22.468Z",
+      "observationMs": 300000,
+      "observationEndedAt": "2026-10-14T23:01:22.468Z",
+      "capturedAt": "2026-10-14T23:01:26.941Z",
+      "productionDefaults": {
+        "physicsPollMs": 30000,
+        "physicsBrowserDeadlineMs": 20000,
+        "physicsBackendDeadlineMs": 18000,
+        "realtimePollMs": 120000,
+        "realtimeBrowserDeadlineMs": 15000,
+        "realtimeBackendDeadlineMs": 12000,
+        "backendGeometryValidated": false
+      },
+      "allPhysics": {
+        "attempted": 11,
+        "delivered": 11,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 11
+        },
+        "latencyMs": {
+          "count": 11,
+          "min": 8821.12,
+          "median": 9205.513,
+          "p95": 12695.974,
+          "p99": 12695.974,
+          "max": 12695.974
+        }
+      },
+      "warmPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 8821.12,
+          "median": 9205.513,
+          "p95": 12695.974,
+          "p99": 12695.974,
+          "max": 12695.974
+        }
+      },
+      "timedWindowPhysics": {
+        "attempted": 10,
+        "delivered": 10,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 10
+        },
+        "latencyMs": {
+          "count": 10,
+          "min": 8821.12,
+          "median": 9205.513,
+          "p95": 12695.974,
+          "p99": 12695.974,
+          "max": 12695.974
+        }
+      },
+      "startupPhysics": {
+        "attempted": 1,
+        "delivered": 1,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 1
+        },
+        "latencyMs": {
+          "count": 1,
+          "min": 8862.537,
+          "median": 8862.537,
+          "p95": 8862.537,
+          "p99": 8862.537,
+          "max": 8862.537
+        }
+      },
+      "denominatorDefinition": "Every browser request initiated through the five-minute cutoff, including startup, failures and pending requests; warm excludes only the first physics attempt. Timed-window counts exclude startup. Outcomes may drain for at most 25 seconds with unchanged application deadlines.",
+      "nominalPhysicsPollIntervals": 10,
+      "realtime": {
+        "attempted": 3,
+        "delivered": 3,
+        "deliveredFraction": 1,
+        "pending": 0,
+        "statuses": {
+          "200": 3
+        },
+        "latencyMs": {
+          "count": 3,
+          "min": 1293.161,
+          "median": 2668.437,
+          "p95": 3545.722,
+          "p99": 3545.722,
+          "max": 3545.722
+        }
+      },
+      "imageRequests": [],
+      "backendChipSeen": true,
+      "activityMatches": 11,
+      "validPhysics": 11,
+      "effectiveEpochTransitions": 6,
+      "frameIntervalsMs": {
+        "count": 18263,
+        "min": 16.5,
+        "median": 16.69999999999709,
+        "p95": 16.79999999998836,
+        "p99": 16.800000000017462,
+        "max": 6602.5
+      },
+      "pageErrors": [],
+      "consoleMessages": [
+        {
+          "at": 1792018581983,
+          "type": "warning",
+          "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=6086.2 exceeded budgetMs=2000",
+          "location": {
+            "url": "http://127.0.0.1:5176/src/main.ts",
+            "line": 526,
+            "column": 16,
+            "lineNumber": 526,
+            "columnNumber": 16
+          }
+        }
+      ],
+      "deliveryGate": {
+        "passed": true,
+        "failures": []
+      },
+      "exclusions": [
+        "No backend geometry enablement or independent geometry correctness claim",
+        "No provider mock or deterministic fixture substitute",
+        "30-second production cadence is not the historical shortened-policy 20-cycle fixture acceptance",
+        "No pending/retry fault injection or multi-tab release gate",
+        "Observed texture eligibility and provider outcomes must be reviewed separately; HTTP success is not observation rendering"
+      ],
+      "coldPhysics": {
+        "id": 2,
+        "latencyMs": 8862.537,
+        "delivered": true
+      },
+      "frameClock": {
+        "actualDays": 461,
+        "expectedDays": 460.44800000000004,
+        "ratio": 1.0011988324414482
+      },
+      "requests": [
+        {
+          "id": 1,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018581860,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018581908,
+          "latencyMs": 2668.437,
+          "bytes": 8210,
+          "sha256": "963d3f93a9232719eb84ae177fec360f6aaad8e9d72ea71559e2cd3ea64a7741",
+          "bodyFile": "responses/001-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:50:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 378.642995,
+              "wind_age_s": 378.642995,
+              "mag_age_s": 318.642995,
+              "delivered_at_utc": "2026-10-14T22:56:18.642995Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "refreshed",
+                "last_validated_at_utc": "2026-10-14T22:56:17.352942Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:56:18.642995Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:33:53Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 2,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45653231&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018581861,
+          "phase": "boot",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018584843,
+          "latencyMs": 8862.537,
+          "bytes": 677041,
+          "sha256": "6e9ae9496e8248ca1fd7cab0e716c509acef2b3bec49c00f787dc73c54d0d340",
+          "bodyFile": "responses/002-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803775073865,
+          "epochJdTdb": 2461328.45653231,
+          "wallEpochJdTdb": 2461328.456544417,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018584857,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803775073865,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018584857
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45661630&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018605980,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018615146,
+          "latencyMs": 9163.592,
+          "bytes": 677210,
+          "sha256": "c773971ad04f5db85d99cef32dda893f76ad5fae09b0505ab695199f72faefda",
+          "bodyFile": "responses/003-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803772858500939,
+          "epochJdTdb": 2461328.4566163,
+          "wallEpochJdTdb": 2461328.456891999,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018615151,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803775073806768,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018615151
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45661630&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018635988,
+          "phase": "now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018645080,
+          "latencyMs": 9090.171,
+          "bytes": 677212,
+          "sha256": "8cdd55169a51479cf40b39d08bc3aa8cd91a29ceb52260fe79f6a4631239b0a9",
+          "bodyFile": "responses/004-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803772858500939,
+          "epochJdTdb": 2461328.4566163,
+          "wallEpochJdTdb": 2461328.4572395734,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018616498,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803772858500939,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018645080
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461422.21461637&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018665997,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018675068,
+          "latencyMs": 9069.115,
+          "bytes": 684273,
+          "sha256": "baa6115e0507e940c5b9409ec0d276ba8ba6e456709626dbbe289782f840b2c0",
+          "bodyFile": "responses/005-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.7256382726564878,
+          "epochJdTdb": 2461422.21461637,
+          "wallEpochJdTdb": 2461328.4575864174,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018676148,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.7208988997725877,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018676148
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461542.24581645&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018696005,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018705212,
+          "latencyMs": 9205.513,
+          "bytes": 686314,
+          "sha256": "873ed7864fa5fa5e0d0534adf9e5a2395e0efd1cc169e8c84f0160622ede9a76",
+          "bodyFile": "responses/006-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.605887196798398,
+          "epochJdTdb": 2461542.24581645,
+          "wallEpochJdTdb": 2461328.457933659,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018706406,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6103147787875761,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018706406
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018701923,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018705468,
+          "latencyMs": 3545.722,
+          "bytes": 8200,
+          "sha256": "077422ccc015f82bd8cf773f1441b3fd1f35cc1d9846ec05190247341d74adef",
+          "bodyFile": "responses/007-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:50:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 505.465104,
+              "wind_age_s": 505.465104,
+              "mag_age_s": 265.465104,
+              "delivered_at_utc": "2026-10-14T22:58:25.465104Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:56:17.352942Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T22:58:25.465104Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:33:53Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 8,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461662.27661654&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018726012,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018738711,
+          "latencyMs": 12695.974,
+          "bytes": 702547,
+          "sha256": "55a9f1b08bf8bb708a87a003174d30f13b1c0311e5b365b6e03a45b3ddfef68a",
+          "bodyFile": "responses/008-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5507263614824877,
+          "epochJdTdb": 2461662.27661654,
+          "wallEpochJdTdb": 2461328.4582814793,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018739814,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5555536770117466,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018739814
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461782.30781663&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018756021,
+          "phase": "running-default",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018765373,
+          "latencyMs": 9350.453,
+          "bytes": 677551,
+          "sha256": "d4979fe9ac14992ed01e41b266bcfa077eec7973d906a801307c8cd49746fec0",
+          "bodyFile": "responses/009-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.5433618701476722,
+          "epochJdTdb": 2461782.30781663,
+          "wallEpochJdTdb": 2461328.458628287,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018765886,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.5483442725732935,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018765886
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 10,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45870301&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018786026,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018797120,
+          "latencyMs": 11091.818,
+          "bytes": 677413,
+          "sha256": "2fc7fe61a227e30e1c7a57bae63d559130dcb26176e0e0c96e385150ed4965a1",
+          "bodyFile": "responses/010-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803717877332175,
+          "epochJdTdb": 2461328.45870301,
+          "wallEpochJdTdb": 2461328.458975932,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798328,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6761430796680314,
+                  "evidence": "uniform-upload",
+                  "evaluatedAt": 1792018798328
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 11,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45870301&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018816034,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018826968,
+          "latencyMs": 10932.11,
+          "bytes": 677415,
+          "sha256": "ad77e04e07aa4f57b4801f9223368f2dbbb4d152f195386408757a9b4b3692e8",
+          "bodyFile": "responses/011-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803717877332175,
+          "epochJdTdb": 2461328.45870301,
+          "wallEpochJdTdb": 2461328.4593235995,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018826968
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 12,
+          "kind": "realtime",
+          "url": "http://127.0.0.1:9196/solar/realtime",
+          "startedAt": 1792018825487,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018826780,
+          "latencyMs": 1293.161,
+          "bytes": 8203,
+          "sha256": "1d8bde03ff5e7c06199136402664bbd3e64652a4b5e18b3572218ffa3d29e9f8",
+          "bodyFile": "responses/012-realtime.json",
+          "schema": {
+            "name": "solar_realtime_endpoint",
+            "version": 1
+          },
+          "validation": {
+            "valid": true
+          },
+          "providerStatus": {
+            "swpc": {
+              "ok": true,
+              "updated": "2026-10-14T22:54:00Z",
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "age_s": 386.776977,
+              "wind_age_s": 266.776977,
+              "mag_age_s": 386.776977,
+              "delivered_at_utc": "2026-10-14T23:00:26.776977Z"
+            },
+            "silso": {
+              "ok": true,
+              "updated": "2026-09-30",
+              "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+              "source_age_days": 14,
+              "coverage": {
+                "policy": "through_last_elapsed_month",
+                "latest_expected_date": "2026-09-30",
+                "status": "current_for_published_coverage"
+              },
+              "realtime_eligible": false,
+              "acquisition": {
+                "cache_status": "fresh",
+                "last_validated_at_utc": "2026-10-14T22:56:17.352942Z",
+                "revalidation_interval_s": 21600,
+                "last_known_good_max_age_s": 172800
+              },
+              "delivered_at_utc": "2026-10-14T23:00:26.776977Z"
+            },
+            "sdo_aia": {
+              "ok": true,
+              "updated": "2026-10-14T22:33:53Z",
+              "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+            },
+            "gong_synoptic": {
+              "product": "zqs",
+              "ok": false,
+              "attempted": false,
+              "runtime_eligible": false,
+              "status": "disabled_unvalidated",
+              "reason": "disabled_unvalidated"
+            }
+          },
+          "observationEligibility": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          }
+        },
+        {
+          "id": 13,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45870301&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018846043,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018857087,
+          "latencyMs": 11042.54,
+          "bytes": 677415,
+          "sha256": "e8c34fd452c7d9c431f12d781bd696cbdbf181f6306212fa895383c48ed2dcac",
+          "bodyFile": "responses/013-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803717877332175,
+          "epochJdTdb": 2461328.45870301,
+          "wallEpochJdTdb": 2461328.4596707514,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018857087
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        },
+        {
+          "id": 14,
+          "kind": "physics",
+          "url": "http://127.0.0.1:9196/solar/physics?jd_tdb=2461328.45870301&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+          "startedAt": 1792018876050,
+          "phase": "returned-now-paused",
+          "resourceType": "fetch",
+          "status": 200,
+          "finishedAt": 1792018884873,
+          "latencyMs": 8821.12,
+          "bytes": 677413,
+          "sha256": "bb9215402546f24ddb62a09ac64c61049eeac7be9b804a7f555f9c6814b336c8",
+          "bodyFile": "responses/014-physics.json",
+          "schema": {
+            "name": "solar_physics_state",
+            "version": 2
+          },
+          "validation": {
+            "valid": true,
+            "failures": []
+          },
+          "activity": 0.6803717877332175,
+          "epochJdTdb": 2461328.45870301,
+          "wallEpochJdTdb": 2461328.460017704,
+          "forcing": {
+            "requested": "hybrid",
+            "effective": "synthetic",
+            "observed_input_status": "disabled_unvalidated",
+            "runtime_eligible": false,
+            "fallback_reason": "disabled_unvalidated"
+          },
+          "fallbackReason": "disabled_unvalidated",
+          "activityUniformEvidence": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              }
+            ]
+          },
+          "activityUniformMatch": {
+            "matched": true,
+            "programs": [
+              {
+                "program": 1,
+                "match": {
+                  "at": 1792018798478,
+                  "name": "activity",
+                  "program": 1,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 2,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 2,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              },
+              {
+                "program": 3,
+                "match": {
+                  "at": 1792018798479,
+                  "name": "activity",
+                  "program": 3,
+                  "value": 0.6803717877332175,
+                  "evidence": "retained-uniform",
+                  "evaluatedAt": 1792018884873
+                },
+                "minimumDifference": 0
+              }
+            ]
+          }
+        }
+      ],
+      "postWindowRequestCount": 0
+    }
+  ],
+  "limitations": [
+    "The initial DEV command failed its old uniform-upload-only matcher and remains failed in its original report.",
+    "Cold means first physics request with a fresh backend process and browser context; OS and network caches were not purged.",
+    "Ten warm physics requests per final run are not a 20-cycle acceptance claim or a tail-latency reliability estimate.",
+    "HTTP metadata delivery does not establish observed image rendering. No observation image requests occurred.",
+    "Catalog startup exceeds the unchanged 2000 ms budget; the frame trace includes multi-second startup stalls.",
+    "No geometry-validation enablement, full-scene correctness, WebKit, screen-reader, physical-touch or multi-tab gate is claimed."
+  ]
+}
