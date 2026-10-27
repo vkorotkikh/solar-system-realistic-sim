@@ -1,0 +1,251 @@
+{
+  "method": "Actual main client modules in browser, deterministic mocked HTTP JSON only; no upstream service or observed solar data",
+  "geometry": {
+    "earthRadiusAu": 0.001670210938369994,
+    "rawVertex": [
+      0.5,
+      0,
+      0
+    ],
+    "zeroElevationShaderWorldVertex": [
+      0.001670210938369994,
+      0,
+      0.5
+    ],
+    "radiusFromCenterAu": 0.5000027895967968,
+    "ratio": 299.36505510182064,
+    "rawPlaneZ": 0,
+    "rootTranslation": [
+      0,
+      0,
+      0.5
+    ],
+    "note": "CPU evaluation of shipped vertex transform with zero elevation. Actual displacement scale is 2% radius, too small to remove the ~0.5 AU translation."
+  },
+  "flareLifetimes": [
+    {
+      "sunRadiusAu": 0.3755114512235279,
+      "initialExpired": false,
+      "expiredAfterOneFrame": true
+    },
+    {
+      "sunRadiusAu": 0.00465474539672041,
+      "initialExpired": false,
+      "expiredAfterOneFrame": false
+    }
+  ],
+  "stages": [
+    {
+      "phase": "success",
+      "realtimeUpdated": true,
+      "physicsUpdated": true,
+      "realtime": {
+        "source": "backend",
+        "freshness": "fresh",
+        "snapshotFetchedAtUtc": "2026-10-10T07:27:16.823Z",
+        "snapshotAgeMs": 1,
+        "aiaUpdatedAtUtc": null,
+        "aiaSpatialUse": "unavailable",
+        "aiaSpatialReason": "no_aia_artifact_available",
+        "aiaRenderEligible": false,
+        "aiaRenderReason": "no_aia_artifact_available",
+        "aiaRenderAgeMs": null,
+        "aiaMaxRenderAgeMs": 21600000,
+        "sourceStatus": {
+          "swpc": {
+            "ok": false
+          },
+          "silso": {
+            "ok": false
+          },
+          "sdo_aia": {
+            "ok": false
+          },
+          "gong_synoptic": {
+            "ok": false
+          }
+        },
+        "lastError": null,
+        "lastSuccessMs": 1791617236824,
+        "lastAttemptMs": 1791617236823,
+        "lastLatencyMs": 1,
+        "nextRefreshMs": 1791617356824,
+        "pollIntervalMs": 120000,
+        "timeoutMs": 15000,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physics": {
+        "lastError": null,
+        "lastSuccessMs": 1791617236824,
+        "lastRefreshMs": 1791617236824,
+        "lastLatencyMs": 0,
+        "pollIntervalMs": 30000,
+        "nextRefreshMs": 1791617266824,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physicsLastGoodRetained": true
+    },
+    {
+      "phase": "failure",
+      "realtimeUpdated": false,
+      "physicsUpdated": false,
+      "realtime": {
+        "source": "backend",
+        "freshness": "stale",
+        "snapshotFetchedAtUtc": "2026-10-10T07:27:16.823Z",
+        "snapshotAgeMs": 2,
+        "aiaUpdatedAtUtc": null,
+        "aiaSpatialUse": "unavailable",
+        "aiaSpatialReason": "no_aia_artifact_available",
+        "aiaRenderEligible": false,
+        "aiaRenderReason": "no_aia_artifact_available",
+        "aiaRenderAgeMs": null,
+        "aiaMaxRenderAgeMs": 21600000,
+        "sourceStatus": {
+          "swpc": {
+            "ok": false
+          },
+          "silso": {
+            "ok": false
+          },
+          "sdo_aia": {
+            "ok": false
+          },
+          "gong_synoptic": {
+            "ok": false
+          }
+        },
+        "lastError": "Solar realtime request failed (503)",
+        "lastSuccessMs": 1791617236824,
+        "lastAttemptMs": 1791617236824,
+        "lastLatencyMs": 1,
+        "nextRefreshMs": 1791617266824,
+        "pollIntervalMs": 120000,
+        "timeoutMs": 15000,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physics": {
+        "lastError": "Solar physics request failed (503)",
+        "lastSuccessMs": 1791617236824,
+        "lastRefreshMs": 1791617236824,
+        "lastLatencyMs": 0,
+        "pollIntervalMs": 30000,
+        "nextRefreshMs": 1791617266825,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physicsLastGoodRetained": true
+    },
+    {
+      "phase": "recovery",
+      "realtimeUpdated": true,
+      "physicsUpdated": true,
+      "realtime": {
+        "source": "backend",
+        "freshness": "fresh",
+        "snapshotFetchedAtUtc": "2026-10-10T07:27:16.823Z",
+        "snapshotAgeMs": 2,
+        "aiaUpdatedAtUtc": null,
+        "aiaSpatialUse": "unavailable",
+        "aiaSpatialReason": "no_aia_artifact_available",
+        "aiaRenderEligible": false,
+        "aiaRenderReason": "no_aia_artifact_available",
+        "aiaRenderAgeMs": null,
+        "aiaMaxRenderAgeMs": 21600000,
+        "sourceStatus": {
+          "swpc": {
+            "ok": false
+          },
+          "silso": {
+            "ok": false
+          },
+          "sdo_aia": {
+            "ok": false
+          },
+          "gong_synoptic": {
+            "ok": false
+          }
+        },
+        "lastError": null,
+        "lastSuccessMs": 1791617236825,
+        "lastAttemptMs": 1791617236825,
+        "lastLatencyMs": 0,
+        "nextRefreshMs": 1791617356825,
+        "pollIntervalMs": 120000,
+        "timeoutMs": 15000,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physics": {
+        "lastError": null,
+        "lastSuccessMs": 1791617236825,
+        "lastRefreshMs": 1791617236825,
+        "lastLatencyMs": 0,
+        "pollIntervalMs": 30000,
+        "nextRefreshMs": 1791617266825,
+        "inFlight": false,
+        "disposed": false
+      },
+      "physicsLastGoodRetained": true
+    }
+  ],
+  "requests": [
+    "/mock/solar/realtime",
+    "/mock/solar/physics?jd_tdb=2461323.50000000&fidelity=high&max_features=220&forcing=hybrid&live_data=true",
+    "/mock/solar/realtime",
+    "/mock/solar/physics?jd_tdb=2461323.50000000&fidelity=high&max_features=220&forcing=hybrid&live_data=true",
+    "/mock/solar/realtime",
+    "/mock/solar/physics?jd_tdb=2461323.50000000&fidelity=high&max_features=220&forcing=hybrid&live_data=true"
+  ],
+  "disposed": {
+    "realtime": {
+      "source": "backend",
+      "freshness": "fresh",
+      "snapshotFetchedAtUtc": "2026-10-10T07:27:16.823Z",
+      "snapshotAgeMs": 2,
+      "aiaUpdatedAtUtc": null,
+      "aiaSpatialUse": "unavailable",
+      "aiaSpatialReason": "no_aia_artifact_available",
+      "aiaRenderEligible": false,
+      "aiaRenderReason": "no_aia_artifact_available",
+      "aiaRenderAgeMs": null,
+      "aiaMaxRenderAgeMs": 21600000,
+      "sourceStatus": {
+        "swpc": {
+          "ok": false
+        },
+        "silso": {
+          "ok": false
+        },
+        "sdo_aia": {
+          "ok": false
+        },
+        "gong_synoptic": {
+          "ok": false
+        }
+      },
+      "lastError": null,
+      "lastSuccessMs": 1791617236825,
+      "lastAttemptMs": 1791617236825,
+      "lastLatencyMs": 0,
+      "nextRefreshMs": 1791617356825,
+      "pollIntervalMs": 120000,
+      "timeoutMs": 15000,
+      "inFlight": false,
+      "disposed": true
+    },
+    "physics": {
+      "lastError": null,
+      "lastSuccessMs": 1791617236825,
+      "lastRefreshMs": 1791617236825,
+      "lastLatencyMs": 0,
+      "pollIntervalMs": 30000,
+      "nextRefreshMs": 1791617266825,
+      "inFlight": false,
+      "disposed": true
+    }
+  }
+}

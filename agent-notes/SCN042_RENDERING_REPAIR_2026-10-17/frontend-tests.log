@@ -1,0 +1,8 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017
+
+
+ Test Files  72 passed | 1 skipped (73)
+      Tests  743 passed | 413 skipped (1156)
+   Start at  15:21:11
+   Duration  2.41s (transform 73%, tests 17%, import 10%, worker 1%)

@@ -14,6 +14,7 @@ from sim.solar_physics import (
     MEAN_MONTH_DAYS,
     ObservedSolarInputUnavailable,
     SolarCoronaPhysicsModel,
+    _hathaway_normalized,
 )
 
 
@@ -66,9 +67,29 @@ def test_hathaway_activity_curve_has_strong_asymmetry() -> None:
     assert peak_activity > end_activity + 0.45
 
 
-def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
-    from sim.solar_physics import _hathaway_normalized
+def test_hathaway_activity_carries_the_previous_cycle_tail_across_minimum() -> None:
+    model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
+    boundary_jd = CYCLE_25_START_JD + CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS
+    # Independent Decimal-oracle values for current + preceding cycle envelopes.
+    expected_boundary = (
+        (-0.01, 0.210739831890143),
+        (0.0, 0.210806770259572),
+        (0.01, 0.210873502743775),
+    )
+    values = []
+    for offset_days, expected in expected_boundary:
+        activity, _ = model._activity_index(boundary_jd + offset_days)
+        assert activity == pytest.approx(expected, abs=2e-12)
+        values.append(activity)
+    assert values[-1] - values[0] < 1e-3
 
+    early_cycle, _ = model._activity_index(CYCLE_25_START_JD + 12.0 * MEAN_MONTH_DAYS)
+    assert early_cycle == pytest.approx(0.237060195980691, abs=2e-12)
+    overlapping_peak, _ = model._activity_index(CYCLE_25_START_JD + HATHAWAY_PEAK_MONTHS * MEAN_MONTH_DAYS)
+    assert overlapping_peak == pytest.approx(0.929678329312317, abs=2e-12)
+
+
+def test_hathaway_envelope_peaks_at_exactly_one_at_its_true_maximum() -> None:
     months = [k * 0.01 for k in range(1, 13_201)]
     values = [_hathaway_normalized(t) for t in months]
     peak_index = max(range(len(values)), key=values.__getitem__)
@@ -183,32 +204,48 @@ def test_synthetic_coronal_holes_coverage_decreases_at_solar_max() -> None:
     assert sum_area_min > sum_area_max
 
 
-def test_parker_spiral_fast_wind_in_coronal_holes() -> None:
-    """Spiral lines flagged in_coronal_hole should have fast-wind speeds (> 600 km/s)."""
+def test_parker_spiral_uses_fast_wind_inside_explicit_coronal_hole() -> None:
     model = SolarCoronaPhysicsModel(seed=17, base_tube_count=220)
-    state = model.sample_state(
-        jd=CYCLE_25_START_JD + 0.2 * 365.25,
-        fidelity="operational",
-        max_features=32,
-        forcing="synthetic",
-        realtime_data=None,
-    )
-    spiral = state["heliosphere"]["parker_spiral"]
-    lines = spiral["lines"]
-    assert len(lines) == 6
+    explicit_hole = {
+        "holes": [{
+            "center_lat_rad": 0.0,
+            "extent_lat_rad": math.radians(5.0),
+        }],
+    }
+    fast_line = model._build_parker_spiral(
+        jd=J2000_JD,
+        activity=0.0,
+        line_count=1,
+        point_count=2,
+        coronal_holes=explicit_hole,
+    )["lines"][0]
+    slow_line = model._build_parker_spiral(
+        jd=J2000_JD,
+        activity=0.0,
+        line_count=1,
+        point_count=2,
+        coronal_holes={
+            "holes": [{
+                "center_lat_rad": math.radians(30.0),
+                "extent_lat_rad": math.radians(5.0),
+            }],
+        },
+    )["lines"][0]
 
-    in_hole = [line for line in lines if line.get("in_coronal_hole")]
-    out_hole = [line for line in lines if not line.get("in_coronal_hole")]
-
-    # At solar minimum, some lines should be in coronal holes
-    # (depends on geometry, so just check field exists and speeds are correct)
-    for line in lines:
-        assert "in_coronal_hole" in line
-        speed = float(line["wind_speed_kms"])
-        if line["in_coronal_hole"]:
-            assert speed > 600.0, f"Fast wind expected in coronal hole, got {speed}"
-        else:
-            assert speed < 500.0, f"Slow wind expected outside coronal hole, got {speed}"
+    assert fast_line["in_coronal_hole"] is True
+    assert fast_line["wind_speed_kms"] == 720.0
+    assert fast_line["wind_speed_source"] == "empirical_ch_bimodal"
+    assert fast_line["wsa_available"] is False
+    assert fast_line["in_coronal_hole_basis"] == "empirical_coronal_hole_geometry_v1"
+    assert fast_line["wind_speed_quality_reasons"] == [
+        "wsa_unavailable_at_source_surface",
+        "empirical_visualization_fallback",
+    ]
+    assert slow_line["in_coronal_hole"] is False
+    assert slow_line["wind_speed_kms"] == 400.0
+    assert slow_line["wind_speed_source"] == "empirical_ch_bimodal"
+    assert slow_line["wsa_available"] is False
+    assert slow_line["in_coronal_hole_basis"] == "empirical_coronal_hole_geometry_v1"
 
 
 def test_sample_state_is_deterministic_for_fixed_epoch() -> None:

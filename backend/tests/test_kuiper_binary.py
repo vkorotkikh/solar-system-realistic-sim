@@ -4,7 +4,9 @@ from __future__ import annotations
 import math
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +31,38 @@ def _make_activated_engine():
         neptune_vel=[0.0, 1.0, 0.0],
         center_au=[43.0, 0.0, 0.0],
         spread_au=5.0,
+    )
+    return engine
+
+
+def _activation_kwargs(*, with_jupiter=False, with_saturn=False):
+    """Return bound circular massive-body inputs for a real activation."""
+    kwargs = {
+        "sun_pos": [0.0, 0.0, 0.0],
+        "sun_vel": [0.0, 0.0, 0.0],
+        "neptune_pos": [30.0, 0.0, 0.0],
+        "neptune_vel": [0.0, 1.0, 0.0],
+        "center_au": [43.0, 0.0, 0.0],
+        "spread_au": 5.0,
+    }
+    if with_jupiter:
+        kwargs.update(
+            jupiter_pos=[5.2, 0.0, 0.0],
+            jupiter_vel=[0.0, 2.75, 0.0],
+        )
+    if with_saturn:
+        kwargs.update(
+            saturn_pos=[9.58, 0.0, 0.0],
+            saturn_vel=[0.0, 2.03, 0.0],
+        )
+    return kwargs
+
+
+def _activate_with_massive_options(*, with_jupiter=False, with_saturn=False, binary_fraction=1.0):
+    engine = KuiperBeltEngine(particle_count=4)
+    engine.BINARY_FRACTION = binary_fraction
+    engine.activate(
+        **_activation_kwargs(with_jupiter=with_jupiter, with_saturn=with_saturn)
     )
     return engine
 
@@ -154,3 +188,122 @@ class TestKuiperBeltEngineLifecycle:
             fresh_activated_engine.step(1.0)
         # Now at frame 5
         assert fresh_activated_engine.should_send() is True
+
+    def test_state_snapshot_is_cached_until_a_successful_step(self):
+        engine = _activate_with_massive_options(binary_fraction=0.0)
+
+        initial = engine.get_state()
+        assert initial is engine.get_state()
+
+        engine.step(1.0)
+        stepped = engine.get_state()
+        assert stepped is not initial
+        assert stepped is engine.get_state()
+
+    def test_deactivate_and_reactivate_invalidate_the_cached_snapshot(self):
+        engine = _activate_with_massive_options(binary_fraction=0.0)
+        initial = engine.get_state()
+
+        engine.deactivate()
+        assert engine.get_state() is None
+
+        engine.activate(
+            **_activation_kwargs(with_jupiter=True, with_saturn=True)
+        )
+        replacement = engine.get_state()
+        assert replacement is not initial
+        assert replacement is engine.get_state()
+
+
+class TestKuiperActiveParticleBoundary:
+    @pytest.mark.parametrize(
+        ("with_jupiter", "with_saturn", "expected_massive_count"),
+        [
+            pytest.param(False, False, 2, id="sun-neptune"),
+            pytest.param(True, False, 3, id="sun-jupiter-neptune"),
+            pytest.param(False, True, 3, id="sun-saturn-neptune"),
+            pytest.param(True, True, 4, id="sun-jupiter-saturn-neptune"),
+        ],
+    )
+    def test_real_activation_marks_only_massive_prefix_active(
+        self, with_jupiter, with_saturn, expected_massive_count
+    ):
+        """KBOs and their binary companions are REBOUND test particles."""
+        engine = _activate_with_massive_options(
+            with_jupiter=with_jupiter, with_saturn=with_saturn
+        )
+
+        assert engine._massive_count == expected_massive_count
+        assert engine.sim.N_active == expected_massive_count
+        assert all(
+            particle.m > 0 for particle in engine.sim.particles[:expected_massive_count]
+        )
+        assert all(
+            particle.m == 0 for particle in engine.sim.particles[expected_massive_count:]
+        )
+        # A forced companion for every sampled KBO proves the whole generated
+        # suffix, not merely the primary samples, stays outside the active prefix.
+        assert len(engine._binary_pairs) == engine.particle_count
+        suffix_count = engine.sim.N - expected_massive_count
+        assert suffix_count == engine.particle_count * 2
+        for primary, companion in engine._binary_pairs:
+            assert 0 <= primary < suffix_count
+            assert 0 <= companion < suffix_count
+
+    def test_deactivate_then_reactivate_rebuilds_active_boundary(self):
+        engine = _activate_with_massive_options()
+        engine.deactivate()
+
+        assert engine.sim is None
+        assert engine._massive_count == 0
+        assert engine._binary_pairs == []
+
+        engine.BINARY_FRACTION = 1.0
+        engine.activate(**_activation_kwargs(with_jupiter=True, with_saturn=True))
+        assert engine._massive_count == 4
+        assert engine.sim.N_active == 4
+        assert all(particle.m == 0 for particle in engine.sim.particles[4:])
+        assert len(engine._binary_pairs) == engine.particle_count
+
+    def test_test_particle_boundary_preserves_short_step_physics(self):
+        """The optimized REBOUND partition must not alter massless trajectories."""
+        real_default_rng = np.random.default_rng
+
+        def activate_with_seed():
+            engine = KuiperBeltEngine(particle_count=4)
+            engine.BINARY_FRACTION = 0.0
+            with patch(
+                "sim.kuiper.np.random.default_rng",
+                side_effect=lambda: real_default_rng(20261023),
+            ):
+                engine.activate(**_activation_kwargs(with_jupiter=True, with_saturn=True))
+            return engine
+
+        optimized = activate_with_seed()
+        all_active_reference = activate_with_seed()
+        all_active_reference.sim.N_active = all_active_reference.sim.N
+
+        optimized.step(1.0)
+        all_active_reference.step(1.0)
+
+        for optimized_particle, reference_particle in zip(
+            optimized.sim.particles, all_active_reference.sim.particles, strict=True
+        ):
+            assert (
+                optimized_particle.x,
+                optimized_particle.y,
+                optimized_particle.z,
+                optimized_particle.vx,
+                optimized_particle.vy,
+                optimized_particle.vz,
+            ) == pytest.approx(
+                (
+                    reference_particle.x,
+                    reference_particle.y,
+                    reference_particle.z,
+                    reference_particle.vx,
+                    reference_particle.vy,
+                    reference_particle.vz,
+                ),
+                abs=1e-12,
+            )

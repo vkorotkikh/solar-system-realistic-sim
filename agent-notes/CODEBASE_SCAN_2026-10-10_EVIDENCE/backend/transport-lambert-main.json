@@ -1,0 +1,433 @@
+{
+  "snapshot": "/tmp/solar-sweep-2026-10-10-j1gnowo_/main",
+  "source_sha256": {
+    "backend/trajectory/lambert.py": "8f1ab9737417f94f69608ce2b9760e3066fa98c55f1ec7fa2ec5ed6bf0367606",
+    "backend/mission/ephemeris_service.py": "8e527d90a4df760d8da2a23a6e7edd22829a253ed59b00f57643113e86941cdc"
+  },
+  "lambert": [
+    {
+      "angle_deg": 90,
+      "tof_days": 91.31422458158202,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 15.783097477025967,
+      "v1_error_m_s": 0.002137295275769108,
+      "v2_error_m_s": 0.002137295275769108,
+      "solution": {
+        "v1": [
+          -1.1040731502339669e-09,
+          0.017202099502036584,
+          0.0
+        ],
+        "v2": [
+          -0.017202099502036584,
+          1.1040731512872916e-09,
+          0.0
+        ],
+        "transferAngleDeg": 90.0,
+        "computedTofDays": 91.31421844840679,
+        "z": 2.4674006970020215,
+        "rootResidualDays": 6.1331752334581324e-06,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 170,
+      "tof_days": 172.48242420965497,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 0.00024287392231116454,
+      "v1_error_m_s": 1.3594247910907948e-08,
+      "v2_error_m_s": 1.3571273459854355e-08,
+      "solution": {
+        "v1": [
+          -7.84171349997007e-15,
+          0.01720209895000039,
+          0.0
+        ],
+        "v2": [
+          -0.002987113134721492,
+          -0.01694076041404219,
+          -0.0
+        ],
+        "transferAngleDeg": 170.00000000000003,
+        "computedTofDays": 172.48242420955907,
+        "z": 8.80344343183046,
+        "rootResidualDays": 9.589484761818312e-11,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179,
+      "tof_days": 181.61384666781316,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 129.29643576620524,
+      "v1_error_m_s": 0.006502225919238886,
+      "v2_error_m_s": 0.006502225735625994,
+      "solution": {
+        "v1": [
+          -3.755313946591877e-09,
+          0.017202098966387813,
+          0.0
+        ],
+        "v2": [
+          -0.0003002217774776615,
+          -0.01719947893785573,
+          -0.0
+        ],
+        "transferAngleDeg": 179.0000000000001,
+        "computedTofDays": 181.61379642427858,
+        "z": 9.760244019318021,
+        "rootResidualDays": 5.0243534587934846e-05,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.9,
+      "tof_days": 182.52698891362897,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 0.0033965399681818147,
+      "v1_error_m_s": 6.249067577093964e-08,
+      "v2_error_m_s": 6.247061215474192e-08,
+      "solution": {
+        "v1": [
+          -8.753959059756188e-15,
+          0.017202098949964988,
+          0.0
+        ],
+        "v2": [
+          -3.002331125906075e-05,
+          -0.017202072749676636,
+          -0.0
+        ],
+        "transferAngleDeg": 179.8999999999998,
+        "computedTofDays": 182.5269889135015,
+        "z": 9.85864122014433,
+        "rootResidualDays": 1.2747136679536197e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.99,
+      "tof_days": 182.61830313821056,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 2.6572542261436687,
+      "v1_error_m_s": 5.168569772853688e-05,
+      "v2_error_m_s": 5.168568955517667e-05,
+      "solution": {
+        "v1": [
+          -1.0942443343820086e-14,
+          0.017202098979850988,
+          0.0
+        ],
+        "v2": [
+          -3.002332640784439e-06,
+          -0.017202098717848037,
+          -0.0
+        ],
+        "transferAngleDeg": 179.99000000001735,
+        "computedTofDays": 182.61830313809662,
+        "z": 9.868507808834659,
+        "rootResidualDays": 1.1394263310648967e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.999,
+      "tof_days": 182.6274345606687,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 56.7852139686772,
+      "v1_error_m_s": 0.0011041943149013927,
+      "v2_error_m_s": 0.0011041943243930272,
+      "solution": {
+        "v1": [
+          -1.0942442863988094e-13,
+          0.01720209831227443,
+          0.0
+        ],
+        "v2": [
+          -3.00233385505102e-07,
+          -0.0172020983096544,
+          -0.0
+        ],
+        "transferAngleDeg": 179.9989999999629,
+        "computedTofDays": 182.62743456055608,
+        "z": 9.869494739114735,
+        "rootResidualDays": 1.1260681276326068e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.9999,
+      "tof_days": 182.62834770291454,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 41810.83702648549,
+      "v1_error_m_s": 0.8130866410937114,
+      "v2_error_m_s": 0.813086641110271,
+      "solution": {
+        "v1": [
+          1.0942741985482368e-12,
+          0.017202568546829566,
+          0.0
+        ],
+        "v2": [
+          -3.0021412637170873e-08,
+          -0.01720256854680337,
+          -0.0
+        ],
+        "transferAngleDeg": 179.99990000272982,
+        "computedTofDays": 182.62834770280216,
+        "z": 9.869593435008898,
+        "rootResidualDays": 1.1237943908781745e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.99999,
+      "tof_days": 182.62843901713913,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 1046762.5580045077,
+      "v1_error_m_s": 20.373769916773593,
+      "v2_error_m_s": 20.37376991676459,
+      "solution": {
+        "v1": [
+          -1.094992828756225e-11,
+          0.017213865786737528,
+          0.0
+        ],
+        "v2": [
+          -3.0112302790796186e-09,
+          -0.017213865786737264,
+          -0.0
+        ],
+        "transferAngleDeg": 179.99999000683567,
+        "computedTofDays": 182.62843901702678,
+        "z": 9.869603304835415,
+        "rootResidualDays": 1.1235101737838704e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 179.999999,
+      "tof_days": 182.62844814856157,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 209061472.25451568,
+      "v1_error_m_s": 5101.243152161169,
+      "v2_error_m_s": 5101.243152161161,
+      "solution": {
+        "v1": [
+          -1.28165623609909e-10,
+          0.02014831340000771,
+          0.0
+        ],
+        "v2": [
+          -3.8449687082972707e-10,
+          -0.0201483134000077,
+          -0.0
+        ],
+        "transferAngleDeg": 179.99999914622634,
+        "computedTofDays": 182.6284481484492,
+        "z": 9.869604299438773,
+        "rootResidualDays": 1.1237943908781745e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 180,
+      "tof_days": 182.62844916316405,
+      "solved": false
+    },
+    {
+      "angle_deg": 180.000001,
+      "tof_days": 182.62845017776655,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 209061485.43848735,
+      "v1_error_m_s": 5101.243236009946,
+      "v2_error_m_s": 5101.243236009944,
+      "solution": {
+        "v1": [
+          1.2816562571655855e-10,
+          0.02014831344843443,
+          -0.0
+        ],
+        "v2": [
+          3.8449687714967563e-10,
+          -0.020148313448434426,
+          0.0
+        ],
+        "transferAngleDeg": 180.00000085377366,
+        "computedTofDays": 182.6284501776542,
+        "z": 9.869604502727801,
+        "rootResidualDays": 1.1235101737838704e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 180.0001,
+      "tof_days": 182.62855062341362,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 41811.24851283775,
+      "v1_error_m_s": 0.8130942199604834,
+      "v2_error_m_s": 0.8130942199710356,
+      "solution": {
+        "v1": [
+          -1.094274198701805e-12,
+          0.017202568551206728,
+          -0.0
+        ],
+        "v2": [
+          3.002141264138402e-08,
+          -0.01720256855118053,
+          0.0
+        ],
+        "transferAngleDeg": 180.00009999727018,
+        "computedTofDays": 182.62855062330127,
+        "z": 9.869615367163767,
+        "rootResidualDays": 1.1235101737838704e-10,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 181,
+      "tof_days": 183.643051658515,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 21.620474462452655,
+      "v1_error_m_s": 0.0010651577819119104,
+      "v2_error_m_s": 0.0010651579494443631,
+      "solution": {
+        "v1": [
+          -6.151742485729159e-10,
+          0.017202098947317918,
+          -0.0
+        ],
+        "v2": [
+          0.00030021740732230997,
+          -0.017199478995064275,
+          0.0
+        ],
+        "transferAngleDeg": 180.9999999999999,
+        "computedTofDays": 183.6430432569143,
+        "z": 9.979570837742434,
+        "rootResidualDays": 8.401600695151501e-06,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 190,
+      "tof_days": 192.7744741166732,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 0.6719973432593218,
+      "v1_error_m_s": 3.019526062162883e-05,
+      "v2_error_m_s": 3.0195262750878094e-05,
+      "solution": {
+        "v1": [
+          -1.742256067944379e-11,
+          0.017202098949237864,
+          -0.0
+        ],
+        "v2": [
+          0.002987113117423501,
+          -0.016940760416318004,
+          0.0
+        ],
+        "transferAngleDeg": 190.0,
+        "computedTofDays": 192.77447385554055,
+        "z": 10.996688840865671,
+        "rootResidualDays": 2.611326408441528e-07,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    },
+    {
+      "angle_deg": 270,
+      "tof_days": 273.9426737447461,
+      "solved": true,
+      "independent_rebound_endpoint_error_km": 0.00017486311391966587,
+      "v1_error_m_s": 3.5146630382861168e-09,
+      "v2_error_m_s": 3.5146630382861168e-09,
+      "solution": {
+        "v1": [
+          -1.8149854599386503e-15,
+          0.017202098949999092,
+          -0.0
+        ],
+        "v2": [
+          0.017202098949999092,
+          -1.81814543425131e-15,
+          0.0
+        ],
+        "transferAngleDeg": 270.0,
+        "computedTofDays": 273.94267374467756,
+        "z": 22.206609902449056,
+        "rootResidualDays": 6.855316314613447e-11,
+        "rootBracketed": true,
+        "revolutions": 0,
+        "pathSense": "prograde"
+      }
+    }
+  ],
+  "horizons_transport": {
+    "global_concurrency_limit": 1,
+    "before_release": {
+      "read_entered": true,
+      "transport_closed": false,
+      "outbound_calls": 1
+    },
+    "requests": [
+      {
+        "label": "first_stalled_read",
+        "elapsed_s": 0.05048416699992231,
+        "status": "EphemerisUpstreamTimeout",
+        "message": "Horizons state query exceeded its absolute deadline",
+        "outbound_calls_so_far": 1
+      },
+      {
+        "label": "second_while_first_still_blocked",
+        "elapsed_s": 0.050189858000067034,
+        "status": "EphemerisUpstreamTimeout",
+        "message": "Horizons transport capacity was unavailable before the request deadline",
+        "outbound_calls_so_far": 1
+      },
+      {
+        "label": "third_after_release",
+        "elapsed_s": 0.0002794330000597256,
+        "status": "success",
+        "body": "local-body",
+        "outbound_calls_so_far": 2
+      }
+    ],
+    "outbound_calls": [
+      {
+        "timeout_s": 0.04976575000000594,
+        "url": "https://offline.invalid/probe"
+      },
+      {
+        "timeout_s": 0.049818853999795465,
+        "url": "https://offline.invalid/probe"
+      }
+    ]
+  }
+}

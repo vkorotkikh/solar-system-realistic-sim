@@ -96,3 +96,49 @@ Interface rulings:
 The master keeps landing state separate from tested branch progress. No fix is
 reported as merged into `main`, no remote push is claimed, and no skipped/manual
 requirement is converted into a passing automated test.
+
+## Follow-up integration through 84ac256
+
+Additional commits now integrated:
+
+- `47dc69a`: malformed Host rejection and safe, separately bounded WebSocket
+  startup/terminal failures. The implementer retained the failed five-second
+  churn attempt and the passing 15-second retry rather than relabeling failure.
+- `7253b5a`: preserve existing artifact permissions, publish new public artifacts
+  as readable files, and validate resumed source pins before declaring completion.
+- `5e29af9`: native Tudat osculating-element frame/model GM, force-consistent
+  diagnostic masses, finite epochs, transactional reinitialization, and complete
+  finite solver-history validation. Independent Jupiter initialization uses the
+  actual center target, not a system-barycenter substitute; tolerances unchanged.
+- `68be768`: per-layer solar geometry contracts and active controller transforms.
+- `e1779e6`: independent degree-90 PFSS diagnosis, not production enablement.
+
+The one merge conflict in `SunController.update` was resolved by retaining the
+existing disposal guard and pause/reverse/reduced-motion decorative-clock policy,
+then adding the new physical frame update after the disposal guard. The older
+unconditional wall-clock animation implementation was not restored.
+
+Fresh parent integration results:
+
+| Gate | Result | Log |
+| --- | --- | --- |
+| Operational, benchmark, runtime, WS and both catalog test modules | 273 passed, two upstream warnings, 18.23 s | `/tmp/solar-review-followups-integrated-20261014.log` |
+| Native Tudat runtime and science-review modules, `SOLAR_REQUIRE_TUDAT=1` | 17 passed, zero skips, 1.78 s | `/tmp/solar-native-review-integrated-20261014.log` |
+| Solar frame/model/cache/numerical/degree-diagnostic modules | 272 passed, zero skips, 69.45 s | `/tmp/solar-production-frame-backend-20261014.log` |
+| Full frontend with `PLANET_SHADER_GPU_TEST=1` | 608 passed, zero skips, 57 files | `/tmp/solar-production-frame-frontend-20261014.log` |
+| Direct `tsc --noEmit --strict --pretty false` | Exit 0, zero diagnostics | `/tmp/solar-production-frame-typecheck-direct-20261014.log` |
+
+An initial invocation of nonexistent npm script `typecheck:strict` failed before
+compilation. It is not a compiler pass. The direct TypeScript command above is
+the successful strict gate; no package script or compiler setting was relaxed.
+
+Degree-90 reference accuracy now meets the existing tangent/topology criteria,
+but the measured 49.36-second trace exceeds the 19-second worker budget. The
+production cap remains unchanged pending a bounded performance repair. The
+lifecycle worker still owns the main-scene solar handoff; a passing controller
+or component test alone does not certify that handoff or full-scene pixels.
+
+The completed operational and scientific reviewers have moved to independent
+asteroid shader/perturbation residuals and review of the controller-authored AIA
+and WSA evidence code, respectively. Their new worktrees preserve the previous
+completed branches. No additional scientific or manual closure is claimed here.

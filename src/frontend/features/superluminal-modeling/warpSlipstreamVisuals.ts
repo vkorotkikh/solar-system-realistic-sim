@@ -6,6 +6,8 @@ import {
     DoubleSide,
     Color
 } from 'three';
+import { h29DisplayThicknessAu } from './h29DisplayScale';
+import { AU_CM } from './smbhPhysicsConstants';
 
 const WARP_VERTEX_SHADER = `
 uniform float time;
@@ -151,15 +153,11 @@ export function createWarpSlipstreamVisualization(size = 20) {
         setWarpState(state: any) {
             if (!state) return;
 
-            // Map physical cm to scene units (~1 AU = 1 scene unit)
-            const cmToAu = 1.0 / 1.496e13;
-
             if (state.positionCm !== undefined) {
-                material.uniforms.shockwaveDist.value = state.positionCm * cmToAu;
+                material.uniforms.shockwaveDist.value = state.positionCm / AU_CM;
             }
             if (state.thickness !== undefined) {
-                // scale up thickness for visibility
-                material.uniforms.bubbleThickness.value = Math.max(0.5, state.thickness * 10.0);
+                material.uniforms.bubbleThickness.value = h29DisplayThicknessAu(state.thickness);
             }
             if (state.direction) {
                 material.uniforms.propagationDir.value.copy(state.direction);

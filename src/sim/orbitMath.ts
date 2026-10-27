@@ -7,9 +7,11 @@ import {
 } from './moonEphemeris';
 import {
   isSourceFrameKeplerOrbit,
+  OrbitModelRangeError,
   propagateSourceFrameOrbit,
   resolveSourceFrameOrbitAtElapsedDays,
-  type SourceFrameBasis
+  type SourceFrameBasis,
+  type SourceFrameKeplerOrbit
 } from './sourceFrameOrbit';
 
 const TWO_PI = Math.PI * 2;
@@ -252,6 +254,21 @@ const baryVelocity = new Vector3();
 const companionPosition = new Vector3();
 const companionVelocity = new Vector3();
 
+function tryPropagateSourceFrameOrbit(
+  orbit: SourceFrameKeplerOrbit,
+  elapsedDays: number,
+  outPosition: Vector3,
+  outVelocity: Vector3 | null
+): boolean {
+  try {
+    propagateSourceFrameOrbit(orbit, elapsedDays, outPosition, outVelocity);
+    return true;
+  } catch (error) {
+    if (error instanceof OrbitModelRangeError) return false;
+    throw error;
+  }
+}
+
 export function propagateKeplerOrbit(
   orbit: KeplerOrbit,
   elapsedDays: number,
@@ -312,16 +329,19 @@ function propagateOwnOrbit(
   // Laplace/equatorial source frame. Apply them there and rotate the resulting
   // state, rather than adding them to already-converted ecliptic angles.
   if (isSourceFrameKeplerOrbit(orbit)) {
-    propagateSourceFrameOrbit(orbit, elapsedDays, outPosition, outVelocity);
-    return true;
+    return tryPropagateSourceFrameOrbit(orbit, elapsedDays, outPosition, outVelocity);
   }
 
   // The same precessing-ellipse model applies to planets, with identity source
   // axes. Reuse its full product-rule derivative (a, e and all three rotations)
   // and the integral of n(t) when a drifts without a tabulated longitude rate.
   if (orbit.secularRates) {
-    propagateSourceFrameOrbit({ ...orbit, sourceFrameBasis: ECLIPTIC_BASIS }, elapsedDays, outPosition, outVelocity);
-    return true;
+    return tryPropagateSourceFrameOrbit(
+      { ...orbit, sourceFrameBasis: ECLIPTIC_BASIS },
+      elapsedDays,
+      outPosition,
+      outVelocity
+    );
   }
 
   const resolved = resolveKeplerOrbitAtElapsedDays(orbit, elapsedDays);

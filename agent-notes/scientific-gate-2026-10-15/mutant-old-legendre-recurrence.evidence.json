@@ -1,0 +1,44 @@
+{
+  "hunks": [
+    {
+      "executed_lines": [
+        59,
+        60
+      ],
+      "lines": [
+        59,
+        60
+      ],
+      "path": "backend/sim/pfss_evaluation.py"
+    }
+  ],
+  "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+  "reports": [
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "outcome": "passed",
+      "phase": "setup"
+    },
+    {
+      "exception_message": "R4-LEGENDRE-RECURRENCE streaming value mode=(2, 0)\nassert np.False_\n +  where np.False_ = <function all at 0x6ffc8d909bf0>(array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) <= (5e-13 * array([1., 1., 1., 1., 1.])))\n +    where <function all at 0x6ffc8d909bf0> = np.all\n +    and   array([0.26447573, 0.50891107, 0.61803399, 0.50891107, 0.26447573]) = abs((array([ 0.45052427, -0.63391107, -1.11803399, -0.63391107,  0.45052427]) - array([ 0.715, -0.125, -0.5  , -0.125,  0.715])))\n +    and   array([1., 1., 1., 1., 1.]) = <ufunc 'maximum'>(1, array([0.715, 0.125, 0.5  , 0.125, 0.715]))\n +      where <ufunc 'maximum'> = np.maximum\n +      and   array([0.715, 0.125, 0.5  , 0.125, 0.715]) = abs(array([ 0.715, -0.125, -0.5  , -0.125,  0.715]))",
+      "exception_type": "builtins.AssertionError",
+      "is_assertion_error": true,
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "outcome": "failed",
+      "phase": "call"
+    },
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_harmonics.py::test_all_modes_against_immutable_oracle",
+      "outcome": "passed",
+      "phase": "teardown"
+    }
+  ],
+  "schema_version": 1,
+  "trace_intact": true
+}

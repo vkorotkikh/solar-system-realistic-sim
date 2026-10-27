@@ -1,0 +1,69 @@
+{
+  "float32_jd": {
+    "jd": 2461320.125,
+    "rounded": 2461320,
+    "error_days": -0.125,
+    "increment_ulp_days": 0.25
+  },
+  "acbf_roundtrip": {
+    "version": 1,
+    "sourceCount": 100000,
+    "encodedBytes": 3600012,
+    "mismatchedRecords": 99916,
+    "maxEpochErrorDays": 0.12499989662319422,
+    "maxAUError": 1.1920928955078125e-7,
+    "maxECCError": 0.000007629437868231573,
+    "maxAngleErrorDeg": 0.0027466201120773803,
+    "maxDiameterErrorKm": 0.00000762939453125,
+    "maxAlbedoError": 0.00000762949169624827,
+    "ok": false
+  },
+  "fast_kepler": {
+    "eccentricity": 0.99,
+    "max_residual_radians": 138741190.50303063,
+    "mean_anomaly": 6.157521601035994
+  },
+  "schwarzschild": {
+    "stored_cm": 12400000000,
+    "from_local_G_M_c_cm": 1227027274220.1716,
+    "ratio": 98.95381243711061
+  },
+  "paused_hud": {
+    "calls": 2,
+    "identical_text_writes": 4
+  },
+  "secular_velocity_derivatives": [
+    {
+      "id": "mercury",
+      "velocity_derivative_difference_m_s": 0.0604022007244168
+    },
+    {
+      "id": "venus",
+      "velocity_derivative_difference_m_s": 0.005201347802083454
+    },
+    {
+      "id": "earth",
+      "velocity_derivative_difference_m_s": 0.2715801218761115
+    },
+    {
+      "id": "mars",
+      "velocity_derivative_difference_m_s": 0.5864077902774754
+    },
+    {
+      "id": "jupiter",
+      "velocity_derivative_difference_m_s": 0.8743651255302001
+    },
+    {
+      "id": "saturn",
+      "velocity_derivative_difference_m_s": 2.814099627231237
+    },
+    {
+      "id": "uranus",
+      "velocity_derivative_difference_m_s": 6.638691173219837
+    },
+    {
+      "id": "neptune",
+      "velocity_derivative_difference_m_s": 8.06742558641498
+    }
+  ]
+}

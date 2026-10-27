@@ -1,0 +1,109 @@
+{
+  "scope": "local real two-worker network profile; no remote deployment claim",
+  "passed": true,
+  "baseline": {
+    "24492": {
+      "pid": 24492,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    },
+    "24491": {
+      "pid": 24491,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 4,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    }
+  },
+  "report_writer": {
+    "unauthenticated": 401,
+    "create": 200,
+    "overwrite_guard": 409,
+    "nul": 422,
+    "report_sha256": "84e26b4f8ef89a500e0ed99a7e2087e80cd439e64298380e3b50f88aa797a806"
+  },
+  "persistent_worker_pids": [
+    24492,
+    24491
+  ],
+  "kuiper": {
+    "keys": [
+      "binary_model",
+      "binary_pairs",
+      "position_units",
+      "positions",
+      "velocities",
+      "velocity_units"
+    ],
+    "positions": 3612,
+    "velocities": 3612,
+    "binary_pairs": 612,
+    "position_units": "AU",
+    "velocity_units": "AU/yr",
+    "sha256": "0d9477f318d6e21eb71700d625a0397f147f0044d22ea0cf5af5664e0dad22ba"
+  },
+  "soak": {
+    "elapsed_seconds": 15.250755600000048,
+    "requested_seconds": 15.0,
+    "frames": [
+      99,
+      158
+    ],
+    "last_jd": [
+      2451616.2,
+      2451608.2
+    ],
+    "churn_cycles": 4,
+    "http_requests": 20,
+    "max_http_seconds": 0.02973532900000464,
+    "samples": 20
+  },
+  "final": {
+    "24492": {
+      "pid": 24492,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    },
+    "24491": {
+      "pid": 24491,
+      "sessions": [],
+      "runners": 0,
+      "leases": 0,
+      "active": 0,
+      "subjects": 0,
+      "tasks": 3,
+      "threads": 5,
+      "fds": 22,
+      "unhandled": [],
+      "benchmark_permits": 1,
+      "compute_queue": 0
+    }
+  },
+  "process_returncode": 0,
+  "log_errors": []
+}

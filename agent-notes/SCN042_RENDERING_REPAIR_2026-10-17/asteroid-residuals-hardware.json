@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "mode": "hardware-required",
+  "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+  "identifiedHardware": true,
+  "precision": {
+    "fractionBits": 23,
+    "rangeMin": 127,
+    "rangeMax": 127
+  },
+  "domain": {
+    "eccentricityMin": 0,
+    "eccentricityMax": 0.9999989867210388,
+    "meanAbsoluteMinNonzero": 9.999999682655225e-21,
+    "meanAbsoluteMax": 3.1415927410125732,
+    "inputEncoding": "binary32; signed mean anomaly in radians; elliptic only"
+  },
+  "budgets": {
+    "rootUlps": 8,
+    "relativeEquationResidual": 8e-7
+  },
+  "cases": 189,
+  "failedCases": 0,
+  "maximumRootUlps": 2.8156413920223713,
+  "maximumRelativeResidual": 4.0776410129261367e-7,
+  "packedPhaseCases": 175,
+  "failedPackedPhaseCases": 0,
+  "maximumPackedPhaseRootUlps": 2.8156413920223713,
+  "phaseFailures": [],
+  "highPrecisionOracleAnchors": 6,
+  "oracleMaximumRelativeError": 2.0725271387142226e-10,
+  "inertPlanets": true,
+  "positions": {
+    "unperturbed": [
+      -0.0350777804851532,
+      0.0005941108684055507,
+      0
+    ],
+    "planets": [
+      -0.0350777804851532,
+      0.0005941108684055507,
+      0
+    ],
+    "unusablePlanets": [
+      -0.0350777804851532,
+      0.0005941108684055507,
+      0
+    ]
+  },
+  "failures": [],
+  "scope": "production GLSL readback; numerical/model contract, not an N-body or performance gate"
+}

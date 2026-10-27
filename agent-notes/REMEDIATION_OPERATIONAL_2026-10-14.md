@@ -203,3 +203,109 @@ selection versus requested-date coverage. No external provider work duplicated.
 No scientific formula changed; no fabricated scientific oracle, GPU, browser,
 remote provider or owner-deployment passing claim is introduced. The controller
 owns integrated full-suite gates and parent tracker updates.
+
+## Incremental boundary review after d8c75b4
+
+The parent reported integrating `d8c75b4ba0bd15e5aa902737f7a456b3f3db608b`.
+This continuation is an incremental commit on the same operational branch,
+with no parent-worktree, master-tracker, frontend, provider or engine changes.
+The existing five-minute soak above was not repeated.
+
+Two remaining correctness boundaries were reproduced and repaired:
+
+- The URL parser accepted malformed local-writer Host forms, including empty
+  user-info (`@localhost`, `:@localhost`), empty ports, and empty query/fragment
+  delimiters. Validate the complete bounded ASCII authority grammar before URL
+  parsing. Direct-loopback peer, Origin, forwarding-header and configured-key
+  requirements remain in force. Positive tests preserve uppercase localhost,
+  literal IPv4 loopback, bracketed IPv6 and valid port forms.
+- WebSocket readiness checks and engine constructors ran outside the startup
+  error boundary. A failed initialization send also prevented the close attempt,
+  and unavailable-engine responses included raw readiness diagnostics. The
+  existing initialization boundary now includes readiness/construction; public
+  terminal errors are fixed safe messages. A small shared terminal helper makes
+  independently bounded send and close attempts and safely logs transport errors.
+  Owner cancellation still propagates; the outer session retains its lease until
+  these terminal attempts finish. The existing runner cleanup remains unchanged.
+
+New tests cover five startup failure sites against five transport outcomes
+(working, failed/stalled send, failed/stalled close), including actual admission
+recovery. Sender-only and simultaneous sender/receiver exceptions additionally
+check sibling-task cleanup and absence of unobserved loop exceptions.
+
+### Fresh tests
+
+All commands ran in this assigned worktree with Python **3.12.13**:
+
+```bash
+export PATH=/tmp/solar-remediation-toolchain-20261014/node_modules/node/bin:$PATH
+export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TZ=UTC
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python -m pytest -q \
+  backend/tests/test_operational_contract.py \
+  backend/tests/test_benchmark_endpoint_budget.py \
+  backend/tests/test_benchmark_report_overwrite.py \
+  backend/tests/test_server_validation.py \
+  backend/tests/test_solar_security.py \
+  backend/tests/test_runtime_recovery_contract.py \
+  backend/tests/test_runtime_review_regressions.py \
+  backend/tests/test_compute_budget.py \
+  backend/tests/test_ws_resource_contract.py --tb=short
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python \
+  scripts/verify_operational_contract.py \
+  --artifacts /tmp/solar-operational-followup-smoke-20261014-startup-boundaries-15s \
+  --duration 15 --cycles 4
+git diff --check
+```
+
+- Before production edits: **29 failed, 56 passed**, 1.59 s. Six malformed-Host
+  cases and 23 startup/terminal-transport cases exposed production failures.
+- After repair: dedicated operational suite **85 passed**, 2.76 s.
+- Broader focused suite: **246 passed**, **0 skipped**, 10.05 s, exit 0.
+  The 85 dedicated cases are included in 246, not additional passes. Two existing
+  upstream TestClient/AnyIO deprecation warnings remain. No final focused failure.
+- Initial resume baseline before these edits: **207 passed**, 8.24 s, exit 0.
+- Logs: `/tmp/solar-operational-followup-red-20261014.txt`,
+  `/tmp/solar-operational-followup-green-20261014.txt`, and
+  `/tmp/solar-operational-followup-focused-20261014.txt`.
+
+### Bounded real-process evidence and failed attempt
+
+The final short smoke **PASSED**, exit 0, with workers **24492 and 24491**:
+**15.2508 s**, **99 + 158 = 257 native frames**, **4 churn cycles**, **20 HTTP
+requests**, maximum HTTP latency **0.02974 s**, and **20 paired ownership
+samples**. Both final workers had zero runners, leases, active connections,
+subjects, sessions, queued compute and unhandled loop exceptions. Each recovered
+its benchmark permit; tasks returned to 3 and FDs to 22 per worker. Thread counts
+were 5/5 against a 5/4 baseline, within the existing lazy-pool allowance. Shutdown
+returned 0 with no log error markers. Actual report checks returned create 200,
+unauthenticated 401, conflict 409 and NUL 422.
+
+The first short attempt used `--duration 5 --cycles 4` and **FAILED**, exit 1:
+only **3 of 4** required churn cycles completed in a measured **7.2453 s**. It
+streamed 126 frames and shut down cleanly, but never reached the final ownership
+assertions. This is retained as a failure, not a soak pass. The rerun increased
+only the requested duration to 15 seconds, retained the four-cycle requirement
+and all existing assertions, and required more minimum frames. No production or
+harness change was made between attempts.
+
+Committed result artifacts are
+`operational-followup-2026-10-14/short-smoke-failed.json` and
+`operational-followup-2026-10-14/short-smoke-passed.json`. Full logs and raw samples
+remain under the exact `/tmp/...startup-boundaries` and
+`/tmp/...startup-boundaries-15s` directories. These are local acceptance episodes;
+the retained earlier five-minute run remains the longer-duration evidence.
+
+### Integration and remaining scope
+
+Incremental paths: `backend/server.py`,
+`backend/tests/test_operational_contract.py`, this report, and the two JSON
+artifacts above. Parent owns the full integrated suite; its reported 2966 passes
+and five skips preceded this follow-up and are not represented as validation of
+this increment. The focused suite and short smoke above validate this increment.
+
+SCN-047/048/049 remain umbrella PARTIAL. External owner URL/auth, remote TLS/proxy
+acceptance and global admission evidence remain unavailable. Server composition
+and bounded shared-executor head-of-line scheduling remain maintenance decisions,
+not newly invented runtime failures. The `e6a02d9` Horizons deadline/kill/reap
+implementation and its corrected documentation are preserved. No scientific
+threshold, skip classification or unrelated agent write set changed.
