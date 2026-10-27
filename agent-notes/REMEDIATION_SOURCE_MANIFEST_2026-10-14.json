@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-14",
+  "entries": [
+    {
+      "path": "agent-notes/AUDIT_AND_ISSUE_INDEX_2026-10-07.md",
+      "source_sha256": "24e05aecd4e0d8bb31e843973e0f8f7eb74f037664fbaa1b81a43f679d1694b7",
+      "archived_sha256": "f7e6b74b8366bce1b2379ff0b6363f24ecc2a49a1012b994ab4c24f227bfa520",
+      "scope": "Selected historical Markdown with current-status pointer; linked raw evidence is not included in this archive."
+    },
+    {
+      "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-07.md",
+      "source_sha256": "dc8a77c704ccc02c56d7b5e4a5073ba4ed0326f4f579a56459cf6d8886b85faf",
+      "archived_sha256": "6730fcaa970219191c2423bae44dd315834b4cfe2b7acbf09299e8f86ee209a4",
+      "scope": "Selected historical Markdown with current-status pointer; linked raw evidence is not included in this archive."
+    },
+    {
+      "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md",
+      "source_sha256": "f96a3686f34e29d47637cce89550ebe120059dcdf7134743ce7674d8a94ca6e0",
+      "archived_sha256": "8014ecc734b4edbeb6aa09cf84ddac98c66b9fc9bdc57a3b0df781c6936a9bb1",
+      "scope": "Selected historical Markdown with current-status pointer; linked raw evidence is not included in this archive."
+    },
+    {
+      "path": "agent-notes/PR_BODY_physics-math-findings.md",
+      "source_sha256": "2067b9447f4a3ffd1124a2d7f87b37a3e83632e5d27a3750151ed6e5c2210a9d",
+      "archived_sha256": "041024f4c33a88b50ecc96222adcc5d7fe0fab5c520fe3175ea7ddf268c01e87",
+      "scope": "Selected historical Markdown with current-status pointer; linked raw evidence is not included in this archive."
+    }
+  ]
+}

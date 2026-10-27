@@ -1,12 +1,13 @@
 {
   "id": "alpha-centauri",
   "name": "Alpha Centauri System",
-  "version": 4,
+  "version": 5,
   "epoch_jd": 2451545.0,
   "fidelity_tier": "B",
   "sources": [
     "Gaia EDR3 / VizieR J/A+A/650/A201",
     "NASA Exoplanet Archive (Proxima Cen b, c, d entries)",
+    "Pourbaix & Boffin 2016, A&A 586, A90, Table 1 (Alpha Centauri AB visual-binary period and periastron)",
     "Kervella et al. 2017 (Proxima bound to Alpha Centauri AB)"
   ],
   "notes": "Observed local-system proxy. Alpha Centauri A/B are modeled as the observed binary, and Proxima Centauri is represented as a wide companion to Alpha Centauri A because this manifest format cannot encode the full Alpha Centauri AB barycenter hierarchy exactly. Only archive-listed planets are included, and candidate planets remain labeled as such.",
@@ -39,11 +40,11 @@
         "i_deg": 79.2,
         "ascending_node_deg": 204.0,
         "arg_periapsis_deg": 232.0,
-        "mean_anomaly_deg": 156.0,
-        "period_days": 29171.0,
+        "mean_anomaly_deg": 199.75472406457334,
+        "period_days": 29187.1275,
         "epoch_jd": 2451545.0
       },
-      "notes": "Observed secondary star in the Alpha Centauri A/B binary; orbital elements approximate the published visual-binary solution within the manifest hierarchy."
+      "notes": "Observed secondary star in the Alpha Centauri A/B binary; orbital elements approximate the published visual-binary solution within the manifest hierarchy. The 79.91-Julian-year period and J2000 mean anomaly are derived from the 1955.66 periastron epoch in Pourbaix & Boffin (2016)."
     },
     {
       "id": "proxima-centauri",

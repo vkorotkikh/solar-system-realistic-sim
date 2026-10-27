@@ -1,0 +1,113 @@
+Listing tests:
+  [chromium] › accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus
+  [chromium] › accessibility.spec.ts:11:1 › 195px viewport reflows the production page
+  [chromium] › app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin
+  [chromium] › app-smoke.spec.ts:26:1 › no-WebGL constructor failure exposes an accessible reload path and working drawer
+  [chromium] › app-smoke.spec.ts:31:1 › actual WebGL context loss stops rendering and leaves keyboard recovery available
+  [chromium] › camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal
+  [chromium] › camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan
+  [chromium] › camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation
+  [chromium] › camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context
+  [chromium] › experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model
+  [chromium] › experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy
+  [chromium] › explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches
+  [chromium] › explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate
+  [chromium] › explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable
+  [chromium] › frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+  [chromium] › frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+  [chromium] › frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+  [chromium] › frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+  [chromium] › panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions
+  [chromium] › panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions
+  [chromium] › panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions
+  [chromium] › panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions
+  [chromium] › panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus
+  [chromium] › panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes
+  [chromium] › panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus
+  [chromium] › panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable
+  [chromium] › panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 195x422
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 320x568
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 390x844
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 844x390
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800
+  [chromium] › reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900
+  [chromium] › reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action
+  [chromium] › shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs
+  [chromium] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+  [chromium] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  [chromium] › tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+  [firefox] › accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus
+  [firefox] › accessibility.spec.ts:11:1 › 195px viewport reflows the production page
+  [firefox] › camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal
+  [firefox] › camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan
+  [firefox] › camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation
+  [firefox] › camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context
+  [firefox] › experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model
+  [firefox] › experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy
+  [firefox] › explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches
+  [firefox] › explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate
+  [firefox] › explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable
+  [firefox] › frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+  [firefox] › frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+  [firefox] › frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+  [firefox] › frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+  [firefox] › panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions
+  [firefox] › panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions
+  [firefox] › panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions
+  [firefox] › panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions
+  [firefox] › panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus
+  [firefox] › panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes
+  [firefox] › panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus
+  [firefox] › panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable
+  [firefox] › panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 195x422
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 320x568
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 390x844
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 844x390
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800
+  [firefox] › reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900
+  [firefox] › reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action
+  [firefox] › shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs
+  [firefox] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+  [firefox] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  [firefox] › tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+  [webkit] › accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus
+  [webkit] › accessibility.spec.ts:11:1 › 195px viewport reflows the production page
+  [webkit] › camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal
+  [webkit] › camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan
+  [webkit] › camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation
+  [webkit] › camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context
+  [webkit] › experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model
+  [webkit] › experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy
+  [webkit] › explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches
+  [webkit] › explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate
+  [webkit] › explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable
+  [webkit] › frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+  [webkit] › frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+  [webkit] › frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+  [webkit] › frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+  [webkit] › panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions
+  [webkit] › panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions
+  [webkit] › panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions
+  [webkit] › panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions
+  [webkit] › panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus
+  [webkit] › panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes
+  [webkit] › panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus
+  [webkit] › panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable
+  [webkit] › panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 195x422
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 320x568
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 390x844
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 844x390
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800
+  [webkit] › reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900
+  [webkit] › reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action
+  [webkit] › shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs
+  [webkit] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+  [webkit] › tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  [webkit] › tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+Total: 111 tests in 10 files

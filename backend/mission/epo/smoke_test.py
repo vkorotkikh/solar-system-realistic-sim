@@ -47,6 +47,10 @@ def main() -> None:
 
     indent = None if args.compact else 2
     print(json.dumps(results, indent=indent))
+    totals = results["totals"]
+    passed = (totals["total"] > 0 and totals["passed"] == totals["total"]
+              and totals["failed"] == 0 and totals["exceptions"] == 0)
+    raise SystemExit(0 if passed else 1)
 
 
 if __name__ == "__main__":

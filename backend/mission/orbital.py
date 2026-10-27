@@ -164,7 +164,9 @@ def sample_body_state_from_elements(body: Dict[str, Any], jd: float) -> Dict[str
     if not orbit:
         return {"position": [0.0, 0.0, 0.0], "velocity": [0.0, 0.0, 0.0]}
 
-    epoch_jd = float(orbit.get("epoch_jd", J2000_JD))
+    if orbit.get("epoch_jd") is None:
+        raise ValueError(f"Body `{body.get('id', 'unknown')}` requires a declared orbit.epoch_jd")
+    epoch_jd = float(orbit["epoch_jd"])
     elapsed_days = jd - epoch_jd
     position, velocity = propagate_kepler_orbit(orbit, elapsed_days)
     return {"position": position, "velocity": velocity}

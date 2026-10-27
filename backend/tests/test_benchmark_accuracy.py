@@ -12,33 +12,64 @@ from data.bodies import ALL_BODIES
 from trajectory.budget import PlanningCancelled, PlanningContext
 
 
+def test_benchmark_markdown_preserves_small_spread_and_tolerance() -> None:
+    report = benchmark_accuracy.render_accuracy_report_markdown({
+        "rows": [{
+            "id": "small-values",
+            "source": "fixture",
+            "status": "ok",
+            "modelTotalDeltaVKmS": 1.0,
+            "referenceTotalDeltaVKmS": 1.0,
+            "absErrorKmS": 0.0,
+            "pass": True,
+            "toleranceKmS": 1.0e-4,
+            "reference": {"toolSpreadKmS": 2.5e-5},
+        }, {
+            "id": "unavailable",
+            "source": "fixture",
+            "status": "no_solution",
+            "reference": {"toolSpreadKmS": 7.5e-5},
+        }],
+    })
+
+    expected_row = (
+        "| small-values | fixture | ok | 1.000 | 1.000 | 0.000 | "
+        "2.50e-05 | 1.00e-04 | yes |"
+    )
+    assert expected_row in report.splitlines()
+    assert (
+        "| unavailable | fixture | no_solution | - | - | - | 7.50e-05 | - | - |"
+        in report.splitlines()
+    )
+
+
 def test_benchmark_uses_strict_reference_integrity() -> None:
     summary = benchmark_against_references(ALL_BODIES, ephemeris_provider="kepler")
 
     assert summary["referenceIntegrityOk"] is True
     assert summary["requiredTools"] == ["gmat", "orekit", "tudat"]
     assert summary["scenarioCount"] >= 1
-    assert summary["comparableScenarioCount"] == 0
-    assert summary["incomparableCount"] == summary["scenarioCount"]
-    assert summary["solvedCount"] == 0
-    assert summary["validationCoverage"] == pytest.approx(0.0)
-    # Nothing was compared, so there is no error and no pass rate -- not a perfect 0.0 / 0%.
-    assert summary["meanAbsErrorKmS"] is None
-    assert summary["passRate"] is None
+    assert summary["comparableScenarioCount"] == 3
+    assert summary["incomparableCount"] == 0
+    assert summary["solvedCount"] == 3
+    assert summary["validationCoverage"] == pytest.approx(1.0)
+    assert summary["meanAbsErrorKmS"] < 1e-4
+    assert summary["passRate"] == 1.0
     fixed = summary["fixedStateReferences"]
     assert fixed["count"] >= 2
     assert fixed["passCount"] == fixed["count"]
     assert fixed["maxAbsErrorKmS"] < 1e-4
     report = benchmark_accuracy.render_accuracy_report_markdown(summary)
-    assert "Mean |delta-v error|: n/a" in report
+    assert "Mean |delta-v error|: 0.000" in report
     assert f"passed: {fixed['count']}/{fixed['count']}" in report
 
     for row in summary["rows"]:
-        reference = row.get("reference", {})
+        assert row["reference"]["calibrationTier"] == "independent_fixed_state"
+        reference = row["reference"]["legacyCalibration"]
         assert reference.get("calibrationTier") == "strict"
         assert reference.get("requiredToolsPresent") is True
         assert reference.get("artifactChecksPassed") is True
-        assert row["status"] == "incomparable_reference"
+        assert row["status"] == "ok"
         tools = reference.get("tools", {})
         assert set(tools.keys()) == {"gmat", "orekit", "tudat"}
         comparison = reference.get("comparisonContract", {})

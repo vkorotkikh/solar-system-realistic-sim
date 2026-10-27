@@ -1,0 +1,325 @@
+{
+  "recordedAt": "2026-10-14T05:33:30.124Z",
+  "revision": "17b9d694ddc69caae4d948348477905884248534",
+  "node": "v22.23.2",
+  "chromium": "153.0.8010.12",
+  "port": 5173,
+  "executablePath": "/home/nomad/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome",
+  "args": [
+    "--no-sandbox",
+    "--ignore-gpu-blocklist",
+    "--use-gl=angle",
+    "--use-angle=gl"
+  ],
+  "driverEnvironment": {
+    "GALLIUM_DRIVER": "d3d12",
+    "MESA_D3D12_DEFAULT_ADAPTER_NAME": "NVIDIA",
+    "LD_LIBRARY_PATH_PREFIX": "/usr/lib/wsl/lib"
+  },
+  "screenshotSha256": "53c74cee79ff3d57c68d915a0681b9d5cade65415e08ea79ff013a2d72c206d1",
+  "gpu": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "vendor": "Google Inc. (Microsoft Corporation)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "checks": [
+    {
+      "name": "verified-hardware-renderer",
+      "pass": true,
+      "actual": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "vendor": "Google Inc. (Microsoft Corporation)",
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+      },
+      "requirement": "/RTX 5090/i; no software renderer"
+    },
+    {
+      "name": "sky-screen:SagittariusA:top",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 124.5,
+        "y": 191.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          124.50192091087732,
+          191.59758505522439
+        ],
+        "error": 0.09760395945731387
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:SagittariusA:oblique",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 123.5,
+        "y": 177.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          123.97907482399678,
+          177.61285287746398
+        ],
+        "error": 0.49218742257340153
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:CentaurusA:top",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 84.5,
+        "y": 161.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          84.42356446686892,
+          161.00845438200952
+        ],
+        "error": 0.49745299807185483
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:CentaurusA:oblique",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 86.5,
+        "y": 172.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          86.63605936358653,
+          172.0714883222354
+        ],
+        "error": 0.44959360360240214
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:Maffei1:top",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 153.5,
+        "y": 87.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          153.07484322813667,
+          87.30175053191712
+        ],
+        "error": 0.4691067386601797
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:Maffei1:oblique",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 150.5,
+        "y": 75.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          150.5043551302778,
+          75.53043752292793
+        ],
+        "error": 0.03074751960279907
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:M87:top",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 66.5,
+        "y": 130.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          66.05534558131853,
+          130.22730484944515
+        ],
+        "error": 0.5216130722950552
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "sky-screen:M87:oblique",
+      "pass": true,
+      "actual": {
+        "count": 81,
+        "x": 67.5,
+        "y": 116.5,
+        "width": 9,
+        "height": 9,
+        "expected": [
+          67.93952975761889,
+          116.93610891273175
+        ],
+        "error": 0.6191747666019577
+      },
+      "requirement": "At least 64 marker pixels; centroid within 1 pixel of independent fixture"
+    },
+    {
+      "name": "grid-plane:GW",
+      "pass": false,
+      "actual": {
+        "count": 0,
+        "x": null,
+        "y": null,
+        "width": 0,
+        "height": 0
+      },
+      "requirement": "Visible XY surface, not an edge-on XZ line"
+    },
+    {
+      "name": "gw-strain-axes",
+      "pass": false,
+      "actual": {
+        "count": 0,
+        "x": null,
+        "y": null,
+        "width": 0,
+        "height": 0
+      },
+      "requirement": "192px reference extent -> approximately 211px X and 173px Y at hPlus=0.1"
+    },
+    {
+      "name": "incoming-front:SagittariusA",
+      "pass": false,
+      "actual": {
+        "excessEnergy": 0,
+        "bearingAxisCentroid": null
+      },
+      "requirement": "Wake on source-facing side of an inward-moving front: dot(localPosition, sourceBearing) > frontDistance"
+    },
+    {
+      "name": "incoming-front:CentaurusA",
+      "pass": false,
+      "actual": {
+        "excessEnergy": 0,
+        "bearingAxisCentroid": null
+      },
+      "requirement": "Wake on source-facing side of an inward-moving front: dot(localPosition, sourceBearing) > frontDistance"
+    },
+    {
+      "name": "incoming-front:Maffei1",
+      "pass": false,
+      "actual": {
+        "excessEnergy": 0,
+        "bearingAxisCentroid": null
+      },
+      "requirement": "Wake on source-facing side of an inward-moving front: dot(localPosition, sourceBearing) > frontDistance"
+    },
+    {
+      "name": "incoming-front:M87",
+      "pass": false,
+      "actual": {
+        "excessEnergy": 0,
+        "bearingAxisCentroid": null
+      },
+      "requirement": "Wake on source-facing side of an inward-moving front: dot(localPosition, sourceBearing) > frontDistance"
+    },
+    {
+      "name": "local-world-invariance:GW",
+      "pass": false,
+      "actual": {
+        "meanAbsoluteByteError": 12.513717651367188,
+        "changedPixelFraction": 0.175018310546875
+      },
+      "requirement": "Same local event after common rigid transform: RGB MAE <0.25/255; pixels changing >8/255 <0.5%"
+    },
+    {
+      "name": "reset-no-submission:GW",
+      "pass": true,
+      "actual": {
+        "footprint": {
+          "count": 0,
+          "x": null,
+          "y": null,
+          "width": 0,
+          "height": 0
+        },
+        "drawCalls": 0
+      },
+      "requirement": "Reset hides grid and submits no draw calls"
+    },
+    {
+      "name": "grid-plane:H29",
+      "pass": false,
+      "actual": {
+        "count": 0,
+        "x": null,
+        "y": null,
+        "width": 0,
+        "height": 0
+      },
+      "requirement": "Visible XY surface, not an edge-on XZ line"
+    },
+    {
+      "name": "h29-normal-axis",
+      "pass": false,
+      "actual": {
+        "base": {
+          "count": 20496,
+          "x": 128,
+          "y": 128,
+          "width": 192,
+          "height": 112
+        },
+        "raised": {
+          "count": 18000,
+          "x": 128,
+          "y": 127.5,
+          "width": 192,
+          "height": 99
+        },
+        "deltaY": -0.5
+      },
+      "requirement": "At xi=0, +1 scene Z maps to -12.8 screen pixels in the independent oblique orthographic camera"
+    },
+    {
+      "name": "local-world-invariance:H29",
+      "pass": true,
+      "actual": {
+        "meanAbsoluteByteError": 0,
+        "changedPixelFraction": 0
+      },
+      "requirement": "Same local event after common rigid transform: RGB MAE <0.25/255; pixels changing >8/255 <0.5%"
+    },
+    {
+      "name": "reset-no-submission:H29",
+      "pass": true,
+      "actual": {
+        "footprint": {
+          "count": 0,
+          "x": null,
+          "y": null,
+          "width": 0,
+          "height": 0
+        },
+        "drawCalls": 0
+      },
+      "requirement": "Reset hides grid and submits no draw calls"
+    },
+    {
+      "name": "browser-and-gl-errors",
+      "pass": true,
+      "actual": {
+        "errors": [],
+        "glError": 0
+      },
+      "requirement": "No browser/shader errors; GL_NO_ERROR"
+    }
+  ],
+  "glError": 0
+}

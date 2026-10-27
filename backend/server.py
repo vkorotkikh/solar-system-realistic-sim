@@ -33,9 +33,11 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import logging
 import math
 import queue
 import os
+import re
 import threading
 import time
 from collections import Counter, OrderedDict, deque
@@ -53,7 +55,16 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket,
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictStr, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictBool,
+    StrictStr,
+    field_validator,
+)
 from starlette.responses import JSONResponse
 
 from benchmark import (
@@ -98,6 +109,7 @@ from mission.ephemeris_service import (
 from sim.base import SimulationEngine
 from sim.contracts import attach_runtime_telemetry, normalize_state_update
 from sim.kuiper import KuiperActivationError, KuiperBeltEngine
+from sim.kuiper_subscription import subscription_id_from_command
 from sim.rebound_nbody import REBOUNDEngine
 from sim.process_supervisor import (
     DEFAULT_MAX_RESULT_BYTES,
@@ -149,6 +161,9 @@ from trajectory.contracts import (
     eligible_endpoint_body_ids,
     estimate_route_count,
     validate_plan_request,
+    validate_planning_epoch,
+    PLANNING_JD_MIN,
+    PLANNING_JD_MAX,
 )
 from trajectory.lambert import (
     MIN_PORKCHOP_DEPARTURE_STEP_DAYS,
@@ -344,7 +359,7 @@ class _RequestBodyLimitMiddleware:
 
 
 class _TrajectoryRateLimitMiddleware:
-    """Bound trajectory ingress by authenticated subject or local peer."""
+    """Bound trajectory ingress by authenticated subject or validated peer."""
 
     IDENTITY_MAX_BYTES = 255
 
@@ -379,13 +394,7 @@ class _TrajectoryRateLimitMiddleware:
                     subject_bytes = b""
                 if len(subject_bytes) <= _TrajectoryRateLimitMiddleware.IDENTITY_MAX_BYTES:
                     return authenticated_subject
-
-        client = scope.get("client")
-        if isinstance(client, (tuple, list)) and client:
-            host = str(client[0]).strip()
-            if host:
-                return host[:255]
-        return "anonymous"
+        return _peer_identity_from_scope(scope)
 
     def _retry_after(self, identity: str) -> int | None:
         now = float(self.clock())
@@ -394,9 +403,9 @@ class _TrajectoryRateLimitMiddleware:
             queue = self._requests.get(identity)
             if queue is None:
                 if len(self._requests) >= self.max_identities:
-                    # Bound memory even under high-cardinality peer churn. Peer
-                    # identity comes from the ASGI transport, not spoofable
-                    # forwarding headers.
+                    # Bound memory even under high-cardinality peer churn.
+                    # Forwarding data contributes only behind a configured
+                    # trusted ASGI peer and after the whole chain validates.
                     self._requests.popitem(last=False)
                 queue = deque()
                 self._requests[identity] = queue
@@ -605,6 +614,7 @@ def _load_solar_security_config(
         try:
             parsed = urlsplit(origin)
             parsed_port = parsed.port
+            canonical_url = AnyHttpUrl(origin)
         except ValueError as exc:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS contains an invalid origin."
@@ -623,6 +633,11 @@ def _load_solar_security_config(
             or parsed.query
             or parsed.fragment
         ):
+            raise RuntimeError(
+                "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
+            )
+        canonical_origin = str(canonical_url).removesuffix("/")
+        if origin != canonical_origin:
             raise RuntimeError(
                 "SOLAR_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins."
             )
@@ -719,7 +734,7 @@ class _NetworkAuthenticationMiddleware:
 
     async def __call__(self, scope, receive, send) -> None:
         active_config = SOLAR_SECURITY_CONFIG
-        if scope.get("type") != "http" or active_config.profile != "network":
+        if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
 
@@ -727,6 +742,14 @@ class _NetworkAuthenticationMiddleware:
             str(scope.get("method", "")).upper(),
             scope_route_path(scope),
         )
+        if active_config.profile != "network":
+            if route == ("POST", "/benchmark/accuracy/report"):
+                rejection = _local_benchmark_writer_rejection(scope, active_config)
+                if rejection is not None:
+                    await rejection(scope, receive, send)
+                    return
+            await self.app(scope, receive, send)
+            return
         if route in NETWORK_PUBLIC_HTTP_ROUTES:
             await self.app(scope, receive, send)
             return
@@ -823,6 +846,12 @@ WS_PROTOCOL_VERSION = 1
 MAX_COMMAND_QUEUE = 1_024
 MAX_RESPONSE_QUEUE = 1_024
 MAX_COMMANDS_PER_FRAME = 128
+WS_SIM_SEND_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "WS_SIM_SEND_TIMEOUT_SECONDS", 5.0, min_value=0.1, max_value=30.0,
+)
+WS_SIM_IDLE_TIMEOUT_SECONDS = _load_bounded_env_float(
+    "WS_SIM_IDLE_TIMEOUT_SECONDS", 30.0, min_value=1.0, max_value=300.0,
+)
 WS_SIM_COMMAND_MAX_BYTES_HARD_LIMIT = 16 * 1_024
 WS_SIM_COMMAND_MAX_BYTES = _load_bounded_env_int(
     "WS_SIM_COMMAND_MAX_BYTES",
@@ -1505,17 +1534,55 @@ def _bounded_unique_scope_header(
         return False, None
 
 
-def _bounded_unique_request_header(
-    request: Request,
-    name: bytes,
-    *,
-    max_bytes: int,
-) -> tuple[bool, str | None]:
-    return _bounded_unique_scope_header(
-        request.scope,
-        name,
-        max_bytes=max_bytes,
+def _local_benchmark_writer_rejection(
+    scope: Mapping[str, Any], config: SolarSecurityConfig,
+) -> JSONResponse | None:
+    """Local writes require a direct loopback peer AND a loopback Host.
+
+    Forwarding headers cannot grant trust. Proxied deployments must select the
+    authenticated network profile, even when their proxy connects via loopback.
+    Run uvicorn with --no-proxy-headers so scope.client remains the socket peer.
+    """
+    valid, host = _bounded_unique_scope_header(scope, b"host", max_bytes=255)
+    peer = scope.get("client")
+    peer_ip = _parse_ip_address(str(peer[0])) if peer else None
+    local_host = False
+    if valid and host and re.fullmatch(
+        r"(?:localhost|[0-9.]+|\[[0-9a-f:]+\])(?::[0-9]+)?", host, re.IGNORECASE,
+    ):
+        try:
+            authority = urlsplit("//" + host)
+            hostname = authority.hostname or ""
+            address = _parse_ip_address(hostname)
+            local_host = (
+                not any((authority.username, authority.password, authority.path,
+                         authority.query, authority.fragment))
+                and "%" not in host
+                and (authority.port is None or 1 <= authority.port <= 65535)
+                and (hostname == "localhost" or bool(address and address.is_loopback))
+            )
+        except ValueError:
+            pass
+    forwarded = any(
+        bytes(name).lower() == b"forwarded" or bytes(name).lower().startswith(b"x-forwarded-")
+        for name, _value in scope.get("headers", ())
     )
+    origin_valid, origin = _bounded_unique_scope_header(scope, b"origin", max_bytes=2048)
+    trusted_origin = origin_valid and (origin is None or origin in config.cors_allowed_origins)
+    # CORS alone controls browser response access, not whether a cross-origin
+    # simple POST causes a write. Check Origin before entering the writer.
+    if not (peer_ip and peer_ip.is_loopback and local_host and trusted_origin) or forwarded:
+        return JSONResponse(status_code=403, headers={"Cache-Control": "private, no-store"}, content={
+            "detail": {"code": "benchmark_writer_local_only", "retryable": False,
+                       "message": "Local report writes require a direct loopback peer, Host, and trusted browser Origin; proxies require the authenticated network profile."},
+        })
+    if config.authentication_required and _authenticated_api_subject_from_scope(scope, config=config) is None:
+        return JSONResponse(status_code=401, headers={
+            "WWW-Authenticate": 'Bearer realm="solar-system-backend"',
+            "Cache-Control": "private, no-store",
+        }, content={"detail": {"code": "authentication_required", "retryable": False,
+                               "message": "Authentication is required for report writes."}})
+    return None
 
 
 def _extract_api_key_from_scope(scope: Mapping[str, Any]) -> str | None:
@@ -1591,6 +1658,57 @@ def _parse_ip_address(
         return None
 
 
+def _peer_identity_from_scope(
+    scope: Mapping[str, Any],
+    *,
+    config: SolarSecurityConfig | None = None,
+) -> str:
+    """Resolve a bounded peer identity through an explicitly trusted chain."""
+
+    active_config = SOLAR_SECURITY_CONFIG if config is None else config
+    client = scope.get("client")
+    peer_host = (
+        str(client[0]).strip()
+        if isinstance(client, (tuple, list)) and client and str(client[0]).strip()
+        else "anonymous"
+    )
+    peer_address = _parse_ip_address(peer_host)
+    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
+
+    forwarded_header_valid, forwarded_for = _bounded_unique_scope_header(
+        scope,
+        b"x-forwarded-for",
+        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
+    )
+    if (
+        not forwarded_header_valid
+        or not forwarded_for
+        or peer_address is None
+        or not _address_in_trusted_proxy_networks(peer_address, active_config)
+    ):
+        return peer_identity
+
+    raw_chain = forwarded_for.split(",")
+    if (
+        not raw_chain
+        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
+        or any(not item.strip() for item in raw_chain)
+    ):
+        return peer_identity
+    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
+    if any(address is None for address in parsed_chain):
+        return peer_identity
+
+    complete_chain = [
+        *(address for address in parsed_chain if address is not None),
+        peer_address,
+    ]
+    for address in reversed(complete_chain):
+        if not _address_in_trusted_proxy_networks(address, active_config):
+            return str(address)
+    return str(complete_chain[0])
+
+
 def _client_identity(
     request: Request,
     *,
@@ -1614,47 +1732,7 @@ def _client_identity(
     if isinstance(authenticated_subject, str) and authenticated_subject:
         return authenticated_subject
 
-    active_config = SOLAR_SECURITY_CONFIG if config is None else config
-    peer_host = (
-        request.client.host.strip()
-        if request.client and request.client.host
-        else "anonymous"
-    )
-    peer_address = _parse_ip_address(peer_host)
-    peer_identity = str(peer_address) if peer_address is not None else peer_host[:255]
-
-    forwarded_header_valid, forwarded_for = _bounded_unique_request_header(
-        request,
-        b"x-forwarded-for",
-        max_bytes=SOLAR_FORWARDED_FOR_MAX_BYTES,
-    )
-    if (
-        not forwarded_header_valid
-        or not forwarded_for
-        or peer_address is None
-        or not _address_in_trusted_proxy_networks(peer_address, active_config)
-    ):
-        return f"peer:{peer_identity}"
-
-    raw_chain = forwarded_for.split(",")
-    if (
-        not raw_chain
-        or len(raw_chain) > SOLAR_FORWARDED_FOR_MAX_HOPS
-        or any(not item.strip() for item in raw_chain)
-    ):
-        return f"peer:{peer_identity}"
-    parsed_chain = [_parse_ip_address(item) for item in raw_chain]
-    if any(address is None for address in parsed_chain):
-        return f"peer:{peer_identity}"
-
-    complete_chain = [
-        *(address for address in parsed_chain if address is not None),
-        peer_address,
-    ]
-    for address in reversed(complete_chain):
-        if not _address_in_trusted_proxy_networks(address, active_config):
-            return f"peer:{address}"
-    return f"peer:{complete_chain[0]}"
+    return f"peer:{_peer_identity_from_scope(request.scope, config=config)}"
 
 
 def _require_optional_solar_api_key(
@@ -2013,6 +2091,14 @@ def _network_websocket_subject(websocket: WebSocket) -> str | None:
     )
 
 
+def _log_operational_failure(event: str, error: BaseException) -> None:
+    # Do not serialize exception messages, URLs, credentials or local paths.
+    # Event identifiers are fixed call-site constants, not request data.
+    logging.getLogger("solar.operational").warning(json.dumps({
+        "event": event, "exception_type": type(error).__name__[:80], "pid": os.getpid(),
+    }, sort_keys=True))
+
+
 def _release_guard_when_work_finishes(
     future: "Future[Any]",
     guard: threading.BoundedSemaphore,
@@ -2058,14 +2144,29 @@ async def _run_owned_thread(
         partial(_release_guard_when_work_finishes, guard=guard)
     )
     future = asyncio.wrap_future(worker_future)
+    detached = False
+
+    def observe_completion(completed: asyncio.Future) -> None:
+        # shield leaves this asyncio Future alive after its caller leaves.
+        # Observing only the concurrent Future does not consume its exception.
+        if not completed.cancelled():
+            error = completed.exception()
+            if error is not None and detached:
+                _log_operational_failure("detached_worker_failed", error)
+
+    future.add_done_callback(observe_completion)
     try:
         return await asyncio.wait_for(
             asyncio.shield(future),
             timeout=timeout_seconds,
         )
     except (asyncio.TimeoutError, asyncio.CancelledError):
+        detached = True
         if owner_cancel_event is not None:
             owner_cancel_event.set()
+        # cancel() succeeds only before execution starts. Its done callback
+        # releases queued-work admission; a live worker keeps its permit.
+        worker_future.cancel()
         raise
 
 
@@ -2365,6 +2466,8 @@ def _validate_trajectory_endpoint_pair(
 
 
 def _validate_mission_trajectory_payload(payload: MissionPlanRequest) -> None:
+    validate_planning_epoch(payload.departure_jd, "departure_jd")
+    validate_planning_epoch(payload.departure_jd + payload.mining_days, "earliest_return_departure_jd")
     target_id = payload.target_id or payload.to_id or "psyche"
     return_id = payload.return_id or payload.from_id
     _ensure_bodies_known(
@@ -2503,6 +2606,9 @@ def _run_mission_plan(
 
 
 def _enforce_porkchop_request_size(payload: TrajectoryPorkchopRequest) -> None:
+    _validate_planning_epochs_http(departure_start_jd=payload.departure_start_jd,
+                                  departure_end_jd=payload.departure_end_jd,
+                                  latest_arrival_jd=payload.departure_end_jd + payload.tof_max_days)
     departure_start = float(payload.departure_start_jd)
     departure_end = float(payload.departure_end_jd)
     tof_min = float(payload.tof_min_days)
@@ -2668,6 +2774,24 @@ def _enforce_mission_plan_request_size(payload: MissionPlanRequest) -> None:
             },
         )
 
+    energy_kwh_per_kg = max(1e-9, float(payload.power_required_kw_per_kg_day))
+    effective_extraction_rate_kg_day = min(
+        float(payload.extraction_rate_kg_day),
+        float(payload.available_power_kw) / energy_kwh_per_kg,
+    )
+    effective_mined_ore_kg = effective_extraction_rate_kg_day * float(payload.mining_days)
+    if not math.isfinite(effective_mined_ore_kg):
+        raise _trajectory_http_exception(
+            413,
+            "mission_complexity_limit",
+            "Effective mined ore must remain finite.",
+            context={
+                "extractionRateKgDay": float(payload.extraction_rate_kg_day),
+                "effectiveExtractionRateKgDay": effective_extraction_rate_kg_day,
+                "miningDays": float(payload.mining_days),
+            },
+        )
+
     if int(payload.risk_samples) > MISSION_PLAN_MAX_RISK_SAMPLES:
         raise _trajectory_http_exception(
             413,
@@ -2765,26 +2889,26 @@ def _ensure_bodies_known(*body_ids: tuple[str, str]) -> None:
 
 def _resolve_benchmark_report_path(output_path: str | None, default_filename: str) -> Path:
     requested = output_path if output_path is not None else default_filename
-    candidate = Path(requested)
-
-    if candidate.is_absolute():
-        resolved = candidate.resolve(strict=False)
-    else:
-        if candidate.parts and candidate.parts[0] == BENCHMARK_REPORTS_DIR.name:
-            resolved = (PROJECT_ROOT / candidate).resolve(strict=False)
-        else:
-            resolved = (BENCHMARK_REPORTS_DIR / candidate).resolve(strict=False)
-
     try:
+        candidate = Path(requested)
+        if candidate.is_absolute():
+            resolved = candidate.resolve(strict=False)
+        else:
+            if candidate.parts and candidate.parts[0] == BENCHMARK_REPORTS_DIR.name:
+                resolved = (PROJECT_ROOT / candidate).resolve(strict=False)
+            else:
+                resolved = (BENCHMARK_REPORTS_DIR / candidate).resolve(strict=False)
         resolved.relative_to(BENCHMARK_REPORTS_DIR)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"`output_path` must resolve under `{BENCHMARK_REPORTS_DIR}`",
+    except (ValueError, OSError, RuntimeError) as exc:
+        raise _trajectory_http_exception(
+            400, "invalid_report_path",
+            "`output_path` must resolve under the configured reports directory.",
         ) from exc
 
     if resolved.suffix.lower() != ".md":
-        raise HTTPException(status_code=400, detail="`output_path` must use a `.md` extension")
+        raise _trajectory_http_exception(
+            400, "invalid_report_path", "`output_path` must use a `.md` extension",
+        )
 
     return resolved
 
@@ -2839,9 +2963,9 @@ class TrajectoryPorkchopRequest(TrajectoryBodyPairRequest):
 
 class MissionStageRequest(StrictRequestModel):
     name: StrictStr | None = None
-    dry_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    propellant_mass_kg: FiniteFloat = Field(default=0.0, ge=0.0)
-    isp_s: FiniteFloat = Field(default=0.0, ge=0.0)
+    dry_mass_kg: FiniteFloat = Field(gt=0.0)
+    propellant_mass_kg: FiniteFloat = Field(gt=0.0)
+    isp_s: FiniteFloat = Field(gt=0.0)
 
     @field_validator("name")
     @classmethod
@@ -2885,6 +3009,7 @@ class MissionPlanRequest(StrictRequestModel):
     assist_pool: list[StrictStr] | None = None
     ephemeris_provider: StrictStr = "auto"
     payload_mass_kg: FiniteFloat = Field(default=6_500.0, gt=0.0)
+    parking_altitude_km: FiniteFloat = Field(default=200.0, gt=0.0)
     reserve_fraction: FiniteFloat = Field(default=0.06, ge=0.0, le=1.0)
     handling_loss_fraction: FiniteFloat = Field(default=0.04, ge=0.0, le=1.0)
     risk_samples: int = Field(default=240, ge=1)
@@ -2938,6 +3063,8 @@ class AccuracyReportRequest(StrictRequestModel):
     def _validate_output_path(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if len(value) > 4096 or any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError("must contain at most 4096 characters and no control characters")
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("must be a non-empty string when provided")
@@ -3499,6 +3626,8 @@ def trajectory_capabilities():
     state_contract = TRAJECTORY_STATE_CONTRACT
     return {
         "schema": {"name": "trajectory_capabilities", "version": 2},
+        "supportedEpoch": {"minimumJdTdb": PLANNING_JD_MIN, "maximumJdTdb": PLANNING_JD_MAX},
+        "lambertPlanePolicy": "exactly collinear endpoints rejected; no implicit plane chosen",
         "objectives": list(TRAJECTORY_OBJECTIVES),
         "default_objective": "min_distance",
         "max_assists": 3,
@@ -3708,6 +3837,14 @@ def trajectory_capabilities():
     }
 
 
+def _validate_planning_epochs_http(**epochs: float) -> None:
+    try:
+        for field, value in epochs.items():
+            validate_planning_epoch(value, field)
+    except TrajectoryRequestRejected as exc:
+        raise _trajectory_http_exception(422, exc.code, str(exc), context=exc.context) from exc
+
+
 @app.post("/trajectory/plan")
 async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
     if payload.from_id == payload.to_id:
@@ -3814,6 +3951,7 @@ async def trajectory_plan(request: Request, payload: TrajectoryPlanRequest):
 
 @app.post("/trajectory/lambert")
 async def trajectory_lambert(request: Request, payload: TrajectoryLambertRequest):
+    _validate_planning_epochs_http(departure_jd=payload.departure_jd, arrival_jd=payload.arrival_jd)
     if payload.from_id == payload.to_id:
         raise _trajectory_http_exception(
             400,
@@ -4000,6 +4138,9 @@ async def trajectory_porkchop(request: Request, payload: TrajectoryPorkchopReque
 @app.get("/mission/capabilities")
 def mission_capabilities():
     return {
+        "supportedEpoch": {"minimumJdTdb": PLANNING_JD_MIN, "maximumJdTdb": PLANNING_JD_MAX},
+        "propulsion": {"model": "circular_parking_patched_conic", "defaultParkingAltitudeKm": 200.0,
+                       "cargoDelivery": "target_parking_orbit", "surfaceOperationsIncluded": False},
         "schema": {"name": "mission_capabilities", "version": 2},
         "agents": [
             "MissionPlannerAgent",
@@ -4098,7 +4239,7 @@ async def mission_plan(request: Request, payload: MissionPlanRequest):
             503,
             "trajectory_compute_budget_exhausted",
             "Mission trajectory search stopped at a bounded work limit before reaching a conclusive outcome.",
-            retryable=True,
+            retryable=False,
             context={"trajectorySearch": result.get("trajectorySearch", {})},
         )
     if result.get("recommendation") is None:
@@ -4115,7 +4256,10 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
     try:
         provider = _normalize_ephemeris_provider(ephemeris_provider)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"`ephemeris_provider` {exc}") from exc
+        raise _trajectory_http_exception(
+            400, "invalid_ephemeris_provider",
+            "`ephemeris_provider` must be auto, spice, horizons, or kepler.",
+        ) from exc
 
     _enforce_trajectory_remote_search_policy(provider, "benchmark")
     if not _acquire_nonblocking(_benchmark_concurrent_guard):
@@ -4152,8 +4296,6 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
         raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
     except EphemerisError as exc:
         raise _ephemeris_http_exception(exc) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except asyncio.TimeoutError as exc:
         planning_context.cancel("endpoint_timeout")
         raise _trajectory_http_exception(
@@ -4161,6 +4303,11 @@ async def benchmark_accuracy(request: Request, ephemeris_provider: str = "auto")
             "benchmark_deadline_exceeded",
             "Trajectory benchmark exceeded its endpoint deadline.",
             context=planning_context.snapshot(),
+        ) from exc
+    except Exception as exc:
+        _log_operational_failure("benchmark_failed", exc)
+        raise _trajectory_http_exception(
+            500, "benchmark_failed", "The benchmark could not be completed.",
         ) from exc
 
 
@@ -4187,7 +4334,7 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
     )
 
     try:
-        return await _run_request_owned_thread(
+        result = await _run_request_owned_thread(
             request,
             generate_accuracy_report,
             ALL_BODIES,
@@ -4200,8 +4347,13 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             timeout_seconds=BENCHMARK_COMPUTE_TIMEOUT_SECONDS,
             owner_context=planning_context,
         )
+        # Public paths are logical report names, not server filesystem layout.
+        return {**result, "reportPath": str(Path(BENCHMARK_REPORTS_DIR.name) / output_path.relative_to(BENCHMARK_REPORTS_DIR))}
     except FileExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _trajectory_http_exception(
+            409, "benchmark_report_exists",
+            "Report already exists; set `allow_overwrite` to true to replace it.",
+        ) from exc
     except PlanningDeadlineExceeded as exc:
         raise _trajectory_http_exception(504, exc.code, str(exc), context=exc.context) from exc
     except PlanningBudgetExceeded as exc:
@@ -4210,8 +4362,6 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
         raise _trajectory_http_exception(503, exc.code, str(exc), context=exc.context) from exc
     except EphemerisError as exc:
         raise _ephemeris_http_exception(exc) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except asyncio.TimeoutError as exc:
         planning_context.cancel("endpoint_timeout")
         raise _trajectory_http_exception(
@@ -4220,16 +4370,29 @@ async def benchmark_accuracy_report(request: Request, payload: AccuracyReportReq
             "Trajectory benchmark report exceeded its endpoint deadline.",
             context=planning_context.snapshot(),
         ) from exc
+    except Exception as exc:
+        _log_operational_failure("benchmark_report_failed", exc)
+        raise _trajectory_http_exception(
+            500, "benchmark_report_failed", "The benchmark report could not be generated.",
+        ) from exc
 
 
 # ── Simulation Runner (background thread) ────────────────────────────────────
 
 class SimulationRunner:
-    """Manages a simulation engine in a background thread at target FPS."""
+    """Fixed-step simulation: overruns slow wall-time progress, without catch-up.
+
+    Each completed tick advances time_scale / target_fps days. This preserves
+    deterministic integration increments under load; days/sec is nominal at
+    the requested frame rate, rather than a wall-clock synchronization promise.
+    """
 
     def __init__(self, engine: SimulationEngine, target_fps: int = 60):
         self.engine = engine
         self.kuiper = KuiperBeltEngine(particle_count=3_000)
+        self._kuiper_subscription_id: str | None = None
+        self._latest_kuiper_payload: dict | None = None
+        self._kuiper_refresh_pending: bool = False
         self.command_queue: queue.Queue = queue.Queue(maxsize=MAX_COMMAND_QUEUE)
         self.response_queue: queue.Queue = queue.Queue(maxsize=MAX_RESPONSE_QUEUE)
         self._state_lock = threading.Lock()
@@ -4250,7 +4413,14 @@ class SimulationRunner:
         self.running = False
         cancel_pending = getattr(self.engine, "cancel_pending_operation", None)
         if callable(cancel_pending):
-            cancel_pending()
+            try:
+                cancel_pending()
+            except Exception as exc:
+                # A failed cancellation hook is not proof that its worker died.
+                _log_operational_failure("engine_cancellation_failed", exc)
+                self._latch_runtime_error("Engine cancellation failed.")
+        if self._thread.ident is None:
+            return True
         self._thread.join(timeout=3)
         return not self._thread.is_alive()
 
@@ -4306,13 +4476,46 @@ class SimulationRunner:
         except queue.Full:
             self._dropped_responses += 1
 
-    def _push_error(self, message: str, *, action: str = "", code: str = "bad_request") -> None:
+    def _push_error(
+        self,
+        message: str,
+        *,
+        action: str = "",
+        code: str = "bad_request",
+        kuiper_subscription_id: str | None = None,
+    ) -> None:
         payload = {"type": "error", "message": message, "code": code}
         if action:
             payload["action"] = action
+        if kuiper_subscription_id is not None:
+            payload["kuiper_subscription_id"] = kuiper_subscription_id
         self._push_response(payload)
 
+    def _clear_kuiper_payload(self) -> None:
+        self._latest_kuiper_payload = None
+        self._kuiper_refresh_pending = False
+
+    def _latch_runtime_error(self, message: str) -> None:
+        self.paused = True
+        self._clear_kuiper_payload()
+        if self._runtime_error is None:
+            self._runtime_error = message
+            self._push_error(message, code="runtime_error")
+
     def _loop(self):
+        try:
+            self._run_frames()
+        except Exception as exc:
+            # Telemetry/normalization can fail too. Never leave a dead worker
+            # advertising its last healthy snapshot as current simulation data.
+            _log_operational_failure("simulation_worker_failed", exc)
+            self._latch_runtime_error("Simulation worker failed.")
+            with self._state_lock:
+                self._latest_state = None
+        finally:
+            self.running = False
+
+    def _run_frames(self):
         frame_time = 1.0 / self.target_fps
 
         while self.running:
@@ -4334,9 +4537,12 @@ class SimulationRunner:
                 except Exception as exc:
                     if not self.running:
                         break
-                    self._runtime_error = f"Command handling failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+                    _log_operational_failure("command_failed", exc)
+                    self._push_error(
+                        "Command handling failed.",
+                        action=cmd.get("type", "") if isinstance(cmd, dict) else "",
+                        code="command_failed",
+                    )
 
             if not self.running:
                 break
@@ -4348,39 +4554,73 @@ class SimulationRunner:
                 )
 
             # ── Step simulation ───────────────────────────────────────
+            kuiper_stepped = False
             if not self.paused and self._runtime_error is None:
                 try:
                     dt_days = self.time_scale * frame_time
-                    self.engine.step(dt_days)
+                    bounded_dt_days = dt_days
+                    reached_epoch_boundary = False
+                    supported_range = getattr(self.engine, "supported_jd_range", None)
+                    if supported_range is not None:
+                        min_jd, max_jd = supported_range
+                        current_jd = self.engine.get_julian_date()
+                        target_jd = current_jd + dt_days
+                        if target_jd < min_jd:
+                            bounded_dt_days = min_jd - current_jd
+                            reached_epoch_boundary = True
+                        elif target_jd > max_jd:
+                            bounded_dt_days = max_jd - current_jd
+                            reached_epoch_boundary = True
 
-                    if self.kuiper.active:
-                        self.kuiper.step(dt_days)
+                    # Keep the main and optional Kuiper integrations on the
+                    # exact same signed playback increment, including a final
+                    # partial frame at an inclusive engine epoch boundary.
+                    # Preserve ordinary zero-time stepping. Only an outward
+                    # frame already at a declared boundary suppresses both
+                    # engines' zero-duration calls.
+                    if bounded_dt_days != 0.0 or not reached_epoch_boundary:
+                        self.engine.step(bounded_dt_days)
+
+                        if self.kuiper.active:
+                            self.kuiper.step(bounded_dt_days)
+                            kuiper_stepped = True
+
+                    if reached_epoch_boundary:
+                        self.paused = True
+                        self._kuiper_refresh_pending = self.kuiper.active
+                        self._push_error(
+                            "Playback reached the engine's validated epoch boundary.",
+                            code="epoch_out_of_range",
+                        )
                 except Exception as exc:
-                    self._runtime_error = f"Simulation step failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+                    _log_operational_failure("simulation_step_failed", exc)
+                    self._latch_runtime_error("Simulation step failed.")
 
             # ── Build state ───────────────────────────────────────────
-            try:
-                raw_state = self.engine.get_state()
-            except Exception as exc:
-                self._runtime_error = f"State generation failed: {exc}"
-                self.paused = True
-                self._push_error(self._runtime_error, code="runtime_error")
-                raw_state = {
-                    "type": "state_update",
-                    "engine": self.engine.engine_name,
-                    "fidelity": self.engine.fidelity_level,
-                    "jd": self.engine.get_julian_date(),
-                    "force_models": {},
-                    "bodies": {},
-                }
+            raw_state = self.engine.get_state()
             normalized_state = normalize_state_update(
                 raw_state,
                 engine_name=self.engine.engine_name,
                 fidelity=self.engine.fidelity_level,
                 jd_fallback=self.engine.get_julian_date(),
             )
+            if self.kuiper.active and self._runtime_error is None:
+                refresh_kuiper = (
+                    self._latest_kuiper_payload is None
+                    or self._kuiper_refresh_pending
+                    or (kuiper_stepped and self.kuiper.should_send())
+                )
+                if refresh_kuiper:
+                    try:
+                        self._latest_kuiper_payload = self.kuiper.get_state()
+                        self._kuiper_refresh_pending = False
+                    except Exception as exc:
+                        _log_operational_failure("kuiper_state_failed", exc)
+                        self._latch_runtime_error("Kuiper state failed.")
+            kuiper_particles = (
+                self._latest_kuiper_payload if self.kuiper.active else None
+            )
+
             state = attach_runtime_telemetry(
                 normalized_state,
                 paused=self.paused,
@@ -4388,6 +4628,8 @@ class SimulationRunner:
                 energy_error=self.engine.get_energy_error(),
                 backend={
                     "target_fps": self.target_fps,
+                    "clock_policy": "fixed_step",
+                    "step_days": self.time_scale * frame_time,
                     "command_queue_depth": self.command_queue.qsize(),
                     "response_queue_depth": self.response_queue.qsize(),
                     "kuiper_active": self.kuiper.active,
@@ -4396,15 +4638,10 @@ class SimulationRunner:
                 },
             )
 
-            if self.kuiper.active and self.kuiper.should_send():
-                try:
-                    kuiper_particles = self.kuiper.get_state()
-                    if kuiper_particles:
-                        state["kuiper"] = kuiper_particles
-                except Exception as exc:
-                    self._runtime_error = f"Kuiper state failed: {exc}"
-                    self.paused = True
-                    self._push_error(self._runtime_error, code="runtime_error")
+            if kuiper_particles:
+                state["kuiper"] = kuiper_particles
+                if self._kuiper_subscription_id is not None:
+                    state["kuiper_subscription_id"] = self._kuiper_subscription_id
 
             with self._state_lock:
                 self._latest_state = state
@@ -4426,6 +4663,16 @@ class SimulationRunner:
             self._push_error("Command requires a non-empty string `type` field")
             return
 
+        if self._runtime_error is not None and action in {
+            "resume", "set_julian_date", "activate_kuiper", "get_orbital_elements",
+        }:
+            self._push_error(
+                "The simulation engine failed; reconnect to initialize a new engine",
+                action=action,
+                code="engine_unavailable",
+            )
+            return
+
         if action == "set_time_scale":
             days_per_sec = self._coerce_finite_float(cmd.get("days_per_sec"))
             if days_per_sec is None:
@@ -4435,6 +4682,8 @@ class SimulationRunner:
             self.time_scale = max(-365.0, min(365.0, days_per_sec))
 
         elif action == "pause":
+            if not self.paused and self.kuiper.active:
+                self._kuiper_refresh_pending = True
             self.paused = True
 
         elif action == "resume":
@@ -4466,11 +4715,27 @@ class SimulationRunner:
                     )
                     return
             if abs(self.engine.get_julian_date() - jd) > 1e-12:
-                self.engine.set_julian_date(jd)
+                try:
+                    self.engine.set_julian_date(jd)
+                except Exception as exc:
+                    # Seeking may restore checkpoints or mutate native state
+                    # before failing. Unlike request validation/read-only
+                    # commands, it has no atomic rollback guarantee.
+                    if self.running:
+                        _log_operational_failure("epoch_seek_failed", exc)
+                        self._latch_runtime_error("Epoch seek failed.")
+                    return
             if self.kuiper.active:
                 self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "activate_kuiper":
+            try:
+                subscription_id = subscription_id_from_command(cmd)
+            except ValueError as exc:
+                self._push_error(str(exc), action=action)
+                return
             center = self._coerce_vec3(cmd.get("center", [42.0, 0.0, 0.0]))
             if center is None:
                 self._push_error("`activate_kuiper` requires `center` as [x,y,z] numbers", action=action)
@@ -4495,9 +4760,11 @@ class SimulationRunner:
                     "`velocity_units` in its state payload; refusing to guess",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
 
+            self._clear_kuiper_payload()
             try:
                 self.kuiper.activate(
                     sun_pos=sun["pos"], sun_vel=sun["vel"],
@@ -4516,15 +4783,27 @@ class SimulationRunner:
                 # Surface this without latching `_runtime_error`: the main
                 # simulation is unaffected, so the session must keep stepping.
                 self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
                 self._push_error(
                     f"`activate_kuiper` rejected: {exc}",
                     action=action,
                     code="kuiper_activation_failed",
+                    kuiper_subscription_id=subscription_id,
                 )
                 return
+            except Exception:
+                self.kuiper.deactivate()
+                self._kuiper_subscription_id = None
+                self._clear_kuiper_payload()
+                raise
+
+            self._kuiper_subscription_id = subscription_id
+            self._kuiper_refresh_pending = True
 
         elif action == "deactivate_kuiper":
             self.kuiper.deactivate()
+            self._kuiper_subscription_id = None
+            self._clear_kuiper_payload()
 
         elif action == "get_orbital_elements":
             body_id = cmd.get("body_id")
@@ -4554,6 +4833,92 @@ class SimulationRunner:
 
 
 # ── WebSocket task helpers ────────────────────────────────────────────────────
+
+async def _ws_send_text(websocket: WebSocket, text: str) -> None:
+    """Cancel an ASGI send that stops making progress within its deadline."""
+    await asyncio.wait_for(websocket.send_text(text), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+async def _ws_close(websocket: WebSocket, **kwargs: Any) -> None:
+    await asyncio.wait_for(websocket.close(**kwargs), WS_SIM_SEND_TIMEOUT_SECONDS)
+
+
+class _KuiperPayloadDeliveryTracker:
+    """Remove an unchanged Kuiper snapshot only after its first delivery."""
+
+    def __init__(self) -> None:
+        self._last_payload: dict | None = None
+        self._last_subscription_id: str | None = None
+
+    def prepare(self, state: dict) -> dict:
+        if "kuiper" not in state:
+            return state
+        payload = state["kuiper"]
+        subscription_id = state.get("kuiper_subscription_id")
+        if (
+            payload is self._last_payload
+            and subscription_id == self._last_subscription_id
+        ):
+            outbound = state.copy()
+            outbound.pop("kuiper", None)
+            outbound.pop("kuiper_subscription_id", None)
+            return outbound
+        return state
+
+    async def send(self, websocket: WebSocket, state: dict, outbound: dict) -> None:
+        await _ws_send_text(websocket, json.dumps(outbound))
+        if "kuiper" in outbound:
+            self._last_payload = state["kuiper"]
+            self._last_subscription_id = state.get("kuiper_subscription_id")
+
+
+async def _ws_fail(
+    websocket: WebSocket, *, code: str, message: str, close_code: int,
+    reason: str | None = None,
+) -> None:
+    """Attempt both terminal writes with separate deadlines and safe logging."""
+    try:
+        await _ws_send_text(websocket, json.dumps({
+            "type": "error", "code": code, "message": message,
+        }))
+    except Exception as exc:
+        _log_operational_failure("websocket_error_send_failed", exc)
+    try:
+        close_options: dict[str, Any] = {"code": close_code}
+        if reason is not None:
+            close_options["reason"] = reason
+        await _ws_close(websocket, **close_options)
+    except Exception as exc:
+        _log_operational_failure("websocket_error_close_failed", exc)
+
+
+async def _ws_cleanup_runner(runner: SimulationRunner, tasks: list[asyncio.Task]) -> None:
+    """Retain session ownership through repeated cancellation until cleanup ends."""
+    async def cleanup() -> None:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        try:
+            if not await asyncio.to_thread(runner.stop):
+                # A join timeout cannot release admission for a surviving worker.
+                await asyncio.to_thread(runner.wait_until_stopped)
+        finally:
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+    cleanup_task = asyncio.create_task(cleanup())
+    cancellation: asyncio.CancelledError | None = None
+    while not cleanup_task.done():
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError as exc:
+            cancellation = exc
+    cleanup_task.result()
+    if cancellation is not None:
+        # AnyIO cancellation scopes identify their own exception by its
+        # provenance. Replacing it breaks normal Starlette session teardown.
+        raise cancellation
+
 
 def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | None]:
     if not isinstance(message, dict):
@@ -4585,6 +4950,11 @@ def _normalize_ws_command(message: Any) -> tuple[dict[str, Any] | None, str | No
     for field in _WS_SIM_COMMAND_FIELDS.get(action, ()):
         if field in message:
             normalized[field] = message[field]
+    if action == "activate_kuiper" and "subscription_id" in message:
+        try:
+            normalized["subscription_id"] = subscription_id_from_command(message)
+        except ValueError as exc:
+            return None, str(exc)
     return normalized, None
 
 
@@ -4594,7 +4964,7 @@ async def _send_ws_command_error(
     *,
     code: str,
 ) -> None:
-    await websocket.send_text(json.dumps({
+    await _ws_send_text(websocket, json.dumps({
         "type": "error",
         "message": message,
         "code": code,
@@ -4603,7 +4973,7 @@ async def _send_ws_command_error(
 
 async def _close_ws_command_too_large(websocket: WebSocket) -> None:
     reason = f"Command frame exceeds {WS_SIM_COMMAND_MAX_BYTES} bytes"
-    await websocket.close(code=1009, reason=reason)
+    await _ws_close(websocket, code=1009, reason=reason)
     raise WebSocketDisconnect(code=1009, reason=reason)
 
 
@@ -4669,7 +5039,7 @@ async def _ws_receive_loop(websocket: WebSocket, runner: SimulationRunner):
             )
             continue
         if not runner.send_command(command):
-            await websocket.send_text(json.dumps({
+            await _ws_send_text(websocket, json.dumps({
                 "type": "error",
                 "message": "Command queue is full; retry shortly",
                 "code": "queue_overflow",
@@ -4681,17 +5051,36 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
     last_jd: Optional[float] = None
     idle_frames = 0
     idle_send_interval = max(1, int(stream_hz // 3))
+    last_progress = time.monotonic()
+    last_snapshot: dict | None = None
+    kuiper_delivery = _KuiperPayloadDeliveryTracker()
 
     while True:
-        resp = runner.get_response()
-        while resp is not None:
-            await websocket.send_text(json.dumps(resp))
+        # A producer can refill a bounded queue while it is drained. Bound the
+        # drain itself so command errors cannot starve state/liveness checks.
+        response_deadline = time.monotonic() + interval
+        for _ in range(MAX_COMMANDS_PER_FRAME):
             resp = runner.get_response()
+            if resp is None:
+                break
+            await _ws_send_text(websocket, json.dumps(resp))
+            if time.monotonic() >= response_deadline:
+                break
+
+        if not getattr(runner, "running", True):
+            await _ws_close(websocket, code=1011, reason="Simulation worker stopped")
+            raise WebSocketDisconnect(code=1011)
 
         state = runner.get_latest_state()
         if state:
-            jd = float(state.get("jd", 0.0))
-            has_kuiper_payload = "kuiper" in state
+            # The runner publishes a new immutable snapshot each tick, even
+            # while paused. Re-sending an old snapshot is not worker progress.
+            if state is not last_snapshot:
+                last_progress = time.monotonic()
+                last_snapshot = state
+            outbound_state = kuiper_delivery.prepare(state)
+            jd = float(outbound_state.get("jd", 0.0))
+            has_kuiper_payload = "kuiper" in outbound_state
             should_send = (
                 has_kuiper_payload
                 or last_jd is None
@@ -4699,16 +5088,59 @@ async def _ws_send_loop(websocket: WebSocket, runner: SimulationRunner, stream_h
                 or idle_frames >= idle_send_interval
             )
             if should_send:
-                await websocket.send_text(json.dumps(state))
+                await kuiper_delivery.send(websocket, state, outbound_state)
                 last_jd = jd
                 idle_frames = 0
             else:
                 idle_frames += 1
 
+        if time.monotonic() - last_progress >= WS_SIM_IDLE_TIMEOUT_SECONDS:
+            await _ws_close(websocket, code=1013, reason="Simulation output idle deadline exceeded")
+            raise WebSocketDisconnect(code=1013)
+
         await asyncio.sleep(interval)
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
+
+def _prepare_simulation_engine(
+    engine_requested: str,
+    integrator: str,
+    enable_j2: bool,
+    warnings: list[str],
+) -> tuple[SimulationEngine, dict, list[str], float] | None:
+    """Initialize and read native state before handing ownership to the runner."""
+    engine: Optional[SimulationEngine] = None
+    rebound_status = _rebound_readiness()
+    rebound_ready = bool(rebound_status.get("available", False))
+    tudatpy_ready = _tudatpy_available()
+    if engine_requested == "tudatpy":
+        if tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+        elif rebound_ready:
+            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
+            engine = REBOUNDEngine(integrator=integrator)
+    elif engine_requested == "rebound":
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    else:
+        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
+        if rebound_ready:
+            engine = REBOUNDEngine(integrator=integrator)
+        elif tudatpy_ready and TudatPyEngine is not None:
+            engine = TudatPyEngine(enable_j2=enable_j2)
+    if engine is None:
+        return None
+    engine.initialize(ALL_BODIES)
+    # Keep every initial native read on this thread; no runner exists yet.
+    initial_state = engine.get_state()
+    initial_body_ids = engine.list_body_ids()
+    initial_jd = engine.get_julian_date()
+    return engine, initial_state, initial_body_ids, initial_jd
+
 
 async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     # Select engine and integrator from query params
@@ -4738,58 +5170,42 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
             f"Unsupported integrator `{integrator_requested}`; using `{integrator}`"
         )
 
-    rebound_status = _rebound_readiness()
-    rebound_ready = bool(rebound_status.get("available", False))
-    tudatpy_ready = _tudatpy_available()
-
-    engine: Optional[SimulationEngine] = None
-    if engine_requested == "tudatpy":
-        if tudatpy_ready and TudatPyEngine is not None:
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-        elif rebound_ready:
-            warnings.append("Engine `tudatpy` unavailable; using `rebound`")
-            engine = REBOUNDEngine(integrator=integrator)
-    elif engine_requested == "rebound":
-        if rebound_ready:
-            engine = REBOUNDEngine(integrator=integrator)
-        elif tudatpy_ready and TudatPyEngine is not None:
-            warnings.append("Engine `rebound` unavailable; using `tudatpy`")
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-    else:
-        warnings.append(f"Unknown engine `{engine_requested}`; selecting available engine")
-        if rebound_ready:
-            engine = REBOUNDEngine(integrator=integrator)
-        elif tudatpy_ready and TudatPyEngine is not None:
-            enable_j2 = websocket.query_params.get("j2", "true").lower() == "true"
-            engine = TudatPyEngine(enable_j2=enable_j2)
-
-    if engine is None:
-        rebound_reason = rebound_status.get("error") or "unavailable"
-        await websocket.send_text(json.dumps({
-            "type": "error",
-            "code": "engine_unavailable",
-            "message": (
-                "No simulation engines are available. "
-                f"REBOUND readiness failed: {rebound_reason}"
-            ),
-        }))
-        await websocket.close(code=1013)
-        return
-
     try:
-        engine.initialize(ALL_BODIES)
+        initialization = asyncio.create_task(asyncio.to_thread(
+            _prepare_simulation_engine,
+            engine_requested,
+            integrator,
+            websocket.query_params.get("j2", "true").lower() == "true",
+            warnings,
+        ))
+        cancellation: asyncio.CancelledError | None = None
+        while not initialization.done():
+            try:
+                await asyncio.shield(initialization)
+            except asyncio.CancelledError as exc:
+                # A cancelled waiter cannot stop native initialization. Retain
+                # the admission lease until the worker has actually finished.
+                cancellation = exc
+            except Exception:
+                if cancellation is not None:
+                    raise cancellation
+                raise
+        try:
+            prepared = initialization.result()
+        finally:
+            if cancellation is not None:
+                raise cancellation
     except Exception as exc:
-        await websocket.send_text(json.dumps({
-            "type": "error",
-            "code": "engine_init_failed",
-            "message": str(exc),
-        }))
-        await websocket.close(code=1011)
+        _log_operational_failure("engine_init_failed", exc)
+        await _ws_fail(websocket, code="engine_init_failed",
+                       message="Simulation engine initialization failed.", close_code=1011)
         return
 
-    initial_state = engine.get_state()
+    if prepared is None:
+        await _ws_fail(websocket, code="engine_unavailable",
+                       message="No simulation engines are available.", close_code=1013)
+        return
+    engine, initial_state, initial_body_ids, initial_jd = prepared
 
     target_fps_raw = websocket.query_params.get("fps", "60")
     stream_hz_raw = websocket.query_params.get("stream_hz", "60")
@@ -4803,38 +5219,38 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
         stream_hz = float(target_fps)
 
     runner = SimulationRunner(engine, target_fps=target_fps)
-    runner.start()
+    tasks: list[asyncio.Task] = []
+    session_failed = False
+    try:
+        runner.start()
 
-    # Notify client of connection
-    await websocket.send_text(json.dumps({
+        # Initial delivery is owned by the same cleanup scope as streaming.
+        await _ws_send_text(websocket, json.dumps({
         "type": "connected",
         "protocol_version": WS_PROTOCOL_VERSION,
         "protocol_version_requested": protocol_requested,
+        "kuiper_subscription_version": 1,
+        "kuiper_activation_error_version": 1,
         "engine": engine.engine_name,
         "engine_requested": engine_requested,
         "integrator": integrator,
         "integrator_requested": integrator_requested,
         "fidelity": engine.fidelity_level,
-        "bodies": engine.list_body_ids(),
-        "jd": engine.get_julian_date(),
+        "bodies": initial_body_ids,
+        "jd": initial_jd,
         "jd_time_scale": initial_state.get("jd_time_scale"),
         "fps": target_fps,
+        "clock_policy": "fixed_step",
         "stream_hz": stream_hz,
         "warnings": warnings,
-    }))
-
-    try:
+        }))
         receive_task = asyncio.create_task(_ws_receive_loop(websocket, runner))
         send_task = asyncio.create_task(_ws_send_loop(websocket, runner, stream_hz=stream_hz))
-        done, pending = await asyncio.wait(
+        tasks = [receive_task, send_task]
+        done, _pending = await asyncio.wait(
             {receive_task, send_task},
-            return_when=asyncio.FIRST_EXCEPTION,
+            return_when=asyncio.FIRST_COMPLETED,
         )
-
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
 
         for task in done:
             if task.cancelled():
@@ -4848,20 +5264,24 @@ async def _serve_simulation_websocket(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     except Exception as exc:
-        print(f"[ws/sim] error: {exc}")
+        _log_operational_failure("websocket_session_failed", exc)
+        session_failed = True
     finally:
-        if not runner.stop():
-            # Keep the owning connection/admission permit alive until the
-            # actual worker exits; a three-second join timeout is not proof of
-            # cleanup.
-            await asyncio.to_thread(runner.wait_until_stopped)
+        await _ws_cleanup_runner(runner, tasks)
+
+    if session_failed:
+        # The stream sender is gone before terminal delivery. Both attempts
+        # have transport deadlines; a broken socket must not skip cleanup.
+        await _ws_fail(websocket, code="websocket_session_failed",
+                       message="Simulation session failed.", close_code=1011,
+                       reason="Simulation session failed")
 
 
 @app.websocket("/ws/sim")
 async def simulation_websocket(websocket: WebSocket):
     authenticated_subject: str | None = None
     if not _websocket_query_has_safe_shape(websocket):
-        await websocket.close(
+        await _ws_close(websocket, 
             code=1008,
             reason="WebSocket query credentials are not allowed",
         )
@@ -4869,7 +5289,7 @@ async def simulation_websocket(websocket: WebSocket):
     if SOLAR_SECURITY_CONFIG.profile == "network":
         authenticated_subject = _network_websocket_subject(websocket)
         if authenticated_subject is None:
-            await websocket.close(
+            await _ws_close(websocket, 
                 code=1008,
                 reason="WebSocket authentication is required",
             )
@@ -4877,15 +5297,15 @@ async def simulation_websocket(websocket: WebSocket):
         state = websocket.scope.setdefault("state", {})
         state["authenticated_subject"] = authenticated_subject
     if not _websocket_origin_allowed(websocket):
-        await websocket.close(code=1008, reason="WebSocket origin is not allowed")
+        await _ws_close(websocket, code=1008, reason="WebSocket origin is not allowed")
         return
     admission_lease = _try_acquire_ws_sim_slot(authenticated_subject)
     if admission_lease is None:
-        await websocket.close(code=1013, reason="Simulation capacity is exhausted")
+        await _ws_close(websocket, code=1013, reason="Simulation capacity is exhausted")
         return
 
     try:
-        await websocket.accept()
+        await asyncio.wait_for(websocket.accept(), WS_SIM_SEND_TIMEOUT_SECONDS)
         await _serve_simulation_websocket(websocket)
     finally:
         _release_ws_sim_slot(admission_lease)

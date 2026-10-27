@@ -1,0 +1,91 @@
+{
+  "source": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+  "kernelSha256": "3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1",
+  "spiceVersion": "CSPICE_N0067",
+  "epochEtSeconds": 0,
+  "frame": "ECLIPJ2000",
+  "provenance": "pxform(IAU_<PLANET>, ECLIPJ2000, 0) column 2; BODY*_PM linear coefficient in deg/day; generated 2026-10-14",
+  "bodies": [
+    {
+      "id": "mercury",
+      "poleEcliptic": [
+        0.09137781820826621,
+        -0.08159994972655199,
+        0.9924674012500971
+      ],
+      "rateDegPerDay": 6.1385108
+    },
+    {
+      "id": "venus",
+      "poleEcliptic": [
+        0.018690814168902045,
+        0.010872522861460177,
+        0.999766193523431
+      ],
+      "rateDegPerDay": -1.4813688
+    },
+    {
+      "id": "earth",
+      "poleEcliptic": [
+        0.0,
+        0.3977771559319137,
+        0.9174820620691818
+      ],
+      "rateDegPerDay": 360.9856235
+    },
+    {
+      "id": "mars",
+      "poleEcliptic": [
+        0.44615527077685696,
+        -0.055516489766415156,
+        0.8932319932257492
+      ],
+      "rateDegPerDay": 350.891982443297
+    },
+    {
+      "id": "jupiter",
+      "poleEcliptic": [
+        -0.014597290902157951,
+        -0.035804400435794304,
+        0.9992522024032526
+      ],
+      "rateDegPerDay": 870.536
+    },
+    {
+      "id": "saturn",
+      "poleEcliptic": [
+        0.08547883186107168,
+        0.4624416775908151,
+        0.882519724499492
+      ],
+      "rateDegPerDay": 810.7939024
+    },
+    {
+      "id": "uranus",
+      "poleEcliptic": [
+        -0.2119995815377986,
+        -0.9679890018799518,
+        0.13436320056939963
+      ],
+      "rateDegPerDay": -501.1600928
+    },
+    {
+      "id": "neptune",
+      "poleEcliptic": [
+        0.35857650890872816,
+        -0.31440959287033216,
+        0.878959325094137
+      ],
+      "rateDegPerDay": 541.1397757
+    },
+    {
+      "id": "pluto",
+      "poleEcliptic": [
+        -0.6779679099169169,
+        0.624497537629506,
+        -0.3877658296157241
+      ],
+      "rateDegPerDay": 56.3625225
+    }
+  ]
+}

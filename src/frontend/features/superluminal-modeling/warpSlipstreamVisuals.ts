@@ -6,10 +6,12 @@ import {
     DoubleSide,
     Color
 } from 'three';
+import { h29DisplayThicknessAu } from './h29DisplayScale';
+import { AU_CM } from './smbhPhysicsConstants';
 
 const WARP_VERTEX_SHADER = `
 uniform float time;
-uniform vec3 propagationDir;   // Sgr A* direction
+uniform vec3 propagationDir;   // local ecliptic bearing TO the selected source
 uniform float enabled;
 uniform float shockwaveDist;   // position of the warp bubble center
 uniform float bubbleThickness; // sigma
@@ -37,10 +39,8 @@ void main() {
     float coshXi = (expXi + 1.0 / expXi) * 0.5;
     float sech2 = 1.0 / (coshXi * coshXi);
     
-    // Asymmetric displacement:
-    // Compress space ahead (xi > 0)
-    // Expand space behind (xi < 0)
-    // We achieve this by displacing vertices along the propagation direction
+    // Illustrative displacement along the source-bearing axis. The incoming
+    // center moves toward decreasing distance; xi > 0 is the source-facing side.
     
     // The integral of sech^2 is tanh, which gives a cumulative shift.
     // For visual drama, we pull vertices towards the bubble center.
@@ -52,8 +52,8 @@ void main() {
     // Apply displacement
     vec3 displaced = position + displacement;
     
-    // Add vertical distortion (the "lens" effect)
-    displaced.y += sech2 * stretchAmplitude * 0.2;
+    // Illustrative displacement normal to the XY ecliptic, not physical lensing.
+    displaced.z += sech2 * stretchAmplitude * 0.2;
 
     vWarpIntensity = sech2;
     
@@ -101,7 +101,7 @@ void main() {
  */
 export function createWarpSlipstreamVisualization(size = 20) {
     const geometry = new PlaneGeometry(size, size, 128, 128);
-    geometry.rotateX(-Math.PI / 2); // Ecliptic plane
+    // PlaneGeometry already lies in the canonical XY ecliptic, normal +Z.
 
     const material = new ShaderMaterial({
         vertexShader: WARP_VERTEX_SHADER,
@@ -124,17 +124,26 @@ export function createWarpSlipstreamVisualization(size = 20) {
     const mesh = new Mesh(geometry, material);
     mesh.renderOrder = 2; // Render on top of GW grid
     mesh.frustumCulled = false;
+    mesh.visible = false;
 
     return {
         mesh,
 
         update(dtSec: number) {
-            material.uniforms.time.value += dtSec;
+            if (mesh.visible && Number.isFinite(dtSec) && dtSec > 0) material.uniforms.time.value += dtSec;
         },
 
         toggle(on: boolean) {
             material.uniforms.enabled.value = on ? 1.0 : 0.0;
             mesh.visible = on;
+        },
+
+        reset() {
+            mesh.visible = false;
+            material.uniforms.enabled.value = 0;
+            material.uniforms.time.value = 0;
+            material.uniforms.shockwaveDist.value = 9999;
+            material.uniforms.stretchAmplitude.value = 0;
         },
 
         /**
@@ -144,15 +153,11 @@ export function createWarpSlipstreamVisualization(size = 20) {
         setWarpState(state: any) {
             if (!state) return;
 
-            // Map physical cm to scene units (~1 AU = 1 scene unit)
-            const cmToAu = 1.0 / 1.496e13;
-
             if (state.positionCm !== undefined) {
-                material.uniforms.shockwaveDist.value = state.positionCm * cmToAu * 180.0; // scale to match GW front units
+                material.uniforms.shockwaveDist.value = state.positionCm / AU_CM;
             }
             if (state.thickness !== undefined) {
-                // scale up thickness for visibility
-                material.uniforms.bubbleThickness.value = Math.max(0.5, state.thickness * 10.0);
+                material.uniforms.bubbleThickness.value = h29DisplayThicknessAu(state.thickness);
             }
             if (state.direction) {
                 material.uniforms.propagationDir.value.copy(state.direction);
@@ -175,6 +180,8 @@ Result: Solar system stretches radially without pulling planets from their orbit
         },
 
         dispose() {
+            mesh.visible = false;
+            mesh.removeFromParent();
             geometry.dispose();
             material.dispose();
         }

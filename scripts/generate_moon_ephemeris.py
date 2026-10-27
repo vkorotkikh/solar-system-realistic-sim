@@ -3,12 +3,12 @@
 
 The JPL satellite-element tables in ``src/data/moons.json`` are descriptive
 mean elements.  JPL explicitly says not to use them for ephemeris computation.
-This maintenance tool instead asks Horizons for parent-relative osculating
+This maintenance tool instead reads pinned Horizons parent-relative osculating
 elements, converts the angular elements to nonsingular Cartesian features, and
 fits short piecewise Chebyshev series.  Dates halfway between all input samples
-are fetched independently and retained only for validation.
+were captured independently and are retained only for validation.
 
-The generated file is deterministic for a given Horizons ephemeris release and
+The generated file is deterministic for pinned responses and a Python platform and
 contains no network/runtime dependency.  Examples::
 
     python3 scripts/generate_moon_ephemeris.py --write
@@ -27,12 +27,10 @@ import hashlib
 import io
 import json
 import math
-import tempfile
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
+from catalog_sources import SOURCE_DIR, SourceStore, publish_file
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -174,26 +172,13 @@ def _query_params(
     }
 
 
-def _fetch_result(params: dict[str, str], cache_dir: Path) -> str:
-    encoded = urllib.parse.urlencode(params)
-    cache_key = hashlib.sha256(encoded.encode("ascii")).hexdigest()
-    cache_path = cache_dir / f"{cache_key}.json"
-    if cache_path.exists():
-        payload = json.loads(cache_path.read_text(encoding="utf-8"))
-    else:
-        request = urllib.request.Request(
-            HORIZONS_API_URL + "?" + encoded,
-            headers={"User-Agent": "solar-system-realistic-sim/1"},
-        )
-        with urllib.request.urlopen(request, timeout=180.0) as response:
-            raw = response.read()
-        payload = json.loads(raw.decode("utf-8"))
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+def _fetch_result(params: dict[str, str], cache_dir: Path | SourceStore) -> str:
+    store = cache_dir if isinstance(cache_dir, SourceStore) else SourceStore(cache_dir)
+    payload = json.loads(store.read(HORIZONS_API_URL, params))
     if payload.get("error"):
         raise RuntimeError(f"Horizons rejected query: {payload['error']}")
     signature = payload.get("signature") or {}
-    if signature.get("source") != "NASA/JPL Horizons API":
+    if signature.get("source") != "NASA/JPL Horizons API" or signature.get("version") != "1.2":
         raise RuntimeError(f"unexpected Horizons signature: {signature}")
     result = str(payload.get("result", ""))
     if "$$SOE" not in result or "$$EOE" not in result:
@@ -261,6 +246,8 @@ def _parse_query(target: Target, result: str) -> QueryResult:
         raise RuntimeError(f"Horizons returned no rows for {target.name}")
 
     gm = float(gm_header.split(":", 1)[1].split()[0])
+    if not math.isfinite(gm) or gm <= 0:
+        raise RuntimeError("invalid source gravitational parameter")
     digest = hashlib.sha256("\n".join(canonical_rows).encode("ascii")).hexdigest()
     return QueryResult(tuple(rows), gm, source, digest)
 
@@ -273,7 +260,7 @@ def _combined_rows_digest(rows: Sequence[ElementRow]) -> str:
     return hashlib.sha256("\n".join(canonical_rows).encode("ascii")).hexdigest()
 
 
-def _query(target: Target, start_jd: float, step_days: float, cache_dir: Path) -> QueryResult:
+def _query(target: Target, start_jd: float, step_days: float, cache_dir: Path | SourceStore) -> QueryResult:
     # Horizons limits projected output to 90,024 lines. ELEMENTS output is
     # accounted as roughly four lines per epoch even with CSV_FORMAT=YES, so a
     # 12-hour, 50-year request must be split. Adjacent chunks deliberately do
@@ -290,6 +277,12 @@ def _query(target: Target, start_jd: float, step_days: float, cache_dir: Path) -
         )
         params = _query_params(target, chunk_start, chunk_stop, step_days)
         result = _parse_query(target, _fetch_result(params, cache_dir))
+        expected_count = math.floor((chunk_stop - chunk_start) / step_days + 1e-9) + 1
+        if len(result.rows) != expected_count or any(
+            abs(row.jd - (chunk_start + index * step_days)) > 1e-9
+            for index, row in enumerate(result.rows)
+        ):
+            raise RuntimeError(f"incomplete/out-of-order {target.name} source grid")
         if central_gm is None:
             central_gm = result.central_gm_km3_s2
             ephemeris = result.ephemeris
@@ -701,8 +694,8 @@ def _validation_stats(
     }
 
 
-def _generate_target(target: Target, cache_dir: Path) -> dict[str, object]:
-    print(f"fetching {target.name} source grid ({_step_size(target.source_step_days)})...", flush=True)
+def _generate_target(target: Target, cache_dir: SourceStore) -> dict[str, object]:
+    print(f"reading pinned {target.name} source grid ({_step_size(target.source_step_days)})...", flush=True)
     source = _query(target, COVERAGE_START_JD, target.source_step_days, cache_dir)
     source_features = _features(source.rows, target.nominal_period_days)
     longitude_base, longitude_rate = _linear_trend(source_features)
@@ -729,10 +722,8 @@ def _generate_target(target: Target, cache_dir: Path) -> dict[str, object]:
             "centerId": target.center.rsplit("@", 1)[-1],
             "frame": "ECLIPJ2000",
             "timeScale": "TDB",
-            # Deliberately fixed to the source-retrieval release date. A wall-clock
-            # timestamp would make `--check` nondeterministic without adding any
-            # scientific provenance that the response-row hashes do not provide.
-            "generatedAt": "2026-09-24T00:00:00Z",
+            # Source capture timestamps are pinned, never the rebuild clock.
+            "generatedAt": max(entry["capturedUtc"] for entry in cache_dir.used.values()),
             "generator": "scripts/generate_moon_ephemeris.py",
             "query": (
                 f"COMMAND='{target.command}' CENTER='{target.center}' "
@@ -743,7 +734,7 @@ def _generate_target(target: Target, cache_dir: Path) -> dict[str, object]:
         "segments": _fit_segments(target, source_features, longitude_base, longitude_rate),
     }
 
-    print(f"fetching {target.name} held-out half-steps...", flush=True)
+    print(f"reading pinned {target.name} held-out half-steps...", flush=True)
     held_out = _query(
         target,
         COVERAGE_START_JD + target.source_step_days / 2.0,
@@ -795,7 +786,8 @@ def _generate_target(target: Target, cache_dir: Path) -> dict[str, object]:
 
 
 def generate(targets: Iterable[Target], cache_dir: Path) -> dict[str, object]:
-    bodies = {target.body_id: _generate_target(target, cache_dir) for target in targets}
+    store = SourceStore(cache_dir)
+    bodies = {target.body_id: _generate_target(target, store) for target in targets}
     return {
         "schemaVersion": 1,
         "kind": KIND,
@@ -811,6 +803,7 @@ def generate(targets: Iterable[Target], cache_dir: Path) -> dict[str, object]:
             "centerConvention": "parent body center (500@parent NAIF ID)",
             "corrections": "geometric osculating elements; no light-time or aberration correction",
             "generator": "scripts/generate_moon_ephemeris.py",
+            "sourceResponses": dict(sorted(store.used.items())),
         },
         "bodies": bodies,
     }
@@ -833,11 +826,15 @@ def main() -> int:
         help="comma-separated registered body IDs",
     )
     parser.add_argument(
-        "--cache-dir",
+        "--source-dir", "--cache-dir",
+        dest="cache_dir",
         type=Path,
-        default=Path(tempfile.gettempdir()) / "solar-system-realistic-sim-horizons-cache",
-        help="response cache outside the repository",
+        default=SOURCE_DIR,
+        help="pinned source manifest and raw responses (offline only)",
     )
+    parser.add_argument("--offline", action="store_true", help="explicit default; never fetch during generation")
+    parser.add_argument("--output-path", type=Path, default=OUTPUT_PATH)
+    parser.add_argument("--allow-count-change", action="store_true", help="explicitly admit replacement with a different body set")
     args = parser.parse_args()
 
     requested = {item.strip().lower() for item in args.bodies.split(",") if item.strip()}
@@ -845,26 +842,33 @@ def main() -> int:
     if unknown:
         parser.error(f"unknown bodies: {', '.join(sorted(unknown))}")
     selected = tuple(target for target in TARGETS if target.body_id in requested)
+    if not selected:
+        parser.error("at least one body must be selected")
+    output_path = args.output_path
+    if args.write and output_path.exists() and not args.allow_count_change:
+        existing = json.loads(output_path.read_bytes())
+        if set(existing.get("bodies", {})) != requested:
+            parser.error("body set changed; use --allow-count-change or a new --output-path")
     payload = generate(selected, args.cache_dir)
     serialized = _serialized(payload)
 
     if args.write:
-        OUTPUT_PATH.write_text(serialized, encoding="utf-8")
-        size = OUTPUT_PATH.stat().st_size
-        print(f"wrote {OUTPUT_PATH.relative_to(ROOT)} ({size:,} bytes)")
+        publish_file(output_path, serialized.encode("utf-8"))
+        size = len(serialized.encode("utf-8"))
+        print(f"wrote {output_path} ({size:,} bytes)")
         for body_id, body in payload["bodies"].items():
             assert isinstance(body, dict)
             print(f"{body_id}: {json.dumps(body['validation'], separators=(',', ':'))}")
         return 0
 
-    if not OUTPUT_PATH.exists():
-        print(f"missing {OUTPUT_PATH.relative_to(ROOT)}")
+    if not output_path.exists():
+        print(f"missing {output_path}")
         return 1
-    committed = OUTPUT_PATH.read_text(encoding="utf-8")
-    if committed != serialized:
-        print(f"stale {OUTPUT_PATH.relative_to(ROOT)}; run with --write")
+    committed = output_path.read_bytes()
+    if committed != serialized.encode("utf-8"):
+        print(f"stale {output_path}; run with --write")
         return 1
-    print(f"verified {OUTPUT_PATH.relative_to(ROOT)}")
+    print(f"byte-identical {output_path}")
     return 0
 
 

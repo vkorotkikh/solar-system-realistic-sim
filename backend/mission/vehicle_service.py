@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -139,6 +140,9 @@ class VehicleService:
 
         total_propellant_initial = sum(stage.propellant_mass_kg for stage in vehicle.stages)
         total_propellant_used = sum(stage["propellant_used_kg"] for stage in stages)
+        onboard = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if not s["jettisoned"])
+        protected = sum(s["propellant_mass_kg"] * reserve_fraction for s in stages if not s["jettisoned"])
+        discarded = sum(s["propellant_mass_kg"] - s["propellant_used_kg"] for s in stages if s["jettisoned"])
 
         return {
             "feasible": feasible,
@@ -153,7 +157,11 @@ class VehicleService:
             "totalUnmetDeltaV_km_s": total_unmet_dv,
             "totalPropellantInitialKg": total_propellant_initial,
             "totalPropellantUsedKg": total_propellant_used,
-            "propellantMarginKg": max(0.0, total_propellant_initial - total_propellant_used),
+            "propellantMarginKg": max(0.0, onboard - protected),
+            "propellantMarginDefinition": "onboard_usable_excluding_protected_reserves",
+            "propellantOnboardKg": onboard,
+            "propellantReserveOnboardKg": protected,
+            "propellantDiscardedKg": discarded,
             "finalMassKg": mass_kg,
             "stageTelemetry": stages,
         }
@@ -188,11 +196,15 @@ class VehicleService:
         available = max(0.0, float(available_cargo_kg))
         if not closes(0.0):
             return None
-        if closes(available):
-            return available
-        lo, hi = 0.0, available  # more cargo never makes a burn easier, so bisect
+        # Overflowed cargo bounds still need a finite interval to bisect.
+        hi = min(available, sys.float_info.max)
+        if closes(hi):
+            return hi
+        lo = 0.0  # more cargo never makes a burn easier, so bisect
         while hi - lo > tolerance_kg:
-            mid = 0.5 * (lo + hi)
+            mid = lo + 0.5 * (hi - lo)
+            if not lo < mid < hi:
+                break
             if closes(mid):
                 lo = mid
             else:

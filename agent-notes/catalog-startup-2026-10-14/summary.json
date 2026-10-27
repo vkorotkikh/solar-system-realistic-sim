@@ -1,0 +1,57 @@
+{
+  "status": "diagnosed-outside-loader-write-set; integrated-startup-budget-failure-remains-open",
+  "profiledRevision": "b8610f4f7d544635a2b30d73491a7deaf635a386",
+  "reviewedParentRevision": "47c1d916945f87227573857ab9df6432b46d8652",
+  "productionFilesChanged": [],
+  "headless": true,
+  "renderer": "SwiftShader (software)",
+  "hardwareWindowUsed": false,
+  "productionDeliveryRerun": false,
+  "budgetMs": 2000,
+  "catalog": {
+    "storedRows": 100000,
+    "selectedRowsPerFullCountProbe": 100000,
+    "bytes": 3600012,
+    "sha256": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a"
+  },
+  "isolatedFullCount": {
+    "runs": 3,
+    "loadMs": [123.1, 108.3, 83.3],
+    "integrityAccepted": 3,
+    "latencyPassed": 3
+  },
+  "fullApplication": {
+    "runs": 2,
+    "loadMs": [3839.9, 3516.4],
+    "latencyPassed": 0,
+    "initialRenderPathOwner": "Peirce",
+    "initialRenderPath": "src/main.ts",
+    "rootCauseEvidence": "Synchronous Three.js program first-use diagnostics block the main thread while catalog fetch continuations are pending.",
+    "unimplementedCandidate": "Coordinate asynchronous program compilation, catalog readiness, and first-frame scheduling without disabling validation."
+  },
+  "glDiagnosticCallsAcrossStartupAndFollowingFrame": {
+    "getProgramInfoLog": { "count": 13, "totalMs": 504.2 },
+    "getShaderInfoLog": { "count": 26, "totalMs": 3135.6 },
+    "followingFrameLargestShaderLogMs": 1508.9,
+    "allTimeWithinCatalogLoad": false
+  },
+  "focusedTests": {
+    "filesPassed": 3,
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0,
+    "fullSuiteRerun": false
+  },
+  "hostContext": {
+    "exclusiveCpuWindow": false,
+    "secondFullAppLoadAverageStart": 1.36,
+    "secondFullAppLoadAverageEnd": 1.33,
+    "otherAgentCpuWorkPossible": true,
+    "hardwareWindowOwner": "Beauvoir"
+  },
+  "remaining": [
+    "Owner implementation and integrated startup measurement against unchanged 2000 ms budget",
+    "Coordinated real production delivery repeat after Planck cache fix and final integration",
+    "Parent full-scene hardware GPU gate"
+  ]
+}

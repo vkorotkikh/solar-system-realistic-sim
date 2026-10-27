@@ -64,7 +64,7 @@ def _forbid_session_construction(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
         ({"arrival_jd": float("inf")}, "trajectory_invalid_time_range"),
         (
             {"departure_jd": -1.0e308, "arrival_jd": 1.0e308},
-            "trajectory_invalid_time_range",
+            "trajectory_epoch_out_of_range",
         ),
         ({"arrival_jd": 2_460_500.5}, "trajectory_invalid_time_range"),
     ],
@@ -101,7 +101,7 @@ def test_direct_rejects_invalid_pair_and_times_before_session_work(
                 "tof_min_days": 100.0,
                 "tof_max_days": 100.0,
             },
-            "trajectory_invalid_time_range",
+            "trajectory_epoch_out_of_range",
         ),
     ],
 )
@@ -178,7 +178,7 @@ def test_valid_low_level_porkchop_rejects_duck_session_before_property_access() 
         )
 
 
-def test_low_level_porkchop_uses_estimated_counts_for_huge_single_tof(
+def test_low_level_porkchop_rejects_unsupported_huge_single_tof(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = PlanningContext.with_timeout(1.0)
@@ -191,17 +191,13 @@ def test_low_level_porkchop_uses_estimated_counts_for_huge_single_tof(
         return None
 
     monkeypatch.setattr(lambert_module, "_compute_lambert_leg_reserved", no_solution)
-    result = scan_porkchop_window(
-        session,
-        **{
-            **PORKCHOP_REQUEST,
-            "departure_end_jd": PORKCHOP_REQUEST["departure_start_jd"],
-            "tof_min_days": 1.0e308,
-            "tof_max_days": 1.0e308,
-        },
-        planning_context=context,
-    )
-
-    assert calls == 1
-    assert result["estimatedGridPointCount"] == 1
-    assert result["evaluatedCount"] == 1
+    with pytest.raises(TrajectoryInputError) as exc:
+        scan_porkchop_window(
+            session,
+            **{**PORKCHOP_REQUEST,
+               "departure_end_jd": PORKCHOP_REQUEST["departure_start_jd"],
+               "tof_min_days": 1.0e308, "tof_max_days": 1.0e308},
+            planning_context=context,
+        )
+    assert exc.value.code == "trajectory_epoch_out_of_range"
+    assert calls == 0

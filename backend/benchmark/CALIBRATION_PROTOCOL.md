@@ -1,5 +1,30 @@
 # Strict Reference Calibration Protocol
 
+## Reproducible comparisons at the three legacy date pairs
+
+Each current scenario additionally points to an `independent_reference` JSON artifact
+and its SHA-256. The artifact fixes actual archived JPL Horizons endpoint states,
+solar mu, AU/day units, heliocentric ecliptic J2000 geometric/TDB convention,
+zero revolutions and prograde path. Its expected velocities come from separately
+executed lamberthub 1.0.0 Izzo and Gooding implementations. The capture generator
+does not import the application solver; it also propagates the independent
+initial state with DOP853 before accepting a reference.
+
+`scripts/generate_mission_window_references.py` reproduces the artifacts offline;
+`--capture` explicitly refreshes the six raw provider captures. Exact pinned
+dependencies and commands are in `agent-notes/REMEDIATION_MISSION_2026-10-14.md`.
+
+The benchmark scores these replacements as `independent_fixed_state`, with
+3/3 comparable scenarios. The original tool entries below remain archived under
+`legacyCalibration`, explicitly incomparable. Their checksums certify file
+integrity only; no fresh GMAT/Orekit/Tudat execution is claimed. Reference
+velocities and total endpoint v-infinity are both checked, so changing a velocity
+without changing the reported scalar cannot pass. These are solver benchmarks,
+not a validation of the current Kepler/SPICE ephemeris or spacecraft propulsive
+burns. Undefined metrics remain null when no reference can be compared.
+
+## Historical tool artifact contract
+
 This benchmark suite uses strict per-scenario calibration rows that must include:
 
 - `gmat` result

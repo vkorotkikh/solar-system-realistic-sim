@@ -8,6 +8,10 @@ while exposing an independently normalized CEA WCS and exact equal-area grid.
 
 from __future__ import annotations
 
+from dataclasses import field as dataclass_field
+import urllib.request
+from .solar_http_transport import DeadlineHttpResponse, SolarHttpError
+
 import hashlib
 import http.client
 import io
@@ -238,6 +242,9 @@ class GongProvenance:
     retrieved_at_utc: str
     retrieval_timeout_s: float | None
     quality_flags: tuple[str, ...]
+    # Keep the exact, bounded artifact: scaling, conversion and monopole
+    # removal are not invertible bit-for-bit for every accepted FITS encoding.
+    native_fits_bytes: bytes = dataclass_field(default=b"", repr=False)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -859,6 +866,7 @@ def parse_gong_fits(
         retrieved_at_utc=context.retrieved_at_utc,
         retrieval_timeout_s=context.retrieval_timeout_s,
         quality_flags=("complete-pixels", "flux-balanced-roundoff-only"),
+        native_fits_bytes=expanded_fits,
     )
     return MagnetogramSnapshot(snapshot_id, balanced, grid, provenance)
 
@@ -1028,14 +1036,31 @@ class _BoundedHttpResponse:
                 self._sock.close()
 
 
+class _DeadlineGongResponse:
+    def __init__(self, response: DeadlineHttpResponse):
+        self._response = response
+        self.status = response.status
+        self.url = response.geturl()
+        self.header_items = tuple(response.headers.items())
+        self.headers = dict(self.header_items)
+
+    def read(self, size: int) -> bytes:
+        try:
+            return self._response.read(size)
+        except SolarHttpError as exc:
+            code = "total_deadline" if exc.code == "acquisition_deadline" else exc.code
+            raise GongTransportError(code, exc.detail) from None
+
+    def close(self) -> None:
+        self._response.close()
+
+
 class StdlibGongTransport:
-    """Direct HTTPS transport with automatic redirects disabled.
+    """Supervised HTTPS transport with automatic redirects disabled.
 
     DNS, TCP connection, TLS handshake, response-header, total-body-read, and per-read
-    socket-stall budgets are separate phases. The adapter uses the resolved
-    address directly, so the connection phase cannot silently repeat DNS.
-    Python's in-process resolver still cannot be forcibly killed; callers needing
-    hard kill/reap/restart guarantees must use the supervised-worker tranche.
+    socket-stall checks execute in a deadline-owned disposable worker. The
+    public entry point kills/reaps even a blocked DNS or header operation.
     """
 
     def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
@@ -1045,6 +1070,36 @@ class StdlibGongTransport:
         self._response_factory = http.client.HTTPResponse
 
     def open(
+        self,
+        url: str,
+        *,
+        total_timeout_s: float,
+        dns_timeout_s: float,
+        connect_timeout_s: float,
+        tls_timeout_s: float,
+        header_timeout_s: float,
+        read_timeout_s: float,
+        stall_timeout_s: float,
+    ) -> GongStreamResponse:
+        url = _validate_archive_url(url)
+        try:
+            response = DeadlineHttpResponse(
+                urllib.request.Request(url), total_timeout_s,
+                gong_timeouts={
+                    "dns_timeout_s": dns_timeout_s,
+                    "connect_timeout_s": connect_timeout_s,
+                    "tls_timeout_s": tls_timeout_s,
+                    "header_timeout_s": header_timeout_s,
+                    "read_timeout_s": read_timeout_s,
+                    "stall_timeout_s": stall_timeout_s,
+                },
+            )
+        except SolarHttpError as exc:
+            code = "total_deadline" if exc.code == "acquisition_deadline" else exc.code
+            raise GongTransportError(code, exc.detail) from None
+        return _DeadlineGongResponse(response)
+
+    def _open_in_worker(
         self,
         url: str,
         *,

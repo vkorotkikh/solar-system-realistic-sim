@@ -11,7 +11,6 @@
  *   npm run dev:full -- --open                # auto-open browser
  */
 
-import { spawn } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
@@ -19,9 +18,11 @@ import { existsSync } from 'node:fs';
 import {
   buildBackendArgs,
   buildFrontendArgs,
+  buildFrontendEnv,
   displayHost,
   parseDevFullConfig,
 } from './dev-full-config.mjs';
+import { localViteInvocation, spawnObserved } from './dev-launcher-process.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -55,8 +56,10 @@ Options:
 }
 
 let config;
+let frontendEnv;
 try {
   config = parseDevFullConfig(process.argv.slice(2), process.env);
+  if (!config.help) frontendEnv = buildFrontendEnv(config);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   printHelp();
@@ -84,10 +87,20 @@ process.on('SIGINT', () => teardown(0));
 process.on('SIGTERM', () => teardown(0));
 
 function spawnTagged(tag, color, command, args, opts) {
-  const child = spawn(command, args, { ...opts, stdio: ['ignore', 'pipe', 'pipe'] });
+  const pfx = prefix(tag, color);
+  const child = spawnObserved(
+    command,
+    args,
+    { ...opts, stdio: ['ignore', 'pipe', 'pipe'] },
+    (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`${pfx} Failed to start ${command}: ${message}`);
+      if (!shuttingDown) teardown(1);
+    },
+  );
+  if (!child) return null;
   children.push(child);
 
-  const pfx = prefix(tag, color);
   const pipe = (stream) => {
     stream.on('data', (chunk) => {
       const lines = chunk.toString().split('\n');
@@ -129,5 +142,8 @@ if (config.backend) {
   );
 }
 
-const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-spawnTagged('frontend', COLORS.cyan, npxCmd, buildFrontendArgs(config), { cwd: ROOT });
+if (!shuttingDown) {
+  const [, ...viteArgs] = buildFrontendArgs(config);
+  const vite = localViteInvocation(viteArgs);
+  spawnTagged('frontend', COLORS.cyan, vite.command, vite.args, { cwd: ROOT, env: frontendEnv });
+}

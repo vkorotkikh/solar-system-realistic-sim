@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.303" timestamp="2026-10-15T05:42:48.862406+00:00" hostname="Athena"><testcase classname="backend.tests.test_pfss_harmonics" name="test_schmidt_normalization_is_applied_once_in_projection[cosine]" time="0.005"><failure message="AssertionError: &#10;Not equal to tolerance rtol=0, atol=1e-10&#10;R4-M-NORMALIZATION&#10;Mismatched elements: 1 / 4 (25%)&#10;Mismatch at index:&#10; [1, 1]: 2.0000000000000004 (ACTUAL), 1.0 (DESIRED)&#10;Max absolute difference among violations: 1.&#10;Max relative difference among violations: 1.&#10; ACTUAL: array([[-3.06836e-17,  0.00000e+00],&#10;       [ 3.09395e-19,  2.00000e+00]])&#10; DESIRED: array([[0., 0.],&#10;       [0., 1.]])">longitude_mode = 'cosine'
+
+    @pytest.mark.parametrize("longitude_mode", ["cosine", "sine"])
+    def test_schmidt_normalization_is_applied_once_in_projection(longitude_mode):
+        from sim.magnetogram_grid import uniform_colatitude_grid
+        theta = (np.arange(720) + 0.5) * np.pi / 720
+        phi = np.arange(360) * 2 * np.pi / 360
+        longitude = np.cos(phi) if longitude_mode == "cosine" else np.sin(phi)
+        br = np.sin(theta)[:, None] * longitude[None, :]
+        g, h = decompose_spherical_harmonics(br, lmax=1, grid=uniform_colatitude_grid(720, 360))
+        expected_g = np.zeros((2, 2))
+        expected_h = np.zeros((2, 2))
+        (expected_g if longitude_mode == "cosine" else expected_h)[1, 1] = 1.0
+&gt;       np.testing.assert_allclose(
+            g, expected_g, rtol=0, atol=1e-10, err_msg="R4-M-NORMALIZATION",
+        )
+E       AssertionError: 
+E       Not equal to tolerance rtol=0, atol=1e-10
+E       R4-M-NORMALIZATION
+E       Mismatched elements: 1 / 4 (25%)
+E       Mismatch at index:
+E        [1, 1]: 2.0000000000000004 (ACTUAL), 1.0 (DESIRED)
+E       Max absolute difference among violations: 1.
+E       Max relative difference among violations: 1.
+E        ACTUAL: array([[-3.06836e-17,  0.00000e+00],
+E              [ 3.09395e-19,  2.00000e+00]])
+E        DESIRED: array([[0., 0.],
+E              [0., 1.]])
+
+backend/tests/test_pfss_harmonics.py:175: AssertionError</failure></testcase></testsuite></testsuites>

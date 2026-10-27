@@ -26,7 +26,7 @@ export function verifiedAsteroidCatalogStatus(sourceCount: number): AsteroidCata
     : 'unknown';
   return {
     state: 'verified',
-    text: `Asteroids: verified Phase-1 catalog (${count} rows, SHA-256)`,
+    text: `Asteroids: Phase-1 integrity checked (${count} stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified`,
   };
 }
 

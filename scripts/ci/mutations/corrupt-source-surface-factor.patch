@@ -1,16 +1,12 @@
-diff --git a/backend/sim/pfss_magnetogram.py b/backend/sim/pfss_magnetogram.py
---- a/backend/sim/pfss_magnetogram.py
-+++ b/backend/sim/pfss_magnetogram.py
-@@ -426,6 +426,6 @@ class PFSSField:
-             # Br coefficient
-             cl_br = ((l + 1) * r_ratio ** (-(l + 2)) + l * rss_pow * r_ratio ** (l - 1)) / denominator
-             # Btheta coefficient
--            cl_bt = -(r_ratio ** (-(l + 2)) - rss_pow * r_ratio ** (l - 1)) / denominator
-+            cl_bt = -(r_ratio ** (-(l + 2)) + rss_pow * r_ratio ** (l - 1)) / denominator
-             # Bphi coefficient is similar to Btheta
-             cl_bp = cl_bt  # Same radial factor for Bφ
-@@ -534,3 +534,3 @@ class PFSSField:
-             cl_br = ((l + 1) * r_ratio_inv_l2 + l * rss_pow * r_ratio_l1) / denominator
--            cl_bt = -(r_ratio_inv_l2 - rss_pow * r_ratio_l1) / denominator
-+            cl_bt = -(r_ratio_inv_l2 + rss_pow * r_ratio_l1) / denominator
-             cl_bp = cl_bt
+diff --git a/backend/sim/pfss_evaluation.py b/backend/sim/pfss_evaluation.py
+--- a/backend/sim/pfss_evaluation.py
++++ b/backend/sim/pfss_evaluation.py
+@@ -102,7 +102,7 @@ class StreamingPFSS:
+             gh = self.g[l, :l+1, None] * cosine[:l+1] + self.h[l, :l+1, None] * sine[:l+1]
+             dgh = -self.g[l, :l+1, None] * sine[:l+1] + self.h[l, :l+1, None] * cosine[:l+1]
+             radial_factor = ((l + 1) * radial + l * reflected) / self.denominators[l]
+-            tangent_factor = -(radial - reflected) / self.denominators[l]
++            tangent_factor = -(radial + reflected) / self.denominators[l]
+             br += radial_factor * np.sum(p[:l+1] * gh, axis=0)
+             bt += tangent_factor * np.sum(dp[:l+1] * gh, axis=0)
+             azimuthal = np.sum(self.orders[:l+1, None] * p[:l+1] * dgh, axis=0)

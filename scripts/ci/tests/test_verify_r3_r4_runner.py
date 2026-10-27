@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import difflib
 import json
 from importlib import metadata
 from pathlib import Path
@@ -34,33 +35,37 @@ def _sha(path: Path) -> str:
 
 
 def _patch(before: str, after: str) -> str:
-    return (
-        "diff --git a/science.py b/science.py\n"
-        "--- a/science.py\n"
-        "+++ b/science.py\n"
-        "@@ -1 +1 @@\n"
-        f"-{before}\n"
-        f"+{after}\n"
+    return "diff --git a/science.py b/science.py\n" + "".join(
+        difflib.unified_diff(
+            before.splitlines(keepends=True), after.splitlines(keepends=True),
+            fromfile="a/science.py", tofile="b/science.py",
+        )
     )
 
 
 def _fixture(
     tmp_path: Path,
     *,
-    test_body: str = "def test_invariant():\n    assert science.VALUE == 2, 'SCIENCE-001 expected calibrated value'\n",
-    mutation_after: str = "VALUE = 3",
+    test_body: str = "def test_invariant():\n    assert science.calibrated_value() == 2, 'SCIENCE-001 expected calibrated value'\n",
+    mutation_after: str = "return 3",
+    production_body: str = "def calibrated_value():\n    return 2\n",
+    mutation_source: str | None = None,
     required_node: str = "test_science.py::test_invariant",
     expected_regex: str = "SCIENCE-001",
     package_versions: dict[str, str] | None = None,
 ) -> tuple[Path, Path]:
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / "science.py").write_text("VALUE = 2\n")
+    (repo / "science.py").write_text(production_body)
     (repo / "test_science.py").write_text("import science\n" + test_body)
     patch_dir = repo / "mutations"
     patch_dir.mkdir()
     patch_path = patch_dir / "change-value.patch"
-    patch_path.write_text(_patch("VALUE = 2", mutation_after))
+    patch_path.write_text(_patch(
+        production_body,
+        mutation_source if mutation_source is not None
+        else production_body.replace("return 2", mutation_after, 1),
+    ))
     effective_packages = (
         package_versions if package_versions is not None
         else {"pytest": metadata.version("pytest")}
@@ -182,7 +187,7 @@ def test_skip_or_xfail_is_not_a_green_baseline(tmp_path):
         "import pytest\n"
         "@pytest.mark.xfail(reason='known bad')\n"
         "def test_invariant():\n"
-        "    assert science.VALUE == 3\n"
+        "    assert science.calibrated_value() == 3\n"
     )
     repo, manifest = _fixture(tmp_path, test_body=body)
 
@@ -197,7 +202,7 @@ def test_non_strict_xpass_is_not_a_green_baseline(tmp_path):
         "import pytest\n"
         "@pytest.mark.xfail(reason='stale expected failure')\n"
         "def test_invariant():\n"
-        "    assert science.VALUE == 2\n"
+        "    assert science.calibrated_value() == 2\n"
     )
     repo, manifest = _fixture(tmp_path, test_body=body)
 
@@ -220,7 +225,7 @@ def test_missing_or_wrong_dependency_version_fails_before_collection(tmp_path):
 
 
 def test_mutant_collection_error_is_invalid_evidence(tmp_path):
-    repo, manifest = _fixture(tmp_path, mutation_after="VALUE = (")
+    repo, manifest = _fixture(tmp_path, mutation_after="return (")
 
     result = _run("--repo", str(repo), "--manifest", str(manifest), "mutations")
 
@@ -240,7 +245,7 @@ def test_unrelated_failure_does_not_kill_mutant(tmp_path):
 def test_manifest_or_patch_hash_drift_fails_closed(tmp_path):
     repo, manifest = _fixture(tmp_path)
     (repo / "mutations/change-value.patch").write_text(
-        _patch("VALUE = 2", "VALUE = 4"),
+        _patch("def calibrated_value():\n    return 2\n", "def calibrated_value():\n    return 4\n"),
     )
 
     result = _run("--repo", str(repo), "--manifest", str(manifest), "mutations")
@@ -385,7 +390,7 @@ def test_baseline_executes_from_detached_head(tmp_path):
         "        ['git', 'symbolic-ref', '-q', 'HEAD'], capture_output=True\n"
         "    )\n"
         "    assert attached.returncode == 1, 'R4-BASELINE-NOT-DETACHED'\n"
-        "    assert science.VALUE == 2\n"
+        "    assert science.calibrated_value() == 2\n"
     )
     repo, manifest = _fixture(tmp_path, test_body=body)
 

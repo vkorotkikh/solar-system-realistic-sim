@@ -156,9 +156,9 @@ export class SolarSystemModel {
   }
 
   /**
-   * Applies a pure metric spatial stretching to world distances relative to the origin.
-   * This operates only on the visual coordinates and does not alter orbital velocity or
-   * Keplerian state, matching the Alcubierre "pure translation" effect.
+   * Computes independent, hypothetical display offsets. The legacy method name is
+   * retained for callers, but nothing is applied to canonical position or velocity.
+   * Renderers must consume the returned offsets separately from scientific state.
    *
    * @param direction - the propagation direction of the wave
    * @param dtSec - time delta in real seconds
@@ -172,8 +172,9 @@ export class SolarSystemModel {
     shiftVelocityFn: (distanceCm: number) => number,
     sourceDistanceCm: number,
     visualExaggeration: number = 1e10
-  ): void {
-    if (dtSec <= 0) return;
+  ): Map<string, Vector3> {
+    const offsets = new Map<string, Vector3>();
+    if (!Number.isFinite(dtSec) || dtSec <= 0) return offsets;
 
     for (const bodyId of this.updateOrder) {
       const state = this.stateById.get(bodyId);
@@ -188,7 +189,7 @@ export class SolarSystemModel {
 
       // Evaluate local shift velocity fraction (dimensionless beta)
       const localBeta = shiftVelocityFn(bodyDistFromSourceCm);
-      if (localBeta === 0) continue;
+      if (!Number.isFinite(localBeta) || localBeta === 0) continue;
 
       // Velocity in AU/s = beta * c_in_AU_per_s
       const cAuPerSec = 29979245800 / 1.495978707e13;
@@ -197,8 +198,9 @@ export class SolarSystemModel {
       // Shift displacement in AU over dtSec
       const shiftDispAu = shiftVelocityAuS * dtSec * visualExaggeration;
 
-      state.worldPosition.addScaledVector(direction, shiftDispAu);
+      offsets.set(bodyId, direction.clone().multiplyScalar(shiftDispAu));
     }
+    return offsets;
   }
 
   sampleBodyStateAt(

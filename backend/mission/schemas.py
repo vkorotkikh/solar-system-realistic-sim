@@ -113,6 +113,7 @@ class MissionRequestSchema:
     assist_pool: Optional[List[str]] = None
     ephemeris_provider: str = "auto"
     payload_mass_kg: float = 6_500.0
+    parking_altitude_km: float = 200.0
     reserve_fraction: float = 0.06
     handling_loss_fraction: float = 0.04
     risk_samples: int = 240
@@ -139,6 +140,7 @@ class MissionRequestSchema:
             "assist_pool": self.assist_pool,
             "ephemeris_provider": self.ephemeris_provider,
             "payload_mass_kg": self.payload_mass_kg,
+            "parking_altitude_km": self.parking_altitude_km,
             "reserve_fraction": self.reserve_fraction,
             "handling_loss_fraction": self.handling_loss_fraction,
             "risk_samples": self.risk_samples,
@@ -196,6 +198,9 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
     from_id = _as_str(payload.get("from_id"), "earth")
     target_id = _as_str(payload.get("target_id"), _as_str(payload.get("to_id"), "psyche"))
     return_id = _as_str(payload.get("return_id"), from_id)
+    parking_altitude = _as_float(payload.get("parking_altitude_km"), 200.0)
+    if parking_altitude <= 0.0:
+        raise ValueError("parking_altitude_km must be positive")
 
     return MissionRequestSchema(
         from_id=from_id,
@@ -207,6 +212,7 @@ def parse_mission_request(payload: Dict[str, Any]) -> MissionRequestSchema:
         assist_pool=_as_optional_str_list(payload.get("assist_pool")),
         ephemeris_provider=_as_str(payload.get("ephemeris_provider"), "auto").lower(),
         payload_mass_kg=max(1.0, _as_float(payload.get("payload_mass_kg"), 6_500.0)),
+        parking_altitude_km=parking_altitude,
         reserve_fraction=max(0.0, min(0.4, _as_float(payload.get("reserve_fraction"), 0.06))),
         handling_loss_fraction=max(0.0, min(0.6, _as_float(payload.get("handling_loss_fraction"), 0.04))),
         risk_samples=max(

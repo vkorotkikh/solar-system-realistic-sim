@@ -22,13 +22,19 @@
     "verify:moon-ephemeris": "python3 ./scripts/generate_moon_ephemeris.py --check",
     "ingest:moon-textures": "node ./scripts/ingest-moon-textures.mjs",
     "verify:moon-frames": "node ./scripts/verify-moon-frames.mjs",
-    "verify:planet-positions": "node ./scripts/verify-planet-positions.mjs"
+    "verify:planet-positions": "node ./scripts/verify-planet-positions.mjs",
+    "verify:asteroid-gpu": "node ./scripts/verify-asteroid-gpu.mjs",
+    "test:browser": "playwright test",
+    "test:types:ui": "tsc -p tsconfig.ui-tests.json --noEmit",
+    "typecheck:ui-delta": "node scripts/check-ui-types.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.19.1",
     "@types/three": "^0.182.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.4",
-    "vitest": "^3.2.4"
+    "vite": "^7.3.7",
+    "vitest": "^5.0.4"
   },
   "dependencies": {
     "three": "^0.182.0"

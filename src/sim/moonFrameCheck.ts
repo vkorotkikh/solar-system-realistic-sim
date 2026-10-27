@@ -169,11 +169,11 @@ export const PLANE_BUDGET_DEG: Record<string, PerEpoch> = {
 
   // Outer irregular satellites carried as ecliptic elements: low-precision published
   // element sets, strongly solar-perturbed, and not well described by a fixed Kepler
-  // ellipse over decades. Their planes reconstruct several degrees off even with
-  // correct frame code, and the error grows with baseline.
-  Pasiphae:  { j2000: 16.5, p30d: 15.9, p180d: 17.3, p1y: 21.4, p5y: 39.0, y2025: 101.9, y2026: 98.8 },
-  Sinope:    { j2000: 10.4, p30d: 10.8, p180d: 8.6, p1y: 10.5, p5y: 25.1, y2025: 84.0, y2026: 85.4 },
-  Carme:     { j2000: 0.5, p30d: 1.3, p180d: 4.5, p1y: 7.0, p5y: 19.0, y2025: 60.4, y2026: 61.7 }
+  // ellipse over decades. These phase-immune plane limits are the current propagator's
+  // measured errors at each fixture epoch, rounded upward after applying 2x headroom.
+  Pasiphae:  { j2000: 15.6, p30d: 15.5, p180d: 15.6, p1y: 15.2, p5y: 12.2, y2025: 15.5, y2026: 17.1 },
+  Sinope:    { j2000: 9.0, p30d: 9.3, p180d: 7.3, p1y: 6.7, p5y: 7.4, y2025: 8.1, y2026: 4.2 },
+  Carme:     { j2000: 0.6, p30d: 1.2, p180d: 2.4, p1y: 2.7, p5y: 3.3, y2025: 3.4, y2026: 6.6 }
 };
 
 /**

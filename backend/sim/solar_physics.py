@@ -7,6 +7,11 @@ from random import Random
 from typing import Any
 
 from .solar_time import current_jd_tdb
+from .solar_frames import synthetic_geometry_frame
+from .solar_active_regions import (
+    ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
+    region_lifetime, region_polarity_dirs,
+)
 
 AU_KM = 149_597_870.7
 SOLAR_RADIUS_KM = 695_700.0
@@ -35,6 +40,8 @@ def utc_now_to_julian_date() -> float:
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
+    if not all(math.isfinite(item) for item in (value, lower, upper)):
+        raise ValueError("clamp inputs must be finite")
     return min(upper, max(lower, value))
 
 
@@ -86,11 +93,7 @@ def _orthonormal_basis(base: tuple[float, float, float]) -> tuple[tuple[float, f
 
 
 def _differential_rotation_rad_day(lat_rad: float) -> float:
-    sin_lat = math.sin(lat_rad)
-    sin2 = sin_lat * sin_lat
-    # Snodgrass & Ulrich (1990) sidereal photospheric Doppler profile (deg/day).
-    deg_per_day = 14.713 - 2.396 * sin2 - 1.787 * sin2 * sin2
-    return deg_per_day * math.pi / 180.0
+    return differential_rotation_rad_day(lat_rad)
 
 
 def _slerp(
@@ -124,6 +127,8 @@ def _slerp(
 
 
 def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     if t_months <= 0.0:
         return 0.0
     ratio = t_months / max(1e-6, b)
@@ -137,6 +142,8 @@ def _hathaway_raw(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C)
 
 @lru_cache(maxsize=8)
 def _hathaway_peak_months(b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # d/dx [x^3 / (exp(x^2) - c)] = 0 with x = t/b  <=>  exp(s) * (3 - 2s) = 3c, s = x^2.
     # The left side falls monotonically from 2*e^0.5 (> 3c for c < 1) at s = 0.5 to 0 at s = 1.5,
     # so bisect there. Only c = 0 gives the textbook b*sqrt(3/2); c = 0.71 peaks at 58.4 months.
@@ -154,6 +161,8 @@ HATHAWAY_PEAK_MONTHS = _hathaway_peak_months()
 
 
 def _hathaway_normalized(t_months: float, b: float = HATHAWAY_B, c: float = HATHAWAY_C) -> float:
+    if not all(math.isfinite(item) for item in (t_months, b, c)):
+        raise ValueError("Hathaway inputs must be finite")
     # Normalise by the true maximum. Dividing by the value at b*sqrt(3/2) (the c = 0 peak)
     # overshot 1 by 3.4% and the clamp flattened the top of every cycle.
     t_peak = _hathaway_peak_months(b, c)
@@ -179,19 +188,6 @@ def _solar_cycle_number(jd: float) -> int:
     cycle_days = _cycle_length_days()
     cycles_since_25 = math.floor((jd - CYCLE_25_START_JD) / cycle_days + 1e-12)
     return CYCLE_25_NUMBER + int(cycles_since_25)
-
-
-@dataclass(frozen=True)
-class ActiveRegionSeed:
-    idx: int
-    center_lat_rad: float
-    center_lon_rad: float
-    tilt_rad: float
-    separation_rad: float
-    strength: float
-    hemisphere_sign: float
-    hale_cycle25_leading_polarity: float
-    flux_imbalance: float
 
 
 @dataclass(frozen=True)
@@ -242,45 +238,10 @@ class SolarCoronaPhysicsModel:
         self.active_regions = self._build_active_regions()
         self.seeds = self._build_flux_tube_seeds()
         from sim.pfss_magnetogram import PFSSCache
-        self._pfss_cache = PFSSCache()
+        self._pfss_cache = PFSSCache(active_regions=tuple(self.active_regions))
 
     def _build_active_regions(self) -> list[ActiveRegionSeed]:
-        rng = Random(self.seed * 31 + 7)
-        out: list[ActiveRegionSeed] = []
-        region_count = max(24, self.base_tube_count // 4)
-
-        for idx in range(region_count):
-            hemisphere = -1.0 if rng.random() < 0.5 else 1.0
-            core_lat_deg = rng.uniform(7.0, 34.0)
-            low_lat_deg = rng.uniform(3.0, 18.0)
-            blend = rng.random() ** 1.8
-            lat_deg = hemisphere * (core_lat_deg * (1.0 - blend) + low_lat_deg * blend)
-            lon_deg = rng.uniform(0.0, 360.0)
-
-            # Joy's law: tilt rises with latitude, plus observational scatter.
-            tilt_mean_deg = 0.5 * abs(lat_deg)
-            tilt_deg = hemisphere * (tilt_mean_deg + rng.uniform(-15.0, 15.0))
-            strength = _clamp(rng.betavariate(2.2, 3.0) * 1.22, 0.06, 1.0)
-            separation_deg = _clamp(2.0 + strength * 7.0 + rng.uniform(-0.9, 0.9), 2.0, 10.0)
-            # Cycle 25 is odd: north leading is negative, south leading is positive.
-            hale_cycle25_leading = -1.0 if hemisphere > 0.0 else 1.0
-            flux_imbalance = rng.uniform(-0.18, 0.18)
-
-            out.append(
-                ActiveRegionSeed(
-                    idx=idx,
-                    center_lat_rad=math.radians(lat_deg),
-                    center_lon_rad=math.radians(lon_deg),
-                    tilt_rad=math.radians(tilt_deg),
-                    separation_rad=math.radians(separation_deg),
-                    strength=strength,
-                    hemisphere_sign=hemisphere,
-                    hale_cycle25_leading_polarity=hale_cycle25_leading,
-                    flux_imbalance=flux_imbalance,
-                )
-            )
-
-        return out
+        return list(build_active_regions(self.seed, self.base_tube_count))
 
     def _build_flux_tube_seeds(self) -> list[FluxTubeSeed]:
         rng = Random(self.seed)
@@ -428,7 +389,10 @@ class SolarCoronaPhysicsModel:
     def _activity_index(self, jd: float) -> tuple[float, float]:
         t_months = _cycle_offset_months(jd)
         cycle_phase = (t_months / CYCLE_LENGTH_MONTHS) * 2.0 * math.pi
+        # Solar cycles overlap: while the new cycle rises, the preceding cycle's
+        # Hathaway envelope continues down its tail instead of vanishing at wrap.
         hathaway = _hathaway_normalized(t_months, HATHAWAY_B, HATHAWAY_C)
+        hathaway += _hathaway_normalized(t_months + CYCLE_LENGTH_MONTHS, HATHAWAY_B, HATHAWAY_C)
         rotation_mod = 0.5 + 0.5 * math.sin(((jd - J2000_JD) / CARRINGTON_ROTATION_DAYS) * 2.0 * math.pi + 0.17)
         activity = 0.06 + hathaway * 0.82 + rotation_mod * 0.10
         return _clamp(activity, 0.02, 0.98), cycle_phase
@@ -463,6 +427,11 @@ class SolarCoronaPhysicsModel:
         eruption_gate = 0.0
         if tube.family == "cme":
             eruption_gate = _clamp((rapid - 0.7) / 0.3, 0.0, 1.0) * _clamp((micro - 0.6) / 0.4, 0.0, 1.0)
+        lifetime_envelope, _, _ = region_lifetime(
+            self.active_regions[tube.region_idx], jd
+        )
+        if lifetime_envelope <= 0.0:
+            return 0.0, 0.0
         return emergence, eruption_gate
 
     def _feature_score(
@@ -478,7 +447,8 @@ class SolarCoronaPhysicsModel:
         cme_boost = 1.3 if tube.family == "cme" else 1.0
         plume_boost = 1.08 if tube.family == "plume" else 1.0
         base = tube.strength * region.strength * (0.3 + 0.7 * activity) * (0.2 + 0.8 * emergence)
-        return base * cme_boost * plume_boost + eruption_gate * (0.2 + 1.4 * tube.strength) * activity
+        lifetime, _, _ = region_lifetime(region, jd)
+        return (base * cme_boost * plume_boost + eruption_gate * (0.2 + 1.4 * tube.strength) * activity) * lifetime
 
     def _region_polarity_dirs(
         self,
@@ -491,22 +461,7 @@ class SolarCoronaPhysicsModel:
         tuple[float, float, float],
         float,
     ]:
-        lat = region.center_lat_rad
-        lon = (region.center_lon_rad + _differential_rotation_rad_day(lat) * (jd - J2000_JD)) % (2.0 * math.pi)
-        center = _normalize(_vector_from_lat_lon(lat, lon))
-
-        east = _normalize((-math.sin(lon), math.cos(lon), 0.0))
-        north = _normalize((-math.sin(lat) * math.cos(lon), -math.sin(lat) * math.sin(lon), math.cos(lat)))
-        axis = _normalize(_add(_scale(east, math.cos(region.tilt_rad)), _scale(north, math.sin(region.tilt_rad))))
-
-        half_sep = max(0.005, region.separation_rad * 0.5)
-        offset = math.tan(half_sep)
-        positive = _normalize(_add(center, _scale(axis, offset)))
-        negative = _normalize(_add(center, _scale(axis, -offset)))
-        cycle_number = _solar_cycle_number(jd)
-        north_leading_sign = -1.0 if cycle_number % 2 == 1 else 1.0
-        leading_polarity_sign = north_leading_sign * region.hemisphere_sign
-        return center, negative, positive, axis, leading_polarity_sign
+        return region_polarity_dirs(region, jd)
 
     @staticmethod
     def _jitter_direction(
@@ -530,6 +485,7 @@ class SolarCoronaPhysicsModel:
         activity: float,
         emergence: float,
         eruption_gate: float,
+        lifetime_envelope: float = 1.0,
     ) -> tuple[float, float, float, float, float]:
         # Magnetic field strength in gauss.
         field = 18.0 + 410.0 * region.strength * (0.32 + 0.68 * activity) * (0.3 + 0.7 * emergence)
@@ -539,7 +495,7 @@ class SolarCoronaPhysicsModel:
             field *= 0.78
         else:
             field *= 1.0 + 0.55 * eruption_gate
-        field = _clamp(field, 12.0, 650.0)
+        field = _clamp(field, 12.0, 650.0) * lifetime_envelope
 
         # RTV-like coupling: T ~ B^(2/7)
         temperature_mk = 1.7 * ((field / 100.0) ** (2.0 / 7.0)) * (0.82 + 0.38 * emergence + 0.24 * activity)
@@ -576,6 +532,7 @@ class SolarCoronaPhysicsModel:
     ) -> dict[str, Any]:
         del wall_jd
         region = self.active_regions[tube.region_idx]
+        lifetime_envelope, region_birth, lifetime_days = region_lifetime(region, jd)
         _, negative_dir, positive_dir, pair_axis, leading_polarity_sign = self._region_polarity_dirs(region, jd)
 
         if tube.polarity_sign >= 0:
@@ -616,6 +573,8 @@ class SolarCoronaPhysicsModel:
             width = 0.02 + region.strength * 0.1 + emergence * 0.03
 
         peak = _clamp(peak, 1.02, 4.8)
+        peak = 1.0 + (peak - 1.0) * lifetime_envelope
+        width *= lifetime_envelope
 
         field_strength_gauss, temperature_mk, electron_density_m3, alfven_speed_kms, sound_speed_kms = self._thermodynamic_state(
             tube,
@@ -623,6 +582,7 @@ class SolarCoronaPhysicsModel:
             activity,
             emergence,
             eruption_gate,
+            lifetime_envelope=lifetime_envelope,
         )
 
         if family == "cme":
@@ -646,6 +606,7 @@ class SolarCoronaPhysicsModel:
                 20.0,
                 650.0,
             )
+        speed_kms *= lifetime_envelope
 
         arc: list[list[float]] = []
         pair_normal = _normalize(_cross(source_dir, sink_dir))
@@ -709,11 +670,16 @@ class SolarCoronaPhysicsModel:
             1.0,
         )
 
+        brightness *= lifetime_envelope
+
         return {
             "id": f"tube-{tube.idx:04d}",
             "kind": family,
             "region_id": region.idx,
             "active_region_id": f"ar-{region.idx:03d}",
+            "region_birth_jd_tdb": region_birth,
+            "region_lifetime_days": lifetime_days,
+            "region_lifetime_envelope": lifetime_envelope,
             "source_polarity": source_polarity,
             "source_role": source_role,
             "leading_polarity_sign": leading_polarity_sign,
@@ -728,7 +694,7 @@ class SolarCoronaPhysicsModel:
             "alfven_speed_kms": alfven_speed_kms,
             "expansion_speed_kms": speed_kms,
             "brightness": brightness,
-            "emergence": emergence,
+            "emergence": emergence * lifetime_envelope,
             "peak_extent_solar_radii": peak,
             "arc": arc,
         }
@@ -985,6 +951,8 @@ class SolarCoronaPhysicsModel:
 
         scored: list[tuple[float, FluxTubeSeed, float, float]] = []
         for tube in self.seeds:
+            if region_lifetime(self.active_regions[tube.region_idx], jd)[0] <= 0:
+                continue
             emergence, eruption_gate = self._feature_temporal_state(tube, jd, jd)
             score = self._feature_score(tube, jd, jd, activity)
             scored.append((score, tube, emergence, eruption_gate))
@@ -1080,6 +1048,11 @@ class SolarCoronaPhysicsModel:
             "epoch_jd_tdb": float(jd),
             "wall_epoch_jd_tdb": float(response_wall_jd),
             "jd_time_scale": "TDB",
+            "geometry_frames": {
+                **{layer: synthetic_geometry_frame(jd) for layer in
+                   ("loops", "spots", "parker", "cme", "coronal_holes")},
+                "pfss": pfss_public.get("geometry_frame") if isinstance(pfss_public, dict) else None,
+            },
             # Deprecated unlabelled aliases retained for one compatibility window.
             "epoch_jd": float(jd),
             "wall_epoch_jd": float(response_wall_jd),

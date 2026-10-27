@@ -1,0 +1,11 @@
+{
+  "tangent": {
+    "count": 3065,
+    "median_deg": 0.7895985004544357,
+    "p90_deg": 5.022379924328294,
+    "max_deg": 35.995699476700935
+  },
+  "balanced_topology": 0.9981481481481482,
+  "indeterminate": 0,
+  "trace_seconds": 9.30791023100005
+}

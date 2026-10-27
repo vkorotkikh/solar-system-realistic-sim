@@ -14,6 +14,7 @@ import {
   SphereGeometry,
   Vector3
 } from 'three';
+import type { Scene, Texture } from 'three';
 
 const TWO_PI = Math.PI * 2;
 const DEG_TO_RAD = Math.PI / 180;
@@ -31,8 +32,8 @@ const GALACTIC_TO_EQUATORIAL_M31 = -0.4838350155;
 const GALACTIC_TO_EQUATORIAL_M32 = 0.7469822445;
 const GALACTIC_TO_EQUATORIAL_M33 = 0.4559837762;
 
-function bvToRgbUnit(bvValue) {
-  const bv = Math.min(2.2, Math.max(-0.4, Number.isFinite(bvValue) ? bvValue : 0.65));
+function bvToRgbUnit(bvValue: number | undefined) {
+  const bv = Math.min(2.2, Math.max(-0.4, typeof bvValue === 'number' && Number.isFinite(bvValue) ? bvValue : 0.65));
   let t;
   if (bv < 0.0) t = (bv + 0.4) / 0.4;
   else if (bv < 0.4) t = bv / 0.4;
@@ -45,7 +46,7 @@ function bvToRgbUnit(bvValue) {
   return [1.0, 0.68 - 0.2 * t, 0.33 - 0.08 * t];
 }
 
-function equatorialDegToUnit(raDeg, decDeg) {
+function equatorialDegToUnit(raDeg: number, decDeg: number) {
   const ra = raDeg * DEG_TO_RAD;
   const dec = decDeg * DEG_TO_RAD;
   const cosDec = Math.cos(dec);
@@ -56,7 +57,7 @@ function equatorialDegToUnit(raDeg, decDeg) {
   ];
 }
 
-function galacticUnitToEquatorial(xg, yg, zg) {
+function galacticUnitToEquatorial(xg: number, yg: number, zg: number) {
   return [
     GALACTIC_TO_EQUATORIAL_M11 * xg + GALACTIC_TO_EQUATORIAL_M12 * yg + GALACTIC_TO_EQUATORIAL_M13 * zg,
     GALACTIC_TO_EQUATORIAL_M21 * xg + GALACTIC_TO_EQUATORIAL_M22 * yg + GALACTIC_TO_EQUATORIAL_M23 * zg,
@@ -64,7 +65,7 @@ function galacticUnitToEquatorial(xg, yg, zg) {
   ];
 }
 
-function equatorialUnitToEcliptic(xEq, yEq, zEq) {
+function equatorialUnitToEcliptic(xEq: number, yEq: number, zEq: number) {
   return [
     xEq,
     COS_J2000_ECLIPTIC_OBLIQUITY * yEq + SIN_J2000_ECLIPTIC_OBLIQUITY * zEq,
@@ -72,7 +73,7 @@ function equatorialUnitToEcliptic(xEq, yEq, zEq) {
   ];
 }
 
-function eclipticUnitToEquatorial(xEcl, yEcl, zEcl) {
+function eclipticUnitToEquatorial(xEcl: number, yEcl: number, zEcl: number) {
   return [
     xEcl,
     COS_J2000_ECLIPTIC_OBLIQUITY * yEcl - SIN_J2000_ECLIPTIC_OBLIQUITY * zEcl,
@@ -80,7 +81,7 @@ function eclipticUnitToEquatorial(xEcl, yEcl, zEcl) {
   ];
 }
 
-export function equatorialDegToCartesian(raDeg, decDeg, radius) {
+export function equatorialDegToCartesian(raDeg: number, decDeg: number, radius: number) {
   const [xEq, yEq, zEq] = equatorialDegToUnit(raDeg, decDeg);
   const [x, y, z] = equatorialUnitToEcliptic(xEq, yEq, zEq);
   return [
@@ -90,7 +91,7 @@ export function equatorialDegToCartesian(raDeg, decDeg, radius) {
   ];
 }
 
-function galacticToCartesian(lRad, bRad, radius) {
+function galacticToCartesian(lRad: number, bRad: number, radius: number) {
   const cosB = Math.cos(bRad);
   const xg = cosB * Math.cos(lRad);
   const yg = cosB * Math.sin(lRad);
@@ -100,7 +101,7 @@ function galacticToCartesian(lRad, bRad, radius) {
   return [x * radius, y * radius, z * radius];
 }
 
-function angularSeparationDeg(ax, ay, az, bx, by, bz) {
+function angularSeparationDeg(ax: number, ay: number, az: number, bx: number, by: number, bz: number) {
   const dot = Math.min(1, Math.max(-1, ax * bx + ay * by + az * bz));
   return (Math.acos(dot) * 180) / Math.PI;
 }
@@ -124,17 +125,17 @@ function validateGalacticFrame() {
   }
 }
 
-function wrapRadians(angle) {
+function wrapRadians(angle: number) {
   const wrapped = angle % TWO_PI;
   return wrapped >= 0 ? wrapped : wrapped + TWO_PI;
 }
 
-function circularDistanceRadians(a, b) {
+function circularDistanceRadians(a: number, b: number) {
   const d = Math.abs(a - b) % TWO_PI;
   return Math.min(d, TWO_PI - d);
 }
 
-function gaussianByDistance(distance, sigma) {
+function gaussianByDistance(distance: number, sigma: number) {
   if (sigma <= 0) return 0;
   return Math.exp(-(distance * distance) / (2 * sigma * sigma));
 }
@@ -145,7 +146,7 @@ function sampleGaussian(sigma = 1) {
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(TWO_PI * u2) * sigma;
 }
 
-function galacticLongitudeWeight(lRad) {
+function galacticLongitudeWeight(lRad: number) {
   const bulge = gaussianByDistance(circularDistanceRadians(lRad, 0), 0.33);
   const scutumCentaurus = gaussianByDistance(circularDistanceRadians(lRad, 0.42), 0.27);
   const cygnus = gaussianByDistance(circularDistanceRadians(lRad, 1.45), 0.31);
@@ -155,7 +156,7 @@ function galacticLongitudeWeight(lRad) {
   return Math.max(0.16, Math.min(1, density));
 }
 
-function createStandardMilkyWayLayer(radius) {
+function createStandardMilkyWayLayer(radius: number) {
   const milkyCount = 34_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
   const milkyColors = new Float32Array(milkyCount * 3);
@@ -218,7 +219,7 @@ function createStandardMilkyWayLayer(radius) {
   return layerGroup;
 }
 
-function createEnhancedMilkyWayLayer(radius) {
+function createEnhancedMilkyWayLayer(radius: number) {
   const layerGroup = new Group();
   const milkyCount = 76_000;
   const milkyPositions = new Float32Array(milkyCount * 3);
@@ -323,15 +324,15 @@ function createEnhancedMilkyWayLayer(radius) {
   return layerGroup;
 }
 
-function createCatalogStarField(starsCatalog, radius = 18_000) {
+function createCatalogStarField(starsCatalog: readonly (readonly number[])[], radius = 18_000) {
   const baseLayers = [
     { maxMag: 2.0, size: 2.2, opacity: 0.96 },
     { maxMag: 4.2, size: 1.45, opacity: 0.82 },
     { maxMag: Infinity, size: 0.95, opacity: 0.56 }
   ];
 
-  const groupedPositions = baseLayers.map(() => []);
-  const groupedColors = baseLayers.map(() => []);
+  const groupedPositions: number[][] = baseLayers.map(() => []);
+  const groupedColors: number[][] = baseLayers.map(() => []);
 
   for (const entry of starsCatalog) {
     const [raDeg, decDeg, mag, bv] = entry;
@@ -382,7 +383,7 @@ function createCatalogStarField(starsCatalog, radius = 18_000) {
   return group;
 }
 
-function createSurveyMilkyWaySphere(surveyTexture, radius = 19_000) {
+function createSurveyMilkyWaySphere(surveyTexture: Texture, radius = 19_000) {
   // 2MASS all-sky maps are distributed in sky-view orientation where galactic longitude
   // increases to the left; mirror U so the map follows the right-handed galactic basis.
   surveyTexture.wrapS = RepeatWrapping;
@@ -421,6 +422,13 @@ export function createMilkyWayRenderer({
   starsRadius = 18_000,
   surveyRadius = 19_000,
   devMode = Boolean(import.meta.env?.DEV)
+}: {
+  scene: Scene;
+  starsCatalog: readonly (readonly number[])[];
+  surveyTexture: Texture;
+  starsRadius?: number;
+  surveyRadius?: number;
+  devMode?: boolean;
 }) {
   if (devMode) {
     validateGalacticFrame();
@@ -432,7 +440,11 @@ export function createMilkyWayRenderer({
   const surveyMilkySphere = createSurveyMilkyWaySphere(surveyTexture, surveyRadius);
   scene.add(surveyMilkySphere);
 
-  function applyMilkyWayAppearance({ useSurvey = false, useEnhanced = false, onModeChange = null } = {}) {
+  function applyMilkyWayAppearance({ useSurvey = false, useEnhanced = false, onModeChange = null }: {
+    useSurvey?: boolean;
+    useEnhanced?: boolean;
+    onModeChange?: ((mode: 'survey' | 'enhanced' | 'standard') => void) | null;
+  } = {}) {
     const mode = useSurvey ? 'survey' : useEnhanced ? 'enhanced' : 'standard';
 
     const baseLayers = backgroundStars.userData.baseLayers ?? [];

@@ -17,13 +17,23 @@
 import {
     C_CM_S, G_CGS, YR_S, MYR_S, EV_ERG, E_CHARGE,
     ISM, HELIO, KPC_CM, AU_CM,
-    CHANNEL_DEFS, SOURCE_CATALOG
+    CHANNEL_DEFS, SGR_A
 } from './smbhPhysicsConstants';
+import type {
+    ChannelPropagation,
+    H29SlipstreamMeta,
+    MessengerChannel,
+    MetricFrameDragPeak,
+    MultiMessengerTimeline,
+    PropagationOptions,
+    SmbhSource,
+    StochasticFlare
+} from './smbhTypes';
 
 const H29_ENERGY_LOG_MIN = 40;
 const H29_ENERGY_LOG_MAX = 58;
 const EV_PER_GV = 1e9;
-const H29_DELAY_BY_PROPAGATION = {
+const H29_DELAY_BY_PROPAGATION: Readonly<Partial<Record<ChannelPropagation, number>>> = {
     lightspeed: 0.12,
     near_ballistic: 0.35,
     diffusive: 1.0,
@@ -31,24 +41,24 @@ const H29_DELAY_BY_PROPAGATION = {
     sedov_taylor: 0.6
 };
 
-function clamp01(value) {
+function clamp01(value: number): number {
     return Math.max(0, Math.min(1, value));
 }
 
-function safeLog10(value) {
+function safeLog10(value: number): number {
     const n = Number(value);
     if (!Number.isFinite(n) || n <= 0) return 0;
     return Math.log10(n);
 }
 
-function resolveScenarioOptions(input) {
+function resolveScenarioOptions(input: string | undefined): { isH29: boolean } {
     const key = `${input || ''}`.toLowerCase().trim();
     return {
         isH29: ['h29', 'metric-frame-dragging-slipstream', 'metric_drag', 'h29-metric-slipstream'].includes(key)
     };
 }
 
-function estimateH29ShiftStrength(energyErg, source, thetaObsRad) {
+function estimateH29ShiftStrength(energyErg: number, source: SmbhSource, thetaObsRad: number): number {
     const theta = Number(thetaObsRad);
     const spin = clamp01(
         Number(source?.spinEstimate ?? source?.jetBetaSpine ?? source?.jetBeta ?? 0.15)
@@ -63,7 +73,7 @@ function estimateH29ShiftStrength(energyErg, source, thetaObsRad) {
     return clamp01(rawStrength);
 }
 
-function buildH29SlipstreamMeta(energyErg, source, thetaObsRad, lightTravelTimeSec) {
+function buildH29SlipstreamMeta(energyErg: number, source: SmbhSource, thetaObsRad: number, lightTravelTimeSec: number): H29SlipstreamMeta {
     const shiftStrength = estimateH29ShiftStrength(energyErg, source, thetaObsRad);
     const frameSpeedOverC = 1 + 12 * Math.pow(shiftStrength, 1.55);
     const delayCompression = Math.max(0.08, 1 - 0.93 * Math.pow(shiftStrength, 0.92));
@@ -83,7 +93,7 @@ function buildH29SlipstreamMeta(energyErg, source, thetaObsRad, lightTravelTimeS
     };
 }
 
-function applyH29SlipstreamCompression(arrivalTimeSec, propagation, h29, lightTravelTimeSec) {
+function applyH29SlipstreamCompression(arrivalTimeSec: number, propagation: ChannelPropagation, h29: H29SlipstreamMeta | null, lightTravelTimeSec: number): number {
     if (!h29?.enabled) return arrivalTimeSec;
     if (arrivalTimeSec <= 0 || h29.frontArrivalSec <= 0) return arrivalTimeSec;
 
@@ -118,7 +128,7 @@ export function metricFrameDragPeak(
     timeSec: number,
     energyErg: number,
     smbhMassG: number = SGR_A.massG
-) {
+): MetricFrameDragPeak {
     if (timeSec <= 0) return { peak: 0, r0: 0, sigmaBase: 0 };
 
     // Bubble center propagates at c
@@ -143,7 +153,7 @@ export function metricFrameDragPeak(
  * @param distanceCm - exact local distance from source
  * @param peakData - struct returned by metricFrameDragPeak
  */
-export function evaluateLocalMetricShift(distanceCm: number, peakData: { peak: number, r0: number, sigmaBase: number }): number {
+export function evaluateLocalMetricShift(distanceCm: number, peakData: MetricFrameDragPeak): number {
     if (peakData.peak === 0) return 0;
     const sigma = Math.max(distanceCm * 0.05, peakData.sigmaBase);
     const xi = (distanceCm - peakData.r0) / sigma;
@@ -159,7 +169,7 @@ export function evaluateLocalMetricShift(distanceCm: number, peakData: { peak: n
  *   r(t) = ξ₀ × (E t² / ρ)^(1/5)
  * ξ₀ ≈ 1.15 for γ = 5/3 (adiabatic index).
  */
-export function sedovTaylorRadius(energyErg, densityCgs, timeSec) {
+export function sedovTaylorRadius(energyErg: number, densityCgs: number, timeSec: number): number {
     if (timeSec <= 0 || energyErg <= 0) return 0;
     const xi0 = 1.15;
     return xi0 * Math.pow(energyErg * timeSec * timeSec / densityCgs, 0.2);
@@ -169,7 +179,7 @@ export function sedovTaylorRadius(energyErg, densityCgs, timeSec) {
  * Sedov-Taylor blast wave velocity at time t.
  *   v(t) = (2/5) × r(t) / t
  */
-export function sedovTaylorVelocity(energyErg, densityCgs, timeSec) {
+export function sedovTaylorVelocity(energyErg: number, densityCgs: number, timeSec: number): number {
     if (timeSec <= 0) return 0;
     return 0.4 * sedovTaylorRadius(energyErg, densityCgs, timeSec) / timeSec;
 }
@@ -178,7 +188,7 @@ export function sedovTaylorVelocity(energyErg, densityCgs, timeSec) {
  * Invert Sedov-Taylor to find arrival time at distance d.
  *   r = ξ₀(Et²/ρ)^(1/5) → t = (ρ d⁵ / (ξ₀⁵ E))^(1/2)
  */
-export function sedovTaylorArrivalTime(energyErg, densityCgs, distanceCm) {
+export function sedovTaylorArrivalTime(energyErg: number, densityCgs: number, distanceCm: number): number {
     if (energyErg <= 0 || distanceCm <= 0) return Infinity;
     const xi0 = 1.15;
     const xi5 = Math.pow(xi0, 5);
@@ -189,7 +199,7 @@ export function sedovTaylorArrivalTime(energyErg, densityCgs, distanceCm) {
  * Blandford-McKee ultrarelativistic blast Lorentz factor at time t.
  *   Γ(t) = (17E / (1024π ρ c⁵ t³))^(1/8)
  */
-export function blandfordMcKeeGamma(energyErg, densityCgs, timeSec) {
+export function blandfordMcKeeGamma(energyErg: number, densityCgs: number, timeSec: number): number {
     if (timeSec <= 0 || energyErg <= 0) return 1;
     const num = 17 * energyErg;
     const den = 1024 * Math.PI * densityCgs * Math.pow(C_CM_S, 5) * Math.pow(timeSec, 3);
@@ -203,7 +213,7 @@ export function blandfordMcKeeGamma(energyErg, densityCgs, timeSec) {
  * to Sedov-Taylor (non-relativistic).
  *   r_trans ≈ (3E / (4π ρ c²))^(1/3)
  */
-export function blastTransitionRadius(energyErg, densityCgs) {
+export function blastTransitionRadius(energyErg: number, densityCgs: number): number {
     return Math.pow(3 * energyErg / (4 * Math.PI * densityCgs * C_CM_S * C_CM_S), 1 / 3);
 }
 
@@ -212,7 +222,7 @@ export function blastTransitionRadius(energyErg, densityCgs) {
  *   ρ₂/ρ₁ = (γ+1)/(γ-1) for ideal gas
  * Returns 4 for γ=5/3, 7 for γ=4/3 (relativistic gas).
  */
-export function shockCompressionRatio(adiabaticIndex = 5 / 3) {
+export function shockCompressionRatio(adiabaticIndex: number = 5 / 3): number {
     return (adiabaticIndex + 1) / (adiabaticIndex - 1);
 }
 
@@ -232,7 +242,7 @@ export function shockCompressionRatio(adiabaticIndex = 5 / 3) {
  * @param {number} delta     - diffusion index (0.3–0.6; Kolmogorov: 1/3)
  * @returns {number} diffusion coefficient in cm²/s
  */
-export function crDiffusionCoefficient(energyEV, chargeZ = 1, delta = ISM.crDiffIndex) {
+export function crDiffusionCoefficient(energyEV: number, chargeZ: number = 1, delta: number = ISM.crDiffIndex): number {
     const R0_GV = ISM.crDiffRefRigidityGV;
     // For an ultrarelativistic particle, R = pc/(Ze) ~= E/(Ze).
     // With E already expressed in eV, the numerical rigidity in volts is
@@ -251,7 +261,7 @@ export function crDiffusionCoefficient(energyEV, chargeZ = 1, delta = ISM.crDiff
  * CR diffusion time from source to target (3D isotropic).
  *   t_diff = d² / (6D)
  */
-export function crDiffusionTime(distanceCm, energyEV, chargeZ = 1) {
+export function crDiffusionTime(distanceCm: number, energyEV: number, chargeZ: number = 1): number {
     const D = crDiffusionCoefficient(energyEV, chargeZ);
     if (D <= 0) return Infinity;
     return (distanceCm * distanceCm) / (6 * D);
@@ -265,7 +275,7 @@ export function crDiffusionTime(distanceCm, energyEV, chargeZ = 1) {
  *
  * Correction accounts for longer path along arm vs. shorter diffusion time.
  */
-export function spiralArmWaveguideCorrection(energyEV) {
+export function spiralArmWaveguideCorrection(energyEV: number): number {
     const pathLengthFactor = 1.2;
     const diffusionBoost = 3 + 7 * Math.min(1, energyEV / 1e15);
     return (pathLengthFactor * pathLengthFactor) / diffusionBoost;
@@ -275,7 +285,7 @@ export function spiralArmWaveguideCorrection(energyEV) {
  * CR gyroradius in a magnetic field.
  *   r_g = E / (|Z| e |B|)
  */
-export function gyroRadius(energyEV, chargeZ, bFieldG) {
+export function gyroRadius(energyEV: number, chargeZ: number, bFieldG: number): number {
     // In Gaussian cgs, r_g = pc/(|Z|eB); for E ~= pc this is E/(|Z|eB).
     return (energyEV * EV_ERG) / (Math.abs(chargeZ) * E_CHARGE * Math.abs(bFieldG));
 }
@@ -284,7 +294,7 @@ export function gyroRadius(energyEV, chargeZ, bFieldG) {
  * Hillas maximum particle energy from an astrophysical accelerator.
  *   E_max ≈ β_s × Z × (B / 1μG) × (R / 1kpc) × 10¹⁸ eV
  */
-export function hillasMaxEnergy(betaShock, chargeZ, bFieldMicroG, radiusKpc) {
+export function hillasMaxEnergy(betaShock: number, chargeZ: number, bFieldMicroG: number, radiusKpc: number): number {
     return betaShock * chargeZ * bFieldMicroG * radiusKpc * 1e18;
 }
 
@@ -292,7 +302,7 @@ export function hillasMaxEnergy(betaShock, chargeZ, bFieldMicroG, radiusKpc) {
  * CR streaming instability growth rate.
  *   Γ_growth = (n_CR / n_i) × Ω_ci × (v_drift / v_A - 1)
  */
-export function crStreamingGrowthRate(nCrOverNi, bFieldG, ionDensityCgs, vDriftCmS, vAlfvenCmS) {
+export function crStreamingGrowthRate(nCrOverNi: number, bFieldG: number, ionDensityCgs: number, vDriftCmS: number, vAlfvenCmS: number): number {
     const omegaCi = E_CHARGE * bFieldG / (1.673e-24 * C_CM_S);
     return nCrOverNi * omegaCi * Math.max(0, vDriftCmS / vAlfvenCmS - 1);
 }
@@ -305,7 +315,7 @@ export function crStreamingGrowthRate(nCrOverNi, bFieldG, ionDensityCgs, vDriftC
  * Alfvén speed in magnetized plasma.
  *   v_A = B / √(4π ρ)
  */
-export function alfvenSpeed(bFieldG, densityCgs) {
+export function alfvenSpeed(bFieldG: number, densityCgs: number): number {
     if (densityCgs <= 0) return 0;
     return bFieldG / Math.sqrt(4 * Math.PI * densityCgs);
 }
@@ -314,7 +324,7 @@ export function alfvenSpeed(bFieldG, densityCgs) {
  * Fast magnetosonic speed (MHD precursor speed).
  *   v_fast = √(v_A² + c_s²)
  */
-export function fastMagnetosonicSpeed(bFieldG, densityCgs, temperatureK) {
+export function fastMagnetosonicSpeed(bFieldG: number, densityCgs: number, temperatureK: number): number {
     const vA = alfvenSpeed(bFieldG, densityCgs);
     const mu = 0.6;
     const cs = Math.sqrt(5 / 3 * 1.381e-16 * temperatureK / (mu * 1.673e-24));
@@ -328,7 +338,7 @@ export function fastMagnetosonicSpeed(bFieldG, densityCgs, temperatureK) {
  *
  * @param {number} crPressureRatio - P_CR / P_B (normal ~ 1, shockwave ~ 100)
  */
-export function compoundCrAlfvenSpeed(bFieldG, densityCgs, crPressureRatio = 1) {
+export function compoundCrAlfvenSpeed(bFieldG: number, densityCgs: number, crPressureRatio: number = 1): number {
     const vA = alfvenSpeed(bFieldG, densityCgs);
     return vA * Math.sqrt(1 + Math.max(0, crPressureRatio));
 }
@@ -341,7 +351,7 @@ export function compoundCrAlfvenSpeed(bFieldG, densityCgs, crPressureRatio = 1) 
  * Apparent transverse velocity factor (units of c).
  *   β_app = β sin(θ) / (1 - β cos(θ))
  */
-export function apparentBeta(beta, thetaRad) {
+export function apparentBeta(beta: number, thetaRad: number): number {
     const denom = 1 - beta * Math.cos(thetaRad);
     if (denom < 1e-12) return beta;
     return (beta * Math.sin(thetaRad)) / denom;
@@ -351,7 +361,7 @@ export function apparentBeta(beta, thetaRad) {
  * Maximum possible apparent speed for a given Lorentz factor.
  *   β_app,max = Γ β ≈ Γ   (at θ_opt = arcsin(1/Γ))
  */
-export function maxApparentBeta(lorentzGamma) {
+export function maxApparentBeta(lorentzGamma: number): number {
     const beta = Math.sqrt(1 - 1 / (lorentzGamma * lorentzGamma));
     return lorentzGamma * beta;
 }
@@ -360,7 +370,7 @@ export function maxApparentBeta(lorentzGamma) {
  * Doppler factor for relativistic source.
  *   δ = 1 / [Γ (1 - β cos(θ))]
  */
-export function dopplerFactor(beta, thetaRad) {
+export function dopplerFactor(beta: number, thetaRad: number): number {
     const gamma = 1 / Math.sqrt(Math.max(1e-30, 1 - beta * beta));
     return 1 / (gamma * (1 - beta * Math.cos(thetaRad)));
 }
@@ -369,7 +379,7 @@ export function dopplerFactor(beta, thetaRad) {
  * Observed flux boost from relativistic beaming.
  *   S_obs / S_int = δ^(3+α)
  */
-export function fluxBoost(beta, thetaRad, spectralIndex = 0.7) {
+export function fluxBoost(beta: number, thetaRad: number, spectralIndex: number = 0.7): number {
     const delta = dopplerFactor(beta, thetaRad);
     return Math.pow(Math.max(delta, 1e-10), 3 + spectralIndex);
 }
@@ -378,14 +388,14 @@ export function fluxBoost(beta, thetaRad, spectralIndex = 0.7) {
  * Time compression factor in observer frame.
  *   dt_obs / dt_emit = 1 - β cos(θ)
  */
-export function timeCompressionFactor(beta, thetaRad) {
+export function timeCompressionFactor(beta: number, thetaRad: number): number {
     return 1 - beta * Math.cos(thetaRad);
 }
 
 /**
  * Lorentz factor from velocity.
  */
-export function lorentzGamma(beta) {
+export function lorentzGamma(beta: number): number {
     return 1 / Math.sqrt(Math.max(1e-30, 1 - beta * beta));
 }
 
@@ -400,7 +410,7 @@ export function lorentzGamma(beta) {
  * @param {number} pressureFactor - P_new / P_nominal (1 = normal, 10 = compressed)
  * @returns {number} heliopause distance in AU
  */
-export function heliopauseRadius(pressureFactor) {
+export function heliopauseRadius(pressureFactor: number): number {
     return HELIO.heliopauseAu / Math.sqrt(Math.max(1, pressureFactor));
 }
 
@@ -412,7 +422,7 @@ export function heliopauseRadius(pressureFactor) {
  * @param {number} blastVelocityCmS - shock velocity at the heliosphere
  * @returns {number} pressure multiplication factor
  */
-export function blastPressureFactor(blastVelocityCmS) {
+export function blastPressureFactor(blastVelocityCmS: number): number {
     const cs = HELIO.soundSpeedHeliosheath * 1e5;
     const mach = blastVelocityCmS / cs;
     if (mach <= 1) return 1;
@@ -424,7 +434,7 @@ export function blastPressureFactor(blastVelocityCmS) {
  * Time for heliosphere to reach new equilibrium after pressure change.
  *   t_eq ≈ ΔR / v_inflow
  */
-export function heliosphereEquilibriumTime(pressureFactor, inflowVelocityKmS = HELIO.lismVelocityKmS) {
+export function heliosphereEquilibriumTime(pressureFactor: number, inflowVelocityKmS: number = HELIO.lismVelocityKmS): number {
     const deltaR_AU = HELIO.heliopauseAu - heliopauseRadius(pressureFactor);
     const deltaR_km = deltaR_AU * 1.496e8;
     return deltaR_km / inflowVelocityKmS;
@@ -439,7 +449,7 @@ export function heliosphereEquilibriumTime(pressureFactor, inflowVelocityKmS = H
  *   Δh_memory ≈ fraction × h_peak
  * Christodoulou (1991), Favata (2010).
  */
-export function gwMemoryStrain(hPeak, fraction = 0.1) {
+export function gwMemoryStrain(hPeak: number, fraction: number = 0.1): number {
     return fraction * hPeak;
 }
 
@@ -449,7 +459,7 @@ export function gwMemoryStrain(hPeak, fraction = 0.1) {
  *
  * More precisely for quadrupole: h ≈ (2G E_GW) / (c⁴ d)
  */
-export function gwStrainFromEnergy(energyGW_erg, distanceCm) {
+export function gwStrainFromEnergy(energyGW_erg: number, distanceCm: number): number {
     return (2 * G_CGS * energyGW_erg) / (Math.pow(C_CM_S, 4) * distanceCm);
 }
 
@@ -457,7 +467,7 @@ export function gwStrainFromEnergy(energyGW_erg, distanceCm) {
  * Physical displacement at a given distance from GW strain.
  *   ΔL = h × L
  */
-export function gwDisplacement(strain, baselineCm) {
+export function gwDisplacement(strain: number, baselineCm: number): number {
     return strain * baselineCm;
 }
 
@@ -473,7 +483,7 @@ export function gwDisplacement(strain, baselineCm) {
  * @param {number} pathLengthCm - coherent path length (cm)
  * @param {number} sinThetaB - sin of angle between B and propagation (default 1)
  */
-export function gertsenshteinProbability(bFieldG, pathLengthCm, sinThetaB = 1) {
+export function gertsenshteinProbability(bFieldG: number, pathLengthCm: number, sinThetaB: number = 1): number {
     const prefactor = (Math.PI * Math.PI * G_CGS) / Math.pow(C_CM_S, 4);
     return prefactor * Math.pow(bFieldG * pathLengthCm * sinThetaB, 2);
 }
@@ -494,7 +504,7 @@ export function gertsenshteinProbability(bFieldG, pathLengthCm, sinThetaB = 1) {
  * @param {Object} [options]   - scenario overrides
  * @returns {Object} timeline with channels, arrival times, and metadata
  */
-export function computeMultiMessengerTimeline(source, energyErg, thetaObsRad = 0.5, options = {}) {
+export function computeMultiMessengerTimeline(source: SmbhSource, energyErg: number, thetaObsRad: number = 0.5, options: PropagationOptions = {}): MultiMessengerTimeline {
     const d = source.distanceCm;
     const tLight = d / C_CM_S;
     const scenario = resolveScenarioOptions(options.scenario || options.mode || options.hypothesis || options.model);
@@ -506,8 +516,8 @@ export function computeMultiMessengerTimeline(source, energyErg, thetaObsRad = 0
 
     const vA = alfvenSpeed(ISM.bFieldDiskG, rhoMedium);
 
-    const channels = CHANNEL_DEFS.map(def => {
-        let arrivalTimeSec;
+    const channels: MessengerChannel[] = CHANNEL_DEFS.map((def): MessengerChannel => {
+        let arrivalTimeSec: number;
 
         switch (def.propagation) {
             case 'lightspeed':
@@ -655,7 +665,7 @@ export function computeMultiMessengerTimeline(source, energyErg, thetaObsRad = 0
  * @param {number} scaleSec - display seconds for reference (default 2.2)
  * @param {number} refYears - reference year value for log scale (default 1)
  */
-export function yearsToDisplaySeconds(years, scaleSec = 2.2, refYears = 1.0) {
+export function yearsToDisplaySeconds(years: number, scaleSec: number = 2.2, refYears: number = 1.0): number {
     const y = Math.max(0, years);
     return Math.max(0.2, scaleSec * Math.log10(1 + y / Math.max(1e-6, refYears)));
 }
@@ -671,15 +681,17 @@ export function yearsToDisplaySeconds(years, scaleSec = 2.2, refYears = 1.0) {
  * @param {number} eMaxErg     - maximum flare energy
  * @returns {Array<{time: number, energy: number}>}
  */
-export function generateStochasticFlares(durationSec, ratePerSec = 0.3, alpha = 1.7, eMinErg = 1e37, eMaxErg = 1e43) {
-    const flares = [];
+export function generateStochasticFlares(durationSec: number, ratePerSec: number = 0.3, alpha: number = 1.7, eMinErg: number = 1e37, eMaxErg: number = 1e43, random: () => number = Math.random): StochasticFlare[] {
+    const flares: StochasticFlare[] = [];
+    if (!Number.isFinite(durationSec) || !Number.isFinite(ratePerSec) || ratePerSec <= 0) return flares;
     let t = 0;
     while (t < durationSec) {
-        const dt = -Math.log(Math.random()) / ratePerSec;
+        const draw = random();
+        const dt = draw > 0 && draw < 1 ? -Math.log(draw) / ratePerSec : Infinity;
         t += dt;
         if (t >= durationSec) break;
 
-        const u = Math.random();
+        const u = random();
         const oneMinusAlpha = 1 - alpha;
         const energy = Math.pow(
             Math.pow(eMinErg, oneMinusAlpha) +

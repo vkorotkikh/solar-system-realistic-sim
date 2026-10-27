@@ -12,6 +12,10 @@ HARD_MAX_ASSIST_POOL_SIZE = 8
 HARD_MAX_ROUTE_TOPOLOGIES = 401
 MAX_BODY_ID_LENGTH = 64
 ALLOWED_TRAJECTORY_OBJECTIVES = ("min_distance", "max_assist", "min_time")
+# Common operating interval, matching the simulation's supported 1990-2050
+# interval. An operating bound does not certify ephemeris accuracy.
+PLANNING_JD_MIN = 2_447_892.5
+PLANNING_JD_MAX = 2_469_807.5
 
 
 class TrajectoryRequestRejected(ValueError):
@@ -27,6 +31,17 @@ class TrajectoryRequestRejected(ValueError):
         super().__init__(message)
         self.code = str(code)
         self.context = dict(context or {})
+
+
+def validate_planning_epoch(value: float, field: str) -> float:
+    if not math.isfinite(value) or not PLANNING_JD_MIN <= value <= PLANNING_JD_MAX:
+        raise TrajectoryRequestRejected(
+            "trajectory_epoch_out_of_range",
+            f"`{field}` must lie in [{PLANNING_JD_MIN}, {PLANNING_JD_MAX}] JDTDB",
+            context={"field": field, "minimumJdTdb": PLANNING_JD_MIN,
+                     "maximumJdTdb": PLANNING_JD_MAX, "timeScale": "TDB"},
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -90,6 +105,7 @@ def _has_valid_orbit(body: Mapping[str, Any]) -> bool:
         "arg_periapsis_deg",
         "mean_anomaly_deg",
         "period_days",
+        "epoch_jd",
     )
     parsed: dict[str, float] = {}
     for name in required_elements:
@@ -98,12 +114,6 @@ def _has_valid_orbit(body: Mapping[str, Any]) -> bool:
             return False
         parsed[name] = float(value)
         if not math.isfinite(parsed[name]):
-            return False
-    epoch_jd = orbit.get("epoch_jd")
-    if epoch_jd is not None:
-        if isinstance(epoch_jd, bool) or not isinstance(epoch_jd, Real):
-            return False
-        if not math.isfinite(float(epoch_jd)):
             return False
     return (
         parsed["a_au"] > 0.0
@@ -192,6 +202,7 @@ def validate_plan_request(
             "trajectory_invalid_departure_jd",
             "`departure_jd` must be a finite number",
         )
+    validate_planning_epoch(normalized_departure_jd, "departure_jd")
     if not isinstance(objective, str):
         raise TrajectoryRequestRejected(
             "trajectory_invalid_objective",

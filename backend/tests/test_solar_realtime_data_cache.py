@@ -293,6 +293,7 @@ def test_silso_delivery_fails_closed_after_62_days_without_refetch(
         },
         "delivered_at_utc": "2026-11-02T12:00:00Z",
     }
+    assert expired["cache_state"] == "failed"
     assert fetches == 1
     assert retained["silso"] == {"date": "2026-08-31", "source_age_days": 62}
     assert retained["source_status"]["silso"] == {
@@ -547,6 +548,7 @@ def test_snapshot_delivery_fails_closed_for_unparseable_claimed_current_swpc(
     assert delivered["source_status"]["swpc"]["error"] == (
         "NOAA SWPC RTSW component timestamps are invalid at delivery"
     )
+    assert delivered["cache_state"] == "failed"
     assert provider._snapshot_cache == {}
 
 
@@ -1184,9 +1186,22 @@ def test_aia_tile_reuses_snapshot_deadline_before_binary_work(
     assert work == ["metadata"]
 
 
+def _freeze_aia_metadata_epoch(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Metadata-shape tests use one fixed observing epoch, not an increasingly
+    # stale image paired with the machine's live clock.
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:
+            instant = datetime(2026, 9, 27, 12, 34, 56, tzinfo=timezone.utc)
+            return instant.astimezone(tz) if tz is not None else instant.replace(tzinfo=None)
+
+    monkeypatch.setattr(solar_realtime_data, "datetime", FixedDatetime)
+
+
 def test_aia_metadata_is_canonicalized_before_snapshot_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _freeze_aia_metadata_epoch(monkeypatch)
     provider = SolarRealtimeDataProvider()
 
     def unavailable() -> dict[str, Any]:
@@ -1252,6 +1267,7 @@ def test_unsafe_aia_metadata_is_rejected_before_snapshot_cache(
     field: str,
     unsafe_value: str,
 ) -> None:
+    _freeze_aia_metadata_epoch(monkeypatch)
     provider = SolarRealtimeDataProvider()
 
     def unavailable() -> dict[str, Any]:
@@ -1301,7 +1317,9 @@ def test_aia_channel_declares_viewport_artifact_as_nonspatial(
         },
     )
 
-    channel = provider._fetch_helioviewer_closest(11, datetime.now(timezone.utc))
+    channel = provider._fetch_helioviewer_closest(
+        11, datetime(2026, 9, 26, 14, 59, tzinfo=timezone.utc)
+    )
 
     assert channel["artifact"] == {
         "schema": {"name": "helioviewer_viewport_tile", "version": 1},

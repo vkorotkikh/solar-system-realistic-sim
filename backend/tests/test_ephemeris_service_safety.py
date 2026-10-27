@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import socket
 import threading
@@ -33,18 +34,15 @@ from trajectory.budget import (
 )
 
 
-class _Response:
+class _Response(io.BytesIO):
+    status = 200
+    headers = {}
+
     def __init__(self, payload: bytes):
-        self._payload = payload
+        super().__init__(payload)
 
-    def __enter__(self) -> "_Response":
-        return self
-
-    def __exit__(self, *_args: object) -> None:
-        return None
-
-    def read(self, limit: int = -1) -> bytes:
-        return self._payload if limit < 0 else self._payload[:limit]
+    def geturl(self) -> str:
+        return module.HORIZONS_API_URL
 
 
 @pytest.fixture(autouse=True)
@@ -58,10 +56,12 @@ def _horizons_payload(
     *,
     target_id: str = "399",
     jd: float = 2_460_400.5,
+    echoed_jd: str | None = None,
     frame: str = "Ecliptic of J2000.0",
     center_id: str = "10",
     extra_headers: str = "",
 ) -> bytes:
+    echoed_jd = echoed_jd if echoed_jd is not None else f"{jd:.9f}"
     result = f"""
 Target body name: Earth ({target_id}) {{source: DE441}}
 Center body name: Sun ({center_id}) {{source: DE441}}
@@ -73,7 +73,7 @@ Reference frame : {frame}
 {extra_headers}
             JDTDB,            Calendar Date (TDB),                      X,                      Y,                      Z,                     VX,                     VY,                     VZ,
 $$SOE
-{jd:.9f}, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,
+{echoed_jd}, A.D. 2024-Jan-01 00:00:00.0000, 1, 2, 3, 4, 5, 6,
 $$EOE
 ABERRATIONS AND CORRECTIONS
  Geometric state vectors have NO corrections or aberrations applied.
@@ -86,13 +86,79 @@ ABERRATIONS AND CORRECTIONS
     ).encode("utf-8")
 
 
+@pytest.mark.parametrize(
+    ("case", "reason"),
+    [
+        pytest.param(
+            "not-an-object",
+            "top-level payload is not an object",
+            id="top-level-object",
+        ),
+        pytest.param(
+            "upstream-error",
+            "upstream rejected the query",
+            id="upstream-error",
+        ),
+        pytest.param(
+            "wrong-signature",
+            "unexpected provider signature",
+            id="provider-signature",
+        ),
+        pytest.param(
+            "missing-result",
+            "response omitted the vector result",
+            id="vector-result",
+        ),
+        pytest.param(
+            "duplicate-vector-table",
+            "response did not contain exactly one vector table",
+            id="vector-table-count",
+        ),
+    ],
+)
+def test_horizons_classifies_invalid_payload_envelopes(
+    case: str,
+    reason: str,
+) -> None:
+    payload: Any = json.loads(_horizons_payload())
+    if case == "not-an-object":
+        payload = []
+    elif case == "upstream-error":
+        payload["error"] = "fixture rejection"
+    elif case == "wrong-signature":
+        payload["signature"] = {"source": "not-horizons", "version": "1.2"}
+    elif case == "missing-result":
+        del payload["result"]
+    elif case == "duplicate-vector-table":
+        payload["result"] += "\n$$SOE\n$$EOE\n"
+    else:  # pragma: no cover - the parameter table owns this value.
+        raise AssertionError(f"unknown fixture case: {case}")
+
+    with pytest.raises(EphemerisProtocolError) as caught:
+        module._parse_horizons_payload(
+            payload,
+            expected_target_id="399",
+            expected_jd=2_460_400.5,
+            body_id="earth",
+        )
+
+    assert caught.value.to_dict() == {
+        "code": "ephemeris_protocol_error",
+        "message": f"Horizons returned an invalid state for `earth`: {reason}",
+        "provider": "horizons",
+        "retryable": False,
+        "bodyId": "earth",
+        "jdTdb": 2_460_400.5,
+    }
+
+
 def test_auto_is_network_free_and_pins_kepler(monkeypatch: pytest.MonkeyPatch) -> None:
     def forbidden(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("auto attempted a non-local provider")
 
     monkeypatch.setattr(EphemerisService, "_sample_spice", forbidden)
     monkeypatch.setattr(EphemerisService, "_sample_horizons", forbidden)
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
 
     service = EphemerisService(
         ALL_BODIES,
@@ -314,7 +380,7 @@ def test_horizons_uses_strict_query_bounded_timeout_and_context_budget(
         captured["timeout"] = timeout
         return _Response(_horizons_payload())
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -338,7 +404,177 @@ def test_horizons_uses_strict_query_bounded_timeout_and_context_budget(
     assert counters["remote_ephemeris_states"] == 1
     assert counters["external_requests"] == 1
     assert sample.source == "horizons"
-    assert sample.provider_revision == "DE441; horizons-api-1.2"
+    assert sample.provider_revision == "horizons-api-1.2"
+
+
+@pytest.mark.parametrize(
+    "echoed_jd",
+    [
+        pytest.param("2460400.500000000", id="exact"),
+        pytest.param("2460400.500000001", id="within-two-nanodays"),
+        pytest.param("2460400.500000002", id="at-two-nanoday-wire-bound"),
+    ],
+)
+def test_horizons_accepts_epoch_echo_through_two_nanoday_wire_bound(
+    echoed_jd: str,
+) -> None:
+    payload = json.loads(_horizons_payload(echoed_jd=echoed_jd))
+
+    vector, revision = module._parse_horizons_payload(
+        payload,
+        expected_target_id="399",
+        expected_jd=2_460_400.5,
+        body_id="earth",
+    )
+
+    assert vector == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+    assert revision == "horizons-api-1.2"
+
+
+@pytest.mark.parametrize(
+    "echoed_jd",
+    [
+        pytest.param("2460400.500000003", id="beyond-two-nanodays"),
+        pytest.param("2460401.500000000", id="clearly-wrong-day"),
+    ],
+)
+def test_horizons_rejects_epoch_echo_beyond_two_nanodays(echoed_jd: str) -> None:
+    payload = json.loads(_horizons_payload(echoed_jd=echoed_jd))
+
+    with pytest.raises(EphemerisProtocolError, match="different Julian date"):
+        module._parse_horizons_payload(
+            payload,
+            expected_target_id="399",
+            expected_jd=2_460_400.5,
+            body_id="earth",
+        )
+
+
+def test_horizons_accepts_observed_fractional_echo_and_keeps_requested_jd(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_jd = 2_460_400.987654321
+
+    def fake_urlopen(_request: Any, *, timeout: float) -> _Response:
+        return _Response(
+            _horizons_payload(
+                jd=requested_jd,
+                echoed_jd="2460400.987654320",
+            )
+        )
+
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        context=PlanningContext.with_timeout(1.0),
+    )
+
+    sample = service.sample_state("earth", requested_jd)
+
+    assert sample.jd == requested_jd
+    assert sample.position_au == (1.0, 2.0, 3.0)
+
+
+def test_horizons_revision_is_shared_across_target_source_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_urlopen(request: Any, *, timeout: float) -> _Response:
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        target = query["COMMAND"][0].strip("'")
+        payload = _horizons_payload(target_id=target, jd=float(query["TLIST"][0]))
+        if target == "499":
+            payload = payload.replace(
+                b"Earth (499) {source: DE441}", b"Mars (499) {source: mar099}"
+            )
+        elif target == "599":
+            payload = payload.replace(
+                b"Earth (599) {source: DE441}",
+                b"Jupiter (599) {source: jup365_merged}",
+            ).replace(
+                b"Sun (10) {source: DE441}",
+                b"Sun (10) {source: jup365_merged}",
+            )
+        return _Response(payload)
+
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    earth = service.sample_state("earth", 2_460_400.5)
+    mars = service.sample_state("mars", 2_460_500.5)
+    jupiter = service.sample_state("jupiter", 2_460_600.5)
+
+    # Horizons can select target-system-specific kernels for both headers; the
+    # provider revision must still describe their shared API/state contract.
+    assert (
+        earth.provider_revision
+        == mars.provider_revision
+        == jupiter.provider_revision
+        == "horizons-api-1.2"
+    )
+
+
+@pytest.mark.parametrize("header", [b"Earth (399)", b"Sun (10)"])
+def test_horizons_requires_target_and_center_source_headers(
+    monkeypatch: pytest.MonkeyPatch, header: bytes,
+) -> None:
+    payload = _horizons_payload().replace(header + b" {source: DE441}", header)
+    monkeypatch.setattr(
+        module, "_horizons_urlopen", lambda _request, *, timeout: _Response(payload)
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="omitted the source ephemeris"):
+        service.sample_state("earth", 2_460_400.5)
+
+
+@pytest.mark.parametrize("header", [b"Earth (399)", b"Sun (10)"])
+@pytest.mark.parametrize("source", [b"", b"   "])
+def test_horizons_rejects_blank_target_and_center_source_labels(
+    monkeypatch: pytest.MonkeyPatch,
+    header: bytes,
+    source: bytes,
+) -> None:
+    payload = _horizons_payload().replace(
+        header + b" {source: DE441}",
+        header + b" {source: " + source + b"}",
+    )
+    monkeypatch.setattr(
+        module, "_horizons_urlopen", lambda _request, *, timeout: _Response(payload)
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="source ephemeris"):
+        service.sample_state("earth", 2_460_400.5)
+
+
+@pytest.mark.parametrize("version", [None, "", "   ", 1.2])
+def test_horizons_requires_a_nonempty_string_api_version(
+    monkeypatch: pytest.MonkeyPatch,
+    version: object,
+) -> None:
+    payload = json.loads(_horizons_payload())
+    if version is None:
+        payload["signature"].pop("version")
+    else:
+        payload["signature"]["version"] = version
+    monkeypatch.setattr(
+        module,
+        "_horizons_urlopen",
+        lambda _request, *, timeout: _Response(json.dumps(payload).encode("utf-8")),
+    )
+    service = EphemerisService(
+        ALL_BODIES, provider="horizons", context=PlanningContext.with_timeout(1.0)
+    )
+
+    with pytest.raises(EphemerisProtocolError, match="API version"):
+        service.sample_state("earth", 2_460_400.5)
 
 
 def test_all_providers_require_exact_planning_context_before_work(
@@ -364,7 +600,7 @@ def test_all_providers_require_exact_planning_context_before_work(
     class DerivedPlanningContext(PlanningContext):
         pass
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     invalid_contexts = (
         None,
         DuckContext(),
@@ -402,7 +638,7 @@ def test_horizons_external_request_budget_stops_unique_epoch_loop(
             route_prefixes=0,
         ),
     )
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -437,7 +673,7 @@ def test_identical_horizons_requests_across_sessions_are_single_flight(
         assert release.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     contexts = [PlanningContext.with_timeout(2.0) for _ in range(20)]
     services = [
         EphemerisService(ALL_BODIES, provider="horizons", context=context)
@@ -486,7 +722,7 @@ def test_single_flight_follower_obeys_its_own_deadline(
         assert release.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     owner = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -532,7 +768,7 @@ def test_horizons_outage_cooldown_allows_only_one_half_open_probe(
 
     monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_COOLDOWN_S", 0.03)
     monkeypatch.setattr(module, "HORIZONS_PROVIDER_OUTAGE_MAX_COOLDOWN_S", 0.06)
-    monkeypatch.setattr(module.urllib.request, "urlopen", recovering_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", recovering_urlopen)
     first = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -611,7 +847,7 @@ def test_single_flight_owner_cancellation_allows_waiter_to_retry(
             assert release_first.wait(timeout=1.0)
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     owner_context = PlanningContext.with_timeout(1.0)
     waiter_context = PlanningContext.with_timeout(1.0)
     owner = EphemerisService(ALL_BODIES, provider="horizons", context=owner_context)
@@ -664,7 +900,7 @@ def test_horizons_control_failure_is_not_cached(
         calls += 1
         return _Response(_horizons_payload(jd=jd))
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     exhausted_context = PlanningContext.with_timeout(
         1.0,
         limits=PlanningLimits(
@@ -707,7 +943,7 @@ def test_horizons_success_cache_is_bounded_and_uses_full_contract_key(
         return _Response(_horizons_payload(jd=float(query["TLIST"][0])))
 
     monkeypatch.setattr(module, "HORIZONS_SUCCESS_CACHE_MAXSIZE", 2)
-    monkeypatch.setattr(module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", urlopen)
     epochs = (2_460_440.5, 2_460_441.5, 2_460_442.5)
     for jd in epochs:
         service = EphemerisService(
@@ -721,7 +957,7 @@ def test_horizons_success_cache_is_bounded_and_uses_full_contract_key(
         assert len(module._SHARED_EPHEMERIS_SUCCESS) == 2
         assert len(module._SHARED_EPHEMERIS_ALIASES) == 2
         full_key = next(iter(module._SHARED_EPHEMERIS_SUCCESS))
-        assert full_key.provider_revision == "DE441; horizons-api-1.2"
+        assert full_key.provider_revision == "horizons-api-1.2"
         assert full_key.command == "399"
         assert full_key.frame_id == EPHEMERIS_FRAME_ID
         assert full_key.center == "10"
@@ -754,7 +990,7 @@ def test_horizons_slow_transport_stops_waiting_at_absolute_deadline(
         return _Response(_horizons_payload())
 
     monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
-    monkeypatch.setattr(module.urllib.request, "urlopen", slow_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", slow_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -811,7 +1047,7 @@ def test_horizons_transport_is_globally_serialized(
                 active -= 1
 
     monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
-    monkeypatch.setattr(module.urllib.request, "urlopen", blocking_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", blocking_urlopen)
     services = [
         EphemerisService(
             ALL_BODIES,
@@ -852,6 +1088,164 @@ def test_horizons_transport_is_globally_serialized(
     assert maximum_active == 1
 
 
+def test_horizons_permit_queue_starts_a_fresh_upstream_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_entered = threading.Event()
+    guard = threading.BoundedSemaphore(1)
+    call_lock = threading.Lock()
+    received_timeouts: list[float] = []
+
+    def healthy_but_slow_urlopen(request: Any, *, timeout: float) -> _Response:
+        with call_lock:
+            received_timeouts.append(timeout)
+            if len(received_timeouts) == 1:
+                first_entered.set()
+        time.sleep(0.075)
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        return _Response(
+            _horizons_payload(
+                target_id=query["COMMAND"][0],
+                jd=float(query["TLIST"][0]),
+            )
+        )
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", healthy_but_slow_urlopen)
+    first_context = PlanningContext.with_timeout(1.0)
+    second_context = PlanningContext.with_timeout(1.0)
+    first_service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=first_context,
+    )
+    second_service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=second_context,
+    )
+    results: list[EphemerisSample] = []
+    errors: list[BaseException] = []
+
+    def sample(service: EphemerisService, body_id: str, jd: float) -> None:
+        try:
+            results.append(service.sample_state(body_id, jd))
+        except BaseException as exc:
+            errors.append(exc)
+
+    first = threading.Thread(target=sample, args=(first_service, "earth", 2_460_400.5))
+    second = threading.Thread(target=sample, args=(second_service, "mars", 2_460_401.5))
+    first.start()
+    assert first_entered.wait(timeout=1.0)
+    second.start()
+    first.join(timeout=1.0)
+    second.join(timeout=1.0)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert not errors
+    assert {sample.body_id for sample in results} == {"earth", "mars"}
+    assert len(received_timeouts) == 2
+    assert received_timeouts[1] >= 0.09
+    assert first_context.snapshot()["counters"]["provider_failures"] == 0
+    assert second_context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+
+    fresh = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=0.1,
+        context=PlanningContext.with_timeout(1.0),
+    )
+    assert fresh.sample_state("jupiter", 2_460_402.5).source == "horizons"
+    assert len(received_timeouts) == 3
+
+
+def test_horizons_queue_expiry_is_context_control_not_provider_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guard = threading.BoundedSemaphore(1)
+    assert guard.acquire(blocking=False)
+    calls = 0
+
+    def forbidden_urlopen(_request: Any, *, timeout: float) -> _Response:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("expired queued request reached upstream")
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden_urlopen)
+    context = PlanningContext.with_timeout(0.025)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=1.0,
+        context=context,
+    )
+
+    try:
+        with pytest.raises(PlanningDeadlineExceeded):
+            service.sample_state("saturn", 2_460_403.5)
+    finally:
+        guard.release()
+
+    assert calls == 0
+    assert context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+
+
+def test_horizons_cancelled_queue_admission_never_starts_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guard = threading.BoundedSemaphore(1)
+    assert guard.acquire(blocking=False)
+    calls = 0
+
+    def forbidden_urlopen(_request: Any, *, timeout: float) -> _Response:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("cancelled queued request reached upstream")
+
+    monkeypatch.setattr(module, "_HORIZONS_CONCURRENCY_GUARD", guard)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden_urlopen)
+    context = PlanningContext.with_timeout(1.0)
+    service = EphemerisService(
+        ALL_BODIES,
+        provider="horizons",
+        horizons_timeout_s=1.0,
+        context=context,
+    )
+    errors: list[BaseException] = []
+
+    def sample() -> None:
+        try:
+            service.sample_state("uranus", 2_460_404.5)
+        except BaseException as exc:
+            errors.append(exc)
+
+    queued = threading.Thread(target=sample)
+    queued.start()
+    time.sleep(0.02)
+    assert queued.is_alive()
+    context.cancel("fixture_queue_cancelled")
+    guard.release()
+    queued.join(timeout=1.0)
+
+    assert not queued.is_alive()
+    assert len(errors) == 1
+    assert isinstance(errors[0], PlanningCancelled)
+    assert calls == 0
+    assert context.snapshot()["counters"]["provider_failures"] == 0
+    with module._SHARED_EPHEMERIS_LOCK:
+        assert module._SHARED_PROVIDER_OUTAGES == {}
+    assert guard.acquire(blocking=False)
+    guard.release()
+
+
 def test_horizons_refuses_display_name_fallback_without_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -862,7 +1256,7 @@ def test_horizons_refuses_display_name_fallback_without_network(
         calls += 1
         raise AssertionError("unsupported target reached the network")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -884,7 +1278,7 @@ def test_provider_preflight_rejects_any_unsupported_target_before_network(
         calls += 1
         raise AssertionError("an incomplete target set reached Horizons")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(module, "_horizons_urlopen", forbidden)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -1040,7 +1434,7 @@ def test_horizons_rejects_incompatible_protocol_and_opens_request_circuit(
         calls += 1
         return _Response(payload)
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(module, "_horizons_urlopen", fake_urlopen)
     service = EphemerisService(
         ALL_BODIES,
         provider="horizons",
@@ -1064,7 +1458,7 @@ def test_horizons_timeout_opens_request_circuit_after_one_attempt(
         calls += 1
         raise socket.timeout("fixture timeout")
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", timed_out)
+    monkeypatch.setattr(module, "_horizons_urlopen", timed_out)
     context = PlanningContext.with_timeout(1.0)
     service = EphemerisService(
         ALL_BODIES,

@@ -1,0 +1,47 @@
+{
+  "source": {
+    "archives": 410,
+    "archiveBytes": 330929304,
+    "manifestBytes": 5119933,
+    "totalBytes": 336049237,
+    "normalizedRowBytes": 505630272
+  },
+  "published": {
+    "shards": 410,
+    "shardBytes": 59955387,
+    "indexBytes": 303149,
+    "totalBytes": 60258536,
+    "largestShard": [
+      "metis",
+      {
+        "accuracyLimits": {
+          "positionKm": 128,
+          "velocityMPerS": 10
+        },
+        "bytes": 1624520,
+        "catalogIds": [
+          10
+        ],
+        "centerId": "599",
+        "coverageEndJd": 2469807.5,
+        "coverageStartJd": 2451545,
+        "path": "be028fde6eb5b9ceb008e3c2093ac952e512d33e07618031dc57da6afec234a5.json",
+        "sha256": "be028fde6eb5b9ceb008e3c2093ac952e512d33e07618031dc57da6afec234a5",
+        "sourceEphemeris": "jup365_merged",
+        "sourceQuality": "Captured JPL numerical solution; interpolation limits are not observational uncertainties",
+        "targetId": "516"
+      }
+    ],
+    "gzipLevel9ShardBytes": 28477004,
+    "gzipLevel9IndexBytes": 32935
+  },
+  "build": {
+    "totalBytes": 65767858,
+    "assets": {
+      "index-BRehrQiv.js": 938094,
+      "index-DJ77x5uO.css": 22744,
+      "modelWorker-DC7iGepg.js": 26961
+    }
+  },
+  "baseArtifactBytes": 6765158
+}

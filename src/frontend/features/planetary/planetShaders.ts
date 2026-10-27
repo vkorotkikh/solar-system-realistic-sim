@@ -1,5 +1,5 @@
 // src/frontend/features/planetary/planetShaders.ts
-import { ShaderMaterial, Color, Vector3 } from 'three';
+import { ShaderMaterial, Color, Matrix4, Vector3 } from 'three';
 
 const fbmGLSL = /* glsl */`
 // Hash and noise functions for GLSL
@@ -106,6 +106,9 @@ ${fbmGLSL}
 
 uniform float uRadius;
 uniform float uDisplacementScale;
+uniform mat4 uPatchToCube;
+uniform float uSkirtDepth;
+attribute float aSkirt;
 uniform int uPlanetType; // 0=Earth, 1=Moon, 2=Mars
 
 varying vec2 vUv;
@@ -161,21 +164,23 @@ float getElevation(vec3 p) {
 void main() {
     vUv = uv;
     
-    // The geometry is a subdivided plane. 
-    // We normalize its local position to map it onto a unit sphere.
-    vec3 spherePos = normalize(position);
+    // Orient and translate the patch onto its cube face BEFORE projection.
+    // Face centres are nonzero cube points, including the two polar faces.
+    vec3 cubePosition = (uPatchToCube * vec4(position, 1.0)).xyz;
+    vec3 spherePos = normalize(cubePosition);
     vSpherePosition = spherePos;
     
     float elevation = getElevation(spherePos);
     vHeight = elevation;
     
     // Displace along the sphere normal
-    vec3 displacedPos = spherePos * (uRadius + elevation * uDisplacementScale);
+    vec3 displacedPos = spherePos * (uRadius + elevation * uDisplacementScale - aSkirt * uSkirtDepth);
     vPosition = displacedPos;
     
     // Calculate normals using finite differences
     float eps = 0.001;
-    vec3 t1 = normalize(cross(spherePos, vec3(0.0, 1.0, 0.0)));
+    vec3 referenceAxis = abs(spherePos.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 t1 = normalize(cross(spherePos, referenceAxis));
     vec3 t2 = normalize(cross(spherePos, t1));
     
     vec3 pLeft = normalize(spherePos - t1 * eps);
@@ -206,6 +211,7 @@ export const planetFragmentShader = /* glsl */`
 uniform vec3 uColorBase;
 uniform int uPlanetType;
 uniform vec3 uLightDirection;
+uniform vec3 uCameraPositionLocal;
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -334,7 +340,7 @@ void main() {
     
     // Atmospheric scattering rim for Earth/Mars
     if (uPlanetType == 0 || uPlanetType == 2) {
-        vec3 viewDir = normalize(-vPosition); // crude view dir assuming camera is near
+        vec3 viewDir = normalize(uCameraPositionLocal - vPosition);
         float rim = 1.0 - max(0.0, dot(viewDir, normalize(vSpherePosition)));
         rim = smoothstep(0.6, 1.0, rim);
         vec3 atmosColor = uPlanetType == 0 ? vec3(0.3, 0.6, 1.0) : vec3(0.8, 0.4, 0.2);
@@ -365,6 +371,9 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
         vertexShader: planetVertexShader,
         fragmentShader: planetFragmentShader,
         uniforms: {
+            uPatchToCube: { value: new Matrix4() },
+            uSkirtDepth: { value: 0 },
+            uCameraPositionLocal: { value: new Vector3() },
             uRadius: { value: radius },
             uDisplacementScale: { value: displacementScale },
             uPlanetType: { value: planetType },
