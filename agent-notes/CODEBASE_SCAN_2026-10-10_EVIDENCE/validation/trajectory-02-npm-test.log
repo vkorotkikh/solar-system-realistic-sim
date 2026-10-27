@@ -1,0 +1,27 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /tmp/solar-sweep-2026-10-10-j1gnowo_/trajectory
+
+ ✓ src/constants.test.ts (3 tests) 3ms
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 6ms
+ ✓ src/frontend/app/plannerController.test.ts (7 tests) 15ms
+ ✓ src/frontend/features/trajectory/localPlanner.test.ts (9 tests) 31ms
+ ✓ src/frontend/features/trajectory/index.test.ts (10 tests) 84ms
+ ✓ src/sim/orbitMath.test.ts (1 test) 3ms
+ ✓ src/sim/sourceFrameOrbit.test.ts (4 tests) 4ms
+ ✓ src/sim/moonEphemeris.test.ts (10 tests) 9ms
+ ✓ src/workers/modelWorkerContract.test.ts (6 tests) 23ms
+ ✓ src/sim/planetPositions.horizons.test.ts (66 tests) 16ms
+ ✓ src/sim/catalog.test.ts (5 tests) 29ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (10 tests) 41ms
+ ✓ src/sim/solarSystemModel.test.ts (2 tests) 38ms
+ ✓ src/sim/moonFrames.horizons.test.ts (27 tests) 34ms
+
+ Test Files  14 passed (14)
+      Tests  162 passed (162)
+   Start at  03:23:26
+   Duration  1.26s (transform 1.79s, setup 0ms, collect 6.24s, tests 335ms, environment 2ms, prepare 1.63s)
+

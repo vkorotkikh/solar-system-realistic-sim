@@ -15,6 +15,19 @@
  *   - public propagator units: AU, AU/day
  */
 
+import moonCatalog from '../data/moons.json';
+
+let moonIdentities: Map<string, (typeof moonCatalog)[number]> | undefined;
+
+// Keep catalog validation behind the parser. Propagation-only workers must not
+// retain the catalog merely because they import this module's numerical helpers.
+function moonIdentityFor(bodyId: string) {
+  moonIdentities ??= new Map(moonCatalog.map(moon => [moon.name.toLowerCase(), moon]));
+  return moonIdentities.get(bodyId);
+}
+const PARENT_CENTERS: Record<string, string> = {
+  Earth: '399', Mars: '499', Jupiter: '599', Saturn: '699', Uranus: '799', Neptune: '899', Pluto: '999'
+};
 const AU_KM = 149_597_870.7;
 const DAY_SECONDS = 86_400;
 const DEG_TO_RAD = Math.PI / 180;
@@ -199,6 +212,36 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     if (provenance.frame !== 'ECLIPJ2000' || provenance.timeScale !== 'TDB') {
       throw new Error(`${context} has an incompatible frame or time scale`);
     }
+    const identity = moonIdentityFor(bodyId);
+    if ((identity && (provenance.targetId !== String(identity.iauCode) ||
+        provenance.centerId !== PARENT_CENTERS[identity.planet])) ||
+        (untypedBody.targetId !== undefined && untypedBody.targetId !== provenance.targetId)) {
+      throw new Error(`${context}.provenance contradicts its catalog target or parent center`);
+    }
+    // These two exceptional sources require their explicit scientific domain.
+    // Neither a generic continuity flag nor a nonempty provenance string replaces it.
+    const domain = untypedBody.sourceDomain;
+    if (bodyId === 'daphnis') {
+      if (!isRecord(domain) ||
+          domain.kind !== 'piecewise legacy Cassini imaging fit, not a current numerical solution' ||
+          domain.kernelRelease !== '2016-10-11' || domain.observationsThrough !== '2016-07-16' ||
+          domain.handoffMeaning !== 'provider fit changes, not physical impulses; right-hand state at shared epoch' ||
+          !Array.isArray(domain.modelCoverageJd) || domain.modelCoverageJd.length !== 2 ||
+          domain.modelCoverageJd[0] !== coverageStartJd || domain.modelCoverageJd[1] !== coverageEndJd ||
+          !Array.isArray(domain.descriptorCoverageJd) || domain.descriptorCoverageJd.length !== 2 ||
+          domain.descriptorCoverageJd[0] !== 2433276.5 || domain.descriptorCoverageJd[1] !== 2469816.5 ||
+          coverageStartJd < domain.descriptorCoverageJd[0] || coverageEndJd > domain.descriptorCoverageJd[1] ||
+          provenance.sourceEphemeris !== 'SAT393 Daphnis, legacy Cassini-fit type 17') {
+        throw new Error(`${context} must retain its dated legacy source qualification and native domain`);
+      }
+    }
+    if (bodyId === 's2023_s38' && (!isRecord(domain) ||
+        domain.kind !== 'geometric Cartesian states; no elliptic-conic assumption' ||
+        !Array.isArray(domain.coverageJd) || domain.coverageJd.length !== 2 ||
+        domain.coverageJd[0] !== coverageStartJd || domain.coverageJd[1] !== coverageEndJd ||
+        !cartesian || provenance.sourceEphemeris !== 'sat455_merged_DE440')) {
+      throw new Error(`${context} must retain its geometric Cartesian source domain`);
+    }
 
     for (const hashField of ['sourceRowsSha256', 'heldOutRowsSha256']) {
       if (typeof untypedBody[hashField] !== 'string' || !/^[0-9a-f]{64}$/.test(untypedBody[hashField])) {
@@ -280,6 +323,26 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
       throw new Error(`${context}.validation exceeds its declared accuracy limit`);
     }
     const handoffs = untypedBody.sourceDiscontinuities;
+    const audit = validation.postSelectionCrossValidation;
+    if (audit !== undefined || bodyId === 's2023_s38') {
+      if (!isRecord(audit) || audit.usedForFitOrSubdivision !== false ||
+          typeof audit.sampleCount !== 'number' || !Number.isInteger(audit.sampleCount) || audit.sampleCount <= 0 ||
+          typeof audit.rowsSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(audit.rowsSha256)) {
+        throw new Error(`${context}.validation must retain an independent post-selection audit`);
+      }
+      for (const [field, limit] of [['positionErrorKm', positionLimit], ['velocityErrorMPerS', velocityLimit]] as const) {
+        const stats = audit[field];
+        if (!isRecord(stats)) throw new Error(`${context}.validation audit statistics are missing`);
+        let previous = 0;
+        for (const percentile of ['p50', 'p95', 'p99', 'max']) {
+          const statistic = requireFiniteNumber(stats, percentile, `${context}.validation.audit.${field}`);
+          if (statistic < previous || statistic > limit) {
+            throw new Error(`${context}.validation audit exceeds its accuracy limit or has invalid statistics`);
+          }
+          previous = statistic;
+        }
+      }
+    }
     if (handoffs !== undefined && (!cartesian || !Array.isArray(handoffs) || handoffs.length === 0 ||
         handoffs.some((jd, index) => typeof jd !== 'number' || !Number.isFinite(jd) ||
           jd <= coverageStartJd || jd >= coverageEndJd || (index > 0 && jd <= handoffs[index - 1])))) {
@@ -288,6 +351,11 @@ export function parseMoonEphemerisArtifact(value: unknown): MoonEphemerisArtifac
     if (!isRecord(validation.boundaryContinuity) ||
         validation.boundaryContinuity.runtimeStateContinuous !== (handoffs === undefined)) {
       throw new Error(`${context}.validation does not certify runtime state continuity`);
+    }
+    if ((handoffs === undefined && validation.boundaryContinuity.sourceDiscontinuities !== undefined) ||
+        (bodyId === 'daphnis' && (!Array.isArray(handoffs) || handoffs.length !== 2 ||
+          handoffs[0] !== 2455197.5 || handoffs[1] !== 2457388.5))) {
+      throw new Error(`${context}.validation contradicts the native source handoffs`);
     }
     if (Array.isArray(handoffs)) {
       const evidence = validation.boundaryContinuity.sourceDiscontinuities;

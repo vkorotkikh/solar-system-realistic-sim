@@ -137,10 +137,22 @@ export function fallbackSolarActivityFromJulianDate(julianDate: number): number 
   const cycleDays = CYCLE_LENGTH_MONTHS * MEAN_MONTH_DAYS;
   const cycleOffsetDays = ((julianDate - CYCLE_25_START_JD) % cycleDays + cycleDays) % cycleDays;
   const tMonths = cycleOffsetDays / MEAN_MONTH_DAYS;
-  const hathaway = hathawayNormalized(tMonths);
+  // Preserve the dying tail of the preceding cycle across the modulo boundary.
+  const hathaway = hathawayNormalized(tMonths) + hathawayNormalized(tMonths + CYCLE_LENGTH_MONTHS);
   const rotationMod = 0.5 + 0.5 * Math.sin(((julianDate - J2000_JD) / 27.2753) * TWO_PI + 0.17);
   const activity = 0.06 + hathaway * 0.82 + rotationMod * 0.1;
   return Math.max(0.02, Math.min(0.98, activity));
+}
+
+export function resolveMagneticFieldActivity(
+  activityOverride: unknown,
+  stateActivity: unknown,
+): number {
+  return clampUnit(
+    finiteOrNull(activityOverride)
+      ?? finiteOrNull(stateActivity)
+      ?? 0.5,
+  );
 }
 
 /**
@@ -242,6 +254,12 @@ export function createSunController({
     return solarLayerFrames[layer] ? solarPhysicsState : null;
   }
 
+  function decorativeMotionSuppressed() {
+    return simState.paused === true
+      || Number(simState.timeScaleDaysPerSec ?? 1) <= 0
+      || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  }
+
   function updateSurfaceFrame(jdTdb: number) {
     if (!sunSpinGroup) return;
     sunSpinGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(jdTdb));
@@ -254,6 +272,11 @@ export function createSunController({
   }
 
   function buildSolarFeatureBlendView(featureLimit = 220) {
+    if (solarPhysicsFeatureSetTarget && decorativeMotionSuppressed()) {
+      solarPhysicsFeatureSetCurrent = solarPhysicsFeatureSetTarget;
+      solarPhysicsFeatureSetTarget = null;
+      solarPhysicsBlendStartMs = decorativeTimeSec * 1000;
+    }
     const bv = buildSolarFeatureBlendViewImpl({
       currentFeatureSet: solarPhysicsFeatureSetCurrent,
       targetFeatureSet: solarPhysicsFeatureSetTarget,
@@ -363,9 +386,10 @@ export function createSunController({
 
   function rebuildMagneticFieldLines(force = false, activityOverride: number | null | undefined = null) {
     if (!sunVisualNode) return;
-    const activity = Number.isFinite(Number(activityOverride))
-      ? clampUnit(Number(activityOverride))
-      : clampUnit(Number(solarPhysicsState?.activity_index) || 0.5);
+    const activity = resolveMagneticFieldActivity(
+      activityOverride,
+      solarPhysicsState?.activity_index,
+    );
     const nextSignature = buildMagneticFieldSignature(activity);
     if (!force && sunMagneticFieldGroup && sunMagneticFieldSignature === nextSignature) return;
 
@@ -521,7 +545,7 @@ export function createSunController({
     node.add(sunFlareGroup);
     sunFlareGroup.quaternion.setFromRotationMatrix(solarSurfaceToEclipticMatrix(J2000_JD));
     sunFlareGroup.userData.lockBodySpin = true;
-    solarFlareManager = new SolarFlareManager(sunFlareGroup);
+    solarFlareManager = new SolarFlareManager(sunFlareGroup, spinGroup);
 
     rebuildMagneticFieldLines(true, 0.5);
 
@@ -596,9 +620,7 @@ export function createSunController({
     const wallSec = Number.isFinite(realtimeSeconds) ? realtimeSeconds : performance.now() * 0.001;
     const rawDt = Math.max(0, wallSec - (lastTimeSec ?? wallSec));
     const forward = lastJulianDate !== null && julianDate > lastJulianDate;
-    const reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const motionEnabled = forward && simState.paused !== true
-      && Number(simState.timeScaleDaysPerSec ?? 1) > 0 && !reducedMotion;
+    const motionEnabled = forward && !decorativeMotionSuppressed();
     // SCN-038: physical inputs use JD; these procedural visuals and compressed
     // AGN timelines are decorative. Freeze during pause/reverse/reduced motion,
     // discard wall-clock catch-up, and keep shader time near zero for precision.
@@ -610,8 +632,8 @@ export function createSunController({
     const fallbackActivity = fallbackSolarActivityFromJulianDate(julianDate);
     const solarBlendView = buildSolarFeatureBlendView(480);
     const activity = clampUnit(
-      finiteOrNull(solarBlendView?.activityIndex)
-        ?? finiteOrNull(solarPhysicsState?.activity_index)
+      finiteOrNull(solarPhysicsState?.activity_index)
+        ?? finiteOrNull(solarBlendView?.activityIndex)
         ?? fallbackActivity
     );
     const observationState = getRenderableObservationState(Date.now());
@@ -643,8 +665,8 @@ export function createSunController({
     const effectiveActivity = clampUnit(activity);
     const sunRadiusAu = getSunRadiusAu();
     const geometryBlendView = solarLayerFrames.loops ? solarBlendView : null;
-    const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots, julianDate);
-    const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme, J2000_JD);
+    const spotState = solarFeaturesInSurfaceFrame(geometryStateFor('spots'), solarLayerFrames.spots);
+    const cmeState = solarFeaturesInSurfaceFrame(geometryStateFor('cme'), solarLayerFrames.cme);
 
     updateSunMaterialUniforms({
       sunSurfaceMaterial,
@@ -656,13 +678,13 @@ export function createSunController({
       coronaHue: observationControls.coronaHue ?? undefined,
       sunDisplayRadius: sunRadiusAu,
       activeChannel: activeObservationChannel ?? undefined,
-      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), julianDate)
+      coronalHoleData: solarHolesInSurfaceFrame(geometryStateFor('coronal_holes'), solarLayerFrames.coronal_holes)
     });
     updateSunspotUniforms(sunSurfaceMaterial, effectiveActivity, timeSec, spotState ?? undefined);
 
     if (solarFlareManager) {
       solarFlareManager.update(Math.min(0.1, dtSec), effectiveActivity, sunRadiusAu, cmeState, timeSec);
-      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams(), julianDate));
+      updateSunFlaresUniforms(sunSurfaceMaterial, solarFlareParamsInSurfaceFrame(solarFlareManager.getActiveFlaresParams()));
     }
 
     if (sunMagneticFieldGroup) {

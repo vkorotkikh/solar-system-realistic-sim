@@ -1,0 +1,12 @@
+[
+  {
+    "branch": "main",
+    "returncode": 0,
+    "log": "main-with-historical-archive.log"
+  },
+  {
+    "branch": "trajectory",
+    "returncode": 0,
+    "log": "trajectory-with-historical-archive.log"
+  }
+]

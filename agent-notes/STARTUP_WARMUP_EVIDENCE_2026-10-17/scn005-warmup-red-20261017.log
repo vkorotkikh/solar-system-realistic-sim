@@ -1,0 +1,173 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-scn005-startup-20261017
+
+ ❯ src/frontend/app/rendererWarmup.test.ts (9 tests | 7 failed) 13ms
+   ❯ owned renderer shader warmup (9)
+     × waits for every program created by compilation before checking links 5ms
+     × uses native synchronous link checks when parallel completion is unavailable 2ms
+     × rejects a failed linked program and removes all owned polling 1ms
+     × does not compile an already cancelled startup 1ms
+     × cancels pending polling before a caller can dispose its programs 1ms
+     × bounds a driver that never reports completion 1ms
+     × rejects context loss before the next program query 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > waits for every program created by compilation before checking links
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:43:19
+     41|     const pending = f.start().then(() => { ready = true; });
+     42|     f.complete.add(f.first); await vi.advanceTimersByTimeAsync(10);
+     43|     expect(ready).toBe(false);
+       |                   ^
+     44|     expect(f.reads.filter(([, kind]) => kind === 35714)).toEqual([]);
+     45|     f.complete.add(f.second); await vi.advanceTimersByTimeAsync(10); a…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > uses native synchronous link checks when parallel completion is unavailable
+AssertionError: expected [] to deeply equal [ [ {}, 35714 ], [ {}, 35714 ] ]
+
+- Expected
++ Received
+
+- [
+-   [
+-     {},
+-     35714,
+-   ],
+-   [
+-     {},
+-     35714,
+-   ],
+- ]
++ []
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:54:21
+     52|     vi.useFakeTimers(); const f = fixture(false);
+     53|     await f.start();
+     54|     expect(f.reads).toEqual([[f.first, 35714], [f.second, 35714]]);
+       |                     ^
+     55|     expect(vi.getTimerCount()).toBe(0);
+     56|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > rejects a failed linked program and removes all owned polling
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:60:27
+     58|   it('rejects a failed linked program and removes all owned polling', …
+     59|     vi.useFakeTimers(); const f = fixture(); f.complete.add(f.first); …
+     60|     await expect(f.start()).rejects.toThrow('fixture shader link failu…
+       |                           ^
+     61|     expect(vi.getTimerCount()).toBe(0);
+     62|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > does not compile an already cancelled startup
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:66:56
+     64|   it('does not compile an already cancelled startup', async () => {
+     65|     const f = fixture(); const controller = new AbortController(); con…
+     66|     await expect(f.start({ signal: controller.signal })).rejects.toMat…
+       |                                                        ^
+     67|     expect(f.compileCount).toBe(0); expect(f.reads).toEqual([]);
+     68|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > cancels pending polling before a caller can dispose its programs
+AssertionError: expected undefined to match object { name: 'AbortError' }
+
+- Expected:
+{
+  "name": "AbortError",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:75:27
+     73|     controller.abort(); const readCount = f.reads.length;
+     74|     f.renderer.info.programs = []; await vi.advanceTimersByTimeAsync(1…
+     75|     expect(await pending).toMatchObject({ name: 'AbortError' });
+       |                           ^
+     76|     expect(f.reads).toHaveLength(readCount); expect(vi.getTimerCount()…
+     77|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > bounds a driver that never reports completion
+AssertionError: expected undefined to match object { message: StringContaining{…} }
+
+- Expected:
+{
+  "message": StringContaining "timed out",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:83:27
+     81|     const pending = f.start({ timeoutMs: 25 }).catch(error => error);
+     82|     await vi.advanceTimersByTimeAsync(26);
+     83|     expect(await pending).toMatchObject({ message: expect.stringContai…
+       |                           ^
+     84|     const readCount = f.reads.length; await vi.advanceTimersByTimeAsyn…
+     85|     expect(f.reads).toHaveLength(readCount); expect(vi.getTimerCount()…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/frontend/app/rendererWarmup.test.ts > owned renderer shader warmup > rejects context loss before the next program query
+AssertionError: expected undefined to match object { message: StringContaining "context" }
+
+- Expected:
+{
+  "message": StringContaining "context",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/app/rendererWarmup.test.ts:91:27
+     89|     vi.useFakeTimers(); const f = fixture(); const pending = f.start()…
+     90|     f.loseContext(); const readCount = f.reads.length; await vi.advanc…
+     91|     expect(await pending).toMatchObject({ message: expect.stringContai…
+       |                           ^
+     92|     expect(f.reads).toHaveLength(readCount); expect(vi.getTimerCount()…
+     93|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 2 passed (9)
+   Start at  15:28:20
+   Duration  136ms (import 41%, transform 34%, tests 22%, worker 3%)
+

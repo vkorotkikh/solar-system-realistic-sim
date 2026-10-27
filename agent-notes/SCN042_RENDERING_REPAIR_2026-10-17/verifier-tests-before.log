@@ -1,0 +1,77 @@
+EEEEEEEE....
+======================================================================
+ERROR: test_expected_physical_renderer_is_accepted (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_expected_physical_renderer_is_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 22, in test_expected_physical_renderer_is_accepted
+    verifier.require_hardware("ANGLE D3D12 NVIDIA GeForce RTX 5090", "NVIDIA GeForce RTX 5090")
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_missing_mismatched_or_empty_expectation_is_rejected (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_missing_mismatched_or_empty_expectation_is_rejected) (renderer='', expected='NVIDIA')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 32, in test_missing_mismatched_or_empty_expectation_is_rejected
+    verifier.require_hardware(renderer, expected)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_missing_mismatched_or_empty_expectation_is_rejected (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_missing_mismatched_or_empty_expectation_is_rejected) (renderer='AMD Radeon', expected='NVIDIA')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 32, in test_missing_mismatched_or_empty_expectation_is_rejected
+    verifier.require_hardware(renderer, expected)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_missing_mismatched_or_empty_expectation_is_rejected (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_missing_mismatched_or_empty_expectation_is_rejected) (renderer='NVIDIA', expected='')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 32, in test_missing_mismatched_or_empty_expectation_is_rejected
+    verifier.require_hardware(renderer, expected)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_software_renderer_cannot_match_a_permissive_expectation (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_software_renderer_cannot_match_a_permissive_expectation) (renderer='ANGLE SwiftShader')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 27, in test_software_renderer_cannot_match_a_permissive_expectation
+    verifier.require_hardware(renderer, renderer)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_software_renderer_cannot_match_a_permissive_expectation (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_software_renderer_cannot_match_a_permissive_expectation) (renderer='llvmpipe (LLVM)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 27, in test_software_renderer_cannot_match_a_permissive_expectation
+    verifier.require_hardware(renderer, renderer)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_software_renderer_cannot_match_a_permissive_expectation (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_software_renderer_cannot_match_a_permissive_expectation) (renderer='softpipe')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 27, in test_software_renderer_cannot_match_a_permissive_expectation
+    verifier.require_hardware(renderer, renderer)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+======================================================================
+ERROR: test_software_renderer_cannot_match_a_permissive_expectation (scripts.test_solar_main_frame_verifier.HardwareIdentityTests.test_software_renderer_cannot_match_a_permissive_expectation) (renderer='Software Rasterizer')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/nomad/ai/projects/worktrees/solar-scn042-rendering-20261017/scripts/test_solar_main_frame_verifier.py", line 27, in test_software_renderer_cannot_match_a_permissive_expectation
+    verifier.require_hardware(renderer, renderer)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'solar_frame_verifier' has no attribute 'require_hardware'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.011s
+
+FAILED (errors=8)

@@ -6,10 +6,10 @@ import reference from '../../../../backend/tests/fixtures/solar_frames/cspice_so
 import { createSunController } from '../../../sunController';
 import type { SolarPhysicsStatePayload } from './solarPhysicsClient';
 import { SOLAR_RADIUS_AU } from './solarDisplayScale';
-import { SolarFlareManager } from './solarFlares';
+import { solarSurfaceToEclipticMatrix } from './solarFrame';
 import {
   SOLAR_GEOMETRY_LAYERS, validatedSolarLayerFrames, solarFeaturesInSurfaceFrame,
-  solarFlareParamsInSurfaceFrame
+  solarFlareParamsInSurfaceFrame, solarHolesInSurfaceFrame
 } from './solarGeometryContract';
 
 const payload = () => structuredClone(captured) as unknown as SolarPhysicsStatePayload;
@@ -126,34 +126,62 @@ describe('actual production Sun controller graph', () => {
     for (const input of [[1, 0, 0], [0, 1, 0], [0.3, 0.4, Math.sqrt(0.75)]]) {
       const localState = solarFeaturesInSurfaceFrame(
         { ...payload(), corona: { features: [{ base_dir: input }] } },
-        validatedSolarLayerFrames(payload()).spots, displayJd
+        validatedSolarLayerFrames(payload()).spots
       )!;
       const local = localState.corona!.features![0].base_dir as number[];
       const actualWorld = new Vector3(...local as [number, number, number]).transformDirection(surface.matrixWorld);
-      const expectedWorld = new Vector3(...input as [number, number, number]).applyMatrix4(referenceMatrix);
+      const expectedWorld = new Vector3(...input as [number, number, number])
+        .applyMatrix4(new Matrix4().makeRotationZ((displayJd - captured.epoch_jd_tdb) * 14.1844 * Math.PI / 180))
+        .applyMatrix4(referenceMatrix);
       expect(actualWorld.distanceTo(expectedWorld)).toBeLessThan(2e-10);
     }
     expect(controller.getSolarDeliveryStatus().geometry.calibrated).toBe(false);
     controller.disposeSolarDelivery();
   });
 
-  it('CME mesh direction and surface flare longitude agree without reflection', () => {
-    vi.stubGlobal('document', { createElement: () => ({ width: 4, height: 4, getContext: () => null }) });
+  it('co-rotates captured features from their payload epoch without mutating the snapshot', () => {
     const state = payload();
-    const feature = { id: 'known-cme', kind: 'cme', base_dir: [0.3, 0.4, Math.sqrt(0.75)],
-      paired_dir: [0.3, 0.4, Math.sqrt(0.75)], arc: [[0.3, 0.4, Math.sqrt(0.75)], [0.6, 0.8, Math.sqrt(3)]],
-      brightness: 1, emergence: 1, peak_extent_solar_radii: 3 };
-    state.corona = { features: [feature] };
-    const local = solarFeaturesInSurfaceFrame(state, validatedSolarLayerFrames(state).cme, 2451545)!;
-    const manager = new SolarFlareManager(new Group());
-    manager.spawnFeatureFlare(local.corona!.features![0], 1);
-    const event = manager.events[0];
-    const sprite = event.group.children[0];
-    expect(sprite.position.clone().normalize().distanceTo(new Vector3(0.3, Math.sqrt(0.75), -0.4))).toBeLessThan(1e-12);
-    const params = solarFlareParamsInSurfaceFrame([event.longitude, event.latitude, 1, 1], 2451545);
+    const before = structuredClone(state);
+    const context = validatedSolarLayerFrames(state).spots!;
+    const input = new Vector3().fromArray(state.corona!.features![0].base_dir as number[]);
+    const converted = solarFeaturesInSurfaceFrame(state, context)!;
+    const anchor = new Vector3().fromArray(converted.corona!.features![0].base_dir as number[]);
+    const actual = anchor.clone().transformDirection(solarSurfaceToEclipticMatrix(context.jdTdb + 8));
+    const expected = input.clone().applyMatrix4(new Matrix4().makeRotationZ(8 * 14.1844 * Math.PI / 180))
+      .transformDirection(referenceMatrix);
+    expect(actual.distanceTo(expected)).toBeLessThan(2e-10);
+    expect(actual.angleTo(input.clone().transformDirection(referenceMatrix)) * 180 / Math.PI).toBeGreaterThan(100);
+    expect(state).toEqual(before);
+    expect(converted.corona!.features![0].brightness).toBe(state.corona!.features![0].brightness);
+  });
+
+  it('anchors coronal holes using their admitted payload context and preserves the snapshot', () => {
+    const state = payload();
+    const before = structuredClone(state);
+    const context = validatedSolarLayerFrames(state).coronal_holes!;
+    const converted = solarHolesInSurfaceFrame(state, context)!;
+    for (const [i, hole] of state.coronal_holes!.holes!.entries()) {
+      const lon = Number(hole.center_lon_rad), lat = Number(hole.center_lat_rad);
+      const body = new Vector3(Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat))
+        .applyMatrix4(new Matrix4().makeRotationZ(-(context.jdTdb - 2451545) * 14.1844 * Math.PI / 180));
+      const actualHole = converted.holes![i];
+      const actualLon = Number(actualHole.center_lon_rad), actualLat = Number(actualHole.center_lat_rad);
+      const actual = new Vector3(Math.cos(actualLat) * Math.cos(actualLon), Math.sin(actualLat), Math.cos(actualLat) * Math.sin(actualLon));
+      expect(actual.distanceTo(new Vector3(body.x, body.z, -body.y))).toBeLessThan(2e-10);
+      expect(actualHole.extent_lon_rad).toBe(hole.extent_lon_rad);
+    }
+    expect(state).toEqual(before);
+    expect(solarHolesInSurfaceFrame(state, undefined)).toBeUndefined();
+    expect(solarHolesInSurfaceFrame(null, context)).toBeUndefined();
+  });
+
+  it('maps immutable flare anchors to shader longitude without an epoch or reflection', () => {
+    const anchor = new Vector3(0.3, Math.sqrt(0.75), -0.4);
+    const input = [Math.atan2(-anchor.z, anchor.x), Math.asin(anchor.y), 0.7, 0.6];
+    const params = solarFlareParamsInSurfaceFrame(input);
     const shaderDirection = new Vector3(Math.cos(params[1])*Math.cos(params[0]), Math.sin(params[1]), Math.cos(params[1])*Math.sin(params[0]));
-    expect(shaderDirection.distanceTo(sprite.position.clone().normalize())).toBeLessThan(1e-12);
-    expect(state.corona!.features![0].base_dir).toEqual(feature.base_dir);
-    manager.dispose();
+    expect(shaderDirection.distanceTo(anchor)).toBeLessThan(1e-12);
+    expect(params.slice(2)).toEqual([0.7, 0.6]);
+    expect(input[0]).toBe(Math.atan2(0.4, 0.3));
   });
 });

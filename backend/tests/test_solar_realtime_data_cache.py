@@ -293,6 +293,7 @@ def test_silso_delivery_fails_closed_after_62_days_without_refetch(
         },
         "delivered_at_utc": "2026-11-02T12:00:00Z",
     }
+    assert expired["cache_state"] == "failed"
     assert fetches == 1
     assert retained["silso"] == {"date": "2026-08-31", "source_age_days": 62}
     assert retained["source_status"]["silso"] == {
@@ -547,6 +548,7 @@ def test_snapshot_delivery_fails_closed_for_unparseable_claimed_current_swpc(
     assert delivered["source_status"]["swpc"]["error"] == (
         "NOAA SWPC RTSW component timestamps are invalid at delivery"
     )
+    assert delivered["cache_state"] == "failed"
     assert provider._snapshot_cache == {}
 
 

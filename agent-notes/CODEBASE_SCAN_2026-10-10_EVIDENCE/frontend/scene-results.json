@@ -1,0 +1,315 @@
+{
+  "method": "Instrumented browser source: main.ts renderer.render calls suppressed and RAF callbacks retained without running; original controls, scene objects and handlers execute. Backend requests mocked unavailable. No visual rendering assertion.",
+  "main": {
+    "errors": [],
+    "scale": {
+      "before": {
+        "earth": {
+          "realRadiusAu": 0.00004258750455597227,
+          "displayRadiusAu": 0.001670210938369994,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.001670210938369994,
+          "shaderRadius": 0.001670210938369994
+        },
+        "mars": {
+          "realRadiusAu": 0.0000226574080509289,
+          "displayRadiusAu": 0.00004073420277632334,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.00004073420277632334,
+          "shaderRadius": 0.00004073420277632334
+        },
+        "jupiter": {
+          "realRadiusAu": 0.00046732617030490934,
+          "displayRadiusAu": 0.0005561576485727347,
+          "scale": [
+            0.0005561576485727347,
+            0.0005561576485727347,
+            0.0005561576485727347
+          ]
+        },
+        "sun": {
+          "realRadiusAu": 0.00465474539672041,
+          "displayRadiusAu": 0.3755114512235279,
+          "scale": [
+            0.3755114512235279,
+            0.3755114512235279,
+            0.3755114512235279
+          ]
+        }
+      },
+      "after": {
+        "earth": {
+          "realRadiusAu": 0.00004258750455597227,
+          "displayRadiusAu": 0.001670210938369994,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.001670210938369994,
+          "shaderRadius": 0.001670210938369994
+        },
+        "mars": {
+          "realRadiusAu": 0.0000226574080509289,
+          "displayRadiusAu": 0.00004073420277632334,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.00004073420277632334,
+          "shaderRadius": 0.00004073420277632334
+        },
+        "jupiter": {
+          "realRadiusAu": 0.00046732617030490934,
+          "displayRadiusAu": 0.0005561576485727347,
+          "scale": [
+            0.00046732617030490934,
+            0.00046732617030490934,
+            0.00046732617030490934
+          ]
+        },
+        "sun": {
+          "realRadiusAu": 0.00465474539672041,
+          "displayRadiusAu": 0.3755114512235279,
+          "scale": [
+            0.00465474539672041,
+            0.00465474539672041,
+            0.00465474539672041
+          ]
+        }
+      }
+    },
+    "picking": {
+      "earth": {
+        "type": "Group",
+        "nonrecursiveHitCount": 0,
+        "bodyId": "earth",
+        "childBodyIds": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "mars": {
+        "type": "Group",
+        "nonrecursiveHitCount": 0,
+        "bodyId": "mars",
+        "childBodyIds": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "jupiter": {
+        "type": "Mesh",
+        "nonrecursiveHitCount": 1,
+        "bodyId": "jupiter",
+        "childBodyIds": []
+      }
+    },
+    "initialFocus": "body-search",
+    "breakpoint": {
+      "activeId": "",
+      "panelInert": true,
+      "activeInsidePanel": false
+    },
+    "drawer": {
+      "viewportInert": false,
+      "panelRole": null,
+      "ariaModal": null,
+      "focus": "panel-close"
+    },
+    "keyboard": {
+      "shiftTabFocus": {
+        "id": "panel-close",
+        "tag": "BUTTON",
+        "text": "",
+        "inPanel": true
+      },
+      "tabFocus": {
+        "id": "",
+        "tag": "SUMMARY",
+        "text": "Time",
+        "inPanel": true
+      },
+      "escapeFocus": "panel-toggle"
+    },
+    "narrow": {
+      "innerWidth": 240,
+      "scrollWidth": 280,
+      "bodyWidth": 280,
+      "panelWidth": 240
+    }
+  },
+  "trajectory": {
+    "errors": [],
+    "scale": {
+      "before": {
+        "earth": {
+          "realRadiusAu": 0.00004258750455597227,
+          "displayRadiusAu": 0.001670210938369994,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.001670210938369994,
+          "shaderRadius": 0.001670210938369994
+        },
+        "mars": {
+          "realRadiusAu": 0.0000226574080509289,
+          "displayRadiusAu": 0.00004073420277632334,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.00004073420277632334,
+          "shaderRadius": 0.00004073420277632334
+        },
+        "jupiter": {
+          "realRadiusAu": 0.00046732617030490934,
+          "displayRadiusAu": 0.0005561576485727347,
+          "scale": [
+            0.0005561576485727347,
+            0.0005561576485727347,
+            0.0005561576485727347
+          ]
+        },
+        "sun": {
+          "realRadiusAu": 0.00465474539672041,
+          "displayRadiusAu": 0.3755114512235279,
+          "scale": [
+            0.3755114512235279,
+            0.3755114512235279,
+            0.3755114512235279
+          ]
+        }
+      },
+      "after": {
+        "earth": {
+          "realRadiusAu": 0.00004258750455597227,
+          "displayRadiusAu": 0.001670210938369994,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.001670210938369994,
+          "shaderRadius": 0.001670210938369994
+        },
+        "mars": {
+          "realRadiusAu": 0.0000226574080509289,
+          "displayRadiusAu": 0.00004073420277632334,
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "quadtreeRadius": 0.00004073420277632334,
+          "shaderRadius": 0.00004073420277632334
+        },
+        "jupiter": {
+          "realRadiusAu": 0.00046732617030490934,
+          "displayRadiusAu": 0.0005561576485727347,
+          "scale": [
+            0.00046732617030490934,
+            0.00046732617030490934,
+            0.00046732617030490934
+          ]
+        },
+        "sun": {
+          "realRadiusAu": 0.00465474539672041,
+          "displayRadiusAu": 0.3755114512235279,
+          "scale": [
+            0.00465474539672041,
+            0.00465474539672041,
+            0.00465474539672041
+          ]
+        }
+      }
+    },
+    "picking": {
+      "earth": {
+        "type": "Group",
+        "nonrecursiveHitCount": 0,
+        "bodyId": "earth",
+        "childBodyIds": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "mars": {
+        "type": "Group",
+        "nonrecursiveHitCount": 0,
+        "bodyId": "mars",
+        "childBodyIds": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "jupiter": {
+        "type": "Mesh",
+        "nonrecursiveHitCount": 1,
+        "bodyId": "jupiter",
+        "childBodyIds": []
+      }
+    },
+    "initialFocus": "body-search",
+    "breakpoint": {
+      "activeId": "",
+      "panelInert": true,
+      "activeInsidePanel": false
+    },
+    "drawer": {
+      "viewportInert": false,
+      "panelRole": null,
+      "ariaModal": null,
+      "focus": "panel-close"
+    },
+    "keyboard": {
+      "shiftTabFocus": {
+        "id": "panel-close",
+        "tag": "BUTTON",
+        "text": "",
+        "inPanel": true
+      },
+      "tabFocus": {
+        "id": "",
+        "tag": "SUMMARY",
+        "text": "Time",
+        "inPanel": true
+      },
+      "escapeFocus": "panel-toggle"
+    },
+    "narrow": {
+      "innerWidth": 240,
+      "scrollWidth": 280,
+      "bodyWidth": 280,
+      "panelWidth": 240
+    }
+  }
+}

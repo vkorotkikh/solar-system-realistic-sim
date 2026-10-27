@@ -71,11 +71,11 @@ export function validatedSolarLayerFrames(state: SolarPhysicsStatePayload | null
 
 /** Copy coordinate fields; never mutate the accepted backend snapshot. */
 export function solarFeaturesInSurfaceFrame(
-  state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined, displayJdTdb: number
+  state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined
 ): SolarPhysicsStatePayload | null {
   if (!state || !context) return null;
   const convert = (value: unknown) => vector(value)
-    ? solarVectorToSurfaceLocal(value, context.inputFrame, displayJdTdb).toArray() : value;
+    ? solarVectorToSurfaceLocal(value, context.inputFrame, context.jdTdb).toArray() : value;
   return {
     ...state,
     corona: { ...state.corona, features: state.corona?.features?.map(feature => ({
@@ -88,26 +88,22 @@ export function solarFeaturesInSurfaceFrame(
 }
 
 /** Flare meshes use -Z longitude; the surface shader uses +Z longitude. */
-export function solarFlareParamsInSurfaceFrame(params: number[], displayJdTdb: number): number[] {
+export function solarFlareParamsInSurfaceFrame(params: number[]): number[] {
   const converted = [...params];
   for (let i = 0; i + 3 < params.length; i += 4) {
-    const [lon, lat] = params.slice(i, i + 2);
-    const fixed = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
-    const local = solarVectorToSurfaceLocal(fixed, 'SOLAR_EQUATORIAL_J2000', displayJdTdb);
-    converted[i] = Math.atan2(local.z, local.x);
-    converted[i + 1] = Math.asin(Math.max(-1, Math.min(1, local.y)));
+    converted[i] = -params[i];
   }
   return converted;
 }
 
-export function solarHolesInSurfaceFrame(state: SolarPhysicsStatePayload | null, displayJdTdb: number) {
-  return state?.coronal_holes ? {
+export function solarHolesInSurfaceFrame(state: SolarPhysicsStatePayload | null, context: SolarFrameContext | undefined) {
+  return state?.coronal_holes && context ? {
     ...state.coronal_holes,
     holes: state.coronal_holes.holes?.map(h => {
       const lon = Number(h.center_lon_rad), lat = Number(h.center_lat_rad);
       const local = solarVectorToSurfaceLocal(
         [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)],
-        'SOLAR_EQUATORIAL_J2000', displayJdTdb
+        context.inputFrame, context.jdTdb
       );
       return { ...h, center_lon_rad: Math.atan2(local.z, local.x), center_lat_rad: Math.asin(local.y) };
     })

@@ -3,9 +3,10 @@ import math
 
 import pytest
 
-from mission.agents import MissionPlannerAgent
+from mission.agents import LogisticsAgent, MissionPlannerAgent
+from mission.explainability import DecisionLog
 from mission.risk_service import RiskService
-from mission.vehicle_service import StageDefinition, VehicleDefinition, VehicleService
+from mission.vehicle_service import StageDefinition, VehicleDefinition, VehicleService, default_vehicle
 from data.bodies import ALL_BODIES
 from trajectory.contracts import TrajectoryRequestRejected
 
@@ -73,3 +74,113 @@ def test_mission_uses_four_burns_and_loads_cargo_after_target_capture():
     for event,burn in zip(events,budget["burns"]):
         assert event["deltaVKmS"] == pytest.approx(burn["requestedDeltaV_km_s"])
         assert (math.sqrt(event["muKm3S2"]/event["parkingRadiusKm"])+event["deltaVKmS"])**2/2-event["muKm3S2"]/event["parkingRadiusKm"] == pytest.approx(event["vInfinityKmS"]**2/2)
+
+
+def test_logistics_sizes_cargo_for_shared_risk_margin_without_inflating_nominal_telemetry():
+    vehicle = default_vehicle()
+    burns = [1.0, 0.5, 1.0, 0.5]
+    available_cargo_kg = 10_000.0
+    reserve_fraction = 0.05
+    propulsion = {"events": [{"deltaVKmS": burn} for burn in burns]}
+    vehicle_service = VehicleService()
+    nominal_cargo_kg = vehicle_service.max_closable_cargo_kg(
+        vehicle,
+        payload_mass_kg=6_500.0,
+        burns_km_s=burns,
+        cargo_burn_index=2,
+        available_cargo_kg=available_cargo_kg,
+        reserve_fraction=reserve_fraction,
+    )
+
+    budget = LogisticsAgent().evaluate(
+        vehicle=vehicle,
+        payload_mass_kg=6_500.0,
+        propulsion=propulsion,
+        reserve_fraction=reserve_fraction,
+        return_cargo_available_kg=available_cargo_kg,
+        failure_probability_threshold=0.05,
+        decision_log=DecisionLog(),
+    )
+
+    assert nominal_cargo_kg is not None
+    assert budget["returnCargoKg"] < nominal_cargo_kg
+    design_factor = RiskService.cargo_sizing_delta_v_factor(0.05)
+    design_budget = VehicleService().evaluate_burn_budget(
+        vehicle,
+        payload_mass_kg=6_500.0,
+        burns_km_s=[burn * design_factor for burn in burns],
+        reserve_fraction=reserve_fraction,
+        cargo_added_kg=[0.0, 0.0, budget["returnCargoKg"], 0.0],
+    )
+    assert design_budget["feasible"]
+
+    risk = RiskService().run_monte_carlo(
+        base_total_delta_v_km_s=sum(burns),
+        base_total_time_days=900.0,
+        base_returned_payload_kg=budget["returnCargoKg"],
+        base_arrival_jd=2_461_000.5,
+        reclose=lambda factor, cargo: VehicleService().evaluate_burn_budget(
+            vehicle,
+            payload_mass_kg=6_500.0,
+            burns_km_s=[burn * factor for burn in burns],
+            reserve_fraction=reserve_fraction,
+            cargo_added_kg=[0.0, 0.0, cargo, 0.0],
+        ),
+        samples=5_000,
+        seed=17,
+    )
+    assert risk["failureProbability"] <= 0.06
+    assert budget["cargoSizingDeltaVFactor"] == pytest.approx(design_factor)
+    assert budget["totalRequestedDeltaV_km_s"] == pytest.approx(sum(burns))
+    assert [burn["requestedDeltaV_km_s"] for burn in budget["burns"]] == pytest.approx(burns)
+
+
+def test_mission_sizes_22t_return_vehicle_for_its_risk_threshold():
+    vehicle = VehicleDefinition(
+        "22t",
+        [StageDefinition("stage", dry_mass_kg=3_000.0, propellant_mass_kg=22_000.0, isp_s=2_000.0)],
+    )
+    result = MissionPlannerAgent(ALL_BODIES).plan(
+        {
+            "from_id": "earth",
+            "target_id": "mars",
+            "return_id": "earth",
+            "departure_jd": 2_460_500.5,
+            "max_assists": 0,
+            "ephemeris_provider": "kepler",
+            "risk_samples": 2_000,
+            "mining_days": 200.0,
+            "storage_loss_rate_per_day": 0.0,
+            "vehicle": {
+                "name": vehicle.name,
+                "stages": [
+                    {
+                        "name": "stage",
+                        "dry_mass_kg": 3_000.0,
+                        "propellant_mass_kg": 22_000.0,
+                        "isp_s": 2_000.0,
+                    }
+                ],
+            },
+        }
+    )
+
+    assert result["status"] == "ok"
+    budget = result["recommendation"]["logistics"]
+    burns = [event["deltaVKmS"] for event in budget["propulsion"]["events"]]
+    nominal_cargo_kg = VehicleService().max_closable_cargo_kg(
+        vehicle,
+        payload_mass_kg=6_500.0,
+        burns_km_s=burns,
+        cargo_burn_index=2,
+        available_cargo_kg=budget["returnCargoAvailableKg"],
+        reserve_fraction=0.06,
+    )
+
+    assert nominal_cargo_kg is not None
+    assert 0.0 < budget["returnCargoKg"] < nominal_cargo_kg
+    assert result["recommendation"]["risk"]["failureProbability"] <= 0.45
+    assert budget["cargoSizingDeltaVFactor"] == pytest.approx(
+        RiskService.cargo_sizing_delta_v_factor(0.45), abs=1e-6
+    )
+    assert budget["cargoSizingDeltaVFactor"] == pytest.approx(1.006283, abs=1e-6)

@@ -12,6 +12,37 @@ from data.bodies import ALL_BODIES
 from trajectory.budget import PlanningCancelled, PlanningContext
 
 
+def test_benchmark_markdown_preserves_small_spread_and_tolerance() -> None:
+    report = benchmark_accuracy.render_accuracy_report_markdown({
+        "rows": [{
+            "id": "small-values",
+            "source": "fixture",
+            "status": "ok",
+            "modelTotalDeltaVKmS": 1.0,
+            "referenceTotalDeltaVKmS": 1.0,
+            "absErrorKmS": 0.0,
+            "pass": True,
+            "toleranceKmS": 1.0e-4,
+            "reference": {"toolSpreadKmS": 2.5e-5},
+        }, {
+            "id": "unavailable",
+            "source": "fixture",
+            "status": "no_solution",
+            "reference": {"toolSpreadKmS": 7.5e-5},
+        }],
+    })
+
+    expected_row = (
+        "| small-values | fixture | ok | 1.000 | 1.000 | 0.000 | "
+        "2.50e-05 | 1.00e-04 | yes |"
+    )
+    assert expected_row in report.splitlines()
+    assert (
+        "| unavailable | fixture | no_solution | - | - | - | 7.50e-05 | - | - |"
+        in report.splitlines()
+    )
+
+
 def test_benchmark_uses_strict_reference_integrity() -> None:
     summary = benchmark_against_references(ALL_BODIES, ephemeris_provider="kepler")
 

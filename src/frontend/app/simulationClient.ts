@@ -26,11 +26,14 @@ export interface ServerStateUpdateMessage {
   jd_time_scale?: 'TDB' | string;
   bodies: Record<string, ServerBodyState>;
   kuiper?: ServerKuiperSnapshot | number[][] | null;
+  kuiper_subscription_id?: string;
 }
 
 interface ConnectedMessage {
   type: 'connected';
   protocol_version?: number;
+  kuiper_subscription_version?: number;
+  kuiper_activation_error_version?: number;
   jd_time_scale?: 'TDB' | string;
   warnings?: string[];
 }
@@ -39,6 +42,7 @@ interface ErrorMessage {
   type: 'error';
   code?: string;
   message?: string;
+  kuiper_subscription_id?: string;
 }
 
 type IncomingMessage = ServerStateUpdateMessage | ConnectedMessage | ErrorMessage;
@@ -106,13 +110,22 @@ function decodeMessage(data: string): IncomingMessage {
     if (message.protocol_version !== undefined && message.protocol_version !== WS_PROTOCOL_VERSION) {
       throw new Error(`WebSocket protocol version mismatch: client=${WS_PROTOCOL_VERSION}, server=${String(message.protocol_version)}`);
     }
+    if (message.kuiper_subscription_version !== undefined && message.kuiper_subscription_version !== 1) {
+      throw new Error('Unsupported WebSocket Kuiper subscription version');
+    }
+    if (message.kuiper_activation_error_version !== undefined
+      && message.kuiper_activation_error_version !== 1) {
+      throw new Error('Unsupported WebSocket Kuiper activation error version');
+    }
     if (message.warnings !== undefined && (!Array.isArray(message.warnings)
       || !message.warnings.every(warning => typeof warning === 'string'))) {
       throw new Error('Invalid WebSocket connected warnings');
     }
   } else if (message.type === 'error') {
     if ((message.code !== undefined && typeof message.code !== 'string')
-      || (message.message !== undefined && typeof message.message !== 'string')) {
+      || (message.message !== undefined && typeof message.message !== 'string')
+      || (message.kuiper_subscription_id !== undefined
+        && typeof message.kuiper_subscription_id !== 'string')) {
       throw new Error('Invalid WebSocket error message');
     }
   } else {
@@ -158,6 +171,14 @@ export class SimulationClient {
   private kuiperRevoked = false;
 
   private kuiperRequest: { type: 'activate_kuiper'; center: number[]; spread: number } | null = null;
+
+  private kuiperSubscriptionSupported = false;
+
+  private kuiperActivationErrorsCorrelated = false;
+
+  private kuiperSubscriptionSerial = 0;
+
+  private kuiperSubscriptionId: string | null = null;
 
   private serverReady = false;
 
@@ -250,16 +271,28 @@ export class SimulationClient {
         return;
       }
       if (msg.type === 'error') {
+        if (msg.code === 'kuiper_activation_failed'
+          && (this.kuiperActivationErrorsCorrelated
+            ? msg.kuiper_subscription_id === this.kuiperSubscriptionId
+            : msg.kuiper_subscription_id === undefined)) {
+          this.kuiperActive = false;
+          this.kuiperSubscriptionId = null;
+          this.latestKuiper = null;
+          this.latestKuiperSnapshot = null;
+        }
         this.reportFailure(`${msg.code ?? 'server_error'}: ${msg.message ?? 'WebSocket server error'}`);
         return;
       }
+      if (msg.type === 'state_update') this.reconnectAttempt = 0;
       this.markFresh();
       if (this.ws !== socket) return;
       if (msg.type === 'state_update') {
         this.latestState = msg;
         // The backend emits Kuiper only every fifth frame. Omission preserves
         // the last complete snapshot, including velocities and binary metadata.
-        if (!this.kuiperRevoked && msg.kuiper !== undefined) {
+        const matchesSubscription = !this.kuiperSubscriptionSupported
+          || (this.kuiperSubscriptionId !== null && msg.kuiper_subscription_id === this.kuiperSubscriptionId);
+        if (!this.kuiperRevoked && matchesSubscription && msg.kuiper !== undefined) {
           this.latestKuiperSnapshot = Array.isArray(msg.kuiper) ? { positions: msg.kuiper } : msg.kuiper;
           this.latestKuiper = this.latestKuiperSnapshot?.positions ?? null;
         }
@@ -288,6 +321,11 @@ export class SimulationClient {
 
   private handleConnectedMessage(message: ConnectedMessage): void {
     const socket = this.ws;
+    if (!this.serverReady) {
+      const subscriptionVersion = message.kuiper_subscription_version;
+      this.kuiperSubscriptionSupported = subscriptionVersion === 1;
+      this.kuiperActivationErrorsCorrelated = message.kuiper_activation_error_version === 1;
+    }
     if (Array.isArray(message.warnings)) {
       for (const warning of message.warnings) {
         if (typeof warning === 'string' && this.onProtocolWarning) {
@@ -345,7 +383,6 @@ export class SimulationClient {
 
   private markFresh(): void {
     this.lastError = null;
-    this.reconnectAttempt = 0;
     // Install owned work before notifying observers; disconnect can then revoke it.
     this.armStaleTimer();
     if (this.connected) {
@@ -391,6 +428,9 @@ export class SimulationClient {
     this.clearStaleTimer();
     this.connected = false;
     this.serverReady = false;
+    this.kuiperSubscriptionSupported = false;
+    this.kuiperActivationErrorsCorrelated = false;
+    this.kuiperSubscriptionId = null;
     this.latestState = null;
     this.latestKuiper = null;
     this.latestKuiperSnapshot = null;
@@ -427,7 +467,13 @@ export class SimulationClient {
 
   private replayKuiperRequest(): void {
     if (this.serverReady && this.kuiperRequest && !this.kuiperActive) {
-      this.kuiperActive = this.send(this.kuiperRequest);
+      // Assign before sending so even an immediately delivered frame is checked
+      // against this activation. Replays on replacement sockets get fresh IDs.
+      this.kuiperSubscriptionId = this.kuiperSubscriptionSupported
+        ? String(++this.kuiperSubscriptionSerial) : null;
+      this.kuiperActive = this.send(this.kuiperSubscriptionId === null
+        ? this.kuiperRequest
+        : { ...this.kuiperRequest, subscription_id: this.kuiperSubscriptionId });
     }
   }
 
@@ -458,13 +504,24 @@ export class SimulationClient {
   }
 
   activateKuiper(center: Vector3Like, spread: number): void {
+    const request = { type: 'activate_kuiper' as const, center: [center.x, center.y, center.z], spread };
+    const requestChanged = this.kuiperRequest === null
+      || this.kuiperRequest.spread !== request.spread
+      || this.kuiperRequest.center.some((value, index) => value !== request.center[index]);
     this.kuiperRevoked = false;
-    this.kuiperRequest = { type: 'activate_kuiper', center: [center.x, center.y, center.z], spread };
+    this.kuiperRequest = request;
+    if (requestChanged) {
+      this.kuiperActive = false;
+      this.kuiperSubscriptionId = null;
+      this.latestKuiper = null;
+      this.latestKuiperSnapshot = null;
+    }
     this.replayKuiperRequest();
   }
 
   deactivateKuiper(): void {
     this.kuiperRevoked = true;
+    this.kuiperSubscriptionId = null;
     this.kuiperRequest = null;
     if (this.kuiperActive) {
       this.send({ type: 'deactivate_kuiper' });
