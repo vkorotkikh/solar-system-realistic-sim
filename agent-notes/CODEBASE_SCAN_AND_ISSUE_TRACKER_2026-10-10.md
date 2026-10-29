@@ -1,5 +1,7 @@
 # Codebase scan and issue / problem / bug tracker — 2026-10-10
 
+> **Current review (2026-10-29):** See the [condensed remediation review](REMEDIATION_CONSOLIDATED_REVIEW_2026-10-29.md) for all 83 current dispositions against `origin/main@bb29d4b`, fresh checks, remaining defects and local-only work. The dated report below is preserved as historical evidence.
+
 Consolidated **2026-10-17**. This is the maintained tracker: the canonical
 SCN-001–083 ledger and alias mappings are below, followed by the complete
 [October 10 scan](#appendix-a--october-10-scan-historical) and

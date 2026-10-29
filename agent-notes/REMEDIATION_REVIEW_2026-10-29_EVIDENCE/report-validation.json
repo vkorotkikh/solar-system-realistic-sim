@@ -1,0 +1,13 @@
+{
+  "canonicalRows": 83,
+  "uniqueCanonicalIds": 83,
+  "verdicts": {
+    "Scoped fix": 61,
+    "Partial": 16,
+    "Decision": 6
+  },
+  "sourceNoteFilenames": 46,
+  "distinctSourceVersions": 62,
+  "brokenNewLinks": 0,
+  "productionFilesChanged": 0
+}

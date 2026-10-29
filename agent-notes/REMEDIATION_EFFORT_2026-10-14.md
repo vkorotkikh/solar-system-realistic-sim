@@ -1,5 +1,7 @@
 # Canonical register remediation effort - 2026-10-14
 
+> **Current review (2026-10-29):** See the [condensed remediation review](REMEDIATION_CONSOLIDATED_REVIEW_2026-10-29.md) for all 83 current dispositions against `origin/main@bb29d4b`, fresh checks, remaining defects and local-only work. The dated report below is preserved as historical evidence.
+
 ## Objective and baseline
 
 Resolve every remaining OPEN, VERIFY, DECISION_REQUIRED, and partially resolved item in the 83-entry canonical register. Preserve each issue's independent closure requirements and regression gates. This is an implementation effort, not a new audit-only report.

@@ -1,5 +1,7 @@
 # Master issue / problem / bug tracker — 2026-10-11
 
+> **Current review (2026-10-29):** See the [condensed remediation review](REMEDIATION_CONSOLIDATED_REVIEW_2026-10-29.md) for all 83 current dispositions against `origin/main@bb29d4b`, fresh checks, remaining defects and local-only work. The dated report below is preserved as historical evidence.
+
 > **Historical record — superseded for maintenance on 2026-10-17.** Use the [consolidated October 10 tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md), including the [approved SimulationClient scope and verification boundaries](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17). The original dated content below is preserved; it is not a fresh status report.
 
 Generated **2026-10-11 21:25:36 -0400 (EDT)** from the issue-bearing artifacts
