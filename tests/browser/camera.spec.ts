@@ -5,16 +5,22 @@ test('real OrbitControls accept keyboard and tap parity, modifiers, bounds, flag
   await page.evaluate(()=>window.__uiFixture.setAutoFrame(false));
   const before=await page.evaluate(()=>window.__uiFixture.snapshot());
   await page.locator('#panel-toggle').focus();await page.keyboard.press('Shift+Tab');await expect(page.locator('#space-canvas')).toBeFocused();await expect(page.locator('#camera-keyboard-help')).toBeVisible();
-  await page.keyboard.press('+');await page.evaluate(()=>window.__uiFixture.step());
+  await page.keyboard.press('+');
   const keyboard=await page.evaluate(()=>window.__uiFixture.snapshot());expect(keyboard.range).toBeCloseTo(before.range*.95,8);
-  await page.evaluate(()=>window.__uiFixture.resetCamera());await page.getByRole('button',{name:'Zoom in',exact:true}).click();await expect(page.getByRole('button',{name:'Zoom in',exact:true})).toBeFocused();await page.evaluate(()=>window.__uiFixture.step());
+  await expect(page.locator('#status-zoom')).toHaveText(`Range · ${keyboard.range.toFixed(2)} AU`);
+  await page.evaluate(()=>window.__uiFixture.resetCamera());await page.getByRole('button',{name:'Zoom in',exact:true}).click();await expect(page.getByRole('button',{name:'Zoom in',exact:true})).toBeFocused();
   (await page.evaluate(()=>window.__uiFixture.snapshot())).position.forEach((value,index)=>expect(value).toBeCloseTo(keyboard.position[index],10));
   await page.locator('#space-canvas').focus();
   const ignored=await page.locator('#space-canvas').evaluate(canvas=>['ctrlKey','metaKey','altKey','isComposing'].map(modifier=>{const event=new KeyboardEvent('keydown',{key:'+',code:'Equal',bubbles:true,cancelable:true,[modifier]:true});canvas.dispatchEvent(event);return event.defaultPrevented;}));expect(ignored).toEqual([false,false,false,false]);
-  await page.keyboard.press('+');await page.evaluate(()=>{window.__uiFixture.setControls({enableZoom:false});window.__uiFixture.step();});expect((await page.evaluate(()=>window.__uiFixture.snapshot())).range).toBeCloseTo(keyboard.range,8);
+  await page.evaluate(()=>window.__uiFixture.setControls({enableZoom:false}));
+  expect(await page.locator('#space-canvas').evaluate(canvas=>{const event=new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true});canvas.dispatchEvent(event);return event.defaultPrevented;})).toBe(false);
+  expect((await page.evaluate(()=>window.__uiFixture.snapshot())).range).toBeCloseTo(keyboard.range,8);
   await page.evaluate(()=>window.__uiFixture.setControls({enableZoom:true,minDistance:20}));
   expect(await page.locator('#space-canvas').evaluate(canvas=>{const event=new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true});canvas.dispatchEvent(event);return event.defaultPrevented;})).toBe(true);
-  await page.evaluate(()=>window.__uiFixture.disposeCamera());await page.evaluate(()=>window.__uiFixture.setControls({minDistance:.0002}));await page.evaluate(()=>window.__uiFixture.step());expect((await page.evaluate(()=>window.__uiFixture.snapshot())).range).toBeCloseTo(keyboard.range,8);
+  await expect.poll(()=>page.evaluate(()=>window.__uiFixture.snapshot().range)).toBe(20);
+  await page.evaluate(()=>window.__uiFixture.disposeCamera());await page.evaluate(()=>window.__uiFixture.setControls({minDistance:.0002}));
+  expect(await page.locator('#space-canvas').evaluate(canvas=>{const event=new KeyboardEvent('keydown',{key:'+',bubbles:true,cancelable:true});canvas.dispatchEvent(event);return event.defaultPrevented;})).toBe(false);
+  expect((await page.evaluate(()=>window.__uiFixture.snapshot())).range).toBe(20);
 });
 test('follow centers each frame, orbit/zoom persist and Free cam retains pan',async({page})=>{
   await loadShell(page);await page.evaluate(()=>{window.__uiFixture.setAutoFrame(false);window.__uiFixture.setFollowing(true,[4,5,6]);window.__uiFixture.step();});

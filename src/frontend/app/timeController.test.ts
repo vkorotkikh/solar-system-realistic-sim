@@ -21,3 +21,23 @@ describe('time HUD output', () => {
     expect(date.element.dateTime).toBe('8'); expect(date.writes).toEqual({ text: 2, date: 2 });
   });
 });
+
+
+describe('time UI listener lifetime', () => {
+  it.each([false, true])('ignores synthetic Now and speed events after cancellation (preaborted=%s)', preaborted => {
+    const owner = new AbortController();
+    if (preaborted) owner.abort();
+    const nowTime = new EventTarget();
+    const timeScale = Object.assign(new EventTarget(), { value: '2', min: '', max: '' });
+    const simState = { julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false };
+    const controller = createTimeController({
+      dom: { nowTime: nowTime as HTMLElement, timeScale: timeScale as HTMLInputElement },
+      simState, minTimeScale: -120, maxTimeScale: 120,
+      currentJulianDate: () => 25, formatJulianAsDate: String, signal: owner.signal,
+    });
+    controller.bindUi(); owner.abort();
+    nowTime.dispatchEvent(new Event('click'));
+    timeScale.value = '-4'; timeScale.dispatchEvent(new Event('input'));
+    expect(simState).toEqual({ julianDate: 10, timeScaleDaysPerSec: 2, timeScaleDirty: false });
+  });
+});

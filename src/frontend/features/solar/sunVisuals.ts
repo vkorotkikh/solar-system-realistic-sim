@@ -1302,6 +1302,7 @@ export function setSunEruptionBaseRadius(sunEruptionLayer: Points | null | undef
     bursts.positions[base + 2] = bursts.directions[base + 2] * radius * 1.03;
   }
   positionAttr.needsUpdate = true;
+  geometry.computeBoundingSphere();
   const eruptionMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
   if (eruptionMaterial?.isPointsMaterial) {
     eruptionMaterial.size = Math.max(0.0000035, radius * 0.65);
@@ -1699,6 +1700,7 @@ export function updateSunEruptionLayerFromBlendView({
   }
 
   positionAttr.needsUpdate = true;
+  geometry.computeBoundingSphere();
   const burstMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
   if (burstMaterial?.isPointsMaterial) {
     burstMaterial.opacity = Math.max(0.1, 0.14 + activity * 0.27);

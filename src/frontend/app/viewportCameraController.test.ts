@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { applyCameraAction, cameraActionForKey, type CameraControlsLike } from './viewportCameraController';
+import { applyCameraAction, cameraActionForKey, createViewportCameraController, type CameraControlsLike } from './viewportCameraController';
 function rig() {
   const camera = new PerspectiveCamera(60, 1, .01, 1000); camera.position.set(2, 3, 14);
   const controls: CameraControlsLike = { target: new Vector3(2,3,4), enabled:true, enableRotate:true, enablePan:true, enableZoom:true, rotateSpeed:1, panSpeed:1, zoomSpeed:1, minDistance:1, maxDistance:20, minPolarAngle:0, maxPolarAngle:Math.PI, minAzimuthAngle:-Infinity, maxAzimuthAngle:Infinity, screenSpacePanning:true };
@@ -44,5 +44,59 @@ describe('camera action contract', () => {
     controls.minAzimuthAngle=-.1; controls.maxAzimuthAngle=.1;
     for(let i=0;i<100;i++) applyCameraAction(camera,controls,'orbit-right');
     expect(camera.position.toArray().every(Number.isFinite)).toBe(true);
+  });
+});
+
+
+describe('camera input scheduling', () => {
+  function inputRig() {
+    const { camera, controls } = rig();
+    const canvas = Object.assign(new EventTarget(), { ownerDocument: { activeElement: null as unknown }, isContentEditable: false, closest: () => null });
+    canvas.ownerDocument.activeElement = canvas;
+    const actionRoot = new EventTarget();
+    const ranges: number[] = [];
+    const onActionApplied = vi.fn(() => ranges.push(camera.position.distanceTo(controls.target)));
+    const controller = createViewportCameraController({ canvas: canvas as unknown as HTMLCanvasElement, actionRoot: actionRoot as HTMLElement, camera, controls, onActionApplied });
+    const press = () => {
+      const event = Object.assign(new Event('keydown', { cancelable: true }), { key: '+', code: 'Equal' });
+      canvas.dispatchEvent(event);
+      return event;
+    };
+    return { camera, controls, controller, ranges, onActionApplied, press };
+  }
+
+  it('applies ordered inputs and publishes Range without a render frame', async () => {
+    const { camera, controls, controller, ranges, onActionApplied, press } = inputRig();
+    expect(press().defaultPrevented).toBe(true);
+    press();
+    expect(onActionApplied).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(camera.position.distanceTo(controls.target)).toBeCloseTo(10 * .95 ** 2, 10);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0]).toBeCloseTo(10 * .95 ** 2, 10);
+    controller.applyPendingActions();
+    await Promise.resolve();
+    expect(onActionApplied).toHaveBeenCalledTimes(1);
+    controller.dispose();
+  });
+
+  it('does not apply or publish a queued input after disposal', async () => {
+    const { camera, controls, controller, onActionApplied, press } = inputRig();
+    press();
+    controller.dispose();
+    await Promise.resolve();
+    expect(camera.position.distanceTo(controls.target)).toBe(10);
+    expect(onActionApplied).not.toHaveBeenCalled();
+    expect(press().defaultPrevented).toBe(false);
+  });
+
+  it('rechecks controls before applying a queued input', async () => {
+    const { camera, controls, controller, onActionApplied, press } = inputRig();
+    press();
+    controls.enableZoom = false;
+    await Promise.resolve();
+    expect(camera.position.distanceTo(controls.target)).toBe(10);
+    expect(onActionApplied).not.toHaveBeenCalled();
+    controller.dispose();
   });
 });

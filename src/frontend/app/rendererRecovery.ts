@@ -1,10 +1,12 @@
-export interface RendererRecoveryArgs<T> {
+export interface RendererRecoverySurfaceArgs {
   canvas: HTMLCanvasElement; surface: HTMLElement; retry: HTMLButtonElement;
-  create: () => T; onUnavailable: () => void; reload?: () => void;
+  onUnavailable: () => void; reload?: () => void;
 }
-export function createRendererRecovery<T>({ canvas, surface, retry, create, onUnavailable, reload = () => location.reload() }: RendererRecoveryArgs<T>) {
+export interface RendererRecoveryArgs<T> extends RendererRecoverySurfaceArgs {
+  create: () => T;
+}
+export function createRendererRecoverySurface({ canvas, surface, retry, onUnavailable, reload = () => location.reload() }: RendererRecoverySurfaceArgs) {
   let available = true;
-  let value: T | null = null;
   const message = surface.querySelector<HTMLElement>('[role="alert"]');
   function fail(text: string) {
     available = false; onUnavailable(); surface.hidden = false;
@@ -17,12 +19,23 @@ export function createRendererRecovery<T>({ canvas, surface, retry, create, onUn
   function restored() { if (!available && message) message.textContent = 'The graphics connection is available again. Reload the visualization to restart the simulation.'; }
   canvas.addEventListener('webglcontextlost', lost); canvas.addEventListener('webglcontextrestored', restored);
   retry.addEventListener('click', reload);
-  try { value = create(); }
-  catch (error) {
-    console.error('[visualization] initialization failed:', error);
-    fail('The visualization could not start. WebGL may be unavailable or the application configuration may be invalid. Enable graphics acceleration or try another supported browser, then reload.');
+  function initialize<T>(create: () => T): T | null {
+    if (!available) return null;
+    try { return create(); }
+    catch (error) {
+      console.error('[visualization] initialization failed:', error);
+      fail('The visualization could not start. WebGL may be unavailable or the application configuration may be invalid. Enable graphics acceleration or try another supported browser, then reload.');
+      return null;
+    }
   }
-  return { value, get available() { return available; }, reportFailure: fail, dispose() {
+  return { initialize, get available() { return available; }, reportFailure: fail, dispose() {
     canvas.removeEventListener('webglcontextlost', lost); canvas.removeEventListener('webglcontextrestored', restored); retry.removeEventListener('click', reload);
   } };
+}
+
+export function createRendererRecovery<T>({ create, ...args }: RendererRecoveryArgs<T>) {
+  const recovery = createRendererRecoverySurface(args);
+  const value = recovery.initialize(create);
+  return { value, get available() { return recovery.available; },
+    reportFailure: recovery.reportFailure, dispose: recovery.dispose };
 }

@@ -5,7 +5,8 @@ import { createBodyPickerPresentation } from './frontend/app/bodyPickerPresentat
 import { createViewportCameraController } from './frontend/app/viewportCameraController';
 import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwaveEngine';
 import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
-import { createRendererRecovery } from './frontend/app/rendererRecovery';
+import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
+import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 import { createFrameLifecycle, hasFiniteAvailableBodyState } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
@@ -80,7 +81,6 @@ import { createTextureManager } from './frontend/app/textureManager';
 import { warmupRenderer } from './frontend/app/rendererWarmup';
 import { createTimeController } from './frontend/app/timeController';
 import { createSunController } from './sunController';
-import { generateAsteroidBelt, type AsteroidBeltPopulation } from './sim/asteroidBelt';
 import { generateKuiperBelt } from './sim/kuiperBelt';
 import { createKuiperBeltUpdater } from './frontend/features/asteroids/kuiperBeltUpdater';
 import type { CatalogBody } from './sim/catalog';
@@ -90,10 +90,10 @@ import {
   PHASE1_CATALOG_META_URL,
   PHASE1_LOAD_LATENCY_BUDGET_MS
 } from './sim/phase1AsteroidCatalog';
-import { createAsteroidBeltRenderer, createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
+import { createKuiperBeltRenderer } from './frontend/features/asteroids/beltRenderer';
+import { createStartupAsteroidBelt } from './frontend/features/asteroids/startupBelt';
 import {
   failedAsteroidCatalogStatus,
-  loadingAsteroidCatalogStatus,
   rejectedAsteroidCatalogStatus,
   renderAsteroidCatalogSourceStatus,
   verifiedAsteroidCatalogStatus,
@@ -158,31 +158,63 @@ const dom = {
   triggerAgnShockwave: elementById<HTMLButtonElement>('trigger-agn-shockwave')
 };
 
-renderAsteroidCatalogSourceStatus(dom.statusCatalog, loadingAsteroidCatalogStatus());
+renderAsteroidCatalogSourceStatus(dom.statusCatalog, {
+  state: 'loading', text: 'Asteroids: catalog verification pending',
+});
 
 let refreshPanelLayout = () => {};
 const panelController = createPanelController({
   app: dom.app, panel: dom.controlPanel, viewport: dom.viewportShell,
   toggle: dom.panelToggle, close: dom.panelClose, backdrop: dom.panelBackdrop,
-  breakpoint: window.matchMedia('(max-width: 1100px)'), onLayoutChange: () => refreshPanelLayout()
+  breakpoint: window.matchMedia('(max-width: 1100px)'), isMobileLayout: () => window.innerWidth <= 1100, onLayoutChange: () => refreshPanelLayout()
 });
-window.addEventListener('beforeunload', () => panelController.dispose());
 for (const disclosure of document.querySelectorAll<HTMLDetailsElement>('.panel-disclosure')) {
   const summary = disclosure.querySelector('summary');
   const sync = () => summary?.setAttribute('aria-expanded', String(disclosure.open));
   disclosure.addEventListener('toggle', sync); sync();
 }
 
+const startup = createRuntimeLifetime();
+function stopVisualization() {
+  refreshPanelLayout = () => {};
+  startup.dispose();
+}
+const recovery = createRendererRecoverySurface({
+  canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
+  onUnavailable: () => {
+    stopVisualization();
+    if (dom.controlPanel.contains(document.activeElement)) dom.panelClose.focus();
+    for (const control of dom.controlPanel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('.panel-scroll input, .panel-scroll button, .panel-scroll select')) control.disabled = true;
+    dom.cameraTools.hidden = true;
+    elementById<HTMLElement>('session-label').textContent = 'Visualization unavailable';
+    dom.statusFocus.textContent = 'Simulation stopped';
+    dom.statusSolar.textContent = 'Sun data unavailable while visualization is stopped';
+  }
+});
+window.addEventListener('beforeunload', () => {
+  stopVisualization();
+  recovery.dispose();
+  panelController.dispose();
+});
+
 async function startSimulation() {
+function ownDisposable<T extends { dispose(): void }>(value: T): T {
+  startup.defer(() => value.dispose());
+  return value;
+}
 // ── Data & State ─────────────────────────────────────────────────────────────
 
 // Moon rendering is not currently exposed by the shipped UI. Keep those 424
 // catalog records available for provenance/search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
-  const moonEphemerides: MoonEphemerisMap | undefined = showMoons
-    ? await (await import('./sim/loadMoonEphemerides')).loadMoonEphemerides()
-    : undefined;
+let moonEphemerides: MoonEphemerisMap | undefined;
+if (showMoons) {
+  const { loadMoonEphemerides } = await import('./sim/loadMoonEphemerides');
+  if (startup.signal.aborted || !recovery.available) return;
+  moonEphemerides = await loadMoonEphemerides();
+}
+if (startup.signal.aborted || !recovery.available) return;
 const catalog = createSolarSystemCatalog({ moonEphemerides, moonsVisible: showMoons });
 const modelWorkerCatalog: ModelWorkerCatalog = buildModelWorkerCatalog(catalog.bodies, {
   includeMoons: showMoons
@@ -208,6 +240,7 @@ const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
 const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
 let modelWorker: Worker | null = null;
+let retireModelWorker = () => {};
 let modelWorkerEnabled = false;
 let modelWorkerReady = false;
 let modelWorkerTickInFlight = false;
@@ -231,33 +264,31 @@ function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
 
 // ── Renderer, Scene, Camera, Controls ────────────────────────────────────────
 
-const startup = new AbortController();
-let stopVisualization = () => startup.abort();
-const recovery = createRendererRecovery({
-  canvas: dom.canvas, surface: dom.rendererUnavailable, retry: dom.rendererRetry,
-  create: () => {
-    const runtimeUiConfig = createRuntimeUiConfig();
-    applyViewportSizeOverride({ viewportShell: dom.viewportShell, runtimeUiConfig });
-    return { runtimeUiConfig, ...createSceneSetup({
-      canvas: dom.canvas, runtimeUiConfig, initialZoomSensitivity: simState.zoomSensitivity, solarSystemMaxDistanceAu: 200
-    }) };
-  },
-  onUnavailable: () => {
-    stopVisualization();
-    if (dom.controlPanel.contains(document.activeElement)) dom.panelClose.focus();
-    for (const control of dom.controlPanel.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('.panel-scroll input, .panel-scroll button, .panel-scroll select')) control.disabled = true;
-    dom.cameraTools.hidden = true;
-    elementById<HTMLElement>('session-label').textContent = 'Visualization unavailable';
-    dom.statusFocus.textContent = 'Simulation stopped';
-    dom.statusSolar.textContent = 'Sun data unavailable while visualization is stopped';
-  }
+const sceneSetup = recovery.initialize(() => {
+  const runtimeUiConfig = createRuntimeUiConfig();
+  applyViewportSizeOverride({ viewportShell: dom.viewportShell, runtimeUiConfig });
+  return { runtimeUiConfig, ...createSceneSetup({
+    canvas: dom.canvas, runtimeUiConfig, initialZoomSensitivity: simState.zoomSensitivity, solarSystemMaxDistanceAu: 200
+  }) };
 });
-window.addEventListener('beforeunload', () => recovery.dispose());
-if (!recovery.value) return;
-const { renderer, scene, camera, controls, runtimeUiConfig } = recovery.value;
+if (!sceneSetup) return;
+const { renderer, scene, camera, controls, runtimeUiConfig } = sceneSetup;
+ownDisposable(renderer);
+startup.defer(() => { controls.enabled = false; controls.dispose(); });
+if (startup.signal.aborted || !recovery.available) return;
 const backendBaseUrl = () => runtimeUiConfig.backendOrigin;
-const viewportCamera = createViewportCameraController({ canvas: dom.canvas, actionRoot: dom.cameraTools, camera, controls });
+const viewportCamera = ownDisposable(createViewportCameraController({ canvas: dom.canvas, actionRoot: dom.cameraTools, camera, controls, onActionApplied: updateZoomStatus }));
 addDefaultLighting(scene);
+
+// Dispatch transfer/integrity work before synchronous textures and scene assembly.
+// The loader owns its shared bounded transport; startup owns only its adoption.
+const asteroidCatalogPromise = loadPhase1AsteroidCatalog({
+  maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
+  loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
+  metaUrl: PHASE1_CATALOG_META_URL,
+});
+// Setup may fail before reaching the await. Observe rejection immediately.
+void asteroidCatalogPromise.catch(() => {});
 
 const solarSystemGroup = new Group();
 scene.add(solarSystemGroup);
@@ -272,9 +303,9 @@ const {
 } = createTextureManager({ maxAnisotropy });
 
 const geometryCache = {
-  sun: new SphereGeometry(1, 128, 96),
-  planet: new SphereGeometry(1, 16, 12),
-  moon: new SphereGeometry(1, 8, 6)
+  sun: ownDisposable(new SphereGeometry(1, 128, 96)),
+  planet: ownDisposable(new SphereGeometry(1, 16, 12)),
+  moon: ownDisposable(new SphereGeometry(1, 8, 6))
 };
 
 const PLANET_COLORS: Record<string, string> = {
@@ -286,7 +317,7 @@ const PLANET_COLORS: Record<string, string> = {
 const sunTextureCanvas = generatePlanetTexture('sun');
 let sunTexture: CanvasTexture | null = null;
 if (sunTextureCanvas) {
-  sunTexture = new CanvasTexture(sunTextureCanvas);
+  sunTexture = ownDisposable(new CanvasTexture(sunTextureCanvas));
   configureLoadedTexture(sunTexture);
   sunTexture.wrapS = RepeatWrapping;
   sunTexture.wrapT = RepeatWrapping;
@@ -320,6 +351,8 @@ const sunCtrl = createSunController({
   }
 });
 
+startup.defer(() => sunCtrl.disposeSolarDelivery());
+
 // ── Body Nodes ───────────────────────────────────────────────────────────────
 
 const bodyNodes = new Map();
@@ -347,8 +380,8 @@ function createLabelCanvas(text: string) {
 
 function createLabelSprite(text: string) {
   const canvas = createLabelCanvas(text);
-  const tex = new CanvasTexture(canvas);
-  const mat = new SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const tex = ownDisposable(new CanvasTexture(canvas));
+  const mat = ownDisposable(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   const sprite = new Sprite(mat);
   sprite.scale.set(0.12, 0.03, 1);
   return sprite;
@@ -379,29 +412,29 @@ function createBodyNode(body: CatalogBody) {
 
   if (['earth', 'moon', 'mars'].includes(body.id)) {
     const radius = bodyBaseRadiusAu(body);
-    const quadtree = new PlanetQuadtree(body.id, radius, camera);
+    const quadtree = ownDisposable(new PlanetQuadtree(body.id, radius, camera));
     mesh = quadtree.group;
     mesh.userData.isQuadtree = true;
     mesh.userData.quadtree = quadtree;
   } else if (body.id === 'sun') {
     geometry = geometryCache.sun;
-    material = sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) });
+    material = ownDisposable(sunCtrl.createSunMaterial(sunTexture) ?? new MeshBasicMaterial({ color: new Color(body.color) }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'star') {
     geometry = geometryCache.planet;
-    material = new MeshBasicMaterial({ color: new Color(body.color) });
+    material = ownDisposable(new MeshBasicMaterial({ color: new Color(body.color) }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else if (body.type === 'moon') {
     geometry = geometryCache.moon;
-    material = new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 });
+    material = ownDisposable(new MeshStandardMaterial({ color: new Color(body.color ?? '#aaa'), roughness: 0.9 }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   } else {
     geometry = geometryCache.planet;
     const col = PLANET_COLORS[body.id] ?? body.color ?? '#888';
-    material = new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 });
+    material = ownDisposable(new MeshStandardMaterial({ color: new Color(col), roughness: 0.8 }));
     mesh = new Mesh(geometry, material);
     mesh.scale.setScalar(bodyBaseRadiusAu(body));
   }
@@ -452,10 +485,10 @@ function createOrbitLine(body: CatalogBody) {
     positions[i * 3 + 2] = tmpVec.z;
   }
 
-  const geo = new BufferGeometry();
+  const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
   const col = body.type === 'moon' ? '#556' : '#4477aa';
-  const line = new Line(geo, new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 }));
+  const line = new Line(geo, ownDisposable(new LineBasicMaterial({ color: new Color(col), transparent: true, opacity: 0.35 })));
   line.userData.bodyId = body.id;
   line.userData.bodyType = body.type;
   line.userData.stateAvailable = true;
@@ -488,9 +521,9 @@ function createBackgroundStars(count = 6000, radius = 15000) {
     positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
     positions[i * 3 + 2] = r * Math.cos(phi);
   }
-  const geo = new BufferGeometry();
+  const geo = ownDisposable(new BufferGeometry());
   geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  return new Points(geo, new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false }));
+  return new Points(geo, ownDisposable(new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false })));
 }
 
 const backgroundStars = createBackgroundStars();
@@ -512,7 +545,14 @@ for (const body of catalog.bodies) {
 
 // ── Asteroid & Kuiper Belts ──────────────────────────────────────────────────
 
-let asteroidPop = generateAsteroidBelt(ASTEROID_BELT_TARGET_COUNT, 42, { includeNamed: true });
+const asteroidStartup = await createStartupAsteroidBelt(asteroidCatalogPromise, {
+  targetCount: ASTEROID_BELT_TARGET_COUNT, seed: 42,
+  signal: startup.signal, getScaleMode: () => dom.toggleRealisticScale.checked,
+});
+const asteroidBeltRenderer = ownDisposable(asteroidStartup.renderer);
+if (startup.signal.aborted || !recovery.available) return;
+const asteroidPop = asteroidStartup.population;
+simState.useRealisticScale = dom.toggleRealisticScale.checked;
 const kuiperPop = generateKuiperBelt(5_000);
 
 const jupiterPerturbationMu = computePlanetMuAu3Day2(bodyById.get('jupiter')?.massKg);
@@ -520,8 +560,7 @@ const saturnPerturbationMu = computePlanetMuAu3Day2(bodyById.get('saturn')?.mass
 const asteroidJupiterPositionAu = new Vector3();
 const asteroidSaturnPositionAu = new Vector3();
 
-let asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
-const kuiperBeltRenderer = createKuiperBeltRenderer(kuiperPop.kbos);
+const kuiperBeltRenderer = ownDisposable(createKuiperBeltRenderer(kuiperPop.kbos));
 const kuiperBeltUpdater = createKuiperBeltUpdater(kuiperPop, kuiperBeltRenderer);
 asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
 
@@ -529,16 +568,6 @@ solarSystemGroup.add(asteroidBeltRenderer.mesh);
 solarSystemGroup.add(kuiperBeltRenderer.mesh);
 if (kuiperBeltRenderer.companionMesh) {
   solarSystemGroup.add(kuiperBeltRenderer.companionMesh);
-}
-
-function refreshAsteroidBeltRenderer(population: AsteroidBeltPopulation) {
-  solarSystemGroup.remove(asteroidBeltRenderer.mesh);
-  asteroidBeltRenderer.dispose();
-  asteroidPop = population;
-  asteroidBeltRenderer = createAsteroidBeltRenderer(asteroidPop.asteroids);
-  asteroidBeltRenderer.setPerturberMasses(jupiterPerturbationMu, saturnPerturbationMu);
-  asteroidBeltRenderer.setScaleMode(simState.useRealisticScale);
-  solarSystemGroup.add(asteroidBeltRenderer.mesh);
 }
 
 function syncAsteroidBeltInputs() {
@@ -561,65 +590,37 @@ function syncAsteroidBeltInputs() {
   asteroidBeltRenderer.setPerturberPositions(asteroidJupiterPositionAu, asteroidSaturnPositionAu);
 }
 
-function initPhaseOneAsteroids() {
-  return loadPhase1AsteroidCatalog({
-    maxRecords: ASTEROID_BELT_PHASE1_SOURCE_LIMIT,
-    loadLatencyBudgetMs: PHASE1_LOAD_LATENCY_BUDGET_MS,
-    metaUrl: PHASE1_CATALOG_META_URL
-  }).then((catalog) => {
-    if (startup.signal.aborted || !recovery.available) return;
-    const gate = catalog.acceptance;
-    if (!catalog.accepted) {
-      const reasons = gate.rejections.map(({ code, message }) => `[${code}] ${message}`);
-      renderAsteroidCatalogSourceStatus(
-        dom.statusCatalog,
-        rejectedAsteroidCatalogStatus(gate.rejections)
-      );
-      console.warn('[phase-1] Acceptance gates failed:', reasons.join(' | '));
-      return;
-    }
-
-    if (!gate.latency.passed && gate.latency.reason) {
-      console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
-    }
-
-    if (!catalog.asteroids.length) return;
-    const phaseOnePopulation = generateAsteroidBelt(
-      ASTEROID_BELT_TARGET_COUNT,
-      42,
-      {
-        deterministicAsteroids: catalog.asteroids,
-        includeNamed: false
-      }
-    );
-    if (phaseOnePopulation.count <= 0) return;
-    refreshAsteroidBeltRenderer(phaseOnePopulation);
-    renderAsteroidCatalogSourceStatus(
-      dom.statusCatalog,
-      verifiedAsteroidCatalogStatus(catalog.sourceCount)
-    );
-    refillBodyList();
-    console.info(
-      `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
-      `${catalog.sourceCount.toLocaleString()} source rows, ` +
-      `${catalog.asteroids.length.toLocaleString()} parsed records, ` +
-      `version=${catalog.catalogVersion}, ` +
-      `checksum=${catalog.checksumActual}, ` +
-      `load=${catalog.loadMs.toFixed(1)}ms (budget ${catalog.loadLatencyBudgetMs}ms), ` +
-      `taxonomyC=${catalog.taxonomyCheck.counts.C}, ` +
-      `taxonomyS=${catalog.taxonomyCheck.counts.S}, ` +
-      `taxonomyM=${catalog.taxonomyCheck.counts.M}, ` +
-      `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
-    );
-  }).catch((error) => {
-    if (startup.signal.aborted || !recovery.available) return;
-    renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
-    console.warn('[phase-1] Using procedural fallback for asteroid belt:', error);
-  });
+const phaseOneCatalog = asteroidStartup.catalog;
+if (asteroidStartup.source === 'catalog' && phaseOneCatalog) {
+  const gate = phaseOneCatalog.acceptance;
+  if (!gate.latency.passed && gate.latency.reason) {
+    console.warn('[phase-1] Catalog load exceeded its performance budget:', gate.latency.reason);
+  }
+  renderAsteroidCatalogSourceStatus(dom.statusCatalog, verifiedAsteroidCatalogStatus(phaseOneCatalog.sourceCount));
+  console.info(
+    `[phase-1] Loaded deterministic catalog from ${PHASE1_CATALOG_URL} (` +
+    `${phaseOneCatalog.sourceCount.toLocaleString()} source rows, ` +
+    `${phaseOneCatalog.asteroids.length.toLocaleString()} parsed records, ` +
+    `version=${phaseOneCatalog.catalogVersion}, ` +
+    `checksum=${phaseOneCatalog.checksumActual}, ` +
+    `load=${phaseOneCatalog.loadMs.toFixed(1)}ms (budget ${phaseOneCatalog.loadLatencyBudgetMs}ms), ` +
+    `taxonomyC=${phaseOneCatalog.taxonomyCheck.counts.C}, ` +
+    `taxonomyS=${phaseOneCatalog.taxonomyCheck.counts.S}, ` +
+    `taxonomyM=${phaseOneCatalog.taxonomyCheck.counts.M}, ` +
+    `target=${ASTEROID_BELT_TARGET_COUNT.toLocaleString()}).`
+  );
+} else if (asteroidStartup.source === 'rejected' && phaseOneCatalog) {
+  const rejections = phaseOneCatalog.acceptance.rejections;
+  renderAsteroidCatalogSourceStatus(dom.statusCatalog, rejectedAsteroidCatalogStatus(rejections));
+  console.warn('[phase-1] Acceptance gates failed; using procedural fallback:',
+    rejections.map(({ code, message }) => `[${code}] ${message}`).join(' | '));
+} else {
+  renderAsteroidCatalogSourceStatus(dom.statusCatalog, failedAsteroidCatalogStatus());
+  console.warn('[phase-1] Using procedural fallback for asteroid belt:',
+    asteroidStartup.error ?? 'accepted catalog contained no usable asteroid records');
 }
 
 kuiperBeltUpdater.update(simState.julianDate);
-const catalogReady = initPhaseOneAsteroids();
 syncAsteroidBeltInputs();
 
 // ── Focus & Follow ───────────────────────────────────────────────────────────
@@ -652,6 +653,12 @@ function focusBody(bodyId: string, hardSnap = false) {
   }
 
   simState.focusedBodyId = bodyId;
+}
+
+function updateZoomStatus() {
+  if (!dom.statusZoom) return;
+  const dist = camera.position.distanceTo(controls.target);
+  dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
 }
 
 type CameraMode = 'focus' | 'follow' | 'free';
@@ -732,13 +739,13 @@ function updateBodyInfoPanel(bodyId: string) {
 const majorBodies = catalog.bodies.filter((b) =>
   b.type === 'star' || b.type === 'planet' || b.type === 'dwarf'
 );
-const explorer = createExplorerController({
+const explorer = ownDisposable(createExplorerController({
   dom, bodies: majorBodies, onInspect: updateBodyInfoPanel,
   onFocus: (bodyId) => { simState.followBodyId = null; focusBody(bodyId, true); updateCameraMode('focus', bodyId); },
   onFollow: (bodyId) => { simState.followBodyId = bodyId; focusBody(bodyId, true); updateCameraMode('follow', bodyId); },
   onFree: () => { simState.followBodyId = null; updateCameraMode('free'); }
-});
-const bodyPicker = createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') });
+}));
+const bodyPicker = ownDisposable(createBodyPickerPresentation({ select: dom.bodyList, narrow: window.matchMedia('(max-width: 600px)'), coarse: window.matchMedia('(any-pointer: coarse)') }));
 function refillBodyList() {
   explorer.refresh(); bodyPicker.refresh();
   const totalBodies = majorBodies.length + (asteroidPop?.count ?? 0) + (kuiperPop?.count ?? 0);
@@ -791,9 +798,7 @@ function updateBodyRotations(julianDate: number) {
 // ── Scene Body Positions ─────────────────────────────────────────────────────
 
 function disableModelWorkerIntegration() {
-  if (modelWorker) {
-    modelWorker.terminate();
-  }
+  retireModelWorker();
   modelWorker = null;
   modelWorkerEnabled = false;
   modelWorkerReady = false;
@@ -816,7 +821,22 @@ function initializeModelWorker() {
     return;
   }
 
+  const worker = modelWorker;
+  retireModelWorker = startup.defer(() => {
+    worker.onmessage = null;
+    worker.onerror = null;
+    worker.terminate();
+  });
+  startup.defer(() => {
+    modelWorker = null;
+    modelWorkerEnabled = false;
+    modelWorkerReady = false;
+    modelWorkerTickInFlight = false;
+    latestModelWorkerState = null;
+  });
+  if (startup.signal.aborted || !recovery.available) return;
   modelWorker.onmessage = (event: MessageEvent<ModelWorkerOutboundMessage>) => {
+    if (startup.signal.aborted || modelWorker !== worker) return;
     const message = event.data;
     if (!message || typeof message !== 'object') return;
 
@@ -873,6 +893,7 @@ function initializeModelWorker() {
   };
 
   modelWorker.onerror = (event) => {
+    if (startup.signal.aborted || modelWorker !== worker) return;
     const errorMessage = event.message || 'unknown worker error';
     console.warn('[modelWorker] stopped:', errorMessage);
     disableModelWorkerIntegration();
@@ -1101,6 +1122,7 @@ function updateCameraClipPlanes() {
 }
 
 function resizeRenderer() {
+  if (startup.signal.aborted || !recovery.available) return;
   const w = dom.canvas.clientWidth;
   const h = dom.canvas.clientHeight;
   if (w <= 0 || h <= 0) return;
@@ -1112,12 +1134,16 @@ function resizeRenderer() {
     camera.updateProjectionMatrix();
   }
 }
-window.addEventListener('resize', resizeRenderer);
-resizeRenderer();
-
 let rendererResizeFrame = 0;
+window.addEventListener('resize', resizeRenderer);
+startup.defer(() => window.removeEventListener('resize', resizeRenderer));
+startup.defer(() => {
+  if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
+  rendererResizeFrame = 0;
+});
+resizeRenderer();
 function queueRendererResize() {
-  if (rendererResizeFrame) return;
+  if (startup.signal.aborted || !recovery.available || rendererResizeFrame) return;
   rendererResizeFrame = window.requestAnimationFrame(() => {
     rendererResizeFrame = 0;
     resizeRenderer();
@@ -1127,6 +1153,7 @@ function queueRendererResize() {
 const viewportResizeObserver = typeof ResizeObserver === 'undefined'
   ? null
   : new ResizeObserver(queueRendererResize);
+if (viewportResizeObserver) startup.defer(() => viewportResizeObserver.disconnect());
 viewportResizeObserver?.observe(dom.viewportShell);
 viewportResizeObserver?.observe(dom.canvas);
 
@@ -1140,7 +1167,8 @@ const timeController = createTimeController({
   minTimeScale: MIN_TIME_SCALE_DAYS_PER_SEC,
   maxTimeScale: MAX_TIME_SCALE_DAYS_PER_SEC,
   currentJulianDate,
-  formatJulianAsDate
+  formatJulianAsDate,
+  signal: startup.signal
 });
 timeController.bindUi();
 
@@ -1158,28 +1186,28 @@ function updatePlayButton() {
 dom.togglePlay.addEventListener('click', () => {
   simState.paused = !simState.paused;
   updatePlayButton();
-});
+}, { signal: startup.signal });
 
 dom.toggleOrbits.addEventListener('change', () => {
   const vis = dom.toggleOrbits.checked;
   for (const line of orbitLines) {
     line.visible = vis && line.userData.stateAvailable !== false;
   }
-});
+}, { signal: startup.signal });
 
 dom.toggleLabels.addEventListener('change', () => {
   const vis = dom.toggleLabels.checked;
   for (const entry of labels) entry.sprite.visible = vis;
-});
+}, { signal: startup.signal });
 
 dom.toggleRealisticScale.addEventListener('change', () => {
   simState.useRealisticScale = dom.toggleRealisticScale.checked;
   applyScaleMode();
-});
+}, { signal: startup.signal });
 
 dom.aiaChannel.addEventListener('change', () => {
   sunCtrl.setAiaChannelOverride(dom.aiaChannel.value);
-});
+}, { signal: startup.signal });
 
 dom.zoomSensitivity.addEventListener('input', () => {
   const v = Number(dom.zoomSensitivity.value);
@@ -1187,7 +1215,7 @@ dom.zoomSensitivity.addEventListener('input', () => {
     controls.zoomSpeed = v;
     dom.zoomSensitivityValue.textContent = `${v.toFixed(2)}×`;
   }
-});
+}, { signal: startup.signal });
 
 dom.canvas.addEventListener('dblclick', (e) => {
   const rect = dom.canvas.getBoundingClientRect();
@@ -1212,9 +1240,9 @@ dom.canvas.addEventListener('dblclick', (e) => {
       updateCameraMode('follow', bodyId);
     }
   }
-});
+}, { signal: startup.signal });
 
-const experiment = createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) });
+const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl, resolveSelection: engineSelectionResolver(agnEngine) }));
 
 // ── Initialize ───────────────────────────────────────────────────────────────
 
@@ -1222,6 +1250,7 @@ refillBodyList();
 model.update(simState.julianDate);
 initializeModelWorker();
 updateSceneBodies();
+if (simState.useRealisticScale) applyScaleMode();
 focusBody('sun', true);
 updateCameraMode('focus', 'sun');
 controls.update();
@@ -1274,82 +1303,14 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
     { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },
-    { name: 'zoom-status', run: () => {
-      if (dom.statusZoom) {
-        const dist = camera.position.distanceTo(controls.target);
-        dom.statusZoom.textContent = `Range · ${dist < 1 ? (dist * AU_KM).toFixed(0) + ' km' : dist.toFixed(2) + ' AU'}`;
-      }
-    } }
+    { name: 'zoom-status', run: updateZoomStatus }
   ]
 });
 
-stopVisualization = () => {
-  startup.abort();
-  frameLifecycle.dispose(); controls.enabled = false;
-  viewportCamera.dispose(); disableModelWorkerIntegration(); sunCtrl.disposeSolarDelivery();
-};
-
-// ── Resource Cleanup ──────────────────────────────────────────────────────────
-
-window.addEventListener('beforeunload', () => {
-  startup.abort();
-  frameLifecycle.dispose();
-  window.removeEventListener('resize', resizeRenderer);
-  refreshPanelLayout = () => {};
-  explorer.dispose(); bodyPicker.dispose(); viewportCamera.dispose(); experiment.dispose(); controls.dispose();
-  sunCtrl.disposeSolarDelivery();
-  viewportResizeObserver?.disconnect();
-  if (rendererResizeFrame) window.cancelAnimationFrame(rendererResizeFrame);
-
-  if (modelWorker) {
-    modelWorker.terminate();
-    modelWorker = null;
-  }
-
-  asteroidBeltRenderer.dispose();
-  kuiperBeltRenderer.dispose();
-
-  for (const mesh of bodyMeshes.values()) {
-    if (mesh.geometry) mesh.geometry.dispose();
-    if (mesh.material) {
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((m: { dispose: () => void }) => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    }
-  }
-
-  for (const line of orbitLines) {
-    line.geometry.dispose();
-    if (Array.isArray(line.material)) {
-      line.material.forEach((m: { dispose: () => void }) => m.dispose());
-    } else {
-      line.material.dispose();
-    }
-  }
-
-  for (const entry of labels) {
-    const sprite = entry.sprite;
-    if (sprite.material.map) sprite.material.map.dispose();
-    sprite.material.dispose();
-  }
-
-  backgroundStars.geometry.dispose();
-  if (Array.isArray(backgroundStars.material)) {
-    backgroundStars.material.forEach((m: { dispose: () => void }) => m.dispose());
-  } else {
-    backgroundStars.material.dispose();
-  }
-
-  if (sunTexture) sunTexture.dispose();
-  renderer.dispose();
-});
+startup.defer(() => frameLifecycle.dispose());
 
 try {
-  // Keep the original fetch-to-parse/hash timer and the complete catalog.
-  // Adoption replaces/disposes asteroid materials, so compile only afterward.
-  await catalogReady;
+  // The source-selected complete scene is final before shader compilation.
   if (startup.signal.aborted || !recovery.available) return;
   syncAsteroidBeltInputs();
   await warmupRenderer(renderer, scene, camera, { signal: startup.signal });
@@ -1364,4 +1325,8 @@ try {
 
 }
 
-void startSimulation();
+void startSimulation().catch((error) => {
+  if (startup.signal.aborted || !recovery.available) return;
+  console.error('[visualization] initialization failed:', error);
+  recovery.reportFailure('The visualization could not start. WebGL may be unavailable or the application configuration may be invalid. Enable graphics acceleration or try another supported browser, then reload.');
+});

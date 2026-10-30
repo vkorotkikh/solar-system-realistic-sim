@@ -20,7 +20,7 @@ const MAIN_BINDINGS = [
   'kuiperBeltUpdater', 'sunCtrl', 'applyMetricDisplayOffsets', 'bodyNodes',
   'updateFollowTarget', 'viewportCamera', 'bodyMeshes', 'Vector3',
   'backgroundStars', 'camera', 'controls', 'updateCameraClipPlanes',
-  'renderer', 'scene', 'AU_KM',
+  'renderer', 'scene', 'AU_KM', 'updateZoomStatus',
 ] as const;
 
 function productionBodyInfoRuntime(bindings: Record<string, unknown>): MainBodyInfoRuntime {
@@ -172,6 +172,7 @@ function makeHarness() {
     renderer: { render: () => undefined },
     scene: {},
     AU_KM,
+    updateZoomStatus: () => undefined,
   });
 
   return {

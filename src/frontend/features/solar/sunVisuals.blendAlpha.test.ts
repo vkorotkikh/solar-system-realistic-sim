@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BufferAttribute, Group, Mesh, Vector3 } from 'three';
 import { buildSolarFeatureBlendView, normalizeSolarFeatureSetFromState } from './solarFeatureBlending';
-import { createSunEruptionLayer, updateSunCoronalLoopsFromBlendView, updateSunEruptionLayerFromBlendView } from './sunVisuals';
+import { createSunEruptionLayer, setSunEruptionBaseRadius, updateSunCoronalLoopsFromBlendView, updateSunEruptionLayerFromBlendView } from './sunVisuals';
 import { SOLAR_RADIUS_AU } from './solarDisplayScale';
 
 const sourceArc = [[1, 0, 0], [0, 0, 1]];
@@ -90,6 +90,34 @@ describe('actual coronal-loop geometry blend endpoints', () => {
 });
 
 describe('actual eruption-particle geometry blend endpoints', () => {
+  it.each(['scale', 'blend'] as const)('keeps cached culling bounds around the moved particles: %s', mode => {
+    const particles = createSunEruptionLayer(SOLAR_RADIUS_AU);
+    try {
+      particles.geometry.computeBoundingSphere();
+      const initial = particles.geometry.boundingSphere!.clone();
+      if (mode === 'scale') setSunEruptionBaseRadius(particles, 3 * SOLAR_RADIUS_AU);
+      else {
+        const features = normalizeSolarFeatureSetFromState({ corona: { features: [
+          { id: 'extended-eruption', arc: [[3, 0, 0], [0, 0, 3]], brightness: 0.5 }
+        ] } }, 2451552);
+        const blend = buildSolarFeatureBlendView({ currentFeatureSet: features, targetFeatureSet: features,
+          blendStartMs: 0, blendDurationMs: 1000, nowMs: 0 });
+        updateSunEruptionLayerFromBlendView({ sunEruptionLayer: particles, blendView: blend,
+          sunRadiusAu: SOLAR_RADIUS_AU, timeSec: 0, activity: 0.5 });
+      }
+      const position = particles.geometry.getAttribute('position');
+      expect(initial.containsPoint(new Vector3().fromBufferAttribute(position, 0))).toBe(false);
+      for (let index = 0; index < position.count; index += 1) {
+        expect(particles.geometry.boundingSphere!.containsPoint(
+          new Vector3().fromBufferAttribute(position, index)
+        )).toBe(true);
+      }
+    } finally {
+      particles.geometry.dispose();
+      for (const material of Array.isArray(particles.material) ? particles.material : [particles.material]) material.dispose();
+    }
+  });
+
   it.each([
     { label: 'zero from the real blender', alpha: 0, direction: [1, 0, 0] },
     { label: 'completed blend', alpha: 1, direction: [0, 1, 0] },
