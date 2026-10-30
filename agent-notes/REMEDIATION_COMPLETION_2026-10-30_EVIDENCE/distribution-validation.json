@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "verifiedUtc": "2026-10-30T05:21:16.202214+00:00",
+  "publicFiles": 427,
+  "publicBytes": 64766380,
+  "localFileRecordsRehashed": 973,
+  "uniqueLocalFilesRehashed": 963,
+  "canonicalSourceUrlsParsed": 1436,
+  "moonTextureEntriesMatched": 9,
+  "moonShardsMatched": 410,
+  "baseArtifactsMatched": 5,
+  "lazyInputsMatched": 410,
+  "decodedCatalogResponsesMatched": 17,
+  "runtimeNpmLicenseFieldsMatched": 1,
+  "noticeAndOriginalProvenanceUnmodified": true,
+  "outputFiles": [
+    {
+      "path": "agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.json",
+      "bytes": 2151419,
+      "sha256": "2333bb1a85eda169bf2b4bbf8130608ef00af32ddbe6776a39b87a06692d4ae7"
+    },
+    {
+      "path": "agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md",
+      "bytes": 9023,
+      "sha256": "4aeb92f9809542335b3e4553a1bde32b984b96d2886d34675c1db28f6378208f"
+    }
+  ],
+  "externalRequests": 0,
+  "applicationBuildOrBroadTestsRun": false
+}

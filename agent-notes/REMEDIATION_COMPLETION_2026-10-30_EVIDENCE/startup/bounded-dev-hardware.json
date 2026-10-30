@@ -1,0 +1,168 @@
+{
+  "label": "bounded-dev-hardware",
+  "url": "http://127.0.0.1:5401/",
+  "observedAt": "2026-10-30T05:15:52.223Z",
+  "gitHead": "d0875c8cc3a4aa158425ed6d7bea3e843e704ac0",
+  "sources": {
+    "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+    "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+    "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+    "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+    "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4"
+  },
+  "hardwareRequested": true,
+  "cacheDisabled": true,
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "workloadModified": false,
+  "backendMocked": false,
+  "finalSourceFreeze": false,
+  "timingMeaning": "navigation-relative times; fence observation is an upper bound including callback scheduling, not compositor presentation; observation timeouts are harness bounds, not approved performance budgets",
+  "renderers": 1,
+  "draws": 5,
+  "catalogRequests": [
+    {
+      "url": "/data/asteroid-phase1/asteroid_phase1_main_100000.bin",
+      "at": 789.1000000238419
+    },
+    {
+      "url": "/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json",
+      "at": 791.2999999523163
+    }
+  ],
+  "compiles": 1,
+  "rendererCreatedAt": 786.8999999761581,
+  "firstTextureAllocationAt": 801.6000000238419,
+  "compileStartedAt": 1722,
+  "compileSubmittedAt": 1732.3999999761581,
+  "firstFullSceneSubmittedAt": 2727.1999999284744,
+  "renderStats": {
+    "frame": 1,
+    "calls": 41,
+    "triangles": 619144,
+    "points": 14360,
+    "lines": 1143
+  },
+  "belts": [
+    {
+      "count": 50000,
+      "kuiper": false
+    },
+    {
+      "count": 5000,
+      "kuiper": true
+    },
+    {
+      "count": 83,
+      "kuiper": true
+    }
+  ],
+  "graphics": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "antialias": true,
+    "samples": 4,
+    "parallelCompile": true
+  },
+  "fullSceneFenceObservedAt": 9898.100000023842,
+  "webglError": 0,
+  "catalogStatus": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+  "recoveryHidden": true,
+  "resources": [
+    {
+      "name": "http://127.0.0.1:5401/data/asteroid-phase1/asteroid_phase1_main_100000.bin",
+      "entryType": "resource",
+      "startTime": 791.1000000238419,
+      "duration": 349.7999999523163,
+      "navigationId": 3666,
+      "initiatorType": "fetch",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.1",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 791.1000000238419,
+      "domainLookupStart": 791.1000000238419,
+      "domainLookupEnd": 791.1000000238419,
+      "connectStart": 791.1000000238419,
+      "secureConnectionStart": 0,
+      "connectEnd": 791.1000000238419,
+      "requestStart": 792.1000000238419,
+      "responseStart": 794.7999999523163,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 794.7999999523163,
+      "responseEnd": 1140.8999999761581,
+      "transferSize": 3600312,
+      "encodedBodySize": 3600012,
+      "decodedBodySize": 3600012,
+      "responseStatus": 200,
+      "serverTiming": []
+    },
+    {
+      "name": "http://127.0.0.1:5401/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json",
+      "entryType": "resource",
+      "startTime": 791.5,
+      "duration": 4.100000023841858,
+      "navigationId": 3666,
+      "initiatorType": "fetch",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.1",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "application/json",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 791.5,
+      "domainLookupStart": 791.5,
+      "domainLookupEnd": 791.5,
+      "connectStart": 791.5,
+      "secureConnectionStart": 0,
+      "connectEnd": 791.5,
+      "requestStart": 792.1999999284744,
+      "responseStart": 795.1000000238419,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 795.1000000238419,
+      "responseEnd": 795.6000000238419,
+      "transferSize": 4973,
+      "encodedBodySize": 4673,
+      "decodedBodySize": 4673,
+      "responseStatus": 200,
+      "serverTiming": []
+    }
+  ],
+  "catalogLogs": [
+    "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a, load=471.1ms (budget 2000ms), taxonomyC=592, taxonomyS=738, taxonomyM=37, target=50,000)."
+  ],
+  "errors": [],
+  "warnings": [
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[solar] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:9401)\nStart the backend so that it answers at http://127.0.0.1:9401: cd backend && python -m uvicorn server:app --port 8042"
+  ],
+  "observationError": null,
+  "loadStart": [
+    19.46,
+    17.23,
+    9.68
+  ],
+  "loadEnd": [
+    20.16,
+    17.45,
+    9.83
+  ]
+}

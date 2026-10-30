@@ -1,0 +1,18 @@
+{
+  "lazy": {
+    "models": 410,
+    "requests": 1370,
+    "envelopeBytes": 2693748741,
+    "retainedRows": {
+      "source": 3950260,
+      "held": 3949393,
+      "endpoints": 820
+    },
+    "removedTrainingEpochs": 16
+  },
+  "s2023_s38": {
+    "requests": 115,
+    "originalEnvelopesFound": 115,
+    "missing": []
+  }
+}

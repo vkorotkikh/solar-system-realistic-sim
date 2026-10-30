@@ -1,0 +1,87 @@
+[
+  {
+    "state": "desktop-expanded",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ],
+    "engine": "4.11.1",
+    "passes": 28,
+    "violations": 0,
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  },
+  {
+    "state": "mobile-closed",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ],
+    "engine": "4.11.1",
+    "passes": 21,
+    "violations": 0,
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  },
+  {
+    "state": "mobile-open",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ],
+    "engine": "4.11.1",
+    "passes": 27,
+    "violations": 0,
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  },
+  {
+    "state": "desktop-recovery",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ],
+    "engine": "4.11.1",
+    "passes": 26,
+    "violations": 0,
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  },
+  {
+    "state": "mobile-closed-recovery",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ],
+    "engine": "4.11.1",
+    "passes": 19,
+    "violations": 0,
+    "incomplete": [
+      "aria-prohibited-attr",
+      "color-contrast"
+    ]
+  }
+]

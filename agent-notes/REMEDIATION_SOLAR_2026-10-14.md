@@ -1,6 +1,6 @@
 # Solar canonical-register remediation, 2026-10-14
 
-> **Current review (2026-10-29):** See the [condensed remediation review](REMEDIATION_CONSOLIDATED_REVIEW_2026-10-29.md) for all 83 current dispositions against `origin/main@bb29d4b`, fresh checks, remaining defects and local-only work. The dated report below is preserved as historical evidence.
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
 
 ## Integration checkpoint
 

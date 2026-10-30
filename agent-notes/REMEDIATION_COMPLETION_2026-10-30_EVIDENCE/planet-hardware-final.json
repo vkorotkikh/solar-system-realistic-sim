@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "flat",
+    "exitCode": 0,
+    "log": "planet-hardware-flat-final.log"
+  },
+  {
+    "mode": "relief",
+    "exitCode": 0,
+    "log": "planet-hardware-relief-final.log"
+  }
+]

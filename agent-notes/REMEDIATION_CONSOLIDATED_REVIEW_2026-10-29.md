@@ -1,5 +1,7 @@
 # Consolidated remediation review - 2026-10-29
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 **Result: the remediation effort is not completely resolved.** All **83 canonical items** and **46 remediation-note filenames** were reconciled against locally available `origin/main@bb29d4be393c9dedca7049fc9b83511ed955be40`, with six independent domain reviewers and fresh central checks. The inventory contains **62 distinct note versions**; alternate versions were compared for conflicting claims. Supporting SCN-specific reviews were included where needed.
 
 **61 scoped code fixes are confirmed; 16 items remain partial and 6 require decisions.** A scoped fix means its original implementation and targeted regression are present at this baseline. It does not certify every adjacent scientific capability, deployment, platform or manual acceptance condition. Seven concrete remaining defects were reproduced despite passing general unit suites. Source and detailed reviewer findings are retained in [the evidence directory](REMEDIATION_REVIEW_2026-10-29_EVIDENCE/README.md).
@@ -163,48 +165,48 @@ Every pre-review `REMEDIATION_*.md` filename found across the registered local w
 
 | Remediation note | Reviewer domain | Inventoried versions |
 |---|---|---:|
-| [75052 REFERENCE](REMEDIATION_75052_REFERENCE_2026-10-14.md) | frontend | 1 |
+| [75052 REFERENCE](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_75052_REFERENCE_2026-10-14.md) | frontend | 1 |
 | [ACCESSIBILITY](REMEDIATION_ACCESSIBILITY_2026-10-14.md) | frontend | 2 |
-| [AIA EPOCH COVERAGE](REMEDIATION_AIA_EPOCH_COVERAGE_2026-10-14.md) | solar | 1 |
-| [ASTEROID RESIDUALS](REMEDIATION_ASTEROID_RESIDUALS_2026-10-14.md) | catalogs | 1 |
-| [ASTEROID TIME](REMEDIATION_ASTEROID_TIME_2026-10-14.md) | catalogs | 1 |
-| [CATALOG MAPPING](REMEDIATION_CATALOG_MAPPING_2026-10-17.md) | catalogs | 1 |
+| [AIA EPOCH COVERAGE](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_AIA_EPOCH_COVERAGE_2026-10-14.md) | solar | 1 |
+| [ASTEROID RESIDUALS](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_ASTEROID_RESIDUALS_2026-10-14.md) | catalogs | 1 |
+| [ASTEROID TIME](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_ASTEROID_TIME_2026-10-14.md) | catalogs | 1 |
+| [CATALOG MAPPING](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_CATALOG_MAPPING_2026-10-17.md) | catalogs | 1 |
 | [CATALOG STARTUP](REMEDIATION_CATALOG_STARTUP_2026-10-14.md) | catalogs | 1 |
-| [CATALOGS](REMEDIATION_CATALOGS_2026-10-14.md) | catalogs | 1 |
+| [CATALOGS](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_CATALOGS_2026-10-14.md) | catalogs | 1 |
 | [CLOSURE CHECKPOINT 6539902](REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md) | global | 3 |
 | [CLOSURE PLAN](REMEDIATION_CLOSURE_PLAN_2026-10-15.md) | global | 3 |
-| [DELIVERY](REMEDIATION_DELIVERY_2026-10-14.md) | catalogs | 1 |
+| [DELIVERY](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_DELIVERY_2026-10-14.md) | catalogs | 1 |
 | [DEPLOYMENT](REMEDIATION_DEPLOYMENT_2026-10-14.md) | runtime | 1 |
 | [EFFORT](REMEDIATION_EFFORT_2026-10-14.md) | global | 3 |
-| [EPHEMERIS](REMEDIATION_EPHEMERIS_2026-10-14.md) | mission | 2 |
-| [EVENTS](REMEDIATION_EVENTS_2026-10-14.md) | frontend | 4 |
-| [FORMAT](REMEDIATION_FORMAT_2026-10-14.md) | catalogs | 1 |
-| [HARDWARE](REMEDIATION_HARDWARE_2026-10-14.md) | frontend | 1 |
-| [HORIZONS TRANSPORT](REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md) | runtime | 1 |
+| [EPHEMERIS](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md) | mission | 2 |
+| [EVENTS](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_EVENTS_2026-10-14.md) | frontend | 4 |
+| [FORMAT](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_FORMAT_2026-10-14.md) | catalogs | 1 |
+| [HARDWARE](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_HARDWARE_2026-10-14.md) | frontend | 1 |
+| [HORIZONS TRANSPORT](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md) | runtime | 1 |
 | [INTEGRATION CHECKPOINT](REMEDIATION_INTEGRATION_CHECKPOINT_2026-10-14.md) | global | 1 |
 | [INTEGRATION CHECKPOINT A51BEBC](REMEDIATION_INTEGRATION_CHECKPOINT_A51BEBC_2026-10-14.md) | global | 1 |
-| [LIFECYCLE OWNERSHIP REVIEW](REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md) | runtime | 1 |
-| [MISSION](REMEDIATION_MISSION_2026-10-14.md) | mission | 2 |
-| [NATIVE TUDAT](REMEDIATION_NATIVE_TUDAT_2026-10-14.md) | mission | 2 |
+| [LIFECYCLE OWNERSHIP REVIEW](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md) | runtime | 1 |
+| [MISSION](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_MISSION_2026-10-14.md) | mission | 2 |
+| [NATIVE TUDAT](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md) | mission | 2 |
 | [OPERATIONAL](REMEDIATION_OPERATIONAL_2026-10-14.md) | mission | 1 |
-| [PLANETS](REMEDIATION_PLANETS_2026-10-14.md) | frontend | 1 |
+| [PLANETS](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_PLANETS_2026-10-14.md) | frontend | 1 |
 | [PROVENANCE](REMEDIATION_PROVENANCE_2026-10-14.md) | global | 1 |
-| [RUNTIME](REMEDIATION_RUNTIME_2026-10-14.md) | runtime | 1 |
-| [RUNTIME CLIENT](REMEDIATION_RUNTIME_CLIENT_2026-10-14.md) | runtime | 1 |
-| [RUNTIME REVIEW](REMEDIATION_RUNTIME_REVIEW_2026-10-14.md) | runtime | 1 |
+| [RUNTIME](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_RUNTIME_2026-10-14.md) | runtime | 1 |
+| [RUNTIME CLIENT](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_RUNTIME_CLIENT_2026-10-14.md) | runtime | 1 |
+| [RUNTIME REVIEW](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md) | runtime | 1 |
 | [SCN049 BROWSER ACCEPTANCE](REMEDIATION_REVIEW_2026-10-29_EVIDENCE/sources/REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md) | frontend | 2 |
-| [SCN049 KUIPER REACTIVATION](REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md) | frontend | 1 |
+| [SCN049 KUIPER REACTIVATION](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md) | frontend | 1 |
 | [SOLAR](REMEDIATION_SOLAR_2026-10-14.md) | solar | 1 |
-| [SOLAR FRAME REVIEW](REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md) | solar | 2 |
+| [SOLAR FRAME REVIEW](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md) | solar | 2 |
 | [SOLAR SCN041 COMPARISON](REMEDIATION_SOLAR_SCN041_COMPARISON_2026-10-14.md) | solar | 1 |
-| [SOLAR SCN041 DEGREE90](REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md) | solar | 1 |
+| [SOLAR SCN041 DEGREE90](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md) | solar | 1 |
 | [SOLAR SCN042 FRAMES](REMEDIATION_SOLAR_SCN042_FRAMES_2026-10-14.md) | solar | 1 |
 | [SOLAR SCN042 PRODUCTION](REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md) | solar | 1 |
-| [SOLAR SCN049 NUMERICAL POLICY](REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md) | frontend | 1 |
+| [SOLAR SCN049 NUMERICAL POLICY](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md) | frontend | 1 |
 | [SOLAR WIND OVERLAP](REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md) | solar | 1 |
-| [STARTUP CPU](REMEDIATION_STARTUP_CPU_2026-10-15.md) | catalogs | 1 |
+| [STARTUP CPU](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_STARTUP_CPU_2026-10-15.md) | catalogs | 1 |
 | [STARTUP WARMUP](REMEDIATION_STARTUP_WARMUP_2026-10-17.md) | catalogs | 2 |
-| [TOOLCHAIN](REMEDIATION_TOOLCHAIN_2026-10-14.md) | global | 1 |
+| [TOOLCHAIN](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_TOOLCHAIN_2026-10-14.md) | global | 1 |
 | [VERIFICATION CHECKPOINT 4728428](REMEDIATION_VERIFICATION_CHECKPOINT_4728428_2026-10-14.md) | global | 1 |
 | [VERIFICATION CHECKPOINT 4B55DFF](REMEDIATION_VERIFICATION_CHECKPOINT_4B55DFF_2026-10-14.md) | global | 1 |
 | [VERIFICATION CHECKPOINT 4F2E250](REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md) | global | 1 |

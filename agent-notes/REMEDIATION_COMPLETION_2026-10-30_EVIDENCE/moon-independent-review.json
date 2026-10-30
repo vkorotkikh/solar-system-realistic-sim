@@ -1,0 +1,221 @@
+{
+  "review": "Independent read-only pre-integration review of moon changes",
+  "status": "changes_required",
+  "generatedAt": "2026-10-30T05:17:05.319400+00:00",
+  "baseline": "25aacf70cbc1288dfac21a7c21fec62d064e1dc0",
+  "observedHead": "8be083ccf766d262cba4cb43f25a1c9c60f2fd7f",
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "scope": {
+    "codeFiles": [
+      "src/sim/lazyMoonEphemerides.ts",
+      "src/sim/lazyMoonEphemerides.test.ts",
+      "src/sim/loadMoonEphemerides.ts",
+      "src/sim/moonRepairTestInputs.mjs",
+      "src/sim/moonCatalogRepair.horizons.test.ts",
+      "scripts/generate_moon_lazy_ephemerides.py",
+      "scripts/test_moon_lazy_ephemerides.py"
+    ],
+    "assetDirectories": [
+      "scripts/moon-lazy-inputs",
+      "public/moon-ephemerides"
+    ],
+    "sourceEdits": false,
+    "commits": false,
+    "deletions": false,
+    "subagents": false,
+    "broadTestRerun": false,
+    "writesOnly": [
+      "/tmp/solar-remediation-completion-20261030/moon-independent-review/",
+      "/tmp/solar-remediation-completion-20261030/moon-independent-review.json"
+    ]
+  },
+  "counts": {
+    "Critical": 0,
+    "ImportantCorrectness": 1,
+    "ImportantClosure": 1
+  },
+  "findings": [
+    {
+      "id": "MOON-I1",
+      "severity": "Important",
+      "kind": "correctness",
+      "file": "src/sim/lazyMoonEphemerides.ts",
+      "line": 167,
+      "location": "src/sim/lazyMoonEphemerides.ts:167",
+      "title": "Valid gzip/Brotli HTTP shards are rejected by the exact Content-Length check",
+      "scope": "Opt-in lazy coefficient delivery through an HTTP server that includes Content-Encoding and the compressed Content-Length. Default 13 models are unaffected.",
+      "repro": {
+        "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-remediation-completion-20261030/moon-independent-review/encoded-http-probe.mjs",
+        "evidence": "/tmp/solar-remediation-completion-20261030/moon-independent-review/encoded-http-result.json",
+        "method": "Bundle the current loader into scratch; serve the actual public manifest and Amalthea shard with identity, gzip and br encodings over local native HTTP; use native fetch.",
+        "observed": [
+          {
+            "mode": "identity",
+            "advertisedLength": 403584,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "loaded": [
+              "amalthea"
+            ]
+          },
+          {
+            "mode": "gzip",
+            "advertisedLength": 188814,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "error": "Error: Moon asset exceeds declared transfer budget or differs from exact shard length"
+          },
+          {
+            "mode": "br",
+            "advertisedLength": 165428,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "error": "Error: Moon asset exceeds declared transfer budget or differs from exact shard length"
+          }
+        ]
+      },
+      "impact": "Native fetch decodes the body while retaining the compressed Content-Length header. Line 168 compares that wire length with entry.bytes (decoded JSON length), rejecting legitimate compressed shards before their verified decoded bytes can be admitted. The existing uncompressed local HTTP evidence does not cover this delivery path.",
+      "recommendation": "Apply exact advertised-length equality only when the representation is unencoded. For encoded responses, keep appropriate advertised transfer bounds and retain the existing streamed decoded-size cap, exact final decoded length, SHA-256, semantic certificate and cleanup checks. Add the compressed native HTTP regression; do not increase any numerical or byte caps.",
+      "confidence": "reproduced"
+    },
+    {
+      "id": "MOON-I2",
+      "severity": "Important",
+      "kind": "closure_gap",
+      "file": "scripts/generate_moon_lazy_ephemerides.py",
+      "line": 21,
+      "location": "scripts/generate_moon_lazy_ephemerides.py:21",
+      "relatedLocations": [
+        "scripts/generate_moon_lazy_ephemerides.py:22",
+        "src/sim/moonCatalogRepair.horizons.test.ts:16",
+        "scripts/test_moon_lazy_ephemerides.py:91"
+      ],
+      "title": "Complete source pins and matching public shards have not yet been saved in Git",
+      "scope": "Local reproducible integration/task completion; separate from remote publication or distribution clearance.",
+      "repro": {
+        "command": "git ls-files -- scripts/moon-lazy-inputs public/moon-ephemerides",
+        "observed": "0 tracked files; git status --short still reports both directories as untracked.",
+        "evidence": "/tmp/solar-remediation-completion-20261030/moon-independent-review/asset-check.json",
+        "assetFiles": 823,
+        "combinedBytes": 396310625
+      },
+      "impact": "The successful clean-checkout regression copies the working-tree directories; it proves offline reconstruction from those bytes, but those bytes are not yet preserved by a commit. A checkout from current Git history lacks both dependencies required by the new default catalog gate.",
+      "recommendation": "After fixing MOON-I1, the parent should locally commit the seven moon code/test files together with the complete scripts/moon-lazy-inputs and public/moon-ephemerides directories (396,310,625 bytes including README). Preserve the acceptance evidence alongside its final snapshot. The user already authorized completion; this is a concrete pending local-save action, not a new permission or distribution-clearance gate.",
+      "confidence": "verified_current_git_state"
+    }
+  ],
+  "passBoundaries": [
+    {
+      "contract": "Evidence binds to the reviewed source",
+      "status": "pass",
+      "evidence": "All seven current SHA-256 values equal moons-result.json finalCodeHashes. The shared parser was only read. Parent HEAD may advance because other agents share the worktree.",
+      "codeSha256": {
+        "src/sim/lazyMoonEphemerides.ts": "81bf6334283eb34c80659ea08394c04af5920952bbded80912d75d80c2d141e2",
+        "src/sim/lazyMoonEphemerides.test.ts": "983c2f91e9a05b1e3de40a8fa63367bf30d185d5d7e127e0d05f0680a7bdb253",
+        "src/sim/loadMoonEphemerides.ts": "1f7c52ccca0a4402b5a6c5a5eed3d276872267c7c73982e5ac335b47f1c97855",
+        "src/sim/moonRepairTestInputs.mjs": "7c6293bd985bf98f24d2498594ad93ba8b373a2ca657cabbe4d3184e89564861",
+        "src/sim/moonCatalogRepair.horizons.test.ts": "f3c519df3c19b42050245ba0fad1fa46d68767b404692b9619c543eb80ef0cd7",
+        "scripts/generate_moon_lazy_ephemerides.py": "c5a0b87805c3113050d1eeb63d0ae599133ed4eb85b04f5c02e273e0992cd616",
+        "scripts/test_moon_lazy_ephemerides.py": "de35703e323e9aef495d4784ff82bd512ca0201761773dabcc33079b06bdfa3b"
+      }
+    },
+    {
+      "contract": "Complete source pins and public asset integrity",
+      "status": "pass",
+      "evidence": {
+        "assetFilesRehashed": 823,
+        "assetInventoryMismatches": [],
+        "recipesBoundToShards": 410,
+        "sourceManifestSha256": "235714411f6ec2bd897608b1fbd6cea8cdaddb3ba810fa3f9938f41550869b0d",
+        "publicManifestSha256": "2e40645b28e180337c791493fafae884d6d9e81700c8d0aa23abc2721783cf91",
+        "trackedBulkFiles": 0,
+        "bytesByDirectory": {
+          "scripts/moon-lazy-inputs": 336052089,
+          "public/moon-ephemerides": 60258536
+        },
+        "combinedBytes": 396310625
+      },
+      "scope": "All 823 files independently rehashed against the supplied inventory; all 410 recipe digests bind to shipped shards; exact pin/public directory membership and source-manifest hash match. No original 2.7 GB cache audit was rerun."
+    },
+    {
+      "contract": "All 424 records fit actual shipped models; both Puck aliases and original 13 retained",
+      "status": "pass_with_existing_numerical_evidence",
+      "evidence": [
+        "src/sim/moonCatalogRepair.horizons.test.ts:14",
+        "src/sim/moonCatalogRepair.horizons.test.ts:38",
+        "src/sim/moonCatalogRepair.horizons.test.ts:49",
+        "/tmp/solar-remediation-completion-20261030/moons/scoped-final.json"
+      ],
+      "details": "Default gate uses the production loader and public files with no candidate-directory substitution or skip condition. Existing 425 catalog tests passed, covering 424 records and 2968 independent states. The 410 lazy models represent 411 records; Puck catalog IDs 378/388 share target 715 and the stricter 86.004 km limit. All five original artifact envelopes (13 models) independently compare byte-for-byte with the supplied baseline."
+    },
+    {
+      "contract": "Numerical and certificate caps remain fixed",
+      "status": "pass",
+      "evidence": [
+        "src/sim/lazyMoonEphemerides.ts:54",
+        "src/sim/lazyMoonEphemerides.ts:110",
+        "src/sim/lazyMoonEphemerides.ts:241",
+        "scripts/generate_moon_lazy_ephemerides.py:190",
+        "scripts/generate_moon_lazy_ephemerides.py:217"
+      ],
+      "details": "Every lazy manifest/model retains min(500 km, 0.001 * minimum alias aKm) and 10 m/s. All shipped aggregate/oracle percentile sets are ordered, nonnegative and within those limits. Runtime requires exact ordered alias IDs, seven oracle samples per alias and finite nonnegative ordered p50/p95/p99/max values before caching. Rehashed malformed-certificate regressions exercise semantics."
+    },
+    {
+      "contract": "Failure cleanup, shard concurrency, retry and deadlines",
+      "status": "pass_with_stated_transport_boundary",
+      "evidence": [
+        "src/sim/lazyMoonEphemerides.ts:145",
+        "src/sim/lazyMoonEphemerides.ts:195",
+        "src/sim/lazyMoonEphemerides.ts:217",
+        "src/sim/lazyMoonEphemerides.test.ts:196",
+        "src/sim/lazyMoonEphemerides.test.ts:239",
+        "src/sim/lazyMoonEphemerides.test.ts:285",
+        "src/sim/lazyMoonEphemerides.test.ts:326"
+      ],
+      "details": "Reviewed acquired-response failure paths abort transport, await reader/body cancellation before shard permit transfer, release locks/timers and preserve original errors. One 30-second default deadline covers headers and all chunks (configurable 1..120000 ms); shard concurrency is bounded 1..8, default 4. A custom fetch that ignores abort may resolve after the deadline; its late body is cancelled asynchronously, so an absolute physical-transfer bound is not certified for such noncompliant transports. A cancellation that never settles after an acquired response retains its slot."
+    },
+    {
+      "contract": "All 410 offline fits reproduce shipped bytes",
+      "status": "verified_existing_evidence_not_rerun",
+      "evidence": [
+        "/tmp/solar-remediation-completion-20261030/moons/python-junit.xml",
+        "scripts/test_moon_lazy_ephemerides.py:76"
+      ],
+      "details": "JUnit records 460 passed, zero failures/errors/skips, including test_clean_checkout_offline_rebuild_of_all_410_shards. Read the isolated-copy runner: no candidate cache or node_modules prerequisite, socket/URL acquisition blocked, --offline --check repeats all source fits and compares all shards/index byte-for-byte. Scope is Python 3.12.13/NumPy 2.5.2 pinned stack; not a cross-platform bitwise guarantee. Git preservation remains MOON-I2."
+    },
+    {
+      "contract": "Source-quality exceptions retain their legitimate qualifications",
+      "status": "pass_with_existing_native_evidence",
+      "evidence": [
+        "src/sim/moonEphemeris.ts:223",
+        "src/sim/moonSourceExceptions.test.ts:27",
+        "/tmp/solar-remediation-completion-20261030/moons/native/native-oracle.json",
+        "/tmp/solar-remediation-completion-20261030/moons/native/pinned-source-summary.json",
+        "/tmp/solar-remediation-completion-20261030/moons/source-audit.json"
+      ],
+      "details": "Daphnis remains the explicitly dated legacy SAT393 Cassini fit (kernel release 2016-10-11; observations through 2016-07-16), with two native jumps, explicit right-hand semantics and discontinuity qualification; no relaxed accuracy cap. S2023_S38 remains geometric Cartesian sat455_merged_DE440, including a positive instantaneous two-body-energy probe without a permanent-escape claim. Native summary checks 115 requests but reports zero original envelopes in its assigned cache; separate freshly recorded source-audit.json finds and rehashes all 115 originals in the prepared-worktree cache. This distinction resolves the apparent envelope discrepancy. The same audit covers 1370 lazy envelopes and lossless retained rows; audit script read, large audit not rerun. Numerical-source identity does not establish original HTTP wire authenticity or observational uncertainty."
+    },
+    {
+      "contract": "Existing unit/Python/build/local HTTP evidence",
+      "status": "verified_existing_evidence_with_delivery_failure",
+      "evidence": [
+        "/tmp/solar-remediation-completion-20261030/moons/scoped-final.json",
+        "/tmp/solar-remediation-completion-20261030/moons/python-junit.xml",
+        "/tmp/solar-remediation-completion-20261030/moons/runtime.json",
+        "/tmp/solar-remediation-completion-20261030/moons/build.log",
+        "/tmp/solar-remediation-completion-20261030/moon-independent-review/encoded-http-result.json"
+      ],
+      "details": "682 unit tests and 460 Python/native tests pass in recorded evidence. Existing production build/local nested-path HTTP evidence covers uncompressed assets only. Independent bounded native HTTP probe passes identity delivery and fails valid gzip/br delivery (MOON-I1). Broad suites were not rerun."
+    },
+    {
+      "contract": "Product/publication/global acceptance limits",
+      "status": "outside_scope",
+      "details": "No moon rendering or N-body UI activation required or performed. No remote publication, redistribution clearance, deployed TLS/browser or whole-application acceptance claimed. Parent owns combined checks, final integration evidence and local commit. Earlier solar typecheck diagnostics in moons-result.json belong to other agents and were not treated as moon findings."
+    }
+  ],
+  "recommendedParentActions": [
+    "Fix the encoded HTTP length comparison and add the bounded regression without weakening decoded integrity or accuracy guards.",
+    "Locally commit complete matching moon source pins and public shards with the moon code/tests, then bind preserved acceptance evidence to that saved snapshot."
+  ],
+  "reviewExecution": "Read-only source inspection, full supplied asset inventory rehash, existing evidence inspection and one bounded scratch-only native HTTP fault probe; no broad test rerun."
+}
