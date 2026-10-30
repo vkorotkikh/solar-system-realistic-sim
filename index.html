@@ -224,7 +224,7 @@
             </div>
             <select id="body-list" size="6" aria-describedby="body-list-help"></select>
             <p id="body-list-help" class="control-help">Select a target, then choose a camera action.</p>
-            <div class="button-row camera-actions" aria-label="Camera mode">
+            <div class="button-row camera-actions" role="group" aria-label="Camera mode">
               <button id="focus-body" class="button button--secondary" type="button" aria-pressed="true">
                 <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="3" />
@@ -408,7 +408,7 @@
         <button id="renderer-retry" type="button" class="button button--primary">Reload visualization</button>
       </section>
 
-      <div id="status-bar" aria-label="Simulation status">
+      <div id="status-bar" role="group" aria-label="Simulation status">
         <span id="status-focus" data-camera-mode="focus">Focused · Sun</span>
         <span id="status-bodies">Bodies · —</span>
         <span id="status-zoom">Range · —</span>

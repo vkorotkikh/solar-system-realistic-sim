@@ -29,14 +29,17 @@
     "typecheck:ui-delta": "node scripts/check-ui-types.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.1",
     "@playwright/test": "1.64.0",
     "@types/node": "22.19.1",
     "@types/three": "^0.182.0",
+    "axe-core": "4.11.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.7",
     "vitest": "^5.0.4"
   },
   "dependencies": {
     "three": "^0.182.0"
-  }
+  },
+  "license": "UNLICENSED"
 }
