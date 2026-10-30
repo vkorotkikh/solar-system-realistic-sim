@@ -180,6 +180,8 @@ export class SimulationClient {
 
   private kuiperSubscriptionId: string | null = null;
 
+  private legacyKuiperActivationSent = false;
+
   private serverReady = false;
 
   lastError: string | null = null;
@@ -435,6 +437,7 @@ export class SimulationClient {
     this.latestKuiper = null;
     this.latestKuiperSnapshot = null;
     this.kuiperActive = false;
+    this.legacyKuiperActivationSent = false;
     if (!this.ws) return;
     this.ws.onopen = null;
     this.ws.onmessage = null;
@@ -474,6 +477,9 @@ export class SimulationClient {
       this.kuiperActive = this.send(this.kuiperSubscriptionId === null
         ? this.kuiperRequest
         : { ...this.kuiperRequest, subscription_id: this.kuiperSubscriptionId });
+      if (this.kuiperActive && !this.kuiperSubscriptionSupported) {
+        this.legacyKuiperActivationSent = true;
+      }
     }
   }
 
@@ -515,6 +521,14 @@ export class SimulationClient {
       this.kuiperSubscriptionId = null;
       this.latestKuiper = null;
       this.latestKuiperSnapshot = null;
+      // Legacy frames have no activation identity. A new socket is the only
+      // reliable boundary between a previous request and its replacement.
+      if (this.serverReady && !this.kuiperSubscriptionSupported
+        && this.legacyKuiperActivationSent && this.lastConnectOptions) {
+        this.clearReconnectTimer();
+        this.openSocket(this.lastConnectOptions, true);
+        return;
+      }
     }
     this.replayKuiperRequest();
   }
