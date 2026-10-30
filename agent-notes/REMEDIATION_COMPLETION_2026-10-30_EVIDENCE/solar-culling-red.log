@@ -1,0 +1,36 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+ ❯ src/frontend/features/solar/sunVisuals.blendAlpha.test.ts (18 tests | 2 failed | 16 skipped) 21ms
+   ❯ actual eruption-particle geometry blend endpoints (10)
+     × keeps cached culling bounds around the moved particles: scale 12ms
+     × keeps cached culling bounds around the moved particles: blend 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/features/solar/sunVisuals.blendAlpha.test.ts > actual eruption-particle geometry blend endpoints > keeps cached culling bounds around the moved particles: scale
+ FAIL  src/frontend/features/solar/sunVisuals.blendAlpha.test.ts > actual eruption-particle geometry blend endpoints > keeps cached culling bounds around the moved particles: blend
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/frontend/features/solar/sunVisuals.blendAlpha.test.ts:113:12
+    111|         expect(particles.geometry.boundingSphere!.containsPoint(
+    112|           new Vector3().fromBufferAttribute(position, index)
+    113|         )).toBe(true);
+       |            ^
+    114|       }
+    115|     } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 16 skipped (18)
+   Start at  01:20:12
+   Duration  236ms (transform 46%, import 36%, tests 16%, worker 3%)
+

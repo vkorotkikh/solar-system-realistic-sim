@@ -1,0 +1,12 @@
+file:///home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/verify-planet-rendered-geometry.mjs:27
+    const timer = setTimeout(() => reject(new Error(`Chromium startup timed out\n${diagnostics}`)), 20000);
+                                          ^
+
+Error: Chromium startup timed out
+[2872756:2872756:1030/014107.704119:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.Properties.GetAll: object_path= /org/freedesktop/UPower/devices/DisplayDevice: org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.UPower was not provided by any .service files
+
+    at Timeout.<anonymous> (file:///home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/verify-planet-rendered-geometry.mjs:27:43)
+    at listOnTimeout (node:internal/timers:585:17)
+    at process.processTimers (node:internal/timers:521:7)
+
+Node.js v22.23.2

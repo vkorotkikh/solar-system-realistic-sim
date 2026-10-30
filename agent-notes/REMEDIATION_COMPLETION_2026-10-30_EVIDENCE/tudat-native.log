@@ -1,0 +1,16 @@
+.................                                                        [100%]
+=============================== warnings summary ===============================
+backend/tests/test_tudat_native_runtime.py::test_native_all_ten_supported_bodies_initialize_and_serialize
+  /tmp/solar-remediation-completion-20261030/tudat-env/lib/python3.12/site-packages/tudatpy/data/mission_data_downloader/mission_data_downloader.py:58: SyntaxWarning: invalid escape sequence '\d'
+    "spk": "^(?P<data>(ORMM|ORMF))_(?P<SPK_type>T19)_(?P<start_date_file>\d{6})_?(?P<end_date_file>\d{6})_(?P<version>\d{5})(?P<extension>\.BSP)?$",
+
+backend/tests/test_tudat_native_runtime.py::test_native_all_ten_supported_bodies_initialize_and_serialize
+  /tmp/solar-remediation-completion-20261030/tudat-env/lib/python3.12/site-packages/tudatpy/data/mission_data_downloader/mission_data_downloader.py:528: SyntaxWarning: invalid escape sequence '\*'
+    - `wanted_files_pattern` (`str`, optional): A pattern (e.g., '\*.tf') to match filenames for downloading.
+
+backend/tests/test_tudat_native_runtime.py::test_native_all_ten_supported_bodies_initialize_and_serialize
+  /tmp/solar-remediation-completion-20261030/tudat-env/lib/python3.12/site-packages/tudatpy/data/mission_data_downloader/mission_data_downloader.py:1285: SyntaxWarning: invalid escape sequence '\w'
+    reduced_filename = reduced_filename.replace("\w", "*")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+17 passed, 3 warnings in 3.34s

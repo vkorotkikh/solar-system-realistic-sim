@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "cases": 125,
+  "maximumErrorAu": 0.000020808723961399955,
+  "oneMinuteMotionAu": 0.000010983439610493146,
+  "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+  "swiftShader": false,
+  "inclinedCases": 2,
+  "maximumInclinedErrorAu": 2.9758771055508797e-7,
+  "inclinedPositions": [
+    {
+      "jd": 2451545.123456,
+      "actual": [
+        -1.384788155555725,
+        -1.2282315492630005,
+        0.6642241477966309
+      ],
+      "expected": [
+        -1.3847880622407274,
+        -1.2282316955953527,
+        0.6642240627429016
+      ],
+      "errorAu": 1.9327437227077027e-7
+    },
+    {
+      "jd": 2451668.5794559997,
+      "actual": [
+        0.20684856176376343,
+        -2.307274103164673,
+        -0.34892749786376953
+      ],
+      "expected": [
+        0.2068488170758787,
+        -2.3072742361054934,
+        -0.34892757336812363
+      ],
+      "errorAu": 2.9758771055508797e-7
+    }
+  ],
+  "orientationDeg": {
+    "inclination": 30,
+    "ascendingNode": 80,
+    "argPeriapsis": 110
+  },
+  "scope": "actual WebGL2 transform feedback; independent planar oracle plus production CPU inclined cross-check; hardware performance not implied"
+}
