@@ -101,7 +101,7 @@ class MiningService:
         if metadata is None:
             return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
         stock, _survival = metadata
-        return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+        return stock * (1.0 - max(0.0, min(0.6, float(handling_loss_fraction))))
 
     def payload_return_closure(
         self,
