@@ -1518,8 +1518,13 @@ class PFSSCache:
             raise ValueError("snapshot transform version is not implemented")
         if sid.coverage_semantics != gong.GONG_COVERAGE_SEMANTICS:
             raise ValueError("snapshot coverage semantics are not implemented")
-        if sid.flux_balance_policy_version != gong.FLUX_BALANCE_POLICY_VERSION:
+        if sid.flux_balance_policy_version not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS:
             raise ValueError("snapshot flux-balance policy is not implemented")
+        expected_flux_quality = (
+            "flux-balanced-roundoff-only"
+            if sid.flux_balance_policy_version == gong.FLUX_BALANCE_POLICY_VERSION
+            else "flux-balanced-bounded-polarity-scaling"
+        )
         frozen_provenance = (
             provenance.provider == "NSO/GONG"
             and provenance.source_kind == "observed"
@@ -1532,8 +1537,7 @@ class PFSSCache:
             and provenance.radial_assumption == "provider-approximately-radial-v1"
             and provenance.polar_fill_status == "provider-polar-filled"
             and provenance.zero_point_status == "provider-zero-point-corrected"
-            and provenance.quality_flags
-            == ("complete-pixels", "flux-balanced-roundoff-only")
+            and provenance.quality_flags == ("complete-pixels", expected_flux_quality)
         )
         if not frozen_provenance:
             raise ValueError("snapshot provider provenance is inconsistent")
@@ -1748,10 +1752,66 @@ class PFSSCache:
         cell_area = 4.0 * math.pi / flat.size
         post_signed = math.fsum(float(value) for value in flat) * cell_area
         post_unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
-        pre_flat = flat + flux.removed_mean_g
+        if flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION:
+            pre_flat = flat + flux.removed_mean_g
+            expected_positive_scale = 1.0
+            expected_negative_scale = 1.0
+        elif flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION:
+            expected_positive_scale = 1.0 - flux.signed_imbalance_fraction
+            expected_negative_scale = 1.0 + flux.signed_imbalance_fraction
+            if expected_positive_scale <= 0.0 or expected_negative_scale <= 0.0:
+                raise ValueError("snapshot flux-balance provenance is inconsistent")
+            pre_flat = np.where(
+                flat > 0.0,
+                flat / expected_positive_scale,
+                np.where(flat < 0.0, flat / expected_negative_scale, flat),
+            )
+        else:
+            raise ValueError("snapshot flux-balance provenance is inconsistent")
         pre_signed = math.fsum(float(value) for value in pre_flat) * cell_area
         pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
         acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
+        imbalance_fraction = pre_signed / pre_unsigned if pre_unsigned > 0.0 else 0.0
+        retained_correction = gong._RETAINED_GONG_SCALED_CORRECTION
+        correction_values = (
+            flux.corroborating_provider,
+            flux.corroborating_product_sha256,
+            flux.corroborating_input_map,
+            flux.provider_correction_method,
+            flux.provider_pre_mean_g,
+            flux.provider_post_mean_g,
+        )
+        roundoff_corroboration_empty = all(
+            value is None for value in correction_values
+        )
+        scaled_corroboration_valid = (
+            flux.corroborating_provider == retained_correction.provider
+            and flux.corroborating_product_sha256
+            == retained_correction.product_sha256
+            and flux.corroborating_input_map == retained_correction.input_map
+            and flux.provider_correction_method
+            == retained_correction.correction_method
+            and isinstance(flux.provider_pre_mean_g, (int, float))
+            and math.isfinite(flux.provider_pre_mean_g)
+            and isinstance(flux.provider_post_mean_g, (int, float))
+            and math.isfinite(flux.provider_post_mean_g)
+            and math.isclose(
+                flux.provider_pre_mean_g,
+                retained_correction.pre_mean_g,
+                rel_tol=0.0,
+                abs_tol=5e-10,
+            )
+            and math.isclose(
+                flux.provider_post_mean_g,
+                retained_correction.post_mean_g,
+                rel_tol=0.0,
+                abs_tol=5e-10,
+            )
+            and abs(flux.provider_pre_mean_g - pre_signed / (4.0 * math.pi))
+            <= gong.TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G
+            and abs(flux.provider_post_mean_g - post_signed / (4.0 * math.pi))
+            <= gong.TRUSTED_SCALED_POST_MEAN_TOLERANCE_G
+        )
 
         def agrees(actual: float, expected: float) -> bool:
             return math.isfinite(actual) and math.isclose(
@@ -1759,15 +1819,41 @@ class PFSSCache:
             )
 
         if (
-            flux.policy_version != gong.FLUX_BALANCE_POLICY_VERSION
-            or not agrees(flux.removed_g00_g, flux.removed_mean_g)
+            flux.policy_version not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS
+            or not agrees(
+                flux.scaled_correction_limit_fraction,
+                gong.SCALED_FLUX_IMBALANCE_LIMIT,
+            )
+            or not agrees(flux.signed_imbalance_fraction, imbalance_fraction)
+            or not agrees(flux.positive_scale_factor, expected_positive_scale)
+            or not agrees(flux.negative_scale_factor, expected_negative_scale)
             or not agrees(flux.pre_signed_flux_g_sr, pre_signed)
             or not agrees(flux.pre_unsigned_flux_g_sr, pre_unsigned)
             or not agrees(flux.acceptance_limit_g_sr, acceptance_limit)
             or not agrees(flux.post_signed_flux_g_sr, post_signed)
             or not agrees(flux.post_unsigned_flux_g_sr, post_unsigned)
-            or abs(pre_signed) > acceptance_limit
             or abs(post_signed) > acceptance_limit
+            or (
+                flux.policy_version == gong.FLUX_BALANCE_POLICY_VERSION
+                and (
+                    not roundoff_corroboration_empty
+                    or not agrees(flux.removed_g00_g, flux.removed_mean_g)
+                    or abs(pre_signed) > acceptance_limit
+                )
+            )
+            or (
+                flux.policy_version == gong.SCALED_FLUX_BALANCE_POLICY_VERSION
+                and (
+                    not scaled_corroboration_valid
+                    or not agrees(flux.removed_mean_g, 0.0)
+                    or not agrees(
+                        flux.removed_g00_g, pre_signed / (4.0 * math.pi)
+                    )
+                    or abs(pre_signed) <= acceptance_limit
+                    or abs(imbalance_fraction)
+                    > gong.SCALED_FLUX_IMBALANCE_LIMIT
+                )
+            )
         ):
             raise ValueError("snapshot flux-balance provenance is inconsistent")
 

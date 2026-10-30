@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { Group, Mesh, Vector3 } from 'three';
+import { BufferAttribute, Group, Mesh, Vector3 } from 'three';
 import { buildSolarFeatureBlendView, normalizeSolarFeatureSetFromState } from './solarFeatureBlending';
-import { updateSunCoronalLoopsFromBlendView } from './sunVisuals';
+import { createSunEruptionLayer, updateSunCoronalLoopsFromBlendView, updateSunEruptionLayerFromBlendView } from './sunVisuals';
 import { SOLAR_RADIUS_AU } from './solarDisplayScale';
 
 const sourceArc = [[1, 0, 0], [0, 0, 1]];
@@ -85,6 +85,49 @@ describe('actual coronal-loop geometry blend endpoints', () => {
     } finally {
       line.geometry.dispose();
       for (const material of Array.isArray(line.material) ? line.material : [line.material]) material.dispose();
+    }
+  });
+});
+
+describe('actual eruption-particle geometry blend endpoints', () => {
+  it.each([
+    { label: 'zero from the real blender', alpha: 0, direction: [1, 0, 0] },
+    { label: 'completed blend', alpha: 1, direction: [0, 1, 0] },
+    { label: 'finite negative alpha clamps to source', alpha: -1, direction: [1, 0, 0] },
+    { label: 'finite alpha above one clamps to target', alpha: 2, direction: [0, 1, 0] },
+    { label: 'NaN falls back to target', alpha: NaN, direction: [0, 1, 0] },
+    { label: 'positive infinity falls back to target', alpha: Infinity, direction: [0, 1, 0] },
+    { label: 'negative infinity falls back to target', alpha: -Infinity, direction: [0, 1, 0] },
+    { label: 'mid-blend follows the spherical arc', alpha: 0.5, direction: [Math.SQRT1_2, Math.SQRT1_2, 0] },
+  ])('$label', ({ alpha, direction }) => {
+    const blend = blendAtStart();
+    expect(blend.blendAlpha).toBe(0);
+    blend.blendAlpha = alpha;
+    const particles = createSunEruptionLayer(SOLAR_RADIUS_AU);
+    // Pin the sampled particle to the first point without replacing the real
+    // geometry or production sampler. Particles normally have different phases.
+    particles.userData.sunBursts.phases.fill(0);
+    particles.userData.sunBursts.burstCount = 1;
+    const position = particles.geometry.getAttribute('position') as BufferAttribute;
+    const previousVersion = position.version;
+    try {
+      updateSunEruptionLayerFromBlendView({
+        sunEruptionLayer: particles,
+        blendView: blend,
+        sunRadiusAu: SOLAR_RADIUS_AU,
+        timeSec: 0,
+        activity: 0.5,
+      });
+      expect(position.version).toBe(previousVersion + 1);
+      const actual = new Vector3().fromBufferAttribute(position, 0);
+      const expected = new Vector3(...direction as [number, number, number])
+        .multiplyScalar(SOLAR_RADIUS_AU * (1 + 0.5 * 0.065));
+      // Keep the loop endpoint budget unchanged; this independent particle
+      // budget includes its documented radial brightness boost and Float32 upload.
+      expect(actual.distanceTo(expected)).toBeLessThan(1e-9);
+    } finally {
+      particles.geometry.dispose();
+      for (const material of Array.isArray(particles.material) ? particles.material : [particles.material]) material.dispose();
     }
   });
 });

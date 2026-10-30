@@ -50,7 +50,7 @@
     },
     {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "891e8accb1f3fc1e553c93f00330ab3120333f0e6252bab4da580b555246bd51"
+      "sha256": "12a3e4767b27cd3cc4c65aa703130ac0c97cc65e9398a290378b4406dd53e111"
     },
     {
       "path": "backend/sim/pfss_tracing.py",

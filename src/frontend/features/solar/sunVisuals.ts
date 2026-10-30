@@ -1,6 +1,7 @@
 import {
   AdditiveBlending,
   BackSide,
+  BufferAttribute,
   BufferGeometry,
   Camera,
   CanvasTexture,
@@ -1247,7 +1248,9 @@ export function createSunEruptionLayer(sunDisplayRadius: number): Points {
   }
 
   const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  // Particle updates write this array directly; Float32BufferAttribute copies
+  // its input, so bind the upload to the same storage before animating it.
+  geometry.setAttribute('position', new BufferAttribute(positions, 3));
 
   const material = new PointsMaterial({
     color: new Color('#ffbf74'),
@@ -1652,7 +1655,10 @@ export function updateSunEruptionLayerFromBlendView({
 
   const blendedFeatures = Array.isArray(blendView?.entries) ? blendView.entries : [];
   if (blendedFeatures.length > 0) {
-    const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
+    const rawBlendAlpha = blendView?.blendAlpha;
+    const blendAlpha = clampUnit(
+      typeof rawBlendAlpha === 'number' && Number.isFinite(rawBlendAlpha) ? rawBlendAlpha : 1
+    );
     bursts.baseRadius = sunRadiusAu;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
