@@ -84,6 +84,13 @@ Gradient contrast remains an explicit axe review item. The
 [unexecuted evidence template](ACCESSIBILITY_MANUAL_EVIDENCE_TEMPLATE_2026-10-30.json)
 keep unknown operator/device outcomes `NOT_RUN`.
 
+The subsequent [bounded startup diagnosis](REMEDIATION_COMPLETION_2026-10-30_EVIDENCE/startup-diagnosis/diagnosis-result.json)
+reproduces the delay with frequent fence polling and a single-render control.
+Detailed traces locate long native GL submission work in the GPU process;
+trusted keyboard input and HUD updates remain responsive. The exact native
+driver/compiler cause and compositor timing remain unresolved. Raw traces and
+profiles are retained; no source patch or startup-budget change is claimed.
+
 ## Eight remaining partial items
 
 | Item | Completed here | Still required |

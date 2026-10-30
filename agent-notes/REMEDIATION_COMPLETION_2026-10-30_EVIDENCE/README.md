@@ -24,3 +24,6 @@ except itself; source code remains in its recorded Git revisions.
 
 Raw JUnit failure/mutation reports preserve pytest formatting, including trailing
 whitespace. Documentation whitespace checks exclude those immutable XML bytes.
+
+The [startup diagnosis](startup-diagnosis/README.md) retains the later bounded
+profiling checkpoint and all original raw probes without claiming a repair.
