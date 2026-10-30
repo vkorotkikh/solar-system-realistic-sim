@@ -1,8 +1,12 @@
-# Sun Model Lab (Sun-Focus branch)
+# Sun Model Lab
 
 A Sun-focused browser visualization of the solar system, with local orbital propagation, procedural Sun and planet visuals, asteroid/Kuiper belts, and experimental AGN displays. An optional Python backend provides synthetic solar-state data and separate N-body, trajectory, mission and benchmark APIs. The default page does not expose planner panels or the retained nearby-system, satellite and cloud interfaces.
 
 ## Highlights
+
+The current [accepted product policies](docs/supported-product-policies.md)
+define platform support, asteroid sampling, timing, decorative motion and
+backend configuration.
 
 - **Sun + 8 planets + Pluto** with axial tilt, spin, and major-body search/focus controls
 - **424-moon source catalog** from the NASA/JPL satellite mean-elements table, retained for provenance and offline tooling; the shipped entry does not load moon ephemerides, render moons, or send moons to the model worker (`showMoons` in `src/main.ts` is fixed to `false`)
@@ -526,3 +530,10 @@ not ship. Use the pinned test environment that CI uses (Python 3.12):
 python -m pip install -r ci/backend-test-requirements.txt
 python -m pytest -q backend/tests
 ```
+
+## Copying and distribution
+
+The original code uses a [permission-required notice](LICENSE). Ask the
+copyright holder before copying or redistributing it. Third-party code and
+assets keep their own terms; see [NOTICE](NOTICE.md) and the
+[distribution inventory](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md).

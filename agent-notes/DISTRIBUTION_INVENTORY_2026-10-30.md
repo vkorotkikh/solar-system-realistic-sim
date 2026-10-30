@@ -1,6 +1,6 @@
 SCN-035 distribution inventory — 2026-10-30
 
-The concrete inventory child is complete for the current local/static scope. SCN-035 remains open: the original-code license/distribution model, SILSO noncommercial disposition, and Deimos permission or approved replacement remain owner-pending. No owner decision or legal clearance is asserted.
+The concrete inventory child is complete for the current local/static scope. SCN-035 remains open: the original code now has the owner-selected permission-required notice in LICENSE. SILSO distribution disposition, Deimos permission or replacement, and remaining per-product rights still require resolution. No third-party legal clearance is asserted.
 
 The companion [JSON](DISTRIBUTION_INVENTORY_2026-10-30.json) contains every public file path, current byte size, SHA-256, source product/group, use classification and per-product notice status. Snapshot: `2026-10-30T05:20:36.433849+00:00` at HEAD `2527db6dd32b5339190ded6d980ef7005ac2592d` plus the then-current shared-worktree changes. The complete moon assets are committed in `2527db6`; startup/UI integration is committed in `409b8a9`. Counts describe this snapshot, not a deployment.
 

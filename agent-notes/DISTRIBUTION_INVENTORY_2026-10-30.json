@@ -37791,5 +37791,11 @@
     "urlRegistryParsedAndCredentialScreened": true,
     "uniqueSourceUrls": 1436,
     "verificationRecipe": "/tmp/solar-remediation-completion-20261030/distribution-validate.py (scratch; not release content)"
+  },
+  "ownerUpdate": {
+    "date": "2026-10-30",
+    "originalCodePolicy": "Permission required before copying or distribution; no commercial distribution grant. See LICENSE.",
+    "decisionEvidence": "REMEDIATION_COMPLETION_2026-10-30_EVIDENCE/owner-decisions.json",
+    "scope": "Updates the original-code decision only; earlier capture-time requirements remain a historical snapshot. Third-party rights remain unresolved."
   }
 }

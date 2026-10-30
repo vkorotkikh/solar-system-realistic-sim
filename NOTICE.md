@@ -1,9 +1,10 @@
 # Third-party data and assets
 
-This notice is an attribution and provenance record, not a license grant for
-the repository's original code. The owner has not yet selected that license.
-Third-party material retains its own terms; a future code license must not be
-assumed to relicense datasets, photographs, maps, or downloaded textures.
+This notice is an attribution and provenance record. The owner's
+[permission-required notice](LICENSE) applies to the original code: copying
+and redistribution require express permission. Third-party material retains
+its own terms; permission for this code does not relicense datasets,
+photographs, maps, fonts or downloaded textures.
 
 ## Important distribution limits
 
@@ -55,7 +56,9 @@ that software license does not, by itself, settle every underlying astronomical
 catalog's terms. [Upstream license](https://github.com/ofrohn/d3-celestial/blob/master/LICENSE).
 Gaia acknowledgments depend on the particular release/product actually used.
 
-SCN-035 remains open pending the original-code license decision, complete
-per-product attribution review, and a permission or replacement decision for
-the Deimos map. See
+The current local/static release inventory is recorded in
+[`DISTRIBUTION_INVENTORY_2026-10-30.md`](agent-notes/DISTRIBUTION_INVENTORY_2026-10-30.md).
+SCN-035 remains open for per-product rights review, SILSO distribution terms
+and a permission or replacement decision for the Deimos map. The code-license
+choice is now recorded. See
 `agent-notes/REMEDIATION_PROVENANCE_2026-10-14.md` for the review record.
