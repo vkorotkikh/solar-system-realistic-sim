@@ -1,0 +1,23 @@
+cold_220       build=10.029s enc=0.016s dumps=0.008s net=13 calls 3.82MB netsum=4.039s raw=684692 gz=273505 pfss=synthetic feat=181 status={'swpc': False, 'silso': True, 'sdo_aia': True, 'gong_synoptic': True}
+warm_same_220  build=7.224s enc=0.016s dumps=0.008s net=1 calls 0.01MB netsum=0.161s raw=686442 gz=274032 pfss=synthetic feat=181 status={'swpc': False, 'silso': True, 'sdo_aia': True, 'gong_synoptic': True}
+newjd_220      build=10.974s enc=0.028s dumps=0.013s net=10 calls 3.26MB netsum=5.104s raw=641174 gz=257127 pfss=synthetic feat=182 status={'swpc': False, 'silso': True, 'sdo_aia': True, 'gong_synoptic': True}
+newjd_180      build=9.215s enc=0.022s dumps=0.013s net=10 calls 3.25MB netsum=2.79s raw=636065 gz=254997 pfss=synthetic feat=180 status={'swpc': False, 'silso': True, 'sdo_aia': True, 'gong_synoptic': True}
+import server s 0.128
+replay keys 17
+   services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json 404 0 0.035
+   www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv 200 2896132 0.891
+   api.helioviewer.org/v2/getClosestImage/?sourceId=8 200 310 0.203
+   api.helioviewer.org/v2/getTile/?id=192407422 200 203878 0.386
+   api.helioviewer.org/v2/getClosestImage/?sourceId=10 200 312 0.192
+   api.helioviewer.org/v2/getTile/?id=192407542 200 182712 0.361
+   api.helioviewer.org/v2/getClosestImage/?sourceId=11 200 312 0.187
+   api.helioviewer.org/v2/getTile/?id=192407518 200 161381 0.365
+   api.helioviewer.org/v2/getClosestImage/?sourceId=12 200 312 0.162
+   api.helioviewer.org/v2/getTile/?id=192407494 200 151728 0.346
+   api.helioviewer.org/v2/getClosestImage/?sourceId=13 200 311 0.166
+   api.helioviewer.org/v2/getTile/?id=192407568 200 210813 0.515
+   gong.nso.edu/data/magmap/QR/bqs/202608/ 200 7157 0.146
+   api.helioviewer.org/v2/getTile/?id=192407421 200 204142 1.066
+   api.helioviewer.org/v2/getTile/?id=192407493 200 154756 1.413
+   api.helioviewer.org/v2/getTile/?id=192407541 200 183792 0.409
+   api.helioviewer.org/v2/getTile/?id=192407517 200 162074 0.398

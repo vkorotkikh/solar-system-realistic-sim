@@ -1,0 +1,11 @@
+{
+ "selection": {
+  "channel": "aia_304",
+  "imageId": "192408248",
+  "imageDate": "2026-09-25 01:47:41",
+  "tileUrl": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832"
+ },
+ "proxyUrl": "http://127.0.0.1:8072/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248"
+}
+override aia_193 {"channel":"aia_193","imageId":"192408172","imageDate":"2026-09-25 01:46:05","tileUrl":"https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831"} http://127.0.0.1:8072/solar/realtime/aia-tile?channel=aia_193&image_id=192408172&v=192408172
+override aia_171 {"channel":"aia_171","imageId":"192408218","imageDate":"2026-09-25 01:46:21","tileUrl":"https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831"} http://127.0.0.1:8072/solar/realtime/aia-tile?channel=aia_171&image_id=192408218&v=192408218

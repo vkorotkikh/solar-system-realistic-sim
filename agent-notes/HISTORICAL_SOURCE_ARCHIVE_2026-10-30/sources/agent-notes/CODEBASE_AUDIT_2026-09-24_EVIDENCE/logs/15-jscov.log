@@ -1,0 +1,116 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt
+      Coverage enabled with v8
+
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 3ms
+ ✓ src/sim/orbitMath.test.ts (1 test) 2ms
+ ✓ src/sim/catalog.test.ts (3 tests) 9ms
+ ✓ src/workers/modelWorkerContract.test.ts (5 tests) 12ms
+ ✓ src/sim/moonFrames.horizons.test.ts (21 tests) 4ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (10 tests) 19ms
+ ✓ src/sim/planetPositions.horizons.test.ts (66 tests) 6ms
+
+ Test Files  7 passed (7)
+      Tests  108 passed (108)
+   Start at  19:45:45
+   Duration  723ms (transform 298ms, setup 0ms, collect 740ms, tests 55ms, environment 1ms, prepare 445ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |      15 |    63.54 |   64.76 |      15 |                   
+ wt                |       0 |        0 |       0 |       0 |                   
+  get_errors.mjs   |       0 |        0 |       0 |       0 | 1-12              
+  ...sticScale.mjs |       0 |        0 |       0 |       0 | 1-171             
+  testWarp.js      |       0 |        0 |       0 |       0 | 1-48              
+ wt/scripts        |       0 |        0 |       0 |       0 |                   
+  dev-full.mjs     |       0 |        0 |       0 |       0 | 1-144             
+  ...-textures.mjs |       0 |        0 |       0 |       0 | 1-120             
+  run-ui-dev.mjs   |       0 |        0 |       0 |       0 | 1-108             
+  ...oons-data.mjs |       0 |        0 |       0 |       0 | 1-86              
+  ...on-frames.mjs |       0 |        0 |       0 |       0 | 1-157             
+  ...positions.mjs |       0 |        0 |       0 |       0 | 1-205             
+ ...ripts/asteroid |       0 |      100 |     100 |       0 |                   
+  ...og_fetcher.ts |       0 |      100 |     100 |       0 | 4-1058            
+ wt/src            |    2.58 |       50 |   33.33 |    2.58 |                   
+  constants.ts     |   63.52 |    57.14 |   33.33 |   63.52 | ...01-102,105-106 
+  main.ts          |       0 |        0 |       0 |       0 | 1-1454            
+  sunController.ts |       0 |        0 |       0 |       0 | 1-600             
+  textures.ts      |       0 |      100 |     100 |       0 | 6-470             
+ wt/src/data       |   67.79 |    43.75 |    64.7 |   67.79 |                   
+  ...alogLoader.ts |   56.67 |    45.16 |   68.75 |   56.67 | ...20-387,390-391 
+  ...myResolver.ts |       0 |        0 |       0 |       0 | 1-498             
+  planets.ts       |     100 |      100 |     100 |     100 |                   
+ ...c/frontend/app |    2.93 |    70.58 |    62.5 |    2.93 |                   
+  animationLoop.ts |       0 |      100 |     100 |       0 | 75-213            
+  bodyManager.ts   |       0 |      100 |     100 |       0 | 32-159            
+  ...Controller.ts |       0 |      100 |     100 |       0 | 54-207            
+  inputHandler.ts  |       0 |        0 |       0 |       0 | 1-37              
+  labelSystem.ts   |       0 |        0 |       0 |       0 | 1-275             
+  ...emRenderer.ts |       0 |        0 |       0 |       0 | 1-658             
+  ...msRenderer.ts |       0 |        0 |       0 |       0 | 1-656             
+  ...Controller.ts |       0 |      100 |     100 |       0 | 170-489           
+  routeRenderer.ts |       0 |        0 |       0 |       0 | 1-155             
+  sceneSetup.ts    |       0 |        0 |       0 |       0 | 1-228             
+  ...tionClient.ts |       0 |      100 |     100 |       0 | 48-313            
+  stateStore.ts    |   68.18 |       85 |      80 |   68.18 | ...72-100,172-173 
+  ...ureManager.ts |       0 |        0 |       0 |       0 | 1-74              
+  ...Controller.ts |       0 |      100 |     100 |       0 | 33-94             
+  uiBindings.ts    |       0 |      100 |     100 |       0 | 87-274            
+ ...rontend/camera |       0 |        0 |       0 |       0 |                   
+  transitions.ts   |       0 |        0 |       0 |       0 | 1-106             
+ ...ures/asteroids |    7.48 |    55.55 |   66.66 |    7.48 |                   
+  beltRenderer.ts  |       0 |        0 |       0 |       0 | 1-668             
+  ...urceStatus.ts |      85 |     62.5 |      80 |      85 | 17-21,26          
+ ...ures/planetary |       0 |       20 |      20 |       0 |                   
+  ...taPipeline.ts |       0 |        0 |       0 |       0 | 1-254             
+  ...ureCatalog.ts |       0 |        0 |       0 |       0 | 1-146             
+  ...rePipeline.ts |       0 |        0 |       0 |       0 | 1-126             
+  planetShaders.ts |       0 |      100 |     100 |       0 | 2-376             
+  quadtreeLOD.ts   |       0 |      100 |     100 |       0 | 3-186             
+  ...gationCore.ts |       0 |        0 |       0 |       0 | 1-171             
+  ...tionWorker.ts |       0 |        0 |       0 |       0 | 1-59              
+  ...liteSystem.ts |       0 |        0 |       0 |       0 | 1-1050            
+  ...nSynthesis.ts |       0 |        0 |       0 |       0 | 1-114             
+  ...alProfiles.ts |       0 |        0 |       0 |       0 | 1-330             
+ ...features/solar |       0 |    44.44 |   44.44 |       0 |                   
+  ...ionalWaves.ts |       0 |      100 |     100 |       0 | 15-241            
+  ...reBlending.ts |       0 |      100 |     100 |       0 | 61-396            
+  solarFlares.ts   |       0 |        0 |       0 |       0 | 1-472             
+  ...rMagnetics.ts |       0 |        0 |       0 |       0 | 1-503             
+  ...ionTexture.ts |       0 |        0 |       0 |       0 | 1-235             
+  ...sicsClient.ts |       0 |        0 |       0 |       0 | 1-164             
+  ...rominences.ts |       0 |      100 |     100 |       0 | 18-372            
+  solarWind.ts     |       0 |      100 |     100 |       0 | 22-193            
+  sunVisuals.ts    |       0 |        0 |       0 |       0 | 1-1733            
+ ...minal-modeling |       0 |       75 |      75 |       0 |                   
+  ...waveEngine.ts |       0 |      100 |     100 |       0 | 14-434            
+  ...sConstants.ts |       0 |      100 |     100 |       0 | 21-395            
+  ...ropagation.ts |       0 |      100 |     100 |       0 | 17-693            
+  ...eamVisuals.ts |       0 |        0 |       0 |       0 | 1-182             
+ ...res/trajectory |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 | 1-292             
+  localPlanner.ts  |       0 |        0 |       0 |       0 | 1-336             
+ ...tend/rendering |       0 |        0 |       0 |       0 |                   
+  lodManager.ts    |       0 |        0 |       0 |       0 | 1-44              
+  milkyWay.ts      |       0 |        0 |       0 |       0 | 1-463             
+  orbitRenderer.ts |       0 |        0 |       0 |       0 | 1-62              
+ wt/src/sim        |   59.95 |     67.9 |   84.15 |   59.95 |                   
+  asteroidBelt.ts  |   26.22 |    83.33 |      30 |   26.22 | ...38-208,217-255 
+  catalog.ts       |   94.65 |    77.23 |   96.42 |   94.65 | ...70-471,565-566 
+  kuiperBelt.ts    |       0 |        0 |       0 |       0 | 1-516             
+  ...FrameCheck.ts |   82.69 |    61.29 |   91.66 |   82.69 | ...60-262,276-293 
+  orbitMath.ts     |   91.21 |    72.72 |   66.66 |   91.21 | ...30-234,237-238 
+  ...oidCatalog.ts |   80.03 |    64.56 |   96.42 |   80.03 | ...58-759,776-777 
+  ...itionCheck.ts |   72.84 |    53.06 |   91.66 |   72.84 | ...30-431,455-492 
+  ...ystemModel.ts |       0 |        0 |       0 |       0 | 1-241             
+ .../sim/asteroids |       0 |       75 |      75 |       0 |                   
+  ...tributions.ts |       0 |        0 |       0 |       0 | 1-199             
+  ...idGeometry.ts |       0 |      100 |     100 |       0 | 2-100             
+  ...idPipeline.ts |       0 |      100 |     100 |       0 | 2-140             
+  ...oidShaders.ts |       0 |      100 |     100 |       0 | 21-157            
+ wt/src/workers    |   30.38 |    84.21 |      75 |   30.38 |                   
+  modelWorker.ts   |       0 |        0 |       0 |       0 | 1-156             
+  ...erContract.ts |   96.49 |    88.88 |     100 |   96.49 | 125-126           
+-------------------|---------|----------|---------|---------|-------------------

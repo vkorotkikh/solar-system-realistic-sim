@@ -1,0 +1,624 @@
+{
+ "tag": "preview-gpu-dpr1",
+ "url": "http://127.0.0.1:4173/",
+ "dpr": 1,
+ "loadMs": 3819,
+ "firstFrames": {
+  "stableAfterMs": null,
+  "frames": 196
+ },
+ "ui": {
+  "renderer": "ANGLE (Mesa, llvmpipe (LLVM 20.1.2 256 bits), OpenGL 4.5)",
+  "timerQuery": true,
+  "canvas": [
+   1248,
+   900
+  ],
+  "statusCatalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+  "statusBodies": "Bodies · 55,010",
+  "experiment": "Standard compound transport model selected.",
+  "date": "2027-03-10",
+  "bodyOptions": 10,
+  "solarText": []
+ },
+ "steady": {
+  "frames": 201,
+  "fps_p50": 6.7,
+  "frameMs": {
+   "p50": 150,
+   "p95": 166.7,
+   "p99": 166.8,
+   "max": 166.8
+  },
+  "jsMs": {
+   "p50": 2.4,
+   "p95": 2.8,
+   "max": 3.9
+  },
+  "gpuMs": {
+   "p50": 110.96,
+   "p95": 114.86,
+   "n": 200
+  },
+  "drawsPerFrame": 43,
+  "instancesPerFrame": 55083,
+  "bufBytesPerFrame": {
+   "p50": 329632,
+   "max": 329632
+  },
+  "texUploadsPerFrame": 0,
+  "sizeWritesInWindow": 0,
+  "workerRttMs": {
+   "p50": 3.9,
+   "p95": 4.5,
+   "n": 202
+  },
+  "workerPosts": {
+   "init": 1,
+   "tick": 451
+  }
+ },
+ "series": [
+  {
+   "t": 0,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.8,
+   "frames": 202,
+   "sizeWrites": 14
+  },
+  {
+   "t": 15,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 37,
+   "frames": 303,
+   "sizeWrites": 14
+  },
+  {
+   "t": 30,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.8,
+   "frames": 400,
+   "sizeWrites": 14
+  },
+  {
+   "t": 45,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.8,
+   "frames": 502,
+   "sizeWrites": 14
+  },
+  {
+   "t": 60,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.8,
+   "frames": 602,
+   "sizeWrites": 14
+  },
+  {
+   "t": 75,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.9,
+   "frames": 703,
+   "sizeWrites": 14
+  },
+  {
+   "t": 90,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.6,
+   "frames": 803,
+   "sizeWrites": 14
+  },
+  {
+   "t": 105,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.6,
+   "frames": 903,
+   "sizeWrites": 14
+  },
+  {
+   "t": 120,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 37,
+   "frames": 1002,
+   "sizeWrites": 14
+  },
+  {
+   "t": 135,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 37,
+   "frames": 1102,
+   "sizeWrites": 14
+  },
+  {
+   "t": 150,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 15,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.7,
+   "frames": 1201,
+   "sizeWrites": 14
+  },
+  {
+   "t": 165,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 15,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 36.8,
+   "frames": 1300,
+   "sizeWrites": 14
+  },
+  {
+   "t": 180,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 15,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 37,
+   "frames": 1398,
+   "sizeWrites": 14
+  }
+ ],
+ "perf": [
+  {
+   "name": "LayoutCount",
+   "value": 1668
+  },
+  {
+   "name": "RecalcStyleCount",
+   "value": 1666
+  },
+  {
+   "name": "ScriptDuration",
+   "value": 8.171177
+  },
+  {
+   "name": "TaskDuration",
+   "value": 12.073135
+  },
+  {
+   "name": "JSHeapUsedSize",
+   "value": 19826452
+  }
+ ],
+ "requests": 53,
+ "transferKB": 3781.2,
+ "byType": {
+  "Document": {
+   "n": 1,
+   "bytes": 4325
+  },
+  "Stylesheet": {
+   "n": 2,
+   "bytes": 6571
+  },
+  "Script": {
+   "n": 1,
+   "bytes": 225625
+  },
+  "Fetch": {
+   "n": 2,
+   "bytes": 3601341
+  },
+  "Font": {
+   "n": 3,
+   "bytes": 34049
+  },
+  "other": {
+   "n": 44,
+   "bytes": 0
+  }
+ },
+ "backendCalls": [],
+ "failures": [
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_FAILED",
+   "cors": "MissingAllowOriginHeader"
+  }
+ ],
+ "logs": [
+  "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=2971.4 exceeded budgetMs=2000",
+  "[info] [phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=2971.4ms (budget 2",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461355.52031717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461495.69031717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461593.11551717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461730.01791717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461802.63671717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461827.10991717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461893.32671717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461917.46631717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461987.68471717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2462060.10351717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2462126.85431717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2462199.20631717&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2462294.29791716&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED",
+  "[error] Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2462318.37071716&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:4173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is pr",
+  "[error] Failed to load resource: net::ERR_FAILED"
+ ]
+}

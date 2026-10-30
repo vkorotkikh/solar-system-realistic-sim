@@ -1,0 +1,895 @@
+{
+ "tag": "step0a",
+ "url": "http://127.0.0.1:5183/?backendPort=8073",
+ "durS": 180,
+ "tLoad": 2805,
+ "physics": {
+  "n": 32,
+  "by": {
+   "aborted": 17,
+   "cors:MissingAllowOriginHeader": 15
+  },
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 0,
+  "by": {},
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "requests": [
+  {
+   "id": 1,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.59455014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.59455014,
+   "tStart": 1019,
+   "tEnd": 3084,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2065,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 2,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461332.59391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461332.59391014,
+   "tStart": 7034,
+   "tEnd": 9631,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2597,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 3,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461356.72591014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461356.72591014,
+   "tStart": 15387,
+   "tEnd": 15387,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 0,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 4,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461384.39191014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461384.39191014,
+   "tStart": 19974,
+   "tEnd": 25722,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 5748,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 5,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461416.45711014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461416.45711014,
+   "tStart": 27991,
+   "tEnd": 34425,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 6434,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 6,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461435.72311014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461435.72311014,
+   "tStart": 34424,
+   "tEnd": 37023,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2599,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 7,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461462.65551014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461462.65551014,
+   "tStart": 41163,
+   "tEnd": 41192,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 29,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 8,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461490.85391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461490.85391014,
+   "tStart": 48206,
+   "tEnd": 50804,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 9,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461516.51991014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461516.51991014,
+   "tStart": 54627,
+   "tEnd": 57227,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2600,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 10,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461540.58511014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461540.58511014,
+   "tStart": 60647,
+   "tEnd": 60653,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 6,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 11,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461562.31791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461562.31791014,
+   "tStart": 67729,
+   "tEnd": 67732,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 3,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 12,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461589.78351014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461589.78351014,
+   "tStart": 74601,
+   "tEnd": 77198,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2597,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 13,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461616.31591014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461616.31591014,
+   "tStart": 81229,
+   "tEnd": 83827,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 14,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461643.84791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461643.84791014,
+   "tStart": 88109,
+   "tEnd": 88114,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 5,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 15,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461670.51351014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461670.51351014,
+   "tStart": 94790,
+   "tEnd": 94791,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 1,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 16,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461690.77951014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461690.77951014,
+   "tStart": 101495,
+   "tEnd": 104090,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2595,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 17,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461717.17831014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461717.17831014,
+   "tStart": 108090,
+   "tEnd": 110688,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 18,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461743.91071014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461743.91071014,
+   "tStart": 114774,
+   "tEnd": 114785,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 11,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 19,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461771.97631014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461771.97631014,
+   "tStart": 121789,
+   "tEnd": 121793,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 4,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 20,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461801.97511014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461801.97511014,
+   "tStart": 129284,
+   "tEnd": 133530,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 4246,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 21,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461822.37391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461822.37391014,
+   "tStart": 136044,
+   "tEnd": 138640,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2596,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 22,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461856.03951014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461856.03951014,
+   "tStart": 144452,
+   "tEnd": 144478,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 26,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 23,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461881.23831014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461881.23831014,
+   "tStart": 150758,
+   "tEnd": 150759,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 1,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 24,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461906.50391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461906.50391014,
+   "tStart": 157077,
+   "tEnd": 157077,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 0,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 25,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461931.90271014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461931.90271014,
+   "tStart": 163420,
+   "tEnd": 167661,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 4241,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 26,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461951.76871014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461951.76871014,
+   "tStart": 170035,
+   "tEnd": 172632,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2597,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 27,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461978.10111014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461978.10111014,
+   "tStart": 176617,
+   "tEnd": 176651,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 34,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 28,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462004.50031014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462004.50031014,
+   "tStart": 183220,
+   "tEnd": 183224,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 4,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 29,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462033.89871014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462033.89871014,
+   "tStart": 190588,
+   "tEnd": 193161,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2573,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 30,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462058.56471014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462058.56471014,
+   "tStart": 196726,
+   "tEnd": 200963,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 4237,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 31,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462079.69711014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462079.69711014,
+   "tStart": 203660,
+   "tEnd": 203671,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 11,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  },
+  {
+   "id": 32,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462107.82911014&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462107.82911014,
+   "tStart": 210704,
+   "tEnd": 210802,
+   "outcome": "failed",
+   "failure": "net::ERR_FAILED",
+   "durMs": 98,
+   "cdp": {
+    "errorText": "net::ERR_FAILED",
+    "canceled": false,
+    "cors": "MissingAllowOriginHeader"
+   }
+  }
+ ],
+ "timings": [],
+ "samples": [
+  {
+   "t": 31994,
+   "date": "2027-01-24",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 57015,
+   "date": "2027-04-30",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 62029,
+   "date": "2027-05-20",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 67193,
+   "date": "2027-05-30",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 72208,
+   "date": "2027-06-23",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 77224,
+   "date": "2027-07-11",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 82238,
+   "date": "2027-07-29",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 87251,
+   "date": "2027-08-20",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 92266,
+   "date": "2027-09-11",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 98429,
+   "date": "2027-09-27",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 103443,
+   "date": "2027-10-17",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 108458,
+   "date": "2027-11-08",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 113472,
+   "date": "2027-11-18",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 118485,
+   "date": "2027-12-09",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 123500,
+   "date": "2028-01-05",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 128516,
+   "date": "2028-01-16",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 133673,
+   "date": "2028-02-10",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 138693,
+   "date": "2028-03-01",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 143710,
+   "date": "2028-03-15",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 148729,
+   "date": "2028-04-09",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 153742,
+   "date": "2028-04-30",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 158761,
+   "date": "2028-05-20",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 163775,
+   "date": "2028-06-09",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 168929,
+   "date": "2028-06-24",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 173942,
+   "date": "2028-07-04",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 178955,
+   "date": "2028-08-02",
+   "scale": "+4.0 d/s",
+   "spike": null
+  }
+ ],
+ "shots": [
+  {
+   "t": 57015,
+   "label": "t20",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step0a_t20.png"
+  },
+  {
+   "t": 210807,
+   "label": "end",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step0a_end.png"
+  }
+ ],
+ "logs": [
+  {
+   "t": 36,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 47,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 2924,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2499.0 exceeded budgetMs=2000"
+  },
+  {
+   "t": 2970,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=2499.0ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 15387,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461356.72591014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 15387,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 31994,
+   "type": "action",
+   "text": "zoom-sun: \"wheel x5\""
+  },
+  {
+   "t": 41192,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461462.65551014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 41192,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 60652,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461540.58511014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 60653,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 67732,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461562.31791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 67732,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 88114,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461643.84791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 88114,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 94791,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461670.51351014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 94791,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 114784,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461743.91071014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 114785,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 121793,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461771.97631014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 121793,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 144478,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461856.03951014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 144478,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 150759,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461881.23831014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 150759,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 157077,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461906.50391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 157077,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 176651,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2461978.10111014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 176651,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 183223,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2462004.50031014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 183224,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 203671,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2462079.69711014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 203671,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 210802,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8073/solar/physics?jd=2462107.82911014&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5183' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 210802,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  }
+ ]
+}

@@ -1,0 +1,786 @@
+{
+ "tag": "step0b",
+ "url": "http://127.0.0.1:5183/?backendPort=8073",
+ "durS": 180,
+ "tLoad": 3349,
+ "physics": {
+  "n": 30,
+  "by": {
+   "aborted": 16,
+   "http_503": 14
+  },
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 0,
+  "by": {},
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "requests": [
+  {
+   "id": 1,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.60005066&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.60005066,
+   "tStart": 1282,
+   "tEnd": 3371,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2089,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 2,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461333.27165067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461333.27165067,
+   "tStart": 7457,
+   "tEnd": 10056,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2599,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 3,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461357.53725067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461357.53725067,
+   "tStart": 13530,
+   "status": 503,
+   "tResp": 13542,
+   "tEnd": 13592,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 62,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 4,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461386.13645067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461386.13645067,
+   "tStart": 21861,
+   "tEnd": 23279,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 1418,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 5,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461410.60205067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461410.60205067,
+   "tStart": 26795,
+   "tEnd": 31046,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 4251,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 6,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461431.00085067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461431.00085067,
+   "tStart": 33543,
+   "status": 503,
+   "tResp": 33546,
+   "tEnd": 33597,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 54,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 7,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461456.73325067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461456.73325067,
+   "tStart": 39979,
+   "status": 503,
+   "tResp": 39979,
+   "tEnd": 40032,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 53,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 8,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461481.53245067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461481.53245067,
+   "tStart": 46187,
+   "status": 503,
+   "tResp": 46190,
+   "tEnd": 46240,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 53,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 9,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461511.46445067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461511.46445067,
+   "tStart": 53663,
+   "tEnd": 56262,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2599,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 10,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461536.19685067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461536.19685067,
+   "tStart": 59840,
+   "tEnd": 64162,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 4322,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 11,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461556.19565067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461556.19565067,
+   "tStart": 66566,
+   "status": 503,
+   "tResp": 66573,
+   "tEnd": 66623,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 57,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 12,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461580.46165066&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461580.46165066,
+   "tStart": 72638,
+   "tEnd": 75236,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 13,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461609.06045066&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461609.06045066,
+   "tStart": 79781,
+   "status": 503,
+   "tResp": 79879,
+   "tEnd": 79879,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 98,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 14,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461635.19285067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461635.19285067,
+   "tStart": 86325,
+   "tEnd": 88921,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2596,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 15,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461660.32485067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461660.32485067,
+   "tStart": 92604,
+   "tEnd": 95205,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2601,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 16,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461682.59085067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461682.59085067,
+   "tStart": 99875,
+   "status": 503,
+   "tResp": 99879,
+   "tEnd": 99931,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 56,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 17,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461711.45645067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461711.45645067,
+   "tStart": 107088,
+   "status": 503,
+   "tResp": 107102,
+   "tEnd": 107154,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 66,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 18,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461745.92205067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461745.92205067,
+   "tStart": 115709,
+   "tEnd": 118304,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2595,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 19,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461776.65405067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461776.65405067,
+   "tStart": 123389,
+   "tEnd": 125987,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 20,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461803.45245067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461803.45245067,
+   "tStart": 131855,
+   "status": 503,
+   "tResp": 131868,
+   "tEnd": 131919,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 64,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 21,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461827.98525067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461827.98525067,
+   "tStart": 137982,
+   "status": 503,
+   "tResp": 137992,
+   "tEnd": 138044,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 62,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 22,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461852.78405067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461852.78405067,
+   "tStart": 144185,
+   "tEnd": 146783,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 23,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461879.91645067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461879.91645067,
+   "tStart": 150979,
+   "tEnd": 153576,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2597,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 24,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461904.31525067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461904.31525067,
+   "tStart": 157059,
+   "status": 503,
+   "tResp": 157060,
+   "tEnd": 157112,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 53,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 25,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461933.84765067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461933.84765067,
+   "tStart": 166214,
+   "status": 503,
+   "tResp": 166216,
+   "tEnd": 166267,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 53,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 26,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461960.24645067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461960.24645067,
+   "tStart": 172813,
+   "status": 503,
+   "tResp": 172817,
+   "tEnd": 172867,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 54,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 27,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461984.64525067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461984.64525067,
+   "tStart": 178908,
+   "tEnd": 181506,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 28,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462008.64445067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462008.64445067,
+   "tStart": 184919,
+   "tEnd": 187517,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2598,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  },
+  {
+   "id": 29,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462033.77685067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462033.77685067,
+   "tStart": 191203,
+   "status": 503,
+   "tResp": 191216,
+   "tEnd": 191267,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 64,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 30,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462062.50885067&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462062.50885067,
+   "tStart": 200259,
+   "tEnd": 202856,
+   "outcome": "failed",
+   "failure": "net::ERR_ABORTED",
+   "durMs": 2597,
+   "cdp": {
+    "errorText": "net::ERR_ABORTED",
+    "canceled": true,
+    "cors": null
+   }
+  }
+ ],
+ "timings": [],
+ "samples": [
+  {
+   "t": 24714,
+   "date": "2026-12-27",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 79885,
+   "date": "2027-07-22",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 84905,
+   "date": "2027-08-08",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 89923,
+   "date": "2027-08-28",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 94938,
+   "date": "2027-09-16",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 100155,
+   "date": "2027-10-04",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 105174,
+   "date": "2027-10-21",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 110192,
+   "date": "2027-11-13",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 115217,
+   "date": "2027-11-25",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 120230,
+   "date": "2027-12-22",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 125246,
+   "date": "2028-01-10",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 132025,
+   "date": "2028-02-01",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 137053,
+   "date": "2028-02-14",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 142075,
+   "date": "2028-03-03",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 147087,
+   "date": "2028-03-31",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 152104,
+   "date": "2028-04-18",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 157117,
+   "date": "2028-05-12",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 162131,
+   "date": "2028-05-31",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 167409,
+   "date": "2028-06-11",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 172424,
+   "date": "2028-07-03",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 177439,
+   "date": "2028-07-25",
+   "scale": "+4.0 d/s",
+   "spike": null
+  }
+ ],
+ "shots": [
+  {
+   "t": 53759,
+   "label": "t12",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step0b_t12.png"
+  },
+  {
+   "t": 79885,
+   "label": "t16",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step0b_t16.png"
+  },
+  {
+   "t": 204218,
+   "label": "end",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step0b_end.png"
+  }
+ ],
+ "logs": [
+  {
+   "t": 43,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 57,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 3506,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2973.0 exceeded budgetMs=2000"
+  },
+  {
+   "t": 3558,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=2973.0ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 13542,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 24714,
+   "type": "action",
+   "text": "zoom-sun: \"wheel x5\""
+  },
+  {
+   "t": 33546,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 39979,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 46190,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 66573,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 79879,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 99879,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 107102,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 131869,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 137993,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 157060,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 166216,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 172817,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 191216,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

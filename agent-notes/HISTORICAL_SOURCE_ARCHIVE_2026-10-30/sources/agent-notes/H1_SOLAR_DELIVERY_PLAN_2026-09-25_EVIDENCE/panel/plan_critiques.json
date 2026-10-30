@@ -1,0 +1,422 @@
+[
+ {
+  "key": "evidence",
+  "problems": [
+   {
+    "severity": "must-fix",
+    "where": "Phase 4, step 4.3 (IAU orientation) test 'sub-Earth Carrington longitude \u2248 0\u00b0 \u00b1 1.5\u00b0 at JD 2461309.66'; Phase 4 Risk line 'Meeus gives CR 2316 start JD 2461309.66'",
+    "problem": "2461309.66 is Meeus's mean formula (2398140.2270 + 27.2752316\u00b7C) without its periodic terms. The full formula (+0.1454 sin M \u2212 0.0085 sin 2M \u2212 0.0141 cos 2M, M = 281.96\u00b0 + 26.882476\u00b0\u00b7C) gives about JDE 2461309.53. At JD 2461309.66 the true L0 is about 358.3\u00b0, which is \u22121.7\u00b0 off. A correct implementation would therefore fail the \u00b11.5\u00b0 oracle as written.",
+    "evidence": "For C=2316: M = 261.77\u00b0, correction = \u22120.133 d, start = 2461309.5306. An independent Meeus ch.29 L0 computation (\u03b8=(JD\u22122398220)\u00b7360/25.38, \u03b7 from \u03bb\u2212K, I=7.25\u00b0) gives L0 = 359.997\u00b0 at 2461309.5306, 358.29\u00b0 at 2461309.66 and 357.50\u00b0 at the code's 2461309.7195 (2398167.4 + 2315\u00b727.2753). The B0 oracles are right: +7.249\u00b0 on 2026-09-08 and \u22127.249\u00b0 on 2026-03-06.",
+    "fix": "Anchor the oracle at JDE 2461309.53 (TT; L0 = 0\u00b0 \u00b1 0.2\u00b0), or give L0 at 2461309.66 as 358.3\u00b0 \u00b1 0.2\u00b0. State that the code's CR start is 0.19 d late (about 2.7\u00b0), not 0.06 d. Generate the value in the oracle environment (SunPy/Meeus with periodic terms), not by hand."
+   },
+   {
+    "severity": "must-fix",
+    "where": "Phase 1 step 1.2 'Fix the 14 strict errors in sunController.ts \u2026 so the project is zero-error'; \u00a76 CI lane 2 'npm run typecheck:solar (zero errors)'; H1 exit 'CI green'",
+    "problem": "A strict project that covers src/sunController.ts also type-checks everything it imports. sunController.ts imports superluminal-modeling/agnShockwaveEngine.ts (52 strict errors), which imports smbhPropagation.ts (81 errors). The scoped project therefore has 147 errors, not 14. Reaching zero would mean burning down 133 unrelated errors under an H-1/R3 commit, which IP \u00a72 forbids ('silently burning down unrelated TypeScript errors under an R3 commit'). Otherwise the lane cannot go green and the H1 exit is unreachable.",
+    "evidence": "src/sunController.ts:40-41 imports warpSlipstreamVisuals and agnShockwaveEngine. agnShockwaveEngine.ts:20-28 imports ./smbhPropagation. $SP/h1/tsc_baseline.txt per-file counts: smbhPropagation 81, agnShockwaveEngine 52, sunController 14. I reproduced it with a scratch tsconfig (strict; files sunController.ts + include features/solar/**) run by repo tsc: exit 2, 147 errors (81/52/14).",
+    "fix": "Add a step before 1.2 that cuts the dependency: inject the AGN/GW/warp engines into createSunController, or move them behind an interface file. Alternatively scope the project so the superluminal files are excluded, and count them only in the global ratchet. Re-estimate H1 effort with the real error count."
+   },
+   {
+    "severity": "must-fix",
+    "where": "Phase 2 step 2.6 (Auto = white light): 'pickAiaObservationChannel \u2026 returns null in Auto unless the user picked a channel'",
+    "problem": "sunController.maybeRefreshObservationTexture returns early when the picker returns null, so in Auto (the default) no AIA image would ever be requested. That contradicts \u00a72 A '\u2265 1 AIA image rendered in now-paused', H6.6 (projection with 'Auto stays white light') and IP-P8 'AIA tile renders independently'. Nothing in H6 undoes 2.6. The 193 \u00c5 tint comes from activeObservationChannel feeding the shader channelMode, coronaHue and loop colour, not from which image is loaded.",
+    "evidence": "sunController.ts:256-257 `const selection = pickAiaObservationChannel(...); if (!selection) return;`. sunController.ts:411-412 `activeObservationChannel = solarObservationTextureChannel ?? observationSelection?.channel ?? \u2026` feeds updateSunMaterialUniforms activeChannel and deriveSunObservationControls (solarObservationTexture.ts:207-224).",
+    "fix": "Keep the picker, which chooses which image to load. In Auto, pass activeChannel/selectedChannel = null for tinting (channelMode 0, no coronaHue, no loop recolour), and keep loading and projecting the image. Test: in Auto with the live fixture, channelMode stays 0 AND one aia-tile request is issued (after H6 ungating)."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a71.2 C17, \u00a70.3 C17 test 'classifies proxy 5xx without detail as unreachable', Open question 3",
+    "problem": "This can be answered from the installed code, and the answer breaks the proposed rule. When the backend is down, the Vite 7.3.1 dev/preview proxy answers 500 text/plain with an empty body, not 502/503/504. A rule keyed on 502/503/504 misses it, and the chip classifies it as generic 'http'.",
+    "evidence": "node_modules/vite/package.json 7.3.1. node_modules/vite/dist/node/chunks/config.js:21925-21931: proxy.on('error') \u2192 `res.writeHead(500, {'Content-Type':'text/plain'}).end()`. Chip classifyHttpFailure (fix/solar-data-status-notice solarPhysicsClient.ts) maps anything other than 429/503 to 'http'.",
+    "fix": "Either (a) in the H3.1 configure hook, replace Vite's error handler so it answers 502 with a marker header (e.g. X-Solar-Proxy-Error: upstream_unreachable) and classify on that header, or (b) classify a same-origin 500 with a non-JSON/empty body as unreachable. Close open question 3."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Phase 3 step 3.4: 'non-timeout builder exceptions \u2026 become a logged JSON 500 through ExceptionMiddleware, which is inside CORS'",
+    "problem": "In Starlette, a handler registered for Exception or 500 (the obvious @app.exception_handler(Exception)) is installed on ServerErrorMiddleware, which sits outside CORSMiddleware. Implemented that way, the 500 still carries no ACAO. Only HTTPException or a custom exception class handled by ExceptionMiddleware sits inside CORS.",
+    "evidence": "$SP/venv starlette 1.7.0 applications.py:68-78: `if key in (500, Exception): error_handler = value` \u2192 ServerErrorMiddleware(handler=error_handler) placed before user_middleware. The digest CD-F11 measured /boom 500 ACAO=None under the same stack.",
+    "fix": "Specify the mechanism: catch non-timeout exceptions in the route (or in _run_owned_thread's caller), log them, and raise HTTPException(500, detail={'code':'builder_error'}) or a custom SolarBuilderError whose handler is registered by class (not Exception). Keep test_builder_exception_is_json_500_with_acao as the gate."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Phase 3 step 3.5 (bridge identity) and \u00a72 server command 'python -m uvicorn server:app --host 127.0.0.1 --port 8042'",
+    "problem": "The step changes _client_identity to request.client.host but leaves the uvicorn flag unspecified, and the documented launch commands (\u00a72, dev-full.mjs:128-133, README) keep uvicorn's defaults. By default uvicorn trusts X-Forwarded-For from 127.0.0.1 and rewrites request.client from it. On a loopback-bound server every peer is 127.0.0.1, so any local client can still choose its identity. test_identity_ignores_client_supplied_xff runs under TestClient, which bypasses ProxyHeadersMiddleware, so it passes while the real server stays spoofable.",
+    "evidence": "Digest CD-F17: uvicorn 0.53 defaults proxy_headers=True, forwarded_allow_ips\u2192127.0.0.1; uvicorn-proxy-headers.txt shows client rewritten to the last hop. server.py:323-330 uses the first XFF hop. IP-P7: '5,000 spoofed XFF values from an untrusted peer remain one identity'.",
+    "fix": "Put `--no-proxy-headers` (or `--forwarded-allow-ips ''`) in every launch path (\u00a72 harness, dev-full.mjs, README, server.py __main__) in the same commit. Add an integration test that starts real uvicorn (or wraps the app in ProxyHeadersMiddleware with the default config) and sends spoofed XFF from loopback."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Phase 2 steps 2.2 (CME lifetime) and 2.5 (display-scale policy); \u00a72 C 'loops \u2264 1.6 display radii'",
+    "problem": "The coronal-height compression is applied only to loops (sunVisuals.ts:1419-1421) and PFSS (solarMagnetics.ts:249-251). The eruption layer also scales feature arcs, which reach 4.74 R\u2609, by the inflated radius at sunVisuals.ts:1603-1605. Separately, the new CME limit sunRadiusAu + max(0.3, 2\u00b7sunRadiusAu) sends CME meshes to 3 display radii, about 1.13 AU (past Earth's orbit), at the default scale. Both contradict D3's goal and the '\u2264 1.6 display radii' oracle, and neither is measured by it.",
+    "evidence": "sunVisuals.ts:1603-1605 `bursts.positions[...] = sampled[i] * sunRadiusAu * radialBoost`. solarFlares.ts:226-228. Default R_disp = sqrt(696340)\u00b70.00045 = 0.3755 AU \u2192 0.3755 + 0.751 = 1.127 AU. Payload max peak_extent_solar_radii = 4.737 ($SP/h1/frontend/payload_high_180.json).",
+    "fix": "Route the eruption layer and the CME travel/extent through coronalToDisplay. Derive cmeMaxDistance from the compressed height (e.g. coronalToDisplay(4.74) \u2248 1.56 R_disp at default scale, physical at realistic scale). Extend the oracle to eruption points and CME meshes."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Phase 5 step 5.2 'Budget test \u2026 endpoints \u2264 0.05 R\u2609 and 0 topology flips [BR M]'",
+    "problem": "The quoted bound was measured over 86 s (0.001 d). The named policy snaps any jd in a 0.01-d bucket to its centre, so the worst-case offset is \u00b10.005 d (7.2 min). At +10 min within one bucket the profile data already shows much larger drift: 49/120 footpoints moved and 25 lines moved >1% of r_ss (p90 per-line max displacement 1.74% of r_ss, about 0.043 R\u2609). In hybrid mode one open/closed flip appeared at +1 min. Also, 'zero-error for jd' holds only for the seed/CR channel. All of the actual error comes through activity(canonical_jd), which the policy canonicalises implicitly, yet the next bullet says activity quantisation needs its own named policy.",
+    "evidence": "$SP/h1/profile/p5_semantic.txt: det '+10min' pfss footpoints_moved 49, open_closed_flips 0, line_maxdisp_p90_pct 1.739, lines_moved_gt1pct 25. Hybfixed +1min: open_closed_flips 1. Digest BR Measurements: 'within one 0.01-d bucket (86 s sim)'. pfss_magnetogram.py:1238-1302 (jd enters only via :238 seed and the CR).",
+    "fix": "Do not pre-commit 0.05 R\u2609 / 0 flips. Have the budget test sweep offsets up to \u00b10.005 d in synthetic and hybrid modes and record the measured maximum. State that the policy canonicalises activity with jd, disclose activity_used in the response, and drop the contradictory 'separate activity policy' sentence (or scope it to hybrid snapshots only)."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a73 Conventions 'Red first \u2026 strict expected failure: pytest.mark.xfail(strict=True) or vitest it.fails. The fixing commit removes the marker, which is the red-before-green record'",
+    "problem": "This differs from the owner's IP without being flagged. IP-P1.7 requires backend/tests/red_green/r3/manifest.json plus scripts/verify_r3_red_green.py, which checks out the pre-fix SHA, applies the test commit and confirms the named assertion failures. At that SHA a strict-xfail test reports XFAIL, not an assertion failure, and vitest it.fails has no --runxfail equivalent. IP \u00a77 also requires 'No required R3/R4 skip/xfail'. Several H1 tests are R3 items (XFF identity, Retry-After on the 503, ACAO on 500s, the E2E \u226595% gate).",
+    "evidence": "IP lines 514-517 (P1.7), 563-564 ('Collection/import\u2026 grep, or a copied local algorithm do not count'), 928 ('No required R3/R4 skip/xfail'), rule 2 (red result as CI/PR artifact).",
+    "fix": "Route R3-scoped H1 tests through IP-P1.7's manifest and runner, with no xfail markers on the R3 branch. Keep the xfail/it.fails convention only for H-1-local display tests, and record it in \u00a73a as a deliberate divergence. Alternatively run pytest with --runxfail in the red-green runner and list that explicitly."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a73a alignment table rows H2 / H4 / H6 (mapped to 'OP-P5 / S12'); sequencing graph H1\u2192H2\u2192H4, H3\u2192H6",
+    "problem": "The plan maps H2, H4 and H6 to the owner's Phase 5 (S12, 'execute the broader register by dependency', after Phase 4) but schedules them right after H1, alongside OP-P2..P4. That reorders the owner's plan. \u00a73a only says 'Adds', so this is exactly the kind of silent divergence the brief asks to flag.",
+    "evidence": "OP \u00a79 Phase 4 exit: 'Broader solar-model semantics in S12 remain explicitly open'. Phase 5 is listed after Phase 4 with 'Do not combine these into one mega-merge'. Plan H2: 'Owner OP-P5 / S12 \u2026 runs in parallel with OP-P2 / IP-P3..P5'.",
+    "fix": "Add an explicit 'Disagrees (vi): S12 display/frame/upstream work is pulled ahead of OP-P2..P4 because it is frontend/provider-only and needed for D11', and make it an owner decision (or fold it into D11)."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Phase 3 Risk ('fast lane still shares the 2 heavy threads with porkchop and mission'); \u00a77 risk table",
+    "problem": "The coupling with the concurrent trajectory branch is missing. That branch's \u00a78 converts /trajectory/plan and /trajectory/lambert into async wrappers around the same owned-worker executor, which has an unbounded submission queue. Once it lands, H3's fast lane (on _heavy_compute_executor) also queues behind plan/Lambert jobs. The audit measured 20.45 s per Lambert with the upstream unreachable. The fast-lane p95 < 300 ms and the H3 \u226595% delivery gate then depend on trajectory load.",
+    "evidence": "agent-notes/TRAJECTORY_AMPLIFICATION_DEFENSE_IN_DEPTH_PLAN_2026-09-25.md \u00a78: 'Convert plan and Lambert handlers to asynchronous wrappers around the existing owned-worker executor\u2026 The shared heavy executor has finite workers but an unbounded submission queue.' server.py:299-302 (_heavy_compute_executor, 2 threads). AUD H-3 (20.45 s Lambert).",
+    "fix": "Add a C-row and a risk-table row. Either run the fast lane on a bounded dedicated owned path (reconcile with IP \u00a74.4 'no new per-request executor' via the owner, e.g. under D13), or add a fixed trajectory-load probe to the H3 acceptance run and order the rebase explicitly."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a72 Harness command `npx playwright test tests/e2e --project=chromium -- --origin dev,preview --upstream \u2026 --gpu real`",
+    "problem": "The command will not run as written. The Playwright test CLI does not forward custom flags to specs; after `--`, positional arguments are treated as test-file filters, so it would select no tests or error.",
+    "evidence": "IP \u00a78 uses `npx playwright test tests/e2e/solar-delivery.spec.ts --config ci/playwright-r3.config.ts --project=chromium`, with parameters in the committed config.",
+    "fix": "Express origins, upstream modes, scenarios and tabs as Playwright projects or config (e.g. projects dev-fixture, preview-hang), or as environment variables read by the config (SOLAR_E2E_ORIGINS=dev,preview \u2026). Pin the web-server commands in ci/playwright-r3.config.ts as IP \u00a78 requires."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 6 step 6.4 ('The A1 hindcast gives r = 0.688') and \u00a77 risk row ('r = 0.688')",
+    "problem": "The artifact reports r = 0.692.",
+    "evidence": "$SP/plan/cycle_hindcast.txt: 'pearson r (smoothed/220 vs model) 1996-2026: 0.692', mean abs diff 0.275.",
+    "fix": "Use 0.692, or cite the artifact that gives 0.688."
+   },
+   {
+    "severity": "nit",
+    "where": "\u00a72 B 'run-to-run noise floor of about 1% [SPIKE imgdiff (U)]'",
+    "problem": "For the metric the gate uses (fraction of Sun-box pixels differing by more than 24 levels), the spike's noise floor was 0.0\u20130.1%, not about 1%.",
+    "evidence": "$SP/h1/spike/imgdiff_step1ab.out: B1 vs B2 sunbox frac>24 = 0.000; A1 vs A2 = 0.000; A2 vs A3field = 0.001; A vs B = 0.196\u20130.203.",
+    "fix": "Say 'noise floor \u2264 0.1% (frac>24), mean-abs about 1.7\u20131.9 levels'."
+   },
+   {
+    "severity": "nit",
+    "where": "Line anchors: 2.1 '|| 0.5 at :233'; 3.6 'wind_speed_model \u2026 (:910, :1008)'; 4.4 'maxLat \u2026 (sunVisuals.ts:683)'; 2.9 'fixed 1.5 s blend (:512-515)'; H0.1 chip line counts",
+    "problem": "Several anchors are one to a dozen lines off, and the chip line counts are totals rather than +/\u2212 splits.",
+    "evidence": "sunController.ts:234 has `|| 0.5`. solar_physics.py:1010 has wind_speed_model. sunVisuals.ts:684 has `maxLat` (683 is baseLon). Blend duration is at sunController.ts:525-526. numstat: main.ts +12/\u22121, style.css +32/\u22122, sunController.ts +37/\u22123.",
+    "fix": "Correct the anchors (they are at bd48a7d, as stated)."
+   },
+   {
+    "severity": "nit",
+    "where": "\u00a73a row H7.3 / D13 ('Refines (v)'; K_fast = 1, K_field = 1)",
+    "problem": "Two capacity classes mean two concurrent CPU children. IP \u00a74.4 says 'Begin with worker capacity K=1; raise it only after a CPU-quota benchmark', so this is a disagreement, not a refinement.",
+    "evidence": "IP \u00a74.4, line 277-278.",
+    "fix": "Relabel it 'Disagrees (v)' and gate D13 on IP-P9's CPU-quota benchmark."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 3 step 3.2 (replace backendBaseUrl in trajectory/index.ts:8-9,70-74 and simulationClient.ts:113,129 with runtimeConfig \u2192 window.location.origin)",
+    "problem": "The proxy in 3.1 covers only '/solar/' and '/health'. Once the latent trajectory feature or /ws/sim client is wired in, it would resolve to the Vite origin with no proxy route and hit Vite, not the backend.",
+    "evidence": "Digest CD-F2: trajectory and SimulationClient are not instantiated today. CD fix_implications suggests an anchored regex over all backend roots plus ws:true.",
+    "fix": "Either add anchored proxy keys for every backend root (with ws:true for /ws/sim), or leave those two modules on an explicit backend URL until they are wired, and add a runtimeConfig test that covers it."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 0 header 'satisfies OP R3.4 \"explicit loading, stale, unavailable UI states\"'",
+    "problem": "OP R3.4 lists 'loading, stale, unavailable, and retry' and IP \u00a74.6 adds 'pending'. The chip has connecting/backend/stale/error, with no retry or pending state, and the quote drops 'retry'.",
+    "evidence": "OP line 303. The chip's solarDataStatus.ts states (connecting, backend, stale, error).",
+    "fix": "Quote OP in full and say that retry/pending arrive with H3.9/H7.2 (202 + Retry-After)."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 6 step 6.3 test '1989-12 uses the archival smoothed SSN (206.2, N)'",
+    "problem": "The value has no artifact; the hindcast table starts at 1996.",
+    "evidence": "$SP/plan/cycle_hindcast.txt covers 1996-01 onward. No SILSO monthly fixture exists in $SP/h1/upstream/upstream_raw.",
+    "fix": "Derive the expected value from the committed, checksummed SILSO monthly fixture, not a hand-typed constant (IP rule 3)."
+   },
+   {
+    "severity": "nit",
+    "where": "\u00a71.2 C14 pinned-test list vs step 3.8 (latest key \u2192 ('snapshot','latest', floor(now/300 s)))",
+    "problem": "test_latest_and_explicit_epoch_have_distinct_cache_identities asserts `current is current_again` for two latest() calls. A wall-clock bucket in the key makes it flaky at a 300 s boundary, and it is not on the C14 list.",
+    "evidence": "backend/tests/test_solar_realtime_data_cache.py:35-45.",
+    "fix": "Add it to C14, and inject the clock into the provider so the test is deterministic."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 2 step 2.4 test 'sunShaderFrame.test.ts, a source contract: no latitude or longitude computed from vWorldNormal'; \u00a76 mutant 'vWorldNormal latitude'",
+    "problem": "This is a grep-style check. IP-P2 says 'grep \u2026 do not count' as red evidence, and \u00a76 claims the IP \u00a73 rules apply.",
+    "evidence": "IP line 563-564.",
+    "fix": "Make the rendered-latitude and limb oracles (diagnostics body-frame latitudes, Playwright limb contrast) the red gate. Keep the source contract only as a supplementary guard."
+   },
+   {
+    "severity": "nit",
+    "where": "Phase 3 step 3.9 table 'timeout 8 s (> the 5 s fast budget + proxy hop, so no orphans)'",
+    "problem": "A server-side 5 s timeout still leaves the worker running and holding its permit, by the preserved OP \u00a711 design. The 8 s client timeout removes only client-abort orphans.",
+    "evidence": "server.py:466-503 _run_owned_thread. test_compute_budget.py:47-49.",
+    "fix": "Say 'no client-abort orphans; server-timeout work still completes while holding its permit'."
+   }
+  ],
+  "checked_ok": [
+   "Chip branch fix/solar-data-status-notice = 6 commits d637501..7c791dc on bd48a7d, 9 files, 941 insertions (git log / diff --stat); cherry-pick range d637501^..7c791dc is valid",
+   "main=d834dbe (bd48a7d + docs only), sun-focus=13ca9ec, merge-base ec7ad33 (git rev-parse / merge-base)",
+   "Correction 10: since ec7ad33 sun-focus changed only server.py and pfss_magnetogram.py among the relevant files; 481/470/1419-line deltas on index.html/main.ts/style.css are main's side",
+   "merge-tree 'changed in both' set is exactly server.py, pfss_magnetogram.py, verify-moon-frames.mjs, catalog(.test).ts, moonFrameCheck.ts, moonFrames.horizons.test.ts, orbitMath.ts ($SP/mt_reconcile.txt); chip files not in it, so chip merges without textual conflict",
+   "IP created 2026-09-25 11:09 (birth time 11:09:31), untracked; OP committed at 3b2eaf7 and working copy adds only a pointer to IP",
+   "sunController.ts:152-160 client construction (900 ms poll, 2.6 s timeout, 180, high, hybrid, live)",
+   "solarPhysicsClient.ts:58-59 clamps (poll 300..30000, timeout 500..20000), :119 toFixed(8), :140 reqId check only on success, :156-162 unconditional finally",
+   "constants.ts:12 DEFAULT_TIME_SCALE_DAYS_PER_SEC = 4; index.html:84-93 range -120..120 step 1; index.html:40 'Live simulation'",
+   "sunController.ts:498-499 inFlight check precedes force; :531 duplicate 6 s gate",
+   "sunController.ts:405-410 Number(null) fallback bug with solarFeatureBlending.ts:212-221 activityIndex:null; fallback values 0.754/0.410/0.193 (fallback_activity.log)",
+   "sunController.ts:63-94 Hathaway fallback; :194-206 field signature includes top-12 id:brightness; :250 PFSS group on sunVisualNode; :319/:355 corona and loops on spinGroup; :253-287 observation texture refresh",
+   "server.py:84-88 FastAPI without lifespan; :91-98 '*' silently falls back to default; :101-111 allowlist lacks :4173; :113-119 allow_credentials=True, no expose_headers; :151-153 WS inherits CORS list",
+   "server.py:168-187 rate 36/60 s, 12 s compute timeout, 2-slot guard; :277-306 shared 2-thread _heavy_compute_executor; :323-330 first-hop XFF identity",
+   "server.py:389-418 _build_solar_physics_state swallows realtime errors, :415-417 echoes live_data_enabled; :466-503 permit released only at worker completion; :1062-1066 timeout 503 has no Retry-After; :935-988 tile route ignores image_id",
+   "sun-focus JD bound is J2000 \u00b1 200\u00d7365.25 d, checked before the guard (git diff ec7ad33 13ca9ec server.py)",
+   "solar_physics.py:391-395 datetime.now() freshness; :522-528 activity = 0.06+0.82H+0.10rot; :585 full Snodgrass from J2000 (:89 rates); :69-75 z-up lat=asin z; :910 has_wsa false for None; :945 WSA lookup uses inertial arm_phase (N8); :1086-1108 PFSS block; :1124 shallow copy",
+   "Proxy weights 0.45/0.35/0.2 in solar_realtime_data.py:852-893 vs 0.5/0.35/0.15 in solar_physics.py:448-458; observed = SSN/220 at :429; SILSO proxy 0.264 (58 on 2026-08-31) vs model 0.757",
+   "solar_realtime_data.py:55-60 URLs, :123/:131 latest vs exact-jd keys, :143-164 caches whatever is fetched, :443-455 getTile x=-1,y=-1, :526-529 r_sun=0.90\u00d7half-width, :615 linear lon mapping (0.7R\u219263\u00b0 vs asin 44\u00b0), :809-823 GONG stub, :901-908 gong ok:true",
+   "pfss_magnetogram.py:31 27.2753 labelled 'Sidereal'; :238 seed int(jd*100)%99991; three identical wrong recurrences at :281, :488, :605; :388 docstring 'Br = 0 at r_ss'; :1107 LRU 3; :1117-1173 exact key; _compute (:1238-1302) uses jd only via the seed and CR; :245-271 negative spot leads in both hemispheres (N1)",
+   "sunVisuals.ts:37-38 vWorldNormal/vLatitude=asin(y); :233, :270-277, :444, :477, :489-490, :505 world-normal use; :245 time*0.00012; :683 timeSec*0.000261; :282-285 equirectangular observation sampling; :635-636 asin(y) seeds; :1419-1421 and :1531-1533 radius scaling",
+   "main.ts:187 BODY_LOCAL_SPIN_AXIS (0,1,0); :308-316 spin axis from tilt with z; :357 mesh on spinGroup; :722-735 rotation.y spin; :978-992 ecliptic xyz to world; :188-195 hard-coded 8042; planets.ts:3-12 Sun lacks spinAxisLongitudeDeg; 609.12 h = 14.1844\u00b0/d",
+   "IAU pole \u03b10=286.13, \u03b40=63.87 maps to ecliptic (345.77\u00b0, 82.75\u00b0); current tilt-only pole is 1.79\u00b0 away; B0 = +7.249\u00b0 on 2026-09-08 and \u22127.249\u00b0 on 2026-03-06",
+   "hgcToSunLocal [x,z,\u2212y] has det +1 and is prograde under three.js rotation.y; y/z swap has det \u22121",
+   "solarFlares.ts:225-228 negative lifetime at 0.3755 AU display radius (sqrt(696340)\u00b70.00045); :41-47 asin(y) origins; solarMagnetics.ts:249-251 radius scaling; :303 any lines array treated as present",
+   "solarObservationTexture.ts:66-72 zone-less Date.parse; :74-118 picker; :120-127 empty base returns null; :207-224 channel hue",
+   "Display extents: 3.0 AU spiral \u00d7 80.75 = 242 AU; 215 R\u2609 = 0.99985 AU; k=0.15 maps 4.74 R\u2609 to 1.56 R_disp",
+   "Payload: 180 features (72 cme, 79 loop, 29 plume), CME speeds 844\u20132,492 km/s, peak extent 4.74 R\u2609, 5 holes, activity 0.754 (payload_high_180.json)",
+   "Audit \u00a75.1 H-1: 0/39 dev, 0/44 preview, effort 1\u20132 d; H-2/\u00a77.12: P2 \u22120.634, g30 \u22122.174, B\u03b8/Br 7.7e-17 (boundary already satisfied); H-3: /health 17.06 s; M-1 float32 and M-8 live-blend-any-epoch exist",
+   "Spike (U): step1 epoch lag 41.73 d; step4rate 72 HIT + 3\u00d7429; step3a 6/6 MISS with 1-day buckets; imgdiff A/B about 20%; RSS 70\u2192112 MB",
+   "Pinned tests exist at the cited lines: test_snapshot_cache_isolated_by_requested_julian_date :24, AIA jd is None :131, test_cme_speed_distribution\u2026 :62, test_pfss_cache_identity_includes_every_output_affecting_input :44, test_timeout_keeps_capacity_owned_until_worker_exit :20 with assert at :49",
+   "requirements.txt lacks httpx; package.json has no Playwright or e2e script; 246 strict errors, 14 in sunController.ts (tsc_baseline.txt)",
+   "Evidence artifacts listed in \u00a78 all exist (pw harnesses, upstream shim, h1_offline plugin, RTSW raw fixtures, p7/p8 logs, vite.h1.config.mjs, proxy-key-collision, proxy-xfwd-origin, aia_url_check)",
+   "Proxy evidence: '/solar' key swallows /solar-systems/manifests/sirius.json (404); xfwd=0 forwards client XFF unchanged; empty base yields a null AIA URL",
+   "Hard-coded 8042 copies at main.ts:189, trajectory/index.ts:9 and :70-74, simulationClient.ts:113/129; dev-full.mjs:52-56 and :128-144 do not forward the backend port",
+   "Effort arithmetic: H0\u2013H4 = 14.5\u201319.5 d, total 24\u201333 d (matches the stated 14\u201319 and 24\u201333)",
+   "Chip reads data_assimilation.{mode,applied,blend_weight,live_data_available} (solarDataStatus.ts:78-86), consistent with C15",
+   "No contradiction with the non-negotiables: exact PFSS key preserved; H5.2 uses a named canonicalisation with returned canonical inputs (IP \u00a74.3/IP-P5); T5 forbids server-side fuzzy keys; test_compute_budget.py:47-49 untouched; no new per-request executor; containment (pfss=off|compute, JD bound, protected refresh, :4173) mapped to OP-P0.9/IP-P0.8; fast lane before OP-P2 is flagged as Disagrees (a) with owner decision D11"
+  ]
+ },
+ {
+  "key": "completeness",
+  "problems": [
+   {
+    "severity": "must-fix",
+    "where": "Phase 3, steps H3.7, H3.9 (client policy table) and H3.12, against D14, H6.4 and H6.8",
+    "problem": "H3 turns on blending of observed data before the plan's own prerequisites for it. Inside the live window H3.9 sends hybrid forcing with live_data, and H3.7/H3.8 then blend SILSO data and the AIA 'activity proxy' (measured on a 3%-of-disk crop) into activity. The calibration gate that should come first (H6.4, D14 'blend after the gate'), the zero AIA-proxy weight (H6.4) and the credits (H6.8, SILSO CC BY-NC attribution) only arrive in H6. H3.12's chip text 'synthetic forcing, no observations' is therefore false whenever the sim is near now. When H3.8's 'refreshing, synthetic' answer gives way to a completed refresh, the corona jumps between two activity states.",
+    "evidence": "Plan H3.9 table row 'forcing: hybrid + live only inside the window, else synthetic'; H3.12 chip text; D14 and H6.4 ('AIA brightness-proxy weight is 0 until full-disk images exist', 'not blended: calibration pending'). BP-F13: hybrid-live activity 0.551 vs synthetic 0.757 at the same epoch; the BP hidden_problems bullet on the corona switching between two states when upstream flaps; the UP hidden_problems bullet 'activity proxy \u2026 not physically meaningful'; UP-F24/F25 (SILSO CC BY-NC, no attribution in the UI). M1 and M2 are both claimed as 'correct' with this blend active.",
+    "fix": "Until H6.4 and H6.8 are green, H3.9 should always send forcing=synthetic&live_data=false, or the server should return applied:false with reason 'calibration_pending'. Move 'hybrid inside window' into H6 after 6.4 and 6.8. Add an H3 test that data_assimilation.applied===false for now-paused, and restate the M1/M2 milestones as 'model-driven, no observations'."
+   },
+   {
+    "severity": "must-fix",
+    "where": "Phase 3, H3.1 (Vite proxy), H3.5 (identity) and H0.2 (containment inputs), plus scripts/dev-full.mjs",
+    "problem": "The same-origin proxy passes LAN clients through to the backend's local profile under a loopback identity. dev:full binds Vite (and the backend) to 0.0.0.0 by default. H3.1 proxies /solar/ to 127.0.0.1. H3.5 keys identity on request.client.host, which is always 127.0.0.1 behind the proxy. H0.2 still allows pfss=compute in the local profile. Any LAN machine that opens dev:full on :5173 can therefore start anonymous cold PFSS and shares a single rate bucket. This reopens the confirmed anonymous CPU-denial path that the owner requires be closed before any non-loopback use. H0.2's list also leaves out the owner's 'loopback default' item.",
+    "evidence": "scripts/dev-full.mjs:44,55 (host default 0.0.0.0), :130,:138 (both servers get --host). OP \u00a79 P0.9; IP P0.8 ('loopback default, no anonymous cold compute'); IP \u00a74.7 ('Local profile binds 127.0.0.1; reload is allowed only there'). CD hidden_problems ('Behind a same-host proxy every browser arrives as 127.0.0.1'); CD-F6 (dev:full LAN access).",
+    "fix": "Add a rule to H3.1 and H0.2: the proxy is enabled only when Vite's server.host and preview.host are loopback (throw at config load otherwise), and dev-full.mjs defaults to 127.0.0.1 for both processes. A non-loopback host requires the backend's network profile with auth. Add a test, e.g. 'vite config refuses proxy with non-loopback host', and add 'loopback default' to the containment inputs."
+   },
+   {
+    "severity": "must-fix",
+    "where": "H2.3 (layer gates), H3.6 (pfss_field_lines: None), H4.2 (ingest conversion list), H3.12 legend",
+    "problem": "Backend data can reach the screen through a consumer the plan did not list. H3.6 sets pfss_field_lines to None to avoid the PFSS path. When that field is missing, createMagneticFieldLines seeds its analytic traces from backend corona.features base_dir/paired_dir, which are z-up vectors. It is called from rebuildMagneticFieldLines after every success and reads solarPhysicsState directly. H2.3 only gates update() and maybeRefreshObservationTexture, and H4.2's frame conversion list leaves out solarMagnetics. So from H3 onward, toggling field lines draws backend-seeded lines at wrong latitudes (the frame bug, p95 72\u00b0) on the non-spinning node, while the legend labels them 'browser analytic'. That is both a frame violation and false provenance.",
+    "evidence": "src/frontend/features/solar/solarMagnetics.ts:296-321 (lines field falsy \u2192 extractFeatureSeedDirections(physicsState)), :66-108 (reads base_dir/paired_dir); src/sunController.ts:229-251 (rebuildMagneticFieldLines passes {physicsState: solarPhysicsState}, adds to sunVisualNode); FE-F1 ('if pfss is missing, corona.features base_dir/paired_dir seeds'); FE-F28 (z-up vs y-up).",
+    "fix": "Add the feature-seeded field-line path to the H2.3 gate table and mechanism, passing physicsState:null to createMagneticFieldLines while it is gated. Add solarMagnetics.extractFeatureSeedDirections to H4.2's hgcToSunLocal ingest list. Add the test 'feature-seeded field lines never read backend state while gated' and a legend row for this source."
+   },
+   {
+    "severity": "must-fix",
+    "where": "\u00a72 Harness command (the definition-of-done test)",
+    "problem": "The headline acceptance command cannot run. The Playwright test CLI has no custom options. Arguments after `--` are read as test-file filters, so '--origin dev,preview --upstream \u2026 --gpu real' matches nothing ('No tests found'), or errors without the `--`. Dev and preview also need different webServer commands, which a CLI flag cannot choose. The full matrix is 2 origins \u00d7 3 upstream modes \u00d7 7 scenarios \u00d7 2 tab counts \u00d7 5 min \u2248 7 h, and no release subset is named.",
+    "evidence": "Plan \u00a72 'npx playwright test tests/e2e --project=chromium -- --origin dev,preview \u2026'. IP \u00a78 uses 'npx playwright test tests/e2e/solar-delivery.spec.ts --config ci/playwright-r3.config.ts --project=chromium' and says to 'Pin \u2026 the Playwright web-server command/base URL inside their committed configs'.",
+    "fix": "Encode the matrix as Playwright projects (for example chromium-dev and chromium-preview, each with its own webServer) plus environment variables (SOLAR_E2E_UPSTREAM, SOLAR_E2E_SCENARIOS, SOLAR_E2E_TABS) in ci/playwright-r3.config.ts. Give the exact commands, and name the release-gate subset (the IP-P8 five-minute run per origin, fixture upstream) separately from the extended matrix."
+   },
+   {
+    "severity": "must-fix",
+    "where": "\u00a72 A/D/E criteria in fixture mode, H1.5 shim, H6.1 maximum-staleness settings",
+    "problem": "The hermetic end-to-end run will fail on its AIA and observation criteria once the recorded fixtures are older than the plan's own freshness windows. D2 applies observations only within \u00b11 day of the server's wall-clock now. H6.1 marks AIA unavailable after 3 h and SILSO after 45 d. The fixtures were recorded on 2026-09-25 (AIA 01:47Z; SILSO last row 2026-08-31). The plan has no backend clock seam and no timestamp rewriting in the shim, so '\u22651 AIA image rendered in now-paused' fails roughly 3 h after capture, and the SILSO labels change after mid-October.",
+    "evidence": "Plan D2, H3.7 ('|epoch_utc \u2212 now| \u2264 SOLAR_LIVE_WINDOW_DAYS'), H6.1 ('Maximum staleness: SWPC 30 min, AIA 3 h, SILSO 45 d'). UP-F22 (fixture dates). IP rule 6 ('Use injected clocks'); IP-P8 ('network-free Playwright path \u2026 with offline PFSS/AIA fixtures').",
+    "fix": "Add a test-profile wall-clock seam (for example SOLAR_NOW_UTC, honoured only in the local/test profile) and have the shim shift fixture observation times relative to it, or pin both the browser (?date=) and backend clocks to the fixture epoch. Add the test 'fixture run passes with host clock set to fixture date + 30 d'."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Conventions 'Red first' (pytest xfail(strict=True) / vitest it.fails)",
+    "problem": "The plan's red-first mechanism differs from the owner's without saying so. An xfail(strict=True) marker with no raises= argument also 'passes' on ImportError, collection errors or timeouts, and vitest it.fails accepts any thrown error. IP says such failures do not count as red evidence. IP-P1.7 and IP-P2 require the verify_r3_red_green.py runner and a manifest with exact node IDs and named assertion failures, and the IP definition of done says 'No required R3/R4 skip/xfail'.",
+    "evidence": "IP \u00a76 P1.7 ('Import, collection, timeout, or unrelated failures do not count as red evidence'), P2 ('Record exact node IDs and expected assertion failures'), \u00a77 R4 checklist; IP rule 13.",
+    "fix": "Register the H-1 node IDs in backend/tests/red_green/r3/manifest.json and run scripts/verify_r3_red_green.py, extending it or adding a frontend twin for vitest and Playwright. If markers are kept temporarily, use raises=AssertionError and add a CI check that no 'H1:' xfail remains at H7 exit."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a73a alignment table; sequencing diagram (H2, H3, H4 before OP-P2..P4)",
+    "problem": "The plan changes the owner's phase order without flagging it. Only the fast lane is marked as a disagreement (a). H2 and H4 are mapped to 'OP-P5 / S12' but scheduled right after H1, before OP-P2 (correct PFSS), P3 and P4. OP \u00a712 says the first new scientific fix after P0 and containment is R3.1. The shader-frame change, IAU orientation and HGC output are scientific changes to what users see (D10).",
+    "evidence": "OP \u00a79 Phase 5 ('execute the broader register by dependency' after Phase 4); OP \u00a712 ('The first new scientific fix after that should be R3.1'); plan H2 header 'runs in parallel with OP-P2'; H4 'Owner OP-P5 / S12'.",
+    "fix": "Add an explicit \u00a73a disagreement row, (d), with the evidence: BR-F26 shows the non-PFSS layers are independent of H-2, and FE-F2/F3 show today's fallback is already wrong. State that H2 and H4 start only after IP-P3 has begun, or ask the owner (a new D-item) to approve running them in parallel."
+   },
+   {
+    "severity": "should-fix",
+    "where": "Sequencing diagram (H1 \u2192 IP-P1..P5) and H1.1, H1.5, H1.6",
+    "problem": "H1 is placed before IP-P1, which reverses the IP critical path (P1 \u2192 P2). H1.1 depends on IP-P1's create_app seam and lock split ('when it exists', 'if it has landed'). H1.6 creates src/frontend/features/solar/solarPhysicsClient.test.ts and tests/e2e/solar-delivery.spec.ts, the same files IP-P2 owns. H1.1's backend/requirements-dev.txt will be superseded by IP-P1.4's requirements-ci.lock, which leaves two dependency sources.",
+    "evidence": "IP \u00a76 critical path 'P0 \u2192 P1 contracts, locks, seam, fixtures \u2192 P2 red gates'; the IP-P2 suggested test-file list; plan H1.1 hedges.",
+    "fix": "Draw IP-P1 \u2192 H1, and define H1 as the H-1 slice of IP-P2 (same branch, or merged into it) with shared file ownership. Drop requirements-dev.txt in favour of the IP-P1 locks."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H5.2 synthetic_seed_bucket_v1 ('zero-error for jd') and its budget test",
+    "problem": "The policy also canonicalises activity (activity_used = activity(canonical_jd, \u2026)), which the same paragraph says needs its own named policy. Change within a bucket comes mainly through activity, and the cited budget was measured only 86 s from the base. At +10 min inside one bucket, 25 of 120 lines move by more than 1% of r_ss. n_regions = int(2 + activity\u00b714) is discontinuous in activity, so thresholds can reshuffle the random sequence. The claimed budget of \u22640.05 R\u2609 with 0 flips is not supported across the full bucket.",
+    "evidence": "pfss_magnetogram.py (bd48a7d) :238-239 (seed; n_regions = int(2 + activity*14)); :1238-1302 (_compute uses jd only through the seed and CR, which holds). BR Measurements ('within one 0.01-d bucket (86 s sim)'); BP-F14 ('3/120 lines >1% of r_ss at +1 min, 25/120 at +10 min'); the BP hidden_problems bullet 'footpoint importance sampling reacts sharply to tiny activity changes'.",
+    "fix": "Declare the policy as canonicalising both jd and activity, and pre-register the budget measurement over the full \u00b10.005 d bucket and across n_regions thresholds. Set the budget from that measurement, with topology flips counted explicitly, before implementing."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H3.8 snapshot key ('snapshot','latest', floor(now/300 s))",
+    "problem": "This quantises the wall-clock epoch in 5-minute buckets and replaces 'AIA image closest to the requested jd' with 'latest'. It is a server-side quantisation, but it is not declared as a named policy with a budget, and the response does not return the effective values. OP R3.2 and IP \u00a74.3 forbid silent aliasing of inputs.",
+    "evidence": "Plan H3.8 and H3.11 (only fetched_at_utc is carried through); IP \u00a74.3 ('Quantization is allowed only under a named policy \u2026 responses expose the canonical effective values'); OP R3.2 whole-response identity includes 'realtime observation/product IDs, and every effective wall/simulation epoch input'.",
+    "fix": "Name the policy (for example observations_latest_v1). Return the snapshot id, per-source observed_at, and observation_epoch_offset_days = observed_at \u2212 requested epoch, bounded by the D2 window. Add a test that the offset is reported and that out-of-window requests get applied:false."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H2.3 gate table",
+    "problem": "The observation controls (observationBlend, observationEmission, coronaHue, observedConfidence, observedFreshness) are derived from data_assimilation and sdo_aia crop proxies. They feed the surface and chromosphere shaders even when no texture has loaded. They are not in the gate table, so they change the Sun's look as soon as H3 data flows.",
+    "evidence": "src/sunController.ts:413-423, 426-436, 473-479; solarObservationTexture.ts:136-235 (blend 0.03\u20130.10 + confidence\u00b70.42 \u2026, multiplied by 0.42 without a texture; coronaHue once channelInfluence > 0.08); FE-F1 (blend 0.013 \u2192 0.85).",
+    "fix": "Add an 'observation-controls' gate that stays closed until H6.4 and H6.6, and pass null state to deriveSunObservationControls while gated. Test that observationBlend equals the no-data value while gated."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H0.3 / C17 proxy classifier rule; Open question 3",
+    "problem": "When the backend is down, Vite's proxy answers 500 text/plain, not 502/503/504. The planned rule therefore classifies a dead backend as an HTTP error instead of 'unreachable'. This answers open question 3.",
+    "evidence": "node_modules/vite/dist/node/chunks/config.js:21931 `res.writeHead(500, { \"Content-Type\": \"text/plain\" }).end()` (Vite 7.3.1).",
+    "fix": "Rule: a same-origin 5xx without a JSON body (content-type not application/json, no X-Solar-Error-Code) means unreachable. That keeps it distinct from H3.4's JSON 500. Update the test name and close open question 3."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H3.4 readable errors",
+    "problem": "The obvious way to implement 'JSON 500 through ExceptionMiddleware' would still send no ACAO header. In Starlette, a handler registered for Exception or 500 is attached to ServerErrorMiddleware, the outermost layer, outside CORSMiddleware.",
+    "evidence": "starlette 1.7.0 applications.py:69-78 (`if key in (500, Exception): error_handler = value` \u2192 ServerErrorMiddleware outermost); CD-F11 (the /boom 500 has no ACAO); server.py:1049-1066 (the route catches only asyncio.TimeoutError).",
+    "fix": "Specify catching Exception inside the route and raising HTTPException(500, \u2026) or returning a JSONResponse with X-Solar-Error-Code, or register a handler for a dedicated exception class. Keep test_builder_exception_is_json_500_with_acao, driven through the real middleware stack."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H3.5 bridge identity and the \u00a72 backend launch command",
+    "problem": "TestClient cannot catch uvicorn's proxy-header rewriting. uvicorn applies ProxyHeadersMiddleware at launch (proxy_headers=True, trusting 127.0.0.1), and TestClient bypasses it, so test_identity_ignores_client_supplied_xff passes while a real server still rewrites request.client from a client-supplied X-Forwarded-For. The \u00a72 command 'uvicorn server:app --host 127.0.0.1 --port 8042' adds no proxy-header flag, and 'explicit proxy-header settings' is never specified.",
+    "evidence": "CD-F17 (uvicorn 0.53 defaults; uvicorn-proxy-headers.txt); IP \u00a74.7 ('Disable implicit proxy-header trust').",
+    "fix": "Specify --no-proxy-headers (local profile) in dev-full.mjs, the \u00a72 command and the Playwright webServer config. Add a real-socket test, or an assertion on the launch config, that a spoofed XFF does not change the rate identity."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H3.2 runtimeConfig vs H3.1 proxy keys",
+    "problem": "H3.2 points trajectory/index.ts and simulationClient.ts at window.location.origin, but H3.1 proxies only '/solar/' and '/health'. Once those clients are wired in, their /trajectory, /mission, /bodies and /ws/sim calls will get Vite's SPA fallback (index.html) or a 404 instead of the backend.",
+    "evidence": "CD-F2 (these modules carry their own 8042 base); CD fix_implications (enumerated anchored matcher, ws:true for /ws/sim).",
+    "fix": "Either proxy every backend prefix with an anchored regex and ws:true, or leave the non-solar modules on their current base until they are wired. Add a runtimeConfig test that each client's URL resolves to a proxied path."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a72 A (tabs 1,3) vs H3.9 rate policy and H3.5 identity",
+    "problem": "By construction the 3-tab runs cannot meet '\u226595% of scheduled reads succeed'. Each tab polls up to 24 times a minute (2.5 s minimum interval), and behind the proxy all tabs share one 36/min identity, so three visible tabs ask about 72/min and roughly half get 429. The plan has no cross-tab coordination, and \u00a72 applies the 95% threshold to every run.",
+    "evidence": "Plan H3.9 ('min interval 2.5 s', 'pollsPerMin \u2264 0.8 \u00d7 serverRateLimit' per client); H3.5 (identity = request.client.host); FE-F9 and CD hidden_problems (one shared bucket).",
+    "fix": "Either add cross-tab coordination (a BroadcastChannel leader tab sharing payloads) with a test, or define the 3-tab criterion explicitly (for example, 95% of non-deferred reads, with 429s only honoured via Retry-After and no layer flicker)."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H2.7 stale-state policy vs time rate",
+    "problem": "State is cleared when |simJd \u2212 epoch| > 30 d. With a 2.5 s poll interval, any rate above 12 d/s (the slider allows \u00b1120 d/s) clears the backend state between every pair of polls. At 120 d/s backend layers would show for about 0.25 s of every 2.5 s, flickering between backend and procedural. No scenario tests rates above 4 d/s.",
+    "evidence": "FE-F7 (slider \u2212120..+120 d/s); plan H2.7 and H3.9. 30 d / 120 d/s = 0.25 s.",
+    "fix": "Make the clearing threshold rate-aware (for example max(30 d, 2\u00b7|rate|\u00b7interval)) or show a labelled time-lapse lag (D5). Add a 120 d/s scenario with the oracle 'no source flip-flop within 60 s'."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H3.9 client policy (missing coupling with the owner's JD bound)",
+    "problem": "The sim clock is unbounded, but the owner's JD bound rejects anything outside J2000 \u00b1 200 y with a 400, after the rate limiter has counted it. At 120 d/s the bound is crossed in about 10 minutes. After that every poll fails and uses up rate budget, and the chip reports a generic error. The plan has no client rule or label for this.",
+    "evidence": "src/frontend/app/timeController.ts:70 (julianDate += delta\u00b7rate, no clamp); 13ca9ec backend/server.py:307-314, :1016-1024 (JD range 400); OP \u00a73.2 / R3.5.",
+    "fix": "Have the H3.9 policy stop requesting outside the declared range (a shared constant, or a capabilities field), with the chip reading 'outside backend model range, procedural Sun'. Add a test that no request is sent at 2300-01-01."
+   },
+   {
+    "severity": "should-fix",
+    "where": "\u00a72 B/C (definition of done) and the scenario list",
+    "problem": "The final test never shows field lines, or the WSA-driven spiral winding, as backend-driven and correct on screen. B checks activity, loops, spots and holes. For field lines, C checks only 'no field line unless validated', and no scenario turns the field-line toggle on. The owner's model explicitly includes PFSS field lines.",
+    "evidence": "Plan \u00a72 B/C lists; the \u00a71.3 field-line row; H5 acceptance exists only at phase level.",
+    "fix": "Add a now-paused+fieldlines scenario with these oracles: rendered line count equals the payload's validated line_count; footpoints at R_disp \u00b1 \u03b5 in the body frame; paused 1-day step gives 14.18 \u00b1 0.6\u00b0/d inertial drift; versions shown in the legend. Also add the spiral's wind_speed_source to the D (honesty) checks."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H1.5, H1.6, H6.2, H6.3 fixtures and harnesses",
+    "problem": "Many steps port or read artifacts from the session scratchpad under /tmp (upstream_raw RTSW captures, payload_high_180.json, the shim, the offline plugin, the Playwright harnesses, the chip browser check). That directory is ephemeral. The plan has no step to commit trimmed fixtures with the provenance and checksum manifests the owner requires. It also plans to vendor CC BY-NC SILSO data (backend/data/silso_monthly_smoothed.csv) and Helioviewer/RTSW captures, which falls under the owner's licence/redistribution gate. D6 covers using the data, not redistributing it.",
+    "evidence": "Plan H6.2 ('Tests on $SP/h1/upstream/upstream_raw/swpc_rtsw_*'), H6.3, H1.5; OP \u00a77 R4 gap 8 (immutable, provenanced fixtures: source, retrieval date, checksum); OP S4 (P0 licence before redistribution); IP P1.6 (redistribution approval for fixtures).",
+    "fix": "Add an H1 step that commits trimmed fixtures with manifest.json (source URL, retrieval UTC, licence, SHA-256) under backend/tests/fixtures/solar/. Make vendoring SILSO or Helioviewer data conditional on an S4 decision (add a D-item), and move the harnesses into the repo."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H2.4 visual limb oracle ('Calibrate on the first real-GPU run, then pin')",
+    "problem": "Choosing the threshold after seeing the fixed build's output is a post-hoc tolerance. The owner's rules prohibit this.",
+    "evidence": "IP rule 4 ('Never weaken a reviewed tolerance merely because the implementation misses it'); IP P5 ('report excluded area rather than choosing a mask after seeing failures').",
+    "fix": "Pre-register the threshold from an independent render (an analytic pole-darkened sphere with a known axis) and require the pre-fix build to fail it (red) before pinning."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H7.5 ('The \u00a72 DoD suite joins CI (offline Playwright lane)')",
+    "problem": "The \u00a72 suite includes real-GPU pixel checks (limb contrast, AIA centre/north marker, the A/B pixel diff) and a live-upstream run. IP-P9 lane 6 is offline and network-denied, and a CI runner has no GPU, so the suite cannot join that lane as described.",
+    "evidence": "Plan \u00a72 ('Visual oracles run on the real-GPU WSLg recipe'; 'live upstream run is a smoke test'); IP \u00a76 P9 lanes 6-8.",
+    "fix": "Split the suite into a CI lane (diagnostics-based position oracles, fixture and hang modes, SwiftShader-tolerant thresholds), a pinned real-GPU visual lane, and the live smoke in lane 8. State which of these gate the definition of done."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H2.2 flare/CME lifetime formula",
+    "problem": "cmeMaxDistanceAu = sunRadiusAu + max(0.3, 2\u00b7sunRadiusAu) comes to 1.13 AU at the default scale, i.e. CME shells growing to 3 display radii, past the orbits of Venus and Earth. That contradicts D3/H2.5, which compress corona heights \u00d70.15, and the plan's own '\u2264 1.6 display radii' oracle.",
+    "evidence": "solarFlares.ts:225-228 (currently 0.3 AU fixed); catalog.ts:555-557 (display radius 0.3755 AU); plan H2.5 coronalToDisplay k=0.15.",
+    "fix": "Express the CME travel limit through coronalToDisplay using the payload extent (peak_extent_solar_radii). Add the oracle 'CME extent \u2264 1.6 R_disp at default scale, physical at realistic scale' next to the lifetime test."
+   },
+   {
+    "severity": "should-fix",
+    "where": "H6.2 SWPC RTSW migration (missing coupling)",
+    "problem": "Repairing SWPC switches on the currently dormant SWPC wind override. Every Parker arm then takes a 58% blend of the observed L1 speed. This is a new visible change to spiral winding. It is missing from the coupling table, the legend and the H6 acceptance, and it must respect the D2 window.",
+    "evidence": "backend/sim/solar_physics.py:903-907 (override_wind), :968-972 (0.58\u00b7override + 0.42\u00b7intrinsic); BR-F24(ii) ('SWPC wind override of the spiral, dead because of the 404').",
+    "fix": "Add a coupling entry, 'Fix SWPC \u2192 the spiral winding follows the L1 speed'. Show per-arm wind_speed_source in the legend. Apply the override only inside the live window, and add an H6 test that out-of-window requests do not use it."
+   },
+   {
+    "severity": "nit",
+    "where": "H3.9 client policy notes",
+    "problem": "'timeout 8 s (> the 5 s fast budget + proxy hop, so no orphans)' reasons wrongly: a server-side timeout never frees work (T4), so orphans are avoided only because the fast lane takes about 50 ms. Separately, 'paused heartbeat 60 s, with ETag' relies on /solar/physics ETags that do not exist until H7 V2.",
+    "evidence": "BR-F2/F3; test_compute_budget.py:47-49; plan H3.10 and H7.2.",
+    "fix": "Rephrase the timeout rationale. Drop the ETag from the H3 heartbeat or add ETag generation to H3.10."
+   },
+   {
+    "severity": "nit",
+    "where": "Intra-phase commit order in H3 and H4",
+    "problem": "H3.6's frontend switch to pfss=off lands before H3.9's cadence policy, so the branch contains commits where the fast server plus 900 ms polling trips 429s (C1). H4.9's legend lands after ungating in 4.4\u20134.8. Reverting one commit (IP rule 14) would bring these gaps back.",
+    "evidence": "Plan H3.6 frontend clause, H3.9, H4.4\u20134.9; C1.",
+    "fix": "Move the frontend pfss=off change into H3.9 or after it, and land the H4.9 legend before H4.4."
+   },
+   {
+    "severity": "nit",
+    "where": "H3 acceptance ('\u2264 1 snapshot refresh per 5 min with 3 tabs')",
+    "problem": "With floor(now/300 s) buckets, any 5-minute window crosses a bucket boundary, so there are always at least two fetches (initial plus boundary).",
+    "evidence": "Plan H3.8 key definition.",
+    "fix": "Use '\u2264 1 + ceil(T/300 s) refreshes, independent of tab count'."
+   },
+   {
+    "severity": "nit",
+    "where": "H2.1 activity-parity fixture",
+    "problem": "The expected values are generated by backend production code, which makes this a compatibility golden, not an oracle. IP rule 3 and OP R4 gap 1 require it to be labelled as such.",
+    "evidence": "Plan H2.1; IP rule 3; OP \u00a77 gap 1.",
+    "fix": "Label it class D (compatibility golden). Add a class-A check against the closed-form Hathaway 2015 envelope at 3\u20135 epochs, and give the parity tolerance."
+   },
+   {
+    "severity": "nit",
+    "where": "Digest items neither addressed nor explicitly deferred",
+    "problem": "These digest items have neither a step nor a stated deferral: the stale README (Connect step, recommends preview, no CORS/proxy guidance); rejected origins still paying full compute; the absolute asset URLs that break under a sub-path base; vectorising trace_field_lines and the WSA loops; one AIA channel failure aborting all 5; surfacing the SWPC spacecraft and row age; 74 KB of feature fields the frontend never reads; JSON encoding on the event loop; a rendering frame-time budget on a real GPU (5160 vertices re-uploaded every frame); the plan needing D10 before H2 ships.",
+    "evidence": "CD-F28, CD-F8, the CD hidden_problems bullet on sub-path hosting; BR fix_implications ('batch evaluator exists :532-603'); UP-F18 / the UP hidden_problems per-feed isolation bullet; UP fix_implications (surface the source spacecraft and row age); FE fix_implications (drop unread fields); FE-F25 and FE open_questions (real-GPU cost unmeasured); BP fix_implications (pre-encoded Response).",
+    "fix": "Add a short 'deferred with reason' list, for example: README \u2192 OP S5; vectorising \u2192 after IP-P3 per 'correct before optimize'; serialisation \u2192 IP-P6 child. Add per-channel isolation and spacecraft/age fields to H6.1/H6.2, a frame-time criterion to \u00a72 F, and D10 to the most-urgent decisions."
+   }
+  ],
+  "checked_ok": [
+   "Chip branch facts hold. $SP/wt-notice has 6 commits d637501..7c791dc touching 9 files (index.html, main.ts, style.css, sunController.ts, the solar client, status and texture modules, and 2 tests). Since ec7ad33, sun-focus changed none of those files (among the checked files only backend/server.py differs), so H0.1's claim that the chip merges onto the reconciled line without conflict is consistent with git diff --stat ec7ad33 13ca9ec / ec7ad33 d834dbe.",
+   "The plan does not have the chip land in the convergence PR or on main, and it keeps the merge input pinned to d834dbe, as OP \u00a79 P0.3 and IP P0.3 require.",
+   "Owner non-negotiable kept: mainline's exact-key PFSSCache (pfss_magnetogram.py:1117-1173) is untouched, and every server-side fuzzy key the designs proposed is rewritten as client-side quantisation or a named canonicalisation (T5, H5.2). The jd part of H5.2 is sound: synthetic_magnetogram uses jd only in its RNG seed (:238), and _compute uses jd only through the seed and the CR (:1238-1302).",
+   "test_compute_budget.py:47-49 is left unchanged, and the plan forbids releasing a permit on timeout (T4), consistent with OP \u00a711 and IP rule 8.",
+   "The H-2 gate holds for field lines and WSA winding: the fast lane passes wsa_result=None, which selects the empirical path (solar_physics.py:910 has_wsa is false for None), returns pfss_field_lines None rather than {lines: []} (solarMagnetics.ts:303), and ungates field lines only after IP-P3/P5/P6 with a validated flag. The one exception, the feature-seeded path, is reported separately.",
+   "Every H3 layer other than activity stays gated until H4's frame and scale fixes (sunspots, loops, holes, flares, spiral), and AIA stays gated until the H6.6 projection (the only gaps are observation controls and feature-seeded field lines, reported separately).",
+   "The CORS plan matches OP R3.4 and the digest: explicit :4173 origins for both spellings, an additive SOLAR_CORS_EXTRA_ORIGINS, '*' rejected loudly, expose_headers including Retry-After, WebSocket origins decoupled, and no regex or wildcard. The proxy key is '/solar/' with the trailing slash, backendBaseUrl never returns '', and the XFF-stripping hook reflects CD-F14/F15/F16.",
+   "The frame and orientation constants check out: the IAU solar pole at ecliptic (345.77\u00b0, 82.75\u00b0), B0 of +7.2\u00b0 near Sept 8 and \u22127.2\u00b0 near Mar 6, hgcToSunLocal [x, z, \u2212y] is a proper rotation (det +1) that keeps rotation prograde about +Y, and the Carrington rate is 14.1844\u00b0/d.",
+   "Most digest hidden_problems and fix_implications are covered: rate limit vs cadence (C1, H3.9), activity drift defeating the cache (H3.7), seed-boundary arithmetic (T6), GIL/thread limits (T3), orphaned slots (IP-P6), all-failed snapshots cached as success (H3.8, H6.1), no stale-on-error (H6.1), per-socket-only timeouts (H3.8), SWPC schema, newest-first order and inactive spacecraft (H6.2, T16), GONG day directories, grid and exact CR (IP-P4, T17), AIA crop, image_id and projection (H6.5/6.6, T18), hole-detector rsun (H6.7), Date.parse timezone (H6.5), live data at any epoch (D2, H3.7), provenance stubs (H3.11, T20), CORS 500s without ACAO (H3.4), the duplicate 6 s gate (H3.9), the reqId race (H3.9), the Number(null) fallback (H2.1), negative flare lifetime (H2.2), 81\u00d7 display scale (H2.5), z-up vs y-up and double rotation (H4, T9-T11), Auto switching to 193 \u00c5 (H2.6), state never cleared (H2.7), field-line rebuild churn (H2.8), gzip and rounding (H3.10), shallow-copy cache sharing (T27), route.fulfill CORS and backend-log traps (T25), hermetic tests and httpx (H1.1), the 246-error TS baseline scoped (H1.2 plus ratchet), and the lifespan hook vs module-level TestClient (H6.1).",
+   "Every requested owner decision is present with a recommended default and its consequence: seeding (D1), live window (D2), inflated-scale structures (D3), Auto look (D4), SILSO licence (D6), proxy vs allowlist (D7). Process topology is correctly recorded as already decided by the owner (IP \u00a74.4).",
+   "The effort figures add up: H0\u2013H4 give 14.5\u201319.5 d (quoted as 14\u201319), and all phases give 24\u201333 d (+3\u20134 d for D1).",
+   "The \u00a72 definition-of-done criteria map the owner's three clauses onto B (driven by the backend: parity plus an A/B pixel check that proves influence only), C (correct: rendered-position oracles) and D (honest: legend, credits, 1990/2040 labels). 'Silent fallback' is made measurable. OP R3.4 and IP-P8 wording (five minutes, \u226595%, \u22651 AIA tile, staleness, zero silent fallbacks, dev AND preview) is carried through. The gaps are listed in problems."
+  ]
+ }
+]

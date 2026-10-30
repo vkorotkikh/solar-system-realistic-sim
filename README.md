@@ -59,6 +59,11 @@ unless you explicitly set it yourself.
 
 ## Backend (optional)
 
+The backend requires a POSIX process environment. Its supported verification
+platform is Linux, including Linux under WSL2; native Windows is unsupported.
+Other POSIX hosts need the owned-process transport checks before support can be
+claimed. See [backend platform support](docs/backend-platform-support.md).
+
 The shipped frontend always propagates the planets in-browser (**Local
 (Keplerian)** model). The backend adds, over HTTP, the solar physics route
 that drives the Sun model and the trajectory, mission and benchmark APIs. It
@@ -339,6 +344,14 @@ The backend provides direct-transfer and multi-leg gravity-assist planning, incl
 - `GET /solar/realtime` — live ingested solar context and source health
 - `GET /solar/realtime/aia-tile` — raw viewport AIA tile, not eligible for Sun-surface texture blending
 
+The AIA tile endpoint accepts a scalar `jd_tdb`, or precise `jd_tdb1` and
+`jd_tdb2` components together, such as Astropy's `instant.tdb.jd1` and
+`instant.tdb.jd2`. Do not combine the two-part input with scalar aliases.
+An ambiguous scalar bin at a UTC leap boundary returns HTTP 400 and requires
+the precise input. Genuine UTC leap seconds return HTTP 422
+(`unsupported_utc_instant`), because the upstream provider's datetime contract
+cannot represent them. Ordinary midnight remains a valid precise input.
+
 ## Data Model
 
 - Browser planetary positions use JPL's fitted approximate-element model and
@@ -355,11 +368,14 @@ The backend provides direct-transfer and multi-leg gravity-assist planning, incl
 - REBOUND Julian dates are TDB, declared as `jd_time_scale: "TDB"`; WebSocket
   `set_julian_date` commands must include the matching scale instead of silently
   treating browser/Unix UTC dates as ephemeris time.
-- The 424-moon inventory and approximate fallback elements come from the JPL SSD satellite
-  mean-element tables. The repository retains native-frame fallback propagation and committed
-  parent-relative JPL Horizons fits for Titan, Iapetus, Phoebe, and Cordelia as offline data and
-  validation machinery. The shipped entry does not load those ephemerides or propagate/render
-  moon states.
+- The 424-moon inventory and approximate fallback elements come from the JPL SSD
+  satellite mean-element tables. All 424 records now have committed fitted
+  parent-relative models: the existing 13 models plus 410 lazy shards for the
+  remaining 411 records, including both Puck catalog aliases. Explicit library
+  requests fetch only the required shards from `public/moon-ephemerides/`.
+  The default library load remains 13 models; the shipped page does not load
+  moon ephemerides or propagate/render moon states. Captured numerical-source
+  agreement does not establish observational uncertainty or redistribution rights.
 - Planet entries include axial-tilt, spin-period, and ecliptic pole-longitude metadata for visual spin/orientation.
 - Star catalog derived from d3-celestial star catalog data, with optional Gaia DR3 enrichment.
 
@@ -375,6 +391,14 @@ external temporary response cache):
 ```bash
 npm run generate:moon-ephemeris
 npm run verify:moon-ephemeris
+```
+
+The additional lazy models reproduce offline from committed source pins on the
+pinned Python/NumPy stack:
+
+```bash
+uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt \
+  python scripts/generate_moon_lazy_ephemerides.py --offline --check
 ```
 
 Ingest moon textures:

@@ -1,0 +1,936 @@
+{
+ "tag": "step3b",
+ "url": "http://127.0.0.1:5183/?backendPort=8073",
+ "durS": 180,
+ "tLoad": 3955,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_200": 6,
+   "failed:undefined": 1
+  },
+  "cache": {
+   "MISS": 2,
+   "HIT": 4
+  },
+  "hitDurMs": [
+   24,
+   30,
+   33,
+   36
+  ],
+  "missDurMs": [
+   7983,
+   9474
+  ],
+  "okDurMs": {
+   "n": 6,
+   "min": 24,
+   "p50": 36,
+   "p95": 9474,
+   "max": 9474
+  },
+  "inFlightAtEnd": 1
+ },
+ "aia": {
+  "n": 3,
+  "by": {
+   "http_200": 3
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 3,
+   "min": 3,
+   "p50": 2887,
+   "p95": 3121,
+   "max": 3121
+  },
+  "inFlightAtEnd": 0
+ },
+ "requests": [
+  {
+   "id": 1,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 994,
+   "status": 200,
+   "tResp": 10465,
+   "spikeCache": "MISS",
+   "tEnd": 10468,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 9474,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624631
+   }
+  },
+  {
+   "id": 2,
+   "kind": "aia",
+   "url": "http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756",
+   "jd": null,
+   "tStart": 10473,
+   "status": 200,
+   "tResp": 13359,
+   "spikeCache": null,
+   "tEnd": 13360,
+   "outcome": "finished",
+   "respBodyBytes": 211552,
+   "durMs": 2887,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 211924
+   }
+  },
+  {
+   "id": 3,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 31153,
+   "status": 200,
+   "tResp": 31180,
+   "spikeCache": "HIT",
+   "tEnd": 31183,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 30,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624630
+   }
+  },
+  {
+   "id": 4,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 61235,
+   "status": 200,
+   "tResp": 61267,
+   "spikeCache": "HIT",
+   "tEnd": 61271,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 36,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624630
+   }
+  },
+  {
+   "id": 5,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 91510,
+   "status": 200,
+   "tResp": 91539,
+   "spikeCache": "HIT",
+   "tEnd": 91543,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 33,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624630
+   }
+  },
+  {
+   "id": 6,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 137356,
+   "status": 200,
+   "tResp": 137363,
+   "spikeCache": "HIT",
+   "tEnd": 137380,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 24,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624630
+   }
+  },
+  {
+   "id": 7,
+   "kind": "aia",
+   "url": "http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756",
+   "jd": null,
+   "tStart": 141485,
+   "status": 200,
+   "tResp": 144605,
+   "spikeCache": null,
+   "tEnd": 144606,
+   "outcome": "finished",
+   "respBodyBytes": 211552,
+   "durMs": 3121,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 211924
+   }
+  },
+  {
+   "id": 8,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461427.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461427.5,
+   "tStart": 167522,
+   "status": 200,
+   "tResp": 175501,
+   "spikeCache": "MISS",
+   "tEnd": 175505,
+   "outcome": "finished",
+   "respBodyBytes": 556730,
+   "durMs": 7983,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 556986
+   }
+  },
+  {
+   "id": 9,
+   "kind": "aia",
+   "url": "http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802",
+   "jd": null,
+   "tStart": 175511,
+   "status": 200,
+   "tResp": 175513,
+   "spikeCache": null,
+   "tEnd": 175514,
+   "outcome": "finished",
+   "respBodyBytes": 211552,
+   "durMs": 3,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 211924
+   }
+  },
+  {
+   "id": 10,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461546.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461546.5,
+   "tStart": 198272,
+   "durMs": null,
+   "cdp": {}
+  }
+ ],
+ "timings": [
+  {
+   "t": 10469,
+   "phase": "fetch",
+   "headersAfterMs": 9996,
+   "bodyReadMs": 3.2,
+   "jsonParseMs": 1.3,
+   "chars": 624375,
+   "requestJd": 2461308.618715838
+  },
+  {
+   "t": 10473,
+   "phase": "apply",
+   "aiaKickMs": 0.6,
+   "normalizeMs": 1.1,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.6,
+   "totalMs": 3.3,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 31185,
+   "phase": "fetch",
+   "headersAfterMs": 35,
+   "bodyReadMs": 3.9,
+   "jsonParseMs": 1,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 31186,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.6,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 0.6,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 61273,
+   "phase": "fetch",
+   "headersAfterMs": 41,
+   "bodyReadMs": 4.5,
+   "jsonParseMs": 1.4,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 61275,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 1.7,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 1.7,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 91545,
+   "phase": "fetch",
+   "headersAfterMs": 38,
+   "bodyReadMs": 4.2,
+   "jsonParseMs": 1.6,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 91546,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 1.2,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 1.3,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 141480,
+   "phase": "fetch",
+   "headersAfterMs": 4707,
+   "bodyReadMs": 4114.1,
+   "jsonParseMs": 1.6,
+   "chars": 624375,
+   "requestJd": 2461308.6202937085
+  },
+  {
+   "t": 141485,
+   "phase": "apply",
+   "aiaKickMs": 2.7,
+   "normalizeMs": 0.5,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.6,
+   "totalMs": 4.8,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461311.153821708,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 175507,
+   "phase": "fetch",
+   "headersAfterMs": 7987,
+   "bodyReadMs": 4.2,
+   "jsonParseMs": 2,
+   "chars": 556730,
+   "requestJd": 2461428.3490217086
+  },
+  {
+   "t": 175510,
+   "phase": "apply",
+   "aiaKickMs": 0.3,
+   "normalizeMs": 1.4,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.8,
+   "totalMs": 3.5,
+   "features": 147,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5371550581234973,
+   "epochJd": 2461427.5,
+   "simJd": 2461459.5474217082,
+   "assim": {
+    "conf": 0.4640745871527778,
+    "blendW": 0.41242610550347225,
+    "observed": 0.24662941988629156,
+    "synthetic": 0.7410789537379399,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-01-22T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:31:47Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "samples": [
+  {
+   "t": 3973,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304588226,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 9002,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304588226,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 64647,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304649026,
+     "lastRefreshMs": 1790304648985,
+     "lastLatencyMs": 41,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304678985
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 90514,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304649026,
+     "lastRefreshMs": 1790304648985,
+     "lastLatencyMs": 41,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304678985
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 95719,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304679298,
+     "lastRefreshMs": 1790304679260,
+     "lastLatencyMs": 38,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304709260
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 100733,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304679298,
+     "lastRefreshMs": 1790304679260,
+     "lastLatencyMs": 38,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304709260
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 105745,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304679298,
+     "lastRefreshMs": 1790304679260,
+     "lastLatencyMs": 38,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304709260
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 110756,
+   "date": "—",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 136880,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 142374,
+   "date": "2026-10-15",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 147386,
+   "date": "2026-11-06",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 152396,
+   "date": "2026-11-19",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 157407,
+   "date": "2026-12-08",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 162741,
+   "date": "2026-12-31",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304724526,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 167752,
+   "date": "2027-01-22",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304755272,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 172765,
+   "date": "2027-02-05",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304729233,
+     "lastRefreshMs": 1790304755272,
+     "lastLatencyMs": 4707,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304754526
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 177776,
+   "date": "2027-03-03",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304763260,
+     "lastRefreshMs": 1790304755272,
+     "lastLatencyMs": 7987,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304785272
+    },
+    "hasState": true,
+    "epochJd": 2461427.5,
+    "activity": 0.5371550581234973,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2320:tube-0187:0.87|tube-0023:0.96|tube-0223:0.87|tube-0131:0.85|tube-0295:0.77|tube-0403:0.81|tube-0039:0.83|tube-0163:0.77|tube-0147:0.67|tube-0459:0.66|tube-0451:0.65|tube-0120:0.70"
+   }
+  }
+ ],
+ "shots": [
+  {
+   "t": 39794,
+   "label": "t12",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3b_t12.png"
+  },
+  {
+   "t": 64647,
+   "label": "firstSuccessPlus4s",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3b_firstSuccessPlus4s.png"
+  },
+  {
+   "t": 90514,
+   "label": "t16",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3b_t16.png"
+  },
+  {
+   "t": 204964,
+   "label": "end",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3b_end.png"
+  }
+ ],
+ "logs": [
+  {
+   "t": 36,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 47,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 3973,
+   "type": "action",
+   "text": "pause: \"Resume\""
+  },
+  {
+   "t": 4082,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=3663.6 exceeded budgetMs=2000"
+  },
+  {
+   "t": 4123,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=3663.6ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 10470,
+   "type": "log",
+   "text": "[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756"
+  },
+  {
+   "t": 13362,
+   "type": "log",
+   "text": "[spike-aia] loaded {\"ms\":2891,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192406756\"}"
+  },
+  {
+   "t": 110256,
+   "type": "action",
+   "text": "reload-as-second-visitor: \"reloading\""
+  },
+  {
+   "t": 136389,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 136399,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 141480,
+   "type": "log",
+   "text": "[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756"
+  },
+  {
+   "t": 141575,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=4809.1 exceeded budgetMs=2000"
+  },
+  {
+   "t": 141620,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=4809.1ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 144607,
+   "type": "log",
+   "text": "[spike-aia] loaded {\"ms\":3126.4,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192406756\"}"
+  },
+  {
+   "t": 175507,
+   "type": "log",
+   "text": "[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802"
+  },
+  {
+   "t": 175515,
+   "type": "log",
+   "text": "[spike-aia] loaded {\"ms\":7.5,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192408802\"}"
+  }
+ ]
+}

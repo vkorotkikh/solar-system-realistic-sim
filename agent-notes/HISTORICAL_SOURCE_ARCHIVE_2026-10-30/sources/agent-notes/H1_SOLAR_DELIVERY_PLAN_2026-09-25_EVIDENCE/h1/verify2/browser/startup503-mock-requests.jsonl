@@ -1,0 +1,7 @@
+{"t": 1790351055.119, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "503timeout"}
+{"t": 1790351055.932, "path": "/solar/physics?jd=2461309.15653651&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790351062.067, "path": "/solar/physics?jd=2461331.62242451&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790351094.401, "path": "/solar/physics?jd=2461309.15698178&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790351100.445, "path": "/solar/physics?jd=2461331.35633378&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790351133.227, "path": "/solar/physics?jd=2461309.15743121&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}
+{"t": 1790351140.019, "path": "/solar/physics?jd=2461309.89064721&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 503, "acao": true, "mode": "503timeout"}

@@ -1,0 +1,659 @@
+{
+ "J_again": {
+  "scalars": {
+   "activity_index": 0.0,
+   "synthetic_activity_index": 0.0,
+   "cycle_phase_rad": 0.0,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 1.0,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 0.0,
+   "arc_disp_max_pct": 0.0,
+   "scalar_max_rel_pct": {
+    "brightness": 0.0,
+    "temperature_mk": 0.0,
+    "emergence": 0.0,
+    "peak_extent_solar_radii": 0.0,
+    "field_strength_gauss": 0.0
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 0,
+   "open_closed_flips": 0,
+   "open_count": [
+    19,
+    19
+   ],
+   "line_maxdisp_med_pct": 0.0,
+   "line_maxdisp_p90_pct": 0.0,
+   "lines_moved_gt1pct": 0,
+   "wsa_mean_kms": [
+    418.0,
+    418.0
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    370.5
+   ],
+   "wind_rel_pct": 0.0,
+   "pt_disp_max_pct": 0.0,
+   "pt_disp_med_pct": 0.0
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 0.0,
+   "coverage": [
+    0.2578,
+    0.2578
+   ]
+  }
+ },
+ "+1s": {
+  "scalars": {
+   "activity_index": 0.0,
+   "synthetic_activity_index": 0.0,
+   "cycle_phase_rad": 0.0,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 1.0,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 0.0002,
+   "arc_disp_max_pct": 0.114,
+   "scalar_max_rel_pct": {
+    "brightness": 0.135,
+    "temperature_mk": 0.115,
+    "emergence": 0.076,
+    "peak_extent_solar_radii": 0.163,
+    "field_strength_gauss": 0.126
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 0,
+   "open_closed_flips": 0,
+   "open_count": [
+    19,
+    19
+   ],
+   "line_maxdisp_med_pct": 0.0,
+   "line_maxdisp_p90_pct": 0.0,
+   "lines_moved_gt1pct": 0,
+   "wsa_mean_kms": [
+    418.0,
+    418.0
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    370.5
+   ],
+   "wind_rel_pct": 0.0,
+   "pt_disp_max_pct": 0.0,
+   "pt_disp_med_pct": 0.0001
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 0.0,
+   "coverage": [
+    0.2578,
+    0.2578
+   ]
+  }
+ },
+ "+1min": {
+  "scalars": {
+   "activity_index": 0.001,
+   "synthetic_activity_index": 0.001,
+   "cycle_phase_rad": 0.0,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.989,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 0.0126,
+   "arc_disp_max_pct": 6.921,
+   "scalar_max_rel_pct": {
+    "brightness": 8.167,
+    "temperature_mk": 6.921,
+    "emergence": 4.012,
+    "peak_extent_solar_radii": 9.882,
+    "field_strength_gauss": 7.6
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 6,
+   "open_closed_flips": 0,
+   "open_count": [
+    19,
+    19
+   ],
+   "line_maxdisp_med_pct": 0.0,
+   "line_maxdisp_p90_pct": 0.006,
+   "lines_moved_gt1pct": 3,
+   "wsa_mean_kms": [
+    418.0,
+    418.0
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    370.5
+   ],
+   "wind_rel_pct": 0.0,
+   "pt_disp_max_pct": 0.024,
+   "pt_disp_med_pct": 0.0063
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 0.0,
+   "coverage": [
+    0.2578,
+    0.2578
+   ]
+  }
+ },
+ "+10min": {
+  "scalars": {
+   "activity_index": 0.0101,
+   "synthetic_activity_index": 0.0101,
+   "cycle_phase_rad": 0.0003,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.915,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 0.1331,
+   "arc_disp_max_pct": 39.435,
+   "scalar_max_rel_pct": {
+    "brightness": 31.715,
+    "temperature_mk": 31.771,
+    "emergence": 35.691,
+    "peak_extent_solar_radii": 40.236,
+    "field_strength_gauss": 33.634
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 49,
+   "open_closed_flips": 0,
+   "open_count": [
+    19,
+    19
+   ],
+   "line_maxdisp_med_pct": 0.008,
+   "line_maxdisp_p90_pct": 1.739,
+   "lines_moved_gt1pct": 25,
+   "wsa_mean_kms": [
+    418.0,
+    417.9
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    370.5
+   ],
+   "wind_rel_pct": 0.0,
+   "pt_disp_max_pct": 0.237,
+   "pt_disp_med_pct": 0.0628
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 0.0,
+   "coverage": [
+    0.2578,
+    0.2578
+   ]
+  }
+ },
+ "+1h": {
+  "scalars": {
+   "activity_index": 0.0605,
+   "synthetic_activity_index": 0.0605,
+   "cycle_phase_rad": 0.0017,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.765,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 0.5865,
+   "arc_disp_max_pct": 39.435,
+   "scalar_max_rel_pct": {
+    "brightness": 36.335,
+    "temperature_mk": 37.28,
+    "emergence": 66.083,
+    "peak_extent_solar_radii": 40.219,
+    "field_strength_gauss": 45.121
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 120,
+   "open_closed_flips": 27,
+   "open_count": [
+    19,
+    28
+   ],
+   "line_maxdisp_med_pct": 48.948,
+   "line_maxdisp_p90_pct": 83.954,
+   "lines_moved_gt1pct": 119,
+   "wsa_mean_kms": [
+    418.0,
+    448.1
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    368.07
+   ],
+   "wind_rel_pct": 0.657,
+   "pt_disp_max_pct": 98.919,
+   "pt_disp_med_pct": 2.0814
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 79.9,
+   "coverage": [
+    0.2578,
+    0.2529
+   ]
+  }
+ },
+ "+6h": {
+  "scalars": {
+   "activity_index": 0.3625,
+   "synthetic_activity_index": 0.3625,
+   "cycle_phase_rad": 0.0102,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.756,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 2.504,
+   "arc_disp_max_pct": 42.386,
+   "scalar_max_rel_pct": {
+    "brightness": 42.073,
+    "temperature_mk": 43.863,
+    "emergence": 70.95,
+    "peak_extent_solar_radii": 42.672,
+    "field_strength_gauss": 52.293
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 120,
+   "open_closed_flips": 18,
+   "open_count": [
+    19,
+    25
+   ],
+   "line_maxdisp_med_pct": 52.852,
+   "line_maxdisp_p90_pct": 83.147,
+   "lines_moved_gt1pct": 120,
+   "wsa_mean_kms": [
+    418.0,
+    416.3
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    383.13
+   ],
+   "wind_rel_pct": 3.297,
+   "pt_disp_max_pct": 60.282,
+   "pt_disp_med_pct": 3.6405
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 161.84,
+   "coverage": [
+    0.2578,
+    0.218
+   ]
+  }
+ },
+ "+1d": {
+  "scalars": {
+   "activity_index": 1.43,
+   "synthetic_activity_index": 1.43,
+   "cycle_phase_rad": 0.0406,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.739,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 8.9081,
+   "arc_disp_max_pct": 43.322,
+   "scalar_max_rel_pct": {
+    "brightness": 41.267,
+    "temperature_mk": 43.218,
+    "emergence": 72.632,
+    "peak_extent_solar_radii": 39.796,
+    "field_strength_gauss": 50.124
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 120,
+   "open_closed_flips": 22,
+   "open_count": [
+    19,
+    27
+   ],
+   "line_maxdisp_med_pct": 45.508,
+   "line_maxdisp_p90_pct": 82.331,
+   "lines_moved_gt1pct": 120,
+   "wsa_mean_kms": [
+    418.0,
+    455.0
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    376.48
+   ],
+   "wind_rel_pct": 1.589,
+   "pt_disp_max_pct": 66.493,
+   "pt_disp_med_pct": 7.8271
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 160.93,
+   "coverage": [
+    0.2578,
+    0.2516
+   ]
+  }
+ },
+ "+7d": {
+  "scalars": {
+   "activity_index": 6.1528,
+   "synthetic_activity_index": 6.1528,
+   "cycle_phase_rad": 0.2839,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.682,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 53.1343,
+   "arc_disp_max_pct": 130.536,
+   "scalar_max_rel_pct": {
+    "brightness": 43.54,
+    "temperature_mk": 48.021,
+    "emergence": 79.663,
+    "peak_extent_solar_radii": 42.552,
+    "field_strength_gauss": 57.142
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 118,
+   "open_closed_flips": 27,
+   "open_count": [
+    19,
+    28
+   ],
+   "line_maxdisp_med_pct": 43.968,
+   "line_maxdisp_p90_pct": 81.277,
+   "lines_moved_gt1pct": 120,
+   "wsa_mean_kms": [
+    418.0,
+    431.7
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    391.45
+   ],
+   "wind_rel_pct": 5.352,
+   "pt_disp_max_pct": 183.482,
+   "pt_disp_med_pct": 56.2565
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 34.45,
+   "coverage": [
+    0.2578,
+    0.206
+   ]
+  }
+ },
+ "+27.27d": {
+  "scalars": {
+   "activity_index": 1.769,
+   "synthetic_activity_index": 1.769,
+   "cycle_phase_rad": 1.097,
+   "assim.observed_confidence": 0.0,
+   "assim.blend_weight": 0.0,
+   "aia_image_date": [
+    null,
+    null
+   ]
+  },
+  "features": {
+   "jaccard": 0.682,
+   "count": [
+    180,
+    180
+   ],
+   "arc_disp_med_pct": 19.5939,
+   "arc_disp_max_pct": 60.025,
+   "scalar_max_rel_pct": {
+    "brightness": 41.837,
+    "temperature_mk": 46.284,
+    "emergence": 76.562,
+    "peak_extent_solar_radii": 44.584,
+    "field_strength_gauss": 53.066
+   }
+  },
+  "pfss": {
+   "ids": [
+    120,
+    120,
+    120
+   ],
+   "footpoints_moved": 120,
+   "open_closed_flips": 25,
+   "open_count": [
+    19,
+    22
+   ],
+   "line_maxdisp_med_pct": 48.404,
+   "line_maxdisp_p90_pct": 79.312,
+   "lines_moved_gt1pct": 120,
+   "wsa_mean_kms": [
+    418.0,
+    410.9
+   ]
+  },
+  "parker": {
+   "wind_kms": [
+    370.5,
+    377.3
+   ],
+   "wind_rel_pct": 1.802,
+   "pt_disp_max_pct": 99.708,
+   "pt_disp_med_pct": 14.532
+  },
+  "holes": {
+   "source": [
+    "synthetic",
+    "synthetic"
+   ],
+   "count": [
+    5,
+    5
+   ],
+   "max_centre_shift_deg": 102.65,
+   "coverage": [
+    0.2578,
+    0.2075
+   ]
+  }
+ }
+}

@@ -1,0 +1,8 @@
+!! backend/__pycache__/
+!! backend/benchmark/__pycache__/
+!! backend/data/__pycache__/
+!! backend/mission/__pycache__/
+!! backend/sim/__pycache__/
+!! backend/tests/__pycache__/
+!! backend/trajectory/__pycache__/
+!! scripts/__pycache__/

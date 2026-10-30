@@ -1,0 +1,84 @@
+[
+ {
+  "bytes": 654838
+ },
+ {
+  "label": "JSON.parse(655 KB payload)  [client.ts:145 response.json()]",
+  "n": 30,
+  "p50": 3.198,
+  "p95": 4.486,
+  "max": 4.783
+ },
+ {
+  "label": "normalizeSolarFeatureSetFromState(state,480) [sunController.ts:510]",
+  "n": 50,
+  "p50": 0.076,
+  "p95": 1.411,
+  "max": 2.829
+ },
+ {
+  "featureSetSizes": [
+   180,
+   180
+  ],
+  "sharedIdsBetweenConsecutivePolls": 141
+ },
+ {
+  "label": "mid-blend materialize (buildBlendView 220 + materialize) [sunController.ts:518-519]",
+  "n": 50,
+  "p50": 0.706,
+  "p95": 1.963,
+  "max": 2.687
+ },
+ {
+  "label": "createMagneticFieldLines PFSS path, 120 lines [sunController.ts:238 via rebuild]",
+  "n": 30,
+  "p50": 0.879,
+  "p95": 6.1,
+  "max": 7.22
+ },
+ {
+  "label": "createMagneticFieldLines ANALYTIC fallback (state=null, activity 0.75) = TODAY",
+  "n": 10,
+  "p50": 2.65,
+  "p95": 3.77,
+  "max": 3.77
+ },
+ {
+  "label": "createMagneticFieldLines analytic seeded by 180 features (pfss missing)",
+  "n": 10,
+  "p50": 2.351,
+  "p95": 9.958,
+  "max": 9.958
+ },
+ {
+  "label": "per-frame solar JS, state=null (TODAY)",
+  "n": 300,
+  "p50": 0.014,
+  "p95": 0.116,
+  "max": 2.782
+ },
+ {
+  "label": "per-frame solar JS, with 180-feature payload",
+  "n": 300,
+  "p50": 0.935,
+  "p95": 2.386,
+  "max": 6.853
+ },
+ {
+  "loopsDrawn": 144,
+  "loopPointsPerFrame": 4320,
+  "parkerLines": 6,
+  "parkerPoints": 480,
+  "flaresActive": 0
+ },
+ {
+  "displayExtentAU_defaultScale": {
+   "sunDisplayRadiusAU": 0.3755,
+   "coronaFeatureMaxAU": 1.78,
+   "pfssMaxAU": 0.95,
+   "parkerMaxAU": 242.2,
+   "parkerMaxAU_realisticScale": 3
+  }
+ }
+]

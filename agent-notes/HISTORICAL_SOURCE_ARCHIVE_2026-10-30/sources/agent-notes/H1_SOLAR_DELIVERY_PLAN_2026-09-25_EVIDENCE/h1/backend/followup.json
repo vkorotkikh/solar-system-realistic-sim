@@ -1,0 +1,96 @@
+{
+ "gil": {
+  "loadavg_before": [
+   26.5400390625,
+   13.25048828125,
+   5.685546875
+  ],
+  "loadavg_after": [
+   21.65869140625,
+   13.36376953125,
+   5.966796875
+  ],
+  "sequential_each_s": [
+   6.367,
+   5.029
+  ],
+  "sequential_wall_s": 11.396,
+  "concurrent_each_s": [
+   19.674,
+   18.648
+  ],
+  "concurrent_wall_s": 19.674
+ },
+ "dt_0.001d_same_seed_bucket": {
+  "pfss_endpoint_disp_max_Rsun": 0.04976675597223491,
+  "pfss_topology_flips": 0,
+  "feature_id_jaccard": 0.978021978021978,
+  "feature_disp_median_Rsun": 0.0017278280343130167,
+  "feature_disp_max_Rsun": 0.41754317536406854,
+  "coronal_holes_identical": true,
+  "parker_max_disp_Rsun": 0.25868643171626604
+ },
+ "pfss_entry_traced_bytes": 1227035,
+ "serialization": {
+  "jsonable_encoder_s": 0.0347,
+  "json_render_s": 0.0081,
+  "body_bytes": 627751,
+  "gzip6_bytes": 249790
+ },
+ "hybrid_live_sizes": {
+  "schema": 45,
+  "model": 21,
+  "epoch_jd": 12,
+  "wall_epoch_jd": 12,
+  "fidelity": 6,
+  "solar_radius_km": 8,
+  "solar_radius_au": 20,
+  "activity_index": 18,
+  "synthetic_activity_index": 17,
+  "cycle_phase_rad": 17,
+  "data_assimilation": 5221,
+  "surface": 323,
+  "corona": 423192,
+  "coronal_holes": 773,
+  "heliosphere": 30942,
+  "pfss_field_lines": 213389
+ },
+ "hybrid_live_assimilation_keys": [
+  "mode",
+  "applied",
+  "synthetic_activity_index",
+  "observed_activity_index",
+  "blended_activity_index",
+  "observed_confidence",
+  "blend_weight",
+  "live_data_available",
+  "source_status",
+  "proxy_breakdown",
+  "sources"
+ ],
+ "hybrid_live_source_status": {
+  "swpc": {
+   "ok": false,
+   "error": "HTTP Error 404: Not Found",
+   "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+  },
+  "silso": {
+   "ok": true,
+   "updated": "2026-08-31",
+   "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  },
+  "sdo_aia": {
+   "ok": true,
+   "updated": "2026-09-25T01:47:41Z",
+   "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+  },
+  "gong_synoptic": {
+   "ok": true,
+   "updated": "2026-09-25T02:09:25.627938Z",
+   "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+  }
+ },
+ "hybrid_live_coronal_holes_source": "synthetic",
+ "hybrid_live_pfss_source": "synthetic",
+ "hybrid_live_parker_model": "wsa_arge_2003"
+}

@@ -1,0 +1,230 @@
+{
+ "scen": "noacao",
+ "physicsRequestCount": 6,
+ "physicsT": [
+  1790,
+  8011,
+  9258,
+  10588,
+  13255,
+  14664
+ ],
+ "jdFirstLast": [
+  "2461308.60084421",
+  "2461360.13230821"
+ ],
+ "aia": [
+  {
+   "kind": "aia",
+   "t": 8034,
+   "q": "?channel=aia_193&image_id=FAKE193&v=FAKE193",
+   "crossOriginModeHeader": null
+  }
+ ],
+ "otherBackend": [],
+ "snapsBrief": {
+  "end": {
+   "loops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parker": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "mag": {
+    "visible": false,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.754,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "tr": {
+    "channelMode": 3,
+    "trOpacity": 0.18
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [
+    {
+     "at": 7943,
+     "bodyReadAndParseMs": 4.1
+    },
+    {
+     "at": 9190,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 10521,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 13194,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 14600,
+     "bodyReadAndParseMs": 3.9
+    }
+   ],
+   "longtasks": 2
+  }
+ },
+ "logs": [
+  {
+   "t": 121,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 3999,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  }
+ ]
+}
+{
+ "scen": "slow",
+ "physicsRequestCount": 4,
+ "physicsT": [
+  1824,
+  7488,
+  15711,
+  22066
+ ],
+ "jdFirstLast": [
+  "2461308.60139791",
+  "2461382.53153391"
+ ],
+ "aia": [],
+ "otherBackend": [],
+ "snapsBrief": {
+  "end": {
+   "loops": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "parker": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "mag": {
+    "visible": false,
+    "children": 52,
+    "visibleChildren": 52,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0.955
+   },
+   "flares": 0,
+   "surf": {
+    "observationMapIsBaseMap": true,
+    "observationMapImage": "HTMLCanvasElement",
+    "observationBlend": 0.013,
+    "observationEmission": 0.094,
+    "activity": 0,
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 0,
+    "channelMode": 0,
+    "coronaColor": [
+     1,
+     0.66,
+     0.34
+    ],
+    "obsBlend": 0.013
+   },
+   "tr": {
+    "channelMode": 0,
+    "trOpacity": 0.12
+   },
+   "sunScale": 0.3755,
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "json": [],
+   "longtasks": 2
+  }
+ },
+ "logs": [
+  {
+   "t": 121,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 4131,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461308.60139791&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 4280,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  },
+  {
+   "t": 10084,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461331.26713391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 18307,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461357.13273391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  },
+  {
+   "t": 24662,
+   "type": "requestfailed",
+   "text": "http://sim.test:8042/solar/physics?jd=2461382.53153391&fidelity=high&max_features=180&forc net::ERR_ABORTED"
+  }
+ ]
+}

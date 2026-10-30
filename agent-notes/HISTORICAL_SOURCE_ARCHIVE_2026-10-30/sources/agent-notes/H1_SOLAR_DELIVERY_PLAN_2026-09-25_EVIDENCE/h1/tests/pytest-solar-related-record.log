@@ -1,0 +1,32 @@
+........................................................................ [ 93%]
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+../../venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+h1_offline: mode=record outbound attempts=20
+  tests/test_solar_physics_api.py::test_solar_physics_returns_3d_coronal_features: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_api.py::test_solar_physics_returns_coronal_hole_section: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_api.py::test_solar_physics_returns_pfss_field_lines: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_parker_spiral_extends_to_multi_au_domain: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_synthetic_coronal_holes_present_at_solar_minimum: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_synthetic_coronal_holes_coverage_decreases_at_solar_max: 4 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_parker_spiral_fast_wind_in_coronal_holes: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_sample_state_is_deterministic_for_fixed_epoch: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+  tests/test_solar_physics_model.py::test_parker_spiral_uses_wsa_model: 2 attempts; e.g. ["connect:('146.5.21.69', 443)", 'dns:gong.nso.edu']
+============================= slowest 8 durations ==============================
+7.28s call     tests/test_solar_physics_model.py::test_parker_spiral_extends_to_multi_au_domain
+5.54s call     tests/test_solar_physics_model.py::test_sample_state_is_deterministic_for_fixed_epoch
+4.36s call     tests/test_solar_physics_api.py::test_solar_physics_returns_3d_coronal_features
+4.02s call     tests/test_solar_physics_model.py::test_synthetic_coronal_holes_present_at_solar_minimum
+3.85s call     tests/test_solar_physics_model.py::test_parker_spiral_fast_wind_in_coronal_holes
+3.09s call     tests/test_solar_physics_model.py::test_synthetic_coronal_holes_coverage_decreases_at_solar_max
+2.30s call     tests/test_solar_physics_api.py::test_solar_physics_returns_coronal_hole_section
+1.72s call     tests/test_solar_physics_model.py::test_parker_spiral_uses_wsa_model
+77 passed, 1 warning in 36.00s
+
+real	0m37.791s
+user	0m36.057s
+sys	0m0.952s

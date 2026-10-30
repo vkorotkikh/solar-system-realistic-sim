@@ -1,0 +1,55 @@
+1440x900-ip8042-current                        urlW  105.7 lines 1 periods ["7.0:pk1/w3/L0R2/gap3","0.0:pk0.85/w1/L2R1/gap4","0.1:pk0.85/w2/L2R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-ls-0.04em                      urlW  109.1 lines 1 periods ["7.0:pk1/w3/L0R2/gap3","0.0:pk0.85/w1/L2R1/gap4","0.1:pk0.85/w1/L3R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-ls-0.04em-url-only             urlW  109.1 lines 1 periods ["7.0:pk1/w3/L0R1/gap2","0.0:pk0.85/w1/L3R1/gap5","0.1:pk0.85/w1/L3R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-ls-0.08em-url-only             urlW  118.3 lines 1 periods ["7.0:pk0.94/w3/L0R2/gap4","0.0:pk0.85/w1/L3R2/gap6","0.1:pk0.85/w2/L3R0/gap4"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-tabular-nums                   urlW  105.7 lines 1 periods ["7.0:pk1/w3/L0R2/gap3","0.0:pk0.85/w1/L2R1/gap4","0.1:pk0.85/w2/L2R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-mono-url                       urlW  136.3 lines 1 periods ["7.0:pk1/w9/L0R0/gap7","0.0:pk1/w9/L0R0/gap7","0.1:pk1/w6/L0R3/gap8"] font 500 10.336px ui-monospace, "Cascadia Mon
+1440x900-ip8042-mono-url-1em                   urlW  143.2 lines 1 periods ["7.0:pk0.78/w6/L3R0/gap8","0.0:pk0.92/w6/L0R3/gap8","0.1:pk0.94/w2/L3R4/gap9"] font 500 10.88px ui-monospace, "Cascadia Mono
+1440x900-ip8042-weight600-url                  urlW  117.7 lines 1 periods ["7.0:pk1/w6/L0R0/gap4","0.0:pk0.96/w3/L2R0/gap4","0.1:pk0.96/w3/L2R0/gap4"] font 600 10.88px "Chakra Petch", ui-sans-seri
+1440x900-ip8042-system-sans-url                urlW  122.3 lines 1 periods ["7.0:pk0.81/w6/L0R0/gap4","0.0:pk0.64/w6/L0R0/gap4","0.1:pk0.64/w4/L0R2/gap5"] font 500 10.88px system-ui, sans-serif
+1440x900-localhost8042-current                 urlW  119.7 lines 1 periods [] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-ls-0.04em               urlW  123.1 lines 1 periods [] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-ls-0.04em-url-only      urlW  123.1 lines 1 periods [] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-ls-0.08em-url-only      urlW  132.3 lines 1 periods [] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-tabular-nums            urlW  119.7 lines 1 periods [] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-mono-url                urlW  136.3 lines 1 periods [] font 500 10.336px ui-monospace, "Cascadia Mon
+1440x900-localhost8042-mono-url-1em            urlW  143.2 lines 1 periods [] font 500 10.88px ui-monospace, "Cascadia Mono
+1440x900-localhost8042-weight600-url           urlW  127.7 lines 1 periods [] font 600 10.88px "Chakra Petch", ui-sans-seri
+1440x900-localhost8042-system-sans-url         urlW  119.2 lines 1 periods [] font 500 10.88px system-ui, sans-serif
+1440x900-origin4191-current                    urlW  100.7 lines 1 periods ["7.0:pk1/w3/L0R1/gap2","0.0:pk0.85/w1/L3R1/gap5","0.1:pk0.85/w1/L2R0/gap2"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-ls-0.04em                  urlW  104.1 lines 1 periods ["7.0:pk0.94/w3/L0R1/gap3","0.0:pk0.85/w1/L3R1/gap5","0.1:pk0.85/w2/L2R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-ls-0.04em-url-only         urlW  104.1 lines 1 periods ["7.0:pk0.94/w3/L0R1/gap3","0.0:pk0.85/w1/L3R1/gap5","0.1:pk0.85/w2/L2R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-ls-0.08em-url-only         urlW  113.3 lines 1 periods ["7.0:pk0.94/w3/L0R2/gap4","0.0:pk0.85/w1/L3R2/gap6","0.1:pk0.85/w1/L3R0/gap3"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-tabular-nums               urlW  100.7 lines 1 periods ["7.0:pk1/w3/L0R1/gap2","0.0:pk0.85/w1/L3R1/gap5","0.1:pk0.85/w1/L2R0/gap2"] font 500 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-mono-url                   urlW  136.3 lines 1 periods ["7.0:pk0.99/w6/L3R0/gap8","0.0:pk0.99/w9/L0R0/gap7","0.1:pk0.99/w5/L0R4/gap8"] font 500 10.336px ui-monospace, "Cascadia Mon
+1440x900-origin4191-mono-url-1em               urlW  143.2 lines 1 periods ["7.0:pk0.92/w2/L3R3/gap8","0.0:pk1/w6/L3R0/gap8","0.1:pk0.73/w2/L3R4/gap9"] font 500 10.88px ui-monospace, "Cascadia Mono
+1440x900-origin4191-weight600-url              urlW  111.7 lines 1 periods ["7.0:pk1/w5/L0R0/gap3","0.0:pk0.96/w3/L3R0/gap5","0.1:pk0.96/w2/L2R0/gap3"] font 600 10.88px "Chakra Petch", ui-sans-seri
+1440x900-origin4191-system-sans-url            urlW  122.3 lines 1 periods ["7.0:pk0.64/w4/L2R0/gap5","0.0:pk0.87/w6/L0R0/gap4","0.1:pk0.87/w2/L2R2/gap6"] font 500 10.88px system-ui, sans-serif
+390x844-ip8042-current                         urlW  102.7 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R2/gap3","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-ls-0.04em                       urlW  105.6 lines 1 periods ["7.0:pk0.99/w3/L0R2/gap3","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-ls-0.04em-url-only              urlW  105.6 lines 1 periods ["7.0:pk0.99/w3/L0R2/gap3","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-ls-0.08em-url-only              urlW  114.2 lines 1 periods ["7.0:pk0.99/w3/L0R2/gap3","0.0:pk0.53/w2/L0R2/gap3","0.1:pk0.53/w3/L0R0/gap1"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-tabular-nums                    urlW  102.7 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R2/gap3","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-mono-url                        urlW  128.6 lines 1 periods ["7.0:pk0.79/w2/L3R3/gap8","0.0:pk1/w9/L0R0/gap7","0.1:pk0.93/w2/L3R3/gap8"] font 500 9.728px ui-monospace, "Cascadia Mono
+390x844-ip8042-mono-url-1em                    urlW  135.1 lines 1 periods ["7.0:pk0.96/w9/L0R0/gap7","0.0:pk0.96/w9/L0R0/gap7","0.1:pk0.74/w9/L0R0/gap7"] font 500 10.24px ui-monospace, "Cascadia Mono
+390x844-ip8042-weight600-url                   urlW  105.7 lines 1 periods ["7.0:pk0.99/w4/L0R0/gap1","0.0:pk0.82/w4/L0R0/gap2","0.1:pk0.82/w2/L0R0/gap0"] font 600 10.24px "Chakra Petch", ui-sans-seri
+390x844-ip8042-system-sans-url                 urlW  115.4 lines 1 periods ["7.0:pk0.7/w2/L0R2/gap3","0.0:pk0.92/w2/L2R1/gap5","0.1:pk0.7/w4/L0R2/gap5"] font 500 10.24px system-ui, sans-serif
+390x844-localhost8042-current                  urlW  116.7 lines 1 periods [] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-ls-0.04em                urlW  119.6 lines 1 periods [] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-ls-0.04em-url-only       urlW  119.6 lines 1 periods [] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-ls-0.08em-url-only       urlW  128.2 lines 1 periods [] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-tabular-nums             urlW  116.7 lines 1 periods [] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-mono-url                 urlW  128.6 lines 1 periods [] font 500 9.728px ui-monospace, "Cascadia Mono
+390x844-localhost8042-mono-url-1em             urlW  135.1 lines 1 periods [] font 500 10.24px ui-monospace, "Cascadia Mono
+390x844-localhost8042-weight600-url            urlW  117.7 lines 1 periods [] font 600 10.24px "Chakra Petch", ui-sans-seri
+390x844-localhost8042-system-sans-url          urlW  112.5 lines 1 periods [] font 500 10.24px system-ui, sans-serif
+390x844-origin4191-current                     urlW   98.7 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-ls-0.04em                   urlW  101.6 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w3/L0R0/gap1"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-ls-0.04em-url-only          urlW  101.6 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-ls-0.08em-url-only          urlW  110.2 lines 1 periods ["7.0:pk0.99/w3/L0R2/gap3","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w3/L0R0/gap1"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-tabular-nums                urlW   98.7 lines 1 periods ["7.0:pk0.99/w3/L0R1/gap2","0.0:pk0.53/w2/L0R1/gap2","0.1:pk0.53/w2/L0R0/gap0"] font 500 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-mono-url                    urlW  128.6 lines 1 periods ["7.0:pk0.71/w2/L3R3/gap8","0.0:pk0.79/w5/L0R3/gap7","0.1:pk1/w2/L2R4/gap8"] font 500 9.728px ui-monospace, "Cascadia Mono
+390x844-origin4191-mono-url-1em                urlW  135.1 lines 1 periods ["7.0:pk0.96/w6/L3R0/gap8","0.0:pk0.74/w2/L3R3/gap8","0.1:pk0.74/w2/L3R3/gap8"] font 500 10.24px ui-monospace, "Cascadia Mono
+390x844-origin4191-weight600-url               urlW  100.7 lines 1 periods ["7.0:pk0.99/w4/L0R0/gap1","0.0:pk0.82/w3/L0R0/gap1","0.1:pk0.82/w2/L0R0/gap0"] font 600 10.24px "Chakra Petch", ui-sans-seri
+390x844-origin4191-system-sans-url             urlW  115.4 lines 1 periods ["7.0:pk0.7/w6/L0R0/gap4","0.0:pk0.92/w2/L0R2/gap3","0.1:pk0.92/w4/L2R0/gap5"] font 500 10.24px system-ui, sans-serif
+done

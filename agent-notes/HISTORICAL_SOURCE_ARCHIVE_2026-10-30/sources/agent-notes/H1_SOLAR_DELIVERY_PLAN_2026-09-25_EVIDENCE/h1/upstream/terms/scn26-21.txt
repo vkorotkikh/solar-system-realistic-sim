@@ -1,0 +1,375 @@
+NOUS41 KWBC 021815
+ 
+PNSWSH
+ 
+ 
+Service Change Notice 26
+-
+21
+ 
+National Weather Service Headquarters Silver Spring MD 
+ 
+115 PM EST Mon Mar 2 2026
+ 
+ 
+To:      Subscribers
+ 
+         
+-
+NOAA Weather Wire Service
+ 
+         
+-
+Emergency Managers Weather Information Network
+ 
+         
+-
+NOAAPort
+ 
+         
+Other NWS Partners, Users and Employees
+ 
+ 
+From:    Clinton Wallace
+ 
+         
+Director, Space Weather Prediction Center
+ 
+ 
+Subject: Data Format Changes Impacting Space Weather Prediction 
+Center 
+Products Effective on or about March 31, 2026.
+ 
+ 
+Effective on or about March 31, 2026, the Space Weather 
+(SWPC) will implement data format changes that 
+restructure JSON data for 
+the following products:
+ 
+ 
+https://services.swpc.noaa.gov/products/kyoto
+-
+dst.json
+  
+https://services.swpc.noaa.gov/products/summary/10cm
+-
+flux.json
+  
+https://services.swpc.noaa.gov/products/10cm
+-
+flux
+-
+30
+-
+day.json
+  
+https://services.swpc.noaa.gov/products/noaa
+-
+planetary
+-k-
+index.json
+  
+https://services.swpc.noaa.gov/products/summary/solar
+-
+wind
+-
+mag
+-
+field.json
+  
+https://services.swpc.noaa.gov/products/summary/solar
+-
+wind
+-
+speed.json
+  
+https://services.swpc.noaa.gov/products/noaa
+-
+planetary
+-k-
+index
+-
+forecast.json
+  
+ 
+The products kyoto
+-
+dst.json, 10cm
+-
+flux
+-
+30
+-
+day.json, noaa
+-
+planetary
+-k-
+index.json, noaa
+-
+planetary
+-k-
+-
+forecast.json 
+will be updated from a 
+format where the first entry contains the keys and the subsequent entries 
+contain the corresponding values, to a standard JSON object format where 
+each object 
+explicitly defines its data using key
+-
+value pairs. The data 
+values aside from the \223time_tag\224 will be numeric,and will no 
+longer be 
+quoted.
+ 
+ 
+The products 10
+-
+cm
+-
+flux.json, solar
+-
+wind
+-
+mag
+-
+field.json and 
+solar
+-
+wind
+-
+speed.json will now include the outside brackets so 
+that those files 
+follow the standard JSON array format. The data 
+values aside from the 
+\223time_tag\224 will be numeric, and will no 
+longer be quoted.
+ 
+ 
+Static examples of these files in their new formats are 
+available at 
+-
+03/
+  
+ 
+Removal of Deprecated Real
+-
+Time Solar Wind (RTSW) Products: Effective on 
+or about April 30, 2026 
+ 
+ 
+The following RTSW products are being deprecated and will be 
+removed:
+ 
+ 
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-1-
+day.json
+   
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-2-
+hour.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-3-
+day.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-5-
+minute.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-6-
+hour.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/mag
+-7-
+day.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-1-
+day.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-2-
+hour.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-3-
+day.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-5-
+minute.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-6-
+hour.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/plasma
+-7-
+day.json
+  
+https://services.swpc.noaa.gov/products/solar
+-
+wind/ephemerides.json
+  
+ 
+Alternative RTSW Products
+ 
+ 
+Replacement products are available now at the following 
+ 
+endpoints:
+ 
+ 
+https://services.swpc.noaa.gov/json/rtsw/rtsw_ephemerides_1h.jso
+n
+  
+https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json
+   
+https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json
+  
+ 
+These updated RTSW products include both \223source\224 and \223active\224 
+metadata 
+fields:
+ 
+ 
+source 
+\227 
+identifies the satellite from which the data originated
+ 
+ 
+active 
+\227 
+a boolean indicating whether the satellite was 
+considered active 
+  
+         
+by SWPC forecasters at the time
+ 
+ 
+The deprecated products included data only from whichever satellite was 
+deemed active at the time, without exposing this 
+metadata.
+ 
+ 
+The original values, excluding the \223time_tag\224 value were stored 
+as quoted 
+strings, while the replacement values are numeric floats without quotes.
+ 
+ 
+The replacement files for the deprecated magnetometer and solar 
+wind 
+products contain four of the old timeframes (1
+-
+day, 2
+-
+hour, 
+5-
+minute and 
+6-
+hour). To support the updated cadence, 3
+-
+day and 
+7-
+day users must 
+retrieve and retain the 1
+-
+day file.
+ 
+ 
+The replacement file for the ephemerides product will be updated 
+to 
+include the data into the next month that the deprecated 
+product 
+provides.
+ 
+ 
+Data Element Mapping
+ 
+ 
+RTSW Plasma (Wind)
+ 
+The \223time_tag\224 field is the same in the replacement, for 
+ 
+\223density\224 users will need to use \223proton_density\224, \223speed\224 will 
+ 
+map to \223proton_speed\224, and \223temperature\224 maps to 
+ 
+\223proton_temperature\224. 
+ 
+ 
+RTSW Magnetometer (Mag) 
+ 
+The \223time_tag\224, "bx_gsm", "by_gsm", "bz_gsm", "bt" fields are 
+ 
+the same in the replacement, "lon_gsm" users will need to use 
+ 
+"phi_gsm", "lat_gsm" will map to "theta_bsm".
+ 
+ 
+For questions and comments, please contact: 
+ 
+ 
+Jaclyn Stickrod
+ 
+Software Engineer
+ 
+NOAA Space Weather Prediction Center
+ 
+Boulder, CO 
+ 
+Email: 
+jaclyn.stickrod@noaa.gov
+  
+ 
+and
+ 
+ 
+Ben Nichols
+ 
+Chief, Technology Division
+ 
+NOAA Space Weather Prediction Center
+ 
+Boulder, CO
+ 
+Email: 
+ben.nichols@noaa.gov
+  
+ 
+National Service Change Notices are online at:
+ 
+https://www.weather.gov/notification/
+  
+ 
+NNNN
+ 
+ 
+ 
+ 

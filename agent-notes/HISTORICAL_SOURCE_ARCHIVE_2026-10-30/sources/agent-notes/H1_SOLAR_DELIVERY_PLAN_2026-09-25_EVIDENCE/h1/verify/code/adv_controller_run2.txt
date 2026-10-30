@@ -1,0 +1,59 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv
+
+stdout | src/h1v-adv-controller.test.ts > C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image
+[C3] 10 live-region updates in 10 min with nothing changing but the clock. e.g.
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:01 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:02 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:03 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+[C4] 21 requests, 20 live-region updates, 20 console.warn in 120 s. First 3:
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+  Sun: procedural fallback (solar server busy, HTTP 503)
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+[C4] request start offsets (ms): 0, 6000, 12000, 18000, 24000, 30000, 36000, 42000, 48000, 54000, 60000, 66000
+
+ ❯ src/h1v-adv-controller.test.ts (7 tests | 2 failed | 5 skipped) 8831ms
+   ↓ C0 initial publish (TDZ / construction order) > publishes connecting synchronously during construction, exactly once
+   ↓ C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading
+   ↓ C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image
+   × C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image 8803ms
+     → expected 10 to be less than or equal to 1
+   × C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes 26ms
+     → expected 20 to be less than or equal to 2
+   ↓ C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed
+   ↓ C6 transitions > connecting -> error -> backend -> stale -> backend
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image
+AssertionError: expected 10 to be less than or equal to 1
+ ❯ src/h1v-adv-controller.test.ts:135:28
+    133|     console.log(`[C3] ${changes.length} live-region updates in 10 min …
+    134|       + changes.slice(0, 3).join('\n  '));
+    135|     expect(changes.length).toBeLessThanOrEqual(1);
+       |                            ^
+    136|   });
+    137| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+AssertionError: expected 20 to be less than or equal to 2
+ ❯ src/h1v-adv-controller.test.ts:166:28
+    164|       + changes.slice(0, 3).join('\n  '));
+    165|     console.log('[C4] request start offsets (ms):', reqTimes.slice(0, …
+    166|     expect(changes.length).toBeLessThanOrEqual(2);
+       |                            ^
+    167|   });
+    168| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 skipped (7)
+   Start at  02:56:38
+   Duration  9.62s (transform 262ms, setup 0ms, collect 326ms, tests 8.83s, environment 0ms, prepare 92ms)
+

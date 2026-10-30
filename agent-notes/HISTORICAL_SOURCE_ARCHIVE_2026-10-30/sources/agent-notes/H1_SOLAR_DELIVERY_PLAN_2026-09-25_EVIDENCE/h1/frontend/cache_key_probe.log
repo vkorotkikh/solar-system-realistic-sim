@@ -1,0 +1,6 @@
+  5.031 s  warm jd0
+  0.021 s  same jd0 (paused)
+  4.955 s  jd0 + 1e-8 d (one toFixed(8) step)
+  5.251 s  jd0 + 0.0104 d (0.9 s wall at 1 d/s... = 15 min sim)
+   5.15 s  jd0 + 3.6 d (0.9 s wall at default 4 d/s)
+   0.02 s  jd0 + 7 d with PFSS forced cache-hit (features+parker only)

@@ -1,0 +1,980 @@
+{
+ "scen": "S5f",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790350396669,
+ "t0iso": "2026-09-25T15:33:16.669Z",
+ "seconds": 30,
+ "phase2": 0,
+ "loadedAt": 6.35,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.01,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 6.37,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 6.54,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 15:33 UTC",
+   "titleMatches": true
+  },
+  {
+   "t": 6.59,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "titleMatches": true
+  },
+  {
+   "t": 44.74,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:34 UTC",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 5,
+ "textFlips": 4,
+ "stateFlips": 2,
+ "rawChipMutationRecords": 12,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 15:33 UTC",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:34 UTC"
+ ],
+ "announcements": [
+  {
+   "t": 6.37,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 6.54,
+   "why": "mutation",
+   "text": "Sun data: backend solar model connected."
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 6.37,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  }
+ ],
+ "finalChip": {
+  "t": 36.35,
+  "label": "phase1",
+  "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+  "state": "backend",
+  "ann": "Sun data: backend solar model connected."
+ },
+ "samples": [
+  {
+   "t": 11.36,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 16.36,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 21.36,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 26.37,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 31.37,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 36.35,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 15:33 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  }
+ ],
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 825,
+   "w": 336,
+   "h": 59,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ },
+ "requestTally": {
+  "physics cors http_200": 37,
+  "aia cors http_404": 5
+ },
+ "probesPerAttempt": [
+  {
+   "t": 1,
+   "outcome": "http_200",
+   "ms": 5,
+   "probes": []
+  },
+  {
+   "t": 6.53,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 7.49,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 9.94,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 11.3,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 13.7,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 15.93,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 18,
+   "outcome": "http_200",
+   "ms": 12,
+   "probes": []
+  },
+  {
+   "t": 19.06,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 20.14,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 21.23,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 23.38,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 24.4,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 26.5,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 27.57,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 29.69,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 31.94,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 33.1,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 34.22,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 35.37,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 37.55,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 41.1,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 42.31,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 44.73,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 45.94,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 47.14,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 48.32,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 50.48,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 51.52,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 52.56,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 53.6,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 54.65,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 55.67,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 56.76,
+   "outcome": "http_200",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 57.78,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 60.22,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 61.3,
+   "outcome": "http_200",
+   "ms": 3,
+   "probes": []
+  }
+ ],
+ "requests": [
+  {
+   "t": 1,
+   "tEnd": 6.37,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461309.14891162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 5,
+   "origin": null
+  },
+  {
+   "t": 6.53,
+   "tEnd": 6.54,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461322.75131162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 6.54,
+   "tEnd": 6.59,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "outcome": "http_404",
+   "status": 404,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 43,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 7.49,
+   "tEnd": 7.5,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461327.08451163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 9.94,
+   "tEnd": 9.94,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461336.88371163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 11.3,
+   "tEnd": 11.3,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461342.35011163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 13.7,
+   "tEnd": 13.7,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461351.95011163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 15.93,
+   "tEnd": 15.93,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461360.81611163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 18,
+   "tEnd": 18,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461369.08251163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 12,
+   "origin": null
+  },
+  {
+   "t": 19.06,
+   "tEnd": 19.06,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461373.34891163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 19.06,
+   "tEnd": 19.11,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "outcome": "http_404",
+   "status": 404,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 44,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 20.14,
+   "tEnd": 20.14,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461377.68251163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 21.23,
+   "tEnd": 21.24,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461382.08211163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 23.38,
+   "tEnd": 23.39,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461390.68171163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 24.4,
+   "tEnd": 24.4,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461394.74811163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 26.5,
+   "tEnd": 26.5,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461403.14811163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 27.57,
+   "tEnd": 27.57,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461407.41451163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 29.69,
+   "tEnd": 29.7,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461415.88091163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 31.94,
+   "tEnd": 31.94,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461424.88051163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 31.95,
+   "tEnd": 31.99,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "outcome": "http_404",
+   "status": 404,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 44,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 33.1,
+   "tEnd": 33.11,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461429.54691163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 34.22,
+   "tEnd": 34.23,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461434.01331163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 35.37,
+   "tEnd": 35.37,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461438.61331163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 37.55,
+   "tEnd": 37.56,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461447.34611163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 41.1,
+   "tEnd": 41.1,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461452.47891163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 42.31,
+   "tEnd": 42.32,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461457.34571163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 44.73,
+   "tEnd": 44.74,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461467.01211163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 44.74,
+   "tEnd": 44.78,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "outcome": "http_404",
+   "status": 404,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 42,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 45.94,
+   "tEnd": 45.94,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461471.81171163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 47.14,
+   "tEnd": 47.14,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461476.61171163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 48.32,
+   "tEnd": 48.32,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461481.34451162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 50.48,
+   "tEnd": 50.48,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461489.94451162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 51.52,
+   "tEnd": 51.52,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461494.14451162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 52.56,
+   "tEnd": 52.56,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461498.27731162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 53.6,
+   "tEnd": 53.61,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461502.47731162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 54.65,
+   "tEnd": 54.65,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461506.67691162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 55.67,
+   "tEnd": 55.68,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461510.74371162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 56.76,
+   "tEnd": 56.76,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461515.07691162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 56.76,
+   "tEnd": 56.81,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248",
+   "outcome": "http_404",
+   "status": 404,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 48,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 57.78,
+   "tEnd": 57.79,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461519.20971162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 60.22,
+   "tEnd": 60.22,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461528.94291162&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 61.3,
+   "tEnd": 61.3,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461533.27611163&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "origin": null
+  }
+ ],
+ "bodies": [],
+ "consoleWarnErrorOther": [
+  {
+   "t": 6.47,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=4064.8 exceeded budgetMs=2000"
+  },
+  {
+   "t": 6.57,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+   "t": 19.06,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+   "t": 31.95,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+   "t": 44.74,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+   "t": 56.76,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ]
+}

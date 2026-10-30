@@ -1,0 +1,7 @@
+{"t": 1790350996.228, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "ok"}
+{"t": 1790351001.761, "path": "/solar/physics?jd=2461309.15590934&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}
+{"t": 1790351004.229, "path": "/solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}
+{"t": 1790351004.391, "path": "/solar/physics?jd=2461316.82261334&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}
+{"t": 1790351005.324, "path": "/solar/physics?jd=2461321.02181334&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}
+{"t": 1790351006.877, "path": "/solar/physics?jd=2461327.28861334&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}
+{"t": 1790351008.246, "path": "/solar/physics?jd=2461332.75501334&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "ok"}

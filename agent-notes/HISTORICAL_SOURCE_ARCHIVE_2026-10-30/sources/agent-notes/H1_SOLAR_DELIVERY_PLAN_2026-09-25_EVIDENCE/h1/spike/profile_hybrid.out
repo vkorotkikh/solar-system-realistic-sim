@@ -1,0 +1,26 @@
+hybrid run 0 s 8.81 activity 0.5469806383246433 pfss synthetic
+hybrid run 1 s 8.79 activity 0.5470017719919884 pfss synthetic
+hybrid run 2 s 8.62 activity 0.5470228533741205 pfss synthetic
+         28951189 function calls (28951188 primitive calls) in 11.504 seconds
+
+   Ordered by: cumulative time
+   List reduced from 391 to 14 due to restriction <14>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.001    0.001   11.504   11.504 sim/solar_physics.py:1015(sample_state)
+        1    0.001    0.001   11.438   11.438 sim/pfss_magnetogram.py:1175(get_or_compute)
+        1    0.000    0.000   11.437   11.437 sim/pfss_magnetogram.py:1238(_compute)
+        1    0.034    0.034    8.584    8.584 sim/pfss_magnetogram.py:649(trace_field_lines)
+    22488    0.120    0.000    8.418    0.000 sim/pfss_magnetogram.py:466(evaluate_cartesian)
+    22368    0.024    0.000    8.401    0.000 sim/pfss_magnetogram.py:743(_normalized_field)
+    22488    3.850    0.000    8.250    0.000 sim/pfss_magnetogram.py:402(evaluate)
+    22488    2.185    0.000    3.295    0.000 sim/pfss_magnetogram.py:488(_legendre_at_point)
+        1    0.026    0.026    2.649    2.649 sim/pfss_magnetogram.py:840(compute_wsa_velocity_map)
+      722    0.049    0.000    2.607    0.004 sim/pfss_magnetogram.py:532(evaluate_cartesian_batch)
+      720    0.011    0.000    2.600    0.004 sim/pfss_magnetogram.py:898(_norm_batch)
+      722    1.882    0.003    2.553    0.004 sim/pfss_magnetogram.py:559(_evaluate_batch)
+ 16015076    1.401    0.000    1.401    0.000 {method 'get' of 'dict' objects}
+      722    0.547    0.001    0.646    0.001 sim/pfss_magnetogram.py:605(_legendre_batch)
+
+
+

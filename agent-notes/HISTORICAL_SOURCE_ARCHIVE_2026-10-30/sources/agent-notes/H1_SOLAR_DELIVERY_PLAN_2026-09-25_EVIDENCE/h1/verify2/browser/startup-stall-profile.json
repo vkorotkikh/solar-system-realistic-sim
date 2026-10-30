@@ -1,0 +1,78 @@
+{
+ "physicsFetchCalledAtMs": [
+  490,
+  3120,
+  4054,
+  5606,
+  6975
+ ],
+ "longTasks": [
+  [
+   101,
+   973
+  ],
+  [
+   2985,
+   120
+  ]
+ ],
+ "topSelf": [
+  "5704ms (idle) :0",
+  "1955ms (program) :0",
+  "536ms onFirstUse /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:35702",
+  "68ms hash3 /src/textures.ts:4",
+  "58ms (garbage collector) :0",
+  "52ms noise3 /src/textures.ts:12",
+  "32ms WebGLRenderer.setSize /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:41198",
+  "31ms solveKeplerFast /src/sim/orbitMath.ts:35",
+  "25ms fbm /src/textures.ts:33",
+  "22ms resizeRenderer /src/main.ts:879",
+  "20ms sphereCoords /src/textures.ts:54",
+  "18ms toAsteroidDef /src/sim/phase1AsteroidCatalog.ts:65",
+  "16ms generateAsteroidBelt /src/sim/asteroidBelt.ts:103",
+  "15ms _PlaneGeometry /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:20419",
+  "13ms createBuffer /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:31453",
+  "13ms propagateKBOPositions /src/sim/kuiperBelt.ts:281",
+  "12ms fillPixelsSized /src/textures.ts:66",
+  "11ms identityKey /src/sim/asteroidBelt.ts:109",
+  "11ms readAsteroidCatalogBinary /src/data/asteroidCatalogLoader.ts:136",
+  "10ms updateSunCoronalLoopsFromBlendView /src/frontend/features/solar/sunVisuals.ts:1205",
+  "10ms (anon) /src/textures.ts:92",
+  "8ms texSubImage2D /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:37812",
+  "8ms createAsteroidBeltRenderer /src/frontend/features/asteroids/beltRenderer.ts:307",
+  "7ms getContext /@fs/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/verify2/browser/vite-cache-notice/deps/chunk-G6IV5IKW.js:41091",
+  "7ms sampleCoronalArcPoint /src/frontend/features/solar/solarFeatureBlending.ts:60"
+ ],
+ "topInclusiveSrc": [
+  "949ms (anon) /src/main.ts:1",
+  "191ms fillPixels /src/textures.ts:88",
+  "191ms sunTexture /src/textures.ts:91",
+  "191ms generatePlanetTexture /src/textures.ts:362",
+  "190ms fillPixelsSized /src/textures.ts:66",
+  "158ms (anon) /src/textures.ts:92",
+  "154ms animate /src/main.ts:1150",
+  "148ms fbm /src/textures.ts:33",
+  "123ms noise3 /src/textures.ts:12",
+  "68ms hash3 /src/textures.ts:4",
+  "57ms loadPhase1AsteroidCatalog /src/sim/phase1AsteroidCatalog.ts:472",
+  "54ms resizeRenderer /src/main.ts:879",
+  "50ms parseOrbitCatalog /src/sim/phase1AsteroidCatalog.ts:419",
+  "45ms propagateKBOPositions /src/sim/kuiperBelt.ts:281",
+  "39ms createBodyNode /src/main.ts:274",
+  "38ms generateAsteroidBelt /src/sim/asteroidBelt.ts:103",
+  "38ms (anon) /src/main.ts:450",
+  "37ms update /src/sunController.ts:326",
+  "36ms parseAcbfRecord /src/sim/phase1AsteroidCatalog.ts:93",
+  "36ms (anon) /src/sim/phase1AsteroidCatalog.ts:462",
+  "34ms createAsteroidBeltRenderer /src/frontend/features/asteroids/beltRenderer.ts:307",
+  "32ms initSunVisuals /src/sunController.ts:250",
+  "32ms toAsteroidDef /src/sim/phase1AsteroidCatalog.ts:65",
+  "31ms solveKeplerFast /src/sim/orbitMath.ts:35",
+  "23ms createGWVisualization /src/frontend/features/solar/gravitationalWaves.ts:118",
+  "21ms updateSunCoronalLoopsFromBlendView /src/frontend/features/solar/sunVisuals.ts:1205",
+  "20ms sphereCoords /src/textures.ts:54",
+  "18ms refreshAsteroidBeltRenderer /src/main.ts:421",
+  "17ms createSceneSetup /src/frontend/app/sceneSetup.ts:72",
+  "15ms fillAsteroidOrbits /src/frontend/features/asteroids/beltRenderer.ts:279"
+ ]
+}

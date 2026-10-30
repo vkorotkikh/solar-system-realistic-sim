@@ -1,0 +1,28 @@
+INFO:     Started server process [1590133]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8071 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52664 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52688 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52712 - "GET /solar/physics?jd=2461308.60530000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52720 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53890 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53896 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53898 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53900 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53916 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53930 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53942 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54166 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54180 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54194 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54206 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54208 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54224 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54232 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:45606 - "GET /solar/physics?jd=2461300.25&fidelity=preview&max_features=64&forcing=synthetic&live_data=false HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1590133]

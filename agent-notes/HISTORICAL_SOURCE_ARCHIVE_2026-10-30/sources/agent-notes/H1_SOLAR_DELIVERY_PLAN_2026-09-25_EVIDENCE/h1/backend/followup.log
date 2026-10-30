@@ -1,0 +1,5 @@
+gil {'loadavg_before': (26.5400390625, 13.25048828125, 5.685546875), 'loadavg_after': (21.65869140625, 13.36376953125, 5.966796875), 'sequential_each_s': [6.367, 5.029], 'sequential_wall_s': 11.396, 'concurrent_each_s': [19.674, 18.648], 'concurrent_wall_s': 19.674}
+0.001d same bucket {'pfss_endpoint_disp_max_Rsun': 0.04976675597223491, 'pfss_topology_flips': 0, 'feature_id_jaccard': 0.978021978021978, 'feature_disp_median_Rsun': 0.0017278280343130167, 'feature_disp_max_Rsun': 0.41754317536406854, 'coronal_holes_identical': True, 'parker_max_disp_Rsun': 0.25868643171626604}
+pfss entry traced bytes 1227035
+serialization {'jsonable_encoder_s': 0.0347, 'json_render_s': 0.0081, 'body_bytes': 627751, 'gzip6_bytes': 249790}
+sizes {'schema': 45, 'model': 21, 'epoch_jd': 12, 'wall_epoch_jd': 12, 'fidelity': 6, 'solar_radius_km': 8, 'solar_radius_au': 20, 'activity_index': 18, 'synthetic_activity_index': 17, 'cycle_phase_rad': 17, 'data_assimilation': 5221, 'surface': 323, 'corona': 423192, 'coronal_holes': 773, 'heliosphere': 30942, 'pfss_field_lines': 213389}

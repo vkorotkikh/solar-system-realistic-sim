@@ -1,0 +1,4 @@
+"http://localhost:8042"    -> http://localhost:8042/solar/realtime/aia-tile?channel=aia_193&image_id=123&v=123
+"http://localhost:5173"    -> http://localhost:5173/solar/realtime/aia-tile?channel=aia_193&image_id=123&v=123
+""                         -> null
+"/api"                     -> /api/solar/realtime/aia-tile?channel=aia_193&image_id=123&v=123

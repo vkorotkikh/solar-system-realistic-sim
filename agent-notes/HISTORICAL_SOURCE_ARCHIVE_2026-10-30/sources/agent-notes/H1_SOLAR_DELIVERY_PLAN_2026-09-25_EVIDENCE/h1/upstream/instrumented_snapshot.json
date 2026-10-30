@@ -1,0 +1,180 @@
+{
+ "jd": 2461308.592714687,
+ "cold_snapshot_s": 3.088,
+ "same_jd_hit_s": 7e-06,
+ "next_poll_jd_plus_3p6d_s": 1.811,
+ "next_poll_upstream_calls": 7,
+ "sample_state_compute_s_incl_gong": 7.833,
+ "gong_calls_during_compute": [
+  {
+   "utc": "2026-09-25T02:13:35.629614+00:00",
+   "url": "https://gong.nso.edu/data/magmap/QR/bqs/202608/",
+   "status": 200,
+   "bytes": 7157,
+   "elapsed_s": 0.161
+  }
+ ],
+ "pfss_source": "synthetic",
+ "upstream_log": [
+  {
+   "utc": "2026-09-25T02:13:30.586394+00:00",
+   "url": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
+   "error": "<HTTPError 404: 'Not Found'>",
+   "elapsed_s": 0.037
+  },
+  {
+   "utc": "2026-09-25T02:13:31.559856+00:00",
+   "url": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+   "status": 200,
+   "bytes": 2896132,
+   "elapsed_s": 0.973
+  },
+  {
+   "utc": "2026-09-25T02:13:31.762650+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A13%3A30Z&sourceId=8&verbose=true",
+   "status": 200,
+   "bytes": 311,
+   "elapsed_s": 0.192
+  },
+  {
+   "utc": "2026-09-25T02:13:31.996745+00:00",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408064&x=-1&y=-1&imageScale=0.601831",
+   "status": 200,
+   "bytes": 204131,
+   "elapsed_s": 0.234
+  },
+  {
+   "utc": "2026-09-25T02:13:32.186580+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A13%3A30Z&sourceId=10&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.17
+  },
+  {
+   "utc": "2026-09-25T02:13:32.417912+00:00",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831",
+   "status": 200,
+   "bytes": 184221,
+   "elapsed_s": 0.231
+  },
+  {
+   "utc": "2026-09-25T02:13:32.599181+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A13%3A30Z&sourceId=11&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.175
+  },
+  {
+   "utc": "2026-09-25T02:13:32.823834+00:00",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831",
+   "status": 200,
+   "bytes": 161296,
+   "elapsed_s": 0.224
+  },
+  {
+   "utc": "2026-09-25T02:13:32.995019+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A13%3A30Z&sourceId=12&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.165
+  },
+  {
+   "utc": "2026-09-25T02:13:33.216313+00:00",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832",
+   "status": 200,
+   "bytes": 152668,
+   "elapsed_s": 0.221
+  },
+  {
+   "utc": "2026-09-25T02:13:33.379857+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A13%3A30Z&sourceId=13&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.158
+  },
+  {
+   "utc": "2026-09-25T02:13:33.608758+00:00",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+   "status": 200,
+   "bytes": 210030,
+   "elapsed_s": 0.229
+  },
+  {
+   "utc": "2026-09-25T02:13:33.667689+00:00",
+   "url": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
+   "error": "<HTTPError 404: 'Not Found'>",
+   "elapsed_s": 0.03
+  },
+  {
+   "utc": "2026-09-25T02:13:34.567260+00:00",
+   "url": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+   "status": 200,
+   "bytes": 2896132,
+   "elapsed_s": 0.899
+  },
+  {
+   "utc": "2026-09-25T02:13:34.741135+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-28T16%3A37%3A30Z&sourceId=8&verbose=true",
+   "status": 200,
+   "bytes": 311,
+   "elapsed_s": 0.166
+  },
+  {
+   "utc": "2026-09-25T02:13:34.902566+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-28T16%3A37%3A30Z&sourceId=10&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.155
+  },
+  {
+   "utc": "2026-09-25T02:13:35.079708+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-28T16%3A37%3A30Z&sourceId=11&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.171
+  },
+  {
+   "utc": "2026-09-25T02:13:35.242978+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-28T16%3A37%3A30Z&sourceId=12&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.158
+  },
+  {
+   "utc": "2026-09-25T02:13:35.418588+00:00",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-28T16%3A37%3A30Z&sourceId=13&verbose=true",
+   "status": 200,
+   "bytes": 312,
+   "elapsed_s": 0.17
+  },
+  {
+   "utc": "2026-09-25T02:13:35.629614+00:00",
+   "url": "https://gong.nso.edu/data/magmap/QR/bqs/202608/",
+   "status": 200,
+   "bytes": 7157,
+   "elapsed_s": 0.161
+  }
+ ],
+ "source_status": {
+  "swpc": {
+   "ok": false,
+   "error": "HTTP Error 404: Not Found",
+   "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+  },
+  "silso": {
+   "ok": true,
+   "updated": "2026-08-31",
+   "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  },
+  "sdo_aia": {
+   "ok": true,
+   "updated": "2026-09-25T01:47:41Z",
+   "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+  },
+  "gong_synoptic": {
+   "ok": true,
+   "updated": "2026-09-25T02:13:33.637188Z",
+   "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+  }
+ }
+}

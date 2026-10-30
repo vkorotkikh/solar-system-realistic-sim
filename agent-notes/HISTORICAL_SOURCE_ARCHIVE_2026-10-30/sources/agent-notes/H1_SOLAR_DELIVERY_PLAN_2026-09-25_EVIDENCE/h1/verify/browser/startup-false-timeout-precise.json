@@ -1,0 +1,76 @@
+[
+ {
+  "run": 1,
+  "events": [
+   "40ms #0 chip connecting | Sun: procedural fallback (connecting to solar model server)",
+   "997ms #1 physics call",
+   "2242ms #1 physics resolved 200 cors",
+   "2242ms #1 physics json() called",
+   "10140ms #1 physics signal-abort",
+   "10140ms #1 physics json() rejected AbortError",
+   "10140ms #0 chip error | Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "10171ms #2 physics call",
+   "10199ms #2 physics resolved 200 cors",
+   "10199ms #2 physics json() called",
+   "10580ms #2 physics json() resolved",
+   "10593ms #0 chip backend | Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 07:10 UTC",
+   "10597ms #0 chip backend | Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 07:10 UTC",
+   "12184ms #3 physics call",
+   "12198ms #3 physics resolved 200 cors",
+   "12198ms #3 physics json() called",
+   "12210ms #3 physics json() resolved",
+   "13819ms #4 physics call",
+   "13838ms #4 physics resolved 200 cors",
+   "13838ms #4 physics json() called",
+   "13845ms #4 physics json() resolved",
+   "14737ms #5 physics call",
+   "14745ms #5 physics resolved 200 cors",
+   "14745ms #5 physics json() called",
+   "14752ms #5 physics json() resolved",
+   "18078ms #6 physics call",
+   "18093ms #6 physics resolved 200 cors",
+   "18093ms #6 physics json() called",
+   "18097ms #6 physics json() resolved"
+  ],
+  "mainThreadStallsOver250ms": [
+   "188ms +2054ms",
+   "2242ms +7898ms",
+   "10140ms +418ms"
+  ]
+ },
+ {
+  "run": 2,
+  "events": [
+   "31ms #0 chip connecting | Sun: procedural fallback (connecting to solar model server)",
+   "816ms #1 physics call",
+   "1788ms #1 physics resolved 200 cors",
+   "1788ms #1 physics json() called",
+   "3959ms #1 physics signal-abort",
+   "3959ms #1 physics json() rejected AbortError",
+   "3960ms #0 chip error | Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "7626ms #2 physics call",
+   "7629ms #2 physics resolved 200 cors",
+   "7629ms #2 physics json() called",
+   "7635ms #2 physics json() resolved",
+   "7641ms #0 chip backend | Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 07:11 UTC",
+   "7647ms #0 chip backend | Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 07:11 UTC",
+   "9255ms #3 physics call",
+   "9274ms #3 physics resolved 200 cors",
+   "9274ms #3 physics json() called",
+   "9279ms #3 physics json() resolved",
+   "10875ms #4 physics call",
+   "10879ms #4 physics resolved 200 cors",
+   "10879ms #4 physics json() called",
+   "10883ms #4 physics json() resolved",
+   "12140ms #5 physics call",
+   "12145ms #5 physics resolved 200 cors",
+   "12145ms #5 physics json() called",
+   "12149ms #5 physics json() resolved"
+  ],
+  "mainThreadStallsOver250ms": [
+   "125ms +1664ms",
+   "1789ms +2170ms",
+   "3975ms +279ms"
+  ]
+ }
+]

@@ -1,0 +1,46 @@
+{"t":107,"e":"finished","kind":"physics","status":200,"durMs":28,"jd":null}
+{"t":107,"e":"finished","kind":"physics","status":200,"durMs":28,"jd":null}
+{"t":115,"e":"finished","kind":"physics","status":200,"durMs":36,"jd":null}
+{"t":115,"e":"finished","kind":"physics","status":200,"durMs":36,"jd":null}
+{"t":115,"e":"finished","kind":"physics","status":200,"durMs":36,"jd":null}
+{"t":116,"e":"finished","kind":"physics","status":200,"durMs":37,"jd":null}
+{"t":122,"e":"finished","kind":"physics","status":200,"durMs":41,"jd":null}
+{"t":1218,"e":"gate-abort"}
+{"t":3079,"e":"failed","url":"fidelity=high&max_features=180&forcing=hybrid&live_data=true","err":"net::ERR_FAILED"}
+{"t":3079,"e":"console","type":"error","text":"Failed to load resource: net::ERR_FAILED"}
+{"t":10951,"e":"pause","r":"true|Resume"}
+{"t":35719,"e":"gate-abort"}
+{"t":35720,"e":"failed","url":"fidelity=high&max_features=180&forcing=hybrid&live_data=true","err":"net::ERR_FAILED"}
+{"t":35720,"e":"console","type":"error","text":"Failed to load resource: net::ERR_FAILED"}
+{"t":45801,"e":"state-before","s":{"status":{"lastError":"Failed to fetch","lastSuccessMs":0,"lastRefreshMs":1790303642761,"lastLatencyMs":0,"pollIntervalMs":30000,"nextRefreshMs":1790303672761},"hasState":false,"epochJd":null,"activity":null,"obsTexture":false,"obsChannel":null,"obsImageId":null,"fieldChildren":52,"fieldVisible":false,"fieldSig":"6:analytical:synthetic"}}
+{"t":71080,"e":"gate-abort"}
+{"t":71082,"e":"failed","url":"fidelity=high&max_features=180&forcing=hybrid&live_data=true","err":"net::ERR_FAILED"}
+{"t":71082,"e":"console","type":"error","text":"Failed to load resource: net::ERR_FAILED"}
+{"t":72414,"e":"shot","label":"B1","path":"/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step1ab_B1.png"}
+{"t":99193,"e":"shot","label":"B2","path":"/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step1ab_B2.png"}
+{"t":99193,"e":"gate-open"}
+{"t":115795,"e":"finished","kind":"physics","status":200,"durMs":10510,"jd":"2461338.87275743"}
+{"t":115795,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"fetch\",\"headersAfterMs\":10513,\"bodyReadMs\":3.1,\"jsonParseMs\":1.1,\"chars\":641814,\"requestJd\":2461338.8727574344}"}
+{"t":115796,"e":"console","type":"log","text":"[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192408524&v=192408524"}
+{"t":115801,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"apply\",\"aiaKickMs\":0.6,\"normalizeMs\":2.4,\"blendMs\":0,\"rebuildFieldMs\":2.5,\"totalMs\":5.5,\"features\":180,\"fieldChildren\":120,\"pfssSource\":\"synthetic\",\"activity\":0.5567392775046514,\"epochJd\":2461338.87275743,\"simJd\":2461338.8727574344}"}
+{"t":116890,"e":"state-after","s":{"status":{"lastError":null,"lastSuccessMs":1790303722841,"lastRefreshMs":1790303712328,"lastLatencyMs":10513,"pollIntervalMs":30000,"nextRefreshMs":1790303742328},"hasState":true,"epochJd":2461338.87275743,"activity":0.5567392775046514,"obsTexture":false,"obsChannel":null,"obsImageId":null,"fieldChildren":120,"fieldVisible":false,"fieldSig":"7:pfss:synthetic:2317:tube-0327:0.93|tube
+{"t":118041,"e":"finished","kind":"aia","status":200,"durMs":2239,"jd":null}
+{"t":118043,"e":"console","type":"log","text":"[spike-aia] loaded {\"ms\":2244.8,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192408524\"}"}
+{"t":135933,"e":"shot","label":"A1","path":"/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step1ab_A1.png"}
+{"t":141904,"e":"finished","kind":"physics","status":200,"durMs":6039,"jd":"2461338.87275743"}
+{"t":141905,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"fetch\",\"headersAfterMs\":6042,\"bodyReadMs\":3.5,\"jsonParseMs\":0.9,\"chars\":641845,\"requestJd\":2461338.8727574344}"}
+{"t":141907,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"apply\",\"aiaKickMs\":0,\"normalizeMs\":1.6,\"blendMs\":0,\"rebuildFieldMs\":0,\"totalMs\":1.6,\"features\":180,\"fieldChildren\":120,\"pfssSource\":\"synthetic\",\"activity\":0.5568076476872379,\"epochJd\":2461338.87275743,\"simJd\":2461338.8727574344}"}
+{"t":160876,"e":"shot","label":"A2","path":"/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step1ab_A2.png"}
+{"t":160876,"e":"toggle-field","r":true}
+{"t":162879,"e":"state-field","s":{"status":{"lastError":null,"lastSuccessMs":1790303748951,"lastRefreshMs":1790303742908,"lastLatencyMs":6043,"pollIntervalMs":30000,"nextRefreshMs":1790303772908},"hasState":true,"epochJd":2461338.87275743,"activity":0.5568076476872379,"obsTexture":true,"obsChannel":"aia_304","obsImageId":"192408524","fieldChildren":120,"fieldVisible":true,"fieldSig":"7:pfss:synthetic:2317:tube-0327:
+{"t":172053,"e":"finished","kind":"physics","status":200,"durMs":5906,"jd":"2461338.87275743"}
+{"t":172054,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"fetch\",\"headersAfterMs\":5910,\"bodyReadMs\":4.2,\"jsonParseMs\":1.2,\"chars\":641834,\"requestJd\":2461338.8727574344}"}
+{"t":172054,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"apply\",\"aiaKickMs\":0,\"normalizeMs\":0.1,\"blendMs\":0,\"rebuildFieldMs\":0,\"totalMs\":0.1,\"features\":180,\"fieldChildren\":120,\"pfssSource\":\"synthetic\",\"activity\":0.556882625318979,\"epochJd\":2461338.87275743,\"simJd\":2461338.8727574344}"}
+{"t":185941,"e":"shot","label":"A3field","path":"/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step1ab_A3field.png"}
+{"t":202898,"e":"finished","kind":"physics","status":200,"durMs":5910,"jd":"2461338.87275743"}
+{"t":202899,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"fetch\",\"headersAfterMs\":5914,\"bodyReadMs\":3.8,\"jsonParseMs\":0.9,\"chars\":639812,\"requestJd\":2461338.8727574344}"}
+{"t":202900,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"apply\",\"aiaKickMs\":0,\"normalizeMs\":0.7,\"blendMs\":0,\"rebuildFieldMs\":0,\"totalMs\":0.7,\"features\":180,\"fieldChildren\":120,\"pfssSource\":\"synthetic\",\"activity\":0.5569589839098837,\"epochJd\":2461338.87275743,\"simJd\":2461338.8727574344}"}
+{"t":233796,"e":"finished","kind":"physics","status":200,"durMs":6213,"jd":"2461338.87275743"}
+{"t":233797,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"fetch\",\"headersAfterMs\":6217,\"bodyReadMs\":3.9,\"jsonParseMs\":1.1,\"chars\":639930,\"requestJd\":2461338.8727574344}"}
+{"t":233797,"e":"console","type":"log","text":"[spike-timing] {\"phase\":\"apply\",\"aiaKickMs\":0,\"normalizeMs\":0.6,\"blendMs\":0,\"rebuildFieldMs\":0.1,\"totalMs\":0.7,\"features\":180,\"fieldChildren\":120,\"pfssSource\":\"synthetic\",\"activity\":0.5570347359378597,\"epochJd\":2461338.87275743,\"simJd\":2461338.8727574344}"}
+{"t":264284,"e":"state-extra","s":{"status":{"lastError":null,"lastSuccessMs":1790303840842,"lastRefreshMs":1790303865580,"lastLatencyMs":6217,"pollIntervalMs":30000,"nextRefreshMs":1790303864625},"hasState":true,"epochJd":2461338.87275743,"activity":0.5570347359378597,"obsTexture":true,"obsChannel":"aia_304","obsImageId":"192408524","fieldChildren":120,"fieldVisible":true,"fieldSig":"7:pfss:synthetic:2317:tube-0327:

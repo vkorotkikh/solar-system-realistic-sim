@@ -1,0 +1,720 @@
+{
+ "scen": "S3",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790319349685,
+ "seconds": 120,
+ "phase2": 0,
+ "loadedAt": 3.33,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.02,
+   "perf": 18,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 3.35,
+   "perf": 3343,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 14.37,
+   "perf": 14369,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "titleMatches": true
+  },
+  {
+   "t": 35.56,
+   "perf": 33736,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 46.76,
+   "perf": 44927,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "titleMatches": true
+  },
+  {
+   "t": 62.27,
+   "perf": 58610,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 81.93,
+   "perf": 78272,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "titleMatches": true
+  },
+  {
+   "t": 106.6,
+   "perf": 101077,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 116.8,
+   "perf": 111276,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "titleMatches": true
+  },
+  {
+   "t": 134.84,
+   "perf": 127425,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 145.27,
+   "perf": 137860,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 11,
+ "textFlips": 10,
+ "rawMutationRecords": 30,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+  "Sun: procedural fallback (solar server busy, HTTP 503)"
+ ],
+ "finalChip": {
+  "t": 125.23,
+  "label": "phase1",
+  "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+  "state": "error",
+  "mut": 24
+ },
+ "samples": [
+  {
+   "t": 8.35,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 13.35,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 3
+  },
+  {
+   "t": 18.35,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 6
+  },
+  {
+   "t": 25.18,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 6
+  },
+  {
+   "t": 30.19,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 6
+  },
+  {
+   "t": 35.19,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 6
+  },
+  {
+   "t": 40.2,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 9
+  },
+  {
+   "t": 45.2,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 9
+  },
+  {
+   "t": 50.2,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 12
+  },
+  {
+   "t": 57.04,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 12
+  },
+  {
+   "t": 62.04,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 12
+  },
+  {
+   "t": 67.05,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 15
+  },
+  {
+   "t": 72.05,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 15
+  },
+  {
+   "t": 77.06,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 15
+  },
+  {
+   "t": 82.06,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 18
+  },
+  {
+   "t": 87.06,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 18
+  },
+  {
+   "t": 93.93,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 18
+  },
+  {
+   "t": 98.94,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 18
+  },
+  {
+   "t": 103.94,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 18
+  },
+  {
+   "t": 108.95,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 21
+  },
+  {
+   "t": 113.95,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "mut": 21
+  },
+  {
+   "t": 118.95,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 24
+  },
+  {
+   "t": 125.23,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server busy, HTTP 503)",
+   "state": "error",
+   "mut": 24
+  }
+ ],
+ "requestTally": {
+  "physics aborted(net::ERR_ABORTED)": 11,
+  "physics http_503": 11
+ },
+ "requests": [
+  {
+   "t": 1.29,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461308.78957187&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2765,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 7.56,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461333.85550787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2599,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 14.37,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461361.12070787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 24.48,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461394.25270787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 32.97,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461428.18470787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 39.62,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461454.78350787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 46.74,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461483.31590787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 20,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 53.53,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461510.44790787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 9,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 59.67,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461527.71390787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 67.89,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461560.57950787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 74.97,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461588.91190787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 81.92,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461616.71070787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 10,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 91.19,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461646.30950787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 3,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 97.38,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461671.10870787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 4,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 104,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461697.57390787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 110.11,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461722.03990787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 116.78,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461748.70550787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 21,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 125.56,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461776.17110787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 5,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 132.25,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461802.96950787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 138.88,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461829.50190787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 145.25,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461854.96790787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 30,
+   "blocked": null,
+   "origin": null
+  },
+  {
+   "t": 151.74,
+   "k": "physics",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461880.96670787&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 5,
+   "blocked": null,
+   "origin": null
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 3.35,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 14.37,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server busy, HTTP 503)"
+  },
+  {
+   "t": 35.57,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 46.76,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server busy, HTTP 503)"
+  },
+  {
+   "t": 62.27,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 81.93,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server busy, HTTP 503)"
+  },
+  {
+   "t": 106.6,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 116.8,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server busy, HTTP 503)"
+  },
+  {
+   "t": 134.84,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 145.27,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server busy, HTTP 503)"
+  }
+ ],
+ "consoleWarnErrorOther": [
+  {
+   "t": 3.45,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2937.7 exceeded budgetMs=2000"
+  },
+  {
+   "t": 14.37,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 24.48,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 46.76,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 53.54,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 81.93,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 91.19,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 97.38,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 116.8,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 125.56,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 145.27,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 151.74,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ],
+ "layout": {
+  "solar": {
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgba(218, 101, 94, 0.72)",
+   "dot": "rgb(218, 101, 94)",
+   "role": "status",
+   "live": "polite",
+   "atomic": "true"
+  },
+  "catalog": {
+   "x": 746,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgba(121, 188, 145, 0.6)",
+   "dot": "rgb(121, 188, 145)",
+   "role": "status",
+   "live": "polite",
+   "atomic": "true"
+  },
+  "bar": {
+   "x": 368,
+   "y": 840,
+   "w": 1056,
+   "h": 44,
+   "overflowX": false,
+   "border": "rgb(221, 229, 227)",
+   "dot": "rgba(0, 0, 0, 0)",
+   "role": null,
+   "live": null,
+   "atomic": null
+  },
+  "docScrollW": 1440,
+  "innerW": 1440
+ }
+}

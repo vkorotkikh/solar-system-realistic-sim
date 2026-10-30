@@ -1,0 +1,3 @@
+2026-09-25T02:07:37.501Z swpc_rtsw_wind_1m 200 0.089764 2562216 application/json https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json
+2026-09-25T02:07:37.600Z swpc_rtsw_mag_1m 200 0.078744 1463592 application/json https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json
+2026-09-25T02:07:37.688Z swpc_summary_speed 200 0.038256 59 application/json https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json

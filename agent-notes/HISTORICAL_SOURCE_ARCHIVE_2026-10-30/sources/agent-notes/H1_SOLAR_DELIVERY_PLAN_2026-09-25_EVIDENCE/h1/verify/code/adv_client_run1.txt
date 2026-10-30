@@ -1,0 +1,150 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-1 dispose() while the no-cors probe is running > should not record a server failure, and should cancel the probe
+[ADV-1] probe aborted by dispose: [33mfalse[39m | lastFailure: "blocked" | consecutiveFailures: [33m1[39m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-2 dispose() while the 200 body is being read > should not record invalid-response
+[ADV-2] lastFailure after dispose mid-body: {"kind":"invalid-response","message":"Solar physics response was not valid JSON (AbortError: This operation was aborted)","httpStatus":null,"atMs":1790319237353}
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-3 dispose() while a 503 error body is being read > should not record busy
+[ADV-3] lastFailure after dispose mid-error-body: "busy"
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs and does not hang
+[HOLD-1] settled before timeout: [33mfalse[39m | kind: busy | msg: Solar physics request failed (503)
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-2 timeout firing while the probe runs > keeps the probe verdict (the TypeError came first) and is bounded by probe timeout
+[HOLD-2] settled after ms: [33m4000[39m | kind: unreachable
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite the newer success
+[HOLD-3] superseded probe signal aborted: [33mfalse[39m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-4 own-abort never misclassified > a supersede abort that surfaces as TypeError still starts a probe (extra request)
+[HOLD-4b] probes after a TypeError-shaped supersede abort: [33m1[39m | lastFailure: [1mnull[22m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-4 payload shape check > a JSON array is accepted as a valid solar payload
+[ADV-4] [] accepted: [33mtrue[39m | latest: []
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts (18 tests | 4 failed) 57ms
+   × ADV-1 dispose() while the no-cors probe is running > should not record a server failure, and should cancel the probe 14ms
+     → expected { kind: 'blocked', …(3) } to be null
+   × ADV-2 dispose() while the 200 body is being read > should not record invalid-response 3ms
+     → expected { kind: 'invalid-response', …(3) } to be null
+   × ADV-3 dispose() while a 503 error body is being read > should not record busy 2ms
+     → expected { kind: 'busy', …(3) } to be null
+   ✓ HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs and does not hang 11ms
+   ✓ HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs when a 200 body stalls, and classifies as timeout 2ms
+   ✓ HOLD-2 timeout firing while the probe runs > keeps the probe verdict (the TypeError came first) and is bounded by probe timeout 6ms
+   ✓ HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite the newer success 3ms
+   ✓ HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite a newer, different failure 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with DOMException AbortError (Chrome/Firefox/Safari default reason) 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with custom non-DOMException reason 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with a TypeError as abort reason (hypothetical engine) 0ms
+   ✓ HOLD-4 own-abort never misclassified > a supersede abort that surfaces as TypeError still starts a probe (extra request) 1ms
+   ✓ HOLD-5 probe only after TypeError > timeout does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > 503 busy does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > 429 does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > 500 with CORS headers does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > invalid json does not probe 1ms
+   × ADV-4 payload shape check > a JSON array is accepted as a valid solar payload 2ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/features/solar/h1v-adv-client.test.ts > ADV-1 dispose() while the no-cors probe is running > should not record a server failure, and should cancel the probe
+AssertionError: expected { kind: 'blocked', …(3) } to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+{
+  "atMs": 1790319237340,
+  "httpStatus": null,
+  "kind": "blocked",
+  "message": "Browser blocked the solar server's reply (CORS): Failed to fetch",
+}
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts:86:41
+     84|       '| lastFailure:', JSON.stringify(client.status().lastFailure?.ki…
+     85|       '| consecutiveFailures:', client.status().consecutiveFailures);
+     86|     expect(client.status().lastFailure).toBeNull();
+       |                                         ^
+     87|     expect(client.status().consecutiveFailures).toBe(0);
+     88|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/frontend/features/solar/h1v-adv-client.test.ts > ADV-2 dispose() while the 200 body is being read > should not record invalid-response
+AssertionError: expected { kind: 'invalid-response', …(3) } to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+{
+  "atMs": 1790319237353,
+  "httpStatus": null,
+  "kind": "invalid-response",
+  "message": "Solar physics response was not valid JSON (AbortError: This operation was aborted)",
+}
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts:105:41
+    103|     await pending;
+    104|     console.log('[ADV-2] lastFailure after dispose mid-body:', JSON.st…
+    105|     expect(client.status().lastFailure).toBeNull();
+       |                                         ^
+    106|   });
+    107| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/frontend/features/solar/h1v-adv-client.test.ts > ADV-3 dispose() while a 503 error body is being read > should not record busy
+AssertionError: expected { kind: 'busy', …(3) } to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+{
+  "atMs": 1790319237355,
+  "httpStatus": 503,
+  "kind": "busy",
+  "message": "Solar physics request failed (503)",
+}
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts:121:41
+    119|     await pending;
+    120|     console.log('[ADV-3] lastFailure after dispose mid-error-body:', J…
+    121|     expect(client.status().lastFailure).toBeNull();
+       |                                         ^
+    122|   });
+    123| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/frontend/features/solar/h1v-adv-client.test.ts > ADV-4 payload shape check > a JSON array is accepted as a valid solar payload
+AssertionError: expected true to be false // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts:303:16
+    301|     const ok = await client.maybeRefresh(JD);
+    302|     console.log('[ADV-4] [] accepted:', ok, '| latest:', JSON.stringif…
+    303|     expect(ok).toBe(false);
+       |                ^
+    304|   });
+    305| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 14 passed (18)
+   Start at  02:53:56
+   Duration  617ms (transform 107ms, setup 0ms, collect 100ms, tests 57ms, environment 0ms, prepare 126ms)
+

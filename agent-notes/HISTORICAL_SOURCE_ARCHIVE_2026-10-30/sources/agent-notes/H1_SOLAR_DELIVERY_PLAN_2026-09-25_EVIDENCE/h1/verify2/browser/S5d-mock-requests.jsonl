@@ -1,0 +1,10 @@
+{"t": 1790350235.16, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "nonjson"}
+{"t": 1790350236.323, "path": "/solar/physics?jd=2461309.14704926&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350242.756, "path": "/solar/physics?jd=2461331.34648127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350248.801, "path": "/solar/physics?jd=2461355.54568126&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350255.462, "path": "/solar/physics?jd=2461382.21088127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350263.814, "path": "/solar/physics?jd=2461415.60968126&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350270.374, "path": "/solar/physics?jd=2461433.94208127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350277.17, "path": "/solar/physics?jd=2461461.14128127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350283.984, "path": "/solar/physics?jd=2461488.40648127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
+{"t": 1790350292.036, "path": "/solar/physics?jd=2461520.60568127&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "nonjson"}
