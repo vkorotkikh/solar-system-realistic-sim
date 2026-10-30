@@ -108,9 +108,11 @@ describe('actual eruption-particle geometry blend endpoints', () => {
       const position = particles.geometry.getAttribute('position');
       expect(initial.containsPoint(new Vector3().fromBufferAttribute(position, 0))).toBe(false);
       for (let index = 0; index < position.count; index += 1) {
-        expect(particles.geometry.boundingSphere!.containsPoint(
-          new Vector3().fromBufferAttribute(position, index)
-        )).toBe(true);
+        // Re-squaring a rounded radius in Sphere.containsPoint can put its own
+        // extremal vertex outside by one ULP. Compare distances directly.
+        const bounds = particles.geometry.boundingSphere!;
+        expect(new Vector3().fromBufferAttribute(position, index).distanceTo(bounds.center))
+          .toBeLessThanOrEqual(bounds.radius);
       }
     } finally {
       particles.geometry.dispose();

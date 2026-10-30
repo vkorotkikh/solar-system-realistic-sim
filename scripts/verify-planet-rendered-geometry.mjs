@@ -16,17 +16,22 @@ try {
   const address = server.httpServer.address();
   browser = spawn(executable, [
     ...(!hardware ? ['--headless'] : []),
-    '--no-sandbox', '--disable-dev-shm-usage', '--use-gl=angle',
+    '--no-sandbox', '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check', '--use-gl=angle',
     ...(hardware ? ['--use-angle=gl', '--ignore-gpu-blocklist']
       : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
     '--remote-debugging-port=0',
     `--user-data-dir=${profile}`, 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   const endpoint = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Chromium startup timed out')), 20000);
-    browser.once('error', reject);
-    browser.once('exit', (code) => reject(new Error(`Chromium exited during startup: ${code}`)));
+    let diagnostics = '';
+    const timer = setTimeout(() => reject(new Error(`Chromium startup timed out\n${diagnostics}`)), 20000);
+    browser.once('error', error => { clearTimeout(timer); reject(error); });
+    browser.once('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`Chromium exited during startup: ${code}\n${diagnostics}`));
+    });
     browser.stderr.on('data', (chunk) => {
+      diagnostics = (diagnostics + chunk.toString()).slice(-16000);
       const match = chunk.toString().match(/DevTools listening on (ws:\/\/\S+)/);
       if (match) { clearTimeout(timer); resolve(match[1]); }
     });
