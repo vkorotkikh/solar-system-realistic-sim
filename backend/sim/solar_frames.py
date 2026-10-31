@@ -28,6 +28,49 @@ def synthetic_geometry_frame(jd_tdb: float) -> dict[str, Any]:
     }
 
 
+def observed_carrington_geometry_frame(
+    *,
+    provider: str,
+    product: str,
+    map_left_edge_longitude_deg: float,
+    map_left_edge_carrington_rotation: int,
+    row_order: str,
+    grid_convention: str,
+) -> dict[str, Any]:
+    """Describe validated provider-native geometry without claiming scene alignment."""
+
+    longitude = float(map_left_edge_longitude_deg)
+    rotation = int(map_left_edge_carrington_rotation)
+    if (
+        provider != "NSO/GONG"
+        or product != "zqs"
+        or not math.isfinite(longitude)
+        or not 0.0 <= longitude < 360.0
+        or rotation <= 0
+        or row_order != "south_to_north"
+        or grid_convention != "equal-area-sine-latitude-v1"
+    ):
+        raise ValueError("observed Carrington frame primitives are inconsistent")
+    return {
+        "schema": {"name": "solar_geometry_frame", "version": 1},
+        "frame": "GONG_ZQS_CARRINGTON_GRID_V1",
+        "reference_frame": "HELIOGRAPHIC_CARRINGTON",
+        "provider": provider,
+        "product": product,
+        "map_left_edge_longitude_deg": longitude,
+        "map_left_edge_carrington_rotation": rotation,
+        "row_order": row_order,
+        "grid_convention": grid_convention,
+        "longitude_direction": "carrington_increasing",
+        "pixel_registration": "cell_centered",
+        "source_kind": "observed",
+        "calibration_status": "provider_native_wcs_validated",
+        "rendering_eligible": False,
+        "scene_adapter_status": "not_implemented",
+        "reason": "provider-native Carrington geometry has no validated scene adapter",
+    }
+
+
 def unresolved_observed_geometry_frame() -> dict[str, Any]:
     return {
         "schema": {"name": "solar_geometry_frame", "version": 1},

@@ -49,8 +49,12 @@
       "sha256": "85d923bd2d6fd7b367ba8f4296e5698e2648337cfb4da82e140b02d56f073047"
     },
     {
+      "path": "backend/sim/gong_magnetogram.py",
+      "sha256": "49757ec54791abd6e96fc0e3072001732d3aff29c90e580221838124219127d0"
+    },
+    {
       "path": "backend/sim/pfss_magnetogram.py",
-      "sha256": "0b7c2b64f35878aa6716d37d8175763cfeadf304423bf2b5f85bb0af0d653f3b"
+      "sha256": "29c09b898b1c8e4e7c4cb55b1ce4ad5cc51021ca77d9185c3885a60feea557bd"
     },
     {
       "path": "backend/sim/pfss_tracing.py",
@@ -101,6 +105,18 @@
       "sha256": "8ef5609731baf624a1fe9caa48dd5c806b507f1e826e6a39bbbaeba51b2dfc49"
     },
     {
+      "path": "backend/tests/solar_observational_acceptance.py",
+      "sha256": "4bb336a67f3ae71fc0b407f7a7a985088cf784860fcd8e2f600387d258213b74"
+    },
+    {
+      "path": "backend/tests/test_solar_observational_acceptance.py",
+      "sha256": "de7ba12989caaac611f8e80d80ffcdc21c023d7f9affb76b006df1fdc1e146d3"
+    },
+    {
+      "path": "agent-notes/solar-observational-acceptance-2026-10-17/nso_gong_zqs_202610121744.fits.gz",
+      "sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
+    },
+    {
       "path": "scripts/ci/tests/test_verify_r3_r4_runner.py",
       "sha256": "0a38b0cbbc87f5fac14023f33aeb8833940b104d0db36ed156a0879a1dbf72cd"
     },
@@ -120,7 +136,12 @@
       "backend/tests/test_pfss_harmonics.py::test_schmidt_normalization_is_applied_once_in_projection[cosine]",
       "backend/tests/test_pfss_analytic_fields.py::test_source_surface_has_zero_tangential_field_and_nonzero_radial_flux[4-2-True]",
       "backend/tests/test_pfss_tracing.py::test_open_endpoint_does_not_overshoot",
-      "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude"
+      "backend/tests/test_wsa_semantics.py::test_expansion_uses_exact_radial_components_not_tangential_magnitude",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[negative_scale_factor-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[signed_imbalance_fraction-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[scaled_correction_limit_fraction-0.001]",
+      "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit"
     ],
     "timeout_seconds": 120
   },
@@ -196,6 +217,30 @@
       "expected_assertion_regex": "R4-WSA-RADIAL-COMPONENT",
       "fixed_commit": "8fd45d5fd20588edb7bcc7fcb585ce3ac3777799",
       "oracle_class": "analytic-radial-flux-tube"
+    },
+    {
+      "id": "skip-scaled-flux-provenance-validation",
+      "patch": "scripts/ci/mutations/skip-scaled-flux-provenance-validation.patch",
+      "patch_sha256": "8a8808e2ad36f635bc6cc9ba0983c7ec93583a370e04c1b058728a86d39ba69f",
+      "production_files": [
+        "backend/sim/pfss_magnetogram.py"
+      ],
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_forged_scaled_flux_snapshot_is_rejected[positive_scale_factor-0.001]",
+      "expected_assertion_regex": "SCN041-SCALED-FLUX-PROVENANCE",
+      "fixed_commit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
+      "oracle_class": "forged-observed-provenance-negative-control"
+    },
+    {
+      "id": "reject-exact-scaled-flux-limit",
+      "patch": "scripts/ci/mutations/reject-exact-scaled-flux-limit.patch",
+      "patch_sha256": "9f6347b8beb3937b2bba97760957435cb4614ff056ab5822a88c0cd2c21ce6e6",
+      "production_files": [
+        "backend/sim/gong_magnetogram.py"
+      ],
+      "node": "backend/tests/test_solar_observational_acceptance.py::test_scaled_monopole_policy_accepts_exact_limit",
+      "expected_assertion_regex": "SCN041-SCALED-FLUX-EXACT-LIMIT",
+      "fixed_commit": "d37a37a8f616e3a1abffa2ded3d9e4cee2446b93",
+      "oracle_class": "exact-policy-boundary-negative-control"
     }
   ]
 }

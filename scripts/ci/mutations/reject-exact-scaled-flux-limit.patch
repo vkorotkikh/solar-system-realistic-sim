@@ -1,0 +1,12 @@
+diff --git a/backend/sim/gong_magnetogram.py b/backend/sim/gong_magnetogram.py
+--- a/backend/sim/gong_magnetogram.py
++++ b/backend/sim/gong_magnetogram.py
+@@ -768,7 +768,7 @@ def _balance_flux(
+             not has_positive
+             or not has_negative
+             or not math.isfinite(imbalance_fraction)
+-            or abs(imbalance_fraction) > SCALED_FLUX_IMBALANCE_LIMIT
++            or abs(imbalance_fraction) >= SCALED_FLUX_IMBALANCE_LIMIT
+         ):
+             raise _reject(
+                 "flux_unbalanced",

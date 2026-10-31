@@ -54,6 +54,22 @@ GONG_COVERAGE_SEMANTICS = (
 )
 GONG_COVERAGE_WARNING = "per-longitude observation and weight ages are unavailable"
 FLUX_BALANCE_POLICY_VERSION = "reject-then-remove-roundoff-monopole-v1"
+SCALED_FLUX_BALANCE_POLICY_VERSION = "bounded-polarity-scale-monopole-v1"
+SCALED_FLUX_IMBALANCE_LIMIT = 0.05
+IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS = frozenset(
+    (FLUX_BALANCE_POLICY_VERSION, SCALED_FLUX_BALANCE_POLICY_VERSION),
+)
+TRUSTED_SCALED_OBSERVATION_SHA256 = (
+    "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
+)
+TRUSTED_SCALED_EXPANDED_SHA256 = (
+    "e93f2c4daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd"
+)
+TRUSTED_SCALED_PROVIDER_SHA256 = (
+    "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035"
+)
+TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G = 1e-5
+TRUSTED_SCALED_POST_MEAN_TOLERANCE_G = 5.474e-5
 CONTENT_HASH_VERSION = "gong-normalized-content-v1"
 SNAPSHOT_ID_VERSION = "gong-snapshot-id-v1"
 GONG_ARCHIVE_BASE_URL = "https://gong.nso.edu/data/magmap/QR/zqs/"
@@ -138,6 +154,28 @@ class GongWcsMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class _TrustedFluxCorrection:
+    provider: str
+    product_sha256: str
+    input_map: str
+    expanded_fits_sha256: str
+    correction_method: int
+    pre_mean_g: float
+    post_mean_g: float
+
+
+_RETAINED_GONG_SCALED_CORRECTION = _TrustedFluxCorrection(
+    provider="NASA/CCMC WSA_V6.2",
+    product_sha256=TRUSTED_SCALED_PROVIDER_SHA256,
+    input_map="mrzql261012t1744c2316_079",
+    expanded_fits_sha256=TRUSTED_SCALED_EXPANDED_SHA256,
+    correction_method=2,
+    pre_mean_g=0.19715,
+    post_mean_g=5.473e-05,
+)
+
+
+@dataclass(frozen=True, slots=True)
 class FluxBalanceMetrics:
     pre_signed_flux_g_sr: float
     pre_unsigned_flux_g_sr: float
@@ -147,6 +185,16 @@ class FluxBalanceMetrics:
     post_signed_flux_g_sr: float
     post_unsigned_flux_g_sr: float
     policy_version: str = FLUX_BALANCE_POLICY_VERSION
+    positive_scale_factor: float = 1.0
+    negative_scale_factor: float = 1.0
+    signed_imbalance_fraction: float = 0.0
+    scaled_correction_limit_fraction: float = SCALED_FLUX_IMBALANCE_LIMIT
+    corroborating_provider: str | None = None
+    corroborating_product_sha256: str | None = None
+    corroborating_input_map: str | None = None
+    provider_correction_method: int | None = None
+    provider_pre_mean_g: float | None = None
+    provider_post_mean_g: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -692,30 +740,143 @@ def _validate_wcs(header: fits.Header, long0: float) -> tuple[GongWcsMetadata, M
     return metadata, grid
 
 
-def _balance_flux(field_gauss: np.ndarray) -> tuple[np.ndarray, FluxBalanceMetrics]:
+def _balance_flux(
+    field_gauss: np.ndarray,
+    *,
+    trusted_correction: _TrustedFluxCorrection | None = None,
+) -> tuple[np.ndarray, FluxBalanceMetrics]:
     flat = np.asarray(field_gauss, dtype=np.float64, order="C").ravel(order="C")
     cell_area = 4.0 * math.pi / flat.size
     signed = math.fsum(float(value) for value in flat) * cell_area
     unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
     limit = max(1e-12 * unsigned, 1e-12 * 4.0 * math.pi)
-    if abs(signed) > limit:
-        raise _reject("flux_unbalanced", "map monopole exceeds roundoff-only policy")
-    mean = signed / (4.0 * math.pi)
-    balanced = np.asarray(field_gauss, dtype=np.float64) - mean
+    if not math.isfinite(unsigned) or unsigned <= 0.0:
+        raise _reject("flux_unbalanced", "map has no finite unsigned magnetic flux")
+    imbalance_fraction = signed / unsigned
+    if abs(signed) <= limit:
+        mean = signed / (4.0 * math.pi)
+        balanced = np.asarray(field_gauss, dtype=np.float64) - mean
+        positive_scale = 1.0
+        negative_scale = 1.0
+        policy_version = FLUX_BALANCE_POLICY_VERSION
+        failure_detail = "roundoff removal did not satisfy balance policy"
+    else:
+        field = np.asarray(field_gauss, dtype=np.float64)
+        has_positive = bool(np.any(field > 0.0))
+        has_negative = bool(np.any(field < 0.0))
+        if (
+            not has_positive
+            or not has_negative
+            or not math.isfinite(imbalance_fraction)
+            or abs(imbalance_fraction) > SCALED_FLUX_IMBALANCE_LIMIT
+        ):
+            raise _reject(
+                "flux_unbalanced",
+                "map monopole exceeds bounded polarity-scaling policy",
+            )
+        pre_mean = signed / (4.0 * math.pi)
+        if (
+            trusted_correction is None
+            or trusted_correction.provider != "NASA/CCMC WSA_V6.2"
+            or trusted_correction.product_sha256 != TRUSTED_SCALED_PROVIDER_SHA256
+            or trusted_correction.input_map != "mrzql261012t1744c2316_079"
+            or trusted_correction.expanded_fits_sha256
+            != TRUSTED_SCALED_EXPANDED_SHA256
+            or trusted_correction.correction_method != 2
+            or not math.isfinite(trusted_correction.pre_mean_g)
+            or not math.isfinite(trusted_correction.post_mean_g)
+            or abs(trusted_correction.pre_mean_g - pre_mean)
+            > TRUSTED_SCALED_PRE_MEAN_TOLERANCE_G
+        ):
+            raise _reject(
+                "flux_unbalanced",
+                "scaled correction lacks trusted provider corroboration",
+            )
+        mean = 0.0
+        positive_scale = 1.0 - imbalance_fraction
+        negative_scale = 1.0 + imbalance_fraction
+        balanced = np.where(
+            field > 0.0,
+            field * positive_scale,
+            np.where(field < 0.0, field * negative_scale, field),
+        )
+        policy_version = SCALED_FLUX_BALANCE_POLICY_VERSION
+        failure_detail = "polarity scaling did not satisfy balance policy"
     post_flat = balanced.ravel(order="C")
     post_signed = math.fsum(float(value) for value in post_flat) * cell_area
     post_unsigned = math.fsum(abs(float(value)) for value in post_flat) * cell_area
     if abs(post_signed) > limit:
-        raise _reject("flux_unbalanced", "roundoff removal did not satisfy balance policy")
+        raise _reject("flux_unbalanced", failure_detail)
+    if (
+        policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+        and abs(
+            trusted_correction.post_mean_g
+            - post_signed / (4.0 * math.pi)
+        )
+        > TRUSTED_SCALED_POST_MEAN_TOLERANCE_G
+    ):
+        raise _reject(
+            "flux_unbalanced",
+            "scaled correction disagrees with provider residual monopole",
+        )
     return balanced, FluxBalanceMetrics(
         pre_signed_flux_g_sr=signed,
         pre_unsigned_flux_g_sr=unsigned,
         acceptance_limit_g_sr=limit,
         removed_mean_g=mean,
-        removed_g00_g=mean,
+        removed_g00_g=signed / (4.0 * math.pi),
         post_signed_flux_g_sr=post_signed,
         post_unsigned_flux_g_sr=post_unsigned,
+        policy_version=policy_version,
+        positive_scale_factor=positive_scale,
+        negative_scale_factor=negative_scale,
+        signed_imbalance_fraction=imbalance_fraction,
+        scaled_correction_limit_fraction=SCALED_FLUX_IMBALANCE_LIMIT,
+        corroborating_provider=(
+            trusted_correction.provider
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
+        corroborating_product_sha256=(
+            trusted_correction.product_sha256
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
+        corroborating_input_map=(
+            trusted_correction.input_map
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
+        provider_correction_method=(
+            trusted_correction.correction_method
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
+        provider_pre_mean_g=(
+            trusted_correction.pre_mean_g
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
+        provider_post_mean_g=(
+            trusted_correction.post_mean_g
+            if policy_version == SCALED_FLUX_BALANCE_POLICY_VERSION
+            else None
+        ),
     )
+
+
+def _trusted_correction_for_artifact(
+    context: GongParseContext,
+    expanded_fits: bytes,
+) -> _TrustedFluxCorrection | None:
+    if context.compressed_sha256 != TRUSTED_SCALED_OBSERVATION_SHA256:
+        return None
+    if hashlib.sha256(expanded_fits).hexdigest() != TRUSTED_SCALED_EXPANDED_SHA256:
+        raise _reject(
+            "flux_unbalanced",
+            "trusted correction observation identity does not match FITS bytes",
+        )
+    return _RETAINED_GONG_SCALED_CORRECTION
 
 
 def parse_gong_fits(
@@ -782,7 +943,10 @@ def parse_gong_fits(
     field_gauss = scaled * gauss_factor
     if not np.all(np.isfinite(field_gauss)):
         raise _reject("invalid_pixels", "unit conversion produced non-finite pixels")
-    balanced, flux = _balance_flux(field_gauss)
+    balanced, flux = _balance_flux(
+        field_gauss,
+        trusted_correction=_trusted_correction_for_artifact(context, expanded_fits),
+    )
 
     reference = Time(header_metadata.reference_utc.removesuffix("Z"), format="isot", scale="utc")
     reference_jd_tdb = float(reference.tdb.jd)
@@ -865,7 +1029,14 @@ def parse_gong_fits(
         normalized_content_sha256=content_hash,
         retrieved_at_utc=context.retrieved_at_utc,
         retrieval_timeout_s=context.retrieval_timeout_s,
-        quality_flags=("complete-pixels", "flux-balanced-roundoff-only"),
+        quality_flags=(
+            "complete-pixels",
+            (
+                "flux-balanced-roundoff-only"
+                if flux.policy_version == FLUX_BALANCE_POLICY_VERSION
+                else "flux-balanced-bounded-polarity-scaling"
+            ),
+        ),
         native_fits_bytes=expanded_fits,
     )
     return MagnetogramSnapshot(snapshot_id, balanced, grid, provenance)

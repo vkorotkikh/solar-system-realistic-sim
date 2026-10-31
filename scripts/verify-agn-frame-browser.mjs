@@ -12,14 +12,20 @@ const output = resolve(root, process.env.AGN_ORACLE_OUTPUT ?? 'agent-notes/artif
 if (relative(root, output).startsWith('..')) throw new Error('Capture output must stay inside this worktree');
 // Hardware evidence-capture tool: the operator names the Playwright module,
 // the Chromium binary and the expected GPU. No host-specific defaults.
+const usage = [
+  'Required: AGN_PLAYWRIGHT_MODULE, AGN_CHROMIUM_EXECUTABLE, and AGN_EXPECT_GPU.',
+  'Optional for WSL/D3D12 evidence (host-specific values are forwarded unchanged): GALLIUM_DRIVER, MESA_D3D12_DEFAULT_ADAPTER_NAME, LIBGL_DRIVERS_PATH, and LD_LIBRARY_PATH.',
+].join('\n');
 function required(name) {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} must be set (this gate captures evidence on a named GPU host; it is not a portable test)`);
+  if (!value) throw new Error(`${name} must be set (this gate captures evidence on a named GPU host; it is not a portable test)\n${usage}`);
   return value;
 }
 const playwrightPath = required('AGN_PLAYWRIGHT_MODULE');
 const executablePath = required('AGN_CHROMIUM_EXECUTABLE');
 const expectedGpuPattern = required('AGN_EXPECT_GPU');
+const driverEnvironmentNames = ['GALLIUM_DRIVER', 'MESA_D3D12_DEFAULT_ADAPTER_NAME', 'LIBGL_DRIVERS_PATH', 'LD_LIBRARY_PATH'];
+const browserEnvironment = { ...process.env };
 const { chromium } = await import(pathToFileURL(playwrightPath).href);
 const args = ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl'];
 // Vite normalizes configured port=0 to 5173 rather than asking the OS for a port.
@@ -31,8 +37,7 @@ try {
   const address = server.httpServer.address();
   if (!address || typeof address === 'string') throw new Error('No isolated TCP server');
   if (address.port === 5189) throw new Error('Refusing controller-owned port');
-  browser = await chromium.launch({ executablePath, headless: false, args, env: { ...process.env,
-    GALLIUM_DRIVER: 'd3d12', MESA_D3D12_DEFAULT_ADAPTER_NAME: 'NVIDIA', LD_LIBRARY_PATH: ['/usr/lib/wsl/lib', process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') } });
+  browser = await chromium.launch({ executablePath, headless: false, args, env: browserEnvironment });
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -50,7 +55,7 @@ try {
   await writeFile(resolve(output, 'capture.png'), screenshot);
   const report = { recordedAt: new Date().toISOString(), revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
     node: process.version, chromium: browser.version(), port: address.port, executablePath, args,
-    driverEnvironment: { GALLIUM_DRIVER: 'd3d12', MESA_D3D12_DEFAULT_ADAPTER_NAME: 'NVIDIA', LD_LIBRARY_PATH_PREFIX: '/usr/lib/wsl/lib' },
+    driverEnvironment: Object.fromEntries(driverEnvironmentNames.map((name) => [name, browserEnvironment[name] ?? null])),
     screenshotSha256: createHash('sha256').update(screenshot).digest('hex'), ...result };
   await writeFile(resolve(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report, null, 2));

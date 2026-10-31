@@ -1,0 +1,97 @@
+v22.23.2
+
+> solar-system-realistic-sim@0.0.0 test:browser
+> playwright test --project=chromium --project=firefox
+
+[WebServer] (node:116333) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 77 tests using 1 worker
+
+(node:116348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/browser/accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus (640ms)
+  ✓   2 [chromium] › tests/browser/accessibility.spec.ts:11:1 › 195px viewport reflows the production page (190ms)
+Actual application WebGL: {"renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"}
+  ✓   3 [chromium] › tests/browser/app-smoke.spec.ts:5:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin (17.0s)
+  ✓   4 [chromium] › tests/browser/app-smoke.spec.ts:26:1 › no-WebGL constructor failure exposes an accessible reload path and working drawer (8.9s)
+  ✓   5 [chromium] › tests/browser/app-smoke.spec.ts:31:1 › actual WebGL context loss stops rendering and leaves keyboard recovery available (17.5s)
+  ✓   6 [chromium] › tests/browser/camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal (484ms)
+  ✓   7 [chromium] › tests/browser/camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan (301ms)
+  ✓   8 [chromium] › tests/browser/camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation (391ms)
+  ✓   9 [chromium] › tests/browser/camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context (446ms)
+  ✓  10 [chromium] › tests/browser/experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model (2.3s)
+  ✓  11 [chromium] › tests/browser/experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy (451ms)
+  ✓  12 [chromium] › tests/browser/explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches (475ms)
+  ✓  13 [chromium] › tests/browser/explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate (322ms)
+  ✓  14 [chromium] › tests/browser/explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable (323ms)
+  ✓  15 [chromium] › tests/browser/frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump (12.9s)
+  ✓  16 [chromium] › tests/browser/frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene (24.7s)
+  ✓  17 [chromium] › tests/browser/frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames (20.1s)
+  -  18 [chromium] › tests/browser/frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+  ✓  19 [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions (11.1s)
+  ✓  20 [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions (358ms)
+  ✓  21 [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions (394ms)
+  ✓  22 [chromium] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions (338ms)
+  ✓  23 [chromium] › tests/browser/panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus (308ms)
+  ✓  24 [chromium] › tests/browser/panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes (268ms)
+  ✓  25 [chromium] › tests/browser/panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus (466ms)
+  ✓  26 [chromium] › tests/browser/panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable (218ms)
+  ✓  27 [chromium] › tests/browser/panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner (251ms)
+  ✓  28 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 195x422 (2.3s)
+  ✓  29 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 320x568 (2.2s)
+  ✓  30 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 390x844 (2.3s)
+  ✓  31 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 844x390 (2.3s)
+  ✓  32 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800 (2.3s)
+  ✓  33 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800 (2.2s)
+  ✓  34 [chromium] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900 (2.2s)
+  ✓  35 [chromium] › tests/browser/reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action (336ms)
+  ✓  36 [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update (13.7s)
+  ✓  37 [chromium] › tests/browser/shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs (12.5s)
+Native tab zoom evidence: {"factor":2,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":640,"height":436,"outerWidth":1280,"outerHeight":960,"dpr":2,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":640},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+  ✓  38 [chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus (27.8s)
+Native tab zoom evidence: {"factor":4,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":320,"height":218,"outerWidth":1280,"outerHeight":960,"dpr":4,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":320},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+  ✓  39 [chromium] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus (24.3s)
+  ✓  40 [chromium] › tests/browser/tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes (6ms)
+(node:123046) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  41 [firefox] › tests/browser/accessibility.spec.ts:3:1 › mobile drawer isolates the viewport and restores focus (1.2s)
+  ✓  42 [firefox] › tests/browser/accessibility.spec.ts:11:1 › 195px viewport reflows the production page (336ms)
+  ✓  43 [firefox] › tests/browser/camera.spec.ts:3:1 › real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal (643ms)
+  ✓  44 [firefox] › tests/browser/camera.spec.ts:19:1 › follow centers each frame, orbit/zoom persist and Free cam retains pan (413ms)
+  ✓  45 [firefox] › tests/browser/camera.spec.ts:27:1 › pointer drag damping and wheel still work alongside keyboard navigation (506ms)
+  ✓  46 [firefox] › tests/browser/camera.spec.ts:34:1 › single touch activates native camera buttons and retains mobile context (548ms)
+  ✓  47 [firefox] › tests/browser/experiment.spec.ts:3:1 › exact presentation and dispatch preserve source, energy and model (3.3s)
+  ✓  48 [firefox] › tests/browser/experiment.spec.ts:24:1 › events resolver owns preset selection, source notes and restored hypothesis copy (612ms)
+  ✓  49 [firefox] › tests/browser/explorer.spec.ts:3:1 › preferred selection survives filtering, no matches and native presentation switches (577ms)
+  ✓  50 [firefox] › tests/browser/explorer.spec.ts:15:1 › search announces only changed counts, card updates without a live region and solar output remains separate (895ms)
+  ✓  51 [firefox] › tests/browser/explorer.spec.ts:25:1 › unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable (454ms)
+  -  52 [firefox] › tests/browser/frame-lifecycle.spec.ts:74:3 › active app frame lifecycle › a foreground timestamp stall cannot create an unbounded local simulation jump
+  -  53 [firefox] › tests/browser/frame-lifecycle.spec.ts:90:3 › active app frame lifecycle › a nonfinite available worker state is quarantined without stopping the actual scene
+  -  54 [firefox] › tests/browser/frame-lifecycle.spec.ts:107:3 › active app frame lifecycle › a persistently failing stage cannot starve camera, render, HUD, or later frames
+  -  55 [firefox] › tests/browser/frame-lifecycle.spec.ts:142:3 › active app frame lifecycle › native hidden-tab resume discards hidden elapsed time
+  ✓  56 [firefox] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=false across both breakpoint directions (446ms)
+  ✓  57 [firefox] › tests/browser/panel.spec.ts:4:3 › remembers desktop=false, mobile=true across both breakpoint directions (494ms)
+  ✓  58 [firefox] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=false across both breakpoint directions (478ms)
+  ✓  59 [firefox] › tests/browser/panel.spec.ts:4:3 › remembers desktop=true, mobile=true across both breakpoint directions (498ms)
+  ✓  60 [firefox] › tests/browser/panel.spec.ts:26:1 › stale retained media queries cannot overwrite remembered state or lose modal focus (463ms)
+  ✓  61 [firefox] › tests/browser/panel.spec.ts:60:1 › disposed panels do not restore modality or move focus on later resizes (492ms)
+  ✓  62 [firefox] › tests/browser/panel.spec.ts:80:1 › modal Tab trap, search Escape precedence, backdrop and close use real focus (825ms)
+  ✓  63 [firefox] › tests/browser/panel.spec.ts:96:1 › focus guarding and empty trap recover to the panel when close is unavailable (432ms)
+  ✓  64 [firefox] › tests/browser/panel.spec.ts:105:1 › synchronous panel writes never hide the active focus owner (1.2s)
+  ✓  65 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 195x422 (2.6s)
+  ✓  66 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 320x568 (2.7s)
+  ✓  67 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 390x844 (2.5s)
+  ✓  68 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 844x390 (2.5s)
+  ✓  69 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1100x800 (2.6s)
+  ✓  70 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1101x800 (2.4s)
+  ✓  71 [firefox] › tests/browser/reflow.spec.ts:4:3 › reflow and reachable controls at 1440x900 (2.5s)
+  ✓  72 [firefox] › tests/browser/reflow.spec.ts:29:1 › 200 percent text sizing preserves access to the final action (587ms)
+  ✓  73 [firefox] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update (1.7s)
+  ✓  74 [firefox] › tests/browser/shell.spec.ts:3:1 › production HTML exposes the named controls and native inputs (1.0s)
+  -  75 [firefox] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 200% genuine tab zoom preserves reflow and keyboard focus
+  -  76 [firefox] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  -  77 [firefox] › tests/browser/tab-zoom.spec.ts:154:3 › native Chromium tab zoom › zoom evidence rejects viewport-only, CSS and pinch substitutes
+
+  8 skipped
+  69 passed (4.2m)

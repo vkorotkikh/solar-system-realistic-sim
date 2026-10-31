@@ -7,7 +7,7 @@ on:
 jobs:
   ui:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,9 +24,11 @@ jobs:
       - run: npm run verify:asteroid-gpu
       # Non-blocking until the suite passes on GPU-less runners: SwiftShader
       # lacks KHR_parallel_shader_compile, which the warmup specs require.
+      # Its own timeout keeps a slow run (~18 min there) from cancelling the job.
       - id: browser
         run: npm run test:browser
         continue-on-error: true
+        timeout-minutes: 25
       - uses: actions/upload-artifact@v4
         if: failure() || steps.browser.outcome == 'failure'
         with:

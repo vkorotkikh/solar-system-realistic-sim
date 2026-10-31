@@ -1,0 +1,22 @@
+v22.23.2
+
+> solar-system-realistic-sim@0.0.0 test:browser
+> playwright test tests/browser/scn049-kuiper-subscription.spec.ts --project=chromium --project=firefox --reporter=line
+
+[WebServer] (node:114522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 2 tests using 1 worker
+
+(node:114553) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/2] [chromium] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+(node:115182) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[2/2] [firefox] › tests/browser/scn049-kuiper-subscription.spec.ts:55:1 › SCN-049 rejects a stale native Kuiper snapshot without dropping its body update
+  2 passed (26.2s)

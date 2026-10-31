@@ -22,7 +22,13 @@ export default defineConfig({
         ? ['--no-sandbox', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl']
         : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
     } } },
-    { name: 'firefox', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'firefox' } },
+    { name: 'firefox', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'firefox', launchOptions: {
+      firefoxUserPrefs: {
+        'webgl.disabled': false,
+        'webgl.force-enabled': true,
+        'webgl.enable-webgl2': true,
+      },
+    } } },
     { name: 'webkit', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'webkit' } },
   ],
   webServer: {
