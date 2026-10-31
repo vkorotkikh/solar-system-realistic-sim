@@ -20,6 +20,31 @@ class EpisodeRunRecord:
     timing_ms: float
     error: str | None = None
     decision_payload: dict[str, Any] | None = None
+    expected_outcome: str = "verified"
+
+    def as_dict(self) -> dict[str, Any]:
+        payload = self.decision_payload or {}
+        candidates = [payload.get("recommendation"), *(payload.get("alternatives") or [])]
+        candidate_reasons = sorted({reason for candidate in candidates if isinstance(candidate, dict)
+            for reason in (candidate.get("verification") or {}).get("reasons", [])})
+        pending = [payload.get("trajectorySearch") or {}, *[
+            candidate.get("trajectorySearch") or {} for candidate in candidates if isinstance(candidate, dict)]]
+        terminations = set()
+        while pending:
+            node = pending.pop()
+            if isinstance(node, dict):
+                if node.get("terminationReason"):
+                    terminations.add(str(node["terminationReason"]))
+                pending.extend(node.values())
+            elif isinstance(node, list):
+                pending.extend(node)
+        diagnostics = {"candidateVerificationReasons": candidate_reasons,
+                       "searchTerminationReasons": sorted(terminations)}
+        if payload.get("error"):
+            diagnostics["requestRejection"] = payload["error"]
+        return {"episodeId": self.episode_id, "expectedOutcome": self.expected_outcome,
+                "status": self.status, "passed": self.verifier_passed,
+                "reasons": self.reasons, "diagnostics": diagnostics, "error": self.error}
 
 
 @dataclass
@@ -70,6 +95,7 @@ class EpisodeFamilyMetrics:
             "exception_count": self.exception_count,
             "average_score": self.average_score,
             "reason_counts": dict(self.reason_counts),
+            "episodes": [record.as_dict() for record in self.records],
         }
 
 

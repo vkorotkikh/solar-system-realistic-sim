@@ -410,3 +410,31 @@ def test_selected_none_returned_mass_rejected_before_rng_or_callback(monkeypatch
     with pytest.raises(ValueError):
         RiskService().run_monte_carlo(**{**RISK, "base_returned_payload_kg": None},
             base_departure_cargo_kg=100.0, reclose=forbidden)
+
+
+def test_real_lambert_planner_continuous_production_and_lossy_return_end_to_end():
+    from mission.epo.sample_episodes import FEASIBLE_MISSION_PAYLOAD
+
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan(deepcopy(FEASIBLE_MISSION_PAYLOAD))
+    assert result["status"] == "ok"
+    candidate = result["recommendation"]
+    assert candidate["verification"] == {"valid": True, "reasons": []}
+    mining, logistics = candidate["mining"], candidate["logistics"]
+    # Integrate production at 1*.18*.82 kg/day over ten days, not a single
+    # batch aged for the full campaign; cargo exists only after the outbound.
+    stock = (1.0 * .18 * .82) * -math.expm1(-.001 * 10.0) / .001
+    departure = stock * .96
+    survival = math.exp(-.001 * candidate["return"]["totalTimeDays"])
+    assert mining["departureStockKg"] == pytest.approx(stock)
+    assert mining["transportDelayDays"] == candidate["return"]["totalTimeDays"]
+    assert logistics["returnCargoKg"] == pytest.approx(departure)
+    assert [burn["cargoAddedKg"] for burn in logistics["burns"]] == pytest.approx([0, 0, departure, 0])
+    delivered = candidate["payloadClosure"]["returnedPayloadKg"]
+    assert delivered == pytest.approx(departure * survival)
+    assert 0 < delivered < departure < stock
+    assert candidate["risk"]["failureProbability"] == 0
+    assert 0 < candidate["risk"]["envelopes"]["returnedPayloadKg"]["p50"] <= delivered
+    assert candidate["risk"]["envelopes"]["returnedPayloadKg"]["p95"] <= delivered
+    objective = candidate["objectiveBreakdown"]
+    assert candidate["missionScore"] == pytest.approx(delivered - logistics["totalPropellantUsedKg"]
+        - objective["riskPenalty"] - objective["timePenalty"])

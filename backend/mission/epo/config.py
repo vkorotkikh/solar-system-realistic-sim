@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Literal, Mapping
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,9 @@ class EpisodeConfig:
     mission_payload: Dict[str, Any]
     family_name: str | None = None
     notes: str = ""
+    expected_outcome: Literal["verified", "vehicle_infeasible", "request_rejected"] = "verified"
+    expected_rejection_code: str | None = None
+    expected_rejection_body_id: str | None = None
 
     def with_payload(self, payload: Dict[str, Any]) -> "EpisodeConfig":
         return replace(self, mission_payload=payload)

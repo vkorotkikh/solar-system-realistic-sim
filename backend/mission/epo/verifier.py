@@ -27,6 +27,38 @@ class DemoVerifier:
             return False, ["invalid_result"], {"mission_score": None}
 
         status = str(result.get("status", ""))
+        if episode.expected_outcome == "request_rejected":
+            error = result.get("error") or {}
+            matches = (status == "request_rejected"
+                and episode.expected_rejection_code is not None
+                and episode.expected_rejection_body_id is not None
+                and error.get("code") == episode.expected_rejection_code
+                and error.get("context", {}).get("bodyId") == episode.expected_rejection_body_id)
+            return matches, ([] if matches else ["request_rejection_mismatch"]), {"mission_score": None}
+        if episode.expected_outcome == "vehicle_infeasible":
+            # This certifies only the evaluated candidates, never the unsearched
+            # trajectory space. Missing routes or exhausted search are unknown.
+            if status != "no_verified_candidate" or result.get("recommendation") is not None:
+                return False, [f"expected_vehicle_infeasible_got_{status or 'unknown'}"], {"mission_score": None}
+            candidates = result.get("alternatives") or []
+            evidence = bool(candidates)
+            for candidate in candidates:
+                verification = candidate.get("verification") or {}
+                logistics = candidate.get("logistics") or {}
+                unmet = self._coerce_float(logistics.get("totalUnmetDeltaV_km_s"))
+                burns = logistics.get("burns") or []
+                evidence = evidence and (
+                    verification.get("valid") is False
+                    and "vehicle_budget_not_feasible" in verification.get("reasons", [])
+                    and logistics.get("feasible") is False
+                    and unmet is not None and unmet > 0
+                    and logistics.get("returnCargoKg") == 0
+                    and bool(burns)
+                    and all(burn.get("cargoAddedKg") == 0 for burn in burns))
+            return evidence, ([] if evidence else ["missing_empty_vehicle_infeasibility_evidence"]), {"mission_score": None}
+        if episode.expected_outcome != "verified":
+            return False, ["invalid_expected_outcome"], {"mission_score": None}
+
         recommendation = result.get("recommendation") if isinstance(result.get("recommendation"), dict) else None
         embedded = recommendation.get("verification") if recommendation is not None else None
         verification = embedded if isinstance(embedded, dict) else None
