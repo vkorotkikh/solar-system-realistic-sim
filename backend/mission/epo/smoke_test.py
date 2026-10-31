@@ -8,18 +8,20 @@ import sys
 from typing import Any, Sequence
 
 from . import EpisodeRunner, SAMPLE_EPISODE_FAMILIES
+from .sample_episodes import SMOKE_EPISODE_FAMILIES
 
 
 def _family_lookup(names: Sequence[str] | None) -> list:
     if not names:
-        return list(SAMPLE_EPISODE_FAMILIES)
+        return list(SMOKE_EPISODE_FAMILIES)
 
     normalized = {name.strip().lower() for name in names}
-    families = [family for family in SAMPLE_EPISODE_FAMILIES if family.name in normalized]
-    missing = sorted(normalized.difference(family.name for family in SAMPLE_EPISODE_FAMILIES))
+    available = (*SMOKE_EPISODE_FAMILIES, *SAMPLE_EPISODE_FAMILIES)
+    families = [family for family in available if family.name in normalized]
+    missing = sorted(normalized.difference(family.name for family in available))
     if missing:
         raise ValueError(f"Unknown families: {', '.join(missing)}. Available: "
-                         f"{', '.join(family.name for family in SAMPLE_EPISODE_FAMILIES)}")
+                         f"{', '.join(family.name for family in available)}")
     return families
 
 
@@ -34,7 +36,8 @@ def main() -> None:
     parser.add_argument(
         "--family",
         action="append",
-        help="Filter to one or more families (repeatable). Defaults to all."
+        help="Repeatable family selector. Default: contracts (positive and explicit negatives). "
+             "Original stress families: mining_core, outer_reacher, return_pressure; their failures remain failures."
     )
     parser.add_argument("--compact", action="store_true", help="Emit compact JSON output.")
     args = parser.parse_args()
