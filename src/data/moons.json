@@ -8316,28 +8316,6 @@
     "reference": "45"
   },
   {
-    "id": 378,
-    "planet": "Uranus",
-    "name": "Puck",
-    "iauCode": "715",
-    "ephemeris": "URA182",
-    "frame": "equatorial",
-    "epochTdb": "2000-01-01.5",
-    "aKm": 86004,
-    "e": 0,
-    "argPeriapsisDeg": 0,
-    "meanAnomalyDeg": 50.1,
-    "inclinationDeg": 0.3,
-    "ascendingNodeDeg": 216.1,
-    "periodDays": 0.761833,
-    "apsisPrecessionYears": 2.226,
-    "nodePrecessionYears": 4.454,
-    "poleRaDeg": null,
-    "poleDecDeg": null,
-    "poleTiltDeg": null,
-    "reference": "45"
-  },
-  {
     "id": 379,
     "planet": "Uranus",
     "name": "Cordelia",

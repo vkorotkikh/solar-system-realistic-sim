@@ -1,4 +1,4 @@
-/** All-424 production-asset accounting; missing fits or references fail the gate. */
+/** All-423 production-asset accounting; missing fits or references fail the gate. */
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
 import rawMoons from '../data/moons.json';
@@ -18,7 +18,7 @@ const parsed = { bodies: await loadMoonEphemerides({
   lazyOptions: { fetch: publicShardFetch }
 }) };
 const catalog = createSolarSystemCatalog({ moonEphemerides: parsed.bodies });
-const references = { ...oracle.bodies } as Record<string, {
+const references = Object.fromEntries(rawMoons.map(moon => [String(moon.id), oracle.bodies[String(moon.id) as keyof typeof oracle.bodies]])) as Record<string, {
   status: string; states?: { jd_tdb: number; position_au: number[]; velocity_au_per_day: number[] }[];
 }>;
 const spkMoon = rawMoons.find(moon => String(moon.iauCode) === '75052')!;
@@ -35,10 +35,12 @@ references[String(daphnisMoon.id)] = {
 const AU_KM = 149597870.7;
 
 describe('SCN-043 independent catalog repair gates', () => {
-  it('retains all 424 catalog records, including both source exceptions and duplicate Puck', () => {
-    expect(rawMoons).toHaveLength(424);
+  it('retains all 423 active source identities and projects the historical 424-row capture', () => {
+    expect(rawMoons).toHaveLength(423);
+    expect(Object.keys(oracle.bodies)).toHaveLength(424);
+    expect(oracle.bodies["378"].states).toEqual(oracle.bodies["388"].states);
     expect(Object.keys(parsed.bodies)).toHaveLength(423);
-    expect(Object.keys(references)).toHaveLength(424);
+    expect(Object.keys(references)).toHaveLength(423);
     for (const moon of rawMoons) expect(references[String(moon.id)]).toBeDefined();
   });
   for (const moon of rawMoons) {
@@ -55,7 +57,7 @@ describe('SCN-043 independent catalog repair gates', () => {
       const positionLimit = newlyRepaired ? Math.min(500, .001 * moon.aKm) : fit.validation.accuracyLimits.positionKm;
       const velocityLimit = newlyRepaired ? 10 : fit.validation.accuracyLimits.velocityMPerS;
       if (newlyRepaired) {
-        // Duplicate Puck records share NAIF 715 and a model with the stricter cap.
+        // Puck retains its stricter published cap after retiring the older source row.
         expect(fit.provenance.targetId).toBe(String(moon.iauCode));
         expect(fit.validation.accuracyLimits.positionKm).toBeGreaterThan(0);
         expect(fit.validation.accuracyLimits.positionKm).toBeLessThanOrEqual(positionLimit);

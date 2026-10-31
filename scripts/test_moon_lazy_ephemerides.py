@@ -12,6 +12,19 @@ def implementation():
     except ModuleNotFoundError: pytest.fail('Pinned lazy model generator is not implemented')
 
 
+def test_replacing_a_content_addressed_generation_retires_obsolete_shards_atomically(tmp_path):
+    from unittest.mock import patch
+    import catalog_sources as sources
+    output = tmp_path / 'shards'
+    sources.publish_directory(output, {'old.json': b'old', 'manifest.json': b'old-index'})
+    with patch.object(sources, '_exchange_directories', side_effect=OSError('exchange failed')):
+        with pytest.raises(OSError):
+            sources.publish_directory(output, {'new.json': b'new', 'manifest.json': b'new-index'}, preserve_existing=False)
+    assert {p.name for p in output.iterdir()} == {'old.json', 'manifest.json'}
+    sources.publish_directory(output, {'new.json': b'new', 'manifest.json': b'new-index'}, preserve_existing=False)
+    assert {p.name for p in output.iterdir()} == {'new.json', 'manifest.json'}
+
+
 def groups():
     return {'source':np.array([[2451545.125,-0.,1e-300,3.,4.,5.,6.,7.],
                                [2451549.125,.1,2.,3.,4.,5.,6.,7.]],dtype='<f8'),
@@ -49,13 +62,15 @@ def test_complete_manifest_and_existing_artifact_hashes():
     module = implementation()
     moons, oracle, base, artifacts, aliases = module.layout()
     manifest = json.loads((module.INPUTS / 'manifest.json').read_bytes())
-    assert len(moons) == len(oracle['bodies']) == 424
+    assert len(moons) == 423
+    assert len(oracle['bodies']) == 424
+    assert oracle['bodies']['378']['states'] == oracle['bodies']['388']['states']
     assert len(base) == 13
     assert len(aliases) == len(manifest['bodies']) == 410
-    assert sum(len(rows) for rows in aliases.values()) == 411
+    assert sum(len(rows) for rows in aliases.values()) == 410
     assert manifest['complete'] is True
     assert set(manifest['bodies']) == set(aliases)
-    assert [row['id'] for row in aliases['puck']] == [378, 388]
+    assert [row['id'] for row in aliases['puck']] == [388]
     assert len(artifacts) == 5
 
 

@@ -17,6 +17,7 @@ from urllib.parse import urlencode, parse_qsl
 import numpy as np
 import repair_catalog_moon_ephemeris as fit
 from generate_moon_repairs import encoded, publish, sha, ensure_disjoint
+from catalog_sources import publish_directory
 
 INPUTS=fit.ROOT/'scripts/moon-lazy-inputs'
 OUTPUT=fit.ROOT/'public/moon-ephemerides'
@@ -33,7 +34,7 @@ QUALITY='Captured JPL numerical solution; interpolation limits are not observati
 
 def layout():
     moons=json.loads(fit.CATALOG.read_bytes()); oracle=json.loads(fit.ORACLE.read_bytes())
-    if len(moons)!=424 or len({m['id'] for m in moons})!=424: raise ValueError('Catalog denominator changed')
+    if len(moons)!=423 or len({m['id'] for m in moons})!=423 or len({(m['planet'],m['iauCode']) for m in moons})!=423: raise ValueError('Catalog denominator changed')
     base={}; artifacts=[]
     for name,digest in BASE_HASHES.items():
         raw=(fit.ROOT/'src/data'/name).read_bytes()
@@ -45,9 +46,9 @@ def layout():
     for moon in moons:
         key=moon['name'].lower()
         if key not in base: aliases.setdefault(key,[]).append(moon)
-    if len(base)!=13 or len(aliases)!=410 or sum(map(len,aliases.values()))!=411:
-        raise ValueError('Expected 13 base records and 411 lazy records / 410 models')
-    if [key for key,rows in aliases.items() if len(rows)>1]!=['puck']:
+    if len(base)!=13 or len(aliases)!=410 or sum(map(len,aliases.values()))!=410:
+        raise ValueError('Expected 13 base records and 410 lazy records / 410 models')
+    if any(len(rows)!=1 for rows in aliases.values()):
         raise ValueError('Unexpected shared-model identity')
     return moons,oracle,base,artifacts,aliases
 
@@ -187,9 +188,10 @@ def pin_inputs(directory=INPUTS,cache=fit.CACHE):
 
 
 def generate_one(key,recipe,directory,records,oracle):
-    target=fit.original.Target(**recipe['target']); cap=min(500.,*(.001*m['aKm'] for m in records))
+    target=fit.original.Target(**recipe['target']); ceiling=min(500.,*(.001*m['aKm'] for m in records))
+    cap=target.max_position_error_km
     if (recipe['catalogIds']!=[m['id'] for m in records] or target.body_id!=key or
-            target.max_position_error_km!=cap or target.max_velocity_error_m_per_s!=10 or
+            not 0 < cap <= ceiling or target.max_velocity_error_m_per_s!=10 or
             any(str(m['iauCode'])!=target.command or m['planet']!=target.center_name for m in records)):
         raise ValueError('Catalog identity or fixed cap changed')
     for evidence in recipe['originalResponses']:
@@ -240,7 +242,7 @@ def build(directory=INPUTS,output=OUTPUT,write=False):
     if (pinned['schemaVersion']!=1 or pinned['complete'] is not True or set(pinned['bodies'])!=set(aliases) or
             pinned['fields']!=list(fit.original.ElementRow.__dataclass_fields__)):
         raise ValueError('Incomplete or incompatible pinned 410-model source set')
-    index={'schemaVersion':1,'kind':'moon-ephemeris-shards-v1','catalogRecordCount':424,'lazyRecordCount':411,
+    index={'schemaVersion':1,'kind':'moon-ephemeris-shards-v1','catalogRecordCount':423,'lazyRecordCount':410,
            'lazyModelCount':410,'baseArtifacts':artifacts,'sourceInputManifestSha256':sha(manifest_raw),'records':[],'bodies':{}}
     pending=[]; raw_total=0
     for n,(key,records) in enumerate(sorted(aliases.items()),1):
@@ -265,12 +267,11 @@ def build(directory=INPUTS,output=OUTPUT,write=False):
     raw=encoded(index)
     if len(raw)>1024*1024: raise ValueError('Lazy index exceeds 1 MiB budget')
     if write:
-        for name,value in pending: publish(output/name,value)
-        publish(output/'manifest.json',raw)
+        publish_directory(output, {**dict(pending), 'manifest.json':raw}, preserve_existing=False)
     elif (output/'manifest.json').read_bytes()!=raw: raise ValueError('Published lazy index differs')
     expected={entry['path'] for entry in index['bodies'].values()}|{'manifest.json'}
     if {p.name for p in output.glob('*.json')}!=expected: raise ValueError('Unexpected or missing public shard files')
-    print(json.dumps({'catalogRecords':424,'lazyRecords':411,'lazyShards':410,'manifestBytes':len(raw),
+    print(json.dumps({'catalogRecords':423,'lazyRecords':410,'lazyShards':410,'manifestBytes':len(raw),
                       'shardBytes':raw_total,'offlineByteIdentical':not write}),flush=True)
     return index
 
