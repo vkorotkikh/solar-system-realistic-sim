@@ -1,7 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
+import { retireWebGlPage } from './webgl-cleanup';
 // Apply the existing real-WebGL budget before browser/context fixtures start.
 // test.setTimeout inside a body cannot cover software-GPU context setup.
 test.describe.configure({ timeout: 90_000 });
+test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
 test('decorative stars remain visible with close-focus clip planes and behind bodies', async ({ page }) => {
   await controlExternalRequests(page);
   await page.route(/\/src\/main\.ts(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: '' }));
