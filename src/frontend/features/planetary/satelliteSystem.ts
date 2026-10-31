@@ -231,6 +231,11 @@ function parseTleElements(
   category: string,
   primaryModel: PrimaryModel
 ): NormalizedSatellite | null {
+  const catalogFields = [line1.slice(2, 7).trim(), line2.slice(2, 7).trim()];
+  if (!catalogFields.every(value => /^[a-z0-9]{1,5}$/i.test(value))) return null;
+  const [catalogId, secondCatalogId] = catalogFields.map(value => /^\d+$/.test(value)
+    ? String(Number(value)) : value.toLowerCase());
+  if (catalogId !== secondCatalogId) return null;
   const epochYear = Number(line1.slice(18, 20));
   const epochDay = Number(line1.slice(20, 32));
   const iDeg = Number(line2.slice(8, 16));
@@ -258,7 +263,9 @@ function parseTleElements(
   const aKm = Math.cbrt(primaryModel.muKm3S2 / (meanMotionRadSec * meanMotionRadSec));
 
   return {
-    id: `sat-${sanitizeId(name)}`,
+    // Feed-local counters and display names are not physical identities. TLE
+    // IDs intentionally migrate to catalog identity for named records as well.
+    id: `sat-norad-${catalogId}`,
     name,
     category,
     epochJd: tleEpochToJulian(epochYear, epochDay),
