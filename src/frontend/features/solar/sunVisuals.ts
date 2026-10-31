@@ -1671,21 +1671,25 @@ const SOLAR_WIND_CROSSING_SEC_AT_400_KMS = 14;
 const KMS_TO_AU_PER_DAY = 86_400 / AU_KM;
 
 /**
- * Faint solar-wind outflow. Each particle rides a Parker-spiral streamline anchored
- * to one of the backend's spiral arms: it leaves the source surface at that arm's
- * longitude (plus a fixed offset within the arm's sector) at its own latitude, flows
- * outward at the arm's wind speed and lags by omega / v * (r - r_source).
+ * Faint solar-wind outflow on Parker-spiral streamlines. Streamlines leave the source
+ * surface at fixed solar longitudes and latitudes; each frame a streamline takes the
+ * wind speed of the nearest backend spiral arm, its particles advance outward at that
+ * speed and trail by omega / v * (r - r_source), the backend's own Parker formula.
  */
-export function createSolarWindLayer(count = 4000): Points {
+export function createSolarWindLayer(count = 4000, streamlines = 48): Points {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
-  const lonOffsets = new Float32Array(count);
+  const lons = new Float32Array(count);
   const sinLats = new Float32Array(count);
-  const phases = new Float32Array(count);
+  const progress = new Float32Array(count);
+  const lineLons = Array.from({ length: streamlines }, () => Math.random() * TWO_PI);
+  const lineSinLats = Array.from({ length: streamlines }, () => Math.random() * 2 - 1);
   for (let i = 0; i < count; i += 1) {
-    lonOffsets[i] = Math.random() - 0.5;
-    sinLats[i] = Math.random() * 2 - 1;
-    phases[i] = Math.random();
+    // Particles share their streamline with a little scatter, so a stream has width.
+    const line = i % streamlines;
+    lons[i] = lineLons[line] + (Math.random() - 0.5) * 0.03;
+    sinLats[i] = Math.max(-1, Math.min(1, lineSinLats[line] + (Math.random() - 0.5) * 0.03));
+    progress[i] = Math.random();
   }
 
   const geometry = new BufferGeometry();
@@ -1694,17 +1698,21 @@ export function createSolarWindLayer(count = 4000): Points {
   const material = new PointsMaterial({
     alphaMap: createSoftDiscAlphaMap(),
     vertexColors: true,
-    size: 0,
+    // Constant screen size: the filled range reaches past the camera, and perspective
+    // sizing would balloon the particles that pass close to it.
+    size: 2.5,
+    sizeAttenuation: false,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.55,
     blending: AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true
+    depthWrite: false
   });
 
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-solar-wind';
-  points.userData.solarWind = { count, positions, colors, lonOffsets, sinLats, phases };
+  points.userData.solarWind = {
+    count, positions, colors, lons, sinLats, progress, lastTimeSec: null as number | null
+  };
   // Positions span up to 3 AU and move every frame.
   points.frustumCulled = false;
   points.renderOrder = 5;
@@ -1740,20 +1748,36 @@ export function updateSolarWindLayer(
   const sourceRaw = Number(spiral?.source_surface_radii);
   const sourceAu = (Number.isFinite(sourceRaw) && sourceRaw > 1 ? sourceRaw : 2.5) * SOLAR_RADIUS_AU;
   // Start outside the displayed (possibly enlarged) Sun, like the spiral lines (D3),
-  // and fill about three camera distances, up to the backend's 3 AU extent.
+  // and fill about one and a half camera distances, up to the backend's 3 AU extent.
   const innerAu = Math.max(sourceAu, sunRadiusAu * 1.05);
   const cameraDistanceAu = camera?.position
     ? Math.hypot(Number(camera.position.x) || 0, Number(camera.position.y) || 0, Number(camera.position.z) || 0)
     : 1;
-  const outerAu = Math.max(innerAu * 2, Math.min(3, cameraDistanceAu * 3));
-  const sector = TWO_PI / arms.length;
+  const outerAu = Math.max(innerAu * 2, Math.min(3, cameraDistanceAu * 1.5));
+  // Advance by the clock's step, never by absolute time, so a speed change from a
+  // backend poll alters the rate without moving any particle.
+  const dt = wind.lastTimeSec === null ? 0 : Math.max(0, timeSec - wind.lastTimeSec);
+  wind.lastTimeSec = timeSec;
+  const armCos = arms.map(arm => Math.cos(arm.lon));
+  const armSin = arms.map(arm => Math.sin(arm.lon));
 
   for (let i = 0; i < wind.count; i += 1) {
-    const arm = arms[i % arms.length];
-    const progress = ((timeSec * arm.kms) / (400 * SOLAR_WIND_CROSSING_SEC_AT_400_KMS) + wind.phases[i]) % 1;
+    const lon0 = wind.lons[i];
+    const cos0 = Math.cos(lon0);
+    const sin0 = Math.sin(lon0);
+    let arm = arms[0];
+    let best = -Infinity;
+    for (let a = 0; a < arms.length; a += 1) {
+      const alignment = cos0 * armCos[a] + sin0 * armSin[a];
+      if (alignment > best) {
+        best = alignment;
+        arm = arms[a];
+      }
+    }
+    const progress = (wind.progress[i] + (dt * arm.kms) / (400 * SOLAR_WIND_CROSSING_SEC_AT_400_KMS)) % 1;
+    wind.progress[i] = progress;
     const rAu = innerAu + (outerAu - innerAu) * progress;
-    const lon = arm.lon + wind.lonOffsets[i] * sector
-      - (omegaRadDay / (arm.kms * KMS_TO_AU_PER_DAY)) * (rAu - sourceAu);
+    const lon = lon0 - (omegaRadDay / (arm.kms * KMS_TO_AU_PER_DAY)) * (rAu - sourceAu);
     const sinLat = wind.sinLats[i];
     const cosLat = Math.sqrt(Math.max(0, 1 - sinLat * sinLat));
     const base = i * 3;
@@ -1761,18 +1785,18 @@ export function updateSolarWindLayer(
     wind.positions[base + 1] = rAu * cosLat * Math.sin(lon);
     wind.positions[base + 2] = rAu * sinLat;
     // Fade in leaving the source and out toward the edge of the filled range. Slow
-    // wind is warm and fast wind cool, on the spiral lines' 300-860 km/s scale.
+    // wind is amber and fast wind cyan-blue (tinted apart from the white starfield),
+    // on the spiral lines' 300-860 km/s scale.
     const fade = Math.max(0, Math.min(1, progress / 0.1, (1 - progress) / 0.3));
     const fast = clampUnit((arm.kms - 300) / 560);
-    wind.colors[base] = fade * (1 - 0.4 * fast);
-    wind.colors[base + 1] = fade * (0.82 - 0.02 * fast);
-    wind.colors[base + 2] = fade * (0.6 + 0.4 * fast);
+    wind.colors[base] = fade * (1 - 0.5 * fast);
+    wind.colors[base + 1] = fade * (0.72 + 0.03 * fast);
+    wind.colors[base + 2] = fade * (0.45 + 0.55 * fast);
   }
 
   const geometry = solarWindLayer.geometry;
   geometry.getAttribute('position').needsUpdate = true;
   geometry.getAttribute('color').needsUpdate = true;
-  (solarWindLayer.material as PointsMaterial).size = (outerAu - innerAu) * 0.004;
 }
 
 export function updateSunEruptionLayerFromBlendView({
