@@ -940,9 +940,14 @@ export class OrbitalSatelliteSystem {
   applyWorkerSnapshot(jd: number): boolean {
     if (!this.workerSnapshot) return false;
     const snapshot = this.workerSnapshot;
-    if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
+    if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
     if (snapshot.count !== this.satellites.length) return false;
     if (snapshot.applyJ2 !== this.useJ2) return false;
+    // Validate the entire snapshot before touching any marker. A bad later
+    // coordinate must not leave earlier markers at a partially applied epoch.
+    if (!(snapshot.positions0 instanceof Float32Array) || !(snapshot.positions1 instanceof Float32Array)
+      || snapshot.positions0.length !== snapshot.count * 3 || snapshot.positions1.length !== snapshot.count * 3
+      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return false;
 
     const span = snapshot.jd1 - snapshot.jd0;
     if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return false;

@@ -65,3 +65,22 @@ it('keeps circular-orbit interpolation error below 0.55 km within the period bou
     expect(errorKm).toBeLessThan(.55);
   }
 });
+
+it.each(['short-start', 'short-end', 'nonfinite-start', 'nonfinite-end'])(
+  'rejects %s before any marker writes and permits exact propagation fallback', malformed => {
+    const value = system();
+    value.satellites.push({ ...value.satellites[0], id: 'second' });
+    value.currentPositionsAu = new Float32Array([11, 12, 13, 14, 15, 16]);
+    const start = new Float32Array([1, 2, 3, 4, 5, 6]);
+    const end = new Float32Array([7, 8, 9, 10, 11, 12]);
+    if (malformed === 'nonfinite-start') start[4] = NaN;
+    if (malformed === 'nonfinite-end') end[4] = Infinity;
+    value.workerSnapshot = { jd0: epoch, jd1: epoch + period / 256, count: 2, applyJ2: false,
+      positions0: malformed === 'short-start' ? start.slice(0, 3) : start,
+      positions1: malformed === 'short-end' ? end.slice(0, 3) : end };
+    expect(value.applyWorkerSnapshot(epoch)).toBe(false);
+    expect(Array.from(value.currentPositionsAu)).toEqual([11, 12, 13, 14, 15, 16]);
+    value.update(epoch);
+    expect(Array.from(value.currentPositionsAu).every(Number.isFinite)).toBe(true);
+    expect(Array.from(value.currentPositionsAu.slice(0, 3))).toEqual(Array.from(value.currentPositionsAu.slice(3)));
+  });
