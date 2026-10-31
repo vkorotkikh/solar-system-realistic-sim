@@ -15,6 +15,11 @@ J2000_JD = 2451545.0
 CYCLE_25_START_JD = 2458849.5
 CYCLE_DAYS = 132.0 * 30.44
 REGION_MODEL_VERSION = "persistent-bipoles-v3"
+# Adopted deg/day approximation to Table 1 Doppler residuals (1967-1987):
+# (2.972, -0.484, -0.361) microrad/s; DOI 10.1086/168467.
+# This is a feature-tracking fit, not a calibration of all plasma/spot motion.
+DIFFERENTIAL_ROTATION_COEFFICIENTS_DEG_DAY = (14.713, -2.396, -1.787)
+DIFFERENTIAL_ROTATION_REFERENCE = "10.1086/168467"
 
 
 @dataclass(frozen=True)
@@ -52,7 +57,8 @@ def build_active_regions(seed: int = 17, base_tube_count: int = 420) -> tuple[Ac
 
 def differential_rotation_rad_day(lat: float) -> float:
     sin2 = math.sin(lat) ** 2
-    return math.radians(14.713 - 2.396 * sin2 - 1.787 * sin2**2)
+    a, b, c = DIFFERENTIAL_ROTATION_COEFFICIENTS_DEG_DAY
+    return math.radians(a + b * sin2 + c * sin2**2)
 
 
 def region_lifetime(region: ActiveRegionSeed, jd: float) -> tuple[float, float, float]:
