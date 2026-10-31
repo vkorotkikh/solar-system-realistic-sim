@@ -23,6 +23,9 @@ test('build packages notices after verifying the exact approved maps', () => fix
   assert.equal(result.textureCount, 8);
   assert.match(await readFile(path.join(root, 'public/legal/NOTICE.md'), 'utf8'), /CC BY-NC/);
   assert.match(await readFile(path.join(root, 'public/legal/THREE-LICENSE.txt'), 'utf8'), /MIT/);
+  const policy = await readFile(path.join(root, 'public/legal/DISTRIBUTION-POLICY.md'), 'utf8');
+  assert.match(policy, /https:\/\/github\.com\/vkorotkikh\/solar-system-realistic-sim\/blob\/main\/LICENSE/);
+  assert.doesNotMatch(policy, /\]\(\.\.\//);
 }));
 
 test('unlisted public maps fail before publishing notices', () => fixture(async root => {

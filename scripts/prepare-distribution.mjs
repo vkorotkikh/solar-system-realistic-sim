@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CURATED_MOON_TEXTURE_CATALOG } from '../src/frontend/features/planetary/moonTextureCatalog.ts';
@@ -39,10 +39,20 @@ export async function prepareDistribution(root) {
     ['node_modules/three/LICENSE', 'THREE-LICENSE.txt'],
   ];
   // Check every input before writing any output.
-  await Promise.all(notices.map(([source]) => readFile(path.join(root, source))));
+  const contents = await Promise.all(notices.map(([source]) => readFile(path.join(root, source), 'utf8')));
   const output = path.join(root, 'public/legal');
   await mkdir(output, { recursive: true });
-  for (const [source, destination] of notices) await cp(path.join(root, source), path.join(output, destination));
+  for (const [index, [source, destination]] of notices.entries()) {
+    // A notice copied into /legal is no longer beside its repository siblings.
+    // Keep external links and anchors; resolve repository links to their source
+    // locations so the standalone build's credits remain navigable.
+    const sourceUrl = `https://github.com/vkorotkikh/solar-system-realistic-sim/blob/main/${source}`;
+    const content = source.endsWith('.md')
+      ? contents[index].replace(/\]\((?![a-z]+:|#)([^)]+)\)/gi,
+        (_match, target) => `](${new URL(target, sourceUrl).href})`)
+      : contents[index];
+    await writeFile(path.join(output, destination), content);
+  }
   return { textureCount: entries.length, notices: notices.length };
 }
 
