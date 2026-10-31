@@ -26,13 +26,13 @@
   },
   "generated_report": {
     "file": "report.json",
-    "sha256": "1a6b2b0f955f1da1207b1b9b142e8f99d42446d903edbd791665cd5571f96a42",
+    "sha256": "4372c088bfea15c8da421eb28ab737a2aa52131e0fcda230ef078d42d736a53d",
     "generator": "backend/tests/solar_observational_acceptance.py",
     "acceptance_passed": true
   },
   "acceptance_scope": [
     "Exact compressed and expanded observation identity",
-    "Production GONG parser, WCS, retained-artifact-attested monopole correction, provenance and PFSS ingestion; observed geometry remains unresolved and non-renderable",
+    "Production GONG parser, WCS, retained-artifact-attested monopole correction, provenance and PFSS ingestion; observed provider-native Carrington geometry is validated and remains non-renderable without a scene adapter",
     "Declared 79 degree Carrington longitude adapter against independent WSA coefficients",
     "Production native-spectral degree-90 PFSS/WSA API on pinned provider coefficients against provider topology, expansion, and boundary-distance planes"
   ],
@@ -46,7 +46,7 @@
   ],
   "real_map_application_diagnostic": {
     "file": "real_map_application_diagnostic.json",
-    "sha256": "0e4e3abcfab0e744345607743280cfca7628a85e9961ab29d15e389b04ac16cb",
+    "sha256": "731a2103f288e950efe4319af3481ac2f1ee1f1c422ead9a2689433f78e9723a",
     "required_degree90_admitted": false,
     "admitted_degree_feature_budget_results": {
       "64": false,

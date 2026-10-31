@@ -25,6 +25,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 import numpy as np
+
 from astropy.time import Time, TimeDelta
 
 from . import gong_magnetogram as gong
@@ -38,7 +39,7 @@ from .solar_active_regions import (
     region_lifetime,
     region_polarity_dirs,
 )
-from .solar_frames import synthetic_geometry_frame, unresolved_observed_geometry_frame
+from .solar_frames import observed_carrington_geometry_frame, synthetic_geometry_frame
 from .solar_time import (
     CARRINGTON_MEAN_SYNODIC_PERIOD_DAYS,
     CARRINGTON_ROTATION_1_EPOCH_JD_TT,
@@ -65,6 +66,39 @@ GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))  # For Fibonacci spiral seeding
 
 WSA_MODEL_VERSION = "wsa_inspired_v1"
 WSA_CALIBRATION_STATUS = "unvalidated"
+
+
+def _wsa_provider_feature_evidence() -> dict[str, object]:
+    """Return bounded provider-feature evidence without a speed claim."""
+
+    return {
+        "status": "bounded_retained_epoch_feature_match",
+        "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+        "evidence_scope": "topology_expansion_boundary_features_only",
+        "observation_sha256": (
+            "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8"
+        ),
+        "provider_wsa_sha256": (
+            "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035"
+        ),
+        "provider": (
+            "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, "
+            "and left edge to retained NSO/GONG zqs"
+        ),
+        "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+        "independent_speed_output_available": False,
+        "current_input_certified": False,
+        "operational_forecast_validated": False,
+        "excluded_claims": (
+            "independent speed calibration",
+            "operational WSA equivalence",
+            "SCS equivalence",
+            "1-AU wind forecast accuracy",
+            "live-provider availability",
+            "solar-cycle generalization",
+            "scene-coordinate rendering",
+        ),
+    }
 WSA_LOOKUP_MAX_CELL_DIAGONALS = 2.0
 WSA_RADIAL_FIELD_FLOOR = 1e-15
 
@@ -801,6 +835,7 @@ def compute_wsa_velocity_map(
     return {
         "model": WSA_MODEL_VERSION,
         "calibration_status": WSA_CALIBRATION_STATUS,
+        "provider_feature_evidence": _wsa_provider_feature_evidence(),
         "formula": "267.5 + 410/max(1,fs)^0.4*(1-0.8*exp(-(theta_b/0.045)^3))",
         "angle_units": "radian",
         "velocity_units": "km/s",
@@ -1374,7 +1409,14 @@ class PFSSCache:
             "geometry_frame": (
                 synthetic_geometry_frame(snapshot.snapshot_id.jd_tdb)
                 if snapshot.source_kind == "synthetic"
-                else unresolved_observed_geometry_frame()
+                else observed_carrington_geometry_frame(
+                    provider=snapshot.provenance.provider,
+                    product=snapshot.provenance.product_token,
+                    map_left_edge_longitude_deg=map_left_edge_longitude,
+                    map_left_edge_carrington_rotation=map_left_edge_cr,
+                    row_order=snapshot.grid.row_order,
+                    grid_convention=snapshot.grid.convention,
+                )
             ),
             "fallback_reason": fallback_reason,
             "snapshot_id": _serialize_snapshot_id(snapshot.snapshot_id),
@@ -1908,6 +1950,9 @@ class PFSSCache:
                 "model": wsa_result.get("model", WSA_MODEL_VERSION),
                 "calibration_status": wsa_result.get(
                     "calibration_status", WSA_CALIBRATION_STATUS,
+                ),
+                "provider_feature_evidence": copy.deepcopy(
+                    wsa_result.get("provider_feature_evidence")
                 ),
                 "valid_fraction": wsa_result.get("valid_fraction", 0.0),
                 "indeterminate_fraction": wsa_result.get(

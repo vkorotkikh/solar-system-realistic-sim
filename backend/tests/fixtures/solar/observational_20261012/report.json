@@ -9,6 +9,27 @@
       "coverage_fraction": 0.7337962962962963,
       "indeterminate_fraction": 0.0,
       "model": "wsa_inspired_v1",
+      "provider_feature_evidence": {
+        "corpus": "nso-gong-zqs-wsa-v6.2-20261012T1744",
+        "current_input_certified": false,
+        "evidence_scope": "topology_expansion_boundary_features_only",
+        "excluded_claims": [
+          "independent speed calibration",
+          "operational WSA equivalence",
+          "SCS equivalence",
+          "1-AU wind forecast accuracy",
+          "live-provider availability",
+          "solar-cycle generalization",
+          "scene-coordinate rendering"
+        ],
+        "independent_speed_output_available": false,
+        "observation_sha256": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+        "operational_forecast_validated": false,
+        "provider": "NASA/CCMC WSA_V6.2 FILELIST mrzql matched by epoch, rotation, and left edge to retained NSO/GONG zqs",
+        "provider_wsa_sha256": "5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a54499ec7bf192035",
+        "scope": "topology, expansion, and boundary-feature agreement at one retained epoch",
+        "status": "bounded_retained_epoch_feature_match"
+      },
       "quality_reasons": [
         "incomplete_source_surface_coverage"
       ],

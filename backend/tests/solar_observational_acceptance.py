@@ -315,6 +315,7 @@ def application_wsa_acceptance(
         "application_metadata": {
             "model": wsa["model"],
             "calibration_status": wsa["calibration_status"],
+            "provider_feature_evidence": wsa.get("provider_feature_evidence"),
             "valid_fraction": wsa["valid_fraction"],
             "indeterminate_fraction": wsa["indeterminate_fraction"],
             "coverage_fraction": wsa["coverage_fraction"],

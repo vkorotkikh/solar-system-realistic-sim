@@ -24,7 +24,9 @@ export default defineConfig({
   projects: [
     { name: 'chromium', testIgnore: '**/tab-zoom.spec.ts', use: chromiumUse },
     { name: 'chromium-tab-zoom', testMatch: '**/tab-zoom.spec.ts', use: chromiumUse },
-    { name: 'firefox', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'firefox' } },
+    { name: 'firefox', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'firefox', launchOptions: { firefoxUserPrefs: {
+      'webgl.disabled': false, 'webgl.force-enabled': true, 'webgl.enable-webgl2': true,
+    } } } },
     { name: 'webkit', testIgnore: '**/app-smoke.spec.ts', use: { browserName: 'webkit' } },
   ],
   webServer: {
