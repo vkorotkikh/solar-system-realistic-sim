@@ -92,7 +92,7 @@ interface FetchJobResult {
 }
 
 interface NormalizedOrbit {
-  epochJd?: number;
+  epochJd?: number | null;
   epochPacked?: string | null;
   aAu: number | null;
   e: number;
