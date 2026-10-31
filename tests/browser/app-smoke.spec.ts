@@ -1,4 +1,38 @@
 import { test, expect, type Page } from '@playwright/test';
+test('decorative stars remain visible with close-focus clip planes and behind bodies', async ({ page }) => {
+  await controlExternalRequests(page);
+  await page.route(/\/src\/main\.ts(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: '' }));
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const threeUrl = '/node_modules/three/build/three.module.js';
+    const annotationUrl = '/src/frontend/app/sceneAnnotations.ts';
+    const { WebGLRenderer, Scene, PerspectiveCamera, Mesh, PlaneGeometry, MeshBasicMaterial } = await import(threeUrl);
+    const { createBackgroundStars } = await import(annotationUrl);
+    const renderer = new WebGLRenderer({ preserveDrawingBuffer: true });
+    renderer.setSize(256, 256); renderer.setPixelRatio(1);
+    const scene = new Scene(); const camera = new PerspectiveCamera(58, 1, .000001, 20000);
+    let seed = 42;
+    const stars = createBackgroundStars(6000, () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296));
+    scene.add(stars);
+    const gl = renderer.getContext();
+    const capture = () => {
+      renderer.render(scene, camera);
+      const pixels = new Uint8Array(256 * 256 * 4);
+      gl.readPixels(0, 0, 256, 256, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      let lit = 0; for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 10) lit++;
+      return lit;
+    };
+    const wide = capture(); camera.far = .45; camera.updateProjectionMatrix(); const close = capture();
+    const blocker = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: 0 }));
+    blocker.position.z = -.05; scene.add(blocker); const occluded = capture();
+    stars.geometry.dispose(); stars.material.dispose(); blocker.geometry.dispose(); blocker.material.dispose(); renderer.dispose();
+    return { wide, close, occluded };
+  });
+  expect(result.wide).toBeGreaterThan(100);
+  expect(result.close).toBe(result.wide);
+  expect(result.occluded).toBe(0);
+  await test.info().attach('star-clip-pixel-counts', { body: JSON.stringify(result), contentType: 'application/json' });
+});
 test('actual app recovers a silently terminated orbital worker', async ({ page }) => {
   test.setTimeout(90_000);
   await controlExternalRequests(page);

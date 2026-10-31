@@ -8,6 +8,7 @@ import { createExperimentController, engineSelectionResolver } from './frontend/
 import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
 import { createModelWorkerController } from './frontend/app/modelWorkerController';
+import { createBackgroundStars, updateBodyLabel } from './frontend/app/sceneAnnotations';
 import { createFrameLifecycle } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
@@ -22,8 +23,6 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
-  Points,
-  PointsMaterial,
   Raycaster,
   RepeatWrapping,
   SphereGeometry,
@@ -379,7 +378,6 @@ function createLabelSprite(text: string) {
   const tex = ownDisposable(new CanvasTexture(canvas));
   const mat = ownDisposable(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   const sprite = new Sprite(mat);
-  sprite.scale.set(0.12, 0.03, 1);
   return sprite;
 }
 
@@ -454,7 +452,6 @@ function createBodyNode(body: CatalogBody) {
   const isMajor = body.isMajor || body.type === 'planet' || body.type === 'dwarf' || body.type === 'star';
   if (isMajor) {
     const label = createLabelSprite(body.name);
-    label.position.set(0, radius * 2.5 + 0.03, 0);
     node.add(label);
     labels.push({ bodyId: body.id, sprite: label });
   }
@@ -504,25 +501,24 @@ function createOrbitLine(body: CatalogBody) {
   return line;
 }
 
-// ── Background Stars ─────────────────────────────────────────────────────────
-
-function createBackgroundStars(count = 6000, radius = 15000) {
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const theta = Math.random() * TWO_PI;
-    const u = Math.random() * 2 - 1;
-    const phi = Math.acos(u);
-    const r = radius;
-    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-    positions[i * 3 + 2] = r * Math.cos(phi);
+const labelWorldPosition = new Vector3();
+function updateLabels() {
+  camera.updateMatrixWorld();
+  for (const { bodyId, sprite } of labels) {
+    const body = bodyById.get(bodyId);
+    const node = bodyNodes.get(bodyId);
+    if (!body || !node) continue;
+    node.getWorldPosition(labelWorldPosition);
+    sprite.visible = dom.toggleLabels.checked && updateBodyLabel(sprite, labelWorldPosition,
+      bodyBaseRadiusAu(body), camera, renderer.domElement.clientHeight);
   }
-  const geo = ownDisposable(new BufferGeometry());
-  geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  return new Points(geo, ownDisposable(new PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false })));
 }
 
+// ── Background Stars ─────────────────────────────────────────────────────────
+
 const backgroundStars = createBackgroundStars();
+ownDisposable(backgroundStars.geometry);
+ownDisposable(backgroundStars.material);
 scene.add(backgroundStars);
 const surveyMilkySphere = { position: new Vector3() };
 
@@ -1160,6 +1156,7 @@ const frameLifecycle = createFrameLifecycle({
     { name: 'background', run: () => { backgroundStars.position.copy(camera.position); } },
     { name: 'controls', run: () => { controls.update(); } },
     { name: 'clip-planes', run: updateCameraClipPlanes },
+    { name: 'labels', run: updateLabels },
     { name: 'render', run: () => renderer.render(scene, camera) },
     { name: 'hud', run: () => timeController.updateHud() },
     { name: 'body-info', run: ({ timestamp }) => refreshBodyInfoDistance(timestamp) },
