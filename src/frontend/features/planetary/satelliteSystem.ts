@@ -79,6 +79,7 @@ interface NormalizedSatellite extends PropagatedSatellite {
 }
 
 interface SatelliteWorkerSnapshot {
+  applyJ2: boolean;
   jd0: number;
   jd1: number;
   positions0: Float32Array;
@@ -93,6 +94,7 @@ interface SatelliteWorkerReadyMessage {
 
 interface SatelliteWorkerSnapshotMessage {
   type: 'snapshot';
+  applyJ2: boolean;
   jd0: number;
   jd1: number;
   count: number;
@@ -716,6 +718,7 @@ export class OrbitalSatelliteSystem {
         }
 
         this.workerSnapshot = {
+          applyJ2: message.applyJ2,
           jd0: Number(message.jd0),
           jd1: Number(message.jd1),
           positions0,
@@ -932,8 +935,11 @@ export class OrbitalSatelliteSystem {
     const snapshot = this.workerSnapshot;
     if (!Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
     if (snapshot.count !== this.satellites.length) return false;
+    if (snapshot.applyJ2 !== this.useJ2) return false;
 
     const span = snapshot.jd1 - snapshot.jd0;
+    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return false;
+    if (jd < Math.min(snapshot.jd0, snapshot.jd1) || jd > Math.max(snapshot.jd0, snapshot.jd1)) return false;
     const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
 
     for (let i = 0; i < this.satellites.length; i += 1) {
@@ -961,6 +967,15 @@ export class OrbitalSatelliteSystem {
     return jd <= minJd + margin || jd >= maxJd - margin;
   }
 
+  private workerInterpolationLimitDays(): number {
+    // A circular orbit's midpoint chord error is r*(1-cos(pi/256)),
+    // about 0.527 km at r=7000 km. Use the fastest satellite in the batch;
+    // outside this short interval update() propagates at the display epoch.
+    const periods = this.satellites.map(satellite => 1 / satellite.meanMotionRevDay)
+      .filter(period => Number.isFinite(period) && period > 0);
+    return periods.length ? Math.min(...periods) / 256 : 0;
+  }
+
   requestWorkerSnapshot(jd: number): void {
     if (!this.worker || !this.workerReady || this.workerBusy) return;
 
@@ -969,7 +984,7 @@ export class OrbitalSatelliteSystem {
     if (!this.shouldRequestWorkerSnapshot(jd)) return;
 
     const speed = Math.abs(this.estimatedJdRate);
-    const leadDays = Math.max(2 / DAY_SECONDS, speed * this.workerLeadSeconds);
+    const leadDays = Math.min(this.workerInterpolationLimitDays(), Math.max(2 / DAY_SECONDS, speed * this.workerLeadSeconds));
     const direction = this.estimatedJdRate < -1e-9 ? -1 : 1;
 
     this.worker.postMessage({
