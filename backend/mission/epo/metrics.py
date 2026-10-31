@@ -24,9 +24,14 @@ class EpisodeRunRecord:
 
     def as_dict(self) -> dict[str, Any]:
         payload = self.decision_payload or {}
-        candidates = [payload.get("recommendation"), *(payload.get("alternatives") or [])]
-        candidate_reasons = sorted({reason for candidate in candidates if isinstance(candidate, dict)
-            for reason in (candidate.get("verification") or {}).get("reasons", [])})
+        alternatives = payload.get("alternatives")
+        candidates = [payload.get("recommendation"), *(alternatives if isinstance(alternatives, list) else [])]
+        candidate_reasons = set()
+        for candidate in candidates:
+            verification = candidate.get("verification") if isinstance(candidate, dict) else None
+            reasons = verification.get("reasons") if isinstance(verification, dict) else None
+            if isinstance(reasons, list):
+                candidate_reasons.update(reason for reason in reasons if isinstance(reason, str))
         pending = [payload.get("trajectorySearch") or {}, *[
             candidate.get("trajectorySearch") or {} for candidate in candidates if isinstance(candidate, dict)]]
         terminations = set()
@@ -38,7 +43,7 @@ class EpisodeRunRecord:
                 pending.extend(node.values())
             elif isinstance(node, list):
                 pending.extend(node)
-        diagnostics = {"candidateVerificationReasons": candidate_reasons,
+        diagnostics = {"candidateVerificationReasons": sorted(candidate_reasons),
                        "searchTerminationReasons": sorted(terminations)}
         if payload.get("error"):
             diagnostics["requestRejection"] = payload["error"]

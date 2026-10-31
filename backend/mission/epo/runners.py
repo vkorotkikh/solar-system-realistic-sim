@@ -48,7 +48,9 @@ class EpisodeRunner:
 
         is_verified, reasons, verifier_metrics = self.verifier.verify(episode, result)
         if isinstance(result, dict) and result.get("status") == "request_rejected" and not is_verified:
-            reasons.insert(0, result["error"]["code"])
+            error = result.get("error")
+            code = error.get("code") if isinstance(error, dict) else None
+            reasons.insert(0, code if isinstance(code, str) and code else "invalid_request_rejection")
         mission_score = verifier_metrics.get("mission_score")
         if mission_score is None:
             mission_score_float = None

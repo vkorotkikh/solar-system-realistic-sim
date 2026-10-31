@@ -1,5 +1,6 @@
 """EPO smoke distinguishes verified missions, proven budget failure and input rejection."""
 import pytest
+from copy import deepcopy
 
 from mission.epo import smoke_test
 from mission.epo.config import EpisodeConfig, EpisodeFamilyPolicy
@@ -76,3 +77,54 @@ def test_physical_negative_requires_empty_vehicle_burn_budget_evidence(logistics
     passed, reasons, _ = DemoVerifier().verify(episode, result)
     assert passed is False
     assert "missing_empty_vehicle_infeasibility_evidence" in reasons
+
+
+@pytest.fixture
+def real_negative():
+    from mission.epo.runners import EpisodeRunner
+    from mission.epo.sample_episodes import SMOKE_EPISODE_FAMILIES
+    episode = SMOKE_EPISODE_FAMILIES[0].episodes[1]
+    runner = EpisodeRunner()
+    return episode, runner.planner.plan(deepcopy(episode.mission_payload))
+
+
+@pytest.mark.parametrize("mutation", ["missing-mission", "truncated-mission", "deadline",
+    "root-inconclusive", "child-truncated", "missing-child"])
+def test_physical_negative_requires_explicit_completed_search_evidence(real_negative, mutation):
+    episode, result = real_negative
+    if mutation == "missing-mission": result.pop("missionSearch")
+    if mutation == "truncated-mission": result["missionSearch"]["truncated"] = True
+    if mutation == "deadline": result["missionSearch"]["terminationReason"] = "planning_deadline_exceeded"
+    if mutation == "root-inconclusive":
+        result["trajectorySearch"] = {"outbound": {"truncated": True,
+            "configuredFrontierCompleted": False, "terminationReason": "assist_depth_1_budget_exhausted"}}
+    if mutation == "child-truncated": result["alternatives"][0]["trajectorySearch"]["outbound"]["truncated"] = True
+    if mutation == "missing-child": result["alternatives"][0].pop("trajectorySearch")
+    passed, reasons, _ = DemoVerifier().verify(episode, result)
+    assert passed is False
+    assert "incomplete_search_evidence" in reasons
+
+
+@pytest.mark.parametrize("mutation", ["missing-error", "missing-code", "bad-error", "bad-context",
+    "bad-alternatives", "bad-candidate", "bad-verification", "bad-logistics", "bad-burn"])
+def test_malformed_negative_results_are_actionable_failed_records(real_negative, monkeypatch, mutation):
+    from mission.epo.runners import EpisodeRunner
+    episode, result = real_negative
+    if mutation in {"missing-error", "missing-code", "bad-error", "bad-context"}:
+        from mission.epo.sample_episodes import SMOKE_EPISODE_FAMILIES
+        episode = SMOKE_EPISODE_FAMILIES[0].episodes[2]
+        result = {"status": "request_rejected"}
+        if mutation == "missing-code": result["error"] = {}
+        if mutation == "bad-error": result["error"] = []
+        if mutation == "bad-context": result["error"] = {"code": "mission_propulsion_body_unsupported", "context": []}
+    if mutation == "bad-alternatives": result["alternatives"] = {"unexpected": "shape"}
+    if mutation == "bad-candidate": result["alternatives"][0] = None
+    if mutation == "bad-verification": result["alternatives"][0]["verification"] = ["bad"]
+    if mutation == "bad-logistics": result["alternatives"][0]["logistics"] = ["bad"]
+    if mutation == "bad-burn": result["alternatives"][0]["logistics"]["burns"] = [None]
+    runner = EpisodeRunner()
+    monkeypatch.setattr(runner.planner, "plan", lambda payload: result)
+    record = runner.run_episode(episode)
+    assert record.verifier_passed is False
+    assert record.reasons
+    assert record.as_dict()["passed"] is False
