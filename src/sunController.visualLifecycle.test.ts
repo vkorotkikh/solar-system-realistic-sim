@@ -135,6 +135,15 @@ describe('Sun controller private resource lifetime', () => {
     expect(counts(lines.records)).toEqual(once(lines.records)); expect(lines.group.parent).toBeNull();
   });
 
+  it('shows the solar wind from admitted backend spiral data and retires it once', async () => {
+    const f = fixture(); await f.admit();
+    const wind = f.find('sun-solar-wind') as Points<BufferGeometry, PointsMaterial>;
+    expect(wind.visible).toBe(true);
+    const records = [...f.drawable('solar-wind', wind), f.watch('solar-wind:alpha-map', wind.material.alphaMap!)];
+    f.controller.disposeSolarDelivery(); f.controller.disposeSolarDelivery();
+    expect(counts(records)).toEqual(once(records)); expect(wind.parent).toBeNull();
+  });
+
   it('retires actual admitted flare materials while retaining shared CME geometry and flare texture', async () => {
     const f = fixture(); await f.admit();
     const group = f.find('sun-flares');
