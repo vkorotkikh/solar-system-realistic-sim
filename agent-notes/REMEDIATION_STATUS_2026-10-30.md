@@ -93,6 +93,8 @@ profiles are retained; no source patch or startup-budget change is claimed.
 
 ## Eight remaining partial items
 
+**2026-10-31 documentation follow-up:** The dedicated [solar-eruption architecture and implementation strategy](../docs/solar-eruption-modeling.md) records the screenshot defect, current motion/material pipeline, proposed repair and remaining physical-model requirements. The visual repair is still proposed; SCN-042 remains open.
+
 | Item | Completed here | Still required |
 |---|---|---|
 | SCN-005 | Single source-selected construction; catalog budget; cleanup; cold DEV/PREVIEW; current actual-scene observations. | Startup performance investigation continues. Quiet submission1859.8/1920.3ms; observed GPU completion6504.3/6887.1ms DEV/PREVIEW. Pause119/114ms and paused keyboard zoom3/4ms afterward. These are host-bound observations, not compositor timestamps or an invented new budget. |
