@@ -272,7 +272,7 @@ function parseTleElements(
   };
 }
 
-function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryModel): NormalizedSatellite[] {
+export function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryModel): NormalizedSatellite[] {
   const lines = tleText
     .split('\n')
     .map((line: string) => line.trim())
@@ -280,28 +280,23 @@ function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryM
 
   const satellites: NormalizedSatellite[] = [];
 
-  for (let i = 0; i < lines.length - 2; i += 1) {
-    let name = lines[i];
-    let line1 = lines[i + 1];
-    let line2 = lines[i + 2];
+  for (let i = 0; i < lines.length;) {
+    const unnamed = lines[i].startsWith('1 ');
+    const name = unnamed ? `Satellite ${satellites.length + 1}` : lines[i];
+    const line1 = lines[i + (unnamed ? 0 : 1)];
+    const line2 = lines[i + (unnamed ? 1 : 2)];
 
-    if (lines[i].startsWith('1 ') && lines[i + 1]?.startsWith('2 ')) {
-      line1 = lines[i];
-      line2 = lines[i + 1];
-      name = `Satellite ${satellites.length + 1}`;
+    if ((!unnamed && name.startsWith('2 ')) || !line1?.startsWith('1 ') || !line2?.startsWith('2 ')) {
       i += 1;
-    }
-
-    if (!line1?.startsWith('1 ') || !line2?.startsWith('2 ')) {
       continue;
     }
+    // Consume each complete record exactly once, including a final two-line set.
+    i += unnamed ? 2 : 3;
 
     const parsed = parseTleElements(name, line1, line2, category, primaryModel);
     if (parsed) {
       satellites.push(parsed);
     }
-
-    i += 2;
   }
 
   return satellites;
