@@ -1,0 +1,2 @@
+# Exact archival bytes intentionally retain original end-of-line spaces.
+docs/history/development-improvements-through-2026-03.md whitespace=-blank-at-eol
