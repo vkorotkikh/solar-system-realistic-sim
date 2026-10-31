@@ -296,11 +296,13 @@ Retained day maps and cloud/satellite modules are not assembled by this entry. T
 
 ### Solar model
 
-The Sun combines procedural rendering and synthetic solar-state models inspired by published solar literature. Supported layers include limb darkening, blackbody color, granulation, chromosphere, corona, prominences, flares/CMEs, magnetic-field geometry and a Parker-spiral visualization, subject to their runtime admission gates. These descriptions do not certify calibrated physical accuracy for every layer.
+The Sun combines procedural rendering and synthetic solar-state models inspired by published solar literature. Supported layers include limb darkening, blackbody color, granulation, chromosphere, corona, prominences, flares/CMEs, magnetic-field geometry and a Parker-spiral visualization with a solar-wind outflow, subject to their runtime admission gates. These descriptions do not certify calibrated physical accuracy for every layer.
 
 Solar forcing is currently synthetic. `hybrid` falls back with `disabled_unvalidated`; `data_driven` is rejected with HTTP 503 (`solar_observed_input_unavailable`). Realtime feeds supply context/source metadata. The AIA proxy supplies raw viewport imagery that is not eligible for Sun-surface rendering. The channel selector does not bypass the validated surface/forcing contracts or enable observation-texture blending.
 
 See [solar eruption modeling and rendering](docs/solar-eruption-modeling.md) for the particle architecture, the repaired square-sprite defect, and the remaining physical-model improvement strategy.
+
+The solar-wind outflow streams particles from the source surface along Parker-spiral streamlines. Each streamline takes the wind speed of the nearest of the backend's six spiral arms (WSA-inspired where available, otherwise the empirical coronal-hole split), which sets its flow rate, its spiral lag and its tint: amber for slow wind, cyan-blue for fast. It appears only when backend spiral geometry is admitted. Motion follows the decorative clock rather than simulated time, and latitude structure beyond the arms' sector speeds is not modeled. Rendered evidence: [agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE](agent-notes/SOLAR_WIND_VISUAL_2026-10-31_EVIDENCE/README.md).
 
 ### SMBH shockwave modeling
 
