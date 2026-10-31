@@ -317,17 +317,16 @@ export class SimulationClient {
       }
       if (msg.type === 'state_update') this.reconnectAttempt = 0;
       const epochOperationGeneration = this.epochOperationGeneration;
-      this.markFresh();
-      if (this.ws !== socket || epochOperationGeneration !== this.epochOperationGeneration) return;
+      const firstReady = msg.type === 'connected' && !this.serverReady;
+      // Commit transport readiness and incoming caches before any observers.
+      // An observer may immediately seek, disconnect or replace this session.
+      if (msg.type === 'connected' && firstReady) {
+        this.kuiperSubscriptionSupported = msg.kuiper_subscription_version === 1;
+        this.kuiperActivationErrorsCorrelated = msg.kuiper_activation_error_version === 1;
+        this.serverReady = true;
+      }
       if (msg.type === 'orbital_elements') {
         this.latestOrbitalElements = msg;
-        this.notifyObserver(() => this.onOrbitalElements?.(msg));
-        return;
-      }
-      if (msg.jd !== undefined) {
-        this.latestJulianDate = msg.jd;
-        this.notifyObserver(() => this.onJulianDate?.(msg.jd!));
-        if (this.ws !== socket || epochOperationGeneration !== this.epochOperationGeneration) return;
       }
       if (msg.type === 'state_update') {
         this.latestState = msg;
@@ -339,12 +338,24 @@ export class SimulationClient {
           this.latestKuiperSnapshot = Array.isArray(msg.kuiper) ? { positions: msg.kuiper } : msg.kuiper;
           this.latestKuiper = this.latestKuiperSnapshot?.positions ?? null;
         }
+      }
+      if (msg.type !== 'orbital_elements' && msg.jd !== undefined) this.latestJulianDate = msg.jd;
+      this.markFresh();
+      if (this.ws !== socket) return;
+      if (msg.type === 'orbital_elements') {
+        if (epochOperationGeneration === this.epochOperationGeneration) {
+          this.notifyObserver(() => this.onOrbitalElements?.(msg));
+        }
         return;
       }
+      if (msg.jd !== undefined && epochOperationGeneration === this.epochOperationGeneration) {
+        this.notifyObserver(() => this.onJulianDate?.(msg.jd!));
+        if (this.ws !== socket) return;
+      }
+      if (msg.type === 'state_update') return;
       this.handleConnectedMessage(msg);
       if (this.ws !== socket) return;
-      if (!this.serverReady) {
-        this.serverReady = true;
+      if (firstReady) {
         this.notifyObserver(() => this.onServerReady?.(this));
         if (this.ws === socket) this.replayKuiperRequest();
       }
@@ -364,11 +375,6 @@ export class SimulationClient {
 
   private handleConnectedMessage(message: ConnectedMessage): void {
     const socket = this.ws;
-    if (!this.serverReady) {
-      const subscriptionVersion = message.kuiper_subscription_version;
-      this.kuiperSubscriptionSupported = subscriptionVersion === 1;
-      this.kuiperActivationErrorsCorrelated = message.kuiper_activation_error_version === 1;
-    }
     if (Array.isArray(message.warnings)) {
       for (const warning of message.warnings) {
         if (typeof warning === 'string' && this.onProtocolWarning) {

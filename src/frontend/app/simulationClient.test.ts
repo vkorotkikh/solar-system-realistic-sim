@@ -102,6 +102,18 @@ describe('simulation client schema boundary', () => {
     expect(client.latestState?.jd).toBe(2460000.5);
   });
 
+  it('allows an initial seek from the confirmed handshake epoch observer', () => {
+    const onReady = vi.fn(); client.onServerReady = onReady;
+    const seeks: boolean[] = [];
+    client.onJulianDate = () => { seeks.push(client.setJulianDate(2460000.5)); };
+    client.connect(); socket().open(); socket().message({ ...ready, jd: 2451545 });
+    expect(seeks).toEqual([true]);
+    expect(JSON.parse(socket().send.mock.calls.at(-1)![0])).toEqual({
+      type: 'set_julian_date', jd: 2460000.5, jd_time_scale: 'TDB' });
+    expect(onReady).toHaveBeenCalledOnce();
+    expect(client.latestState).toBeNull();
+  });
+
   it('accepts supported state and rejects malformed coordinates without replacing it', () => {
     client.connect(); socket().open(); socket().message(ready); socket().message(state());
     const accepted = client.latestState;
