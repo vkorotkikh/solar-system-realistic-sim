@@ -45,6 +45,9 @@ STATE_POSITION_UNITS = "AU"
 STATE_VELOCITY_UNITS = "AU/day"
 STATE_JD_TIME_SCALE = "TDB"
 CHECKPOINT_INTERVAL_YEARS = 10.0
+# Native integration releases the GIL but cannot observe the cancellation event.
+# Keep seeks responsive without copying a checkpoint at every native boundary.
+SEEK_SEGMENT_MAX_YEARS = 0.1
 DIRECT_BACKWARD_SEEK_MAX_YEARS = 2.0
 SEEK_EPSILON_YEARS = 1e-12
 MAX_CHECKPOINTS = 8
@@ -560,14 +563,28 @@ class REBOUNDEngine(SimulationEngine):
         self.sim = restored
         return True
 
+    def _integrate_seek_segment(self, target_years: float) -> None:
+        if self.sim is None:
+            return
+        self._raise_if_seek_cancelled()
+        while abs(target_years - float(self.sim.t)) > SEEK_EPSILON_YEARS:
+            current = float(self.sim.t)
+            remaining = target_years - current
+            next_time = (
+                target_years
+                if abs(remaining) <= SEEK_SEGMENT_MAX_YEARS + SEEK_EPSILON_YEARS
+                else current + math.copysign(SEEK_SEGMENT_MAX_YEARS, remaining)
+            )
+            self.sim.integrate(next_time)
+            self._raise_if_seek_cancelled()
+
     def _integrate_forward_with_checkpoints(self, target_years: float) -> None:
         if self.sim is None:
             return
         self._raise_if_seek_cancelled()
         if target_years <= float(self.sim.t) + SEEK_EPSILON_YEARS:
             if abs(target_years - float(self.sim.t)) > SEEK_EPSILON_YEARS:
-                self.sim.integrate(target_years)
-                self._raise_if_seek_cancelled()
+                self._integrate_seek_segment(target_years)
             return
 
         current_years = float(self.sim.t)
@@ -577,14 +594,12 @@ class REBOUNDEngine(SimulationEngine):
             if checkpoint_years >= target_years - SEEK_EPSILON_YEARS:
                 break
             self._raise_if_seek_cancelled()
-            self.sim.integrate(checkpoint_years)
-            self._raise_if_seek_cancelled()
+            self._integrate_seek_segment(checkpoint_years)
             self._store_checkpoint()
             next_checkpoint_idx += 1
 
         self._raise_if_seek_cancelled()
-        self.sim.integrate(target_years)
-        self._raise_if_seek_cancelled()
+        self._integrate_seek_segment(target_years)
         self._store_checkpoint()
 
     def set_julian_date(self, jd: float) -> None:
@@ -617,8 +632,10 @@ class REBOUNDEngine(SimulationEngine):
         # For small backward seeks, try direct integration first.
         if (current_years - target_years) <= self._direct_backward_seek_max_years:
             try:
-                self.sim.integrate(target_years)
+                self._integrate_seek_segment(target_years)
                 return
+            except SeekCancelledError:
+                raise
             except Exception:
                 # Fall through to checkpoint restore path.
                 pass
@@ -634,7 +651,7 @@ class REBOUNDEngine(SimulationEngine):
             self._integrate_forward_with_checkpoints(target_years)
         else:
             # Safety fallback if restored checkpoint is somehow after target.
-            self.sim.integrate(target_years)
+            self._integrate_seek_segment(target_years)
 
     def get_energy(self) -> float:
         if self.sim is None:
