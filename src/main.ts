@@ -7,7 +7,8 @@ import * as agnEngine from './frontend/features/superluminal-modeling/agnShockwa
 import { createExperimentController, engineSelectionResolver } from './frontend/app/experimentController';
 import { createRendererRecoverySurface } from './frontend/app/rendererRecovery';
 import { createRuntimeLifetime } from './frontend/app/runtimeLifetime';
-import { createFrameLifecycle, hasFiniteAvailableBodyState } from './frontend/app/frameLifecycle';
+import { createModelWorkerController } from './frontend/app/modelWorkerController';
+import { createFrameLifecycle } from './frontend/app/frameLifecycle';
 import { applyViewportSizeOverride } from './frontend/app/sceneSetup';
 import { renderPixelRatio } from './frontend/app/runtimeConfig';
 import {
@@ -63,14 +64,8 @@ import {
   buildModelWorkerCatalog,
   type CatalogIndexContract,
   isValidModelWorkerAvailabilityArray,
-  isValidModelWorkerStateArray,
   MODEL_WORKER_RECORD_SIZE,
-  MODEL_WORKER_STATE_SCHEMA_VERSION,
-  type ModelWorkerCatalog,
-  type ModelWorkerInitMessage,
-  type ModelWorkerOutboundMessage,
-  type ModelWorkerStateMessage,
-  type ModelWorkerTickMessage
+  type ModelWorkerCatalog
 } from './workers/modelWorkerContract';
 import {
   createRuntimeUiConfig,
@@ -239,15 +234,16 @@ const modelWorkerWorldVx = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVy = new Float64Array(modelWorkerBodyCount);
 const modelWorkerWorldVz = new Float64Array(modelWorkerBodyCount);
 const modelWorkerPositionsDirty = new Uint8Array(modelWorkerBodyCount);
-let modelWorker: Worker | null = null;
-let retireModelWorker = () => {};
-let modelWorkerEnabled = false;
-let modelWorkerReady = false;
-let modelWorkerTickInFlight = false;
-let modelWorkerSequence = 0;
-let lastModelWorkerAcceptedSequence = -1;
+const modelWorkerController = ownDisposable(createModelWorkerController({
+  catalog: modelWorkerCatalog,
+  createWorker: () => new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' }),
+  getJulianDate: () => simState.julianDate,
+  onStatus: (status, reason) => {
+    dom.canvas.dataset.orbitalWorker = status;
+    if (reason) console.warn('[modelWorker] local propagation active:', reason);
+  },
+}));
 let lastModelWorkerAppliedSequence = -1;
-let latestModelWorkerState: ModelWorkerStateMessage | null = null;
 const ASTEROID_BELT_TARGET_COUNT = 50_000;
 const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 
@@ -797,149 +793,13 @@ function updateBodyRotations(julianDate: number) {
 
 // ── Scene Body Positions ─────────────────────────────────────────────────────
 
-function disableModelWorkerIntegration() {
-  retireModelWorker();
-  modelWorker = null;
-  modelWorkerEnabled = false;
-  modelWorkerReady = false;
-  modelWorkerTickInFlight = false;
-  latestModelWorkerState = null;
-}
-
-function initializeModelWorker() {
-  if (!('Worker' in window)) {
-    return;
-  }
-  if (modelWorker) {
-    return;
-  }
-
-  try {
-    modelWorker = new Worker(new URL('./workers/modelWorker.ts', import.meta.url), { type: 'module' });
-  } catch (error) {
-    console.warn('[modelWorker] unavailable:', error);
-    return;
-  }
-
-  const worker = modelWorker;
-  retireModelWorker = startup.defer(() => {
-    worker.onmessage = null;
-    worker.onerror = null;
-    worker.terminate();
-  });
-  startup.defer(() => {
-    modelWorker = null;
-    modelWorkerEnabled = false;
-    modelWorkerReady = false;
-    modelWorkerTickInFlight = false;
-    latestModelWorkerState = null;
-  });
-  if (startup.signal.aborted || !recovery.available) return;
-  modelWorker.onmessage = (event: MessageEvent<ModelWorkerOutboundMessage>) => {
-    if (startup.signal.aborted || modelWorker !== worker) return;
-    const message = event.data;
-    if (!message || typeof message !== 'object') return;
-
-    if (message.type === 'ready') {
-      if (
-        message.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
-        || message.bodyCount !== modelWorkerBodyCount
-      ) {
-        console.warn('[modelWorker] incompatible ready contract');
-        disableModelWorkerIntegration();
-        return;
-      }
-      modelWorkerReady = true;
-      return;
-    }
-
-    if (message.type === 'state') {
-      const stateMessage = message;
-      const sequence = Number(stateMessage.sequence);
-      modelWorkerTickInFlight = false;
-      if (
-        stateMessage.schemaVersion !== MODEL_WORKER_STATE_SCHEMA_VERSION
-        || !Number.isInteger(sequence)
-        || sequence <= lastModelWorkerAcceptedSequence
-        || !Number.isFinite(stateMessage.tickJd)
-        || !isValidModelWorkerStateArray(stateMessage.bodies, modelWorkerBodyCount)
-        || !isValidModelWorkerAvailabilityArray(
-          stateMessage.availability,
-          modelWorkerBodyCount
-        )
-      ) {
-        console.warn('[modelWorker] rejected malformed or stale state payload');
-        return;
-      }
-
-      if (!hasFiniteAvailableBodyState(stateMessage.bodies, stateMessage.availability)) {
-        console.warn('[modelWorker] quarantined nonfinite available state');
-        disableModelWorkerIntegration();
-        return;
-      }
-
-      lastModelWorkerAcceptedSequence = sequence;
-
-      latestModelWorkerState = {
-        type: 'state',
-        schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
-        sequence,
-        bodies: stateMessage.bodies,
-        availability: stateMessage.availability,
-        tickJd: Number(stateMessage.tickJd),
-        profilerMs: Number.isFinite(stateMessage.profilerMs) ? stateMessage.profilerMs : undefined
-      };
-    }
-  };
-
-  modelWorker.onerror = (event) => {
-    if (startup.signal.aborted || modelWorker !== worker) return;
-    const errorMessage = event.message || 'unknown worker error';
-    console.warn('[modelWorker] stopped:', errorMessage);
-    disableModelWorkerIntegration();
-  };
-
-  const initMessage: ModelWorkerInitMessage = {
-    type: 'init',
-    catalog: modelWorkerCatalog,
-    simStartJd: simState.julianDate,
-    sequence: ++modelWorkerSequence
-  };
-
-  modelWorker.postMessage(initMessage);
-  modelWorkerEnabled = true;
-}
-
 function updateModelLocally(deltaSeconds: number) {
   model.update(simState.julianDate);
 }
 
-function dispatchModelWorkerTick(deltaSeconds: number) {
-  if (!modelWorker || !modelWorkerEnabled || !modelWorkerReady || modelWorkerTickInFlight) return;
-
-  const tickMessage: ModelWorkerTickMessage = {
-    type: 'tick',
-    simState: {
-      julianDate: simState.julianDate,
-      stepMs: deltaSeconds * 1000
-    },
-    sequence: ++modelWorkerSequence
-  };
-
-  try {
-    modelWorker.postMessage(tickMessage);
-    modelWorkerTickInFlight = true;
-  } catch (error) {
-    modelWorkerTickInFlight = false;
-    console.warn('[modelWorker] tick failed:', error);
-    disableModelWorkerIntegration();
-  }
-}
-
 function applyLatestWorkerSnapshot() {
-  if (!latestModelWorkerState || !modelWorkerReady) return false;
-
-  const message = latestModelWorkerState;
+  const message = modelWorkerController.latestState;
+  if (!message || !modelWorkerController.ready) return false;
   if (message.sequence <= lastModelWorkerAppliedSequence) return false;
 
   // Never let a delayed worker response freeze or rewind the scene. At most
@@ -1054,15 +914,15 @@ function applyLatestWorkerSnapshot() {
 function updateModelState(deltaSeconds: number) {
   let snapshotApplied = false;
 
-  if (modelWorkerEnabled && modelWorker && modelWorkerReady) {
+  if (modelWorkerController.ready) {
     try {
-      dispatchModelWorkerTick(deltaSeconds);
-      if (latestModelWorkerState) {
+      modelWorkerController.tick(deltaSeconds);
+      if (modelWorkerController.latestState) {
         snapshotApplied = applyLatestWorkerSnapshot();
       }
     } catch (error) {
       console.warn('[modelWorker] falling back after snapshot failure:', error);
-      disableModelWorkerIntegration();
+      modelWorkerController.fail('snapshot application failed');
     }
   }
 
@@ -1076,7 +936,7 @@ function updateModelState(deltaSeconds: number) {
 }
 
 function updateSceneBodiesFromWorkerSnapshot() {
-  if (!modelWorkerEnabled || !latestModelWorkerState) return false;
+  if (!modelWorkerController.ready || !modelWorkerController.latestState) return false;
   return applyLatestWorkerSnapshot();
 }
 
@@ -1097,7 +957,7 @@ function applyModelSceneAndStateFallback() {
 }
 
 function updateSceneBodies() {
-  if (modelWorkerEnabled && modelWorkerReady && latestModelWorkerState) {
+  if (modelWorkerController.ready && modelWorkerController.latestState) {
     updateSceneBodiesFromWorkerSnapshot();
   } else {
     applyModelSceneAndStateFallback();
@@ -1248,7 +1108,7 @@ const experiment = ownDisposable(createExperimentController({ dom, sun: sunCtrl,
 
 refillBodyList();
 model.update(simState.julianDate);
-initializeModelWorker();
+if ('Worker' in window) modelWorkerController.start();
 updateSceneBodies();
 if (simState.useRealisticScale) applyScaleMode();
 focusBody('sun', true);

@@ -1,4 +1,43 @@
 import { test, expect, type Page } from '@playwright/test';
+test('actual app recovers a silently terminated orbital worker', async ({ page }) => {
+  test.setTimeout(90_000);
+  await controlExternalRequests(page);
+  await page.addInitScript(() => {
+    const probe = { created: 0, killed: 0, retired: 0, replacementTicks: 0 };
+    Object.assign(window, { orbitalWorkerProbe: probe });
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      readonly attempt: number;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.attempt = ++probe.created;
+      }
+      postMessage(message: unknown, options?: StructuredSerializeOptions | Transferable[]) {
+        if ((message as { type?: string }).type === 'tick') {
+          if (this.attempt === 1) { probe.killed += 1; super.terminate(); return; }
+          probe.replacementTicks += 1;
+        }
+        Reflect.apply(NativeWorker.prototype.postMessage, this, [message, options]);
+      }
+      terminate() { probe.retired += 1; super.terminate(); }
+    };
+  });
+  await page.goto('/?uiWidth=500&uiHeight=700&renderScale=0.5&maxPixelRatio=1');
+  await expect(page.locator('#status-zoom')).not.toHaveText('Range · —', { timeout: 60_000 });
+  await expect.poll(() => page.evaluate(() => (window as unknown as {
+    orbitalWorkerProbe: { created: number };
+  }).orbitalWorkerProbe.created), { timeout: 15_000 }).toBe(2);
+  await expect(page.locator('#space-canvas')).toHaveAttribute('data-orbital-worker', 'ready');
+  await expect.poll(() => page.evaluate(() => (window as unknown as {
+    orbitalWorkerProbe: { replacementTicks: number };
+  }).orbitalWorkerProbe.replacementTicks), { timeout: 30_000 }).toBeGreaterThan(1);
+  const probe = await page.evaluate(() => (window as unknown as {
+    orbitalWorkerProbe: { killed: number; retired: number };
+  }).orbitalWorkerProbe);
+  expect(probe.killed).toBe(1);
+  expect(probe.retired).toBe(1);
+  await expect(page.locator('#renderer-unavailable')).toBeHidden();
+});
 async function controlExternalRequests(page:Page){
   await page.route('**/*',route=>{const url=new URL(route.request().url());return url.origin==='http://127.0.0.1:'+(process.env.UI_TEST_PORT||'4175')?route.continue():route.fulfill({status:503,contentType:'application/json',body:'{"detail":"deterministic unavailable service"}',headers:{'Access-Control-Allow-Origin':'*'}});});
 }
