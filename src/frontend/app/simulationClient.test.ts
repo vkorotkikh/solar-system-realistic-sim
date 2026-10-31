@@ -89,6 +89,19 @@ describe('simulation client schema boundary', () => {
     expect(client.latestOrbitalElements).toBeNull();
   });
 
+  it('does not restore old-epoch caches after an epoch observer sends a reentrant seek', () => {
+    client.connect(); socket().open(); socket().message(ready);
+    client.onJulianDate = jd => { if (jd === 2451545) client.setJulianDate(2460000.5); };
+    socket().message(state());
+    expect(JSON.parse(socket().send.mock.calls.at(-1)![0])).toEqual({
+      type: 'set_julian_date', jd: 2460000.5, jd_time_scale: 'TDB' });
+    expect(client.latestState).toBeNull();
+    expect(client.latestKuiper).toBeNull();
+    expect(client.latestKuiperSnapshot).toBeNull();
+    socket().message({ ...state(), jd: 2460000.5 });
+    expect(client.latestState?.jd).toBe(2460000.5);
+  });
+
   it('accepts supported state and rejects malformed coordinates without replacing it', () => {
     client.connect(); socket().open(); socket().message(ready); socket().message(state());
     const accepted = client.latestState;

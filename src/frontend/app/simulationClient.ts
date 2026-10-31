@@ -163,6 +163,7 @@ export class SimulationClient {
   private ws: WebSocket | null;
 
   private socketGeneration = 0;
+  private epochOperationGeneration = 0;
 
   private connected: boolean;
 
@@ -315,8 +316,9 @@ export class SimulationClient {
         return;
       }
       if (msg.type === 'state_update') this.reconnectAttempt = 0;
+      const epochOperationGeneration = this.epochOperationGeneration;
       this.markFresh();
-      if (this.ws !== socket) return;
+      if (this.ws !== socket || epochOperationGeneration !== this.epochOperationGeneration) return;
       if (msg.type === 'orbital_elements') {
         this.latestOrbitalElements = msg;
         this.notifyObserver(() => this.onOrbitalElements?.(msg));
@@ -325,7 +327,7 @@ export class SimulationClient {
       if (msg.jd !== undefined) {
         this.latestJulianDate = msg.jd;
         this.notifyObserver(() => this.onJulianDate?.(msg.jd!));
-        if (this.ws !== socket) return;
+        if (this.ws !== socket || epochOperationGeneration !== this.epochOperationGeneration) return;
       }
       if (msg.type === 'state_update') {
         this.latestState = msg;
@@ -556,6 +558,7 @@ export class SimulationClient {
   setJulianDate(jd: number): boolean {
     if (!Number.isFinite(jd) || !this.serverReady) return false;
     if (!this.send({ type: 'set_julian_date', jd, jd_time_scale: 'TDB' })) return false;
+    this.epochOperationGeneration++;
     // Cached positions/elements belong to the previous epoch. A subsequent
     // server message supplies the confirmed epoch; send is not a seek ack.
     this.latestState = null;
