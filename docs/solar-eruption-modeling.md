@@ -1,6 +1,16 @@
 # Solar eruption visualization: architecture, defects and implementation strategy
 
-**Updated: 2026-10-31. Owner issue: SCN-042. Status: visual repair proposed; square-particle defect remains open.**
+**Updated: 2026-10-31. Owner issue: SCN-042. Status: square-particle defect repaired; physical modeling and broader SCN-042 acceptance remain open.**
+
+> **Repair (2026-10-31, `fix/solar-eruption-visuals`):** Stage A and the size, density and
+> restart-fade parts of Stage B are implemented. `createSoftDiscAlphaMap()` in `sunVisuals.ts`
+> (inline, no separate module) generates the 64×64 `(1 - r²)²` mask proposed below; particles
+> are 0.07–0.11 display radii instead of 0.28–0.65; 2,400 particles give about ten per admitted
+> feature instead of one or two; each particle's vertex-color intensity is
+> `sin(π·phase) × (0.3 + 0.7·brightness)` on feature paths and its plume height in the fallback;
+> `disposeSolarDelivery` disposes the map. See the
+> [rendered before/after evidence](../agent-notes/SOLAR_ERUPTION_VISUALS_2026-10-31_EVIDENCE/README.md)
+> and the status table in §6. Sections 1–5 describe the pre-repair checkpoint below.
 
 This is the dedicated writeup for the yellow/orange squares around the Sun. It
 documents the current implementation, the screenshot failure, the recommended
@@ -259,8 +269,8 @@ the new sprite-coverage and composed-appearance checks.
 |---|---|
 | Backend synthetic coronal features and current visual marker paths | Implemented; limitations documented above. |
 | Zero-alpha blend, shared upload storage and moving-point bounds | Implemented on the construction branch; covered by the [October 30 verification record](../agent-notes/REMEDIATION_COMPLETION_2026-10-30_EVIDENCE/README.md). |
-| Circular alpha texture and texture lifecycle regression | Proposed; not implemented. |
-| Rendered square-corner regression and composed size/brightness acceptance | Proposed; not completed. |
-| Stable marker identity and individual restart opacity | Proposed; not implemented. |
+| Circular alpha texture and texture lifecycle regression | Implemented on `fix/solar-eruption-visuals` (d03ecd3, 269e075): texel-level mask tests in `sunVisuals.eruptionAppearance.test.ts`; disposal watched in `sunController.visualLifecycle.test.ts`. |
+| Rendered square-corner regression and composed size/brightness acceptance | Composed appearance checked on a real GPU at realistic, enlarged and fallback views ([evidence](../agent-notes/SOLAR_ERUPTION_VISUALS_2026-10-31_EVIDENCE/README.md)). No automated rendered-pixel test yet. At the enlarged scale, compressed features still overlap into bright clumps at the limb. |
+| Stable marker identity and individual restart opacity | Restart opacity implemented (per-particle fade, tested). Stable identity across feature reordering not implemented. |
 | Physically calibrated plasma transport and emission | Further model/design/calibration work required. |
 | SCN-042 complete end-to-end acceptance | Open. |

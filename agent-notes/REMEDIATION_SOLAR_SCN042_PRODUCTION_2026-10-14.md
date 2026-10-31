@@ -4,6 +4,8 @@
 
 **2026-10-31 follow-up:** [Solar eruption modeling and rendering](../docs/solar-eruption-modeling.md) documents the current particle architecture, square-sprite defect and proposed implementation/validation sequence. That visual repair remains open.
 
+**2026-10-31 repair:** The square-sprite child is repaired on `fix/solar-eruption-visuals` (soft-disc alpha map, smaller and denser particles, per-particle restart fade, texture disposal), with [rendered real-GPU evidence](SOLAR_ERUPTION_VISUALS_2026-10-31_EVIDENCE/README.md). SCN-042 itself remains open.
+
 Assigned worktree: `solar-remediation-20261014-solar`, branch `remediation/20261014-solar`.
 Parent integration owns `src/main.ts`; apply `SCN042_MAIN_HANDOFF_2026-10-14.patch`
 there when integrating this checkpoint. No master tracker or observation helper was edited.

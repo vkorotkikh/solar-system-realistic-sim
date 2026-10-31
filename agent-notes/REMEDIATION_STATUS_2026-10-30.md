@@ -95,6 +95,8 @@ profiles are retained; no source patch or startup-budget change is claimed.
 
 **2026-10-31 documentation follow-up:** The dedicated [solar-eruption architecture and implementation strategy](../docs/solar-eruption-modeling.md) records the screenshot defect, current motion/material pipeline, proposed repair and remaining physical-model requirements. The visual repair is still proposed; SCN-042 remains open.
 
+**2026-10-31 repair:** The square-sprite defect is repaired on `fix/solar-eruption-visuals` (soft-disc alpha map, smaller and denser particles, per-particle restart fade, texture disposal), with [rendered real-GPU evidence](SOLAR_ERUPTION_VISUALS_2026-10-31_EVIDENCE/README.md). Physical transport/emission and the rest of SCN-042 remain open.
+
 | Item | Completed here | Still required |
 |---|---|---|
 | SCN-005 | Single source-selected construction; catalog budget; cleanup; cold DEV/PREVIEW; current actual-scene observations. | Startup performance investigation continues. Quiet submission1859.8/1920.3ms; observed GPU completion6504.3/6887.1ms DEV/PREVIEW. Pause119/114ms and paused keyboard zoom3/4ms afterward. These are host-bound observations, not compositor timestamps or an invented new budget. |

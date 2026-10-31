@@ -300,7 +300,7 @@ The Sun combines procedural rendering and synthetic solar-state models inspired 
 
 Solar forcing is currently synthetic. `hybrid` falls back with `disabled_unvalidated`; `data_driven` is rejected with HTTP 503 (`solar_observed_input_unavailable`). Realtime feeds supply context/source metadata. The AIA proxy supplies raw viewport imagery that is not eligible for Sun-surface rendering. The channel selector does not bypass the validated surface/forcing contracts or enable observation-texture blending.
 
-See [solar eruption modeling and rendering](docs/solar-eruption-modeling.md) for the current particle architecture, the open square-sprite defect, and the proposed visual repair and physical-model improvement strategy.
+See [solar eruption modeling and rendering](docs/solar-eruption-modeling.md) for the particle architecture, the repaired square-sprite defect, and the remaining physical-model improvement strategy.
 
 ### SMBH shockwave modeling
 
