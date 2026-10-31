@@ -198,7 +198,7 @@ function ownDisposable<T extends { dispose(): void }>(value: T): T {
 }
 // ── Data & State ─────────────────────────────────────────────────────────────
 
-// Moon rendering is not currently exposed by the shipped UI. Keep those 424
+// Moon rendering is not currently exposed by the shipped UI. Keep those 423
 // catalog records available for provenance/search, but do not pretend to keep
 // hidden dynamical states current or spend a worker tick propagating them.
 const showMoons: boolean = false;
@@ -249,7 +249,8 @@ const ASTEROID_BELT_PHASE1_SOURCE_LIMIT = 100_000;
 const TWO_PI = Math.PI * 2;
 const BODY_LOCAL_SPIN_AXIS = new Vector3(0, 1, 0);
 function bodyBaseRadiusAu(body: CatalogBody) {
-  return simState.useRealisticScale ? body.realRadiusAu : body.displayRadiusAu;
+  // Unknown physical size retains an illustrative marker in either scale mode.
+  return simState.useRealisticScale ? (body.realRadiusAu ?? body.displayRadiusAu) : body.displayRadiusAu;
 }
 
 function computePlanetMuAu3Day2(massKg: number | null | undefined): number {
@@ -716,7 +717,7 @@ function updateBodyInfoPanel(bodyId: string) {
   dom.bodyInfo.dataset.bodyId = body.id;
   dom.bodyInfoName.textContent = body.name;
   dom.bodyInfoType.textContent = typeLabel;
-  dom.bodyInfoRadius.textContent = `${body.radiusKm.toLocaleString(undefined, {
+  dom.bodyInfoRadius.textContent = body.radiusKm === null ? 'Unknown' : `${body.radiusKm.toLocaleString(undefined, {
     minimumFractionDigits: body.radiusKm < 100 ? 1 : 0,
     maximumFractionDigits: 1
   })} km`;

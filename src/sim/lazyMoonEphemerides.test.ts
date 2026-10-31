@@ -81,14 +81,14 @@ describe('content-addressed opt-in delivery', () => {
     expect(Object.isFrozen(first.amalthea.segments[0].coefficients[0])).toBe(true);
   });
 
-  it('retains 424 identities and both Puck records while storing only one Puck shard', async () => {
+  it('retains 423 identities and only the newer Puck solution while storing only one Puck shard', async () => {
     const loader = createLazyMoonEphemerisLoader({ fetch: publicShardFetch });
     const manifest = await loader.getManifest();
-    expect(manifest.records).toHaveLength(424);
-    expect(manifest.records.filter(row => row.delivery === 'lazy')).toHaveLength(411);
+    expect(manifest.records).toHaveLength(423);
+    expect(manifest.records.filter(row => row.delivery === 'lazy')).toHaveLength(410);
     expect(Object.keys(manifest.bodies)).toHaveLength(410);
-    expect(manifest.records.filter(row => row.key === 'puck').map(row => row.catalogId)).toEqual([378, 388]);
-    expect(manifest.bodies.puck.catalogIds).toEqual([378, 388]);
+    expect(manifest.records.filter(row => row.key === 'puck').map(row => row.catalogId)).toEqual([388]);
+    expect(manifest.bodies.puck.catalogIds).toEqual([388]);
     expect(manifest.bodies.puck.accuracyLimits).toEqual({ positionKm: 86.004, velocityMPerS: 10 });
     expect(Object.keys(await loader.load(['puck', 'puck']))).toEqual(['puck']);
   });
@@ -152,6 +152,9 @@ describe('content-addressed opt-in delivery', () => {
     ['wrong target', (m: any) => { m.bodies.amalthea.targetId = '599'; }],
     ['wrong parent', (m: any) => { m.bodies.amalthea.centerId = '699'; }],
     ['relaxed cap', (m: any) => { m.bodies.amalthea.accuracyLimits.velocityMPerS = 11; }],
+    ['relaxed Puck ceiling', (m: any) => { m.bodies.puck.accuracyLimits.positionKm = 86.008; }],
+    ['zero Puck cap', (m: any) => { m.bodies.puck.accuracyLimits.positionKm = 0; }],
+    ['nonfinite Puck cap', (m: any) => { m.bodies.puck.accuracyLimits.positionKm = Infinity; }],
     ['unqualified source', (m: any) => { m.bodies.amalthea.sourceQuality = ''; }],
     ['path escape', (m: any) => { m.bodies.amalthea.path = '../escape.json'; }],
     ['false coverage', (m: any) => { m.bodies.amalthea.coverageStartJd -= 1; }]
@@ -211,7 +214,7 @@ for (const [name, mutate] of [
   ['wrong alias identity', (v: any) => { v.vectorOracle.catalogIds = [378]; }],
   ['missing shared Puck alias', (v: any) => { v.vectorOracle.catalogIds = [378]; v.vectorOracle.sampleCount = 7; }],
   ['duplicate shared Puck alias', (v: any) => { v.vectorOracle.catalogIds = [378, 378]; }],
-  ['reordered shared Puck aliases', (v: any) => { v.vectorOracle.catalogIds.reverse(); }],
+  ['extra retired Puck alias', (v: any) => { v.vectorOracle.catalogIds = [388, 378]; }],
   ['incomplete per-alias samples', (v: any) => { v.vectorOracle.sampleCount -= 1; }],
   ['extra per-alias samples', (v: any) => { v.vectorOracle.sampleCount += 1; }],
   ['fractional sample count', (v: any) => { v.vectorOracle.sampleCount = 7.5; }],
@@ -312,7 +315,7 @@ it('cancels a rejected manifest body and allows a clean retry', async () => {
     : new Response(new ReadableStream({ cancel() { cancellationCount += 1; } }), { status: 503 }) });
   await expect(loader.getManifest()).rejects.toThrow('503');
   expect(cancellationCount).toBe(1);
-  expect((await loader.getManifest()).records).toHaveLength(424);
+  expect((await loader.getManifest()).records).toHaveLength(423);
 });
 
 it('preserves the transport failure when cancellation itself rejects', async () => {

@@ -82,6 +82,7 @@ function makeHarness() {
     ['sun', new Vector3(1.25, 2.5, -0.75)],
     ['earth', new Vector3(-3, 1.5, 4)],
     ['moon-earth-moon', new Vector3(0.4, -0.2, 0.1)],
+    ['moon-jupiter-callirrhoe', new Vector3(0.3, 0.4, 0.5)],
   ]);
   const bodyNodes = new Map<string, Group>();
   for (const [id, position] of positions) {
@@ -145,7 +146,7 @@ function makeHarness() {
 }
 
 function radiusFor(body: CatalogBody, realistic: boolean): number {
-  return realistic ? body.realRadiusAu : body.displayRadiusAu;
+  return realistic ? (body.realRadiusAu ?? body.displayRadiusAu) : body.displayRadiusAu;
 }
 
 function expectVectorClose(actual: Vector3, expected: Vector3): void {
@@ -196,7 +197,7 @@ describe('production body focus distance contract (B021)', () => {
     const harness = makeHarness();
     harnesses.push(harness);
 
-    for (const id of ['earth', 'moon-earth-moon']) {
+    for (const id of ['earth', 'moon-earth-moon', 'moon-jupiter-callirrhoe']) {
       const body = harness.bodyById.get(id)!;
       for (const realistic of [false, true]) {
         harness.simState.useRealisticScale = realistic;

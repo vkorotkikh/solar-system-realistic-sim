@@ -146,7 +146,7 @@ describe('moon-aware display radii (B024)', () => {
     );
     expect(hiddenCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body))
       .toEqual(visibleCatalog.bodies.map(({ displayRadiusAu: _displayRadiusAu, ...body }) => body));
-    expect(hiddenMoons).toHaveLength(424);
+    expect(hiddenMoons).toHaveLength(423);
     expect(hiddenMoons).toEqual(visibleMoons);
     expect(hiddenCatalog.jumpBodyIds).toEqual(visibleCatalog.jumpBodyIds);
     expect(hiddenCatalog.plannerBodyIds).toEqual(visibleCatalog.plannerBodyIds);
