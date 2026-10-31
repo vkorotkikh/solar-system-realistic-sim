@@ -1,5 +1,9 @@
 # Advanced Astrophysics, Exotic Physics & Theoretical Research Index
 
+Current navigation: [canonical research master and preserved variants](my-notes/README.md).
+The inventory below is historical; [runtime composition](docs/adr/0006-runtime-composition-and-retained-apis.md)
+and README define the shipped implementation.
+
 **Generated:** 2026-03-04
 **Scope:** All SMBH, gravitational wave, quantum gravity, superluminal, exotic/hyper-theoretical astrophysics materials in this repository -- research documents, implementation plans, hypotheses, LaTeX papers, code implementations, and related solar/galactic physics.
 
