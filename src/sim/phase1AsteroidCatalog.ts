@@ -183,7 +183,7 @@ export const PHASE1_LOAD_LATENCY_BUDGET_MS = 2_000;
 const ASPH_MAGIC = 'ASPH';
 const ACBF_MAGIC = 'ACBF';
 const HEADER_SIZE_BYTES = 12;
-const EXPECTED_PHASE1_VERSION = ['ASPH-v1', 'ASPH-v2', 'ACBF-v1'];
+const EXPECTED_PHASE1_VERSION = ['ASPH-v1', 'ASPH-v2', 'ACBF-v1', 'ACBF-v2'];
 const EXPECTED_TAXONOMIES: readonly Phase1TaxonomyCode[] = ['C', 'S', 'M'];
 const DEFAULT_PHASE1_EPOCH_JD = 2_451_545.0;
 
@@ -681,7 +681,7 @@ function parseOrbitCatalog(
   if (buffer.byteLength < HEADER_SIZE_BYTES) {
     throw new Error('Phase-1 binary payload is too small for header.');
   }
-  if (buffer.byteLength > HEADER_SIZE_BYTES + 100_000 * 48 || new DataView(buffer).getUint32(8, true) > 100_000) {
+  if (buffer.byteLength > HEADER_SIZE_BYTES + 100_000 * 88 || new DataView(buffer).getUint32(8, true) > 100_000) {
     throw new Error('Phase-1 catalog exceeds the 100,000-row resource limit.');
   }
 

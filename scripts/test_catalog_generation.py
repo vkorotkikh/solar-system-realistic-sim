@@ -137,23 +137,25 @@ def test_real_100k_artifacts_reproduce_offline_and_match_source_science(tmp_path
         assert (first / name).read_bytes() == expected
         assert (tmp_path / "second" / name).read_bytes() == expected
     binary = (first / asteroid.DEFAULT_BIN_NAME).read_bytes()
-    assert len(binary) == 12 + 36 * 100000
+    assert len(binary) == 12 + 88 * 100000
     source_ids = []
     unknown_taxonomy = unknown_albedo = 0
     previous_diameter = math.inf
-    for offset in range(12, len(binary), 36):
-        values = struct.unpack_from("<IffHHHHHffHBBH", binary, offset)
+    for offset in range(12, len(binary), 88):
+        values = struct.unpack_from("<I10dBBH", binary, offset)
         source_id, period, diameter, albedo_code, taxonomy_code = values[0], values[8], values[9], values[10], values[11]
         source = original[source_id]
-        assert period == struct.unpack("<f", struct.pack("<f", float(source["per"])))[0]
-        assert diameter == struct.unpack("<f", struct.pack("<f", float(source["diameter"])))[0]
+        assert period == float(source["per"])
+        for index, field in enumerate(["epoch", "a", "e", "i", "om", "w", "ma"], 1):
+            assert values[index] == float(source[field]) % 360 if field in ("om", "w", "ma") else values[index] == float(source[field])
+        assert diameter == float(source["diameter"])
         assert diameter <= previous_diameter
         previous_diameter = diameter
         if source["albedo"] is None:
             assert albedo_code == 0
             unknown_albedo += 1
         else:
-            assert abs(albedo_code / 65535 - float(source["albedo"])) <= 0.5 / 65535 + 1e-15
+            assert albedo_code == float(source["albedo"])
         if not source["spec_b"] and not source["spec_t"]:
             assert taxonomy_code == 255
         if taxonomy_code == 2:
