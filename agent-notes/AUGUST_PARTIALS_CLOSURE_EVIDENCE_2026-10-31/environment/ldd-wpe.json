@@ -1,0 +1,38 @@
+[
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/bin/MiniBrowser",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/bin/WPEWebProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/bin/WPEGPUProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/bin/WPENetworkProcess",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/lib/libWPEWebKit-2.0.so.1",
+    "code": 0,
+    "missing": []
+  },
+  {
+    "flavor": "wpe",
+    "file": "/home/nomad/.cache/ms-playwright/webkit-2370/minibrowser-wpe/lib/libWPEInjectedBundle.so",
+    "code": 0,
+    "missing": []
+  }
+]

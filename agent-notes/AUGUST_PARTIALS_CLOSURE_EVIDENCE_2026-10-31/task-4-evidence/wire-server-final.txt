@@ -1,0 +1,14 @@
+INFO:     Started server process [3937471]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:40749 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58948 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58952 - "GET /solar/physics?jd_tdb=2460000.5&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58956 - "GET /solar/physics?jd_tdb=2460000.5&fidelity=high&max_features=180&forcing=hybrid&live_data=true&delivery=render-v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58970 - "GET /solar/physics?jd_tdb=2460000.5&fidelity=high&max_features=180&forcing=hybrid&live_data=true&delivery=render-v1&geometry_version=4ff05ba157231e09cbfcd824313901c5cd207f87290c64858fc3e69d782bcc95 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58980 - "GET /solar/physics?jd_tdb=2460001.5&fidelity=high&max_features=180&forcing=hybrid&live_data=true&delivery=render-v1&geometry_version=4ff05ba157231e09cbfcd824313901c5cd207f87290c64858fc3e69d782bcc95 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /solar/physics?jd_tdb=2460000.5&fidelity=high&max_features=180&forcing=hybrid&live_data=true&delivery=render-v1 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3937471]

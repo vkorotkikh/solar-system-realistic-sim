@@ -1,0 +1,42 @@
+{
+  "full_default": {
+    "encoded_bytes": 671300,
+    "decoded_bytes": 671300,
+    "content_encoding": null,
+    "epoch": 2460000.5,
+    "geometry_included": null,
+    "fallback": "disabled_unvalidated"
+  },
+  "render_first": {
+    "encoded_bytes": 262557,
+    "decoded_bytes": 671531,
+    "content_encoding": "gzip",
+    "epoch": 2460000.5,
+    "geometry_included": true,
+    "fallback": "disabled_unvalidated"
+  },
+  "unchanged_geometry": {
+    "encoded_bytes": 2828,
+    "decoded_bytes": 9484,
+    "content_encoding": "gzip",
+    "epoch": 2460000.5,
+    "geometry_included": false,
+    "fallback": "disabled_unvalidated"
+  },
+  "changed_epoch": {
+    "encoded_bytes": 262267,
+    "decoded_bytes": 671966,
+    "content_encoding": "gzip",
+    "epoch": 2460001.5,
+    "geometry_included": true,
+    "fallback": "disabled_unvalidated"
+  },
+  "reconnect": {
+    "encoded_bytes": 262555,
+    "decoded_bytes": 671533,
+    "content_encoding": "gzip",
+    "epoch": 2460000.5,
+    "geometry_included": true,
+    "fallback": "disabled_unvalidated"
+  }
+}

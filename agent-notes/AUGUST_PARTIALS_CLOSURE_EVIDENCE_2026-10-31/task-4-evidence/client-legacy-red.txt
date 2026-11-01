@@ -1,0 +1,37 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run src/frontend/features/solar/solarPhysicsClient.test.ts
+
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-partials-solar-20261031
+
+ ❯ src/frontend/features/solar/solarPhysicsClient.test.ts (43 tests | 1 failed) 96ms
+   × accepts a bounded complete legacy response when render delivery is unsupported 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/features/solar/solarPhysicsClient.test.ts > accepts a bounded complete legacy response when render delivery is unsupported
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/frontend/features/solar/solarPhysicsClient.test.ts:568:54
+    566|   })));
+    567|   const client = new SolarPhysicsClient({ baseUrl: () => 'http://backe…
+    568|   expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+       |                                                      ^
+    569|   expect(client.latestState()?.activity_index).toBe(0.42);
+    570| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 42 passed (43)
+   Start at  05:04:17
+   Duration  220ms (tests 64%, transform 25%, import 9%, worker 2%)
+
