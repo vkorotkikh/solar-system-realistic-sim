@@ -1,12 +1,12 @@
 # Branch integration — 2026-11-02
 
-Status: integration in progress. This report records branch reconciliation, not closure of external scientific, deployment, or manual-accessibility acceptance gaps.
+Status: prepared for final GitHub acceptance; the audit PR has not landed yet. This report records branch reconciliation, not closure of external scientific, deployment, or manual-accessibility acceptance gaps.
 
 ## Completed landing
 
 PR [#22](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/22) landed as `c842196c17ddf491080b3b4fb1a97106f362cdda` after all 14 push/pull-request checks passed. Ordinary Chromium passed 56 cases with one existing native-display skip on both GitHub runs. The gate now uses full Chromium headless instead of headless shell; real WebGL context-loss and scientific assertions remain enabled. PR #23 was also marked merged through the included eruption history.
 
-Local main was synchronized to that remote commit. Its earlier local-only routing commit is preserved on `backup/local-main-before-sync-20261102`; incoming untracked-note collisions were backed up and SHA-256 verified in `/home/nomad/ai/projects/backups/solar-main-before-sync-20261102`. Unrelated untracked notes and dirty acceptance worktrees remain untouched.
+PR [#24](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/24) then landed as `307dc4ffa69416ed974e067cea16756c7ffaba28`, with all 14 push/pull-request checks passing and independent review clear. Local main was synchronized to this remote commit. Its earlier local-only routing commit is preserved on `backup/local-main-before-sync-20261102`; incoming untracked-note collisions were backed up and SHA-256 verified in `/home/nomad/ai/projects/backups/solar-main-before-sync-20261102`. Unrelated untracked notes and dirty acceptance worktrees remain untouched.
 
 ## Requested branches at reconciliation
 
@@ -41,17 +41,28 @@ All six patch-equivalent branches are now ancestors of the audit integration. Ev
 - Keep the complete blocking browser matrix and zero-diagnostic type gates; add immutable workflow action pins throughout. Keep all science nodes/mutations and the correct PFSS source hash.
 - Keep root scratch launchers retired. Preserve diagnostics through the maintained Playwright CLI with owned output directories, signal forwarding, and failure propagation.
 
-## Validation before the audit merge commit
+## Validation and final reconciliation
 
-- Full frontend/tooling suite: **2,951 passed, 2 existing skips** after reconciling four legacy fixture families. The oracle source, science hashes and thresholds were preserved; retired Deimos was replaced with another supported texture fixture.
-- Full backend suite: **5,654 passed, 12 optional-Tudat skips**, no failures or xfails (340.91 s).
-- Strict source, broad-script and native-Node asteroid-script types, UI fixture types, zero-error ratchet and production build passed.
-- Chromium: 66 passed, one existing native-display skip, two action-stability timeouts during unrelated host CPU stress. Both failed cases passed unchanged after the stress ended (42.6 s). All 68 applicable cases have passed; a fresh combined GitHub run remains required before merge.
-- All 23 scientific manifest input hashes match. The committed-source mutation gate and remaining browser projects are pending.
-- Independent backend and runtime/solar merge reviews found no concrete Important/Critical regressions. Independent tooling review passed 57 focused checks and identified one stale documentation example; the maintained diagnostic commands are now documented correctly.
+All **16 requested branch heads** are reachable from audit integration `997b523da27c77f5b2f79eada19c2da84dd28063`: 15 source tips plus audit itself. Independent verification found zero missing commits and no unexpected source-head movement. All six ancestry-only merges have trees identical to their first parents. Remote main `307dc4f` is an ancestor.
 
-PR [#24](https://github.com/vkorotkikh/solar-system-realistic-sim/pull/24) carries solar-wind integration head `a8019b2`. Its full suite passed 1,773 cases (two existing skips), source types/build passed, and independent review found no findings. GitHub acceptance is still running.
+| Check | Recorded result and scope |
+|---|---|
+| Full frontend/tooling suite | 2,972 passed, 2 existing skips after the AGN port repair; the subsequent worker-diagnostic matcher adds 17 passing tests. |
+| Full backend suite | 5,654 passed, 12 optional-Tudat skips, no failures or xfails (340.91 s), before the additional Horizons test merge. |
+| Horizons integration | Both suites passed 81 cases, including three additional service regressions. Strict signature/version validation precedes request-scoped coverage refusal. |
+| Scientific gate | On combined source `1cd1309`: 21 runner/workflow checks, 11/11 baselines and 8/8 mutations detected; zero unexpected failures, errors or skips. All 23 pinned input hashes remain unchanged. |
+| Types/build | Strict source, broad-script and native-Node asteroid-script checks; UI fixture types; zero-error ratchet; production build passed. |
+| Chromium | 66 passed and one existing native-display skip in the first run; two action-stability timeouts during unrelated host CPU stress passed unchanged on rerun (42.6 s). All 68 applicable cases have passed. |
+| Native Chromium tab zoom | 4/4 passed, including genuine 200%/400% zoom and rejection of substitute zoom mechanisms. |
+| Firefox + WebKit | Final combined run: 80 passed, 56 existing project-specific skips, zero failures. Local WebKit used the same WebKit 2370 binary with the previously verified Noble dependency bundle via its launcher; standard GitHub WebKit remains a required gate. |
+| Independent reviews | Backend, runtime/solar, wind integration, tooling, AGN port repair and diagnostic fixture reviews found no unresolved Important/Critical issues. |
 
-## Subsequent integration
+The initial legacy-fixture failures were reconciled with current contracts: preserved historical moon oracle projected onto exact active identities; current runtime ownership; supported texture replacing retired Deimos; current Kuiper snapshot; complete planet-velocity fixture dependencies. No science thresholds or production reserve calculations were weakened.
 
-The Horizons branch was merged while preserving strict signature/version validation before coverage classification. Its exception documentation and three service-level regressions were retained; both Horizons suites passed **81 cases**. The six equivalent history merges added no content changes. Main at `c842196c` is an ancestor of the integration.
+The AGN diagnostic script now binds another free port if its random candidate is occupied, and navigates only to its own actual bound address. A real occupied-socket regression failed before the repair and passed afterward. Firefox's intentional worker error is admitted only with the exact message, observed worker URL and matching stack frames; unexpected diagnostics remain failures. Both worker cases passed Chromium, Firefox and WebKit, with 17 negative/positive matcher tests.
+
+Final GitHub checks on the published audit head are still required before merging. Local reruns and qualified WebKit setup are not a substitute for those checks.
+
+## Preserved work outside this merge
+
+Uncommitted work in `solar-scn005-final-acceptance-20261028`, `solar-scn030-scn031-browser-gate-20261027`, and `solar-remediation-20261014-ephemeris` was not moved, committed, or discarded. Additional detached payload and notes/evidence worktrees are preserved. Inclusion of their committed branch histories does **not** declare those working copies or external acceptance tasks complete.

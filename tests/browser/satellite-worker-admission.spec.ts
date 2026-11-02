@@ -6,8 +6,29 @@ import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 type SatelliteModule = typeof import('../../src/frontend/features/planetary/satelliteSystem');
 
+function isExpectedWorkerPageError(
+  error: { name: string; message: string }, workerUrl: string, browserName: string,
+): boolean {
+  const expectedDiagnostic = /^(?:Uncaught )?(?:TypeError: )?Invalid satellite worker message\.$/;
+  if (error.name === 'TypeError') return expectedDiagnostic.test(error.message);
+  if (browserName !== 'firefox' || error.name !== '[JavaScript Error') return false;
+
+  // Firefox exposes a quoted exception plus file/line metadata as the message.
+  // Admit only this exact exception from the observed worker, including every
+  // frame in the wrapper; unrelated diagnostics must remain test failures.
+  const wrapped = /^"TypeError: Invalid satellite worker message\." \{file: "([^"\r\n]+)" line: ([1-9]\d*)\}\]\n([\s\S]+)$/.exec(error.message);
+  if (!wrapped || wrapped[1] !== workerUrl) return false;
+  const frames = wrapped[3].split('\n');
+  if (frames.at(-1) === '') frames.pop();
+  return frames.length > 0 && frames.every((frame, index) => {
+    const location = /^(self\.onmessage|EventHandlerNonNull\*)@(.+):([1-9]\d*):([1-9]\d*)$/.exec(frame);
+    return location !== null && location[2] === workerUrl
+      && (index !== 0 || (location[1] === 'self.onmessage' && location[3] === wrapped[2]));
+  });
+}
+
 for (const malformed of ['snapshot', 're-init'] as const) {
-  test(`actual satellite Worker ${malformed} error reaches existing owner fallback`, async ({ page, context }, testInfo) => {
+  test(`actual satellite Worker ${malformed} error reaches existing owner fallback`, async ({ page, context, browserName }, testInfo) => {
     test.setTimeout(30_000);
     const configuredBase = testInfo.project.use.baseURL;
     if (!configuredBase) throw new Error('An explicitly owned loopback Vite baseURL is required.');
@@ -121,7 +142,7 @@ for (const malformed of ['snapshot', 're-init'] as const) {
     if (malformed === 'snapshot') expect(result.busyAfterInvalidSend).toBe(true);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].message).toMatch(/^(?:Uncaught )?TypeError: Invalid satellite worker message\.$/);
-    expect(result.errors[0].filename).toContain('satellitePropagationWorker');
+    expect(result.errors[0].filename).toBe(workerUrls[0]);
     expect(result.errors[0].trusted).toBe(true);
     expect(result.errors[0].defaultPrevented).toBe(false);
     expect(result.successesAfterInvalid).toEqual([]);
@@ -131,11 +152,12 @@ for (const malformed of ['snapshot', 're-init'] as const) {
     expect([result.ready, result.busy, result.enabled]).toEqual([false, false, false]);
     expect(result.lastError).toBe('Satellite propagation worker failed; reverted to main-thread propagation.');
     expect(workerUrls).toHaveLength(1);
-    expect(workerUrls[0]).toContain('satellitePropagationWorker');
+    expect(new URL(workerUrls[0]).origin).toBe(base.origin);
+    expect(new URL(workerUrls[0]).pathname).toBe('/src/frontend/features/planetary/satellitePropagationWorker.ts');
     expect(unexpectedRequests).toEqual([]);
     // Expected uncaught worker diagnostics are observed, never canceled or hidden.
     const expectedDiagnostic = /^(?:Uncaught )?(?:TypeError: )?Invalid satellite worker message\.$/;
-    expect(pageErrors.filter(error => error.name !== 'TypeError' || !expectedDiagnostic.test(error.message))).toEqual([]);
+    expect(pageErrors.filter(error => !isExpectedWorkerPageError(error, workerUrls[0], browserName))).toEqual([]);
     expect(consoleErrors.filter(message => !expectedDiagnostic.test(message))).toEqual([]);
   });
 }
