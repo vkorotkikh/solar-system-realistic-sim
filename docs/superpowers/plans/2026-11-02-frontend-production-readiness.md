@@ -135,11 +135,11 @@ Task order: `1 -> 2 -> 3 -> 4 -> 5`. Shared configuration and test files make se
 
 **Interfaces:** exact target `c842196c17ddf491080b3b4fb1a97106f362cdda`; Node/npm pins above; retain `fd14543` and the planning commit.
 
-- [ ] Confirm clean worktree, record both parents, and merge the exact target locally with message `merge: reconcile frontend readiness baseline with c842196`. Never merge a moving branch name.
-- [ ] Select pinned Node/npm, run `node --version`, `npm --version`, `npm ci`; confirm locked installed package versions. Do not copy stale `node_modules` from another worktree.
-- [ ] Run separately: `npm test`, `npm run typecheck`, `npm run typecheck:ratchet`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run typecheck:scripts`, `npm run build`. Capture exit status for each. Strict TypeScript must be clean; legacy ratchet budgets are not permission to reintroduce debt.
-- [ ] Record test totals including explicit skips, build bytes, known warnings, source/tree SHA and lock hash in Execution evidence below. A failing clean baseline is investigated before adding the gate; never reset a baseline JSON to hide it.
-- [ ] Verify `git diff --check` and explicit staged paths. Commit evidence: `docs: record pinned frontend readiness baseline`.
+- [x] Confirm clean worktree, record both parents, and merge the exact target locally with message `merge: reconcile frontend readiness baseline with c842196`. Never merge a moving branch name.
+- [x] Select pinned Node/npm, run `node --version`, `npm --version`, `npm ci`; confirm locked installed package versions. Do not copy stale `node_modules` from another worktree.
+- [x] Run separately: `npm test`, `npm run typecheck`, `npm run typecheck:ratchet`, `npm run typecheck:ui-delta`, `npm run test:types:ui`, `npm run typecheck:scripts`, `npm run build`. Capture exit status for each. Strict TypeScript must be clean; legacy ratchet budgets are not permission to reintroduce debt.
+- [x] Record test totals including explicit skips, build bytes, known warnings, source/tree SHA and lock hash in Execution evidence below. A failing clean baseline is investigated before adding the gate; never reset a baseline JSON to hide it.
+- [x] Verify `git diff --check` and explicit staged paths. Commit evidence: `docs: record pinned frontend readiness baseline`.
 
 ## Task 2: Establish compiled-artifact acceptance
 
@@ -207,6 +207,26 @@ Preserve physics/backend commits on rollback: roll back the frontend artifact/co
 ## Execution evidence
 
 Planning evidence only: three read-only specialist inspections at `519c894`, followed by targeted primary-agent delta inspection of `c842196`. Shared-main test output was invalidated by checkout advancement and stale dependencies. No new passing runtime baseline is claimed here. Append exact Task 1 and final-run evidence during execution.
+
+### Task 1 baseline — 2026-11-02
+
+- Clean isolated worktree and absent `node_modules` confirmed before integration. Local merge `4c269322f767bd6b679ebca5010ad67bfb596db5` used the exact frozen target, with parents `6edd6edc9ffe88627378c98f9c4836c888228b1c` and `c842196c17ddf491080b3b4fb1a97106f362cdda`; routing `fd14543` and planning `6edd6ed` remain ancestors. Tested source/tree: `4c269322f767bd6b679ebca5010ad67bfb596db5` / `f966876107b3fa1daef7a931b62febaba2ec3e42`.
+- Pinned cached tools selected through `/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/.bin`: `node --version` → `v22.23.2`; `npm --version` → `10.9.8`. `npm ci` exited 0, installed 51 packages and audited 52 with 0 vulnerabilities. `npm ls --depth=0` exited 0; all nine direct installed versions were also compared to the lockfile and matched: `@axe-core/playwright` 4.11.1, `@playwright/test` 1.64.0, `@types/node` 22.19.1, `@types/three` 0.182.0, `axe-core` 4.11.1, `three` 0.182.0, TypeScript 5.9.3, Vite 7.3.7, Vitest 5.0.4.
+- Committed lock retained unchanged from frozen upstream: Git blob `f2790c6fc630f3424a04293986f25347c4cd2e23`; SHA-256 `6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702`.
+
+| Separate command | Exit | Observed result |
+|---|---:|---|
+| `npm test` | 0 | 115 files passed, 1 file skipped; 1,753 tests passed, 2 skipped, 0 failed (1,755 total) |
+| `npm run typecheck` | 0 | Strict application TypeScript clean |
+| `npm run typecheck:ratchet` | 0 | 0/226 legacy diagnostics; no bucket exceeded its baseline |
+| `npm run typecheck:ui-delta` | 0 | 0 legacy diagnostics; no new or increased identities |
+| `npm run test:types:ui` | 0 | UI fixture/spec TypeScript clean |
+| `npm run typecheck:scripts` | 0 | Scripts TypeScript clean |
+| `npm run build` | 0 | Prebuild verified 8 curated maps and packaged 4 notices; Vite transformed 78 modules |
+
+- Explicit skips: `scripts/planetShaderGeometry.test.mjs`, Earth and Mars cases in `planet vertex shader geometry on EGL`; the existing opt-in `PLANET_SHADER_GPU_TEST` was unset. Those EGL runtime cases are **NOT RUN**.
+- Exact output bytes (gzip bytes): `dist/index.html` 21,172 (4,813); `dist/assets/modelWorker-BeAgDSIV.js` 28,361 (9,993); `dist/assets/index-Ba7vuM9D.css` 26,390 (5,959); `dist/assets/index-B_ZKDIdI.js` 991,894 (258,046). These four outputs total 1,067,817 bytes; all 434 distribution files, including local assets, total 70,994,139 bytes. Known build warning: a minified chunk exceeds 500 kB; no warning limit or baseline was changed.
+- Gates ran at 08:52:37–08:53:58 UTC. Full command output, exact exit statuses, dependency comparisons, provenance and byte census are retained in ignored `.superpowers/sdd/2026-11-02-frontend-production-readiness/task-1-*.log`, `task-1-statuses.tsv` and `task-1-report.md`. `git diff --check` passed; only this plan's execution evidence is newly authored and staged. No browser, compiled-app interaction, hardware or human assistive-technology result is claimed by this baseline.
 
 ## NOT in scope
 
