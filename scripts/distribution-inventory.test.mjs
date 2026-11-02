@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { verifyDistributionInventory } from './distribution-inventory.mjs';
+import { verifyDistributionInventory, REQUIRED_LOCAL_DATA_INPUTS } from './distribution-inventory.mjs';
 
 async function fixture(run) {
   const root = await mkdtemp(path.join(tmpdir(), 'distribution-inventory-'));
@@ -22,6 +22,11 @@ async function fixture(run) {
     await mkdir(path.join(root, 'docs/data'), { recursive: true });
     await mkdir(path.join(root, 'public'));
     await writeFile(path.join(root, 'public/data.bin'), bytes);
+    for (const name of REQUIRED_LOCAL_DATA_INPUTS) {
+      await mkdir(path.dirname(path.join(root, name)), { recursive: true });
+      await writeFile(path.join(root, name), bytes);
+      inventory.files.push({ ...inventory.files[0], path: name });
+    }
     await save();
     await run({ root, catalog, inventory, save });
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -77,4 +82,10 @@ test('rights status cannot be silently promoted to an invented approval', () => 
 test('noncommercial review cannot be repurposed for a commercial release', () => fixture(async ({ root, catalog, save }) => {
   catalog.dataUseScope = 'commercial'; await save();
   await assert.rejects(verifyDistributionInventory(root, { requireReleaseRights: true }), /data-use scope/);
+}));
+
+test('deleting a retained-data row cannot silently reduce the review scope', () => fixture(async ({ root, inventory, save }) => {
+  inventory.files = inventory.files.filter(row => row.path !== 'src/data/moons.json');
+  await save();
+  await assert.rejects(verifyDistributionInventory(root), /required local data input is unlisted: src\/data\/moons.json/);
 }));

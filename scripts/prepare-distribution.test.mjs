@@ -5,6 +5,7 @@ import { mkdtemp, cp, mkdir, readFile, writeFile, rm, readdir } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { prepareDistribution } from './prepare-distribution.mjs';
+import { REQUIRED_LOCAL_DATA_INPUTS } from './distribution-inventory.mjs';
 
 async function fixture(run) {
   const root = await mkdtemp(path.join(tmpdir(), 'solar-distribution-'));
@@ -24,6 +25,12 @@ async function fixture(run) {
       const bytes = await readFile(path.join(root, relative));
       return { path: relative, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), sourceProductIds: ['test-maps'] };
     }));
+    for (const relative of REQUIRED_LOCAL_DATA_INPUTS) {
+      const bytes = Buffer.from('test-only data fixture');
+      await mkdir(path.dirname(path.join(root, relative)), { recursive: true });
+      await writeFile(path.join(root, relative), bytes);
+      files.push({ path: relative, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), sourceProductIds: ['test-maps'] });
+    }
     await writeFile(path.join(root, 'docs/data/distribution-files.json'), JSON.stringify({ schemaVersion: 1, files }));
     await run(root);
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -35,7 +42,7 @@ test('build packages notices after verifying the exact approved maps', () => fix
   assert.equal(result.publicFileCount, 9);
   assert.equal(result.notices, 6);
   assert.equal(result.unresolvedRights, 1);
-  assert.equal(JSON.parse(await readFile(path.join(root, 'public/legal/DISTRIBUTION-FILES.json'), 'utf8')).files.length, 9);
+  assert.equal(JSON.parse(await readFile(path.join(root, 'public/legal/DISTRIBUTION-FILES.json'), 'utf8')).files.length, 21);
   assert.match(await readFile(path.join(root, 'public/legal/NOTICE.md'), 'utf8'), /CC BY-NC/);
   assert.match(await readFile(path.join(root, 'public/legal/THREE-LICENSE.txt'), 'utf8'), /MIT/);
   const policy = await readFile(path.join(root, 'public/legal/DISTRIBUTION-POLICY.md'), 'utf8');

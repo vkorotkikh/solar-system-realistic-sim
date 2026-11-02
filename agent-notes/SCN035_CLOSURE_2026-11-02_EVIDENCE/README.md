@@ -17,10 +17,13 @@ missing/changed/duplicate/unlisted inputs and symlinks, and restricts the genera
 legal directory to six known outputs. Those outputs include the exact file
 inventory and source/credit register. Scientific model validation remains separate.
 
-[targeted-tests.txt](targeted-tests.txt): **12 tests passed**. Tests exercise the
+[targeted-tests.txt](targeted-tests.txt): **13 tests passed**. Tests exercise the
 original public-directory bypass, missing/changed data, unknown products, duplicate
 rows, traversal, symlinks, the generated-notice escape hatch, invented rights
-status and commercial reinterpretation of the noncommercial scope.
+status and commercial reinterpretation of the noncommercial scope. Independent
+review also reproduced omission of a local-data row; [red-omitted-input.txt](red-omitted-input.txt)
+fails before the new independent required-input policy. The repaired gate rejects
+that omission, so deleting a manifest row cannot silently narrow the named scope.
 
 [inventory-verification.json](inventory-verification.json) records the complete
 offline check. [prepare.json](prepare.json) records successful packaging.

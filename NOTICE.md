@@ -66,5 +66,5 @@ is historical.
 The current [distribution policy](docs/distribution-policy.md) restricts the
 SILSO-enabled data workflow to noncommercial research/evaluation and removes
 the unresolved Deimos map. The build validates all inventoried input bytes and
-packages six notices/registers. The inventory is not a legal clearance or a
-current byte inventory; new products require their own source and rights review.
+packages six notices/registers. This current byte inventory is not legal
+clearance; new products require their own source and rights review.

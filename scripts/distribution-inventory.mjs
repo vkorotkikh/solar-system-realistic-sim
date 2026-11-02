@@ -7,6 +7,22 @@ export const GENERATED_NOTICES = new Set([
   'LICENSE.txt', 'NOTICE.md', 'DISTRIBUTION-POLICY.md', 'THREE-LICENSE.txt',
   'DISTRIBUTION-SOURCES.json', 'DISTRIBUTION-FILES.json',
 ]);
+// This reviewed scope is independent of the byte manifest: deleting a manifest
+// row must not silently stop checking a retained scientific input.
+export const REQUIRED_LOCAL_DATA_INPUTS = Object.freeze([
+  'backend/data/ephemerides/fallback_validation.json',
+  'backend/data/ephemerides/jpl_horizons_de441_j2000_barycenters.json',
+  'backend/data/ephemerides/planet_secular_model.json',
+  'solar-systems/nearby_star_systems_ranked_full.csv',
+  'src/data/moonEphemerisChebyshev.json',
+  'src/data/moonEphemerisDaphnis.json',
+  'src/data/moonEphemerisRepairs.json',
+  'src/data/moonEphemerisS2023S38.json',
+  'src/data/moonEphemerisSpkRepairs.json',
+  'src/data/moonPhysicalRadii.json',
+  'src/data/moons.json',
+  'src/data/stars_catalog.json',
+]);
 const RIGHTS_STATUSES = new Set([
   'review-required', 'owner-permission-required', 'provider-declared-public-domain',
   'noncommercial-only', 'MIT',
@@ -98,6 +114,9 @@ export async function verifyDistributionInventory(root, { requireReleaseRights =
       || createHash('sha256').update(bytes).digest('hex') !== row.sha256) {
       throw new Error(`distribution input integrity failed: ${row.path}`);
     }
+  }
+  for (const name of REQUIRED_LOCAL_DATA_INPUTS) {
+    if (!paths.has(name)) throw new Error(`required local data input is unlisted: ${name}`);
   }
   const actualPublic = await publicFiles(root);
   for (const name of actualPublic) {

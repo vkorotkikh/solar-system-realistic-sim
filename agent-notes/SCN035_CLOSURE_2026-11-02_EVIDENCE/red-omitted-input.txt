@@ -1,0 +1,30 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-four-closure-20261102
+
+ ❯ scripts/distribution-inventory.test.mjs (9 tests | 1 failed) 231ms
+   × deleting a retained-data row cannot silently reduce the review scope 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/distribution-inventory.test.mjs > deleting a retained-data row cannot silently reduce the review scope
+AssertionError: Missing expected rejection.
+
+simple
+
+ ❯ scripts/distribution-inventory.test.mjs:90:3
+     88|   inventory.files = inventory.files.filter(row => row.path !== 'src/da…
+     89|   await save();
+     90|   await assert.rejects(verifyDistributionInventory(root), /required lo…
+       |   ^
+     91| }));
+     92|
+ ❯ fixture scripts/distribution-inventory.test.mjs:31:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  12:34:13
+   Duration  330ms (tests 87%, transform 8%, import 4%, worker 1%)
+
