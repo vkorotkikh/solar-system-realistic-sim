@@ -1537,8 +1537,24 @@ def _numeric_id_from_header(header: str) -> str:
 
 
 _HORIZONS_COVERAGE_REFUSAL = re.compile(
-    r"^No ephemeris for target .+ (?:after|prior to) (?:A\.D\.|B\.C\.) \d"
+    r'^No ephemeris for target "(?P<target>[^"]+)" (?P<direction>after|prior to) '
+    r"(?P<era>A\.D\.|B\.C\.) (?P<year>\d+)-(?P<month>[A-Z]{3})-(?P<day>\d{2})\b"
 )
+_HORIZONS_MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+
+
+def _refusal_fits_request(refusal: re.Match[str], body_id: str, jd: float) -> bool:
+    """A refusal is request-scoped only if it names this target and its cutoff excludes this epoch."""
+    if refusal["target"].casefold() != body_id.casefold() or refusal["month"] not in _HORIZONS_MONTHS:
+        return False
+    year = int(refusal["year"]) if refusal["era"] == "A.D." else 1 - int(refusal["year"])
+    cutoff = year + (_HORIZONS_MONTHS.index(refusal["month"]) + (int(refusal["day"]) - 1) / 31) / 12
+    requested = 2000.0 + (jd - J2000_JD) / 365.25
+    # ponytail: year-level comparison with one year of slack for calendar and month-length
+    # differences; convert dates exactly if a real cutoff ever falls that close to a request.
+    if refusal["direction"] == "after":
+        return requested >= cutoff - 1.0
+    return requested <= cutoff + 1.0
 
 
 def _parse_horizons_payload(
@@ -1561,9 +1577,11 @@ def _parse_horizons_payload(
 
         error = payload.get("error")
         if error:
-            # A validated provider refusing one target/epoch is not an outage.
-            # Unknown errors and untrusted envelopes retain protocol protection.
-            if isinstance(error, str) and _HORIZONS_COVERAGE_REFUSAL.match(error.strip()):
+            # A validated provider refusing this target at this epoch is not an outage.
+            # Unknown errors, untrusted envelopes and refusals that cannot apply to this
+            # request (another target, a cutoff the epoch does not cross) keep protocol protection.
+            refusal = _HORIZONS_COVERAGE_REFUSAL.match(error.strip()) if isinstance(error, str) else None
+            if refusal is not None and _refusal_fits_request(refusal, body_id, expected_jd):
                 raise EphemerisEpochUnsupported(
                     f"Horizons has no ephemeris for `{body_id}` at the requested epoch",
                     provider="horizons", body_id=body_id, jd=expected_jd,

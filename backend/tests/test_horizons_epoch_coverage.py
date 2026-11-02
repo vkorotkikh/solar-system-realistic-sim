@@ -50,8 +50,12 @@ def refusal(direction="after", era="A.D."):
     }
 
 
-@pytest.mark.parametrize("direction,era", [("after", "A.D."), ("prior to", "A.D."), ("prior to", "B.C.")])
-def test_coverage_refusal_preserves_unrelated_client_access(monkeypatch, direction, era):
+@pytest.mark.parametrize("direction,era,jd", [
+    ("after", "A.D.", JD), ("prior to", "A.D.", JD),
+    # A "prior to B.C. 2024" cutoff only fits an epoch before it: JD 954020.5 is about 2100 B.C.
+    ("prior to", "B.C.", 954_020.5),
+])
+def test_coverage_refusal_preserves_unrelated_client_access(monkeypatch, direction, era, jd):
     calls = []
 
     def transport(request, *, timeout):
@@ -62,12 +66,12 @@ def test_coverage_refusal_preserves_unrelated_client_access(monkeypatch, directi
 
     monkeypatch.setattr(module, "_horizons_urlopen", transport)
     with pytest.raises(module.EphemerisError) as caught:
-        service().sample_state("earth", JD)
+        service().sample_state("earth", jd)
     error = caught.value
     assert error.code == "ephemeris_epoch_unsupported"
     assert error.retryable is False
     assert error.body_id == "earth"
-    assert error.jd == JD
+    assert error.jd == jd
     assert error.retry_after_s is None
     for copy in (error.clone(), module._EphemerisFailureData.from_error(error).to_error()):
         assert type(copy) is type(error)
@@ -81,13 +85,29 @@ def test_coverage_refusal_preserves_unrelated_client_access(monkeypatch, directi
     assert len(calls) == 2
 
 
+# Live API, 2026-11-02, this service's query: what JPL prints past each end of every mapped body's coverage.
+LIVE_REFUSALS = [
+    ("sun", 'No ephemeris for target "Sun" after A.D. 9999-DEC-30 12:00:00.0000 TDB', 'No ephemeris for target "Sun" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ("mercury", 'No ephemeris for target "Mercury" after A.D. 9999-DEC-30 12:00:00.0000 TDB', 'No ephemeris for target "Mercury" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ("venus", 'No ephemeris for target "Venus" after A.D. 9999-DEC-30 12:00:00.0000 TDB', 'No ephemeris for target "Venus" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ("earth", 'No ephemeris for target "Earth" after A.D. 9999-DEC-30 12:00:00.0000 TDB', 'No ephemeris for target "Earth" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
+    ("mars", 'No ephemeris for target "Mars" after A.D. 2600-JAN-01 00:00:00.0000 TDB', 'No ephemeris for target "Mars" prior to A.D. 1600-JAN-02 00:00:00.0000 TDB'),
+    ("jupiter", 'No ephemeris for target "Jupiter" after A.D. 2600-JAN-04 00:00:00.0000 TDB', 'No ephemeris for target "Jupiter" prior to A.D. 1600-JAN-11 00:00:00.0000 TDB'),
+    ("saturn", 'No ephemeris for target "Saturn" after A.D. 2250-JAN-05 00:00:00.0000 TDB', 'No ephemeris for target "Saturn" prior to A.D. 1749-DEC-31 00:00:00.0000 TDB'),
+    ("uranus", 'No ephemeris for target "Uranus" after A.D. 2399-DEC-16 00:00:00.0000 TDB', 'No ephemeris for target "Uranus" prior to A.D. 1600-JAN-05 00:00:00.0000 TDB'),
+    ("neptune", 'No ephemeris for target "Neptune" after A.D. 2199-DEC-30 00:00:00.0000 TDB', 'No ephemeris for target "Neptune" prior to A.D. 1800-JAN-02 00:00:00.0000 TDB'),
+    ("pluto", 'No ephemeris for target "Pluto" after A.D. 2199-DEC-29 00:00:00.0000 TDB', 'No ephemeris for target "Pluto" prior to A.D. 1800-JAN-03 00:00:00.0000 TDB'),
+]
+
+
 @pytest.mark.parametrize("body_id,jd,message", [
-    ("earth", 1e15, 'No ephemeris for target "Earth" after A.D. 9999-DEC-30 12:00:00.0000 TDB'),
-    ("earth", -1e9, 'No ephemeris for target "Earth" prior to B.C. 9999-MAR-21 00:00:00.0000 TDB'),
-    ("pluto", 2_000_000.5, 'No ephemeris for target "Pluto" prior to A.D. 1800-JAN-03 00:00:00.0000 TDB'),
+    *((body, 1e7, late) for body, late, _ in LIVE_REFUSALS),
+    *((body, -1e9, early) for body, _, early in LIVE_REFUSALS),
+    ("earth", 1e15, LIVE_REFUSALS[3][1]),
+    ("pluto", 2_000_000.5, LIVE_REFUSALS[9][2]),  # about A.D. 763: a plausible date, before Pluto's coverage
 ])
 def test_refusal_wording_captured_from_live_horizons_is_request_scoped(monkeypatch, body_id, jd, message):
-    # Live API, 2026-11-02, this service's query: HTTP 200 with the refusal in both fields.
+    # HTTP 200 with the refusal in both the error and result fields, as the live API sends it.
     captured = {**refusal(), "error": message, "result": f"\n{message}\n"}
     calls = []
 
@@ -103,6 +123,30 @@ def test_refusal_wording_captured_from_live_horizons_is_request_scoped(monkeypat
     assert caught.value.code == "ephemeris_epoch_unsupported"
     assert service().sample_state("mars", JD + 1).body_id == "mars"
     assert len(calls) == 2
+
+
+@pytest.mark.parametrize("body_id,jd,message", [
+    # Real JPL wording whose cutoff the requested epoch does not cross (JD is 2024).
+    ("earth", JD, LIVE_REFUSALS[3][1]),
+    ("earth", JD, LIVE_REFUSALS[3][2]),
+    # Real JPL wording for another target, at an epoch that fits its cutoff.
+    ("earth", 2_000_000.5, LIVE_REFUSALS[9][2]),
+])
+def test_refusal_that_cannot_apply_to_the_request_stays_a_provider_failure(monkeypatch, body_id, jd, message):
+    payload = {**refusal(), "error": message, "result": f"\n{message}\n"}
+    calls = []
+
+    def transport(request, *, timeout):
+        calls.append(request.full_url)
+        return _Response(json.dumps(payload).encode())
+
+    monkeypatch.setattr(module, "_horizons_urlopen", transport)
+    with pytest.raises(module.EphemerisProtocolError):
+        service().sample_state(body_id, jd)
+    # A provider answer that does not fit the request keeps outage protection.
+    with pytest.raises(module.EphemerisProtocolError):
+        service().sample_state("mars", JD + 1)
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("signature", [
