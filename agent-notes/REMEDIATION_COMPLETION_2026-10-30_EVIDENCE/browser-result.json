@@ -1,0 +1,447 @@
+{
+  "domain": "browser",
+  "createdAt": "2026-10-30T05:26:59.574285+00:00",
+  "workspace": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "sourceHead": "f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2",
+  "productionFilesStable": true,
+  "sourceDriftFromFreeze": [],
+  "changedFiles": [
+    ".github/workflows/frontend-ui.yml",
+    "playwright.config.ts",
+    "src/frontend/app/panelController.ts",
+    "src/frontend/app/viewportCameraController.ts",
+    "src/frontend/app/viewportCameraController.test.ts",
+    "src/main.bodyInfo.test.ts",
+    "tests/browser/panel.spec.ts",
+    "tests/browser/camera.spec.ts",
+    "tests/browser/startup-warmup.spec.ts",
+    "tests/browser/scn049-kuiper-subscription.spec.ts",
+    "tests/browser/fixtures/ui-shell.ts"
+  ],
+  "sourceSnapshot": "/tmp/solar-remediation-completion-20261030/browser/freeze-snapshot.json",
+  "scopeCompliance": {
+    "noWorkerCommits": true,
+    "noNoteDeletions": true,
+    "noMainTsEdits": true,
+    "noOriginalWorktreeSourceWrites": true,
+    "noSubagents": true,
+    "onlyAssignedRepositoryFilesEdited": true
+  },
+  "toolchain": {
+    "node": "22.23.2",
+    "nodeExecutable": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+    "npm": "10.9.8",
+    "npmCli": "/tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js",
+    "browserPort": 4197,
+    "host": "Ubuntu24.04.4 x86_64 Linux; Chromium156.0.8078.4 SwiftShader, Firefox157, WebKit27.2 WPE headless"
+  },
+  "commands": [
+    {
+      "name": "camera-no-frame RED",
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/frontend/app/viewportCameraController.test.ts",
+      "result": "expected failure: 1 failed,13 passed; expected range9.025, observed10 without a frame",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/camera-unit-red.log"
+    },
+    {
+      "name": "stale media-query RED",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/panel.spec.ts --project=chromium --grep \"stale media\" --reporter=line",
+      "result": "expected failure: mobile aria-modal absent with retained and fresh media queries stale",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/panel-red.log"
+    },
+    {
+      "name": "delayed event RED",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/panel.spec.ts --project=chromium --grep \"delayed media\" --reporter=line",
+      "result": "expected failure: synchronous stale event removed modality and viewport inert",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/panel-delayed-red.log"
+    },
+    {
+      "name": "direct frozen GREEN",
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/frontend/app/panelController.test.ts src/frontend/app/viewportCameraController.test.ts src/main.bodyInfo.test.ts",
+      "result": "18 passed",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/direct-frozen.log",
+      "exitCode": 0
+    },
+    {
+      "name": "warmup scoped GREEN",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/startup-warmup.spec.ts --project=chromium --reporter=line",
+      "result": "4 passed",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/warmup-scoped.log",
+      "exitCode": 0
+    },
+    {
+      "name": "initial full Chromium",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test --project=chromium --reporter=line,json",
+      "result": "42 passed,1 intentional native-visibility skip",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/full-chromium.log",
+      "exitCode": 0,
+      "stats": {
+        "startTime": "2026-10-30T05:10:40.110Z",
+        "duration": 263733.653,
+        "expected": 42,
+        "skipped": 1,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBoundary": "Before final settled-width timer and automatic legacy fixture changes; five startup-owner browser tests were added after discovery. Parent owns final combined Chromium after freeze."
+    },
+    {
+      "name": "initial legacy browser RED",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/panel.spec.ts tests/browser/camera.spec.ts tests/browser/scn049-kuiper-subscription.spec.ts --project=chromium --reporter=line",
+      "result": "15 passed,1 legacy failure; old snapshot accepted on unversioned same transport before parent fix",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/scoped-chromium-green.log",
+      "exitCode": 1
+    },
+    {
+      "name": "parent client fix pinned GREEN",
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/frontend/app/simulationClient.test.ts src/frontend/app/simulationClient.kuiper.test.ts src/frontend/app/simulationClient.lifecycleReview.test.ts src/frontend/app/simulationClient.subscription.test.ts",
+      "result": "59 passed",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/legacy-parent-pinned-unit.log",
+      "exitCode": 0
+    },
+    {
+      "name": "native pre-settling RED",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test --project=chromium-tab-zoom --reporter=line,json",
+      "result": "2 passed,1 failed:400% reset width1280 but panel still hidden at tab-zoom.spec.ts:133",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/native-zoom-before-settled-width.log",
+      "exitCode": 1,
+      "stats": {
+        "startTime": "2026-10-30T05:15:39.175Z",
+        "duration": 84176.00700000001,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/native-zoom-before-settled-width-artifacts"
+    },
+    {
+      "name": "settled-width RED",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/panel.spec.ts --project=chromium --grep \"width settles\" --reporter=line",
+      "result": "expected failure: panel remained hidden after resize signal sampled900 then innerWidth restored1440 without another signal",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/panel-settled-width-red.log"
+    },
+    {
+      "name": "final scoped Chromium GREEN",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test tests/browser/panel.spec.ts tests/browser/camera.spec.ts tests/browser/scn049-kuiper-subscription.spec.ts --project=chromium --reporter=line,json",
+      "result": "17 passed, including final timer and both subscription modes",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/scoped-chromium-final.log",
+      "exitCode": 0,
+      "stats": {
+        "startTime": "2026-10-30T05:18:50.597Z",
+        "duration": 8948.995,
+        "expected": 17,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/scoped-chromium-final-artifacts"
+    },
+    {
+      "name": "frozen strict browser types",
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/typescript/bin/tsc -p tsconfig.ui-tests.json --noEmit",
+      "result": "passed",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/ui-types-frozen.log",
+      "exitCode": 0
+    },
+    {
+      "name": "post-fix full native run",
+      "command": "UI_TEST_PORT=4197 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test --project=chromium-tab-zoom --reporter=line,json",
+      "result": "2 passed,1 timed out:400% at second Page.captureScreenshot, before desktop-restoration assertion",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/native-zoom.log",
+      "exitCode": 1,
+      "stats": {
+        "startTime": "2026-10-30T05:19:18.169Z",
+        "duration": 136004.495,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/native-zoom-final-artifacts",
+      "artifactCopyBoundary": "Trace/PNG evidence preserved. Initial copy encountered leftover native Chromium profile socket/lock files; profiles are not required proof. Later artifact copies exclude isolated-zoom-profile-* explicitly."
+    },
+    {
+      "name": "scoped-firefox",
+      "command": [
+        "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "tests/browser/panel.spec.ts",
+        "tests/browser/camera.spec.ts",
+        "tests/browser/scn049-kuiper-subscription.spec.ts",
+        "--project=firefox",
+        "--reporter=line,json"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/browser/scoped-firefox.log",
+      "stats": {
+        "startTime": "2026-10-30T05:21:37.339Z",
+        "duration": 13649.514,
+        "expected": 17,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "result": "17 passed,0 skipped",
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/scoped-firefox-artifacts",
+      "environment": {
+        "UI_TEST_PORT": "4197"
+      }
+    },
+    {
+      "name": "full-firefox",
+      "command": [
+        "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--project=firefox",
+        "--reporter=line,json"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/browser/full-firefox.log",
+      "stats": {
+        "startTime": "2026-10-30T05:21:52.015Z",
+        "duration": 48565.485,
+        "expected": 33,
+        "skipped": 17,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "result": "33 passed,17 skipped",
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/full-firefox-artifacts",
+      "environment": {
+        "UI_TEST_PORT": "4197"
+      }
+    },
+    {
+      "name": "scoped-webkit",
+      "command": [
+        "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "tests/browser/panel.spec.ts",
+        "tests/browser/camera.spec.ts",
+        "tests/browser/scn049-kuiper-subscription.spec.ts",
+        "--project=webkit",
+        "--reporter=line,json"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/browser/scoped-webkit.log",
+      "stats": {
+        "startTime": "2026-10-30T05:22:41.585Z",
+        "duration": 13873.591,
+        "expected": 17,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "result": "17 passed,0 skipped",
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/scoped-webkit-artifacts",
+      "environment": {
+        "UI_TEST_PORT": "4197",
+        "PLAYWRIGHT_BROWSERS_PATH": "/tmp/solar-remediation-completion-20261030/browser/playwright-cache",
+        "LD_LIBRARY_PATH": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/root/usr/lib/x86_64-linux-gnu",
+        "PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS": "1"
+      }
+    },
+    {
+      "name": "full-webkit",
+      "command": [
+        "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--project=webkit",
+        "--reporter=line,json"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/browser/full-webkit.log",
+      "stats": {
+        "startTime": "2026-10-30T05:22:56.506Z",
+        "duration": 78534.569,
+        "expected": 33,
+        "skipped": 17,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "result": "33 passed,17 skipped",
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/full-webkit-artifacts",
+      "environment": {
+        "UI_TEST_PORT": "4197",
+        "PLAYWRIGHT_BROWSERS_PATH": "/tmp/solar-remediation-completion-20261030/browser/playwright-cache",
+        "LD_LIBRARY_PATH": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/root/usr/lib/x86_64-linux-gnu",
+        "PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS": "1"
+      }
+    },
+    {
+      "name": "unchanged isolated400% GREEN",
+      "command": "UI_TEST_PORT=4197 DEBUG=pw:browser /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test --project=chromium-tab-zoom --grep \"400%\" --reporter=line,json",
+      "result": "1 passed in32.6 seconds; screenshots, genuine4x metrics, complete focus/reflow assertions, reset to100% and visible desktop panel all passed unchanged",
+      "log": "/tmp/solar-remediation-completion-20261030/browser/native-isolated400.log",
+      "exitCode": 0,
+      "stats": {
+        "startTime": "2026-10-30T05:24:23.367Z",
+        "duration": 32595.835000000003,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "artifacts": "/tmp/solar-remediation-completion-20261030/browser/native-isolated400-artifacts"
+    }
+  ],
+  "originalDefectsClosed": [
+    {
+      "ids": [
+        "SCN-030"
+      ],
+      "defect": "Native zoom/stale retained or fresh media-query values lost remembered panel state, modal focus, or desktop restoration.",
+      "implementation": "Caller supplies layout-width policy. Resize, visualViewport resize and media-query signals all reconcile from that policy; a single bounded next-task recheck handles width settling after the signal. Pending recheck is cancelled on disposal.",
+      "evidence": [
+        "panel-red.log",
+        "panel-delayed-red.log",
+        "panel-settled-width-red.log",
+        "scoped-chromium-final.log",
+        "scoped-firefox.log",
+        "scoped-webkit.log",
+        "native-isolated400.log"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-030"
+      ],
+      "defect": "Keyboard/toolbar camera actions and Range feedback waited for an expensive application render frame.",
+      "implementation": "Accepted inputs flush in a microtask, recheck live control permissions, and publish onActionApplied once per applied batch; disposal suppresses queued work. Parent startup owner wired shared updateZoomStatus.",
+      "evidence": [
+        "camera-unit-red.log",
+        "direct-frozen.log",
+        "scoped-chromium-final.log",
+        "scoped-firefox.log",
+        "scoped-webkit.log"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-031",
+        "SCN-047"
+      ],
+      "defect": "Pending warmup fixtures assumed optional KHR_parallel_shader_compile existed on SwiftShader.",
+      "implementation": "Test-only pending fixture supplies deterministic optional extension token/completion behavior; no-parallel remains null and production checks remain unchanged.",
+      "evidence": [
+        "warmup-scoped.log",
+        "full-chromium.log"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-047"
+      ],
+      "defect": "Browser failures were allowed to pass CI.",
+      "implementation": "Removed continue-on-error; four blocking Chromium, native-zoom, Firefox and WebKit matrix jobs. UI job retains Chromium installation for GPU verifier.",
+      "evidence": [
+        ".github/workflows/frontend-ui.yml",
+        "playwright.config.ts"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-049"
+      ],
+      "defect": "Captured-producer subscription rejection lacked tracked actual-browser proof; legacy replacement accepted stale payload on one transport.",
+      "implementation": "Integrated API/library-only browser acceptance with exact full captured replacement positions. Both versioned and legacy modes run automatically. Versioned stale Kuiper does not discard ordinary same-socket body updates. Parent production legacy fix creates a fresh transport; browser proof retains old route, proves its closure, attempts delayed old delivery, proves no old body/Kuiper adoption, negotiates replacement route, then accepts current body and complete replacement.",
+      "productionOwner": "parent",
+      "evidence": [
+        "legacy-parent-pinned-unit.log",
+        "scoped-chromium-final.log",
+        "full-firefox.log",
+        "full-webkit.log"
+      ]
+    }
+  ],
+  "native400Diagnosis": {
+    "productionFailure": "First400% run reached reset width1280 but controller left panel hidden. Focused RED reproduced width sampled before settling; bounded next-task recheck fixed it. Final unchanged isolated400% completed all original assertions and restored desktop visibility.",
+    "separateCaptureFailure": "Later full native project timed out at second CDP Page.captureScreenshot after keyboard/focus/escape/canvas assertions. It did not reach desktop-reset assertion in that attempt.",
+    "rootCauseLimit": "The exact underlying cause of the intermittent CDP capture stall is not established. Browser contention is plausible given observed host load and concurrent browser work; that is an inference, not proven causation. No timeout increase, bypass, screenshot helper modification or reflow assertion weakening was used.",
+    "final400Proof": {
+      "passed": true,
+      "durationSeconds": 32.6,
+      "width": [
+        1280,
+        320,
+        1280
+      ],
+      "dpr": [
+        1,
+        4,
+        1
+      ],
+      "nativeTabsApiFactor": 4,
+      "siblingZoom": 1,
+      "visualViewportScale": 1,
+      "allOriginalAssertionsUnchanged": true
+    },
+    "laneResultLimit": "200% and substitute-rejection passed in full run;400% passed in separate unchanged controlled rerun. Do not describe the earlier complete native-project run as green.",
+    "traceAnalysis": "/tmp/solar-remediation-completion-20261030/browser/native-timeout-diagnosis.md"
+  },
+  "captureProvenance": {
+    "capture": {
+      "producer": "SimulationRunner._run_frames -> KuiperBeltEngine.get_state",
+      "command_path": "_ws_receive_loop -> send_command -> _handle_command",
+      "delivery_path": "_ws_send_loop -> _ws_send_text -> pending ASGI send",
+      "main_engine": "REBOUNDEngine/whfast",
+      "rng_seed": 20261014,
+      "particle_count": 32,
+      "paused": true,
+      "replacement_produced_before_old_delivery": true
+    },
+    "sha256": "78c739e806808c0491bf2f05fd487473ee1b49ea2e0b995dfc45580b2606f1b4",
+    "replacementPositionCount": 38,
+    "acceptanceScope": "SimulationClient API/library in actual browsers, replaying captured REBOUND/WHFast producer frames. No default-UI N-body activation or live-backend claim. No Tudat producer claim."
+  },
+  "webkitHost": {
+    "actualRuns": "Scoped17/17; full33 passed17 documented skips, no failures. Real WebKit27.2 engine launched and exercised.",
+    "dependencySetup": "apt-get download plus dpkg-deb extraction under /tmp only; no sudo/global system package changes. Bundled browser libraries remain unchanged. A temporary cache wrapper supplies extracted LD_LIBRARY_PATH.",
+    "preflightBoundary": "Playwright missingDLOPENLibraries inspects /sbin/ldconfig -p and ignores user-space LD_LIBRARY_PATH. PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 bypasses only that installer presence check. ldd of GTK/WPE executables, explicit libGLESv2/libx264 dlopen, real launch and actual test lanes supplied runtime evidence. Production CI still installs normal OS dependencies.",
+    "dependencyManifest": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps-manifest.json",
+    "runner": "/tmp/solar-remediation-completion-20261030/browser/run-webkit.sh",
+    "launchEvidence": "/tmp/solar-remediation-completion-20261030/browser/webkit-launch-final.log"
+  },
+  "exactRemainingBoundaries": [
+    "Manual NVDA, VoiceOver, actual OS text resizing and physical touch acceptance were not supplied or executed. Browser emulated touch/text checks do not establish those manual gates.",
+    "Full Firefox/WebKit each include17 explicit Chromium-only skips; these are not cross-engine actual WebGL startup or native zoom evidence.",
+    "Initial full Chromium42/1 predates final timer/automatic legacy fixture changes and five added startup-owner specs; parent owns final post-freeze combined Chromium validation. Final scoped Chromium17/17 covers all browser-owner changes.",
+    "The latest complete native project attempt had a CDP screenshot timeout; unchanged isolated400% passed. Exact underlying intermittent capture-stall cause remains unproven; parent requested a serial controlled retry without timeout increase or bypass.",
+    "These Playwright lanes use ViteDEV. Parent owns final cold DEV/PREVIEW five-minute delivery and deployed/CI acceptance. No deployment/TLS/auth/scientific-release claim is made here.",
+    "This worker performed software-WebGL browser validation. Parent separately reported physical GPU gates; those reports are not reclassified as this worker actual-device evidence.",
+    "Blocking workflow configuration is tracked, but this worker did not execute remote GitHub Actions or change branch-protection required-check settings."
+  ],
+  "notesFullyEligibleForRetirement": [],
+  "retirementRationale": "Parent owns final per-note reconciliation/deletion. Browser notes covering manual/CI/deployed/full-release children cannot be retired solely from these scoped results.",
+  "handoffs": [
+    {
+      "owner": "startup/parent",
+      "status": "completed",
+      "detail": "main.ts isMobileLayout()=>innerWidth<=1100, camera onActionApplied:updateZoomStatus, and shared frame zoom-status callback applied by startup owner; browser worker only changed body-info test binding."
+    },
+    {
+      "owner": "parent",
+      "status": "completed",
+      "detail": "Legacy fresh-socket production fence independently implemented by parent; pinned59 units and actual-browser modern/legacy acceptance pass."
+    },
+    {
+      "owner": "parent",
+      "status": "ready_for_final_cold_delivery",
+      "detail": "All11 browser-owned files exactly match freeze snapshot and committed source. No production delta needed following successful unchanged isolated400%. Parent portsDEV5410/PREVIEW4410/backend9410 do not conflict with worker4197."
+    },
+    {
+      "owner": "parent",
+      "status": "browser_launch_hold",
+      "detail": "All worker browser sessions finished. No additional broad/headed/GPU browsers will be launched during parent requested approximately11-minute cold delivery window. Reports/scratch analysis only."
+    },
+    {
+      "owner": "parent",
+      "status": "remaining",
+      "detail": "Own final serial native/full Chromium CI checks and note retirement; preserve failed proof and do not raise timeout or bypass bounds."
+    }
+  ]
+}

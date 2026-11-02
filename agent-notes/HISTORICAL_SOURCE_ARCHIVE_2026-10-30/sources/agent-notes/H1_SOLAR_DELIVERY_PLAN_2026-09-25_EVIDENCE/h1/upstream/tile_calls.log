@@ -1,0 +1,32 @@
+2026-09-25T02:09:39.489Z try1
+status=200 time_total=1.814127 bytes=210030 ctype=image/png
+HTTP/1.1 200 OK
+date: Fri, 25 Sep 2026 02:09:38 GMT
+server: uvicorn
+content-length: 210030
+content-type: image/png
+cache-control: public, max-age=120
+x-solar-aia-channel: aia_304
+x-solar-aia-image-id: 192408248
+x-solar-aia-image-date: 2026-09-25 01:47:41
+access-control-allow-credentials: true
+access-control-allow-origin: http://127.0.0.1:5173
+vary: Origin
+
+tile_try1.bin: PNG image data, 512 x 512, 8-bit colormap, interlaced
+2026-09-25T02:09:49.262Z try2
+status=200 time_total=0.001497 bytes=210030 ctype=image/png
+HTTP/1.1 200 OK
+date: Fri, 25 Sep 2026 02:09:48 GMT
+server: uvicorn
+content-length: 210030
+content-type: image/png
+cache-control: public, max-age=120
+x-solar-aia-channel: aia_304
+x-solar-aia-image-id: 192408248
+x-solar-aia-image-date: 2026-09-25 01:47:41
+access-control-allow-credentials: true
+access-control-allow-origin: http://127.0.0.1:5173
+vary: Origin
+
+tile_try2.bin: PNG image data, 512 x 512, 8-bit colormap, interlaced

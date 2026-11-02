@@ -1,0 +1,65 @@
+[
+  {
+    "id": "SCN-020",
+    "failureProbability": 1.0,
+    "returnedPayloadKg": {
+      "p05": 1000.0,
+      "p50": 1000.0,
+      "p95": 1000.0
+    },
+    "expectedReturnedPayloadKg": 0,
+    "defectReproduced": true
+  },
+  {
+    "id": "SCN-019",
+    "productionKgDay": 100,
+    "miningDays": 10,
+    "storageLossRatePerDay": 0.1,
+    "actualMiningEndStockKg": 367.87944117144235,
+    "constantProductionIntegratedStockKg": 632.1205588285576,
+    "defectReproduced": true
+  },
+  {
+    "id": "SCN-075",
+    "cases": [
+      {
+        "cycle": 24,
+        "hemisphere": 1,
+        "expectedLeadingSign": -1,
+        "actualLeadingSign": 1.0
+      },
+      {
+        "cycle": 24,
+        "hemisphere": -1,
+        "expectedLeadingSign": 1,
+        "actualLeadingSign": -1.0
+      },
+      {
+        "cycle": 25,
+        "hemisphere": 1,
+        "expectedLeadingSign": 1,
+        "actualLeadingSign": -1.0
+      },
+      {
+        "cycle": 25,
+        "hemisphere": -1,
+        "expectedLeadingSign": -1,
+        "actualLeadingSign": 1.0
+      },
+      {
+        "cycle": 26,
+        "hemisphere": 1,
+        "expectedLeadingSign": -1,
+        "actualLeadingSign": 1.0
+      },
+      {
+        "cycle": 26,
+        "hemisphere": -1,
+        "expectedLeadingSign": 1,
+        "actualLeadingSign": -1.0
+      }
+    ],
+    "reference": "https://ntrs.nasa.gov/api/citations/20250006012/downloads/pivot_250521_submitted.pdf",
+    "defectReproduced": true
+  }
+]

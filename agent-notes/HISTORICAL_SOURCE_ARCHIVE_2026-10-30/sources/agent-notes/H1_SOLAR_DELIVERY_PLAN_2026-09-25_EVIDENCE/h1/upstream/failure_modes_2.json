@@ -1,0 +1,143 @@
+{
+ "results": {
+  "realtime_reader1": {
+   "status": 500,
+   "elapsed_s": 4.306,
+   "body": "Internal Server Error"
+  },
+  "realtime_reader2": {
+   "status": 500,
+   "elapsed_s": 4.308,
+   "body": "Internal Server Error"
+  },
+  "realtime_reader0": {
+   "status": 200,
+   "elapsed_s": 11.421,
+   "body": "{\"schema\":{\"name\":\"solar_realtime_endpoint\",\"version\":1},\"source\":\"backend\",\"snapshot\":{\"schema\":{\"name\":\"solar_realtime_context\",\"version\":1},\"fetched_at_utc\":\"2026-09-25T02:16:20.691294Z\",\"source_st"
+  },
+  "tile1_aia_193": {
+   "status": 503,
+   "elapsed_s": 4.007,
+   "body": "{\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  },
+  "tile2_aia_171": {
+   "status": 503,
+   "elapsed_s": 2.659,
+   "body": "{\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  },
+  "tile3_aia_304": {
+   "status": 503,
+   "elapsed_s": 4.009,
+   "body": "{\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  },
+  "tile4_aia_211": {
+   "status": 503,
+   "elapsed_s": 0.004,
+   "body": "{\"detail\":\"Solar AIA tile requests are temporarily saturated. Retry shortly.\"}"
+  }
+ },
+ "timeline_concurrent_realtime": [
+  [
+   0.002,
+   "realtime_reader0 request"
+  ],
+  [
+   0.012,
+   "upstream start ov/products/solar-wind/plasma-1-day.json"
+  ],
+  [
+   0.052,
+   "realtime_reader1 request"
+  ],
+  [
+   0.103,
+   "realtime_reader2 request"
+  ],
+  [
+   3.821,
+   "upstream timeout ov/products/solar-wind/plasma-1-day.json"
+  ],
+  [
+   3.821,
+   "upstream start www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  ],
+  [
+   4.359,
+   "realtime_reader1 -> 500 after 4.31s: Internal Server Error"
+  ],
+  [
+   4.411,
+   "realtime_reader2 -> 500 after 4.31s: Internal Server Error"
+  ],
+  [
+   7.621,
+   "upstream timeout www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  ],
+  [
+   7.621,
+   "upstream start /api.helioviewer.org/v2/getClosestImage/"
+  ],
+  [
+   11.421,
+   "upstream timeout /api.helioviewer.org/v2/getClosestImage/"
+  ],
+  [
+   11.423,
+   "realtime_reader0 -> 200 after 11.42s: {\"schema\":{\"name\":\"solar_realtime_endpoint\",\"version\":1},\"source\":\"backend\",\"snapshot\":{\"schema\":{\"name\":\"solar_realtime"
+  ]
+ ],
+ "timeline_sequential_tiles": [
+  [
+   0.0,
+   "tile1_aia_193 request"
+  ],
+  [
+   0.003,
+   "upstream start ov/products/solar-wind/plasma-1-day.json"
+  ],
+  [
+   3.803,
+   "upstream timeout ov/products/solar-wind/plasma-1-day.json"
+  ],
+  [
+   3.803,
+   "upstream start www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  ],
+  [
+   4.007,
+   "tile1_aia_193 -> 503 after 4.01s: {\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  ],
+  [
+   4.007,
+   "tile2_aia_171 request"
+  ],
+  [
+   6.667,
+   "tile2_aia_171 -> 503 after 2.66s: {\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  ],
+  [
+   6.667,
+   "tile3_aia_304 request"
+  ],
+  [
+   7.603,
+   "upstream timeout www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  ],
+  [
+   7.603,
+   "upstream start /api.helioviewer.org/v2/getClosestImage/"
+  ],
+  [
+   10.676,
+   "tile3_aia_304 -> 503 after 4.01s: {\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+  ],
+  [
+   10.676,
+   "tile4_aia_211 request"
+  ],
+  [
+   10.68,
+   "tile4_aia_211 -> 503 after 0.00s: {\"detail\":\"Solar AIA tile requests are temporarily saturated. Retry shortly.\"}"
+  ]
+ ]
+}

@@ -1,0 +1,23 @@
+........................................................................ [ 40%]
+........................................................................ [ 81%]
+................................                                         [100%]
+=============================== warnings summary ===============================
+../../venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_benchmark_accuracy.py::test_benchmark_uses_strict_reference_integrity
+tests/test_benchmark_accuracy.py::test_benchmark_reports_pass_fail_metrics
+tests/test_benchmark_report_overwrite.py::test_generate_report_writes_new_file
+tests/test_benchmark_report_overwrite.py::test_generate_report_replaces_when_allowed
+tests/test_benchmark_report_overwrite.py::test_report_endpoint_overwrites_when_requested
+  /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/benchmark/accuracy.py:292: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+176 passed, 6 warnings in 43.56s
+
+real	0m46.546s
+user	0m42.821s
+sys	0m0.818s
+exit=0

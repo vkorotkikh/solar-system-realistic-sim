@@ -1,0 +1,10 @@
+file:///home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/verify-planet-rendered-geometry.mjs:26
+    const timer = setTimeout(() => reject(new Error('Chromium startup timed out')), 20000);
+                                          ^
+
+Error: Chromium startup timed out
+    at Timeout._onTimeout (file:///home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/verify-planet-rendered-geometry.mjs:26:43)
+    at listOnTimeout (node:internal/timers:585:17)
+    at process.processTimers (node:internal/timers:521:7)
+
+Node.js v22.23.2

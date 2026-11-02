@@ -1,0 +1,11 @@
+
+  VITE v7.3.1  ready in 84 ms
+
+  ➜  Local:   http://127.0.0.1:5191/
+11:01:15 AM [vite] (client) page reload src/frontend/features/solar/solarPhysicsClient.ts
+11:01:15 AM [vite] (client) page reload src/frontend/features/solar/solarDataStatus.ts
+11:01:22 AM [vite] (client) page reload src/frontend/features/solar/solarDataStatus.ts
+11:03:30 AM [vite] (client) page reload src/frontend/features/solar/solarDataStatus.ts
+11:03:30 AM [vite] (client) page reload src/sunController.ts
+11:03:30 AM [vite] (client) page reload src/main.ts
+11:03:30 AM [vite] (client) page reload index.html

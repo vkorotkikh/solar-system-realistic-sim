@@ -1,0 +1,135 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv
+
+stdout | src/h1v-adv-controller.test.ts > C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading
+[C1] before: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC 
+[C1] while replacement loads: Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+[C1] after: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image
+[C2] 20 live-region updates in 120 s, 10 image attempts. First 4:
+  Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+[C3] 8 live-region updates in 10 min with nothing changing but the clock. e.g.
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:01 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:02 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:03 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+[C4] 39 requests, 39 live-region updates, 39 console.warn in 120 s. First 3:
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+  Sun: procedural fallback (solar server busy, HTTP 503)
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+
+stdout | src/h1v-adv-controller.test.ts > C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed
+[C5] after 304 loaded then 171 failed: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 171 image failed to load) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C6 transitions > connecting -> error -> backend -> stale -> backend
+[C6] sequence:
+  connecting: Sun: procedural fallback (connecting to solar model server)
+  error: Sun: procedural fallback (solar server rate limit reached, HTTP 429)
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+  stale: Sun: backend state from 14:00 UTC (refresh failing: solar server busy, HTTP 503)
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+[C6] console.warn calls: [
+  [32m'[solar] Sun: procedural fallback (solar server rate limit reached, HTTP 429)'[39m,
+  [32m'[solar] Sun: backend state from 14:00 UTC (refresh failing: solar server busy, HTTP 503)'[39m
+]
+
+ ❯ src/h1v-adv-controller.test.ts (7 tests | 5 failed) 6666ms
+   ✓ C0 initial publish (TDZ / construction order) > publishes connecting synchronously during construction, exactly once 3ms
+   × C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading 199ms
+     → expected 'Sun: backend solar model (hybrid forc…' to contain 'AIA 304'
+   × C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image 1392ms
+     → expected 20 to be less than or equal to 3
+   × C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image 5007ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   × C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes 8ms
+     → expected 39 to be less than or equal to 2
+   × C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed 11ms
+     → expected 'Sun: backend solar model (hybrid forc…' to contain '304'
+   ✓ C6 transitions > connecting -> error -> backend -> stale -> backend 46ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading
+AssertionError: expected 'Sun: backend solar model (hybrid forc…' to contain 'AIA 304'
+
+Expected: [32m"AIA 304"[39m
+Received: [31m"Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC"[39m
+
+ ❯ src/h1v-adv-controller.test.ts:100:26
+     98|     loads[1].ok();
+     99|     console.log('[C1] after:', published.at(-1)!.text);
+    100|     expect(whileLoading).toContain('AIA 304');
+       |                          ^
+    101|   });
+    102| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image
+AssertionError: expected 20 to be less than or equal to 3
+ ❯ src/h1v-adv-controller.test.ts:120:28
+    118|       + changes.slice(0, 4).join('\n  '));
+    119|     // WAI-ARIA polite regions: "not so rapid as to be annoying". Two …
+    120|     expect(changes.length).toBeLessThanOrEqual(3);
+       |                            ^
+    121|   });
+    122| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/h1v-adv-controller.test.ts:125:3
+    123| 
+    124| describe('C3 healthy path: the "updated HH:MM" minute tick re-announce…
+    125|   it('counts text changes over 10 minutes with a stable payload and im…
+       |   ^
+    126|     const { ctrl, loads, published } = harness();
+    127|     ctrl.maybeRefreshPhysics(Date.now(), true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+AssertionError: expected 39 to be less than or equal to 2
+ ❯ src/h1v-adv-controller.test.ts:163:28
+    161|     console.log(`[C4] ${n} requests, ${changes.length} live-region upd…
+    162|       + changes.slice(0, 3).join('\n  '));
+    163|     expect(changes.length).toBeLessThanOrEqual(2);
+       |                            ^
+    164|   });
+    165| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/h1v-adv-controller.test.ts > C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed
+AssertionError: expected 'Sun: backend solar model (hybrid forc…' to contain '304'
+
+Expected: [32m"304"[39m
+Received: [31m"Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 171 image failed to load) · updated 14:00 UTC"[39m
+
+ ❯ src/h1v-adv-controller.test.ts:177:36
+    175|     loads[1].fail();
+    176|     console.log('[C5] after 304 loaded then 171 failed:', published.at…
+    177|     expect(published.at(-1)!.text).toContain('304');
+       |                                    ^
+    178|   });
+    179| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 2 passed (7)
+   Start at  02:55:24
+   Duration  7.27s (transform 174ms, setup 0ms, collect 210ms, tests 6.67s, environment 0ms, prepare 82ms)
+

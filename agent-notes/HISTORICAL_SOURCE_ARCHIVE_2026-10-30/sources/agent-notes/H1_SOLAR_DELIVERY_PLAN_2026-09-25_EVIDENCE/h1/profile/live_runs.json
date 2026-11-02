@@ -1,0 +1,801 @@
+{
+ "import_server_s": 0.1275114640011452,
+ "runs": [
+  {
+   "label": "cold_220",
+   "jd": 2461308.55,
+   "maxf": 220,
+   "fidelity": "high",
+   "forcing": "hybrid",
+   "live": true,
+   "build_s": 10.0287,
+   "jsonable_encoder_s": 0.0159,
+   "json_dumps_s": 0.008,
+   "bytes_raw": 684692,
+   "bytes_gzip6": 273505,
+   "net_calls": 13,
+   "net_bytes": 3815358,
+   "net_seconds_sum": 4.039,
+   "net": [
+    {
+     "host": "services.swpc.noaa.gov",
+     "path": "/products/solar-wind/plasma-1-day.json",
+     "bytes": 0,
+     "seconds": 0.04,
+     "status": 404,
+     "error": "HTTP 404"
+    },
+    {
+     "host": "www.sidc.be",
+     "path": "/SILSO/DATA/SN_d_tot_V2.0.csv",
+     "bytes": 2896132,
+     "seconds": 0.904,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 311,
+     "seconds": 0.185,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 203878,
+     "seconds": 0.386,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.203,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 182712,
+     "seconds": 0.361,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.171,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 161381,
+     "seconds": 0.365,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 311,
+     "seconds": 0.183,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 151728,
+     "seconds": 0.346,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 311,
+     "seconds": 0.212,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 210813,
+     "seconds": 0.515,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "gong.nso.edu",
+     "path": "/data/magmap/QR/bqs/202608/",
+     "bytes": 7157,
+     "seconds": 0.17,
+     "status": 200,
+     "error": null
+    }
+   ],
+   "stages": {
+    "model.sample_state": {
+     "s": 6.1084,
+     "calls": 1
+    },
+    "pfss.get_or_compute": {
+     "s": 6.0891,
+     "calls": 1
+    },
+    "pfss._compute": {
+     "s": 6.0891,
+     "calls": 1
+    },
+    "rt.latest": {
+     "s": 3.9202,
+     "calls": 1
+    },
+    "rt._fetch_snapshot": {
+     "s": 3.9202,
+     "calls": 1
+    },
+    "pfss.trace_field_lines": {
+     "s": 3.7987,
+     "calls": 1
+    },
+    "rt._fetch_sdo_aia": {
+     "s": 2.9712,
+     "calls": 1
+    },
+    "pfss.compute_wsa_velocity_map": {
+     "s": 2.0852,
+     "calls": 1
+    },
+    "rt._fetch_binary": {
+     "s": 1.9733,
+     "calls": 5
+    },
+    "rt._fetch_json": {
+     "s": 0.9932,
+     "calls": 6
+    },
+    "rt._fetch_helioviewer_closest": {
+     "s": 0.9539,
+     "calls": 5
+    },
+    "rt._fetch_silso": {
+     "s": 0.909,
+     "calls": 1
+    },
+    "rt._fetch_text": {
+     "s": 0.904,
+     "calls": 1
+    },
+    "pfss.fetch_gong_synoptic_map": {
+     "s": 0.1699,
+     "calls": 1
+    },
+    "rt._fetch_swpc": {
+     "s": 0.0398,
+     "calls": 1
+    },
+    "pfss.synthetic_magnetogram": {
+     "s": 0.0322,
+     "calls": 1
+    },
+    "rt._analyze_aia_tile_activity": {
+     "s": 0.0291,
+     "calls": 5
+    },
+    "rt.detect_coronal_holes": {
+     "s": 0.0137,
+     "calls": 1
+    },
+    "model._build_parker_spiral": {
+     "s": 0.0092,
+     "calls": 1
+    },
+    "pfss.wsa_velocity_at_source_surface": {
+     "s": 0.0088,
+     "calls": 6
+    },
+    "model._build_feature_arc": {
+     "s": 0.0088,
+     "calls": 181
+    },
+    "pfss.decompose_spherical_harmonics": {
+     "s": 0.003,
+     "calls": 1
+    },
+    "model._feature_temporal_state": {
+     "s": 0.0006,
+     "calls": 1080
+    },
+    "model._feature_score": {
+     "s": 0.0005,
+     "calls": 540
+    },
+    "model._synthetic_coronal_holes": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "model._apply_realtime_forcing": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "pfss.pfss_solve": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "rt._fetch_gong_synoptic": {
+     "s": 0.0,
+     "calls": 1
+    }
+   },
+   "pfss_source": "synthetic",
+   "feature_count": 181,
+   "activity_index": 0.5511123962475954,
+   "assim_applied": true,
+   "source_status": {
+    "swpc": false,
+    "silso": true,
+    "sdo_aia": true,
+    "gong_synoptic": true
+   }
+  },
+  {
+   "label": "warm_same_220",
+   "jd": 2461308.55,
+   "maxf": 220,
+   "fidelity": "high",
+   "forcing": "hybrid",
+   "live": true,
+   "build_s": 7.224,
+   "jsonable_encoder_s": 0.0164,
+   "json_dumps_s": 0.0078,
+   "bytes_raw": 686442,
+   "bytes_gzip6": 274032,
+   "net_calls": 1,
+   "net_bytes": 7157,
+   "net_seconds_sum": 0.161,
+   "net": [
+    {
+     "host": "gong.nso.edu",
+     "path": "/data/magmap/QR/bqs/202608/",
+     "bytes": 7157,
+     "seconds": 0.161,
+     "status": 200,
+     "error": null
+    }
+   ],
+   "stages": {
+    "model.sample_state": {
+     "s": 7.2239,
+     "calls": 1
+    },
+    "pfss.get_or_compute": {
+     "s": 7.2058,
+     "calls": 1
+    },
+    "pfss._compute": {
+     "s": 7.2058,
+     "calls": 1
+    },
+    "pfss.trace_field_lines": {
+     "s": 4.3058,
+     "calls": 1
+    },
+    "pfss.compute_wsa_velocity_map": {
+     "s": 2.7101,
+     "calls": 1
+    },
+    "pfss.fetch_gong_synoptic_map": {
+     "s": 0.1607,
+     "calls": 1
+    },
+    "pfss.synthetic_magnetogram": {
+     "s": 0.0263,
+     "calls": 1
+    },
+    "model._build_parker_spiral": {
+     "s": 0.0092,
+     "calls": 1
+    },
+    "pfss.wsa_velocity_at_source_surface": {
+     "s": 0.009,
+     "calls": 6
+    },
+    "model._build_feature_arc": {
+     "s": 0.0076,
+     "calls": 181
+    },
+    "pfss.decompose_spherical_harmonics": {
+     "s": 0.0027,
+     "calls": 1
+    },
+    "model._feature_temporal_state": {
+     "s": 0.0005,
+     "calls": 1080
+    },
+    "model._feature_score": {
+     "s": 0.0005,
+     "calls": 540
+    },
+    "model._apply_realtime_forcing": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "model._synthetic_coronal_holes": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "rt.latest": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "pfss.pfss_solve": {
+     "s": 0.0,
+     "calls": 1
+    }
+   },
+   "pfss_source": "synthetic",
+   "feature_count": 181,
+   "activity_index": 0.5511311848493703,
+   "assim_applied": true,
+   "source_status": {
+    "swpc": false,
+    "silso": true,
+    "sdo_aia": true,
+    "gong_synoptic": true
+   }
+  },
+  {
+   "label": "newjd_220",
+   "jd": 2461308.5500999996,
+   "maxf": 220,
+   "fidelity": "high",
+   "forcing": "hybrid",
+   "live": true,
+   "build_s": 10.974,
+   "jsonable_encoder_s": 0.0276,
+   "json_dumps_s": 0.0133,
+   "bytes_raw": 641174,
+   "bytes_gzip6": 257127,
+   "net_calls": 10,
+   "net_bytes": 3263744,
+   "net_seconds_sum": 5.104,
+   "net": [
+    {
+     "host": "services.swpc.noaa.gov",
+     "path": "/products/solar-wind/plasma-1-day.json",
+     "bytes": 0,
+     "seconds": 0.035,
+     "status": 404,
+     "error": "HTTP 404"
+    },
+    {
+     "host": "www.sidc.be",
+     "path": "/SILSO/DATA/SN_d_tot_V2.0.csv",
+     "bytes": 2896132,
+     "seconds": 0.856,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 310,
+     "seconds": 0.436,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 204142,
+     "seconds": 1.066,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.306,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.276,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.326,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 154756,
+     "seconds": 1.413,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 311,
+     "seconds": 0.249,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "gong.nso.edu",
+     "path": "/data/magmap/QR/bqs/202608/",
+     "bytes": 7157,
+     "seconds": 0.141,
+     "status": 200,
+     "error": null
+    }
+   ],
+   "stages": {
+    "model.sample_state": {
+     "s": 5.9727,
+     "calls": 1
+    },
+    "pfss.get_or_compute": {
+     "s": 5.9512,
+     "calls": 1
+    },
+    "pfss._compute": {
+     "s": 5.9512,
+     "calls": 1
+    },
+    "rt.latest": {
+     "s": 5.0013,
+     "calls": 1
+    },
+    "rt._fetch_snapshot": {
+     "s": 5.0013,
+     "calls": 1
+    },
+    "rt._fetch_sdo_aia": {
+     "s": 4.106,
+     "calls": 1
+    },
+    "pfss.trace_field_lines": {
+     "s": 3.4666,
+     "calls": 1
+    },
+    "rt._fetch_binary": {
+     "s": 2.4796,
+     "calls": 2
+    },
+    "pfss.compute_wsa_velocity_map": {
+     "s": 2.3088,
+     "calls": 1
+    },
+    "rt._fetch_json": {
+     "s": 1.6281,
+     "calls": 6
+    },
+    "rt._fetch_helioviewer_closest": {
+     "s": 1.5935,
+     "calls": 5
+    },
+    "rt._fetch_silso": {
+     "s": 0.8602,
+     "calls": 1
+    },
+    "rt._fetch_text": {
+     "s": 0.8559,
+     "calls": 1
+    },
+    "pfss.fetch_gong_synoptic_map": {
+     "s": 0.141,
+     "calls": 1
+    },
+    "rt._fetch_swpc": {
+     "s": 0.035,
+     "calls": 1
+    },
+    "pfss.synthetic_magnetogram": {
+     "s": 0.032,
+     "calls": 1
+    },
+    "rt._analyze_aia_tile_activity": {
+     "s": 0.0201,
+     "calls": 5
+    },
+    "rt.detect_coronal_holes": {
+     "s": 0.0126,
+     "calls": 1
+    },
+    "model._build_parker_spiral": {
+     "s": 0.0118,
+     "calls": 1
+    },
+    "pfss.wsa_velocity_at_source_surface": {
+     "s": 0.0114,
+     "calls": 6
+    },
+    "model._build_feature_arc": {
+     "s": 0.0083,
+     "calls": 182
+    },
+    "pfss.decompose_spherical_harmonics": {
+     "s": 0.0027,
+     "calls": 1
+    },
+    "model._feature_temporal_state": {
+     "s": 0.0006,
+     "calls": 1080
+    },
+    "model._feature_score": {
+     "s": 0.0005,
+     "calls": 540
+    },
+    "model._synthetic_coronal_holes": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "model._apply_realtime_forcing": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "pfss.pfss_solve": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "rt._fetch_gong_synoptic": {
+     "s": 0.0,
+     "calls": 1
+    }
+   },
+   "pfss_source": "synthetic",
+   "feature_count": 182,
+   "activity_index": 0.5511487534516792,
+   "assim_applied": true,
+   "source_status": {
+    "swpc": false,
+    "silso": true,
+    "sdo_aia": true,
+    "gong_synoptic": true
+   }
+  },
+  {
+   "label": "newjd_180",
+   "jd": 2461308.5502,
+   "maxf": 180,
+   "fidelity": "high",
+   "forcing": "hybrid",
+   "live": true,
+   "build_s": 9.2153,
+   "jsonable_encoder_s": 0.0217,
+   "json_dumps_s": 0.0131,
+   "bytes_raw": 636065,
+   "bytes_gzip6": 254997,
+   "net_calls": 10,
+   "net_bytes": 3250712,
+   "net_seconds_sum": 2.79,
+   "net": [
+    {
+     "host": "services.swpc.noaa.gov",
+     "path": "/products/solar-wind/plasma-1-day.json",
+     "bytes": 0,
+     "seconds": 0.035,
+     "status": 404,
+     "error": "HTTP 404"
+    },
+    {
+     "host": "www.sidc.be",
+     "path": "/SILSO/DATA/SN_d_tot_V2.0.csv",
+     "bytes": 2896132,
+     "seconds": 0.891,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 310,
+     "seconds": 0.203,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.192,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 183792,
+     "seconds": 0.409,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.187,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getTile/",
+     "bytes": 162074,
+     "seconds": 0.398,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 312,
+     "seconds": 0.162,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "api.helioviewer.org",
+     "path": "/v2/getClosestImage/",
+     "bytes": 311,
+     "seconds": 0.166,
+     "status": 200,
+     "error": null
+    },
+    {
+     "host": "gong.nso.edu",
+     "path": "/data/magmap/QR/bqs/202608/",
+     "bytes": 7157,
+     "seconds": 0.146,
+     "status": 200,
+     "error": null
+    }
+   ],
+   "stages": {
+    "model.sample_state": {
+     "s": 6.5276,
+     "calls": 1
+    },
+    "pfss.get_or_compute": {
+     "s": 6.4874,
+     "calls": 1
+    },
+    "pfss._compute": {
+     "s": 6.4867,
+     "calls": 1
+    },
+    "pfss.trace_field_lines": {
+     "s": 3.6162,
+     "calls": 1
+    },
+    "pfss.compute_wsa_velocity_map": {
+     "s": 2.6914,
+     "calls": 1
+    },
+    "rt.latest": {
+     "s": 2.6877,
+     "calls": 1
+    },
+    "rt._fetch_snapshot": {
+     "s": 2.6877,
+     "calls": 1
+    },
+    "rt._fetch_sdo_aia": {
+     "s": 1.7566,
+     "calls": 1
+    },
+    "rt._fetch_json": {
+     "s": 0.9455,
+     "calls": 6
+    },
+    "rt._fetch_helioviewer_closest": {
+     "s": 0.9105,
+     "calls": 5
+    },
+    "rt._fetch_silso": {
+     "s": 0.8954,
+     "calls": 1
+    },
+    "rt._fetch_text": {
+     "s": 0.8908,
+     "calls": 1
+    },
+    "rt._fetch_binary": {
+     "s": 0.8078,
+     "calls": 2
+    },
+    "pfss.fetch_gong_synoptic_map": {
+     "s": 0.1466,
+     "calls": 1
+    },
+    "rt._fetch_swpc": {
+     "s": 0.0355,
+     "calls": 1
+    },
+    "model._build_feature_arc": {
+     "s": 0.0299,
+     "calls": 180
+    },
+    "pfss.synthetic_magnetogram": {
+     "s": 0.0292,
+     "calls": 1
+    },
+    "rt._analyze_aia_tile_activity": {
+     "s": 0.0235,
+     "calls": 5
+    },
+    "rt.detect_coronal_holes": {
+     "s": 0.0146,
+     "calls": 1
+    },
+    "model._build_parker_spiral": {
+     "s": 0.0086,
+     "calls": 1
+    },
+    "pfss.wsa_velocity_at_source_surface": {
+     "s": 0.0082,
+     "calls": 6
+    },
+    "pfss.decompose_spherical_harmonics": {
+     "s": 0.0033,
+     "calls": 1
+    },
+    "model._feature_temporal_state": {
+     "s": 0.0006,
+     "calls": 1080
+    },
+    "model._feature_score": {
+     "s": 0.0005,
+     "calls": 540
+    },
+    "model._synthetic_coronal_holes": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "model._apply_realtime_forcing": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "pfss.pfss_solve": {
+     "s": 0.0,
+     "calls": 1
+    },
+    "rt._fetch_gong_synoptic": {
+     "s": 0.0,
+     "calls": 1
+    }
+   },
+   "pfss_source": "synthetic",
+   "feature_count": 180,
+   "activity_index": 0.5511606245775774,
+   "assim_applied": true,
+   "source_status": {
+    "swpc": false,
+    "silso": true,
+    "sdo_aia": true,
+    "gong_synoptic": true
+   }
+  }
+ ]
+}

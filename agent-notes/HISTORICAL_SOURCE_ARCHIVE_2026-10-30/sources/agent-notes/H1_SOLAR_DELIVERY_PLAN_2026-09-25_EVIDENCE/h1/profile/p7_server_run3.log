@@ -1,0 +1,26 @@
+uvicorn pid 1590133
+t=   1.28 probe -> 200 1.341308
+t=   1.31 probe -> 200 0.013080
+== phase A: 2 client-aborted requests (curl -m 2), then a third immediately, then probe every 0.5 s
+t=   3.28 abort1 jd=2461308.60510000 -> 000 2.049836 0 curl_rc=28 detail=
+t=   3.28 abort2 jd=2461308.60520000 -> 000 2.049853 0 curl_rc=28 detail=
+t=   3.29 both aborted clients have exited (1.98 s after launch)
+t=   3.32 third jd=2461308.60530000 -> 503 0.001100 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=   3.34 probe -> 503 0.000973
+t=   4.83 probe -> 503 0.075658
+t=   6.37 probe -> 503 0.132604
+t=   7.84 probe -> 503 0.052895
+t=   9.44 probe -> 503 0.195521
+t=  10.86 probe -> 503 0.001367
+t=  12.27 probe -> 503 0.001327
+t=  15.35 probe -> 503 0.001598
+t=  16.77 probe -> 503 0.001636
+t=  18.19 probe -> 503 0.001614
+t=  19.61 probe -> 503 0.001165
+t=  21.03 probe -> 503 0.001280
+t=  22.45 probe -> 503 0.001536
+t=  23.87 probe -> 503 0.001437
+t=  25.29 probe -> 503 0.003924
+t=  26.73 probe -> 200 0.019119
+== rate limit bookkeeping: server log tail
+uvicorn stopped (pid 1590133)

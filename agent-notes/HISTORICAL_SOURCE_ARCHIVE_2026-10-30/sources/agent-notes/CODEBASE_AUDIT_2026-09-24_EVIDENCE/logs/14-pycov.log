@@ -1,0 +1,89 @@
+........................................................................ [ 40%]
+........................................................................ [ 81%]
+................................                                         [100%]
+=============================== warnings summary ===============================
+../../venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_benchmark_accuracy.py::test_benchmark_uses_strict_reference_integrity
+tests/test_benchmark_accuracy.py::test_benchmark_reports_pass_fail_metrics
+tests/test_benchmark_report_overwrite.py::test_generate_report_writes_new_file
+tests/test_benchmark_report_overwrite.py::test_generate_report_replaces_when_allowed
+tests/test_benchmark_report_overwrite.py::test_report_endpoint_overwrites_when_requested
+  /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/backend/benchmark/accuracy.py:292: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.13-final-0 _______________
+
+Name                                        Stmts   Miss  Cover
+---------------------------------------------------------------
+benchmark/__init__.py                           2      0   100%
+benchmark/accuracy.py                         167     36    78%
+data/__init__.py                                0      0   100%
+data/bodies.py                                  6      0   100%
+data/initial_conditions.py                    173     10    94%
+data/nearby_systems.py                        109     17    84%
+mission/__init__.py                            12      1    92%
+mission/agents.py                             132     16    88%
+mission/ephemeris_service.py                  149     74    50%
+mission/epo/__init__.py                         6      0   100%
+mission/epo/config.py                          33      2    94%
+mission/epo/metrics.py                         59     24    59%
+mission/epo/runners.py                         50     32    36%
+mission/epo/sample_episodes.py                 18      1    94%
+mission/epo/smoke_test.py                      33     23    30%
+mission/epo/verifier.py                        56     46    18%
+mission/explainability.py                      18      0   100%
+mission/mining_service.py                      31      0   100%
+mission/orbital.py                            102      7    93%
+mission/risk_service.py                        52      2    96%
+mission/schemas.py                            112     18    84%
+mission/vehicle_service.py                     76      7    91%
+server.py                                     973    425    56%
+sim/__init__.py                                32      0   100%
+sim/base.py                                    66      2    97%
+sim/contracts.py                               55      4    93%
+sim/galactic_tide.py                           47     47     0%
+sim/kuiper.py                                 197     12    94%
+sim/pfss_magnetogram.py                       673    101    85%
+sim/radiation_pressure.py                      68     68     0%
+sim/rebound_nbody.py                          338     73    78%
+sim/solar_physics.py                          595    143    76%
+sim/solar_realtime_data.py                    508    402    21%
+sim/tudatpy_hooks.py                          262    180    31%
+tests/conftest.py                               6      1    83%
+tests/test_benchmark_accuracy.py               74      0   100%
+tests/test_benchmark_report_overwrite.py       63      0   100%
+tests/test_compute_budget.py                   53      0   100%
+tests/test_kuiper_binary.py                    98      1    99%
+tests/test_kuiper_velocity_units.py            68      1    99%
+tests/test_lambert_solver_reference.py         28      0   100%
+tests/test_local_system_manifests.py           62      0   100%
+tests/test_mga_flyby_physics.py                64      0   100%
+tests/test_mission_agents.py                   45      0   100%
+tests/test_mission_schemas.py                  28      0   100%
+tests/test_nbody_ephemeris_generator.py        26      0   100%
+tests/test_nbody_horizons_accuracy.py          81      0   100%
+tests/test_nbody_initial_conditions.py        142      0   100%
+tests/test_nearby_systems_api_contract.py      53      0   100%
+tests/test_nearby_systems_catalog.py           14      0   100%
+tests/test_pfss_cache.py                       77      0   100%
+tests/test_seek_optimizations.py               91      0   100%
+tests/test_server_validation.py                79      0   100%
+tests/test_sim_contracts.py                    23      0   100%
+tests/test_sim_registry.py                     38      0   100%
+tests/test_solar_physics_api.py               163      0   100%
+tests/test_solar_physics_model.py             164      1    99%
+tests/test_solar_realtime_data_cache.py        51      0   100%
+tests/test_trajectory_regression.py            60      2    97%
+tests/test_ws_resource_contract.py            115      8    93%
+trajectory/__init__.py                          2      0   100%
+trajectory/lambert.py                         238     34    86%
+trajectory/mga.py                             144     10    93%
+trajectory/planner.py                          72     18    75%
+---------------------------------------------------------------
+TOTAL                                        7432   1849    75%
+176 passed, 6 warnings in 55.59s

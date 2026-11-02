@@ -1,0 +1,22 @@
+INFO:     Started server process [1593136]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8073 (Press CTRL+C to quit)
+INFO:     127.0.0.1:48620 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42468 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:42452 - "GET /solar/physics?jd=2461308.61209210&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42452 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40184 - "GET /solar/physics?jd=2464368.74263610&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37366 - "GET /solar/physics?jd=2467836.61063610&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38962 - "GET /solar/physics?jd=2464384.76263610&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50678 - "GET /solar/physics?jd=2460918.89863610&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50678 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=179660819&v=179660819 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46972 - "GET /solar/physics?jd=2461321.34663143&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46922 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:47768 - "GET /solar/physics?jd=2461436.14223143&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1593136]

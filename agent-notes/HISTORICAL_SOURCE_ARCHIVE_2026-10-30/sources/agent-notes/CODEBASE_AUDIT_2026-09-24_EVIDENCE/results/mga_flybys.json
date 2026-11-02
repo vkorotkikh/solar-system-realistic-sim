@@ -1,0 +1,68 @@
+{
+ "summary": {
+  "('mars', 1, 1)": 1,
+  "('mars', 2, 1)": 1,
+  "('mars', 1, 0)": 11,
+  "('mars', 2, 0)": 11,
+  "('jupiter', 1, 0)": 12,
+  "('jupiter', 2, 0)": 12,
+  "('saturn', 1, 0)": 12,
+  "('saturn', 2, 0)": 12,
+  "('uranus', 1, 0)": 12,
+  "('uranus', 2, 0)": 12,
+  "('neptune', 1, 0)": 12,
+  "('neptune', 2, 0)": 12,
+  "('venus', 1, 0)": 11,
+  "('venus', 2, 0)": 11,
+  "('venus', 1, 1)": 1,
+  "('venus', 2, 1)": 1
+ },
+ "flybys": [
+  {
+   "to": "mars",
+   "dep": 2461307.5,
+   "body": "saturn",
+   "vinIn": 9.51070180111178,
+   "vinOut": 9.510287536534689,
+   "mism_ms": 0.4142645770919273,
+   "reported": 0.0004142645770919273,
+   "feasible": true,
+   "reason": "ok"
+  },
+  {
+   "to": "mars",
+   "dep": 2461307.5,
+   "body": "saturn",
+   "vinIn": 9.51070180111178,
+   "vinOut": 9.510287536534689,
+   "mism_ms": 0.4142645770919273,
+   "reported": 0.0004142645770919273,
+   "feasible": true,
+   "reason": "ok"
+  },
+  {
+   "to": "venus",
+   "dep": 2462027.5,
+   "body": "jupiter",
+   "vinIn": 11.935384574802038,
+   "vinOut": 11.93598639775191,
+   "mism_ms": 0.6018229498714334,
+   "reported": 0.0006018229498714334,
+   "feasible": true,
+   "reason": "ok"
+  },
+  {
+   "to": "venus",
+   "dep": 2462027.5,
+   "body": "jupiter",
+   "vinIn": 11.935384574802038,
+   "vinOut": 11.93598639775191,
+   "mism_ms": 0.6018229498714334,
+   "reported": 0.0006018229498714334,
+   "feasible": true,
+   "reason": "ok"
+  }
+ ],
+ "alt_total": 664,
+ "alt_assist": 0
+}

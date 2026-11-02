@@ -16,21 +16,8 @@ export const CURATED_MOON_TEXTURE_CATALOG = Object.freeze([
       provider: 'USGS Astrogeology',
       dataset: 'Phobos Viking Global Mosaic 5m',
       productPage: 'https://astrogeology.usgs.gov/search/map/phobos_viking_global_mosaic_5m',
-      credit: 'NASA/USGS',
+      credit: 'NASA/USGS; Phobos mosaic author Phil Stooke',
       license: 'Public domain'
-    }
-  },
-  {
-    parentId: 'mars',
-    moonName: 'Deimos',
-    assetFile: 'moon_mars_deimos_solarviews_1440.jpg',
-    downloadUrl: 'https://www.solarviews.com/raw/mars/deimoscyl2.jpg',
-    source: {
-      provider: 'Solarviews',
-      dataset: 'Deimos cylindrical map (Viking-derived)',
-      productPage: 'https://www.solarviews.com/eng/deimos.htm',
-      credit: 'Solarviews / Viking-era source imagery',
-      license: 'Unspecified by provider; verify for redistribution'
     }
   },
   {

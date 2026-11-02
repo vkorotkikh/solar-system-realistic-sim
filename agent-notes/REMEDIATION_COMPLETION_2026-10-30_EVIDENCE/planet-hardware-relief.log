@@ -1,0 +1,90 @@
+{"renderer":"ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)","hardwareRequested":true}
+{
+  "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+  "cases": [
+    {
+      "id": "earth",
+      "mode": "display",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "earth",
+      "mode": "display",
+      "rangeRadii": 3.8,
+      "meshes": 9,
+      "coveredPixels": 3116
+    },
+    {
+      "id": "earth",
+      "mode": "display",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "earth",
+      "mode": "physical",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "earth",
+      "mode": "physical",
+      "rangeRadii": 3.8,
+      "meshes": 9,
+      "coveredPixels": 3116
+    },
+    {
+      "id": "earth",
+      "mode": "physical",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "mars",
+      "mode": "display",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "mars",
+      "mode": "display",
+      "rangeRadii": 3.8,
+      "meshes": 9,
+      "coveredPixels": 3243
+    },
+    {
+      "id": "mars",
+      "mode": "display",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "mars",
+      "mode": "physical",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    },
+    {
+      "id": "mars",
+      "mode": "physical",
+      "rangeRadii": 3.8,
+      "meshes": 9,
+      "coveredPixels": 3243
+    },
+    {
+      "id": "mars",
+      "mode": "physical",
+      "rangeRadii": 20,
+      "meshes": 6,
+      "coveredPixels": 112
+    }
+  ]
+}

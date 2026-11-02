@@ -1,0 +1,12 @@
+{"t": 1790350147.979, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "500noacao"}
+{"t": 1790350149.026, "path": "/solar/physics?jd=2461309.14603885&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350149.82, "path": "/health", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "500noacao"}
+{"t": 1790350155.674, "path": "/solar/physics?jd=2461332.67839085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350163.838, "path": "/solar/physics?jd=2461357.74439085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350170.746, "path": "/solar/physics?jd=2461385.40959085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350178.278, "path": "/solar/physics?jd=2461415.54159085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350185.414, "path": "/solar/physics?jd=2461444.00719085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350185.418, "path": "/health", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "500noacao"}
+{"t": 1790350192.036, "path": "/solar/physics?jd=2461470.53959085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350198.699, "path": "/solar/physics?jd=2461489.60519085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}
+{"t": 1790350208.238, "path": "/solar/physics?jd=2461527.80399085&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 500, "acao": false, "mode": "500noacao"}

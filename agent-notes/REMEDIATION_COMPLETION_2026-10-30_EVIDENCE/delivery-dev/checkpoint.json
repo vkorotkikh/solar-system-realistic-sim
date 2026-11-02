@@ -1,0 +1,2769 @@
+{
+  "mode": "dev",
+  "elapsedMs": 296632,
+  "requests": [
+    {
+      "id": 1,
+      "kind": "realtime",
+      "url": "http://127.0.0.1:9410/solar/realtime",
+      "startedAt": 1793337997655,
+      "phase": "boot",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "8258",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:26:36 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338000455,
+      "timing": {
+        "startTime": 1793337997645.3892,
+        "domainLookupStart": 0.066,
+        "domainLookupEnd": 0.08,
+        "connectStart": 0.08,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.51,
+        "requestStart": 1.228,
+        "responseStart": 2807.903,
+        "responseEnd": 2808.642
+      },
+      "latencyMs": 2808.642,
+      "bytes": 8258,
+      "sha256": "5f949a8406f90745817bab4609d40d3043ab38a8e18ea0a6daffc6d61b286f1a",
+      "bodyFile": "responses/001-realtime.json",
+      "schema": {
+        "name": "solar_realtime_endpoint",
+        "version": 1
+      },
+      "validation": {
+        "valid": true
+      },
+      "providerSnapshot": {
+        "schema": {
+          "name": "solar_realtime_context",
+          "version": 1
+        },
+        "fetched_at_utc": "2026-10-30T05:26:37.647739Z",
+        "source_status": {
+          "swpc": {
+            "ok": true,
+            "updated": "2026-10-30T05:20:00Z",
+            "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+            "age_s": 400.451856,
+            "wind_age_s": 400.451856,
+            "mag_age_s": 400.451856,
+            "delivered_at_utc": "2026-10-30T05:26:40.451856Z"
+          },
+          "silso": {
+            "ok": true,
+            "updated": "2026-09-30",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "source_age_days": 30,
+            "coverage": {
+              "policy": "through_last_elapsed_month",
+              "latest_expected_date": "2026-09-30",
+              "status": "current_for_published_coverage"
+            },
+            "realtime_eligible": false,
+            "acquisition": {
+              "cache_status": "refreshed",
+              "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+              "revalidation_interval_s": 21600,
+              "last_known_good_max_age_s": 172800
+            },
+            "delivered_at_utc": "2026-10-30T05:26:40.451856Z"
+          },
+          "sdo_aia": {
+            "ok": true,
+            "updated": "2026-10-30T05:03:10Z",
+            "endpoint": "https://api.helioviewer.org/v2/getClosestImage/",
+            "delivered_at_utc": "2026-10-30T05:26:40.451856Z"
+          },
+          "gong_synoptic": {
+            "product": "zqs",
+            "ok": false,
+            "attempted": false,
+            "runtime_eligible": false,
+            "status": "disabled_unvalidated",
+            "reason": "disabled_unvalidated"
+          }
+        },
+        "swpc": {
+          "schema": {
+            "name": "noaa_swpc_rtsw_context",
+            "version": 2
+          },
+          "time_tag": "2026-10-30T05:20:00Z",
+          "wind_time_tag": "2026-10-30T05:20:00Z",
+          "mag_time_tag": "2026-10-30T05:20:00Z",
+          "retrieved_at_utc": "2026-10-30T05:26:37.920901Z",
+          "age_s": 400.451856,
+          "wind_age_s": 400.451856,
+          "mag_age_s": 400.451856,
+          "product_skew_s": 0,
+          "solar_wind_speed_kms": 334.7,
+          "proton_density_pcc": 2.72,
+          "temperature_k": 39186,
+          "imf_bt_nt": 6.04,
+          "imf_bz_nt": -0.11,
+          "dynamic_pressure_npa": 0.50965046078048,
+          "activity_proxy": 0.11002105734767025,
+          "units": {
+            "solar_wind_speed_kms": "km/s",
+            "proton_density_pcc": "protons/cm^3",
+            "temperature_k": "K",
+            "imf_bt_nt": "nT",
+            "imf_bz_nt": "nT",
+            "dynamic_pressure_npa": "nPa",
+            "activity_proxy": "1"
+          },
+          "provenance": {
+            "provider": "NOAA SWPC",
+            "product_notice": "NWS SCN 26-21",
+            "cadence": "PT1M",
+            "temporal_contract": {
+              "maximum_sample_age_s": 900,
+              "maximum_future_offset_s": 120,
+              "maximum_product_skew_s": 300,
+              "combined_time_policy": "oldest_component"
+            },
+            "numeric_validation": {
+              "version": "defensive_operational_envelope_v1",
+              "bounds": {
+                "proton_density": [
+                  0.000001,
+                  1000
+                ],
+                "proton_speed": [
+                  100,
+                  3000
+                ],
+                "proton_temperature": [
+                  1,
+                  100000000
+                ],
+                "bt": [
+                  0,
+                  500
+                ],
+                "bz_gsm": [
+                  -500,
+                  500
+                ]
+              }
+            },
+            "wind": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            },
+            "mag": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            }
+          },
+          "delivered_at_utc": "2026-10-30T05:26:40.451856Z"
+        },
+        "silso": {
+          "schema": {
+            "name": "wdc_silso_daily_total_sunspot_number",
+            "version": 2
+          },
+          "date": "2026-09-30",
+          "daily_sunspot_number": 30,
+          "stdev": 6.2,
+          "observation_count": 27,
+          "provisional_flag": "0",
+          "quality_status": "provisional",
+          "source_age_days": 30,
+          "coverage": {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-09-30",
+            "status": "current_for_published_coverage"
+          },
+          "observation_cadence": "P1D",
+          "publication_cadence": "P1M",
+          "realtime_eligible": false,
+          "activity_proxy": null,
+          "units": {
+            "daily_sunspot_number": "1 (dimensionless relative index)",
+            "stdev": "1 (sunspot-number standard deviation)",
+            "observation_count": "count",
+            "source_age_days": "d"
+          },
+          "provenance": {
+            "provider": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+            "dataset": "Daily total sunspot number, version 2.0",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "doi": "https://doi.org/10.24414/qnza-ac80",
+            "license": {
+              "name": "CC BY-NC 4.0",
+              "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+            }
+          },
+          "acquisition": {
+            "cache_status": "refreshed",
+            "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+            "revalidation_interval_s": 21600,
+            "last_known_good_max_age_s": 172800
+          }
+        },
+        "sdo_aia": {
+          "request_date_utc": "2026-10-30T05:26:39.283804Z",
+          "channels": {
+            "aia_094": {
+              "source_id": 8,
+              "image_id": "193466650",
+              "image_date": "2026-10-30T05:01:23Z",
+              "name": "AIA 94",
+              "scale": 0.5959934760754478,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1598,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466650",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466650&x=-1&y=-1&imageScale=0.595993",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959934760754478
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_171": {
+              "source_id": 10,
+              "image_id": "193466762",
+              "image_date": "2026-10-30T05:02:21Z",
+              "name": "AIA 171",
+              "scale": 0.5959937167205923,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1594,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466762",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466762&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937167205923
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_193": {
+              "source_id": 11,
+              "image_id": "193466736",
+              "image_date": "2026-10-30T05:02:29Z",
+              "name": "AIA 193",
+              "scale": 0.5959937763199621,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1592,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466736",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937763199621
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_211": {
+              "source_id": 12,
+              "image_id": "193466712",
+              "image_date": "2026-10-30T05:03:10Z",
+              "name": "AIA 211",
+              "scale": 0.5959939367500744,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1588,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466712",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466712&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959939367500744
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_304": {
+              "source_id": 13,
+              "image_id": "193466787",
+              "image_date": "2026-10-30T05:03:05Z",
+              "name": "AIA 304",
+              "scale": 0.5959938771506886,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1591,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466787",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466787&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959938771506886
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            }
+          },
+          "channel_activity_proxy": null,
+          "latest_image_date_utc": "2026-10-30T05:03:10Z",
+          "freshness_s": 1410.451856,
+          "freshness_proxy": 0.9347013029629629,
+          "activity_proxy": null,
+          "coronal_holes": null,
+          "scientific_inference": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          },
+          "visualization": {
+            "preferred_channel": "aia_193",
+            "preferred_image_id": "193466736",
+            "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+            "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_193"
+          }
+        },
+        "gong_synoptic": null,
+        "combined_activity_proxy": 0.11002105734767025,
+        "cache_state": "complete"
+      }
+    },
+    {
+      "id": 2,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72760342&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793337997656,
+      "phase": "boot",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "663154",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:26:36 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793337999817,
+      "timing": {
+        "startTime": 1793337997646.008,
+        "domainLookupStart": 0.052,
+        "domainLookupEnd": 0.059,
+        "connectStart": 0.059,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.275,
+        "requestStart": 0.732,
+        "responseStart": 2166.436,
+        "responseEnd": 2167.973
+      },
+      "latencyMs": 2167.973,
+      "bytes": 663154,
+      "sha256": "d7e4ade8e1dff8b4391a3497d13fa1bbc0460ce12d3943e9e3a8362d47d2d820",
+      "bodyFile": "responses/002-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.771321547498885,
+      "epochJdTdb": 2461343.72760342,
+      "wallEpochJdTdb": 2461343.727628537,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 3,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72770285&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338027661,
+      "phase": "now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "663449",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:27:07 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338030413,
+      "timing": {
+        "startTime": 1793338027658.765,
+        "domainLookupStart": 0.232,
+        "domainLookupEnd": 0.275,
+        "connectStart": 0.275,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.462,
+        "requestStart": 0.537,
+        "responseStart": 2081.547,
+        "responseEnd": 2083.107
+      },
+      "latencyMs": 2083.107,
+      "bytes": 663449,
+      "sha256": "4ecd07d280ab0bce1b08c11e26cb47f5ceefddf244cd33d5632e0c11384a9a7b",
+      "bodyFile": "responses/003-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713212862165949,
+      "epochJdTdb": 2461343.72770285,
+      "wallEpochJdTdb": 2461343.7279757448,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 4,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72770285&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338057668,
+      "phase": "now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "663449",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:27:36 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338059905,
+      "timing": {
+        "startTime": 1793338057666.014,
+        "domainLookupStart": 0.161,
+        "domainLookupEnd": 0.173,
+        "connectStart": 0.173,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.295,
+        "requestStart": 0.372,
+        "responseStart": 2234.425,
+        "responseEnd": 2236.131
+      },
+      "latencyMs": 2236.131,
+      "bytes": 663449,
+      "sha256": "8f495973e8c3997a0173b5d8e1dbd9a45aa2d28b7820286b980d94a361fc3ee6",
+      "bodyFile": "responses/004-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713212862165949,
+      "epochJdTdb": 2461343.72770285,
+      "wallEpochJdTdb": 2461343.7283230154,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 5,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461431.28330291&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338087682,
+      "phase": "running-default",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "699603",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:28:07 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338090240,
+      "timing": {
+        "startTime": 1793338087668.82,
+        "domainLookupStart": 0.179,
+        "domainLookupEnd": 0.227,
+        "connectStart": 0.227,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.371,
+        "requestStart": 0.475,
+        "responseStart": 2555.483,
+        "responseEnd": 2557.219
+      },
+      "latencyMs": 2557.219,
+      "bytes": 699603,
+      "sha256": "50628a24a937e32f235cfb212c3e2b458a836e5a916a35267ca19234d03708f6",
+      "bodyFile": "responses/005-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.682540636392768,
+      "epochJdTdb": 2461431.28330291,
+      "wallEpochJdTdb": 2461343.7286704807,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 6,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461548.51370299&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338117688,
+      "phase": "running-default",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "691499",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:28:37 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338120309,
+      "timing": {
+        "startTime": 1793338117684.269,
+        "domainLookupStart": 0.163,
+        "domainLookupEnd": 0.213,
+        "connectStart": 0.213,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.328,
+        "requestStart": 0.416,
+        "responseStart": 2620.452,
+        "responseEnd": 2622.119
+      },
+      "latencyMs": 2622.119,
+      "bytes": 691499,
+      "sha256": "6c28259e8be1ee6aecc5314f61d3a1d81efbafe08c0822cd6a7eaca3d1196bfe",
+      "bodyFile": "responses/006-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.5720184067502319,
+      "epochJdTdb": 2461548.51370299,
+      "wallEpochJdTdb": 2461343.7290180125,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 7,
+      "kind": "realtime",
+      "url": "http://127.0.0.1:9410/solar/realtime",
+      "startedAt": 1793338120471,
+      "phase": "running-default",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "8258",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:28:40 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338120473,
+      "timing": {
+        "startTime": 1793338120468.909,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.196,
+        "responseStart": 2.293,
+        "responseEnd": 3.27
+      },
+      "latencyMs": 3.27,
+      "bytes": 8258,
+      "sha256": "a5f20d22089ca213ebc867b37bed76a4a21e576042a153445ac228677392949b",
+      "bodyFile": "responses/007-realtime.json",
+      "schema": {
+        "name": "solar_realtime_endpoint",
+        "version": 1
+      },
+      "validation": {
+        "valid": true
+      },
+      "providerSnapshot": {
+        "schema": {
+          "name": "solar_realtime_context",
+          "version": 1
+        },
+        "fetched_at_utc": "2026-10-30T05:26:37.647739Z",
+        "source_status": {
+          "swpc": {
+            "ok": true,
+            "updated": "2026-10-30T05:20:00Z",
+            "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+            "age_s": 520.470009,
+            "wind_age_s": 520.470009,
+            "mag_age_s": 520.470009,
+            "delivered_at_utc": "2026-10-30T05:28:40.470009Z"
+          },
+          "silso": {
+            "ok": true,
+            "updated": "2026-09-30",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "source_age_days": 30,
+            "coverage": {
+              "policy": "through_last_elapsed_month",
+              "latest_expected_date": "2026-09-30",
+              "status": "current_for_published_coverage"
+            },
+            "realtime_eligible": false,
+            "acquisition": {
+              "cache_status": "refreshed",
+              "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+              "revalidation_interval_s": 21600,
+              "last_known_good_max_age_s": 172800
+            },
+            "delivered_at_utc": "2026-10-30T05:28:40.470009Z"
+          },
+          "sdo_aia": {
+            "ok": true,
+            "updated": "2026-10-30T05:03:10Z",
+            "endpoint": "https://api.helioviewer.org/v2/getClosestImage/",
+            "delivered_at_utc": "2026-10-30T05:28:40.470009Z"
+          },
+          "gong_synoptic": {
+            "product": "zqs",
+            "ok": false,
+            "attempted": false,
+            "runtime_eligible": false,
+            "status": "disabled_unvalidated",
+            "reason": "disabled_unvalidated"
+          }
+        },
+        "swpc": {
+          "schema": {
+            "name": "noaa_swpc_rtsw_context",
+            "version": 2
+          },
+          "time_tag": "2026-10-30T05:20:00Z",
+          "wind_time_tag": "2026-10-30T05:20:00Z",
+          "mag_time_tag": "2026-10-30T05:20:00Z",
+          "retrieved_at_utc": "2026-10-30T05:26:37.920901Z",
+          "age_s": 520.470009,
+          "wind_age_s": 520.470009,
+          "mag_age_s": 520.470009,
+          "product_skew_s": 0,
+          "solar_wind_speed_kms": 334.7,
+          "proton_density_pcc": 2.72,
+          "temperature_k": 39186,
+          "imf_bt_nt": 6.04,
+          "imf_bz_nt": -0.11,
+          "dynamic_pressure_npa": 0.50965046078048,
+          "activity_proxy": 0.11002105734767025,
+          "units": {
+            "solar_wind_speed_kms": "km/s",
+            "proton_density_pcc": "protons/cm^3",
+            "temperature_k": "K",
+            "imf_bt_nt": "nT",
+            "imf_bz_nt": "nT",
+            "dynamic_pressure_npa": "nPa",
+            "activity_proxy": "1"
+          },
+          "provenance": {
+            "provider": "NOAA SWPC",
+            "product_notice": "NWS SCN 26-21",
+            "cadence": "PT1M",
+            "temporal_contract": {
+              "maximum_sample_age_s": 900,
+              "maximum_future_offset_s": 120,
+              "maximum_product_skew_s": 300,
+              "combined_time_policy": "oldest_component"
+            },
+            "numeric_validation": {
+              "version": "defensive_operational_envelope_v1",
+              "bounds": {
+                "proton_density": [
+                  0.000001,
+                  1000
+                ],
+                "proton_speed": [
+                  100,
+                  3000
+                ],
+                "proton_temperature": [
+                  1,
+                  100000000
+                ],
+                "bt": [
+                  0,
+                  500
+                ],
+                "bz_gsm": [
+                  -500,
+                  500
+                ]
+              }
+            },
+            "wind": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            },
+            "mag": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            }
+          },
+          "delivered_at_utc": "2026-10-30T05:28:40.470009Z"
+        },
+        "silso": {
+          "schema": {
+            "name": "wdc_silso_daily_total_sunspot_number",
+            "version": 2
+          },
+          "date": "2026-09-30",
+          "daily_sunspot_number": 30,
+          "stdev": 6.2,
+          "observation_count": 27,
+          "provisional_flag": "0",
+          "quality_status": "provisional",
+          "source_age_days": 30,
+          "coverage": {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-09-30",
+            "status": "current_for_published_coverage"
+          },
+          "observation_cadence": "P1D",
+          "publication_cadence": "P1M",
+          "realtime_eligible": false,
+          "activity_proxy": null,
+          "units": {
+            "daily_sunspot_number": "1 (dimensionless relative index)",
+            "stdev": "1 (sunspot-number standard deviation)",
+            "observation_count": "count",
+            "source_age_days": "d"
+          },
+          "provenance": {
+            "provider": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+            "dataset": "Daily total sunspot number, version 2.0",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "doi": "https://doi.org/10.24414/qnza-ac80",
+            "license": {
+              "name": "CC BY-NC 4.0",
+              "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+            }
+          },
+          "acquisition": {
+            "cache_status": "refreshed",
+            "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+            "revalidation_interval_s": 21600,
+            "last_known_good_max_age_s": 172800
+          }
+        },
+        "sdo_aia": {
+          "request_date_utc": "2026-10-30T05:26:39.283804Z",
+          "channels": {
+            "aia_094": {
+              "source_id": 8,
+              "image_id": "193466650",
+              "image_date": "2026-10-30T05:01:23Z",
+              "name": "AIA 94",
+              "scale": 0.5959934760754478,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1598,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466650",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466650&x=-1&y=-1&imageScale=0.595993",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959934760754478
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_171": {
+              "source_id": 10,
+              "image_id": "193466762",
+              "image_date": "2026-10-30T05:02:21Z",
+              "name": "AIA 171",
+              "scale": 0.5959937167205923,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1594,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466762",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466762&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937167205923
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_193": {
+              "source_id": 11,
+              "image_id": "193466736",
+              "image_date": "2026-10-30T05:02:29Z",
+              "name": "AIA 193",
+              "scale": 0.5959937763199621,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1592,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466736",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937763199621
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_211": {
+              "source_id": 12,
+              "image_id": "193466712",
+              "image_date": "2026-10-30T05:03:10Z",
+              "name": "AIA 211",
+              "scale": 0.5959939367500744,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1588,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466712",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466712&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959939367500744
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_304": {
+              "source_id": 13,
+              "image_id": "193466787",
+              "image_date": "2026-10-30T05:03:05Z",
+              "name": "AIA 304",
+              "scale": 0.5959938771506886,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1591,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466787",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466787&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959938771506886
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            }
+          },
+          "channel_activity_proxy": null,
+          "latest_image_date_utc": "2026-10-30T05:03:10Z",
+          "freshness_s": 1530.470009,
+          "freshness_proxy": 0.9291449069907407,
+          "activity_proxy": null,
+          "coronal_holes": null,
+          "scientific_inference": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          },
+          "visualization": {
+            "preferred_channel": "aia_193",
+            "preferred_image_id": "193466736",
+            "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+            "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_193"
+          }
+        },
+        "gong_synoptic": null,
+        "combined_activity_proxy": 0.11002105734767025,
+        "cache_state": "complete"
+      }
+    },
+    {
+      "id": 8,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461665.81130307&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338147689,
+      "phase": "running-default",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "627745",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:29:06 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338150238,
+      "timing": {
+        "startTime": 1793338147685.8752,
+        "domainLookupStart": 0.355,
+        "domainLookupEnd": 0.429,
+        "connectStart": 0.429,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.689,
+        "requestStart": 0.836,
+        "responseStart": 2543.877,
+        "responseEnd": 2546.017
+      },
+      "latencyMs": 2546.017,
+      "bytes": 627745,
+      "sha256": "ec021e8d7decba82cb19cd4d2586fbf60992ae87ac9198dfba7426c50d50b21d",
+      "bodyFile": "responses/008-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.5881313507783748,
+      "epochJdTdb": 2461665.81130307,
+      "wallEpochJdTdb": 2461343.729365674,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 9,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461783.17450315&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338177698,
+      "phase": "running-default",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "615414",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:29:36 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338180361,
+      "timing": {
+        "startTime": 1793338177695.4019,
+        "domainLookupStart": 0.167,
+        "domainLookupEnd": 0.214,
+        "connectStart": 0.214,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.336,
+        "requestStart": 0.426,
+        "responseStart": 2662.292,
+        "responseEnd": 2663.851
+      },
+      "latencyMs": 2663.851,
+      "bytes": 615414,
+      "sha256": "b89a024b6641ccbb790ae0775da370429bb988dd28082f106e1cf81c4df6cfed",
+      "bodyFile": "responses/009-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.5358800401818232,
+      "epochJdTdb": 2461783.17450315,
+      "wallEpochJdTdb": 2461343.729713304,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 10,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72983071&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338207710,
+      "phase": "returned-now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "666389",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:30:07 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338209914,
+      "timing": {
+        "startTime": 1793338207707.793,
+        "domainLookupStart": 0.141,
+        "domainLookupEnd": 0.186,
+        "connectStart": 0.186,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.297,
+        "requestStart": 0.371,
+        "responseStart": 2201.31,
+        "responseEnd": 2203.113
+      },
+      "latencyMs": 2203.113,
+      "bytes": 666389,
+      "sha256": "653251618e143a3413b755f58fda6afb4d61346c6c361e31a8402a9974fe90ab",
+      "bodyFile": "responses/010-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713156884371157,
+      "epochJdTdb": 2461343.72983071,
+      "wallEpochJdTdb": 2461343.730059711,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 11,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72983071&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338237711,
+      "phase": "returned-now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "666387",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:30:37 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338240285,
+      "timing": {
+        "startTime": 1793338237709.6062,
+        "domainLookupStart": 0.2,
+        "domainLookupEnd": 0.262,
+        "connectStart": 0.262,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.379,
+        "requestStart": 0.555,
+        "responseStart": 2569.714,
+        "responseEnd": 2572.198
+      },
+      "latencyMs": 2572.198,
+      "bytes": 666387,
+      "sha256": "c539d813ba43fb1dcb68928d51ebac18b4f91d7f1bb2813583e9bc29eb6f74f2",
+      "bodyFile": "responses/011-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713156884371157,
+      "epochJdTdb": 2461343.72983071,
+      "wallEpochJdTdb": 2461343.73040745,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 12,
+      "kind": "realtime",
+      "url": "http://127.0.0.1:9410/solar/realtime",
+      "startedAt": 1793338240482,
+      "phase": "returned-now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "8251",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:30:40 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338242046,
+      "timing": {
+        "startTime": 1793338240479.685,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.145,
+        "responseStart": 1564.875,
+        "responseEnd": 1565.748
+      },
+      "latencyMs": 1565.748,
+      "bytes": 8251,
+      "sha256": "433a3133857a1cd41005eb34cf3a5a844d3da8b5bd3bf6906b2285eb751d52d9",
+      "bodyFile": "responses/012-realtime.json",
+      "schema": {
+        "name": "solar_realtime_endpoint",
+        "version": 1
+      },
+      "validation": {
+        "valid": true
+      },
+      "providerSnapshot": {
+        "schema": {
+          "name": "solar_realtime_context",
+          "version": 1
+        },
+        "fetched_at_utc": "2026-10-30T05:30:40.480534Z",
+        "source_status": {
+          "swpc": {
+            "ok": true,
+            "updated": "2026-10-30T05:23:00Z",
+            "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+            "age_s": 462.043571,
+            "wind_age_s": 462.043571,
+            "mag_age_s": 402.043571,
+            "delivered_at_utc": "2026-10-30T05:30:42.043571Z"
+          },
+          "silso": {
+            "ok": true,
+            "updated": "2026-09-30",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "source_age_days": 30,
+            "coverage": {
+              "policy": "through_last_elapsed_month",
+              "latest_expected_date": "2026-09-30",
+              "status": "current_for_published_coverage"
+            },
+            "realtime_eligible": false,
+            "acquisition": {
+              "cache_status": "fresh",
+              "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+              "revalidation_interval_s": 21600,
+              "last_known_good_max_age_s": 172800
+            },
+            "delivered_at_utc": "2026-10-30T05:30:42.043571Z"
+          },
+          "sdo_aia": {
+            "ok": true,
+            "updated": "2026-10-30T05:03:10Z",
+            "endpoint": "https://api.helioviewer.org/v2/getClosestImage/",
+            "delivered_at_utc": "2026-10-30T05:30:42.043571Z"
+          },
+          "gong_synoptic": {
+            "product": "zqs",
+            "ok": false,
+            "attempted": false,
+            "runtime_eligible": false,
+            "status": "disabled_unvalidated",
+            "reason": "disabled_unvalidated"
+          }
+        },
+        "swpc": {
+          "schema": {
+            "name": "noaa_swpc_rtsw_context",
+            "version": 2
+          },
+          "time_tag": "2026-10-30T05:23:00Z",
+          "wind_time_tag": "2026-10-30T05:23:00Z",
+          "mag_time_tag": "2026-10-30T05:24:00Z",
+          "retrieved_at_utc": "2026-10-30T05:30:40.738753Z",
+          "age_s": 462.043571,
+          "wind_age_s": 462.043571,
+          "mag_age_s": 402.043571,
+          "product_skew_s": 60,
+          "solar_wind_speed_kms": 335.3,
+          "proton_density_pcc": 2.7,
+          "temperature_k": 39675,
+          "imf_bt_nt": 5.94,
+          "imf_bz_nt": 0.22,
+          "dynamic_pressure_npa": 0.5077184709618001,
+          "activity_proxy": 0.10613709677419356,
+          "units": {
+            "solar_wind_speed_kms": "km/s",
+            "proton_density_pcc": "protons/cm^3",
+            "temperature_k": "K",
+            "imf_bt_nt": "nT",
+            "imf_bz_nt": "nT",
+            "dynamic_pressure_npa": "nPa",
+            "activity_proxy": "1"
+          },
+          "provenance": {
+            "provider": "NOAA SWPC",
+            "product_notice": "NWS SCN 26-21",
+            "cadence": "PT1M",
+            "temporal_contract": {
+              "maximum_sample_age_s": 900,
+              "maximum_future_offset_s": 120,
+              "maximum_product_skew_s": 300,
+              "combined_time_policy": "oldest_component"
+            },
+            "numeric_validation": {
+              "version": "defensive_operational_envelope_v1",
+              "bounds": {
+                "proton_density": [
+                  0.000001,
+                  1000
+                ],
+                "proton_speed": [
+                  100,
+                  3000
+                ],
+                "proton_temperature": [
+                  1,
+                  100000000
+                ],
+                "bt": [
+                  0,
+                  500
+                ],
+                "bz_gsm": [
+                  -500,
+                  500
+                ]
+              }
+            },
+            "wind": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            },
+            "mag": {
+              "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+              "source": "SOLAR1",
+              "active": true,
+              "overall_quality": 0
+            }
+          },
+          "delivered_at_utc": "2026-10-30T05:30:42.043571Z"
+        },
+        "silso": {
+          "schema": {
+            "name": "wdc_silso_daily_total_sunspot_number",
+            "version": 2
+          },
+          "date": "2026-09-30",
+          "daily_sunspot_number": 30,
+          "stdev": 6.2,
+          "observation_count": 27,
+          "provisional_flag": "0",
+          "quality_status": "provisional",
+          "source_age_days": 30,
+          "coverage": {
+            "policy": "through_last_elapsed_month",
+            "latest_expected_date": "2026-09-30",
+            "status": "current_for_published_coverage"
+          },
+          "observation_cadence": "P1D",
+          "publication_cadence": "P1M",
+          "realtime_eligible": false,
+          "activity_proxy": null,
+          "units": {
+            "daily_sunspot_number": "1 (dimensionless relative index)",
+            "stdev": "1 (sunspot-number standard deviation)",
+            "observation_count": "count",
+            "source_age_days": "d"
+          },
+          "provenance": {
+            "provider": "WDC-SILSO, Royal Observatory of Belgium, Brussels",
+            "dataset": "Daily total sunspot number, version 2.0",
+            "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+            "doi": "https://doi.org/10.24414/qnza-ac80",
+            "license": {
+              "name": "CC BY-NC 4.0",
+              "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+            }
+          },
+          "acquisition": {
+            "cache_status": "fresh",
+            "last_validated_at_utc": "2026-10-30T05:26:39.149836Z",
+            "revalidation_interval_s": 21600,
+            "last_known_good_max_age_s": 172800
+          }
+        },
+        "sdo_aia": {
+          "request_date_utc": "2026-10-30T05:30:40.744289Z",
+          "channels": {
+            "aia_094": {
+              "source_id": 8,
+              "image_id": "193466650",
+              "image_date": "2026-10-30T05:01:23Z",
+              "name": "AIA 94",
+              "scale": 0.5959934760754478,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1598,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466650",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466650&x=-1&y=-1&imageScale=0.595993",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959934760754478
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_171": {
+              "source_id": 10,
+              "image_id": "193466762",
+              "image_date": "2026-10-30T05:02:21Z",
+              "name": "AIA 171",
+              "scale": 0.5959937167205923,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1594,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466762",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466762&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937167205923
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_193": {
+              "source_id": 11,
+              "image_id": "193466736",
+              "image_date": "2026-10-30T05:02:29Z",
+              "name": "AIA 193",
+              "scale": 0.5959937763199621,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1592,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466736",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959937763199621
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_211": {
+              "source_id": 12,
+              "image_id": "193466712",
+              "image_date": "2026-10-30T05:03:10Z",
+              "name": "AIA 211",
+              "scale": 0.5959939367500744,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1588,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466712",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466712&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959939367500744
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            },
+            "aia_304": {
+              "source_id": 13,
+              "image_id": "193466787",
+              "image_date": "2026-10-30T05:03:05Z",
+              "name": "AIA 304",
+              "scale": 0.5959938771506886,
+              "width": 4096,
+              "height": 4096,
+              "solar_radius_px": 1610.1591,
+              "rotation_deg": 0,
+              "jp2_url": "https://api.helioviewer.org/v2/getJP2Image/?id=193466787",
+              "tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466787&x=-1&y=-1&imageScale=0.595994",
+              "artifact": {
+                "schema": {
+                  "name": "helioviewer_viewport_tile",
+                  "version": 1
+                },
+                "delivery": "raw_on_demand",
+                "media_type": "image/png",
+                "viewport": {
+                  "tile_x": -1,
+                  "tile_y": -1,
+                  "width_px": 512,
+                  "height_px": 512,
+                  "image_scale_arcsec_per_pixel": 0.5959938771506886
+                }
+              },
+              "spatial_use": {
+                "eligible": false,
+                "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+                "contract": null
+              }
+            }
+          },
+          "channel_activity_proxy": null,
+          "latest_image_date_utc": "2026-10-30T05:03:10Z",
+          "freshness_s": 1652.043571,
+          "freshness_proxy": 0.9235165013425926,
+          "activity_proxy": null,
+          "coronal_holes": null,
+          "scientific_inference": {
+            "status": "disabled",
+            "reason": "viewport_tile_has_no_validated_solar_surface_projection",
+            "activity_proxy": null,
+            "coronal_holes": null
+          },
+          "visualization": {
+            "preferred_channel": "aia_193",
+            "preferred_image_id": "193466736",
+            "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=193466736&x=-1&y=-1&imageScale=0.595994",
+            "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_193"
+          }
+        },
+        "gong_synoptic": null,
+        "combined_activity_proxy": 0.10613709677419356,
+        "cache_state": "complete"
+      }
+    },
+    {
+      "id": 13,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72983071&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338267711,
+      "phase": "returned-now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "666391",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:31:06 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338269915,
+      "timing": {
+        "startTime": 1793338267709.5461,
+        "domainLookupStart": 0.193,
+        "domainLookupEnd": 0.27,
+        "connectStart": 0.27,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.398,
+        "requestStart": 0.477,
+        "responseStart": 2201.321,
+        "responseEnd": 2203.156
+      },
+      "latencyMs": 2203.156,
+      "bytes": 666391,
+      "sha256": "8ed6a5e0c4a061055daee961f29c6d50344b11d9bf0cba536a3b2a219bf75880",
+      "bodyFile": "responses/013-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713156884371157,
+      "epochJdTdb": 2461343.72983071,
+      "wallEpochJdTdb": 2461343.7307542274,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    },
+    {
+      "id": 14,
+      "kind": "physics",
+      "url": "http://127.0.0.1:9410/solar/physics?jd_tdb=2461343.72983071&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+      "startedAt": 1793338297720,
+      "phase": "returned-now-paused",
+      "resourceType": "fetch",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://127.0.0.1:5410",
+        "content-length": "666389",
+        "content-type": "application/json",
+        "date": "Fri, 30 Oct 2026 05:31:37 GMT",
+        "server": "uvicorn",
+        "vary": "Origin"
+      },
+      "finishedAt": 1793338299942,
+      "timing": {
+        "startTime": 1793338297717.893,
+        "domainLookupStart": 0.143,
+        "domainLookupEnd": 0.186,
+        "connectStart": 0.186,
+        "secureConnectionStart": -1,
+        "connectEnd": 0.334,
+        "requestStart": 0.416,
+        "responseStart": 2220.1,
+        "responseEnd": 2221.702
+      },
+      "latencyMs": 2221.702,
+      "bytes": 666389,
+      "sha256": "9568374d976227a325bd09f653657b328366b77bac68fb4993f20dd920052000",
+      "bodyFile": "responses/014-physics.json",
+      "schema": {
+        "name": "solar_physics_state",
+        "version": 2
+      },
+      "validation": {
+        "valid": true,
+        "failures": []
+      },
+      "activity": 0.7713156884371157,
+      "epochJdTdb": 2461343.72983071,
+      "wallEpochJdTdb": 2461343.731101506,
+      "forcing": {
+        "requested": "hybrid",
+        "effective": "synthetic",
+        "observed_input_status": "disabled_unvalidated",
+        "runtime_eligible": false,
+        "fallback_reason": "disabled_unvalidated"
+      },
+      "fallbackReason": "disabled_unvalidated"
+    }
+  ],
+  "samples": [
+    {
+      "at": 1793338004349,
+      "visibility": "visible",
+      "simulationDate": "2026-10-31",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 10,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338004351,
+      "visibility": "visible",
+      "simulationDate": "2026-10-31",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 10,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338009357,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 309,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338014362,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 609,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338019366,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 909,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338024371,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 1209,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338030043,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:26 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 1510,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338035046,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 1810,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338040051,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 2110,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338045056,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 2410,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338050064,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 2711,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338055069,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 3011,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338060071,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 3311,
+      "phase": "now-paused"
+    },
+    {
+      "at": 1793338065787,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 3613,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338070797,
+      "visibility": "visible",
+      "simulationDate": "2026-11-19",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 3914,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338075801,
+      "visibility": "visible",
+      "simulationDate": "2026-12-09",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 4214,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338080812,
+      "visibility": "visible",
+      "simulationDate": "2026-12-29",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 4514,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338085902,
+      "visibility": "visible",
+      "simulationDate": "2027-01-18",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:27 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 4820,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338090915,
+      "visibility": "visible",
+      "simulationDate": "2027-02-07",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 5120,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338096647,
+      "visibility": "visible",
+      "simulationDate": "2027-02-27",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 5424,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338101653,
+      "visibility": "visible",
+      "simulationDate": "2027-03-19",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 5704,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338106657,
+      "visibility": "visible",
+      "simulationDate": "2027-04-08",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 5993,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338111661,
+      "visibility": "visible",
+      "simulationDate": "2027-04-28",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 6293,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338116668,
+      "visibility": "visible",
+      "simulationDate": "2027-05-18",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 6594,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338121672,
+      "visibility": "visible",
+      "simulationDate": "2027-06-07",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 6894,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338126678,
+      "visibility": "visible",
+      "simulationDate": "2027-06-27",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 7194,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338132363,
+      "visibility": "visible",
+      "simulationDate": "2027-07-18",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 7495,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338137369,
+      "visibility": "visible",
+      "simulationDate": "2027-08-07",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 7795,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338142373,
+      "visibility": "visible",
+      "simulationDate": "2027-08-27",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 8095,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338147383,
+      "visibility": "visible",
+      "simulationDate": "2027-09-16",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:28 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 8396,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338152386,
+      "visibility": "visible",
+      "simulationDate": "2027-10-06",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 8696,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338157392,
+      "visibility": "visible",
+      "simulationDate": "2027-10-26",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 8996,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338163069,
+      "visibility": "visible",
+      "simulationDate": "2027-11-15",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 9296,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338168077,
+      "visibility": "visible",
+      "simulationDate": "2027-12-05",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 9597,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338173082,
+      "visibility": "visible",
+      "simulationDate": "2027-12-25",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 9897,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338178086,
+      "visibility": "visible",
+      "simulationDate": "2028-01-14",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 10197,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338183092,
+      "visibility": "visible",
+      "simulationDate": "2028-02-03",
+      "rate": "4",
+      "playback": "Pause",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 10497,
+      "phase": "running-default"
+    },
+    {
+      "at": 1793338188205,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 10804,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338193209,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 11104,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338198889,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 11405,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338203894,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 11705,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338208898,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:29 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 12004,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338213902,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 12304,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338218906,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 12604,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338223913,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 12905,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338229596,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 13205,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338234601,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 13505,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338239610,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 13806,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338244615,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 14106,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338249619,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 14406,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338254623,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 14706,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338259627,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 15006,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338265308,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:30 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 15307,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338270312,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 15607,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338275318,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 15907,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338280322,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 16207,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338285331,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 16508,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338290336,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 16808,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338295976,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 17108,
+      "phase": "returned-now-paused"
+    },
+    {
+      "at": 1793338300980,
+      "visibility": "visible",
+      "simulationDate": "2026-10-30",
+      "rate": "4",
+      "playback": "Resume",
+      "chip": {
+        "text": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "title": "Sun: backend solar model (synthetic forcing, observations disabled until validated) · updated 05:31 UTC",
+        "dataset": {
+          "solarState": "backend"
+        }
+      },
+      "frameCount": 17408,
+      "phase": "returned-now-paused"
+    }
+  ]
+}

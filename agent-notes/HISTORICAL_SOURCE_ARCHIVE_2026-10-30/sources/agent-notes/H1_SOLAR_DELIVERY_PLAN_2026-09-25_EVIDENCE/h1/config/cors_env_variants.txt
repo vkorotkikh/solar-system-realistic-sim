@@ -1,0 +1,30 @@
+### SOLAR_CORS_ALLOWED_ORIGINS='*'
+SUMMARY (browser verdict: allowed iff ACAO echoes the Origin)
+origin                           phys GET     ACAO  pre aia GET     ACAO  pre
+http://localhost:5173                 200     echo  200     400     echo  200
+http://127.0.0.1:5173                 200     echo  200     400     echo  200
+http://[::1]:5173                     200        -  400     400        -  400
+http://localhost:5174                 200        -  400     400        -  400
+http://localhost:5180                 200        -  400     400        -  400
+http://192.168.1.10:5173              200        -  400     400        -  400
+http://localhost:4173                 200        -  400     400        -  400
+http://127.0.0.1:4173                 200        -  400     400        -  400
+http://localhost:3000                 200     echo  200     400     echo  200
+https://localhost:3000                200     echo  200     400     echo  200
+https://solar.example.com             200        -  400     400        -  400
+null                                  200        -  400     400        -  400
+### SOLAR_CORS_ALLOWED_ORIGINS='http://localhost:4173'  (replaces, not extends, the default list)
+SUMMARY (browser verdict: allowed iff ACAO echoes the Origin)
+origin                           phys GET     ACAO  pre aia GET     ACAO  pre
+http://localhost:5173                 200        -  400     400        -  400
+http://127.0.0.1:5173                 200        -  400     400        -  400
+http://[::1]:5173                     200        -  400     400        -  400
+http://localhost:5174                 200        -  400     400        -  400
+http://localhost:5180                 200        -  400     400        -  400
+http://192.168.1.10:5173              200        -  400     400        -  400
+http://localhost:4173                 200     echo  200     400     echo  200
+http://127.0.0.1:4173                 200        -  400     400        -  400
+http://localhost:3000                 200        -  400     400        -  400
+https://localhost:3000                200        -  400     400        -  400
+https://solar.example.com             200        -  400     400        -  400
+null                                  200        -  400     400        -  400

@@ -1,0 +1,213 @@
+{
+ "jd": 2461308.589838526,
+ "snapshot_total_s": 3.579,
+ "gong_cr": 2315,
+ "gong_total_s": 0.256,
+ "gong_shape": null,
+ "gong_stats": null,
+ "requests": [
+  {
+   "meth": "urlopen",
+   "url": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
+   "s_open": 0.109,
+   "err": "HTTPError: HTTP Error 404: Not Found"
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
+   "s": 0.109,
+   "bytes": null,
+   "err": "HTTPError: HTTP Error 404: Not Found"
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+   "s_open": 0.68
+  },
+  {
+   "meth": "_fetch_text",
+   "url": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv",
+   "s": 1.355,
+   "bytes": 2896132,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=8&verbose=true",
+   "s_open": 0.361
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=8&verbose=true",
+   "s": 0.361,
+   "bytes": 342,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408064&x=-1&y=-1&imageScale=0.601831",
+   "s_open": 0.129
+  },
+  {
+   "meth": "_fetch_binary",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408064&x=-1&y=-1&imageScale=0.601831",
+   "s": 0.209,
+   "bytes": 204131,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=10&verbose=true",
+   "s_open": 0.158
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=10&verbose=true",
+   "s": 0.158,
+   "bytes": 343,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831",
+   "s_open": 0.127
+  },
+  {
+   "meth": "_fetch_binary",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831",
+   "s": 0.21,
+   "bytes": 184221,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=11&verbose=true",
+   "s_open": 0.156
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=11&verbose=true",
+   "s": 0.156,
+   "bytes": 343,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831",
+   "s_open": 0.131
+  },
+  {
+   "meth": "_fetch_binary",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831",
+   "s": 0.215,
+   "bytes": 161296,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=12&verbose=true",
+   "s_open": 0.159
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=12&verbose=true",
+   "s": 0.159,
+   "bytes": 343,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832",
+   "s_open": 0.134
+  },
+  {
+   "meth": "_fetch_binary",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832",
+   "s": 0.216,
+   "bytes": 152668,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=13&verbose=true",
+   "s_open": 0.143
+  },
+  {
+   "meth": "_fetch_json",
+   "url": "https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A09%3A22Z&sourceId=13&verbose=true",
+   "s": 0.143,
+   "bytes": 343,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+   "s_open": 0.133
+  },
+  {
+   "meth": "_fetch_binary",
+   "url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+   "s": 0.242,
+   "bytes": 210030,
+   "err": null
+  },
+  {
+   "meth": "urlopen",
+   "url": "https://gong.nso.edu/data/magmap/QR/bqs/202608/",
+   "s_open": 0.256
+  }
+ ],
+ "source_status": {
+  "swpc": {
+   "ok": false,
+   "error": "HTTP Error 404: Not Found",
+   "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+  },
+  "silso": {
+   "ok": true,
+   "updated": "2026-08-31",
+   "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  },
+  "sdo_aia": {
+   "ok": true,
+   "updated": "2026-09-25T01:47:41Z",
+   "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+  },
+  "gong_synoptic": {
+   "ok": true,
+   "updated": "2026-09-25T02:09:25.627938Z",
+   "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+  }
+ },
+ "combined_activity_proxy": 0.24504528302584638,
+ "swpc": null,
+ "silso": {
+  "date": "2026-08-31",
+  "daily_sunspot_number": 58.0,
+  "stdev": 8.1,
+  "observation_count": 33.0,
+  "provisional_flag": "0",
+  "activity_proxy": 0.2636363636363636
+ },
+ "sdo_aia_summary": {
+  "request_date_utc": "2026-09-25T02:09:22.048665Z",
+  "latest_image_date_utc": "2026-09-25T01:47:41Z",
+  "freshness_s": 1304.615331,
+  "activity_proxy": 0.21251089195744136,
+  "channel_activity_proxy": {
+   "aia_094": 0.19957970531657337,
+   "aia_171": 0.20828086593654005,
+   "aia_193": 0.22056308099301528,
+   "aia_211": 0.20235823471331968,
+   "aia_304": 0.22074242509901523
+  },
+  "visualization": {
+   "preferred_channel": "aia_304",
+   "preferred_image_id": "192408248",
+   "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832",
+   "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_304"
+  }
+ },
+ "coronal_holes_source": "aia_193_threshold",
+ "coronal_hole_count": 0
+}

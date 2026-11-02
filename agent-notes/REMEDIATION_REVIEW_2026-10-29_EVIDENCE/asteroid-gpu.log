@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "cases": 125,
+  "maximumErrorAu": 0.00002080942241489669,
+  "oneMinuteMotionAu": 0.00001109094939194966,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "swiftShader": true,
+  "inclinedCases": 2,
+  "maximumInclinedErrorAu": 3.7241705202120917e-7,
+  "inclinedPositions": [
+    {
+      "jd": 2451545.123456,
+      "actual": [
+        -1.3847883939743042,
+        -1.2282315492630005,
+        0.6642241477966309
+      ],
+      "expected": [
+        -1.3847880622407271,
+        -1.2282316955953536,
+        0.6642240627429012
+      ],
+      "errorAu": 3.7241705202120917e-7
+    },
+    {
+      "jd": 2451668.5794559997,
+      "actual": [
+        0.20684850215911865,
+        -2.307274341583252,
+        -0.34892746806144714
+      ],
+      "expected": [
+        0.2068488170758787,
+        -2.3072742361054934,
+        -0.34892757336812363
+      ],
+      "errorAu": 3.484072608640322e-7
+    }
+  ],
+  "orientationDeg": {
+    "inclination": 30,
+    "ascendingNode": 80,
+    "argPeriapsis": 110
+  },
+  "scope": "actual WebGL2 transform feedback; independent planar oracle plus production CPU inclined cross-check; hardware performance not implied"
+}

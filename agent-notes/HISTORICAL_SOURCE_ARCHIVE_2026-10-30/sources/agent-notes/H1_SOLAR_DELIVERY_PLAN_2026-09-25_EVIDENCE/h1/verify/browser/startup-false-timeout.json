@@ -1,0 +1,137 @@
+[
+ {
+  "run": 1,
+  "chip": [
+   "27ms connecting|Sun: procedural fallback (connecting to solar model server)",
+   "5669ms error|Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "5734ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 07:05 UTC",
+   "6085ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 07:05 UTC"
+  ],
+  "firstPhysicsRequests": [
+   {
+    "sentMs": 808,
+    "respMs": 1783,
+    "doneMs": 815,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 5673,
+    "respMs": 5687,
+    "doneMs": 5688,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 7519,
+    "respMs": 7530,
+    "doneMs": 7525,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   }
+  ],
+  "longTasksOver500": [
+   [
+    145,
+    1594
+   ]
+  ],
+  "longTaskTotalMs": 1931,
+  "solarWarns": [
+   "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  ]
+ },
+ {
+  "run": 2,
+  "chip": [
+   "23ms connecting|Sun: procedural fallback (connecting to solar model server)",
+   "8043ms error|Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "8167ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 07:06 UTC",
+   "8501ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 07:06 UTC"
+  ],
+  "firstPhysicsRequests": [
+   {
+    "sentMs": 1025,
+    "respMs": 2318,
+    "doneMs": 1036,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 8061,
+    "respMs": 8067,
+    "doneMs": 8070,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 10549,
+    "respMs": 10556,
+    "doneMs": 10556,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   }
+  ],
+  "longTasksOver500": [
+   [
+    171,
+    2085
+   ]
+  ],
+  "longTaskTotalMs": 2471,
+  "solarWarns": [
+   "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  ]
+ },
+ {
+  "run": 3,
+  "chip": [
+   "27ms connecting|Sun: procedural fallback (connecting to solar model server)",
+   "8036ms error|Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "8462ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 07:07 UTC",
+   "8527ms backend|Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 07:07 UTC"
+  ],
+  "firstPhysicsRequests": [
+   {
+    "sentMs": 963,
+    "respMs": 2263,
+    "doneMs": 969,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 8048,
+    "respMs": 8060,
+    "doneMs": 8085,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   },
+   {
+    "sentMs": 11235,
+    "respMs": 11246,
+    "doneMs": 11242,
+    "failMs": null,
+    "status": 200,
+    "err": null
+   }
+  ],
+  "longTasksOver500": [
+   [
+    184,
+    2042
+   ]
+  ],
+  "longTaskTotalMs": 2322,
+  "solarWarns": [
+   "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  ]
+ }
+]

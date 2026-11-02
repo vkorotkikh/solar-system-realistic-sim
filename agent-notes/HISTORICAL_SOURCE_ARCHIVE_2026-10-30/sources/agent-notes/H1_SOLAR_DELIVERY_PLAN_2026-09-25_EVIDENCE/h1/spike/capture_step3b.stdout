@@ -1,0 +1,282 @@
+{
+ "tag": "step3b",
+ "tLoad": 3955,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_200": 6,
+   "failed:undefined": 1
+  },
+  "cache": {
+   "MISS": 2,
+   "HIT": 4
+  },
+  "hitDurMs": [
+   24,
+   30,
+   33,
+   36
+  ],
+  "missDurMs": [
+   7983,
+   9474
+  ],
+  "okDurMs": {
+   "n": 6,
+   "min": 24,
+   "p50": 36,
+   "p95": 9474,
+   "max": 9474
+  },
+  "inFlightAtEnd": 1
+ },
+ "aia": {
+  "n": 3,
+  "by": {
+   "http_200": 3
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 3,
+   "min": 3,
+   "p50": 2887,
+   "p95": 3121,
+   "max": 3121
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 12,
+ "timings": [
+  {
+   "t": 10469,
+   "phase": "fetch",
+   "headersAfterMs": 9996,
+   "bodyReadMs": 3.2,
+   "jsonParseMs": 1.3,
+   "chars": 624375,
+   "requestJd": 2461308.618715838
+  },
+  {
+   "t": 10473,
+   "phase": "apply",
+   "aiaKickMs": 0.6,
+   "normalizeMs": 1.1,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.6,
+   "totalMs": 3.3,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 31185,
+   "phase": "fetch",
+   "headersAfterMs": 35,
+   "bodyReadMs": 3.9,
+   "jsonParseMs": 1,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 31186,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.6,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 0.6,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 61273,
+   "phase": "fetch",
+   "headersAfterMs": 41,
+   "bodyReadMs": 4.5,
+   "jsonParseMs": 1.4,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 61275,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 1.7,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 1.7,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 91545,
+   "phase": "fetch",
+   "headersAfterMs": 38,
+   "bodyReadMs": 4.2,
+   "jsonParseMs": 1.6,
+   "chars": 624375,
+   "requestJd": 2461308.754315838
+  },
+  {
+   "t": 91546,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 1.2,
+   "blendMs": 0,
+   "rebuildFieldMs": 0,
+   "totalMs": 1.3,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.754315838,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 3973,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304588226,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 9002,
+   "date": "2026-09-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304588226,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 177776,
+  "date": "2027-03-03",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": null,
+    "lastSuccessMs": 1790304763260,
+    "lastRefreshMs": 1790304755272,
+    "lastLatencyMs": 7987,
+    "pollIntervalMs": 30000,
+    "nextRefreshMs": 1790304785272
+   },
+   "hasState": true,
+   "epochJd": 2461427.5,
+   "activity": 0.5371550581234973,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192408802",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "6:pfss:synthetic:2320:tube-0187:0.87|tube-0023:0.96|tube-0223:0.87|tube-0131:0.85|tube-0295:0.77|tube-0403:0.81|tube-0039:0.83|tube-0163:0.77|tube-0147:0.67|tube-0459:0.66|tube-0451:0.65|tube-0120:0.70"
+  }
+ },
+ "shots": [
+  "t12",
+  "firstSuccessPlus4s",
+  "t16",
+  "end"
+ ],
+ "errorLogCount": 2,
+ "errorLogsHead": [
+  {
+   "t": 4082,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=3663.6 exceeded budgetMs=2000"
+  },
+  {
+   "t": 141575,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=4809.1 exceeded budgetMs=2000"
+  }
+ ]
+}

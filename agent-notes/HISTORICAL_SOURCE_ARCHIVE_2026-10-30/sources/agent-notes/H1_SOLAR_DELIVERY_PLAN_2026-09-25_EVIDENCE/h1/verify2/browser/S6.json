@@ -1,0 +1,677 @@
+{
+ "scen": "S6",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790350527275,
+ "t0iso": "2026-09-25T15:35:27.275Z",
+ "seconds": 180,
+ "phase2": 0,
+ "loadedAt": 1.21,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.05,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 14.6,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "titleMatches": true
+  },
+  {
+   "t": 47.7,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 15:36 UTC",
+   "titleMatches": true
+  },
+  {
+   "t": 50.08,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "titleMatches": true
+  },
+  {
+   "t": 107.26,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "titleMatches": true
+  },
+  {
+   "t": 168.34,
+   "why": "mutation",
+   "state": "backend",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 6,
+ "textFlips": 5,
+ "stateFlips": 2,
+ "rawChipMutationRecords": 15,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 15:36 UTC",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+  "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC"
+ ],
+ "announcements": [
+  {
+   "t": 14.6,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 47.7,
+   "why": "mutation",
+   "text": "Sun data: backend solar model connected."
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 14.6,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server ran out of compute time, HTTP 503)"
+  }
+ ],
+ "finalChip": {
+  "t": 181.21,
+  "label": "phase1",
+  "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC",
+  "state": "backend",
+  "ann": "Sun data: backend solar model connected."
+ },
+ "samples": [
+  {
+   "t": 6.21,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "state": "connecting",
+   "ann": ""
+  },
+  {
+   "t": 13.3,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "state": "connecting",
+   "ann": ""
+  },
+  {
+   "t": 18.3,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 23.31,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 28.31,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 33.31,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 38.32,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 43.32,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server ran out of compute time, HTTP 503)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 50.37,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 55.38,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 60.39,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 65.39,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 70.39,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 75.4,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 82.54,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 87.54,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 92.55,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 97.55,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 102.55,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:36 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 107.56,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 112.56,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 119.64,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 124.64,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 129.64,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 134.64,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 139.65,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 144.65,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 151.65,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 156.66,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 161.66,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 166.66,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:37 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 171.66,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 176.67,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  },
+  {
+   "t": 181.21,
+   "label": "phase1",
+   "text": "Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 15:38 UTC",
+   "state": "backend",
+   "ann": "Sun data: backend solar model connected."
+  }
+ ],
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 825,
+   "w": 336,
+   "h": 59,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ },
+ "requestTally": {
+  "physics cors http_503": 1,
+  "physics cors http_200": 6,
+  "aia cors http_200": 1
+ },
+ "probesPerAttempt": [
+  {
+   "t": 1.05,
+   "outcome": "http_503",
+   "ms": 12014,
+   "probes": []
+  },
+  {
+   "t": 35.31,
+   "outcome": "http_200",
+   "ms": 10333,
+   "probes": []
+  },
+  {
+   "t": 65.43,
+   "outcome": "http_200",
+   "ms": 9775,
+   "probes": []
+  },
+  {
+   "t": 95.73,
+   "outcome": "http_200",
+   "ms": 11528,
+   "probes": []
+  },
+  {
+   "t": 126.26,
+   "outcome": "http_200",
+   "ms": 10464,
+   "probes": []
+  },
+  {
+   "t": 156.57,
+   "outcome": "http_200",
+   "ms": 11768,
+   "probes": []
+  },
+  {
+   "t": 187.35,
+   "outcome": "http_200",
+   "ms": 11337,
+   "probes": []
+  }
+ ],
+ "requests": [
+  {
+   "t": 1.05,
+   "tEnd": 14.6,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461309.15042372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_503",
+   "status": 503,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 12014,
+   "origin": null
+  },
+  {
+   "t": 35.31,
+   "tEnd": 47.69,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461437.81218372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 10333,
+   "origin": null
+  },
+  {
+   "t": 47.7,
+   "tEnd": 50.08,
+   "k": "aia",
+   "mode": "cors",
+   "type": "Image",
+   "url": "/solar/realtime/aia-tile?channel=aia_304&image_id=192425468&v=192425468",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 2388,
+   "origin": "http://127.0.0.1:5191"
+  },
+  {
+   "t": 65.43,
+   "tEnd": 75.2,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461550.07418372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 9775,
+   "origin": null
+  },
+  {
+   "t": 95.73,
+   "tEnd": 107.26,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461662.73618372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 11528,
+   "origin": null
+  },
+  {
+   "t": 126.26,
+   "tEnd": 136.72,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461776.59858372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 10464,
+   "origin": null
+  },
+  {
+   "t": 156.57,
+   "tEnd": 168.34,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461889.86058372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 11768,
+   "origin": null
+  },
+  {
+   "t": 187.35,
+   "tEnd": 198.69,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2462004.05618372&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "http_200",
+   "status": 200,
+   "acao": "http://127.0.0.1:5191",
+   "ms": 11337,
+   "origin": null
+  }
+ ],
+ "bodies": [
+  {
+   "t": 47.71,
+   "bytes": 686905,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.4058169415571581,
+    "live_data_available": true,
+    "observed_confidence": 0.4451912615918803,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  },
+  {
+   "t": 75.22,
+   "bytes": 546207,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.4056772908092948,
+    "live_data_available": true,
+    "observed_confidence": 0.4447922594551282,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  },
+  {
+   "t": 107.28,
+   "bytes": 584564,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.40553579659254807,
+    "live_data_available": true,
+    "observed_confidence": 0.44438799026442305,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  },
+  {
+   "t": 136.75,
+   "bytes": 678502,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.4053898566232639,
+    "live_data_available": true,
+    "observed_confidence": 0.4439710189236111,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  },
+  {
+   "t": 168.35,
+   "bytes": 706224,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.4052452896607906,
+    "live_data_available": true,
+    "observed_confidence": 0.4435579704594017,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  },
+  {
+   "t": 198.71,
+   "bytes": 536533,
+   "data_assimilation": {
+    "mode": "hybrid",
+    "applied": true,
+    "blend_weight": 0.4051062022736378,
+    "live_data_available": true,
+    "observed_confidence": 0.4431605779246795,
+    "preferred": null
+   },
+   "aia_keys": [
+    "request_date_utc",
+    "channels",
+    "channel_activity_proxy",
+    "latest_image_date_utc",
+    "freshness_s",
+    "freshness_proxy",
+    "activity_proxy",
+    "coronal_holes",
+    "visualization"
+   ]
+  }
+ ],
+ "consoleWarnErrorOther": [
+  {
+   "t": 14.6,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ]
+}

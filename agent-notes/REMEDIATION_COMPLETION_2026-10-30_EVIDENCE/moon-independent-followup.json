@@ -1,0 +1,127 @@
+{
+  "review": "Bounded independent follow-up of MOON-I1 and MOON-I2 remediation",
+  "generatedAt": "2026-10-30T05:19:10.595448+00:00",
+  "status": "both_Important_findings_resolved",
+  "findings": [],
+  "unresolvedCounts": {
+    "Critical": 0,
+    "Important": 0
+  },
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "verifiedCommit": "2527db6dd32b5339190ded6d980ef7005ac2592d",
+  "scope": {
+    "sourceEdits": false,
+    "commitsByReviewer": false,
+    "deletions": false,
+    "subagents": false,
+    "broadTestsRerun": false,
+    "writesOnly": [
+      "/tmp/solar-remediation-completion-20261030/moon-independent-review/followup/",
+      "/tmp/solar-remediation-completion-20261030/moon-independent-followup.json"
+    ]
+  },
+  "originalEvidencePreserved": [
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/moon-independent-review.json",
+      "sha256": "896b462f1ecf84de4f7582f037d08821c65babc7882a0d5ab02ebbb32a4f8864",
+      "unchanged": true
+    },
+    {
+      "path": "/tmp/solar-remediation-completion-20261030/moon-independent-review/encoded-http-result.json",
+      "sha256": "101c676348f05db275212d42c22fa49ec2242f951a41d10fd37a4c968117be50",
+      "unchanged": true
+    }
+  ],
+  "resolutions": [
+    {
+      "id": "MOON-I1",
+      "severity": "Important",
+      "status": "resolved",
+      "location": "src/sim/lazyMoonEphemerides.ts:167",
+      "verification": "The advertised Content-Length integer/safe-integer/maximum checks still apply to every encoding. Exact advertised-length equality now applies only to explicit identity or absent encoding on a non-CORS response. Unknown CORS encoding is admitted to decoded checks. Streaming decoded-size cap, exact final decoded size, SHA-256, identity/domain/caps, semantic certificate, cancellation, concurrency and deadline checks remain unchanged.",
+      "changeBoundedness": "Removing only the six new representation-detection lines and the identityRepresentation conjunction reconstructs the original reviewed loader SHA-256 exactly; the rest of the production loader is byte-identical to the original review.",
+      "newRegressionLocations": [
+        "src/sim/lazyMoonEphemerides.test.ts:19",
+        "src/sim/lazyMoonEphemerides.test.ts:47"
+      ],
+      "independentRepro": {
+        "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-remediation-completion-20261030/moon-independent-review/followup/encoded-http-probe.mjs",
+        "evidence": "/tmp/solar-remediation-completion-20261030/moon-independent-review/followup/encoded-http-result.json",
+        "nativeHttpResults": [
+          {
+            "mode": "identity",
+            "advertisedLength": 403584,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "loaded": [
+              "amalthea"
+            ]
+          },
+          {
+            "mode": "gzip",
+            "advertisedLength": 188814,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "loaded": [
+              "amalthea"
+            ]
+          },
+          {
+            "mode": "br",
+            "advertisedLength": 165428,
+            "decodedBytes": 403584,
+            "decodedDigestMatches": true,
+            "loaded": [
+              "amalthea"
+            ]
+          }
+        ],
+        "corsHiddenEncoding": {
+          "loaded": [
+            "amalthea"
+          ]
+        },
+        "result": "Identity, gzip and Brotli all load the actual Amalthea public shard with matching decoded SHA-256. A synthetic CORS Response with hidden Content-Encoding and compressed advertised length also loads successfully. Original failure output was not overwritten."
+      },
+      "redGreenEvidence": {
+        "red": "/tmp/solar-remediation-completion-20261030/moon-encoding-red.log",
+        "redResult": "Three new encoding regressions failed on the original guard.",
+        "green": "/tmp/solar-remediation-completion-20261030/moon-encoding-green.json",
+        "greenResult": "486 passed, zero failed/skipped: 61 lazy-loader tests and 425 complete-catalog tests. Recorded evidence inspected; broad suites not rerun."
+      }
+    },
+    {
+      "id": "MOON-I2",
+      "severity": "Important",
+      "status": "resolved",
+      "location": "scripts/generate_moon_lazy_ephemerides.py:21",
+      "verification": "Commit 2527db6dd32b5339190ded6d980ef7005ac2592d saves exactly all 823 source-pin/public-asset files and all seven reviewed code/test files together. Every current file byte matches its committed Git blob, and all asset SHA-256 values still match the original reviewed inventory. Targeted working-tree status is clean.",
+      "commit": "2527db6dd32b5339190ded6d980ef7005ac2592d",
+      "assetFiles": 823,
+      "codeFiles": 7,
+      "commitChangedPaths": 830,
+      "assetBytesIncludingReadme": 396310625,
+      "sourcePinFiles": 412,
+      "publicAssetFiles": 411,
+      "allCurrentBytesMatchCommittedBlobs": true,
+      "allAssetsMatchOriginalReviewedInventory": true,
+      "targetedWorktreeClean": true,
+      "repro": "git ls-tree -r -l -z 2527db6dd32b5339190ded6d980ef7005ac2592d -- scripts/moon-lazy-inputs public/moon-ephemerides <seven code paths>; independently compare blob SHA-1 and size against each current file, and asset SHA-256 against moons/asset-inventory.json. git diff-tree confirms all 830 paths changed in the same commit."
+    }
+  ],
+  "currentCodeSha256": {
+    "src/sim/lazyMoonEphemerides.ts": "3716e20a0465b6df94ade43467e1e1e2b717af1eedd3472d80830907e13f10b4",
+    "src/sim/lazyMoonEphemerides.test.ts": "086dab2a2ed8b17514546ea9e237f550dbe77fa8ee4dfc74f0bbd96faec985e6",
+    "src/sim/loadMoonEphemerides.ts": "1f7c52ccca0a4402b5a6c5a5eed3d276872267c7c73982e5ac335b47f1c97855",
+    "src/sim/moonRepairTestInputs.mjs": "7c6293bd985bf98f24d2498594ad93ba8b373a2ca657cabbe4d3184e89564861",
+    "src/sim/moonCatalogRepair.horizons.test.ts": "f3c519df3c19b42050245ba0fad1fa46d68767b404692b9619c543eb80ef0cd7",
+    "scripts/generate_moon_lazy_ephemerides.py": "c5a0b87805c3113050d1eeb63d0ae599133ed4eb85b04f5c02e273e0992cd616",
+    "scripts/test_moon_lazy_ephemerides.py": "de35703e323e9aef495d4784ff82bd512ca0201761773dabcc33079b06bdfa3b"
+  },
+  "passBoundaries": [
+    "This follow-up closes only MOON-I1/I2; prior scientific/source-quality, offline numerical-stack, transport-compliance and overall application acceptance boundaries remain as recorded in the unchanged original report.",
+    "All 823 reviewed asset files are unchanged and now saved locally. The recorded 425 catalog tests retain all 424 identities, both Puck records, unchanged caps and original 13 models; 486 total targeted tests pass.",
+    "Independent runtime verification uses local native Node 22.23.2 HTTP for identity/gzip/br. CORS filtering is tested through a synthetic Response boundary, not a live cross-origin browser session.",
+    "No source edits, commits, deletions, broad test reruns, distribution-clearance claim, remote publication, deployed TLS proof or moon-rendering activation by this reviewer."
+  ]
+}

@@ -1,0 +1,47 @@
+[
+[
+0.009,
+"solar-aia-io_0",
+"enter sf key=('snapshot', 'latest') wait_timeout=4.3 failures_cached=[]"
+],
+[
+0.01,
+"solar-aia-io_0",
+"upstream start s/solar-wind/plasma-1-day.json"
+],
+[
+3.811,
+"solar-aia-io_0",
+"upstream start e/SILSO/DATA/SN_d_tot_V2.0.csv"
+],
+[
+4.017,
+"MainThread",
+"HTTP aia_193 -> 503 in 4.02s {\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+],
+[
+4.018,
+"solar-aia-io_1",
+"enter sf key=('snapshot', 'latest') wait_timeout=4.3 failures_cached=[]"
+],
+[
+7.612,
+"solar-aia-io_0",
+"upstream start viewer.org/v2/getClosestImage/"
+],
+[
+8.024,
+"MainThread",
+"HTTP aia_171 -> 503 in 4.01s {\"detail\":\"AIA tile generation timed out. Try again later.\"}"
+],
+[
+8.318,
+"solar-aia-io_1",
+"exit sf TimeoutError: Upstream request is blocked by an ongoing fetch for this resource; try again sho"
+],
+[
+11.412,
+"solar-aia-io_0",
+"exit sf ok"
+]
+]

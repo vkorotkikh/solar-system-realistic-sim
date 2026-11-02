@@ -1,5 +1,7 @@
 # Canonical remediation: wave-two integration checkpoint
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 The effort is active. No all-item closure, main merge, push, or production
 deployment is claimed. The current master records 54 committed unmerged fix
 qualifiers, including three still-partial groups; nine rows remain partial.
@@ -18,7 +20,7 @@ their focused author evidence is separate from those earlier full runs.
 | Strict TypeScript and strict browser-test types | Both passed, zero diagnostics | Same frontend log |
 | Merged runtime/transport focused gate | 115 passed; no resource or unhandled-thread warning failures | `/tmp/solar-runtime-horizons-integrated-20261014.log` |
 | Integrated Chromium/Firefox production-DOM matrix | 54 passed, zero skipped; 1.1 min | `/tmp/solar-dom-browser-wave2-20261014.log` |
-| Native optional Tudat gate | 8 passed, zero skips, including three actual native propagation tests | [Native evidence](REMEDIATION_NATIVE_TUDAT_2026-10-14.md) |
+| Native optional Tudat gate | 8 passed, zero skips, including three actual native propagation tests | [Native evidence](https://github.com/vkorotkikh/solar-system-realistic-sim/blob/bb29d4be393c9dedca7049fc9b83511ed955be40/agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md) |
 | Exact PFSS scientific manifest at b0b1030 | Six baseline tests passed; all six mutants killed | `/tmp/solar-r3r4-integrated-20261014-b/summary.json` |
 
 The five default-backend skips are optional native-runtime and all-moon

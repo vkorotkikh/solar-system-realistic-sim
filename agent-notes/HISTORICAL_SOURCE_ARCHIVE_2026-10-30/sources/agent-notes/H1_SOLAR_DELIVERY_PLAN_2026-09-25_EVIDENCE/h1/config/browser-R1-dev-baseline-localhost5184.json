@@ -1,0 +1,67 @@
+{
+ "label": "R1-dev-baseline-localhost5184",
+ "pageUrl": "http://localhost:5184/",
+ "rewritePort": "8074",
+ "seconds": 30,
+ "pageOrigin": "http://localhost:5184",
+ "backendRequestOrigins": [
+  "http://localhost:8042"
+ ],
+ "summary": {
+  "/solar/physics :: failed net::ERR_ABORTED": 3,
+  "/solar/physics :: failed net::ERR_FAILED": 2
+ },
+ "requests": [
+  {
+   "t": 1309,
+   "dur": 2236,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 6745,
+   "dur": 2597,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 13641,
+   "dur": 32,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "failed net::ERR_FAILED",
+   "acao": null
+  },
+  {
+   "t": 21532,
+   "dur": 10,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "failed net::ERR_FAILED",
+   "acao": null
+  },
+  {
+   "t": 27990,
+   "dur": 2597,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  }
+ ],
+ "console": [
+  "13673ms [error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461357.92513835&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:5184' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+  "13673ms [error] Failed to load resource: net::ERR_FAILED",
+  "21542ms [error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461383.85753835&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:5184' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+  "21542ms [error] Failed to load resource: net::ERR_FAILED"
+ ]
+}

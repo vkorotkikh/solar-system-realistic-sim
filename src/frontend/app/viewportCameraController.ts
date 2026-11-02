@@ -53,21 +53,37 @@ export function applyCameraAction(camera: PerspectiveCamera, controls: CameraCon
   }
   camera.lookAt(controls.target); camera.updateMatrixWorld(); return true;
 }
-export function createViewportCameraController({ canvas, actionRoot, camera, controls }: { canvas: HTMLCanvasElement; actionRoot: HTMLElement; camera: PerspectiveCamera; controls: CameraControlsLike }) {
+export function createViewportCameraController({ canvas, actionRoot, camera, controls, onActionApplied }: { canvas: HTMLCanvasElement; actionRoot: HTMLElement; camera: PerspectiveCamera; controls: CameraControlsLike; onActionApplied?: () => void }) {
   const pending: CameraAction[] = [];
+  let scheduled = false;
+  let disposed = false;
+  function applyPendingActions() {
+    scheduled = false;
+    if (disposed) { pending.length = 0; return; }
+    let applied = false;
+    for (const action of pending.splice(0)) applied = applyCameraAction(camera, controls, action) || applied;
+    if (applied) onActionApplied?.();
+  }
+  function enqueue(action: CameraAction) {
+    pending.push(action);
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(applyPendingActions);
+  }
   function onKey(event: KeyboardEvent) {
     if (canvas.ownerDocument.activeElement !== canvas || event.target !== canvas || canvas.isContentEditable || canvas.closest('[inert]')) return;
     const action = cameraActionForKey(event);
-    if (action && accepts(controls, action)) { event.preventDefault(); pending.push(action); }
+    if (action && accepts(controls, action)) { event.preventDefault(); enqueue(action); }
   }
   function onClick(event: MouseEvent) {
     const button = (event.target as Element).closest<HTMLButtonElement>('button[data-camera-action]');
     if (!button || !actionRoot.contains(button) || button.disabled || button.closest('[inert]')) return;
     const action = button.dataset.cameraAction as CameraAction;
-    if (accepts(controls, action)) pending.push(action);
+    if (accepts(controls, action)) enqueue(action);
   }
   canvas.addEventListener('keydown', onKey); actionRoot.addEventListener('click', onClick);
-  return { applyPendingActions() { for (const action of pending.splice(0)) applyCameraAction(camera, controls, action); }, dispose() {
-    pending.length = 0; canvas.removeEventListener('keydown', onKey); actionRoot.removeEventListener('click', onClick);
+  return { applyPendingActions, dispose() {
+    disposed = true; scheduled = false; pending.length = 0;
+    canvas.removeEventListener('keydown', onKey); actionRoot.removeEventListener('click', onClick);
   } };
 }

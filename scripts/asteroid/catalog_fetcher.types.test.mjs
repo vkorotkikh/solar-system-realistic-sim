@@ -2,9 +2,9 @@ import { expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-it('type-checks the nullable epochs emitted by the JPL and MPC normalizers', () => {
-  // Compile the real script without executing its network or output operations.
-  // The application tsconfig only includes src/, so it does not cover this file.
+it('type-checks the retired catalog entrypoint without executing it', () => {
+  // The legacy normalizers are retired; keep their entrypoint valid TypeScript.
+  // Compile without executing the migration diagnostic or setting process.exitCode.
   const source = fileURLToPath(new URL('./catalog_fetcher.ts', import.meta.url));
   const program = ts.createProgram([source], {
     strict: true,

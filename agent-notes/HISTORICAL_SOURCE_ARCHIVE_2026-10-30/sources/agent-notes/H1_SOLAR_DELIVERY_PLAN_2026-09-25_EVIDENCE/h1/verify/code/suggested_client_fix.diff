@@ -1,0 +1,21 @@
+--- /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv/src/frontend/features/solar/solarPhysicsClient.ts	2026-09-24 23:25:14.196595212 -0400
++++ /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv/src/frontend/features/solar/h1v-fixed-client.ts	2026-09-25 03:01:53.349462482 -0400
+@@ -238,7 +238,8 @@
+           ? this.timeoutError()
+           : new SolarPhysicsRequestError('invalid-response', `Solar physics response was not valid JSON (${String(error)})`);
+       }
+-      if (!payload || typeof payload !== 'object') {
++      if (this._reqId !== currentReqId) return false;
++      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+         throw new SolarPhysicsRequestError('invalid-response', 'Solar physics response was not a JSON object');
+       }
+       this.latest = payload as SolarPhysicsStatePayload;
+@@ -252,7 +253,7 @@
+     } catch (error: unknown) {
+       // A superseded or deliberately cancelled request says nothing about the server.
+       if (this._reqId !== currentReqId) return false;
+-      if (!(error instanceof SolarPhysicsRequestError) && controller.signal.aborted && !timedOut) return false;
++      if (controller.signal.aborted && !timedOut) return false;
+       const failure = error instanceof SolarPhysicsRequestError
+         ? error
+         : new SolarPhysicsRequestError('network', error instanceof Error ? error.message : String(error));

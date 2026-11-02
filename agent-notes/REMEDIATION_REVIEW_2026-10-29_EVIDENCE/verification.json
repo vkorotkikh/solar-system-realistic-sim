@@ -1,0 +1,94 @@
+{
+  "reviewedOn": "2026-10-29",
+  "baseline": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+  "noFetchPerformed": true,
+  "branch": "docs/remediation-reconciliation-20261029",
+  "canonicalIssues": 83,
+  "remediationNoteFilenames": 46,
+  "distinctInventoriedVersions": 62,
+  "reviewedAdditionalSupportingNotes": 23,
+  "verdictCounts": {
+    "CODE_CONFIRMED": 61,
+    "PARTIAL": 16,
+    "DECISION_REQUIRED": 6
+  },
+  "backendAndCi": {
+    "passed": 4057,
+    "failed": 0,
+    "skipped": 13,
+    "warnings": 3,
+    "seconds": 184.08,
+    "python": "3.12.13"
+  },
+  "maintenance": {
+    "passed": 91,
+    "subtestsPassed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "python": "3.12.13",
+    "playwright": "1.64.1",
+    "spiceypy": "8.3.0",
+    "initialPinnedOnlyCollection": "ERROR: missing Python playwright; preserved in maintenance.log"
+  },
+  "frontend": {
+    "passed": 881,
+    "failed": 0,
+    "skipped": 413,
+    "node": "22.23.2",
+    "npm": "10.9.8"
+  },
+  "typesAndBuild": {
+    "strict": "pass",
+    "uiDelta": "pass",
+    "uiTypes": "pass",
+    "productionBuild": "pass",
+    "retainedWarning": "main chunk exceeds 500 kB"
+  },
+  "science": {
+    "baseline": {
+      "collected": 6,
+      "passed": 6
+    },
+    "mutationsKilled": 6
+  },
+  "chromium": {
+    "passed": 41,
+    "failed": 2,
+    "skipped": 1,
+    "seconds": 418.68254599999995
+  },
+  "asteroidGpu": {
+    "cases": 125,
+    "status": "pass",
+    "scope": "WebGL2 transform feedback; hardware performance not implied"
+  },
+  "planetGpu": {
+    "cases": 2,
+    "status": "pass",
+    "scope": "opt-in software-GPU production shader tests"
+  },
+  "defectProbes": {
+    "reproduced": 7,
+    "ids": [
+      "SCN-019",
+      "SCN-020",
+      "SCN-022",
+      "SCN-042",
+      "SCN-043",
+      "SCN-054",
+      "SCN-075"
+    ]
+  },
+  "nativeCoverage": {
+    "spiceypyDaphnis": "fresh pass in augmented maintenance lane",
+    "tudat": "not available; 12 default-suite skips remain; historical native evidence only"
+  },
+  "exclusions": [
+    "fresh Firefox/WebKit acceptance",
+    "manual NVDA/VoiceOver/physical touch/OS resize",
+    "all-424 promoted moon models",
+    "final full-scene startup and cold PREVIEW delivery",
+    "deployed production TLS/auth/provider calibration",
+    "all-camera/epoch/layer rendering acceptance"
+  ]
+}

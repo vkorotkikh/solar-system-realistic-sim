@@ -1,0 +1,3 @@
+# Preserve intentionally selected historical logs despite repository-wide ignores.
+!*/
+!*

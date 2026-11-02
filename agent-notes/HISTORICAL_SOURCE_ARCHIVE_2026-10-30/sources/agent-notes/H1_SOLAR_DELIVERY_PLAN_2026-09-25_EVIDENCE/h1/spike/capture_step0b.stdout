@@ -1,0 +1,121 @@
+{
+ "tag": "step0b",
+ "tLoad": 3349,
+ "physics": {
+  "n": 30,
+  "by": {
+   "aborted": 16,
+   "http_503": 14
+  },
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 0,
+  "by": {},
+  "okDurMs": {
+   "n": 0,
+   "min": null,
+   "p50": null,
+   "p95": null,
+   "max": null
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 0,
+ "timings": [],
+ "firstSamples": [
+  {
+   "t": 24714,
+   "date": "2026-12-27",
+   "scale": "+4.0 d/s",
+   "spike": null
+  },
+  {
+   "t": 79885,
+   "date": "2027-07-22",
+   "scale": "+4.0 d/s",
+   "spike": null
+  }
+ ],
+ "lastSample": {
+  "t": 177439,
+  "date": "2028-07-25",
+  "scale": "+4.0 d/s",
+  "spike": null
+ },
+ "shots": [
+  "t12",
+  "t16",
+  "end"
+ ],
+ "errorLogCount": 15,
+ "errorLogsHead": [
+  {
+   "t": 3506,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2973.0 exceeded budgetMs=2000"
+  },
+  {
+   "t": 13542,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 33546,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 39979,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 46190,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 66573,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 79879,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 99879,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 107102,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 131869,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 137993,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 157060,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

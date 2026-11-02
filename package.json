@@ -12,10 +12,12 @@
     "dev:full": "node ./scripts/dev-full.mjs",
     "dev:ui": "node ./scripts/run-ui-dev.mjs",
     "build": "vite build",
+    "prebuild": "node scripts/prepare-distribution.mjs",
     "test": "vitest run",
     "typecheck:ratchet": "node ./scripts/ci/typescript-error-ratchet.mjs",
     "phase1:asteroid-dataset": "python3 scripts/build_asteroid_phase1_dataset.py",
     "typecheck": "tsc --project tsconfig.json --strict --noEmit",
+    "typecheck:scripts": "tsc --project tsconfig.scripts.json --noEmit",
     "preview": "vite preview",
     "update:moons": "node ./scripts/update-moons-data.mjs",
     "generate:moon-ephemeris": "python3 ./scripts/generate_moon_ephemeris.py --write",
@@ -29,14 +31,17 @@
     "typecheck:ui-delta": "node scripts/check-ui-types.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.1",
     "@playwright/test": "1.64.0",
     "@types/node": "22.19.1",
     "@types/three": "^0.182.0",
+    "axe-core": "4.11.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.7",
     "vitest": "^5.0.4"
   },
   "dependencies": {
     "three": "^0.182.0"
-  }
+  },
+  "license": "UNLICENSED"
 }

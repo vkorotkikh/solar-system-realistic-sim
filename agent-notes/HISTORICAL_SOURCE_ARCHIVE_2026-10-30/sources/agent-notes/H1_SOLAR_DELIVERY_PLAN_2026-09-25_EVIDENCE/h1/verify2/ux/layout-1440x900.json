@@ -1,0 +1,2587 @@
+{
+ "generated": "2026-09-25T15:09:45.844Z",
+ "runs": [
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "natural",
+   "stillForced": null,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-open-natural",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 840,
+    "w": 1056,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 8,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 4.11,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1081,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, ",
+      "SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "error",
+     "box": {
+      "x": 1088,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (solar server not reachable ",
+      "at http://127.0.0.1:8042)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "error",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-open-error",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 840,
+    "w": 1056,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 8,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 4.11,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1081,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, ",
+      "SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "error",
+     "box": {
+      "x": 1088,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (solar server does not allow ",
+      "this page's origin http://127.0.0.1:4173 (CORS))"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "stale",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-open-stale",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 825,
+    "w": 1056,
+    "h": 59,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 8,
+   "chipBandTop": 825,
+   "chipBandBottom": 884,
+   "chipBandHeight": 59,
+   "chipBandFromBottom": 75,
+   "chipRows": 3,
+   "headerToBarGap": 765,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 4.62,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1081,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, ",
+      "SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "stale",
+     "box": {
+      "x": 1088,
+      "y": 825,
+      "w": 336,
+      "h": 59,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: backend state from 14:03 UTC (refresh failing: ",
+      "solar server failed without a readable reply, likely ",
+      "an internal error)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "backend",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-open-backend",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 825,
+    "w": 1056,
+    "h": 59,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 8,
+   "chipBandTop": 825,
+   "chipBandBottom": 884,
+   "chipBandHeight": 59,
+   "chipBandFromBottom": 75,
+   "chipRows": 3,
+   "headerToBarGap": 765,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 4.62,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1081,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, ",
+      "SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "backend",
+     "box": {
+      "x": 1088,
+      "y": 825,
+      "w": 336,
+      "h": 59,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: backend solar model (data-driven forcing, ",
+      "observations unavailable; AIA 304 image; AIA 171 ",
+      "image failed to load) · updated 14:03 UTC"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "connecting",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-open-connecting",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 840,
+    "w": 1056,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 8,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 4.11,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1081,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, ",
+      "SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "connecting",
+     "box": {
+      "x": 1088,
+      "y": 840,
+      "w": 336,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (connecting to solar model ",
+      "server)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "natural",
+   "stillForced": null,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-closed-natural",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 854,
+    "w": 1408,
+    "h": 30,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 854,
+   "chipBandBottom": 884,
+   "chipBandHeight": 30,
+   "chipBandFromBottom": 46,
+   "chipRows": 1,
+   "headerToBarGap": 794,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.19,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 905,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "error",
+     "box": {
+      "x": 912,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "error",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-closed-error",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 840,
+    "w": 1408,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.75,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 905,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "error",
+     "box": {
+      "x": 912,
+      "y": 840,
+      "w": 512,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (solar server does not allow this page's origin ",
+      "http://127.0.0.1:4173 (CORS))"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "stale",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-closed-stale",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 840,
+    "w": 1408,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.75,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 905,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "stale",
+     "box": {
+      "x": 912,
+      "y": 840,
+      "w": 512,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: backend state from 14:03 UTC (refresh failing: solar server failed without a ",
+      "readable reply, likely an internal error)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "backend",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-closed-backend",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 840,
+    "w": 1408,
+    "h": 44,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 840,
+   "chipBandBottom": 884,
+   "chipBandHeight": 44,
+   "chipBandFromBottom": 60,
+   "chipRows": 2,
+   "headerToBarGap": 780,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.75,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 905,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "backend",
+     "box": {
+      "x": 912,
+      "y": 840,
+      "w": 512,
+      "h": 44,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: backend solar model (data-driven forcing, observations unavailable; AIA 304 ",
+      "image; AIA 171 image failed to load) · updated 14:03 UTC"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "connecting",
+   "stillForced": true,
+   "natural": {
+    "solar": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "solarState": "error",
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "branch-1440x900-panel-closed-connecting",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 854,
+    "w": 1408,
+    "h": 30,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 854,
+   "chipBandBottom": 884,
+   "chipBandHeight": 30,
+   "chipBandFromBottom": 46,
+   "chipRows": 1,
+   "headerToBarGap": 794,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.19,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 905,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-solar",
+     "state": "connecting",
+     "box": {
+      "x": 912,
+      "y": 854,
+      "w": 512,
+      "h": 30,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Sun: procedural fallback (connecting to solar model server)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "branch",
+   "vp": "1440x900",
+   "consoleWarns": [
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[warning] [solar] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+    "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=3205.3 exceeded budgetMs=2000",
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED"
+   ],
+   "pageErrors": [],
+   "reverts": 0
+  },
+  {
+   "build": "main",
+   "vp": "1440x900",
+   "panelMode": "panel-open",
+   "panelOpenActual": true,
+   "state": "natural",
+   "stillForced": null,
+   "natural": {
+    "solar": null,
+    "solarState": null,
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "main-1440x900-panel-open-natural",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 368,
+    "y": 854,
+    "w": 1056,
+    "h": 30,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1056,
+   "barClientW": 1056,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 854,
+   "chipBandBottom": 884,
+   "chipBandHeight": 30,
+   "chipBandFromBottom": 46,
+   "chipRows": 1,
+   "headerToBarGap": 794,
+   "canvas": {
+    "x": 352,
+    "y": 0,
+    "w": 1088,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.17,
+   "appClass": "panel-is-open",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 368,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 483,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 490,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 609,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 616,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 739,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 746,
+      "y": 854,
+      "w": 678,
+      "h": 30,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "control-panel": {
+     "x": 0,
+     "y": 0,
+     "w": 352,
+     "h": 900,
+     "right": 352,
+     "bottom": 900
+    },
+    "viewport-toolbar(header)": {
+     "x": 368,
+     "y": 16,
+     "w": 1056,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 747,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 1045,
+     "bottom": 832
+    },
+    "time-controls": {
+     "x": 12,
+     "y": 217,
+     "w": 327,
+     "h": 249,
+     "right": 339,
+     "bottom": 466
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 368,
+      "y": 16,
+      "w": 1056,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 747,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 1045,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "main",
+   "vp": "1440x900",
+   "panelMode": "panel-closed",
+   "panelOpenActual": false,
+   "state": "natural",
+   "stillForced": null,
+   "natural": {
+    "solar": null,
+    "solarState": null,
+    "catalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+    "fontChakra": [
+     "500",
+     "600"
+    ]
+   },
+   "tag": "main-1440x900-panel-closed-natural",
+   "viewport": [
+    1440,
+    900
+   ],
+   "docScrollW": 1440,
+   "bodyScrollW": 1440,
+   "hOverflow": false,
+   "barBox": {
+    "x": 16,
+    "y": 854,
+    "w": 1408,
+    "h": 30,
+    "right": 1424,
+    "bottom": 884
+   },
+   "barScrollW": 1408,
+   "barClientW": 1408,
+   "barHOverflow": false,
+   "hintClearance": 22,
+   "chipBandTop": 854,
+   "chipBandBottom": 884,
+   "chipBandHeight": 30,
+   "chipBandFromBottom": 46,
+   "chipRows": 1,
+   "headerToBarGap": 794,
+   "canvas": {
+    "x": 0,
+    "y": 0,
+    "w": 1440,
+    "h": 900,
+    "right": 1440,
+    "bottom": 900
+   },
+   "canvasCoveredByChipsPct": 3.21,
+   "appClass": "panel-is-closed",
+   "chips": [
+    {
+     "id": "status-focus",
+     "state": "focus",
+     "box": {
+      "x": 16,
+      "y": 854,
+      "w": 115,
+      "h": 30,
+      "right": 131,
+      "bottom": 884
+     },
+     "lines": [
+      "Focused · Sun"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-bodies",
+     "state": null,
+     "box": {
+      "x": 138,
+      "y": 854,
+      "w": 119,
+      "h": 30,
+      "right": 257,
+      "bottom": 884
+     },
+     "lines": [
+      "Bodies · 55,010"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-zoom",
+     "state": null,
+     "box": {
+      "x": 264,
+      "y": 854,
+      "w": 123,
+      "h": 30,
+      "right": 387,
+      "bottom": 884
+     },
+     "lines": [
+      "Range · 2.60 AU"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    },
+    {
+     "id": "status-catalog",
+     "state": "verified",
+     "box": {
+      "x": 394,
+      "y": 854,
+      "w": 1030,
+      "h": 30,
+      "right": 1424,
+      "bottom": 884
+     },
+     "lines": [
+      "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)"
+     ],
+     "hClip": false,
+     "vClip": false,
+     "offscreen": false,
+     "fontPx": "10.88px"
+    }
+   ],
+   "otherBoxes": {
+    "panel-toggle": {
+     "x": 16,
+     "y": 16,
+     "w": 116,
+     "h": 44,
+     "right": 132,
+     "bottom": 60
+    },
+    "viewport-toolbar(header)": {
+     "x": 16,
+     "y": 16,
+     "w": 1408,
+     "h": 44,
+     "right": 1424,
+     "bottom": 60
+    },
+    "frame-indicator": {
+     "x": 1272,
+     "y": 16,
+     "w": 152,
+     "h": 32,
+     "right": 1424,
+     "bottom": 48
+    },
+    "interaction-hint": {
+     "x": 571,
+     "y": 801,
+     "w": 298,
+     "h": 31,
+     "right": 869,
+     "bottom": 832
+    }
+   },
+   "extraFixed": [
+    {
+     "sel": "div.viewport-toolbar",
+     "box": {
+      "x": 16,
+      "y": 16,
+      "w": 1408,
+      "h": 44,
+      "right": 1424,
+      "bottom": 60
+     },
+     "z": "10"
+    },
+    {
+     "sel": "p.interaction-hint",
+     "box": {
+      "x": 571,
+      "y": 801,
+      "w": 298,
+      "h": 31,
+      "right": 869,
+      "bottom": 832
+     },
+     "z": "4"
+    }
+   ],
+   "overlaps": []
+  },
+  {
+   "build": "main",
+   "vp": "1440x900",
+   "consoleWarns": [
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+    "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=2710.9 exceeded budgetMs=2000",
+    "[error] Failed to load resource: net::ERR_CONNECTION_REFUSED"
+   ],
+   "pageErrors": [],
+   "reverts": null
+  }
+ ]
+}

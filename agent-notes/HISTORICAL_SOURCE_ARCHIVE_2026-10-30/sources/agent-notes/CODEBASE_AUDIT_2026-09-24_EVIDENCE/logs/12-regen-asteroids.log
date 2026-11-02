@@ -1,0 +1,27 @@
+  Fetching fresh data...
+  Fetching fresh data...
+  Querying JPL SBDB (kind=a, class=all, limit=100000)...
+  Got 100000 results
+  Cached to sbdb_phase1_diameter_100000.json
+  Cached to phase1_diameter_100000.json
+  Fetching fresh data...
+  Fetching fresh data...
+  Querying JPL SBDB (kind=a, class=all, limit=200000)...
+  Got 200000 results
+  Cached to sbdb_phase1_diameter_200000.json
+  Cached to phase1_diameter_200000.json
+Traceback (most recent call last):
+  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/scripts/build_asteroid_phase1_dataset.py", line 455, in <module>
+    main()
+  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/scripts/build_asteroid_phase1_dataset.py", line 451, in main
+    build_dataset(args.output_dir, args.limit, args.bin_name, args.meta_name)
+  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt/scripts/build_asteroid_phase1_dataset.py", line 423, in build_dataset
+    print(f"[phase1] Built: {bin_path.relative_to(PROJECT_ROOT)} ({len(records):,} records)")
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nomad/miniconda3/envs/icl-vram-py312-cu132/lib/python3.12/pathlib.py", line 682, in relative_to
+    raise ValueError(f"{str(self)!r} is not in the subpath of {str(other)!r}")
+ValueError: '/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/out/regen-asteroids/asteroid_phase1_main_100000.bin' is not in the subpath of '/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt'
+
+real	0m20.924s
+user	0m3.563s
+sys	0m0.442s

@@ -1,0 +1,56 @@
+{
+ "origin": "http://localhost:4173",
+ "backend": "http://127.0.0.1:8075",
+ "rewrite": null,
+ "seconds": 90,
+ "physics_total": 14,
+ "physics_settled": 14,
+ "physics_outcomes": {
+  "aborted": 7,
+  "cors:MissingAllowOriginHeader": 7
+ },
+ "physics_200_ratio": 0,
+ "physics_200_latency_ms": {
+  "p50": null,
+  "p95": null,
+  "max": null
+ },
+ "aia_requests": 0,
+ "aia_outcomes": [],
+ "status_samples": [
+  {
+   "t": 61,
+   "text": null,
+   "state": null
+  },
+  {
+   "t": 76,
+   "text": null,
+   "state": null
+  },
+  {
+   "t": 91,
+   "text": null,
+   "state": null
+  }
+ ],
+ "external_blocked": [
+  "https://fonts.googleapis.com"
+ ],
+ "checks": {
+  "physics_200_ratio_ge_0_95": false,
+  "aia_tile_loaded_ge_1": false,
+  "status_label_present": false,
+  "status_state_live_or_degraded": false
+ },
+ "pass": false,
+ "logs": [
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461367.27000624&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461418.06760624&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461450.60000624&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461525.53040625&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461545.32960625&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461629.05960624&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-",
+  "[error] Access to fetch at 'http://localhost:8042/solar/physics?jd=2461655.85840624&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://localhost:4173' has been blocked by CORS policy: No 'Access-Control-Allow-"
+ ]
+}

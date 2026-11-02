@@ -22,7 +22,7 @@ from solar_reference_comparison import FITS_SHA, _artifact, fits_images
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CORPUS = ROOT / "agent-notes/solar-observational-acceptance-2026-10-17"
+CORPUS = ROOT / "backend/tests/fixtures/solar/observational_20261012"
 OBSERVATION = CORPUS / "nso_gong_zqs_202610121744.fits.gz"
 PROVIDER_FILENAME = "mrzqs261012t1744c2316_079.fits.gz"
 MANIFEST = CORPUS / "manifest.json"
@@ -243,8 +243,15 @@ def _paired_metrics(actual: np.ndarray, reference: np.ndarray, mask: np.ndarray)
     }
 
 
-def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
-    header, maps, coefficients = _provider_reference()
+def application_wsa_acceptance(
+    *, coefficients_schmidt_gauss: np.ndarray | None = None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    header, maps, provider_coefficients = _provider_reference()
+    coefficients = (
+        provider_coefficients
+        if coefficients_schmidt_gauss is None
+        else coefficients_schmidt_gauss
+    )
     products = compute_pfss_from_coefficients(
         coefficients,
         source_surface_radii=float(header["RADSS"]),
@@ -278,8 +285,14 @@ def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
 
     metrics: dict[str, object] = {
         "application_api": "compute_pfss_from_coefficients",
+        "application_input": (
+            "independent_provider_degree90_coefficients"
+            if coefficients_schmidt_gauss is None
+            else f"retained_gong_map_degree{coefficients.shape[1] - 1}_coefficients_in_provider_native_frame"
+        ),
         "provider": header["PROVERS"],
         "provider_degree": 90,
+        "application_degree": int(coefficients.shape[1] - 1),
         "source_surface_radii": float(header["RADSS"]),
         "grid_shape": [36, 72],
         "matched_feature_cells": int(np.count_nonzero(matched)),
@@ -322,6 +335,39 @@ def application_wsa_acceptance() -> tuple[dict[str, object], dict[str, object]]:
     return metrics, checks
 
 
+def real_map_application_diagnostic() -> dict[str, object]:
+    """Retain actual-map failures under the unchanged spectral/feature budgets."""
+    snapshot = load_observed_snapshot()
+    attempts = []
+    applications = []
+    for degree in (90, 64, 30, 15):
+        try:
+            absolute = np.stack(decompose_spherical_harmonics(
+                snapshot.field_gauss, lmax=degree, grid=snapshot.grid,
+            ))
+        except ValueError as exc:
+            attempts.append({"degree": degree, "admitted": False, "error": str(exc)})
+            continue
+        attempts.append({"degree": degree, "admitted": True})
+        native = _absolute_to_provider_native(absolute, snapshot.snapshot_id.long0_deg)
+        metrics, checks = application_wsa_acceptance(coefficients_schmidt_gauss=native)
+        applications.append({
+            "degree": degree, "metrics": metrics, "checks": checks,
+            "feature_budget_passed": all(checks.values()),
+        })
+    return {
+        "schema": "scn041_real_map_application_diagnostic_v1",
+        "observation_sha256": OBSERVATION_SHA256,
+        "provider_wsa_sha256": FITS_SHA,
+        "degree_admission": attempts,
+        "admitted_applications": applications,
+        "required_degree90_admitted": attempts[0]["admitted"],
+        "budget": BUDGET,
+        "scope": "Actual retained map decomposition and spectral API; no PFSS snapshot consumer or scene adapter claim.",
+        "limitations": json.loads(MANIFEST.read_text())["limitations"],
+    }
+
+
 def build_report() -> dict[str, object]:
     snapshot = load_observed_snapshot()
     coefficients = coefficient_acceptance(snapshot)
@@ -356,11 +402,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path)
     parser.add_argument("--require-acceptance", action="store_true")
+    parser.add_argument("--real-map-diagnostic-output", type=Path)
     options = parser.parse_args()
     report = build_report()
     encoded = json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
     if options.output:
         options.output.write_text(encoded)
+    if options.real_map_diagnostic_output:
+        options.real_map_diagnostic_output.write_text(
+            json.dumps(real_map_application_diagnostic(), indent=2, sort_keys=True, allow_nan=False) + "\n"
+        )
     print(encoded, end="")
     if options.require_acceptance and not report["acceptance_passed"]:
         raise SystemExit(2)

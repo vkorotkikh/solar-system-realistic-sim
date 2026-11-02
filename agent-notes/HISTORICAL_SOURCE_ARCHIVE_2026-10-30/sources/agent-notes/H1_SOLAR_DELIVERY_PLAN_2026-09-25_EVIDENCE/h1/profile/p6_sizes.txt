@@ -1,0 +1,7 @@
+state_newjd_180.json: raw=636065  gzip1=277905 (43.7%, 3.6 ms)  gzip6=254997 (40.1%, 21.2 ms)  gzip9=254173 (40.0%, 33.8 ms)
+    key data_assimilation    raw=   4907 ( 0.8%) gzip6=1634
+    key corona               raw= 466283 (73.3%) gzip6=191985
+    key heliosphere          raw=  29385 ( 4.6%) gzip6=15010
+    key pfss_field_lines     raw= 133974 (21.1%) gzip6=46427
+state_cold_220.json: raw=684692  gzip1=299252 (43.7%, 3.7 ms)  gzip6=273505 (39.9%, 22.6 ms)  gzip9=272491 (39.8%, 37.7 ms)
+jd_states/det_base.json: raw=596520  gzip1=262789 (44.1%, 3.3 ms)  gzip6=241816 (40.5%, 19.5 ms)  gzip9=241044 (40.4%, 29.3 ms)

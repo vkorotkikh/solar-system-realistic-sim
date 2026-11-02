@@ -1,0 +1,2 @@
+2026-09-25T02:08:54.456Z GET http://127.0.0.1:8072/solar/physics?jd=2461308.58951915&fidelity=high&max_features=180&forcing=hybrid&live_data=true
+status=200 time_total=9.713360 bytes=671738

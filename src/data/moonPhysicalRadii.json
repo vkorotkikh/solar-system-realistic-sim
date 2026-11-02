@@ -1,0 +1,343 @@
+{
+  "bodies": {
+    "301": {
+      "name": "Moon",
+      "parent": "Earth",
+      "radiusKm": 1737.4,
+      "reference": "1",
+      "uncertaintyKm": 0.1
+    },
+    "401": {
+      "name": "Phobos",
+      "parent": "Mars",
+      "radiusKm": 11.08,
+      "reference": "1",
+      "uncertaintyKm": 0.04
+    },
+    "402": {
+      "name": "Deimos",
+      "parent": "Mars",
+      "radiusKm": 6.2,
+      "reference": "1",
+      "uncertaintyKm": 0.24
+    },
+    "501": {
+      "name": "Io",
+      "parent": "Jupiter",
+      "radiusKm": 1821.49,
+      "reference": "1",
+      "uncertaintyKm": 0.5
+    },
+    "502": {
+      "name": "Europa",
+      "parent": "Jupiter",
+      "radiusKm": 1560.8,
+      "reference": "1",
+      "uncertaintyKm": 0.3
+    },
+    "503": {
+      "name": "Ganymede",
+      "parent": "Jupiter",
+      "radiusKm": 2631.2,
+      "reference": "1",
+      "uncertaintyKm": 1.7
+    },
+    "504": {
+      "name": "Callisto",
+      "parent": "Jupiter",
+      "radiusKm": 2410.3,
+      "reference": "1",
+      "uncertaintyKm": 1.5
+    },
+    "505": {
+      "name": "Amalthea",
+      "parent": "Jupiter",
+      "radiusKm": 83.5,
+      "reference": "1",
+      "uncertaintyKm": 3.0
+    },
+    "506": {
+      "name": "Himalia",
+      "parent": "Jupiter",
+      "radiusKm": 85.0,
+      "reference": "1",
+      "uncertaintyKm": 10.0
+    },
+    "514": {
+      "name": "Thebe",
+      "parent": "Jupiter",
+      "radiusKm": 49.3,
+      "reference": "1",
+      "uncertaintyKm": 4.0
+    },
+    "515": {
+      "name": "Adrastea",
+      "parent": "Jupiter",
+      "radiusKm": 8.2,
+      "reference": "1",
+      "uncertaintyKm": 4.0
+    },
+    "516": {
+      "name": "Metis",
+      "parent": "Jupiter",
+      "radiusKm": 21.5,
+      "reference": "1",
+      "uncertaintyKm": 4.0
+    },
+    "601": {
+      "name": "Mimas",
+      "parent": "Saturn",
+      "radiusKm": 198.2,
+      "reference": "1",
+      "uncertaintyKm": 0.4
+    },
+    "602": {
+      "name": "Enceladus",
+      "parent": "Saturn",
+      "radiusKm": 252.1,
+      "reference": "1",
+      "uncertaintyKm": 0.2
+    },
+    "603": {
+      "name": "Tethys",
+      "parent": "Saturn",
+      "radiusKm": 531.1,
+      "reference": "1",
+      "uncertaintyKm": 0.6
+    },
+    "604": {
+      "name": "Dione",
+      "parent": "Saturn",
+      "radiusKm": 561.4,
+      "reference": "1",
+      "uncertaintyKm": 0.4
+    },
+    "605": {
+      "name": "Rhea",
+      "parent": "Saturn",
+      "radiusKm": 763.5,
+      "reference": "1",
+      "uncertaintyKm": 0.6
+    },
+    "606": {
+      "name": "Titan",
+      "parent": "Saturn",
+      "radiusKm": 2574.76,
+      "reference": "1",
+      "uncertaintyKm": 0.02
+    },
+    "607": {
+      "name": "Hyperion",
+      "parent": "Saturn",
+      "radiusKm": 135.0,
+      "reference": "1",
+      "uncertaintyKm": 4.0
+    },
+    "608": {
+      "name": "Iapetus",
+      "parent": "Saturn",
+      "radiusKm": 734.3,
+      "reference": "1",
+      "uncertaintyKm": 2.8
+    },
+    "609": {
+      "name": "Phoebe",
+      "parent": "Saturn",
+      "radiusKm": 106.5,
+      "reference": "1",
+      "uncertaintyKm": 0.7
+    },
+    "610": {
+      "name": "Janus",
+      "parent": "Saturn",
+      "radiusKm": 89.2,
+      "reference": "1",
+      "uncertaintyKm": 0.8
+    },
+    "611": {
+      "name": "Epimetheus",
+      "parent": "Saturn",
+      "radiusKm": 58.2,
+      "reference": "1",
+      "uncertaintyKm": 1.2
+    },
+    "612": {
+      "name": "Helene",
+      "parent": "Saturn",
+      "radiusKm": 18.0,
+      "reference": "1",
+      "uncertaintyKm": 0.4
+    },
+    "615": {
+      "name": "Atlas",
+      "parent": "Saturn",
+      "radiusKm": 15.1,
+      "reference": "1",
+      "uncertaintyKm": 0.8
+    },
+    "616": {
+      "name": "Prometheus",
+      "parent": "Saturn",
+      "radiusKm": 43.1,
+      "reference": "1",
+      "uncertaintyKm": 1.2
+    },
+    "617": {
+      "name": "Pandora",
+      "parent": "Saturn",
+      "radiusKm": 40.6,
+      "reference": "1",
+      "uncertaintyKm": 1.5
+    },
+    "618": {
+      "name": "Pan",
+      "parent": "Saturn",
+      "radiusKm": 14.0,
+      "reference": "1",
+      "uncertaintyKm": 1.2
+    },
+    "701": {
+      "name": "Ariel",
+      "parent": "Uranus",
+      "radiusKm": 578.9,
+      "reference": "1",
+      "uncertaintyKm": 0.6
+    },
+    "702": {
+      "name": "Umbriel",
+      "parent": "Uranus",
+      "radiusKm": 584.7,
+      "reference": "1",
+      "uncertaintyKm": 2.8
+    },
+    "703": {
+      "name": "Titania",
+      "parent": "Uranus",
+      "radiusKm": 788.9,
+      "reference": "1",
+      "uncertaintyKm": 1.8
+    },
+    "704": {
+      "name": "Oberon",
+      "parent": "Uranus",
+      "radiusKm": 761.4,
+      "reference": "1",
+      "uncertaintyKm": 2.6
+    },
+    "705": {
+      "name": "Miranda",
+      "parent": "Uranus",
+      "radiusKm": 235.8,
+      "reference": "1",
+      "uncertaintyKm": 0.7
+    },
+    "801": {
+      "name": "Triton",
+      "parent": "Neptune",
+      "radiusKm": 1352.6,
+      "reference": "1",
+      "uncertaintyKm": 2.4
+    },
+    "802": {
+      "name": "Nereid",
+      "parent": "Neptune",
+      "radiusKm": 170.0,
+      "reference": "1",
+      "uncertaintyKm": 25.0
+    },
+    "803": {
+      "name": "Naiad",
+      "parent": "Neptune",
+      "radiusKm": 29.0,
+      "reference": "1",
+      "uncertaintyKm": 6.0
+    },
+    "804": {
+      "name": "Thalassa",
+      "parent": "Neptune",
+      "radiusKm": 40.0,
+      "reference": "1",
+      "uncertaintyKm": 8.0
+    },
+    "805": {
+      "name": "Despina",
+      "parent": "Neptune",
+      "radiusKm": 74.0,
+      "reference": "1",
+      "uncertaintyKm": 10.0
+    },
+    "806": {
+      "name": "Galatea",
+      "parent": "Neptune",
+      "radiusKm": 79.0,
+      "reference": "1",
+      "uncertaintyKm": 12.0
+    },
+    "807": {
+      "name": "Larissa",
+      "parent": "Neptune",
+      "radiusKm": 96.0,
+      "reference": "1",
+      "uncertaintyKm": 7.0
+    },
+    "808": {
+      "name": "Proteus",
+      "parent": "Neptune",
+      "radiusKm": 208.0,
+      "reference": "1",
+      "uncertaintyKm": 8.0
+    },
+    "901": {
+      "name": "Charon",
+      "parent": "Pluto",
+      "radiusKm": 606.0,
+      "reference": "2",
+      "uncertaintyKm": 0.5
+    },
+    "902": {
+      "name": "Nix",
+      "parent": "Pluto",
+      "radiusKm": 18.0,
+      "reference": "3",
+      "uncertaintyKm": 1.0
+    },
+    "903": {
+      "name": "Hydra",
+      "parent": "Pluto",
+      "radiusKm": 18.5,
+      "reference": "3",
+      "uncertaintyKm": 1.0
+    },
+    "904": {
+      "name": "Kerberos",
+      "parent": "Pluto",
+      "radiusKm": 6.0,
+      "reference": "3",
+      "uncertaintyKm": 1.0
+    },
+    "905": {
+      "name": "Styx",
+      "parent": "Pluto",
+      "radiusKm": 5.2,
+      "reference": "3",
+      "uncertaintyKm": 1.0
+    }
+  },
+  "definition": "Mean radius of a sphere with the equivalent volume of the planetary satellite",
+  "references": {
+    "1": "B. A. Archinal, C. H. Acton, M. F. A\u2019Hearn, et al. (2018) \"Report of the IAU Working Group on Cartographic Coordinates and Rotational Elements: 2015\". Celest.~Mech. 130 :22.",
+    "2": "Francis Nimmo, Orkan Umurhan, Carey M. Lisse, Carver J. Bierson, Tod R. Lauer, Marc W. Buie, Henry B. Throop, Josh A. Kammer, James H. Roberts, William B. McKinnon, Amanda M. Zangari, Jeffrey M. Moore, S. Alan Stern, Leslie A. Young, Harold A. Weaver, Cathy B. Olkin, Kim Ennico (2017) \"Mean radius and shape of Pluto and Charon from New Horizons images\". Icarus 287 :12-29.",
+    "3": "S. Alan Stern, William M. Grundy, William B. McKinnon, Harold A. Weaver, Leslie A. Young (2018) \"The Pluto System After New Horizons\". Annual Review of Astronomy and Astrophysics 56 :357-392.",
+    "4": "R. A. Jacobson (2021) \"The Orbits of the Regular Jovian Satellites and the Orientation of the Pole of Jupiter\". submitted to AJ : .",
+    "5": "R. A. Jacobson (2021) \"The Orbits of the Major Saturnian Satellites,the Trajectories of Spacecraft at Saturn, the Gravity Field of the Saturnian System, and the Orientation of Saturn's Pole\". personal communication to Horizons/NAIF."
+  },
+  "schemaVersion": 1,
+  "source": {
+    "bytes": 96641,
+    "capturedUtc": "2026-10-31T09:01:32.481981+00:00",
+    "file": "jpl-satellite-physical.html.gz",
+    "schemaVersion": 1,
+    "sha256": "9a9c004d950923ea368a8c4815d813c9c232c332d1586402a23b15d9581370d1",
+    "sourceUrl": "https://ssd.jpl.nasa.gov/sats/phys_par/"
+  }
+}

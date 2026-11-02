@@ -1,0 +1,9 @@
+D10 rendered check — thresholds fixed 2026-10-07T07:23:38Z, BEFORE the shader change (code at b5387c2).
+Harness: h2-harness (real sunVisuals shaders, main.ts spin-axis transform, activity 0.08 = solar minimum,
+corona alpha read unblended from a float target cleared to alpha 0, visible off-limb ring 1.10-1.149 R
+(corona shell radius 1.15 R), 25-degree sectors around screen up/down (polar) and left/right (equatorial)).
+PASS after the fix requires both:
+  1. side view (true spin axis vertical): polar/equatorial limb alpha ratio < 0.8  (darker polar limbs)
+  2. pole-on view: limb alpha coefficient of variation < 0.3                      (pole at disk centre)
+Measured before the fix: ratio 5.69 (polar limbs 5.7x BRIGHTER), CV 0.89.
+(An earlier pass used ring 1.02-1.14 R and a target cleared to alpha 1; corrected before any after-run.)

@@ -1,0 +1,172 @@
+{
+  "label": "final-quiet-preview",
+  "url": "http://127.0.0.1:4410/",
+  "observedAt": "2026-10-30T06:18:25.275Z",
+  "gitHead": "09421c9b379debb9c944fc60ec8a0b67bd07cff4",
+  "sources": {
+    "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+    "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+    "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+    "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+    "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4"
+  },
+  "hardwareRequested": true,
+  "cacheDisabled": true,
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "workloadModified": false,
+  "backendMocked": false,
+  "finalSourceFreeze": true,
+  "timingMeaning": "navigation-relative times; fence observation is an upper bound including callback scheduling, not compositor presentation; observation timeouts are harness bounds, not approved performance budgets",
+  "renderers": 1,
+  "draws": 5,
+  "catalogRequests": [
+    {
+      "url": "/data/asteroid-phase1/asteroid_phase1_main_100000.bin",
+      "at": 478
+    },
+    {
+      "url": "/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json",
+      "at": 479.09999990463257
+    }
+  ],
+  "compiles": 1,
+  "rendererCreatedAt": 476.59999990463257,
+  "firstTextureAllocationAt": 487.1999999284744,
+  "compileStartedAt": 1202.1999999284744,
+  "compileSubmittedAt": 1209.1999999284744,
+  "firstFullSceneSubmittedAt": 1920.2999999523163,
+  "renderStats": {
+    "frame": 1,
+    "calls": 41,
+    "triangles": 619144,
+    "points": 14360,
+    "lines": 1143
+  },
+  "belts": [
+    {
+      "count": 50000,
+      "kuiper": false
+    },
+    {
+      "count": 5000,
+      "kuiper": true
+    },
+    {
+      "count": 83,
+      "kuiper": true
+    }
+  ],
+  "graphics": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "antialias": true,
+    "samples": 4,
+    "parallelCompile": true
+  },
+  "fullSceneFenceObservedAt": 6887.099999904633,
+  "webglError": 0,
+  "catalogStatus": "Asteroids: Phase-1 integrity checked (100,000 stored rows, SHA-256); largest-first prefix, not representative; scientific accuracy not certified",
+  "recoveryHidden": true,
+  "resources": [
+    {
+      "name": "http://127.0.0.1:4410/data/asteroid-phase1/asteroid_phase1_main_100000.bin",
+      "entryType": "resource",
+      "startTime": 478.89999997615814,
+      "duration": 297.6999999284744,
+      "navigationId": 4161,
+      "initiatorType": "fetch",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.1",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 478.89999997615814,
+      "domainLookupStart": 478.89999997615814,
+      "domainLookupEnd": 478.89999997615814,
+      "connectStart": 478.89999997615814,
+      "secureConnectionStart": 0,
+      "connectEnd": 478.89999997615814,
+      "requestStart": 479.59999990463257,
+      "responseStart": 481.1999999284744,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 481.1999999284744,
+      "responseEnd": 776.5999999046326,
+      "transferSize": 3600312,
+      "encodedBodySize": 3600012,
+      "decodedBodySize": 3600012,
+      "responseStatus": 200,
+      "serverTiming": []
+    },
+    {
+      "name": "http://127.0.0.1:4410/data/asteroid-phase1/asteroid_phase1_main_100000.meta.json",
+      "entryType": "resource",
+      "startTime": 479.1999999284744,
+      "duration": 3.3000000715255737,
+      "navigationId": 4161,
+      "initiatorType": "fetch",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.1",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "application/json",
+      "contentEncoding": "gzip",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 479.1999999284744,
+      "domainLookupStart": 479.1999999284744,
+      "domainLookupEnd": 479.1999999284744,
+      "connectStart": 479.1999999284744,
+      "secureConnectionStart": 0,
+      "connectEnd": 479.1999999284744,
+      "requestStart": 479.59999990463257,
+      "responseStart": 481.89999997615814,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 481.89999997615814,
+      "responseEnd": 482.5,
+      "transferSize": 2205,
+      "encodedBodySize": 1905,
+      "decodedBodySize": 4673,
+      "responseStatus": 200,
+      "serverTiming": []
+    }
+  ],
+  "uiResponses": [
+    {
+      "action": "pause after complete scene",
+      "elapsedMs": 114
+    },
+    {
+      "action": "native keyboard zoom while paused",
+      "elapsedMs": 4
+    }
+  ],
+  "catalogLogs": [
+    "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a, load=374.6ms (budget 2000ms), taxonomyC=592, taxonomyS=738, taxonomyM=37, target=50,000)."
+  ],
+  "errors": [],
+  "warnings": [],
+  "observationError": null,
+  "loadStart": [
+    0.59,
+    1.5,
+    3.73
+  ],
+  "loadEnd": [
+    0.81,
+    1.51,
+    3.71
+  ]
+}

@@ -1,0 +1,74 @@
+{
+ "label": "R3-dev-proxy-origin-t2600",
+ "pageUrl": "http://localhost:5184/",
+ "rewritePort": "none",
+ "seconds": 30,
+ "pageOrigin": "http://localhost:5184",
+ "backendRequestOrigins": [
+  "http://localhost:5184"
+ ],
+ "summary": {
+  "/solar/physics :: failed net::ERR_ABORTED": 4,
+  "/solar/physics :: http 503 acao=null": 2
+ },
+ "requests": [
+  {
+   "t": 3353,
+   "dur": 2296,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 8843,
+   "dur": 2596,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 14923,
+   "dur": 74,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 503",
+   "acao": null
+  },
+  {
+   "t": 23249,
+   "dur": 2598,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 29679,
+   "dur": 2601,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "failed net::ERR_ABORTED",
+   "acao": null
+  },
+  {
+   "t": 36853,
+   "dur": 56,
+   "url": "http://localhost:5184/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": null,
+   "outcome": "http 503",
+   "acao": null
+  }
+ ],
+ "console": [
+  "14947ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "36859ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+ ]
+}

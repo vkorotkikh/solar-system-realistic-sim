@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-30",
+  "status": "CANDIDATE_PREPARED_NOT_APPLIED_OR_EXECUTED",
+  "result_path": "/tmp/solar-remediation-completion-20261030/accessibility-approach-result.json",
+  "artifact_directory": "/tmp/solar-remediation-completion-20261030/accessibility-approach",
+  "source_repository": {
+    "path": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+    "head_at_read_and_final_patch_check": "f92e7c7c3eaefbfe2052d02cd57d9ca4b20f79a2",
+    "access": "READ_ONLY",
+    "note": "Concurrent parent documentation changes were observed; this task wrote only the named /tmp artifacts."
+  },
+  "observation_window": {
+    "parent_release_required_before_apply_install_typecheck_or_test": true,
+    "release_observed_by_this_task": false
+  },
+  "owner_steering": {
+    "accepted_policies_retained": [
+      "SCN-004/SCN-063: POSIX backend transport; Linux/WSL2 verification",
+      "SCN-015: disclosed largest-diameter 50,000-row prefix from 100,000 source rows",
+      "SCN-037: fixed-step simulation and clock-policy telemetry",
+      "SCN-038: simulation JD and bounded decorative clock",
+      "SCN-039: validated explicit backend origin, viewport and render scale"
+    ],
+    "original_code_policy": "Owner permission required for copying/distribution; no public publication performed or implied.",
+    "known_deployed_urls": [],
+    "manual_at_or_physical_device_evidence_supplied": false
+  },
+  "existing_approach": {
+    "helper": "tests/browser/helpers.ts::loadShell",
+    "fixture": "tests/browser/fixtures/ui-shell.ts",
+    "composition": "Production HTML/CSS with actual UI controllers, deterministic data and renderer-free startup.",
+    "strengths": [
+      "Drawer modality and focus transitions",
+      "Keyboard/pointer/camera behavior",
+      "Seven viewport reflow/target geometry checks",
+      "Native input and selected accessible-name assertions",
+      "DOM announcement mutation deduplication",
+      "Separate actual-app Chromium renderer failure/context-loss smoke"
+    ],
+    "manual_docs_read": [
+      "agent-notes/REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+      "docs/superpowers/specs/2026-10-11-frontend-accessibility-remediation-design.md",
+      "docs/superpowers/reviews/2026-10-11-frontend-accessibility-final-review.md",
+      "docs/superpowers/plans/2026-10-11-frontend-accessibility-remediation.md"
+    ]
+  },
+  "current_approach_gaps": [
+    {
+      "id": "G1",
+      "finding": "No axe dependency or full-document WCAG rule audits in the inspected package lock and browser tests.",
+      "proposed_action": "Add the five rendered-state audits with two exact devDependency pins."
+    },
+    {
+      "id": "G2",
+      "finding": "Selected behavior/name assertions do not broadly detect label, ARIA, document-language/title and text-contrast regressions.",
+      "proposed_action": "Scan whole documents, including expanded controls and recovery, without exclusions or severity filtering."
+    },
+    {
+      "id": "G3",
+      "finding": "No structured automated rule report currently distinguishes passes, inapplicable checks and unresolved review items.",
+      "proposed_action": "Attach full axe results per state/project and require parent disposition of incomplete items."
+    },
+    {
+      "id": "G4",
+      "finding": "Manual NVDA/Chrome, VoiceOver/Safari, speech and physical-touch acceptance remain unexecuted.",
+      "proposed_action": "Use the proposed protocol and blank all-NOT_RUN evidence template on actual environments after release."
+    },
+    {
+      "id": "G5",
+      "finding": "No known deployed URL; native 400% CDP timeout cause remains unproven despite isolated later pass.",
+      "proposed_action": "Preserve these independent limits and existing evidence; do not relabel them as cleared by axe."
+    }
+  ],
+  "proposed_audit": {
+    "scope": "Full document",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa"
+    ],
+    "cases": [
+      {
+        "state": "desktop-expanded",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "setup": "All control-panel disclosures and camera tools expanded"
+      },
+      {
+        "state": "mobile-closed",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "setup": "Drawer closed; camera tools expanded"
+      },
+      {
+        "state": "mobile-open",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "setup": "Named modal drawer; all panel disclosures expanded"
+      },
+      {
+        "state": "desktop-recovery",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "setup": "Real recovery controller initialization failure in shell fixture; panel inputs disabled; tools hidden"
+      },
+      {
+        "state": "mobile-closed-recovery",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "setup": "Real recovery controller initialization failure with closed drawer and exposed recovery"
+      }
+    ],
+    "prospective_projects": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "prospective_test_count_per_project": 5,
+    "prospective_total_executions": 15,
+    "observed_test_results": null,
+    "new_skips": 0,
+    "no_vacuous_success_assertions": [
+      "Nonempty passes",
+      "Pinned engine version",
+      "document-title, html-has-lang, button-name and color-contrast appear among evaluated outcomes"
+    ],
+    "acceptance_assertion": "violations is empty at every impact; unresolved incomplete results still require review",
+    "recovery_boundary": "Actual controller and main.ts-equivalent presentation callback; not main.ts startup/disposal, actual GPU context loss or restart evidence.",
+    "rule_selection_note": "aria-dialog-name is best-practice in the pinned engine and outside the WCAG tag selection; dialog name is separately checked as a state precondition."
+  },
+  "dependency_plan": {
+    "dev_dependencies": {
+      "@axe-core/playwright": "4.11.1",
+      "axe-core": "4.11.1"
+    },
+    "existing_playwright_versions_retained": {
+      "@playwright/test": "1.64.0",
+      "playwright": "1.64.0",
+      "playwright-core": "1.64.0"
+    },
+    "toolchain_retained": {
+      "node": "22.23.2",
+      "npm": "10.9.8"
+    },
+    "published_metadata_read": true,
+    "installed": false,
+    "lockfile_generated": false,
+    "parent_lockfile_command_after_release": "npm install --package-lock-only --ignore-scripts --save-dev --save-exact @axe-core/playwright@4.11.1 axe-core@4.11.1",
+    "review_requirements": [
+      "Exact root pins and matching registry integrity",
+      "One resolved copy of each new package at 4.11.1",
+      "No existing dependency/version churn",
+      "No new dependencies used until reviewed lock is generated"
+    ]
+  },
+  "references": [
+    {
+      "id": "playwright-audits",
+      "title": "Playwright accessibility testing",
+      "url": "https://playwright.dev/docs/accessibility-testing",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "State activation, four WCAG tags, violation assertion, full scan attachments.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-evaluation",
+      "title": "W3C accessibility evaluation tools",
+      "url": "https://www.w3.org/WAI/test-evaluate/tools/",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Automated checks require human assessment; no automated conformance claim.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "deque-api",
+      "title": "Deque axe API documentation",
+      "url": "https://www.deque.com/axe/core-documentation/api-documentation/",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Rendered-content limits, activate hidden content, and incomplete-result review.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "axe-pinned-rules",
+      "title": "Deque axe-core 4.11.1 rule inventory",
+      "url": "https://raw.githubusercontent.com/dequelabs/axe-core/v4.11.1/doc/rule-descriptions.md",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Verify selected WCAG rule tags; aria-dialog-name is best-practice and outside this tag set.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "axe-wrapper-manifest",
+      "title": "Deque Playwright wrapper 4.11.1 manifest",
+      "url": "https://raw.githubusercontent.com/dequelabs/axe-core-npm/v4.11.1/packages/playwright/package.json",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Exact version, axe-core dependency, and existing Playwright peer compatibility.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "axe-engine-manifest",
+      "title": "Deque axe-core 4.11.1 manifest",
+      "url": "https://raw.githubusercontent.com/dequelabs/axe-core/v4.11.1/package.json",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Exact engine version and declared Node support.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "nvaccess-guide",
+      "title": "NVAccess NVDA user guide",
+      "url": "https://download.nvaccess.org/documentation/userGuide.html",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Future browse/focus-mode protocol and Speech Viewer evidence; no executed NVDA claim.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-modal",
+      "title": "W3C APG modal dialog pattern",
+      "url": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Manual dialog name, focus containment, closing and background isolation.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-name-role-value",
+      "title": "W3C WCAG 2.1 name, role, value",
+      "url": "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Manual programmatic semantics and operability checks.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-status",
+      "title": "W3C WCAG 2.1 status messages",
+      "url": "https://www.w3.org/WAI/WCAG21/Understanding/status-messages.html",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Actual announcement observations distinct from DOM mutation assertions.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-contrast",
+      "title": "W3C WCAG 2.1 minimum text contrast",
+      "url": "https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Manual unresolved contrast, thresholds and exceptions.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "w3c-reflow",
+      "title": "W3C WCAG 2.1 reflow",
+      "url": "https://www.w3.org/WAI/WCAG21/Understanding/reflow.html",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Future actual native zoom/reflow protocol.",
+      "verbatim_prose_quoted_words": 0
+    },
+    {
+      "id": "playwright-emulation",
+      "title": "Playwright emulation",
+      "url": "https://playwright.dev/docs/emulation",
+      "source_kind": "PUBLIC_PRIMARY_OFFICIAL",
+      "read_on": "2026-10-30",
+      "used_for": "Viewport/device emulation is separate from actual hardware evidence.",
+      "verbatim_prose_quoted_words": 0
+    }
+  ],
+  "proposed_files": [
+    {
+      "kind": "test_patch",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/accessibility-tests.candidate.patch",
+      "repository_targets": [
+        "tests/browser/accessibility-audit.spec.ts",
+        "tests/browser/fixtures/accessibility-recovery.ts"
+      ],
+      "status": "NOT_APPLIED",
+      "sha256": "a3e5294b32eb301f7715cd2248997d64715e810cec2d98282112007a7e3de178"
+    },
+    {
+      "kind": "package_patch",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/accessibility-package.candidate.patch",
+      "repository_targets": [
+        "package.json"
+      ],
+      "status": "NOT_APPLIED",
+      "note": "Lockfile must be generated and reviewed by parent after observation release; no fabricated lock patch.",
+      "sha256": "3c469100a6b884307c92220ba2f27578a882b424df4ade50a11d3aeb87b63611"
+    },
+    {
+      "kind": "candidate_test",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/proposed/tests/browser/accessibility-audit.spec.ts",
+      "repository_target": "tests/browser/accessibility-audit.spec.ts",
+      "status": "UNEXECUTED",
+      "sha256": "5832ab953b2596d92e5e93643c8a8a5acf8854718cabdc192a70d143f257ccef"
+    },
+    {
+      "kind": "candidate_fixture",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/proposed/tests/browser/fixtures/accessibility-recovery.ts",
+      "repository_target": "tests/browser/fixtures/accessibility-recovery.ts",
+      "status": "UNEXECUTED",
+      "sha256": "8992907a9900742c2dd73046631cba770afbc7f5a731a5eba62b1ce2a786943d"
+    },
+    {
+      "kind": "candidate_manifest",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/proposed/package.json",
+      "repository_target": "package.json",
+      "status": "NOT_APPLIED",
+      "sha256": "90f3b8e3e9ae83c44a89a39ac8272f0b35fd047eda8080161805038f5cef3947"
+    },
+    {
+      "kind": "approach_dependency_execution_plan",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/approach-and-dependency-plan.md",
+      "sha256": "a2c845f8b4a13a17d93dfef247d3ee458e2e4a0ba777aa49229ef260c114ef82"
+    },
+    {
+      "kind": "dependency_metadata",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/dependency-metadata.json",
+      "sha256": "3d45b0b608064f2b1788ddc65128ca5e2ddb06d982519a2ef9413c12bc10dbcf"
+    },
+    {
+      "kind": "manual_protocol",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/manual-protocol.md",
+      "suggested_repository_target": "docs/accessibility-manual-protocol.md",
+      "status": "PROTOCOL_ONLY",
+      "sha256": "619660630a2d384c337a3bc76a0187ecc3dc9dabcd7a257c7614d9ffe778c8e7"
+    },
+    {
+      "kind": "manual_evidence_template",
+      "path": "/tmp/solar-remediation-completion-20261030/accessibility-approach/manual-evidence-template.json",
+      "status": "ALL_NOT_RUN",
+      "sha256": "17beedbacbe1e07f3e9964639e414f34697d0ceb84be7e9bbfa8e152c0383c98"
+    }
+  ],
+  "validation": {
+    "git_apply_check_both_patches": "PASS at f92e7c7; read-only check only",
+    "patch_stat": {
+      "new_test_files": 2,
+      "new_test_lines": 145,
+      "package_json_added_lines": 2
+    },
+    "json_parse": "PASS for candidate manifest, dependency metadata and manual template",
+    "recovery_fixture_element_ids_exist_in_production_html": true,
+    "candidate_package_delta": "Only two exact devDependencies added; existing fields/versions retained",
+    "candidate_whitespace": "PASS",
+    "typecheck_run": false,
+    "tests_run": false,
+    "build_run": false,
+    "browsers_launched": false,
+    "dependencies_installed": false,
+    "repository_files_written": false,
+    "commits_created": false,
+    "nested_agents_used": false
+  },
+  "parent_reported_evidence_not_reexecuted": {
+    "raw_scope": "blocking browser matrix 33 Firefox/WebKit with 17 explicit Chrome-only skips; Chromium 42+17 scoped",
+    "native_zoom": "200% pass; 400% CDP timeout followed by isolated pass in 32.6 seconds; root cause unproven",
+    "counting_limit": "Do not combine overlapping scopes or reinterpret explicit skips as passes."
+  },
+  "limits": [
+    "Candidate has not been installed, typechecked or run; no accessibility pass or genuine violation is claimed.",
+    "Parent must release observations before applying package/test patches, generating a lockfile or launching any browser.",
+    "No production edits, application fixes, timeout/tolerance changes, current tests, commits or nested agents were performed.",
+    "Automated rule results cover only exercised states and selected rules, not complete WCAG conformance.",
+    "Incomplete results require documented review even if violations is empty.",
+    "Fixture blocks remote fonts and lacks rendered WebGL imagery; real contrast over gradients/live imagery and native popup controls may need manual review.",
+    "Renderer-free recovery composition cannot replace actual-app startup, failure/disposal and context-loss tests.",
+    "No NVDA, VoiceOver, actual spoken output, physical-touch, deployed-site or manual native-zoom certification is invented.",
+    "Existing native zoom and browser scopes are not superseded; the CDP timeout cause remains unproven.",
+    "Existing CI uploads browser artifacts on failure only; parent must preserve green scan attachments separately when reviewing incompletes.",
+    "Original code and third-party copying/distribution permissions remain the owner policies; this proposal grants none."
+  ],
+  "next_actor": "Parent: after observation release, apply candidates, generate/review pinned lockfile, run strict browser-test types and the 15 prospective audits, investigate and fix genuine violations, and record real manual evidence when environments exist."
+}

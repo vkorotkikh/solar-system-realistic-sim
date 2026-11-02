@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { retireWebGlPage } from './webgl-cleanup';
+
+test.describe.configure({ timeout: 90_000 });
+test.afterEach(async ({ page }) => { await retireWebGlPage(page); });
 
 test('actual main links the assembled asteroid material with production antialiasing', async ({ page, baseURL, browserName }) => {
   test.skip(browserName !== 'chromium', 'WebGL2 assembled-material regression');

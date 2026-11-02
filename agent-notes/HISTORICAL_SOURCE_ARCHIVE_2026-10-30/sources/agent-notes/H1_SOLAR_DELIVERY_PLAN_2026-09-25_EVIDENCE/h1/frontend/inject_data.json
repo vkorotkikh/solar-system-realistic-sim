@@ -1,0 +1,1690 @@
+{
+ "scen": "data",
+ "reqs": [
+  {
+   "kind": "physics",
+   "t": 1405,
+   "jd": "2461308.59797128",
+   "q": "?jd=2461308.59797128&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "aia",
+   "t": 1566,
+   "q": "?channel=aia_193&image_id=FAKE193&v=FAKE193",
+   "crossOriginModeHeader": null
+  },
+  {
+   "kind": "physics",
+   "t": 1660,
+   "jd": "2461309.73124328",
+   "q": "?jd=2461309.73124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 3106,
+   "jd": "2461315.46444328",
+   "q": "?jd=2461315.46444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 6470,
+   "jd": "2461322.39724328",
+   "q": "?jd=2461322.39724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 7741,
+   "jd": "2461327.53044328",
+   "q": "?jd=2461327.53044328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 9015,
+   "jd": "2461332.59724328",
+   "q": "?jd=2461332.59724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 11570,
+   "jd": "2461342.79644328",
+   "q": "?jd=2461342.79644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 12819,
+   "jd": "2461347.79644328",
+   "q": "?jd=2461347.79644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 15427,
+   "jd": "2461358.26284328",
+   "q": "?jd=2461358.26284328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 18147,
+   "jd": "2461369.12884328",
+   "q": "?jd=2461369.12884328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 20636,
+   "jd": "2461379.06164328",
+   "q": "?jd=2461379.06164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 21920,
+   "jd": "2461384.19484328",
+   "q": "?jd=2461384.19484328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 23185,
+   "jd": "2461389.26124328",
+   "q": "?jd=2461389.26124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 25756,
+   "jd": "2461399.52764328",
+   "q": "?jd=2461399.52764328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 27041,
+   "jd": "2461404.72724328",
+   "q": "?jd=2461404.72724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 28364,
+   "jd": "2461409.99404328",
+   "q": "?jd=2461409.99404328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 29649,
+   "jd": "2461415.12724328",
+   "q": "?jd=2461415.12724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 30956,
+   "jd": "2461420.39364328",
+   "q": "?jd=2461420.39364328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 32091,
+   "jd": "2461424.92644328",
+   "q": "?jd=2461424.92644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 33197,
+   "jd": "2461429.32644328",
+   "q": "?jd=2461429.32644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 34288,
+   "jd": "2461433.72604328",
+   "q": "?jd=2461433.72604328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 35439,
+   "jd": "2461438.32604328",
+   "q": "?jd=2461438.32604328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 36521,
+   "jd": "2461442.59244328",
+   "q": "?jd=2461442.59244328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 37618,
+   "jd": "2461446.99244328",
+   "q": "?jd=2461446.99244328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 40336,
+   "jd": "2461451.39244328",
+   "q": "?jd=2461451.39244328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 42558,
+   "jd": "2461460.25844328",
+   "q": "?jd=2461460.25844328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 43700,
+   "jd": "2461464.59164328",
+   "q": "?jd=2461464.59164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 44735,
+   "jd": "2461468.92484328",
+   "q": "?jd=2461468.92484328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 45792,
+   "jd": "2461473.19124328",
+   "q": "?jd=2461473.19124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 46923,
+   "jd": "2461477.72444328",
+   "q": "?jd=2461477.72444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 48021,
+   "jd": "2461482.12444328",
+   "q": "?jd=2461482.12444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 49120,
+   "jd": "2461486.52404328",
+   "q": "?jd=2461486.52404328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 51317,
+   "jd": "2461495.25724328",
+   "q": "?jd=2461495.25724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 52399,
+   "jd": "2461499.59004328",
+   "q": "?jd=2461499.59004328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 53468,
+   "jd": "2461503.85684328",
+   "q": "?jd=2461503.85684328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 54528,
+   "jd": "2461508.12324328",
+   "q": "?jd=2461508.12324328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 55597,
+   "jd": "2461512.38964328",
+   "q": "?jd=2461512.38964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 56714,
+   "jd": "2461516.85644328",
+   "q": "?jd=2461516.85644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 57764,
+   "jd": "2461521.05604328",
+   "q": "?jd=2461521.05604328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 58871,
+   "jd": "2461525.52284328",
+   "q": "?jd=2461525.52284328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 61037,
+   "jd": "2461534.18924328",
+   "q": "?jd=2461534.18924328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 63201,
+   "jd": "2461542.78844328",
+   "q": "?jd=2461542.78844328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 66696,
+   "jd": "2461556.78804328",
+   "q": "?jd=2461556.78804328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "aia",
+   "t": 66765,
+   "q": "?channel=aia_304&image_id=FAKE304&v=FAKE304",
+   "crossOriginModeHeader": null
+  },
+  {
+   "kind": "physics",
+   "t": 67815,
+   "jd": "2461561.25444328",
+   "q": "?jd=2461561.25444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 68898,
+   "jd": "2461565.58764328",
+   "q": "?jd=2461565.58764328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 70063,
+   "jd": "2461570.25404328",
+   "q": "?jd=2461570.25404328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 71361,
+   "jd": "2461575.45404328",
+   "q": "?jd=2461575.45404328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 75700,
+   "jd": "2461585.92004328",
+   "q": "?jd=2461585.92004328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 77069,
+   "jd": "2461591.38684328",
+   "q": "?jd=2461591.38684328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 78356,
+   "jd": "2461596.51964328",
+   "q": "?jd=2461596.51964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 79701,
+   "jd": "2461601.91924328",
+   "q": "?jd=2461601.91924328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 81069,
+   "jd": "2461607.31924328",
+   "q": "?jd=2461607.31924328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 82291,
+   "jd": "2461612.25244328",
+   "q": "?jd=2461612.25244328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 83417,
+   "jd": "2461616.78564328",
+   "q": "?jd=2461616.78564328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 84735,
+   "jd": "2461622.05204328",
+   "q": "?jd=2461622.05204328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 85961,
+   "jd": "2461626.98524328",
+   "q": "?jd=2461626.98524328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 87149,
+   "jd": "2461631.71844328",
+   "q": "?jd=2461631.71844328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 88343,
+   "jd": "2461636.51804328",
+   "q": "?jd=2461636.51804328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 90880,
+   "jd": "2461646.45124328",
+   "q": "?jd=2461646.45124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 92006,
+   "jd": "2461651.11764328",
+   "q": "?jd=2461651.11764328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 93094,
+   "jd": "2461655.51724328",
+   "q": "?jd=2461655.51724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 94380,
+   "jd": "2461660.65044328",
+   "q": "?jd=2461660.65044328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 95571,
+   "jd": "2461665.45004328",
+   "q": "?jd=2461665.45004328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 96790,
+   "jd": "2461670.31684328",
+   "q": "?jd=2461670.31684328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 98073,
+   "jd": "2461675.44964328",
+   "q": "?jd=2461675.44964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 99279,
+   "jd": "2461680.24964328",
+   "q": "?jd=2461680.24964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 100549,
+   "jd": "2461685.31644328",
+   "q": "?jd=2461685.31644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 101825,
+   "jd": "2461690.44924328",
+   "q": "?jd=2461690.44924328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 103074,
+   "jd": "2461695.44884328",
+   "q": "?jd=2461695.44884328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 104256,
+   "jd": "2461700.18204328",
+   "q": "?jd=2461700.18204328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 105407,
+   "jd": "2461704.78204328",
+   "q": "?jd=2461704.78204328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 108302,
+   "jd": "2461709.98164328",
+   "q": "?jd=2461709.98164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 109614,
+   "jd": "2461715.18164328",
+   "q": "?jd=2461715.18164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 110905,
+   "jd": "2461720.38124328",
+   "q": "?jd=2461720.38124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 112152,
+   "jd": "2461725.38124328",
+   "q": "?jd=2461725.38124328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 113417,
+   "jd": "2461730.38084328",
+   "q": "?jd=2461730.38084328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 114616,
+   "jd": "2461735.18084328",
+   "q": "?jd=2461735.18084328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 115821,
+   "jd": "2461740.04724328",
+   "q": "?jd=2461740.04724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 117052,
+   "jd": "2461744.98044328",
+   "q": "?jd=2461744.98044328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 118334,
+   "jd": "2461750.04724328",
+   "q": "?jd=2461750.04724328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 119721,
+   "jd": "2461755.64684328",
+   "q": "?jd=2461755.64684328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 120960,
+   "jd": "2461760.58004328",
+   "q": "?jd=2461760.58004328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 122309,
+   "jd": "2461765.97964328",
+   "q": "?jd=2461765.97964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 123615,
+   "jd": "2461771.17964328",
+   "q": "?jd=2461771.17964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 124928,
+   "jd": "2461776.44564328",
+   "q": "?jd=2461776.44564328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 126252,
+   "jd": "2461781.77884328",
+   "q": "?jd=2461781.77884328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 127668,
+   "jd": "2461787.44564328",
+   "q": "?jd=2461787.44564328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 129118,
+   "jd": "2461793.17844328",
+   "q": "?jd=2461793.17844328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 130591,
+   "jd": "2461799.11164328",
+   "q": "?jd=2461799.11164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 131978,
+   "jd": "2461804.64484328",
+   "q": "?jd=2461804.64484328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 133327,
+   "jd": "2461810.04444328",
+   "q": "?jd=2461810.04444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 134701,
+   "jd": "2461815.57764328",
+   "q": "?jd=2461815.57764328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 136045,
+   "jd": "2461820.91084328",
+   "q": "?jd=2461820.91084328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 137496,
+   "jd": "2461826.71044328",
+   "q": "?jd=2461826.71044328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 138803,
+   "jd": "2461831.97684328",
+   "q": "?jd=2461831.97684328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 143059,
+   "jd": "2461842.37644328",
+   "q": "?jd=2461842.37644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 144345,
+   "jd": "2461847.50964328",
+   "q": "?jd=2461847.50964328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 145651,
+   "jd": "2461852.77604328",
+   "q": "?jd=2461852.77604328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 146925,
+   "jd": "2461857.84244328",
+   "q": "?jd=2461857.84244328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 148186,
+   "jd": "2461862.90924328",
+   "q": "?jd=2461862.90924328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 149430,
+   "jd": "2461867.84204328",
+   "q": "?jd=2461867.84204328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 151870,
+   "jd": "2461877.64164328",
+   "q": "?jd=2461877.64164328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 153087,
+   "jd": "2461882.50804328",
+   "q": "?jd=2461882.50804328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 155515,
+   "jd": "2461892.17444328",
+   "q": "?jd=2461892.17444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 156750,
+   "jd": "2461897.17444328",
+   "q": "?jd=2461897.17444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 157955,
+   "jd": "2461901.97444328",
+   "q": "?jd=2461901.97444328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 159180,
+   "jd": "2461906.84084328",
+   "q": "?jd=2461906.84084328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 160453,
+   "jd": "2461911.97404328",
+   "q": "?jd=2461911.97404328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 162862,
+   "jd": "2461921.57324328",
+   "q": "?jd=2461921.57324328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 164102,
+   "jd": "2461926.50644328",
+   "q": "?jd=2461926.50644328&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  }
+ ],
+ "snaps": {
+  "t14_default": {
+   "t": 15633,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": false,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "sunspotSeeds": [
+     [
+      -2.399,
+      1.113,
+      0.078,
+      0.98
+     ],
+     [
+      -0.238,
+      0.056,
+      0.08,
+      0.964
+     ],
+     [
+      2.563,
+      1.203,
+      0.047,
+      0.949
+     ],
+     [
+      0.177,
+      0.146,
+      0.072,
+      0.932
+     ],
+     [
+      -1.093,
+      1.206,
+      0.096,
+      0.915
+     ],
+     [
+      2.15,
+      -1.344,
+      0.08,
+      0.92
+     ],
+     [
+      -0.596,
+      -0.291,
+      0.052,
+      0.908
+     ],
+     [
+      -1.406,
+      1.032,
+      0.05,
+      0.91
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "transitionRegion": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": false,
+   "date": "2026-11-13",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 96,
+     "dur": 1259
+    },
+    {
+     "at": 1442,
+     "dur": 80
+    }
+   ],
+   "json": [
+    {
+     "at": 1442,
+     "bodyReadAndParseMs": 90.1
+    },
+    {
+     "at": 1649,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 3089,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 4825,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 6105,
+     "bodyReadAndParseMs": 3.2
+    },
+    {
+     "at": 7369,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 9925,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 11176,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 13781,
+     "bodyReadAndParseMs": 2.6
+    }
+   ]
+  },
+  "t18_magnetic_on": {
+   "t": 43716,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "sunspotSeeds": [
+     [
+      -2.399,
+      1.113,
+      0.078,
+      0.98
+     ],
+     [
+      -0.238,
+      0.056,
+      0.08,
+      0.964
+     ],
+     [
+      2.563,
+      1.203,
+      0.047,
+      0.949
+     ],
+     [
+      0.177,
+      0.146,
+      0.072,
+      0.932
+     ],
+     [
+      -1.093,
+      1.206,
+      0.096,
+      0.915
+     ],
+     [
+      2.15,
+      -1.344,
+      0.08,
+      0.92
+     ],
+     [
+      -0.596,
+      -0.291,
+      0.052,
+      0.908
+     ],
+     [
+      -1.406,
+      1.032,
+      0.05,
+      0.91
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "transitionRegion": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": true,
+   "date": "2027-02-28",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 96,
+     "dur": 1259
+    },
+    {
+     "at": 1442,
+     "dur": 80
+    }
+   ],
+   "json": [
+    {
+     "at": 29314,
+     "bodyReadAndParseMs": 3
+    },
+    {
+     "at": 30448,
+     "bodyReadAndParseMs": 1.9
+    },
+    {
+     "at": 31551,
+     "bodyReadAndParseMs": 2.7
+    },
+    {
+     "at": 32644,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 33792,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 34875,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 35973,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 37059,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 39280,
+     "bodyReadAndParseMs": 3
+    },
+    {
+     "at": 40425,
+     "bodyReadAndParseMs": 2.9
+    }
+   ]
+  },
+  "t24_aia304": {
+   "t": 66764,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.807
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.849,
+    "observationEmission": 0.978,
+    "activity": 0.791,
+    "sunspotSeeds": [
+     [
+      -2.399,
+      1.113,
+      0.078,
+      0.98
+     ],
+     [
+      -0.238,
+      0.056,
+      0.08,
+      0.964
+     ],
+     [
+      2.563,
+      1.203,
+      0.047,
+      0.949
+     ],
+     [
+      0.177,
+      0.146,
+      0.072,
+      0.932
+     ],
+     [
+      -1.093,
+      1.206,
+      0.096,
+      0.915
+     ],
+     [
+      2.15,
+      -1.344,
+      0.08,
+      0.92
+     ],
+     [
+      -0.596,
+      -0.291,
+      0.052,
+      0.908
+     ],
+     [
+      -1.406,
+      1.032,
+      0.05,
+      0.91
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.849
+   },
+   "transitionRegion": {
+    "channelMode": 3,
+    "trOpacity": 0.183
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2027-05-31",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 96,
+     "dur": 1259
+    },
+    {
+     "at": 1442,
+     "dur": 80
+    }
+   ],
+   "json": [
+    {
+     "at": 49121,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 50193,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 51252,
+     "bodyReadAndParseMs": 2.1
+    },
+    {
+     "at": 52320,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 53437,
+     "bodyReadAndParseMs": 3.2
+    },
+    {
+     "at": 54488,
+     "bodyReadAndParseMs": 3.1
+    },
+    {
+     "at": 55594,
+     "bodyReadAndParseMs": 3.8
+    },
+    {
+     "at": 57759,
+     "bodyReadAndParseMs": 2.7
+    },
+    {
+     "at": 59924,
+     "bodyReadAndParseMs": 1.7
+    },
+    {
+     "at": 63471,
+     "bodyReadAndParseMs": 2.6
+    }
+   ]
+  },
+  "t32_zoomed_out": {
+   "t": 134795,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_304&image_id=FAKE304&v=FAKE304",
+    "observationBlend": 0.927,
+    "observationEmission": 1,
+    "activity": 0.754,
+    "sunspotSeeds": [
+     [
+      2.544,
+      -0.43,
+      0.075,
+      0.975
+     ],
+     [
+      -0.336,
+      -0.743,
+      0.086,
+      0.957
+     ],
+     [
+      1.077,
+      1.124,
+      0.073,
+      0.948
+     ],
+     [
+      -2.846,
+      0.451,
+      0.103,
+      0.941
+     ],
+     [
+      -0.333,
+      -0.465,
+      0.082,
+      0.93
+     ],
+     [
+      -2.492,
+      1.245,
+      0.07,
+      0.928
+     ],
+     [
+      0.408,
+      -0.337,
+      0.086,
+      0.926
+     ],
+     [
+      2.476,
+      0.855,
+      0.091,
+      0.919
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.18,
+     0.08
+    ],
+    "obsBlend": 0.927
+   },
+   "transitionRegion": {
+    "channelMode": 5,
+    "trOpacity": 0.739
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2028-02-14",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 104.44 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 96,
+     "dur": 1259
+    },
+    {
+     "at": 1442,
+     "dur": 80
+    }
+   ],
+   "json": [
+    {
+     "at": 115718,
+     "bodyReadAndParseMs": 2.5
+    },
+    {
+     "at": 117025,
+     "bodyReadAndParseMs": 2.3
+    },
+    {
+     "at": 118337,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 119666,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 121077,
+     "bodyReadAndParseMs": 2.6
+    },
+    {
+     "at": 122529,
+     "bodyReadAndParseMs": 3.9
+    },
+    {
+     "at": 124002,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 125390,
+     "bodyReadAndParseMs": 3.6
+    },
+    {
+     "at": 126737,
+     "bodyReadAndParseMs": 2.5
+    },
+    {
+     "at": 128109,
+     "bodyReadAndParseMs": 3.5
+    }
+   ]
+  },
+  "end": {
+   "t": 164108,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": true,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_304&image_id=FAKE304&v=FAKE304",
+    "observationBlend": 0.927,
+    "observationEmission": 1,
+    "activity": 0.754,
+    "sunspotSeeds": [
+     [
+      2.544,
+      -0.43,
+      0.075,
+      0.975
+     ],
+     [
+      -0.336,
+      -0.743,
+      0.086,
+      0.957
+     ],
+     [
+      1.077,
+      1.124,
+      0.073,
+      0.948
+     ],
+     [
+      -2.846,
+      0.451,
+      0.103,
+      0.941
+     ],
+     [
+      -0.333,
+      -0.465,
+      0.082,
+      0.93
+     ],
+     [
+      -2.492,
+      1.245,
+      0.07,
+      0.928
+     ],
+     [
+      0.408,
+      -0.337,
+      0.086,
+      0.926
+     ],
+     [
+      2.476,
+      0.855,
+      0.091,
+      0.919
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 5,
+    "coronaColor": [
+     1,
+     0.18,
+     0.08
+    ],
+    "obsBlend": 0.927
+   },
+   "transitionRegion": {
+    "channelMode": 5,
+    "trOpacity": 0.739
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "aia_304",
+   "magToggle": true,
+   "date": "2028-06-04",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 104.44 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 96,
+     "dur": 1259
+    },
+    {
+     "at": 1442,
+     "dur": 80
+    }
+   ],
+   "json": [
+    {
+     "at": 139939,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 141184,
+     "bodyReadAndParseMs": 2
+    },
+    {
+     "at": 143623,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 144842,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 147269,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 148504,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 149711,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 150933,
+     "bodyReadAndParseMs": 2.2
+    },
+    {
+     "at": 152207,
+     "bodyReadAndParseMs": 2.4
+    },
+    {
+     "at": 154616,
+     "bodyReadAndParseMs": 2.4
+    }
+   ]
+  }
+ },
+ "logs": [
+  {
+   "t": 99,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 1551,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  }
+ ],
+ "physicsRequestCount": 110,
+ "aiaRequestCount": 2,
+ "otherBackend": []
+}

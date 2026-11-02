@@ -1,0 +1,23 @@
+         25081175 function calls (25026092 primitive calls) in 13.385 seconds
+
+   Ordered by: internal time
+   List reduced from 480 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       13    5.785    0.445    5.785    0.445 {built-in method time.sleep}
+    18796    2.418    0.000    5.143    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:402(evaluate)
+      714    1.482    0.002    1.989    0.003 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:559(_evaluate_batch)
+    18796    1.343    0.000    2.034    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:488(_legendre_at_point)
+ 13462247    0.875    0.000    0.875    0.000 {method 'get' of 'dict' objects}
+      714    0.414    0.001    0.490    0.001 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:605(_legendre_batch)
+  4729157    0.220    0.000    0.220    0.000 {built-in method math.sqrt}
+  2611092    0.169    0.000    0.169    0.000 {built-in method math.cos}
+  2638447    0.162    0.000    0.162    0.000 {built-in method math.sin}
+    18796    0.070    0.000    5.239    0.000 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:466(evaluate_cartesian)
+    14284    0.057    0.000    0.057    0.000 {built-in method builtins.round}
+   302754    0.041    0.000    0.041    0.000 {built-in method numpy.zeros}
+  55079/1    0.038    0.000    0.068    0.068 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/venv/lib/python3.12/site-packages/fastapi/encoders.py:129(jsonable_encoder)
+      714    0.038    0.000    2.031    0.003 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:532(evaluate_cartesian_batch)
+        1    0.028    0.028    0.028    0.028 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1/backend/sim/pfss_magnetogram.py:201(synthetic_magnetogram)
+
+

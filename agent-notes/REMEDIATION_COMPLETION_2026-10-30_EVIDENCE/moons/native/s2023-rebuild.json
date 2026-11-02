@@ -1,0 +1,32 @@
+{
+  "sha256": "b3410184508f68eff0add063f4f7eb4f9a5ac349a61ecec8c6f324c39f06e1e8",
+  "fitIterations": 9,
+  "fitEdgeHashes": [
+    "7c875c8405c0a18edf6c7cee843e5cd5274ea90d6205d3963f02f0f45a3dc6eb",
+    "476c18c4829240bcc85e2e87cf6d2b3fa32733dbe8070fb61e1be9457cd21fe6",
+    "141e0512d938ab34873593187cebf4b7854d1f7dbcca20afb37c35e64651a9bf",
+    "d4466950f16dc1d9daba8696b08dfb9403f3a8f911be200fa27804b96c64fccf",
+    "1e49d2bf3121093bb4d6546c2ba01cff7167655015e2b03036d6845a6a420359",
+    "5087be07f81e62cf63de767258fd6e52b5273565d9885dda98bcdc14f2099d9c",
+    "b319d75caaaa5ed51fe37e778fdfb3a4a95d680d80f4c4141c50c59b54be66ba",
+    "c850fae5ec4a10a64e629e06eeaa7688b30e5a4683d7bf5be5cb1ae72bb9dbdf",
+    "68aeb2caa46c5c3a5de74cd6f2ff2eeef811ceca1807cd23a28046619667e8a9"
+  ],
+  "postSelectionCrossValidation": {
+    "sampleCount": 6891,
+    "rowsSha256": "0871557ff18e330843c8d0702499ac8e5eb5c57921b7c00fc1fcf75435e1f02b",
+    "usedForFitOrSubdivision": false,
+    "positionErrorKm": {
+      "p50": 0.004126555960736908,
+      "p95": 3.518375449976306,
+      "p99": 6.1517059128964,
+      "max": 42.04170068088634
+    },
+    "velocityErrorMPerS": {
+      "p50": 0.0004240060228525649,
+      "p95": 0.07774888618868189,
+      "p99": 0.7500986091044822,
+      "max": 3.442211291536412
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "commit": "56e799a",
+  "entries": [
+    {
+      "path": "agent-notes/AUDIT_AND_ISSUE_INDEX_2026-10-07.md",
+      "expected": "f7e6b74b8366bce1b2379ff0b6363f24ecc2a49a1012b994ab4c24f227bfa520",
+      "actual": "f7e6b74b8366bce1b2379ff0b6363f24ecc2a49a1012b994ab4c24f227bfa520",
+      "matches": true
+    },
+    {
+      "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-07.md",
+      "expected": "6730fcaa970219191c2423bae44dd315834b4cfe2b7acbf09299e8f86ee209a4",
+      "actual": "6730fcaa970219191c2423bae44dd315834b4cfe2b7acbf09299e8f86ee209a4",
+      "matches": true
+    },
+    {
+      "path": "agent-notes/CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md",
+      "expected": "8014ecc734b4edbeb6aa09cf84ddac98c66b9fc9bdc57a3b0df781c6936a9bb1",
+      "actual": "8014ecc734b4edbeb6aa09cf84ddac98c66b9fc9bdc57a3b0df781c6936a9bb1",
+      "matches": true
+    },
+    {
+      "path": "agent-notes/PR_BODY_physics-math-findings.md",
+      "expected": "041024f4c33a88b50ecc96222adcc5d7fe0fab5c520fe3175ea7ddf268c01e87",
+      "actual": "041024f4c33a88b50ecc96222adcc5d7fe0fab5c520fe3175ea7ddf268c01e87",
+      "matches": true
+    }
+  ],
+  "matched": 4,
+  "total": 4
+}

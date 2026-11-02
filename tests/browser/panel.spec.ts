@@ -23,16 +23,14 @@ for (const desktopOpen of [false,true]) for (const mobileOpen of [false,true]) {
     await expect(page.locator('#app')).not.toHaveAttribute('data-panel-focus-transition','');
   });
 }
-test('stale retained media queries cannot overwrite remembered state or lose modal focus', async ({page}) => {
+test('stale media queries cannot overwrite width-based state or lose modal focus', async ({page}) => {
   await page.addInitScript(() => {
     const matchMedia = window.matchMedia.bind(window);
-    let held = false;
+    const initialMatches = matchMedia('(max-width: 1100px)').matches;
     window.matchMedia = query => {
       const media = matchMedia(query);
-      if (!held && query === '(max-width: 1100px)') {
-        held = true;
-        const initialMatches = media.matches;
-        // Reproduce a retained query whose state/change delivery lags layout.
+      if (query === '(max-width: 1100px)') {
+        // Reproduce retained and fresh queries whose state/change delivery lags layout.
         Object.defineProperty(media, 'matches', { get: () => initialMatches });
         media.addEventListener('change', event => event.stopImmediatePropagation());
       }
@@ -56,6 +54,45 @@ test('stale retained media queries cannot overwrite remembered state or lose mod
   await expect(page.locator('#panel-close')).toBeFocused();
   await expect(page.locator('#control-panel')).toHaveAttribute('aria-modal','true');
   await expect(page.locator('#viewport-shell')).toHaveAttribute('aria-hidden','true');
+});
+test('a delayed media-query change cannot undo current width modality', async ({page}) => {
+  await page.addInitScript(() => {
+    const matchMedia = window.matchMedia.bind(window);
+    window.matchMedia = query => {
+      const media = matchMedia(query);
+      if (query === '(max-width: 1100px)') {
+        Object.assign(window, { __releaseStaleBreakpoint: () => media.dispatchEvent(new MediaQueryListEvent('change', { matches: false, media: query })) });
+      }
+      return media;
+    };
+  });
+  await loadShell(page);
+  await page.setViewportSize({width:900,height:800});
+  await page.evaluate(() => window.__uiFixture.setPanelOpen(true));
+  await expect(page.locator('#control-panel')).toHaveAttribute('aria-modal','true');
+  const afterStaleEvent = await page.evaluate(() => {
+    (window as unknown as { __releaseStaleBreakpoint: () => void }).__releaseStaleBreakpoint();
+    return { modal: document.getElementById('control-panel')!.getAttribute('aria-modal'), viewportInert: document.getElementById('viewport-shell')!.inert };
+  });
+  expect(afterStaleEvent).toEqual({ modal: 'true', viewportInert: true });
+  await expect(page.locator('#control-panel')).toHaveAttribute('aria-modal','true');
+  await expect(page.locator('#viewport-shell')).toHaveJSProperty('inert',true);
+  await expect(page.locator('#panel-close')).toBeFocused();
+});
+test('a resize delivered before window width settles cannot leave desktop controls closed', async ({page}) => {
+  await loadShell(page);
+  await expect(page.locator('#control-panel')).toBeVisible();
+  const immediate = await page.evaluate(() => {
+    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 });
+    window.dispatchEvent(new Event('resize'));
+    Object.defineProperty(window, 'innerWidth', widthDescriptor);
+    return { width: innerWidth, expanded: document.getElementById('panel-toggle')!.getAttribute('aria-expanded') };
+  });
+  expect(immediate).toEqual({ width: 1440, expanded: 'false' });
+  await expect(page.locator('#control-panel')).toBeVisible();
+  await expect(page.locator('#panel-toggle')).toHaveAttribute('aria-expanded','true');
+  await expect(page.locator('#control-panel')).not.toHaveAttribute('aria-modal','true');
 });
 test('disposed panels do not restore modality or move focus on later resizes', async ({page}) => {
   await loadShell(page);

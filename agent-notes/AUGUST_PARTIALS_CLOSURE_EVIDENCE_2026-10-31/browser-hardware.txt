@@ -1,0 +1,50 @@
+[WebServer] (node:3956824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 5 tests using 1 worker
+
+(node:3956883) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/browser/app-smoke.spec.ts:5:1 › decorative stars remain visible with close-focus clip planes and behind bodies (906ms)
+  ✓  2 [chromium] › tests/browser/app-smoke.spec.ts:39:1 › actual app recovers a silently terminated orbital worker (8.8s)
+Actual application WebGL: {"renderer":"ANGLE (Mesa, llvmpipe (LLVM 20.1.2 256 bits), OpenGL 4.5)","userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"}
+  ✘  3 [chromium] › tests/browser/app-smoke.spec.ts:81:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin (5.5s)
+(node:3958079) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [chromium] › tests/browser/app-smoke.spec.ts:102:1 › no-WebGL constructor failure exposes an accessible reload path and working drawer (2.5s)
+  ✓  5 [chromium] › tests/browser/app-smoke.spec.ts:107:1 › actual WebGL context loss stops rendering and leaves keyboard recovery available (6.4s)
+
+
+  1) [chromium] › tests/browser/app-smoke.spec.ts:81:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin 
+
+    Error: expect(received).toMatch(expected)
+
+    Expected pattern: /D3D12.*NVIDIA GeForce RTX/i
+    Received string:  "ANGLE (Mesa, llvmpipe (LLVM 20.1.2 256 bits), OpenGL 4.5)"
+
+      90 |   console.log('Actual application WebGL:', JSON.stringify(graphics));
+      91 |   await test.info().attach('webgl-renderer',{body:JSON.stringify(graphics,null,2),contentType:'application/json'});
+    > 92 |   if(process.env.UI_HARDWARE_WEBGL==='1') expect(graphics.renderer).toMatch(/D3D12.*NVIDIA GeForce RTX/i);
+         |                                                                     ^
+      93 |   else expect(graphics.renderer).toContain('SwiftShader');
+      94 |   await expect(page.locator('#renderer-unavailable')).toBeHidden();await page.locator('#toggle-play').click();
+      95 |   const dimensions=await page.locator('#space-canvas').evaluate((canvas:HTMLCanvasElement)=>({width:canvas.width,height:canvas.height,viewWidth:canvas.clientWidth,viewHeight:canvas.clientHeight}));expect(dimensions.viewWidth).toBe(500);expect(dimensions.viewHeight).toBe(700);expect(dimensions.width).toBe(250);expect(dimensions.height).toBe(350);
+        at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/app-smoke.spec.ts:92:69
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/4189/app-smoke-actual-app-compo-40a92-a-nondefault-backend-origin-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/4189/app-smoke-actual-app-compo-40a92-a-nondefault-backend-origin-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/4189/app-smoke-actual-app-compo-40a92-a-nondefault-backend-origin-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/4189/app-smoke-actual-app-compo-40a92-a-nondefault-backend-origin-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/browser/app-smoke.spec.ts:81:1 › actual app composes camera, drawer, search and experiment with a nondefault backend origin 
+  4 passed (29.8s)

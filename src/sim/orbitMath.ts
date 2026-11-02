@@ -190,26 +190,214 @@ export function solveKeplerFast(M: number, e: number): number {
   return E;
 }
 
+// Private arithmetic support for the direct solver only; other solvers retain
+// their existing contracts. One reusable view avoids per-step buffer allocation.
+const keplerFloatBits = new DataView(new ArrayBuffer(8));
+const KEPLER_UNIT_ROUNDOFF = Number.EPSILON / 2;
+const KEPLER_GAMMA64 = (64 * KEPLER_UNIT_ROUNDOFF) / (1 - 64 * KEPLER_UNIT_ROUNDOFF);
+const KEPLER_UNDERFLOW_ALLOWANCE = 64 * Number.MIN_VALUE;
+
+function keplerAdjacent(value: number, direction: -1 | 1): number {
+  if (!Number.isFinite(value)) return value;
+  if (value === 0) return direction * Number.MIN_VALUE;
+  keplerFloatBits.setFloat64(0, value, false);
+  const bits = keplerFloatBits.getBigUint64(0, false);
+  keplerFloatBits.setBigUint64(0, bits + ((value > 0) === (direction > 0) ? 1n : -1n), false);
+  return keplerFloatBits.getFloat64(0, false);
+}
+
+function keplerUp(value: number): number { return keplerAdjacent(value, 1); }
+function keplerDown(value: number): number { return keplerAdjacent(value, -1); }
+
+function keplerSineAllowance(value: number): number {
+  // Math.sin is implementation-approximated, not specified correctly rounded.
+  // One adjacent spacing is a practical runtime assumption, not an ECMA-wide
+  // interval guarantee; independent exact-input regressions exercise it.
+  return keplerUp(Math.max(keplerUp(value) - value, value - keplerDown(value)));
+}
+
+function evaluateDirectKepler(anomaly: number, mean: number, e: number) {
+  const oneMinusE = 1 - e;
+  let residual: number;
+  let residualError: number;
+  if (Math.abs(anomaly) <= 1) {
+    const square = anomaly * anomaly;
+    // E-sin(E), alternating through E^19/19!. The nine coefficient divisions,
+    // 16 Horner operations and eight surrounding operations total 33 rounded
+    // operations; repeated square factors add at most eight error factors.
+    // On square<=1 the absolute-term sum / polynomial is <=400/361, so even
+    // gamma41 times that cancellation factor fits below gamma64, with room
+    // for scale/bound arithmetic. There is no |M|>=1 scale floor. The fixed
+    // cap is arithmetic, not an orbital-range policy.
+    let polynomial = 1 / 121645100408832000;
+    polynomial = 1 / 355687428096000 - square * polynomial;
+    polynomial = 1 / 1307674368000 - square * polynomial;
+    polynomial = 1 / 6227020800 - square * polynomial;
+    polynomial = 1 / 39916800 - square * polynomial;
+    polynomial = 1 / 362880 - square * polynomial;
+    polynomial = 1 / 5040 - square * polynomial;
+    polynomial = 1 / 120 - square * polynomial;
+    polynomial = 1 / 6 - square * polynomial;
+    const difference = (anomaly * square) * polynomial;
+    const linear = oneMinusE * anomaly;
+    const nonlinear = e * difference;
+    residual = (linear + nonlinear) - mean;
+    const scale = keplerUp(keplerUp(Math.abs(linear) + Math.abs(nonlinear)) + Math.abs(mean));
+    // On |E|<=1, the tail <= |E|^21/21! <= |E|^3/21!. The latter avoids
+    // underestimating a rounded power; subnormal operations have an absolute
+    // allowance as well. 21! itself is exactly representable in binary64.
+    const cubeUpper = keplerUp(Math.abs(anomaly) * keplerUp(square));
+    const tail = keplerUp(cubeUpper / 51090942171709440000);
+    residualError = keplerUp(keplerUp(keplerUp(KEPLER_GAMMA64 * scale) + tail)
+      + KEPLER_UNDERFLOW_ALLOWANCE);
+  } else {
+    const sine = Math.sin(anomaly);
+    const difference = anomaly - mean;
+    const sineTerm = e * sine;
+    residual = difference - sineTerm;
+    const scale = keplerUp(Math.abs(difference) + Math.abs(sineTerm));
+    const sineError = keplerUp(e * keplerSineAllowance(sine));
+    // Three basic operations; gamma64 deliberately dominates their gamma3.
+    residualError = keplerUp(keplerUp(keplerUp(KEPLER_GAMMA64 * scale) + sineError)
+      + KEPLER_UNDERFLOW_ALLOWANCE);
+  }
+
+  const halfSine = Math.sin(anomaly / 2);
+  const curved = (2 * e * halfSine) * halfSine;
+  const derivative = oneMinusE + curved;
+  const sineError = keplerUp(keplerSineAllowance(halfSine) + Number.MIN_VALUE);
+  const squareError = keplerUp(keplerUp(2 * Math.abs(halfSine) * sineError)
+    + keplerUp(sineError * sineError));
+  const trigError = keplerUp(2 * e * squareError);
+  // Six basic operations including 1-e and halving; the extra MIN_VALUE
+  // covers a subnormal half-angle input before the sine-spacing allowance.
+  const derivativeError = keplerUp(keplerUp(keplerUp(KEPLER_GAMMA64 * derivative) + trigError)
+    + KEPLER_UNDERFLOW_ALLOWANCE);
+  return { residual, residualError, derivative, derivativeError };
+}
+
+/**
+ * Solve E-e*sin(E)=M for the whole, unwrapped binary64 E. Tolerance is an
+ * absolute anomaly target, not a residual/step threshold. The safeguarded
+ * refinements honor the supplied budget; a result that cannot establish that
+ * precision throws instead of clamping e or returning an unchecked iterate.
+ * Rounding allowances are practical binary64 checks, not formal guarantees for
+ * every implementation-approximated Math.sin on every JavaScript engine.
+ */
 export function solveKepler(
   meanAnomalyRad: number,
   eccentricity: number,
   tolerance = 1e-9,
-  maxIterations = 20
+  maxIterations = 64
 ): number {
-  const e = Math.max(0, Math.min(0.9999999, eccentricity));
-  let eccentricAnomaly = e < 0.8 ? meanAnomalyRad : Math.PI;
-
-  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
-    const f = eccentricAnomaly - e * Math.sin(eccentricAnomaly) - meanAnomalyRad;
-    const fPrime = 1 - e * Math.cos(eccentricAnomaly);
-    const delta = f / fPrime;
-    eccentricAnomaly -= delta;
-    if (Math.abs(delta) < tolerance) {
-      break;
-    }
+  if (!Number.isFinite(meanAnomalyRad) || !Number.isFinite(eccentricity)
+    || eccentricity < 0 || eccentricity >= 1
+    || !Number.isFinite(tolerance) || tolerance <= 0
+    || !Number.isSafeInteger(maxIterations) || maxIterations <= 0) {
+    throw new RangeError('Invalid elliptic Kepler solver arguments.');
   }
+  const e = eccentricity;
+  // Validation precedes exact identities and the analytic |E-M|<=e certificate.
+  // This also covers finite boundary M without constructing infinite endpoints.
+  if (meanAnomalyRad === 0 || e <= tolerance) return meanAnomalyRad;
 
-  return eccentricAnomaly;
+  let lower = keplerDown(meanAnomalyRad - e);
+  let upper = keplerUp(meanAnomalyRad + e);
+  let anomaly = meanAnomalyRad;
+  let previous = NaN;
+  let certifiedFallback: number | null = null;
+  let cycleLower = NaN;
+  let cycleUpper = NaN;
+  let checkpointAnomaly = NaN;
+  let checkpointPrevious = NaN;
+  let cyclePower = 1;
+  let cycleLength = 0;
+  let cycleSafeguarded = false;
+  const globalDerivativeLower = keplerDown(1 - e);
+  // Initial evaluation plus at most maxIterations actual refinements; there is
+  // no hidden larger budget for explicit callers such as the satellite core.
+  for (let iteration = 0; iteration <= maxIterations; iteration += 1) {
+    const { residual, residualError, derivative, derivativeError } = evaluateDirectKepler(anomaly, meanAnomalyRad, e);
+    // Only a sign resolved beyond the arithmetic allowance owns an endpoint.
+    if (residual > residualError) upper = anomaly;
+    else if (residual < -residualError) lower = anomaly;
+
+    // Bound distance from the actual returned float, not an ideal midpoint.
+    const radius = keplerUp(Math.max(anomaly - lower, upper - anomaly));
+    const localDerivativeLower = keplerDown(keplerDown(derivative - derivativeError) - keplerUp(e * radius));
+    const derivativeLower = Math.max(globalDerivativeLower, localDerivativeLower);
+    const residualUpper = keplerUp(Math.abs(residual) + residualError);
+    const errorUpper = keplerUp(residualUpper / derivativeLower);
+    const certified = radius <= tolerance || errorUpper <= tolerance;
+    // Preserve the prior helper's useful final Newton polish, but only within
+    // the caller's remaining budget and with an independently checked result.
+    // A failed polish cannot discard the already-certified fallback or search
+    // further after success. Analytic identities above need no refinement.
+    if (certifiedFallback !== null) return certified ? anomaly : certifiedFallback;
+    if (certified) {
+      const polished = anomaly - residual / derivative;
+      if (iteration < maxIterations && Number.isFinite(polished)
+        && polished !== anomaly && polished > lower && polished < upper) {
+        certifiedFallback = anomaly;
+        previous = anomaly;
+        anomaly = polished;
+        continue;
+      }
+      return anomaly;
+    }
+    if (iteration === maxIterations || !Number.isFinite(lower) || !Number.isFinite(upper)) break;
+
+    // Constant-space Brent checkpoints detect deterministic repeated states,
+    // including cycles through Newton and midpoint steps. A genuinely tighter
+    // bracket starts a new epoch: revisiting a point then is not stagnation.
+    let forceSafeguard = false;
+    if (lower !== cycleLower || upper !== cycleUpper) {
+      cycleLower = lower;
+      cycleUpper = upper;
+      checkpointAnomaly = anomaly;
+      checkpointPrevious = previous;
+      cyclePower = 1;
+      cycleLength = 0;
+      cycleSafeguarded = false;
+    } else {
+      cycleLength += 1;
+      if (anomaly === checkpointAnomaly && previous === checkpointPrevious) {
+        if (cycleSafeguarded) break;
+        cycleSafeguarded = true;
+        forceSafeguard = true;
+        // Forced safeguarding changes the transition once; restart the
+        // checkpoint but retain its used flag until the bracket tightens.
+        checkpointAnomaly = anomaly;
+        checkpointPrevious = previous;
+        cyclePower = 1;
+        cycleLength = 0;
+      } else if (cycleLength === cyclePower) {
+        checkpointAnomaly = anomaly;
+        checkpointPrevious = previous;
+        cyclePower = Math.min(2 * cyclePower, maxIterations);
+        cycleLength = 0;
+      }
+    }
+
+    let next = anomaly - residual / derivative;
+    if (forceSafeguard || !Number.isFinite(next) || next <= lower || next >= upper || next === anomaly) {
+      next = lower + (upper - lower) / 2;
+      // An unresolved residual may leave the current value at the midpoint.
+      // Split its wider side rather than treating rounded f=0 as convergence.
+      if (next === anomaly) {
+        next = anomaly - lower >= upper - anomaly
+          ? lower + (anomaly - lower) / 2
+          : anomaly + (upper - anomaly) / 2;
+      }
+      if (next <= lower || next >= upper || next === anomaly) {
+        next = anomaly === lower ? upper : lower;
+        if (next === anomaly || next === previous) break;
+      }
+    }
+    previous = anomaly;
+    anomaly = next;
+  }
+  throw new RangeError('Kepler solver could not establish the requested precision.');
 }
 
 function clampEccentricity(eccentricity: number): number {

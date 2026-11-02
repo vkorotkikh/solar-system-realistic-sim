@@ -18,11 +18,23 @@ const BASE_RECORD = parseSatelliteTable(TABLE(ROW(CELLS)))[0];
 const catalogRecords = (count) => Array.from({ length: count }, (_, id) => ({
   ...BASE_RECORD,
   id,
-  name: `Moon ${id}`
+  name: `Moon ${id}`, iauCode: String(1000 + id),
 }));
 const execFileAsync = promisify(execFile);
 
 describe('parseSatelliteTable', () => {
+  it('selects the newest solution for a duplicate source identity, irrespective of row order', () => {
+    const old = [...CELLS]; old[0] = '378'; old[2] = 'Puck'; old[3] = '715'; old[4] = 'URA182';
+    const newer = [...old]; newer[0] = '388'; newer[4] = 'URA184'; newer[6] = '2025-01-01.0';
+    for (const rows of [[old, newer], [newer, old]]) {
+      expect(parseSatelliteTable(TABLE(rows.map(ROW).join(''))).map(m => m.id)).toEqual([388]);
+    }
+  });
+
+  it('rejects conflicting duplicate solutions at the same epoch', () => {
+    const duplicate = [...CELLS]; duplicate[0] = '999'; duplicate[7] = '421900';
+    expect(() => parseSatelliteTable(TABLE(ROW(CELLS) + ROW(duplicate)))).toThrow(/ambiguous duplicate moon source identity/i);
+  });
   it('parses a 20-column row into a catalog record', () => {
     const [record] = parseSatelliteTable(TABLE(ROW(CELLS)));
     expect(record).toMatchObject({ id: 501, planet: 'Jupiter', name: 'Io', aKm: 421800, e: 0.0041, periodDays: 1.769 });
@@ -68,7 +80,7 @@ describe('writeCatalogAtomically', () => {
   it('publishes the catalog through a renamed temp file and leaves no temp file behind', async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), 'moons-'));
     const target = path.join(dir, 'nested', 'moons.json');
-    const records = catalogRecords(424);
+    const records = catalogRecords(423);
     await writeCatalogAtomically(target, records);
     expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(records);
     expect(await readdir(path.dirname(target))).toEqual(['moons.json']);
@@ -77,13 +89,13 @@ describe('writeCatalogAtomically', () => {
   it('requires an explicit override before writing a changed record count', async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), 'moons-'));
     const target = path.join(dir, 'moons.json');
-    const truncatedRecords = catalogRecords(423);
+    const truncatedRecords = catalogRecords(422);
 
-    await expect(writeCatalogAtomically(target, truncatedRecords)).rejects.toThrow(/expected 424 records.*received 423/i);
+    await expect(writeCatalogAtomically(target, truncatedRecords)).rejects.toThrow(/expected 423 records.*received 422/i);
     await expect(access(target)).rejects.toThrow();
 
     await writeCatalogAtomically(target, truncatedRecords, { allowCountChange: true });
-    expect(JSON.parse(await readFile(target, 'utf8'))).toHaveLength(423);
+    expect(JSON.parse(await readFile(target, 'utf8'))).toHaveLength(422);
   });
 
   it('refuses malformed records even when a count change is allowed', async () => {
@@ -104,5 +116,13 @@ describe('writeCatalogAtomically', () => {
 
     await expect(writeCatalogAtomically(target, records, { allowCountChange: true })).rejects.toThrow(/duplicate moon id 0/i);
     await expect(access(target)).rejects.toThrow();
+  });
+
+  it('refuses duplicate source identities even when catalog row IDs differ', async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'moons-'));
+    const records = catalogRecords(2);
+    records[1].iauCode = records[0].iauCode;
+    await expect(writeCatalogAtomically(path.join(dir, 'moons.json'), records, { allowCountChange: true }))
+      .rejects.toThrow(/duplicate moon source identity/i);
   });
 });

@@ -1,5 +1,7 @@
 # Remaining remediation closure plan - 2026-10-15
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 > Scope update (2026-10-17): the [consolidated tracker](CODEBASE_SCAN_AND_ISSUE_TRACKER_2026-10-10.md#simulationclient-scope-decision--2026-10-17) retains `SimulationClient` as **API/library-only; not integrated into the default UI.** Its backend/library verification is separate from active-browser acceptance. The checkpoint and suite results below retain their original dates and revisions.
 
 October 17 follow-up source: `66ef13c` on `remediation/scn-followup-20261017`.

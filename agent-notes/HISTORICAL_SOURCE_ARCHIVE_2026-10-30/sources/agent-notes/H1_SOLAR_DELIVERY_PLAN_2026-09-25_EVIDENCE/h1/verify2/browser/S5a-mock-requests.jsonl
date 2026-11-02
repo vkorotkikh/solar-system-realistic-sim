@@ -1,0 +1,11 @@
+{"t": 1790349961.553, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "429"}
+{"t": 1790349962.63, "path": "/solar/physics?jd=2461309.14388140&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790349971.133, "path": "/solar/physics?jd=2461340.74273741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790349979.562, "path": "/solar/physics?jd=2461374.40793741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790349987.382, "path": "/solar/physics?jd=2461405.73993741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790349995.958, "path": "/solar/physics?jd=2461432.60593741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790350002.029, "path": "/solar/physics?jd=2461456.87153741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790350008.55, "path": "/solar/physics?jd=2461482.93673741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790350015.685, "path": "/solar/physics?jd=2461511.53593741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790350024.562, "path": "/solar/physics?jd=2461547.00113741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}
+{"t": 1790350030.675, "path": "/solar/physics?jd=2461564.06713741&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 429, "acao": true, "mode": "429"}

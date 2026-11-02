@@ -1,0 +1,45 @@
+top keys ['activity_index', 'corona', 'coronal_holes', 'cycle_phase_rad', 'data_assimilation', 'epoch_jd', 'fidelity', 'forcing', 'heliosphere', 'live_data_enabled', 'model', 'pfss_field_lines', 'schema', 'solar_radius_au', 'solar_radius_km', 'source', 'surface', 'synthetic_activity_index', 'wall_epoch_jd']
+assimilation keys ['applied', 'blend_weight', 'blended_activity_index', 'live_data_available', 'mode', 'observed_activity_index', 'observed_confidence', 'proxy_breakdown', 'source_status', 'sources', 'synthetic_activity_index']
+applied True observed_confidence 0.46371499206730765
+source_status {
+ "swpc": {
+  "ok": false,
+  "error": "HTTP Error 404: Not Found",
+  "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+ },
+ "silso": {
+  "ok": true,
+  "updated": "2026-08-31",
+  "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+ },
+ "sdo_aia": {
+  "ok": true,
+  "updated": "2026-09-25T01:47:41Z",
+  "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+ },
+ "gong_synoptic": {
+  "ok": true,
+  "updated": "2026-09-25T02:08:58.021327Z",
+  "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+ }
+}
+sources keys ['swpc', 'silso', 'sdo_aia']
+swpc null
+silso {"date": "2026-08-31", "daily_sunspot_number": 58.0, "stdev": 8.1, "observation_count": 33.0, "provisional_flag": "0", "activity_proxy": 0.2636363636363636}
+sdo_aia keys ['activity_proxy', 'channel_activity_proxy', 'channels', 'coronal_holes', 'freshness_proxy', 'freshness_s', 'latest_image_date_utc', 'request_date_utc', 'visualization']
+  request_date_utc "2026-09-25T02:08:54.454568Z"
+  latest_image_date_utc "2026-09-25T01:47:41Z"
+  freshness_s 1277.008579
+  freshness_proxy 0.9408792324537038
+  activity_proxy 0.21251089195744136
+  channel_activity_proxy {"aia_094": 0.19957970531657337, "aia_171": 0.20828086593654005, "aia_193": 0.22056308099301528, "aia_211": 0.20235823471331968, "aia_304": 0.22074242509901523}
+  visualization {"preferred_channel": "aia_304", "preferred_image_id": "192408248", "preferred_tile_url": "https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832", "preferred_proxy_path": "/solar/realtime/aia-tile?channel=aia_304"}
+ ch aia_094 192408064 2026-09-25 01:45:35 0.6018311663114373 https://api.helioviewer.org/v2/getTile/?id=192408064&x=-1&y=-1&imageScale=0.601831 True None
+ ch aia_171 192408218 2026-09-25 01:46:21 0.6018314871716299 https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831 True None
+ ch aia_193 192408172 2026-09-25 01:46:05 0.6018314270321925 https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831 True None
+ ch aia_211 192408145 2026-09-25 01:46:34 0.6018316676773608 https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832 True None
+ ch aia_304 192408248 2026-09-25 01:47:41 0.6018321288920151 https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832 True None
+coronal_holes {'source': 'aia_193_threshold', 'threshold': 0.1186, 'median_intensity': 0.4745, 'coverage_fraction': 0.0, 'polar_open_flux_north': 0.0, 'polar_open_flux_south': 0.0, 'hole_count': 0}
+pfss source synthetic cr 2315 lines 120
+coronal_holes top-level source synthetic
+activity_index 0.5464206671695928 synthetic 0.7578503041611674

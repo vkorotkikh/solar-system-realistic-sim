@@ -1,0 +1,6 @@
+{
+  "auditStatePerturbationKm": 100000000.0,
+  "sameFitIterationCount": 9,
+  "sameFitEdgeHashes": true,
+  "scope": "Negative acceptance control, not a provider observation or scientific accuracy pass"
+}

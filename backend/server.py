@@ -67,6 +67,8 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
+from solar_delivery import render_solar_response
+
 from benchmark import (
     MAX_REFERENCE_SCENARIOS,
     benchmark_against_references,
@@ -137,7 +139,13 @@ from sim.solar_realtime_data import (
     SolarRealtimeDataProvider,
     SolarRealtimeFetchError,
 )
-from sim.solar_time import current_jd_tdb
+from sim.solar_time import (
+    SolarTimeError,
+    TwoPartJD,
+    UnsupportedUTCInstant,
+    current_jd_tdb,
+    jd_tdb_to_utc_datetime,
+)
 from trajectory import (
     DEFAULT_ASSIST_POOL,
     TRAJECTORY_OBJECTIVES,
@@ -1905,6 +1913,30 @@ def _enforce_solar_aia_tile_rate_limit(request: Request) -> None:
     )
 
 
+def _parse_jd_tdb_query_component(raw_value: str, parameter: str) -> float:
+    try:
+        parsed = float(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": f"invalid_{parameter}",
+                "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                "retryable": False,
+            },
+        ) from exc
+    if not math.isfinite(parsed):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": f"invalid_{parameter}",
+                "message": f"`{parameter}` must be a finite Julian date in TDB.",
+                "retryable": False,
+            },
+        )
+    return parsed
+
+
 def _resolve_jd_tdb_query(
     jd_tdb: str | None,
     jd: str | None,
@@ -1913,32 +1945,9 @@ def _resolve_jd_tdb_query(
 ) -> float | None:
     """Resolve the labelled JDTDB input and its temporary unlabelled alias."""
 
-    def parse(raw_value: str, parameter: str) -> float:
-        try:
-            parsed = float(raw_value)
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "code": f"invalid_{parameter}",
-                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
-                    "retryable": False,
-                },
-            ) from exc
-        if not math.isfinite(parsed):
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "code": f"invalid_{parameter}",
-                    "message": f"`{parameter}` must be a finite Julian date in TDB.",
-                    "retryable": False,
-                },
-            )
-        return parsed
-
-    canonical = parse(jd_tdb, "jd_tdb") if jd_tdb is not None else None
+    canonical = _parse_jd_tdb_query_component(jd_tdb, "jd_tdb") if jd_tdb is not None else None
     # Deprecated `jd` is interpreted as JDTDB for one compatibility window.
-    legacy = parse(jd, "jd") if jd is not None else None
+    legacy = _parse_jd_tdb_query_component(jd, "jd") if jd is not None else None
     if canonical is not None and legacy is not None and canonical != legacy:
         raise HTTPException(
             status_code=400,
@@ -1951,6 +1960,79 @@ def _resolve_jd_tdb_query(
     resolved = canonical if canonical is not None else legacy
     if resolved is None and default_to_now:
         return current_jd_tdb()
+    return resolved
+
+
+def _solar_time_http_error(exc: SolarTimeError) -> HTTPException:
+    return HTTPException(
+        status_code=422 if isinstance(exc, UnsupportedUTCInstant) else 400,
+        detail={"code": exc.code, "message": str(exc), "retryable": False},
+    )
+
+
+def _resolve_aia_time_query(
+    jd_tdb: str | None,
+    jd: str | None,
+    jd_tdb1: str | None,
+    jd_tdb2: str | None,
+) -> float | TwoPartJD | None:
+    """Resolve and validate the provider epoch before admission or acquisition."""
+
+    if jd_tdb1 is None and jd_tdb2 is None:
+        resolved = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
+        in_range = resolved is None or SOLAR_PHYSICS_JD_MIN <= resolved <= SOLAR_PHYSICS_JD_MAX
+    else:
+        if jd_tdb1 is None or jd_tdb2 is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "incomplete_two_part_jd",
+                    "message": "Both `jd_tdb1` and `jd_tdb2` are required for precise JDTDB.",
+                    "retryable": False,
+                },
+            )
+        if jd_tdb is not None or jd is not None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "conflicting_julian_date_aliases",
+                    "message": "Two-part JDTDB cannot be combined with scalar `jd_tdb` or `jd`.",
+                    "retryable": False,
+                },
+            )
+        first = _parse_jd_tdb_query_component(jd_tdb1, "jd_tdb1")
+        second = _parse_jd_tdb_query_component(jd_tdb2, "jd_tdb2")
+        # Bound each component before Astropy construction, then compare the
+        # precise instant without collapsing the parts into a scalar sum.
+        in_range = (
+            SOLAR_PHYSICS_JD_MIN - 1 <= first <= SOLAR_PHYSICS_JD_MAX + 1
+            and abs(second) <= 1
+        )
+        resolved = TwoPartJD(first, second)
+        if in_range:
+            precise = resolved.to_time()
+            in_range = bool(
+                precise >= TwoPartJD(SOLAR_PHYSICS_JD_MIN, 0.0).to_time()
+                and precise <= TwoPartJD(SOLAR_PHYSICS_JD_MAX, 0.0).to_time()
+            )
+    if not in_range:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "jd_out_of_range",
+                "message": (
+                    f"AIA JDTDB must be within [{SOLAR_PHYSICS_JD_MIN:.1f}, "
+                    f"{SOLAR_PHYSICS_JD_MAX:.1f}]; `jd_tdb2` must be within [-1, 1] days. "
+                    "This input bound does not guarantee archive coverage."
+                ),
+                "retryable": False,
+            },
+        )
+    if resolved is not None:
+        try:
+            jd_tdb_to_utc_datetime(resolved)
+        except SolarTimeError as exc:
+            raise _solar_time_http_error(exc) from exc
     return resolved
 
 
@@ -2560,7 +2642,7 @@ def _canonical_aia_header_date(value: Any) -> str | None:
 
 def _build_aia_tile_payload(
     channel: str,
-    jd_tdb: float | None = None,
+    jd_tdb: float | TwoPartJD | None = None,
     force_refresh: bool = False,
     image_id: str | None = None,
 ) -> dict[str, Any]:
@@ -3188,7 +3270,13 @@ async def solar_realtime_data(request: Request, force_refresh: bool = False):
     }
 
 
-@app.get("/solar/realtime/aia-tile")
+@app.get(
+    "/solar/realtime/aia-tile",
+    responses={
+        400: {"description": "Invalid epoch or ambiguous scalar JD; use the precise two-part input."},
+        422: {"description": "unsupported_utc_instant: the provider cannot represent a genuine UTC leap second."},
+    },
+)
 async def solar_realtime_aia_tile(
     request: Request,
     channel: str = "aia_193",
@@ -3211,10 +3299,27 @@ async def solar_realtime_aia_tile(
             deprecated=True,
         ),
     ] = None,
+    jd_tdb1: Annotated[
+        str | None,
+        Query(description="First component of precise JDTDB, e.g. Astropy instant.tdb.jd1. Supply with jd_tdb2 and without scalar aliases."),
+    ] = None,
+    jd_tdb2: Annotated[
+        str | None,
+        Query(description="Second component of precise JDTDB, e.g. Astropy instant.tdb.jd2; within [-1, 1] days. Both components must be finite and the epoch within the supported input window."),
+    ] = None,
     force_refresh: bool = False,
 ):
+    """Retrieve an AIA viewport at the requested UTC identity.
+
+    Scalar JDTDB rounding bins touching either UTC leap boundary return HTTP
+    400 ``ambiguous_scalar_jd``. Send Astropy's TDB ``jd1`` and ``jd2`` as
+    ``jd_tdb1`` and ``jd_tdb2`` to distinguish ordinary midnight from a genuine
+    leap instant. The latter returns HTTP 422 ``unsupported_utc_instant``;
+    the current provider and Python datetime cannot represent UTC second 60.
+    Neither input path snaps an ambiguous epoch to a neighboring instant.
+    """
     _reject_network_refresh_get(force_refresh)
-    epoch_jd_tdb = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=False)
+    epoch_jd_tdb = _resolve_aia_time_query(jd_tdb, jd, jd_tdb1, jd_tdb2)
     _require_optional_solar_api_key(request)
     _enforce_solar_aia_tile_rate_limit(request)
 
@@ -3252,6 +3357,8 @@ async def solar_realtime_aia_tile(
                 "retryable": True,
             },
         ) from exc
+    except SolarTimeError as exc:
+        raise _solar_time_http_error(exc) from exc
     except AiaImageIdentityMismatch as exc:
         raise _aia_identity_conflict(
             exc.requested_image_id,
@@ -3420,6 +3527,8 @@ async def solar_physics_state(
     forcing: str = "synthetic",
     live_data: bool = False,
     force_data_refresh: bool = False,
+    delivery: str = "full",
+    geometry_version: Annotated[str | None, Query(pattern=r"^[0-9a-f]{64}$")] = None,
 ):
     _reject_network_refresh_get(force_data_refresh)
     epoch_jd = _resolve_jd_tdb_query(jd_tdb, jd, default_to_now=True)
@@ -3438,6 +3547,9 @@ async def solar_physics_state(
             },
         )
     _require_optional_solar_api_key(request)
+
+    if delivery not in {"full", "render-v1"}:
+        raise HTTPException(status_code=400, detail="Unsupported solar delivery version")
 
     fidelity_key = fidelity.strip().lower()
     if fidelity_key not in SOLAR_PHYSICS_MODEL.fidelity_levels:
@@ -3554,6 +3666,11 @@ async def solar_physics_state(
         ) from exc
     except ObservedSolarInputUnavailable as exc:
         raise _observed_solar_input_http_error(exc) from exc
+    if delivery == "render-v1":
+        return render_solar_response(
+            state, geometry_version=geometry_version,
+            accept_encoding=request.headers.get("accept-encoding", ""),
+        )
     return state
 
 

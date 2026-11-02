@@ -908,7 +908,7 @@ def wsa_velocity_at_source_surface(
 PFSS_SOLUTION_KEY_VERSION = "pfss-solution-key-v1"
 PFSS_SOLUTION_CONFIG_VERSION = "pfss-solution-config-v1"
 SYNTHETIC_SNAPSHOT_ID_VERSION = "synthetic-magnetogram-snapshot-v1"
-SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v3"
+SYNTHETIC_TRANSFORM_VERSION = "synthetic-persistent-bipoles-v4"
 SYNTHETIC_FLUX_POLICY_VERSION = "synthetic-native-unbalanced-v1"
 PFSS_PREPROCESSING_POLICY_VERSION = "pfss-input-preprocessing-none-v1"
 PFSS_SOLVER_VERSION = "pfss-altschuler-newkirk-v1"
@@ -1560,10 +1560,7 @@ class PFSSCache:
             raise ValueError("snapshot transform version is not implemented")
         if sid.coverage_semantics != gong.GONG_COVERAGE_SEMANTICS:
             raise ValueError("snapshot coverage semantics are not implemented")
-        if (
-            sid.flux_balance_policy_version
-            not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS
-        ):
+        if sid.flux_balance_policy_version not in gong.IMPLEMENTED_FLUX_BALANCE_POLICY_VERSIONS:
             raise ValueError("snapshot flux-balance policy is not implemented")
         expected_flux_quality = (
             "flux-balanced-roundoff-only"
@@ -1816,7 +1813,7 @@ class PFSSCache:
         pre_signed = math.fsum(float(value) for value in pre_flat) * cell_area
         pre_unsigned = math.fsum(abs(float(value)) for value in pre_flat) * cell_area
         acceptance_limit = max(1e-12 * pre_unsigned, 1e-12 * 4.0 * math.pi)
-        imbalance_fraction = pre_signed / pre_unsigned
+        imbalance_fraction = pre_signed / pre_unsigned if pre_unsigned > 0.0 else 0.0
         retained_correction = gong._RETAINED_GONG_SCALED_CORRECTION
         correction_values = (
             flux.corroborating_provider,

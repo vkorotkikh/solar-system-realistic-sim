@@ -1,0 +1,5 @@
+D10 rendered check (harness: main.ts + index.html here, served by Vite from the worktree root; driver h2-render.mjs)
+                         before (b5387c2)   after (shader fix)   pre-registered pass
+side polar/equatorial    5.69               0.147                < 0.8   PASS
+pole-on limb CV          0.89               0.136                < 0.3   PASS
+d10-before-after-sheet.png: rows = visible frame (side), corona alpha (side), corona alpha (pole-on); left before, right after.

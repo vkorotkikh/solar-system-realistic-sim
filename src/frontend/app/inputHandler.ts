@@ -1,4 +1,4 @@
-import { setupUiBindings } from './uiBindings';
+import { setupUiBindings, validateUiBindings } from './uiBindings';
 
 interface InputTimeController {
   bindUi: () => void;
@@ -24,6 +24,7 @@ export function setupInputHandlers({
   quickViewPresets,
   handlers
 }: SetupInputHandlersArgs) {
+  validateUiBindings(dom, quickViewPresets);
   timeController.bindUi();
   plannerController.bindPlannerUi();
 

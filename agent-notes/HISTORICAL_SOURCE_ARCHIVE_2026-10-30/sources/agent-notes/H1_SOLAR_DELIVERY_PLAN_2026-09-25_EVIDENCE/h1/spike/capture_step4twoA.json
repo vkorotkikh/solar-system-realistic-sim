@@ -1,0 +1,739 @@
+{
+ "tag": "step4twoA",
+ "url": "http://127.0.0.1:5183/?backendPort=8073",
+ "durS": 150,
+ "tLoad": 7644,
+ "physics": {
+  "n": 6,
+  "by": {
+   "http_200": 1,
+   "http_503": 4,
+   "failed:undefined": 1
+  },
+  "cache": {
+   "HIT": 1
+  },
+  "hitDurMs": [
+   30
+  ],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 30,
+   "p50": 30,
+   "p95": 30,
+   "max": 30
+  },
+  "inFlightAtEnd": 1
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 6532,
+   "p50": 6532,
+   "p95": 6532,
+   "max": 6532
+  },
+  "inFlightAtEnd": 0
+ },
+ "requests": [
+  {
+   "id": 1,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 965,
+   "status": 200,
+   "tResp": 986,
+   "spikeCache": "HIT",
+   "tEnd": 995,
+   "outcome": "finished",
+   "respBodyBytes": 624375,
+   "durMs": 30,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 624630
+   }
+  },
+  {
+   "id": 2,
+   "kind": "aia",
+   "url": "http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756",
+   "jd": null,
+   "tStart": 1000,
+   "status": 200,
+   "tResp": 7532,
+   "spikeCache": null,
+   "tEnd": 7532,
+   "outcome": "finished",
+   "respBodyBytes": 210908,
+   "durMs": 6532,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 211280
+   }
+  },
+  {
+   "id": 3,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461425.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461425.5,
+   "tStart": 31581,
+   "status": 503,
+   "tResp": 44768,
+   "spikeCache": null,
+   "tEnd": 44816,
+   "outcome": "finished",
+   "respBodyBytes": 65,
+   "durMs": 13235,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 313
+   }
+  },
+  {
+   "id": 4,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461554.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461554.5,
+   "tStart": 65014,
+   "status": 503,
+   "tResp": 78216,
+   "spikeCache": null,
+   "tEnd": 78266,
+   "outcome": "finished",
+   "respBodyBytes": 65,
+   "durMs": 13252,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 313
+   }
+  },
+  {
+   "id": 5,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461686.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461686.5,
+   "tStart": 99143,
+   "status": 503,
+   "tResp": 112487,
+   "spikeCache": null,
+   "tEnd": 112538,
+   "outcome": "finished",
+   "respBodyBytes": 65,
+   "durMs": 13395,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 313
+   }
+  },
+  {
+   "id": 6,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461814.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461814.5,
+   "tStart": 132345,
+   "status": 503,
+   "tResp": 132351,
+   "spikeCache": null,
+   "tEnd": 132402,
+   "outcome": "finished",
+   "respBodyBytes": 77,
+   "durMs": 57,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 341
+   }
+  },
+  {
+   "id": 7,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461937.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461937.5,
+   "tStart": 164514,
+   "durMs": null,
+   "cdp": {}
+  }
+ ],
+ "timings": [
+  {
+   "t": 997,
+   "phase": "fetch",
+   "headersAfterMs": 529,
+   "bodyReadMs": 9.5,
+   "jsonParseMs": 1,
+   "chars": 624375,
+   "requestJd": 2461308.6247619493
+  },
+  {
+   "t": 1000,
+   "phase": "apply",
+   "aiaKickMs": 0.6,
+   "normalizeMs": 0.7,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.8,
+   "totalMs": 3.1,
+   "features": 160,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.565818441763465,
+   "epochJd": 2461308.5,
+   "simJd": 2461308.6913139494,
+   "assim": {
+    "conf": 0.34480154655448714,
+    "blendW": 0.37068054129407046,
+    "observed": 0.24147102534568227,
+    "synthetic": 0.7568649352761629,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2026-09-25T00:00:00Z",
+    "aiaLatest": "2026-09-25T00:00:10Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "samples": [
+  {
+   "t": 12742,
+   "date": "2026-11-06",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305110609,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305140609
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 43252,
+   "date": "2027-03-03",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305141720,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305140609
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 68980,
+   "date": "2027-06-14",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305171720
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 74161,
+   "date": "2027-06-30",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305171720
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 79174,
+   "date": "2027-07-20",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 84189,
+   "date": "2027-08-09",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 89205,
+   "date": "2027-08-29",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 94222,
+   "date": "2027-09-14",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305175153,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 99235,
+   "date": "2027-10-08",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 104248,
+   "date": "2027-10-28",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 109578,
+   "date": "2027-11-12",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305205153
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 114591,
+   "date": "2027-11-30",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305239283
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 119603,
+   "date": "2027-12-20",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305239283
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 124615,
+   "date": "2028-01-09",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305239283
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 129626,
+   "date": "2028-01-29",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305209283,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305239283
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 134640,
+   "date": "2028-02-18",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305242482,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305272482
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 139924,
+   "date": "2028-03-04",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305242482,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305272482
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 144939,
+   "date": "2028-03-20",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305242482,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305272482
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  },
+  {
+   "t": 149953,
+   "date": "2028-04-18",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 1790305111139,
+     "lastRefreshMs": 1790305242482,
+     "lastLatencyMs": 529,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790305272482
+    },
+    "hasState": true,
+    "epochJd": 2461308.5,
+    "activity": 0.565818441763465,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192406756",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2315:tube-0491:0.90|tube-0459:0.78|tube-0127:0.82|tube-0359:0.78|tube-0415:0.76|tube-0435:0.71|tube-0035:0.74|tube-0523:0.84|tube-0139:0.68|tube-0147:0.67|tube-0403:0.70|tube-0355:0.71"
+   }
+  }
+ ],
+ "shots": [
+  {
+   "t": 12742,
+   "label": "firstSuccessPlus4s",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step4twoA_firstSuccessPlus4s.png"
+  },
+  {
+   "t": 43252,
+   "label": "t12",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step4twoA_t12.png"
+  },
+  {
+   "t": 68980,
+   "label": "t16",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step4twoA_t16.png"
+  },
+  {
+   "t": 175966,
+   "label": "end",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step4twoA_end.png"
+  }
+ ],
+ "logs": [
+  {
+   "t": 34,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 45,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 997,
+   "type": "log",
+   "text": "[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756"
+  },
+  {
+   "t": 7604,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=5997.8 exceeded budgetMs=2000"
+  },
+  {
+   "t": 7642,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=5997.8ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 7643,
+   "type": "log",
+   "text": "[spike-aia] loaded {\"ms\":5448.2,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192406756\"}"
+  },
+  {
+   "t": 44768,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 78216,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 112487,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 132351,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

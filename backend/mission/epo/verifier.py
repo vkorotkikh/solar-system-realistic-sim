@@ -27,6 +27,51 @@ class DemoVerifier:
             return False, ["invalid_result"], {"mission_score": None}
 
         status = str(result.get("status", ""))
+        if episode.expected_outcome == "request_rejected":
+            error = result.get("error")
+            context = error.get("context") if isinstance(error, dict) else None
+            matches = (status == "request_rejected"
+                and episode.expected_rejection_code is not None
+                and episode.expected_rejection_body_id is not None
+                and isinstance(error, dict) and isinstance(context, dict)
+                and error.get("code") == episode.expected_rejection_code
+                and context.get("bodyId") == episode.expected_rejection_body_id)
+            return matches, ([] if matches else ["request_rejection_mismatch"]), {"mission_score": None}
+        if episode.expected_outcome == "vehicle_infeasible":
+            # This certifies only the evaluated candidates, never the unsearched
+            # trajectory space. Missing routes or exhausted search are unknown.
+            if status != "no_verified_candidate" or result.get("recommendation") is not None:
+                return False, [f"expected_vehicle_infeasible_got_{status or 'unknown'}"], {"mission_score": None}
+            candidates = result.get("alternatives")
+            if not isinstance(candidates, list):
+                return False, ["invalid_candidate_evidence"], {"mission_score": None}
+            evidence = bool(candidates)
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    return False, ["invalid_candidate_evidence"], {"mission_score": None}
+                verification = candidate.get("verification")
+                logistics = candidate.get("logistics")
+                if not isinstance(verification, dict) or not isinstance(logistics, dict):
+                    return False, ["invalid_candidate_evidence"], {"mission_score": None}
+                unmet = self._coerce_float(logistics.get("totalUnmetDeltaV_km_s"))
+                burns = logistics.get("burns") or []
+                evidence = evidence and (
+                    verification.get("valid") is False
+                    and isinstance(verification.get("reasons"), list)
+                    and "vehicle_budget_not_feasible" in verification["reasons"]
+                    and logistics.get("feasible") is False
+                    and unmet is not None and unmet > 0
+                    and logistics.get("returnCargoKg") == 0
+                    and isinstance(burns, list) and bool(burns)
+                    and all(isinstance(burn, dict) and burn.get("cargoAddedKg") == 0 for burn in burns))
+            if not evidence:
+                reasons.append("missing_empty_vehicle_infeasibility_evidence")
+            if not self._completed_search_evidence(result, candidates):
+                reasons.append("incomplete_search_evidence")
+            return not reasons, reasons, {"mission_score": None}
+        if episode.expected_outcome != "verified":
+            return False, ["invalid_expected_outcome"], {"mission_score": None}
+
         recommendation = result.get("recommendation") if isinstance(result.get("recommendation"), dict) else None
         embedded = recommendation.get("verification") if recommendation is not None else None
         verification = embedded if isinstance(embedded, dict) else None
@@ -69,6 +114,43 @@ class DemoVerifier:
             "failure_probability": risk_probability,
         }
         return (len(reasons) == 0, reasons, metrics)
+
+    @staticmethod
+    def _completed_trajectory_search(search: Any) -> bool:
+        return (isinstance(search, dict)
+            and search.get("configuredFrontierCompleted") is True
+            and search.get("truncated") is False
+            and search.get("terminationReason") == "configured_frontier_completed"
+            and search.get("budgetExhausted") is not True
+            and not search.get("stagesTruncated"))
+
+    @classmethod
+    def _completed_search_evidence(cls, result: dict[str, Any], candidates: list[dict]) -> bool:
+        mission = result.get("missionSearch")
+        if not (isinstance(mission, dict)
+                and mission.get("configuredCandidatesCompleted") is True
+                and mission.get("truncated") is False
+                and mission.get("terminationReason") == "configured_candidates_completed"
+                and type(mission.get("candidatesEvaluated")) is int
+                and mission["candidatesEvaluated"] == len(candidates) > 0):
+            return False
+        for candidate in candidates:
+            searches = candidate.get("trajectorySearch")
+            if not (isinstance(searches, dict)
+                    and cls._completed_trajectory_search(searches.get("outbound"))
+                    and cls._completed_trajectory_search(searches.get("return"))):
+                return False
+        # Some planner statuses also carry an aggregate root search. Supplied
+        # aggregate evidence cannot contradict the candidate or mission evidence.
+        if "trajectorySearch" in result:
+            searches = result["trajectorySearch"]
+            if not (isinstance(searches, dict)
+                    and cls._completed_trajectory_search(searches.get("outbound"))
+                    and isinstance(searches.get("returns"), list) and searches["returns"]
+                    and all(isinstance(item, dict) and cls._completed_trajectory_search(item.get("search"))
+                            for item in searches["returns"])):
+                return False
+        return True
 
     @staticmethod
     def _coerce_float(value: Any) -> float | None:

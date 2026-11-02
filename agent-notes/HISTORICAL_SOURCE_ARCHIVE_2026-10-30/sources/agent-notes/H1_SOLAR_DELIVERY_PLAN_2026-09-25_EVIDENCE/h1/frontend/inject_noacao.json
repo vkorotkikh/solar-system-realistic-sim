@@ -1,0 +1,228 @@
+{
+ "scen": "noacao",
+ "reqs": [
+  {
+   "kind": "physics",
+   "t": 1790,
+   "jd": "2461308.60084421",
+   "q": "?jd=2461308.60084421&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 8011,
+   "jd": "2461333.53310821",
+   "q": "?jd=2461333.53310821&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "aia",
+   "t": 8034,
+   "q": "?channel=aia_193&image_id=FAKE193&v=FAKE193",
+   "crossOriginModeHeader": null
+  },
+  {
+   "kind": "physics",
+   "t": 9258,
+   "jd": "2461338.46630821",
+   "q": "?jd=2461338.46630821&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 10588,
+   "jd": "2461343.79950821",
+   "q": "?jd=2461343.79950821&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 13255,
+   "jd": "2461354.46550821",
+   "q": "?jd=2461354.46550821&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  },
+  {
+   "kind": "physics",
+   "t": 14664,
+   "jd": "2461360.13230821",
+   "q": "?jd=2461360.13230821&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "served": 200
+  }
+ ],
+ "snaps": {
+  "end": {
+   "t": 16005,
+   "scenes": 1,
+   "coronalLoops": {
+    "visible": true,
+    "children": 144,
+    "visibleChildren": 144,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 1.784
+   },
+   "parkerSpiral": {
+    "visible": true,
+    "children": 6,
+    "visibleChildren": 6,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 242.241
+   },
+   "magneticField": {
+    "visible": false,
+    "children": 120,
+    "visibleChildren": 120,
+    "dataDriven": true,
+    "source": "synthetic",
+    "maxRadiusAU_local": 0.946
+   },
+   "flares": {
+    "visible": true,
+    "children": 0,
+    "visibleChildren": 0,
+    "dataDriven": null,
+    "source": null,
+    "maxRadiusAU_local": 0
+   },
+   "surface": {
+    "observationMapIsBaseMap": false,
+    "observationMapImage": "http://sim.test:8042/solar/realtime/aia-tile?channel=aia_193&image_id=FAKE193&v=FAKE193",
+    "observationBlend": 0.85,
+    "observationEmission": 0.978,
+    "activity": 0.754,
+    "sunspotSeeds": [
+     [
+      2.544,
+      -0.43,
+      0.075,
+      0.975
+     ],
+     [
+      -0.336,
+      -0.743,
+      0.086,
+      0.957
+     ],
+     [
+      1.077,
+      1.124,
+      0.073,
+      0.948
+     ],
+     [
+      -2.846,
+      0.451,
+      0.103,
+      0.941
+     ],
+     [
+      -0.333,
+      -0.465,
+      0.082,
+      0.93
+     ],
+     [
+      -2.492,
+      1.245,
+      0.07,
+      0.928
+     ],
+     [
+      0.408,
+      -0.337,
+      0.086,
+      0.926
+     ],
+     [
+      2.476,
+      0.855,
+      0.091,
+      0.919
+     ]
+    ],
+    "flarePoints": [
+     0,
+     0,
+     0
+    ]
+   },
+   "corona": {
+    "coronalHoleCount": 5,
+    "channelMode": 3,
+    "coronaColor": [
+     1,
+     0.72,
+     0.3
+    ],
+    "obsBlend": 0.85
+   },
+   "transitionRegion": {
+    "channelMode": 3,
+    "trOpacity": 0.18
+   },
+   "sunMeshScale": 0.3755,
+   "aiaSelect": "auto",
+   "magToggle": false,
+   "date": "2026-11-15",
+   "statusBar": [
+    "Focused · Sun",
+    "Bodies · 55,010",
+    "Range · 2.60 AU",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "solarText": [
+    "Live simulation",
+    "Asteroids: procedural fallback (catalog rejected: sha256-unavailable)"
+   ],
+   "longtasks": [
+    {
+     "at": 71,
+     "dur": 1619
+    },
+    {
+     "at": 3806,
+     "dur": 110
+    }
+   ],
+   "json": [
+    {
+     "at": 7943,
+     "bodyReadAndParseMs": 4.1
+    },
+    {
+     "at": 9190,
+     "bodyReadAndParseMs": 3.3
+    },
+    {
+     "at": 10521,
+     "bodyReadAndParseMs": 3.4
+    },
+    {
+     "at": 13194,
+     "bodyReadAndParseMs": 2.9
+    },
+    {
+     "at": 14600,
+     "bodyReadAndParseMs": 3.9
+    }
+   ]
+  }
+ },
+ "logs": [
+  {
+   "t": 121,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 3999,
+   "type": "warning",
+   "text": "[phase-1] Acceptance gates failed: [sha256-unavailable] Unable to compute SHA-256 for the Phase-1 catalog: Cannot read properties of undefined (reading 'digest')"
+  }
+ ],
+ "physicsRequestCount": 6,
+ "aiaRequestCount": 1,
+ "otherBackend": []
+}

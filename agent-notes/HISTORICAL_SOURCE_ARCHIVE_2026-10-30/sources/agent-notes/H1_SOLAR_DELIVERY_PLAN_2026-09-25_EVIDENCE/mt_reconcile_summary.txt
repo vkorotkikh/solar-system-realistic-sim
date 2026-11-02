@@ -1,0 +1,24 @@
+# Reconcile dry run (git merge-tree, trivial mode)
+# Command: git merge-tree ec7ad33 13ca9ec d834dbe   (base = merge-base of sun-focus and main)
+# Regenerated 2026-09-25T16:01:11Z; full output is ~5 MB and reproducible with the command above.
+
+## Paths changed on BOTH sides (need semantic resolution):
+backend/server.py
+backend/sim/pfss_magnetogram.py
+scripts/verify-moon-frames.mjs
+src/sim/catalog.test.ts
+src/sim/catalog.ts
+src/sim/moonFrameCheck.ts
+src/sim/moonFrames.horizons.test.ts
+src/sim/orbitMath.ts
+
+## Chip branch files (fix/solar-data-status-notice) vs those paths:
+index.html
+src/frontend/features/solar/solarDataStatus.test.ts
+src/frontend/features/solar/solarDataStatus.ts
+src/frontend/features/solar/solarObservationTexture.ts
+src/frontend/features/solar/solarPhysicsClient.test.ts
+src/frontend/features/solar/solarPhysicsClient.ts
+src/main.ts
+src/style.css
+src/sunController.ts

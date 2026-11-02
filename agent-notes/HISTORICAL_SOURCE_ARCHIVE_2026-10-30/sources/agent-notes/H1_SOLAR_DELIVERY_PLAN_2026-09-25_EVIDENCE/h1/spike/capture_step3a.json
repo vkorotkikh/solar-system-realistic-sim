@@ -1,0 +1,999 @@
+{
+ "tag": "step3a",
+ "url": "http://127.0.0.1:5183/?backendPort=8073",
+ "durS": 180,
+ "tLoad": 6009,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_503": 1,
+   "http_200": 6
+  },
+  "cache": {
+   "MISS": 6
+  },
+  "hitDurMs": [],
+  "missDurMs": [
+   9343,
+   10906,
+   11042,
+   11514,
+   11700,
+   11863
+  ],
+  "okDurMs": {
+   "n": 6,
+   "min": 9343,
+   "p50": 11514,
+   "p95": 11863,
+   "max": 11863
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "cache": {},
+  "hitDurMs": [],
+  "missDurMs": [],
+  "okDurMs": {
+   "n": 1,
+   "min": 1811,
+   "p50": 1811,
+   "p95": 1811,
+   "max": 1811
+  },
+  "inFlightAtEnd": 0
+ },
+ "requests": [
+  {
+   "id": 1,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461308.5,
+   "tStart": 2749,
+   "status": 503,
+   "tResp": 14267,
+   "spikeCache": null,
+   "tEnd": 14317,
+   "outcome": "finished",
+   "respBodyBytes": 65,
+   "durMs": 11568,
+   "cdp": {
+    "status": 503,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 313
+   }
+  },
+  {
+   "id": 2,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461437.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461437.5,
+   "tStart": 36802,
+   "status": 200,
+   "tResp": 48661,
+   "spikeCache": "MISS",
+   "tEnd": 48665,
+   "outcome": "finished",
+   "respBodyBytes": 682774,
+   "durMs": 11863,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 683030
+   }
+  },
+  {
+   "id": 3,
+   "kind": "aia",
+   "url": "http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802",
+   "jd": null,
+   "tStart": 48673,
+   "status": 200,
+   "tResp": 50483,
+   "spikeCache": null,
+   "tEnd": 50484,
+   "outcome": "finished",
+   "respBodyBytes": 211552,
+   "durMs": 1811,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 211924
+   }
+  },
+  {
+   "id": 4,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461562.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461562.5,
+   "tStart": 68094,
+   "status": 200,
+   "tResp": 79132,
+   "spikeCache": "MISS",
+   "tEnd": 79136,
+   "outcome": "finished",
+   "respBodyBytes": 566258,
+   "durMs": 11042,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 566514
+   }
+  },
+  {
+   "id": 5,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461677.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461677.5,
+   "tStart": 98454,
+   "status": 200,
+   "tResp": 109965,
+   "spikeCache": "MISS",
+   "tEnd": 109968,
+   "outcome": "finished",
+   "respBodyBytes": 553956,
+   "durMs": 11514,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 554212
+   }
+  },
+  {
+   "id": 6,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461791.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461791.5,
+   "tStart": 128890,
+   "status": 200,
+   "tResp": 139792,
+   "spikeCache": "MISS",
+   "tEnd": 139796,
+   "outcome": "finished",
+   "respBodyBytes": 646965,
+   "durMs": 10906,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 647221
+   }
+  },
+  {
+   "id": 7,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2461907.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2461907.5,
+   "tStart": 159949,
+   "status": 200,
+   "tResp": 169289,
+   "spikeCache": "MISS",
+   "tEnd": 169292,
+   "outcome": "finished",
+   "respBodyBytes": 662171,
+   "durMs": 9343,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 662427
+   }
+  },
+  {
+   "id": 8,
+   "kind": "physics",
+   "url": "http://127.0.0.1:8073/solar/physics?jd=2462026.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "jd": 2462026.5,
+   "tStart": 190861,
+   "status": 200,
+   "tResp": 202557,
+   "spikeCache": "MISS",
+   "tEnd": 202561,
+   "outcome": "finished",
+   "respBodyBytes": 597183,
+   "durMs": 11700,
+   "cdp": {
+    "status": 200,
+    "acao": "http://127.0.0.1:5183",
+    "encodedBytes": 597439
+   }
+  }
+ ],
+ "timings": [
+  {
+   "t": 48667,
+   "phase": "fetch",
+   "headersAfterMs": 11868,
+   "bodyReadMs": 4.3,
+   "jsonParseMs": 1.8,
+   "chars": 682774,
+   "requestJd": 2461437.877457863
+  },
+  {
+   "t": 48673,
+   "phase": "apply",
+   "aiaKickMs": 0.9,
+   "normalizeMs": 1.9,
+   "blendMs": 0,
+   "rebuildFieldMs": 3,
+   "totalMs": 5.8,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.4824153495431597,
+   "epochJd": 2461437.5,
+   "simJd": 2461478.1426578634,
+   "assim": {
+    "conf": 0.4585046890625,
+    "blendW": 0.410476641171875,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.6467356174433527,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-02-01T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 79137,
+   "phase": "fetch",
+   "headersAfterMs": 11047,
+   "bodyReadMs": 3.6,
+   "jsonParseMs": 1.5,
+   "chars": 566258,
+   "requestJd": 2461563.0726578636
+  },
+  {
+   "t": 79141,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.7,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.7,
+   "totalMs": 3.4,
+   "features": 138,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5010951165767868,
+   "epochJd": 2461562.5,
+   "simJd": 2461599.270657863,
+   "assim": {
+    "conf": 0.45809618549679487,
+    "blendW": 0.4103336649238782,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.6783170903556205,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-06-06T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 109970,
+   "phase": "fetch",
+   "headersAfterMs": 11518,
+   "bodyReadMs": 3.3,
+   "jsonParseMs": 0.9,
+   "chars": 553956,
+   "requestJd": 2461677.534257863
+  },
+  {
+   "t": 109971,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.1,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.8,
+   "totalMs": 1.9,
+   "features": 128,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.4348562001750727,
+   "epochJd": 2461677.5,
+   "simJd": 2461708.4666578635,
+   "assim": {
+    "conf": 0.45771908588408117,
+    "blendW": 0.41020168005942836,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.5659127004856731,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2027-09-29T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 139797,
+   "phase": "fetch",
+   "headersAfterMs": 10909,
+   "bodyReadMs": 3.8,
+   "jsonParseMs": 1.3,
+   "chars": 646965,
+   "requestJd": 2461792.1298578633
+  },
+  {
+   "t": 139799,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.8,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.2,
+   "totalMs": 2,
+   "features": 156,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.37628344431239436,
+   "epochJd": 2461791.5,
+   "simJd": 2461832.661857863,
+   "assim": {
+    "conf": 0.4573039467681624,
+    "blendW": 0.4100563813688568,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.46654866652901056,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2028-01-21T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 169293,
+   "phase": "fetch",
+   "headersAfterMs": 9347,
+   "bodyReadMs": 3.9,
+   "jsonParseMs": 0.9,
+   "chars": 662171,
+   "requestJd": 2461908.1918578628
+  },
+  {
+   "t": 169294,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 0.4,
+   "blendMs": 0,
+   "rebuildFieldMs": 0.9,
+   "totalMs": 1.4,
+   "features": 169,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.3621405442664977,
+   "epochJd": 2461907.5,
+   "simJd": 2461941.790257863,
+   "assim": {
+    "conf": 0.45689595763888885,
+    "blendW": 0.4099135851736111,
+    "observed": 0.24641985908235794,
+    "synthetic": 0.442527890510579,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2028-05-16T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:18:22Z",
+    "preferred": "aia_304"
+   }
+  },
+  {
+   "t": 202563,
+   "phase": "fetch",
+   "headersAfterMs": 11704,
+   "bodyReadMs": 4.7,
+   "jsonParseMs": 1.5,
+   "chars": 597183,
+   "requestJd": 2462026.6534578637
+  },
+  {
+   "t": 202564,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 0.2,
+   "blendMs": 0.1,
+   "rebuildFieldMs": 0.7,
+   "totalMs": 1,
+   "features": 137,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.36660618704700687,
+   "epochJd": 2462026.5,
+   "simJd": 2462061.252257864,
+   "assim": {
+    "conf": 0.46721481514423074,
+    "blendW": 0.41352518530048077,
+    "observed": 0.24662941988629156,
+    "synthetic": 0.45120217246422706,
+    "silsoDate": "2026-08-31",
+    "aiaRequest": "2028-09-12T00:00:00Z",
+    "aiaLatest": "2026-09-25T02:31:47Z",
+    "preferred": "aia_304"
+   }
+  }
+ ],
+ "samples": [
+  {
+   "t": 6009,
+   "date": "2026-10-08",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304329946,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 11180,
+   "date": "2026-10-25",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304329946,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 0
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 42595,
+   "date": "2027-02-24",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": "Solar physics request failed (503)",
+     "lastSuccessMs": 0,
+     "lastRefreshMs": 1790304364485,
+     "lastLatencyMs": 0,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304359946
+    },
+    "hasState": false,
+    "epochJd": null,
+    "activity": null,
+    "obsTexture": false,
+    "obsChannel": null,
+    "obsImageId": null,
+    "fieldChildren": 52,
+    "fieldVisible": false,
+    "fieldSig": "6:analytical:synthetic"
+   }
+  },
+  {
+   "t": 88222,
+   "date": "2027-08-18",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304406824,
+     "lastRefreshMs": 1790304395777,
+     "lastLatencyMs": 11047,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304425777
+    },
+    "hasState": true,
+    "epochJd": 2461562.5,
+    "activity": 0.5010951165767868,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2325:tube-0131:0.89|tube-0435:0.82|tube-0147:0.72|tube-0195:0.83|tube-0067:0.83|tube-0079:0.68|tube-0111:0.65|tube-0187:0.65|tube-0475:0.63|tube-0007:0.71|tube-0459:0.62|tube-0128:0.69"
+   }
+  },
+  {
+   "t": 93232,
+   "date": "2027-09-04",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304406824,
+     "lastRefreshMs": 1790304395777,
+     "lastLatencyMs": 11047,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304425777
+    },
+    "hasState": true,
+    "epochJd": 2461562.5,
+    "activity": 0.5010951165767868,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2325:tube-0131:0.89|tube-0435:0.82|tube-0147:0.72|tube-0195:0.83|tube-0067:0.83|tube-0079:0.68|tube-0111:0.65|tube-0187:0.65|tube-0475:0.63|tube-0007:0.71|tube-0459:0.62|tube-0128:0.69"
+   }
+  },
+  {
+   "t": 98244,
+   "date": "2027-09-24",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304406824,
+     "lastRefreshMs": 1790304395777,
+     "lastLatencyMs": 11047,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304425777
+    },
+    "hasState": true,
+    "epochJd": 2461562.5,
+    "activity": 0.5010951165767868,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2325:tube-0131:0.89|tube-0435:0.82|tube-0147:0.72|tube-0195:0.83|tube-0067:0.83|tube-0079:0.68|tube-0111:0.65|tube-0187:0.65|tube-0475:0.63|tube-0007:0.71|tube-0459:0.62|tube-0128:0.69"
+   }
+  },
+  {
+   "t": 104053,
+   "date": "2027-10-11",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304406824,
+     "lastRefreshMs": 1790304426138,
+     "lastLatencyMs": 11047,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304425777
+    },
+    "hasState": true,
+    "epochJd": 2461562.5,
+    "activity": 0.5010951165767868,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2325:tube-0131:0.89|tube-0435:0.82|tube-0147:0.72|tube-0195:0.83|tube-0067:0.83|tube-0079:0.68|tube-0111:0.65|tube-0187:0.65|tube-0475:0.63|tube-0007:0.71|tube-0459:0.62|tube-0128:0.69"
+   }
+  },
+  {
+   "t": 109065,
+   "date": "2027-10-29",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304406824,
+     "lastRefreshMs": 1790304426138,
+     "lastLatencyMs": 11047,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304425777
+    },
+    "hasState": true,
+    "epochJd": 2461562.5,
+    "activity": 0.5010951165767868,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2325:tube-0131:0.89|tube-0435:0.82|tube-0147:0.72|tube-0195:0.83|tube-0067:0.83|tube-0079:0.68|tube-0111:0.65|tube-0187:0.65|tube-0475:0.63|tube-0007:0.71|tube-0459:0.62|tube-0128:0.69"
+   }
+  },
+  {
+   "t": 114075,
+   "date": "2027-11-19",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304426138,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 119083,
+   "date": "2027-12-05",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304426138,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 124092,
+   "date": "2027-12-31",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304426138,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 129103,
+   "date": "2028-01-21",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 134114,
+   "date": "2028-02-08",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 139128,
+   "date": "2028-03-02",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304437656,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 11518,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304456138
+    },
+    "hasState": true,
+    "epochJd": 2461677.5,
+    "activity": 0.4348562001750727,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2329:tube-0235:0.83|tube-0355:0.89|tube-0179:0.66|tube-0187:0.66|tube-0123:0.65|tube-0475:0.65|tube-0499:0.64|tube-0147:0.64|tube-0131:0.64|tube-0459:0.62|tube-0067:0.70|tube-0463:0.70"
+   }
+  },
+  {
+   "t": 144140,
+   "date": "2028-03-20",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 149151,
+   "date": "2028-04-09",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 154202,
+   "date": "2028-04-22",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 159227,
+   "date": "2028-05-11",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304456574,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 164244,
+   "date": "2028-06-02",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304487632,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 169256,
+   "date": "2028-06-19",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304467483,
+     "lastRefreshMs": 1790304487632,
+     "lastLatencyMs": 10909,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304486574
+    },
+    "hasState": true,
+    "epochJd": 2461791.5,
+    "activity": 0.37628344431239436,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "5:pfss:synthetic:2333:tube-0159:0.97|tube-0139:0.78|tube-0431:0.80|tube-0295:0.72|tube-0195:0.73|tube-0499:0.59|tube-0419:0.58|tube-0131:0.57|tube-0451:0.57|tube-0111:0.56|tube-0475:0.56|tube-0387:0.78"
+   }
+  },
+  {
+   "t": 174267,
+   "date": "2028-07-10",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304496979,
+     "lastRefreshMs": 1790304487632,
+     "lastLatencyMs": 9347,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304517632
+    },
+    "hasState": true,
+    "epochJd": 2461907.5,
+    "activity": 0.3621405442664977,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "4:pfss:synthetic:2337:tube-0459:0.94|tube-0151:0.84|tube-0475:0.63|tube-0111:0.60|tube-0131:0.59|tube-0355:0.70|tube-0531:0.66|tube-0159:0.59|tube-0179:0.57|tube-0474:0.64|tube-0324:0.63|tube-0523:0.71"
+   }
+  },
+  {
+   "t": 179278,
+   "date": "2028-07-31",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790304496979,
+     "lastRefreshMs": 1790304487632,
+     "lastLatencyMs": 9347,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790304517632
+    },
+    "hasState": true,
+    "epochJd": 2461907.5,
+    "activity": 0.3621405442664977,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408802",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "4:pfss:synthetic:2337:tube-0459:0.94|tube-0151:0.84|tube-0475:0.63|tube-0111:0.60|tube-0131:0.59|tube-0355:0.70|tube-0531:0.66|tube-0159:0.59|tube-0179:0.57|tube-0474:0.64|tube-0324:0.63|tube-0523:0.71"
+   }
+  }
+ ],
+ "shots": [
+  {
+   "t": 42595,
+   "label": "t12",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3a_t12.png"
+  },
+  {
+   "t": 64824,
+   "label": "t16",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3a_t16.png"
+  },
+  {
+   "t": 88222,
+   "label": "firstSuccessPlus4s",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3a_firstSuccessPlus4s.png"
+  },
+  {
+   "t": 202923,
+   "label": "end",
+   "path": "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/spike/shots/step3a_end.png"
+  }
+ ],
+ "logs": [
+  {
+   "t": 39,
+   "type": "debug",
+   "text": "[vite] connecting..."
+  },
+  {
+   "t": 50,
+   "type": "debug",
+   "text": "[vite] connected."
+  },
+  {
+   "t": 6116,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=3915.2 exceeded budgetMs=2000"
+  },
+  {
+   "t": 6153,
+   "type": "info",
+   "text": "[phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=3915.2ms (budget 2000ms), taxonomyC=66362, taxonomyS=14009, taxonomyM=19629, target=50,000)."
+  },
+  {
+   "t": 14267,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 48668,
+   "type": "log",
+   "text": "[spike-aia] request http://127.0.0.1:8073/solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802"
+  },
+  {
+   "t": 50486,
+   "type": "log",
+   "text": "[spike-aia] loaded {\"ms\":1817,\"w\":512,\"h\":512,\"channel\":\"aia_304\",\"imageId\":\"192408802\"}"
+  }
+ ]
+}

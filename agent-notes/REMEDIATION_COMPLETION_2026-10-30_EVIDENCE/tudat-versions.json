@@ -1,0 +1,8 @@
+{
+  "python": "3.12.15 (main, Oct  6 2026, 23:50:18) [GCC 15.3.0]",
+  "tudatpy": "1.0.0",
+  "tudatpyBuild": "py312h3558349_3",
+  "tudatpyChannel": "https://conda.anaconda.org/tudat-team/linux-64",
+  "numpy": "1.26.4",
+  "scipy": "1.17.1"
+}

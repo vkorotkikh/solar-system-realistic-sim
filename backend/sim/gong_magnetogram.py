@@ -750,9 +750,10 @@ def _balance_flux(
     signed = math.fsum(float(value) for value in flat) * cell_area
     unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
     limit = max(1e-12 * unsigned, 1e-12 * 4.0 * math.pi)
-    if not math.isfinite(unsigned) or unsigned <= 0.0:
-        raise _reject("flux_unbalanced", "map has no finite unsigned magnetic flux")
-    imbalance_fraction = signed / unsigned
+    if not math.isfinite(unsigned):
+        raise _reject("flux_unbalanced", "map has non-finite unsigned magnetic flux")
+    # A zero field already satisfied the legacy roundoff-only contract.
+    imbalance_fraction = signed / unsigned if unsigned > 0.0 else 0.0
     if abs(signed) <= limit:
         mean = signed / (4.0 * math.pi)
         balanced = np.asarray(field_gauss, dtype=np.float64) - mean
