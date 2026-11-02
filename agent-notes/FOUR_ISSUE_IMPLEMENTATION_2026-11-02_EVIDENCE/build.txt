@@ -1,0 +1,24 @@
+
+> solar-system-realistic-sim@0.0.0 prebuild
+> node scripts/prepare-distribution.mjs
+
+Verified 8 curated maps, 426 public files and 438 data inputs; packaged 6 notices. 43 product rights reviews remain (not release clearance).
+
+> solar-system-realistic-sim@0.0.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 81 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                         21.26 kB │ gzip:   4.82 kB
+dist/assets/modelWorker-B4I096xc.js     30.43 kB
+dist/assets/index-D5XajFAJ.css          26.84 kB │ gzip:   5.97 kB
+dist/assets/index-C_rkrS6O.js        1,003.95 kB │ gzip: 262.11 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.80s

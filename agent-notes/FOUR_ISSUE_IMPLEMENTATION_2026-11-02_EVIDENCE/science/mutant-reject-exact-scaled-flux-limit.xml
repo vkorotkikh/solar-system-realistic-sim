@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.344" timestamp="2026-11-02T17:39:17.920050+00:00" hostname="Athena"><testcase classname="backend.tests.test_solar_observational_acceptance" name="test_scaled_monopole_policy_accepts_exact_limit" time="0.001"><failure message="AssertionError: SCN041-SCALED-FLUX-EXACT-LIMIT: flux_unbalanced: map monopole exceeds bounded polarity-scaling policy&#10;assert False">def test_scaled_monopole_policy_accepts_exact_limit() -&gt; None:
+        try:
+&gt;           balanced, flux = gong._balance_flux(
+                np.asarray([21.0, -19.0]),
+                trusted_correction=_trusted_correction(1.0),
+            )
+
+backend/tests/test_solar_observational_acceptance.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+field_gauss = array([ 21., -19.])
+trusted_correction = _TrustedFluxCorrection(provider='NASA/CCMC WSA_V6.2', product_sha256='5b8f1da9e8bcf057b1c86ecd80207166e3362e1ecb92db7a...daec232b5c98583d15a589130c3bc588201c25e980455db9aa8144efd', correction_method=2, pre_mean_g=1.0, post_mean_g=5.473e-05)
+
+    def _balance_flux(
+        field_gauss: np.ndarray,
+        *,
+        trusted_correction: _TrustedFluxCorrection | None = None,
+    ) -&gt; tuple[np.ndarray, FluxBalanceMetrics]:
+        flat = np.asarray(field_gauss, dtype=np.float64, order="C").ravel(order="C")
+        cell_area = 4.0 * math.pi / flat.size
+        signed = math.fsum(float(value) for value in flat) * cell_area
+        unsigned = math.fsum(abs(float(value)) for value in flat) * cell_area
+        limit = max(1e-12 * unsigned, 1e-12 * 4.0 * math.pi)
+        if not math.isfinite(unsigned):
+            raise _reject("flux_unbalanced", "map has non-finite unsigned magnetic flux")
+        # A zero field already satisfied the legacy roundoff-only contract.
+        imbalance_fraction = signed / unsigned if unsigned &gt; 0.0 else 0.0
+        if abs(signed) &lt;= limit:
+            mean = signed / (4.0 * math.pi)
+            balanced = np.asarray(field_gauss, dtype=np.float64) - mean
+            positive_scale = 1.0
+            negative_scale = 1.0
+            policy_version = FLUX_BALANCE_POLICY_VERSION
+            failure_detail = "roundoff removal did not satisfy balance policy"
+        else:
+            field = np.asarray(field_gauss, dtype=np.float64)
+            has_positive = bool(np.any(field &gt; 0.0))
+            has_negative = bool(np.any(field &lt; 0.0))
+            if (
+                not has_positive
+                or not has_negative
+                or not math.isfinite(imbalance_fraction)
+                or abs(imbalance_fraction) &gt;= SCALED_FLUX_IMBALANCE_LIMIT
+            ):
+&gt;               raise _reject(
+                    "flux_unbalanced",
+                    "map monopole exceeds bounded polarity-scaling policy",
+                )
+E               sim.gong_magnetogram.GongFitsError: flux_unbalanced: map monopole exceeds bounded polarity-scaling policy
+
+backend/sim/gong_magnetogram.py:774: GongFitsError
+
+During handling of the above exception, another exception occurred:
+
+    def test_scaled_monopole_policy_accepts_exact_limit() -&gt; None:
+        try:
+            balanced, flux = gong._balance_flux(
+                np.asarray([21.0, -19.0]),
+                trusted_correction=_trusted_correction(1.0),
+            )
+        except gong.GongFitsError as exc:
+&gt;           assert False, f"SCN041-SCALED-FLUX-EXACT-LIMIT: {exc}"
+E           AssertionError: SCN041-SCALED-FLUX-EXACT-LIMIT: flux_unbalanced: map monopole exceeds bounded polarity-scaling policy
+E           assert False
+
+backend/tests/test_solar_observational_acceptance.py:119: AssertionError</failure></testcase></testsuite></testsuites>

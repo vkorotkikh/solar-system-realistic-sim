@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-02",
+  "branch": "fix/scn-four-closure-20261102",
+  "baseMain": "4f97dce442cffb46fa9add8fb3a674534dd2333e",
+  "applicationSourceCommit": "359598a818ec45fa22e6d6a822d7aea0a5e0a0ec",
+  "scope": "Only four requested entries; the other 79 are not re-audited. Local implementation branch; not a deployed/main acceptance claim.",
+  "priorCanonicalCounts": {
+    "VERIFIED_SCOPED": 75,
+    "PARTIAL": 8
+  },
+  "selectedParentClosures": 0,
+  "issues": [
+    {
+      "id": "SCN-005",
+      "status": "PARTIAL",
+      "fixed": [
+        "Completed results are retained through cancellable child exit until the original deadline.",
+        "Immutable planet shader specialization reduces measured median GPU completion by 32.2% DEV and 34.3% PREVIEW."
+      ],
+      "remaining": [
+        "Universal usable-scene/compositor performance acceptance; measured GPU completion is still 5.1\u20135.9s on the tested host."
+      ],
+      "evidence": "../SCN005_CLOSURE_2026-11-02_EVIDENCE/README.md",
+      "commits": [
+        "9adf770",
+        "f72b7c0"
+      ]
+    },
+    {
+      "id": "SCN-030",
+      "status": "PARTIAL",
+      "fixed": [
+        "Scene-overlay contrast, gradient audit qualification, recovery and wrapped-status overlap.",
+        "Revision-bound manual-device evidence validator and operator checklist."
+      ],
+      "remaining": [
+        "18 required manual cases across real NVDA/Chrome, VoiceOver/Safari/macOS, OS text/native zoom and physical-touch lanes."
+      ],
+      "evidence": "../SCN030_CLOSURE_2026-11-02_EVIDENCE/README.md",
+      "commits": [
+        "359598a"
+      ]
+    },
+    {
+      "id": "SCN-035",
+      "status": "PARTIAL",
+      "fixed": [
+        "Complete 426-file public inventory plus 12 required local data inputs with exact hashes/product records.",
+        "Six packaged notices/registers; unknown/changed/omitted inputs rejected.",
+        "Stale current Deimos/SILSO decision wording superseded."
+      ],
+      "remaining": [
+        "43 product records require rights review; source-code permission and product-specific release decisions remain explicit.",
+        "Runtime export/source-history/backend-dependency release scopes are outside this static inventory."
+      ],
+      "evidence": "../SCN035_CLOSURE_2026-11-02_EVIDENCE/README.md",
+      "commits": [
+        "ded9392",
+        "49e70d7"
+      ]
+    },
+    {
+      "id": "SCN-041",
+      "status": "PARTIAL",
+      "fixed": [
+        "Independent sampling counterexample and corrected contributor-list provenance.",
+        "Pinned exact-time spacecraft/quality-aware external speed comparator and query-revision diagnostics."
+      ],
+      "remaining": [
+        "Actual-map degree 90 conditioning and feature acceptance.",
+        "Independent application speed and 1-AU propagation calibration with matched inputs/observations and preregistered budgets."
+      ],
+      "evidence": "../SCN041_CLOSURE_2026-11-02_EVIDENCE/README.md",
+      "commits": [
+        "4900520"
+      ]
+    }
+  ]
+}

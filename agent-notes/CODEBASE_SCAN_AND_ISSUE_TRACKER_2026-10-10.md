@@ -1,6 +1,8 @@
 # Codebase scan and issue / problem / bug tracker — 2026-10-10
 
-> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+> **2026-11-02 implementation follow-up:** [Four-issue implementation and remaining acceptance](FOUR_ISSUE_IMPLEMENTATION_2026-11-02.md) records fresh multi-agent repairs for SCN-005/030/035/041 on `fix/scn-four-closure-20261102`, based on main `4f97dce`. Solar appearance is preserved. The four parent entries remain partial; actual manual devices, product rights and scientific/performance acceptance are explicitly separated from repaired code defects.
+
+> **Last full 83-entry status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
 
 Consolidated **2026-10-17**. This is the maintained tracker: the canonical
 SCN-001–083 ledger and alias mappings are below, followed by the complete

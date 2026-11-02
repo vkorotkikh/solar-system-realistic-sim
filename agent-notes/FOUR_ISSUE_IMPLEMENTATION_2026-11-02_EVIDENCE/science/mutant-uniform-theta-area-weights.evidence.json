@@ -1,0 +1,42 @@
+{
+  "hunks": [
+    {
+      "executed_lines": [
+        68
+      ],
+      "lines": [
+        68
+      ],
+      "path": "backend/sim/magnetogram_grid.py"
+    }
+  ],
+  "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+  "reports": [
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "outcome": "passed",
+      "phase": "setup"
+    },
+    {
+      "exception_message": "\nNot equal to tolerance rtol=0, atol=1e-12\nR4-THETA-AREA-WEIGHTS\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 0.09313264\nMax relative difference among violations: 0.15585242\n ACTUAL: array(0.504437)\n DESIRED: array(0.597569)",
+      "exception_type": "builtins.AssertionError",
+      "is_assertion_error": true,
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "outcome": "failed",
+      "phase": "call"
+    },
+    {
+      "exception_message": null,
+      "exception_type": null,
+      "is_assertion_error": false,
+      "node": "backend/tests/test_pfss_decomposition.py::test_non_band_limited_fit_minimizes_correct_area_weighted_residual[equal_area_sine_latitude_grid]",
+      "outcome": "passed",
+      "phase": "teardown"
+    }
+  ],
+  "schema_version": 1,
+  "trace_intact": true
+}
