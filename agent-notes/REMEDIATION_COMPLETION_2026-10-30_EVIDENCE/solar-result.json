@@ -1,0 +1,340 @@
+{
+  "backendEnvironment": {
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "backend:backend/tests",
+    "TZ": "UTC",
+    "UV_NO_PROGRESS": "1"
+  },
+  "baselineOriginMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+  "boundedAcceptance": {
+    "acceptancePassed": true,
+    "actualMapDegreeAdmission": [
+      {
+        "admitted": false,
+        "degree": 90,
+        "error": "latitude design for m=0 has condition 5.3876e+09 above limit 1e+06"
+      },
+      {
+        "admitted": true,
+        "degree": 64
+      },
+      {
+        "admitted": true,
+        "degree": 30
+      },
+      {
+        "admitted": true,
+        "degree": 15
+      }
+    ],
+    "actualMapFeatureResults": [
+      {
+        "checks": {
+          "boundary_correlation": false,
+          "boundary_median_abs": true,
+          "log_expansion_correlation": false,
+          "log_expansion_median_abs": false,
+          "matched_feature_cells": false,
+          "provider_closed_recall": false,
+          "provider_open_recall": false,
+          "topology_accuracy": false
+        },
+        "degree": 64,
+        "featureBudgetPassed": false,
+        "matchedFeatureCells": 49,
+        "topologyAccuracy": 0.7017746913580247
+      },
+      {
+        "checks": {
+          "boundary_correlation": true,
+          "boundary_median_abs": true,
+          "log_expansion_correlation": true,
+          "log_expansion_median_abs": true,
+          "matched_feature_cells": false,
+          "provider_closed_recall": false,
+          "provider_open_recall": false,
+          "topology_accuracy": false
+        },
+        "degree": 30,
+        "featureBudgetPassed": false,
+        "matchedFeatureCells": 220,
+        "topologyAccuracy": 0.9533179012345679
+      },
+      {
+        "checks": {
+          "boundary_correlation": true,
+          "boundary_median_abs": false,
+          "log_expansion_correlation": false,
+          "log_expansion_median_abs": true,
+          "matched_feature_cells": false,
+          "provider_closed_recall": false,
+          "provider_open_recall": false,
+          "topology_accuracy": false
+        },
+        "degree": 15,
+        "featureBudgetPassed": false,
+        "matchedFeatureCells": 191,
+        "topologyAccuracy": 0.9359567901234568
+      }
+    ],
+    "coefficientFrame": {
+      "constant_monopole_normalized_rmse": 0.05189610458469901,
+      "correlation": 0.9999712887106362,
+      "degree": 15,
+      "frame_adapter": "absolute_carrington_to_provider_native_minus_long0_v1",
+      "max_abs_gauss": 0.05582740312250167,
+      "normalized_rmse": 0.007983229718697919,
+      "provider_correction": {
+        "derived_post_mean_g": 2.3686516006266995e-16,
+        "derived_pre_mean_g": 0.1971407661918085,
+        "identity_relation": "same_epoch_rotation_left_edge_not_same_product_identifier",
+        "method": 2,
+        "mpnew_g": 5.473e-05,
+        "mpold_g": 0.19715,
+        "post_mean_tolerance_g": 5.474e-05,
+        "pre_mean_tolerance_g": 1e-05,
+        "provider_input_map": "mrzql261012t1744c2316_079",
+        "retained_observation_product": "zqs"
+      },
+      "samples": 270,
+      "wrong_frame_correlation": 0.02829590680816537
+    },
+    "nativeProviderFeatureChecks": {
+      "boundary_correlation": true,
+      "boundary_median_abs": true,
+      "coefficient_correlation": true,
+      "coefficient_max_abs": true,
+      "coefficient_normalized_rmse": true,
+      "constant_monopole_negative_control": true,
+      "log_expansion_correlation": true,
+      "log_expansion_median_abs": true,
+      "matched_feature_cells": true,
+      "provider_closed_recall": true,
+      "provider_open_recall": true,
+      "topology_accuracy": true,
+      "wrong_frame_negative_control": true
+    },
+    "realMapApplicationDiagnostic": "backend/tests/fixtures/solar/observational_20261012/real_map_application_diagnostic.json",
+    "report": "backend/tests/fixtures/solar/observational_20261012/report.json",
+    "scope": "One retained real GONG epoch and matched WSA V6.2 provider feature planes; no independent speed output."
+  },
+  "changedFiles": [
+    "src/frontend/features/solar/sunVisuals.ts",
+    "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+    "backend/sim/gong_magnetogram.py",
+    "backend/tests/solar_observational_acceptance.py",
+    "backend/tests/test_solar_observational_acceptance.py",
+    "backend/tests/test_solar_observational_consumer.py",
+    "backend/tests/fixtures/solar/observational_20261012/manifest.json",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz.headers",
+    "backend/tests/fixtures/solar/observational_20261012/real_map_application_diagnostic.json",
+    "backend/tests/fixtures/solar/observational_20261012/report.json",
+    "backend/sim/pfss_magnetogram.py"
+  ],
+  "commands": [
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js test -- src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/eruption-red.log",
+      "phase": "RED, original factory",
+      "result": "8 eruption geometry assertions failed; the factory uploaded a copied positions array, leaving actual BufferGeometry stale"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js test -- src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/eruption-alpha-red.log",
+      "phase": "RED, after shared BufferGeometry storage repair",
+      "result": "2 failed, 14 passed; exact zero and negative infinity selected the wrong endpoint"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js test -- src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/eruption-final.log",
+      "phase": "final combined source",
+      "result": "16 passed"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js test -- src/frontend/features/solar",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/frontend-solar.log",
+      "result": "250 passed in 17 files"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-scn005-npm10-20261028-JG1enL/node_modules/npm/bin/npm-cli.js run typecheck:ratchet",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/typecheck-ratchet.log",
+      "result": "0/226 legacy diagnostics; no bucket exceeded baseline"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_solar_observational_acceptance.py::test_real_gong_ingestion_uses_bounded_disclosed_polarity_scaling --tb=short",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/gong-admission-red.log",
+      "phase": "RED",
+      "result": "1 failed: original parser raised flux_unbalanced: map monopole exceeds roundoff-only policy"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_solar_observational_acceptance.py -k 'not offline_manifest and not oracle and not derived_means' --tb=short",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/gong-guarded-first.log",
+      "phase": "reused branch compatibility check",
+      "result": "23 passed, 1 failed, 3 deselected; branch rejected legacy zero field. Corrected without weakening any residual-flux budget."
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_gong_fits.py backend/tests/test_gong_archive.py backend/tests/test_gong_wcs.py backend/tests/test_gong_encoding_roundtrip.py --tb=short",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/gong-regression.log",
+      "result": "182 passed"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_pfss*.py backend/tests/test_wsa*.py backend/tests/test_solar_frame_contract.py backend/tests/test_solar_reference*.py --tb=short",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/pfss-frame-regression.log",
+      "phase": "before parent applied the narrow PFSS provenance guard; numerical/frame production paths unchanged by that guard",
+      "result": "1703 passed"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q /tmp/solar-remediation-completion-20261030/solar/test_pfss_flux_parent_handoff.py --tb=short",
+      "exitCode": 1,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/pfss-parent-handoff-red.log",
+      "phase": "RED, original actual PFSS consumer",
+      "result": "1 failed, 18 passed; authentic retained map rejected as unsupported flux policy"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_solar_observational_consumer.py backend/tests/test_pfss_cache.py backend/tests/test_pfss_observed_route_policy.py backend/tests/test_gong_fits.py backend/tests/test_gong_archive.py backend/tests/test_gong_wcs.py backend/tests/test_gong_encoding_roundtrip.py --tb=short",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/combined-consumer-guards.log",
+      "phase": "actual combined source, after parent applied PFSS patch",
+      "result": "345 passed; includes authentic PFSS ingestion, 17 forged-metric cases, existing cache, forcing fail-closed and GONG guards"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt pytest -q backend/tests/test_solar_observational_acceptance.py backend/tests/test_solar_observational_consumer.py --tb=short",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/combined-observational-final.log",
+      "phase": "final actual combined source; includes six added nonfinite provenance controls",
+      "result": "52 passed"
+    },
+    {
+      "command": "uv run --python 3.12.13 --with-requirements ci/backend-test-requirements.txt python backend/tests/solar_observational_acceptance.py --output backend/tests/fixtures/solar/observational_20261012/report.json --real-map-diagnostic-output backend/tests/fixtures/solar/observational_20261012/real_map_application_diagnostic.json --require-acceptance",
+      "exitCode": 0,
+      "log": "/tmp/solar-remediation-completion-20261030/solar/observational-final-report.log",
+      "result": "Bounded degree-15 retained-map coefficient and provider-native degree-90 feature acceptance passes. Separate actual-map diagnostic retains degree-90 condition rejection and degree-64/30/15 feature failures."
+    },
+    {
+      "command": "git diff --check -- backend/sim/gong_magnetogram.py backend/sim/pfss_magnetogram.py src/frontend/features/solar/sunVisuals.ts src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+      "exitCode": 0,
+      "result": "clean"
+    }
+  ],
+  "domain": "solar",
+  "exactRemainingBoundaries": [
+    "Actual retained 180x360 map at degree 90 is rejected unchanged: latitude design for m=0 has condition 5.3876e+09 above limit 1e+06. No condition threshold or sampling/physical budget was relaxed.",
+    "Actual retained map at degrees 64, 30 and 15 fails the original provider-feature checks; topology accuracies are 0.7017746913580247, 0.9533179012345679 and 0.9359567901234568 versus 0.96. Native provider degree-90 coefficient acceptance is not real-map degree-90 acceptance.",
+    "Observed scene geometry remains UNRESOLVED_OBSERVED and rendering_eligible=false. No provider-to-scene adapter or observed frame calibration was added.",
+    "WSA remains wsa_inspired_v1 with calibration_status=unvalidated. The retained WSA provider file contains no independent speed plane; no application speed calibration is established.",
+    "No Schatten current-sheet/1-AU propagation, arrival-time, solar-cycle generalization, live-provider availability, or overlapping in-situ application validation is established. External NASA forecast/ACE work is not application calibration.",
+    "The public data_driven route remains disabled_unvalidated; bounded offline map admission does not enable observed forcing.",
+    "SCN-042 full camera/epoch/layer rendered and hardware acceptance is outside these geometry unit tests. Parent owns browser legacy follow-up and final combined delivery."
+  ],
+  "frontendEnvironment": {
+    "PATHPrefix": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin"
+  },
+  "handoffs": [
+    {
+      "file": "backend/sim/pfss_magnetogram.py",
+      "originalPatch": "/tmp/solar-remediation-completion-20261030/solar/pfss-flux-provenance.patch",
+      "owner": "parent",
+      "status": "applied by parent and validated against actual combined source",
+      "tests": "backend/tests/test_solar_observational_consumer.py"
+    },
+    {
+      "action": "Refresh only intentionally changed scientific-manifest input hashes. Preserve all original thresholds, mutant contracts, source semantics and physical budgets.",
+      "owner": "parent",
+      "status": "pending after overall source freeze"
+    },
+    {
+      "action": "Complete overall backend/frontend/science/browser/build/hardware verification and browser legacy acceptance; reconcile and retire only fully completed notes.",
+      "owner": "parent",
+      "status": "parent-owned"
+    }
+  ],
+  "invariants": {
+    "branchesSwitched": false,
+    "commitsCreated": false,
+    "notesDeleted": false,
+    "originalWorktreesModified": false,
+    "scientificThresholdsChanged": false,
+    "serverMainControllerEditedByWorker": false,
+    "subagentsUsed": false
+  },
+  "noteRetirementExplanation": "No notes were deleted. These bounded repairs do not establish every child of the SCN-041/042 or umbrella notes; parent owns per-note reconciliation and retirement using retained evidence.",
+  "notesFullyEligibleForRetirement": [],
+  "originalDefectsClosed": [
+    {
+      "defect": "Number(blendAlpha) || 1 loses the source endpoint at zero",
+      "id": "SCN-042",
+      "repair": "Explicit number/finite handling preserves zero and finite [0,1] clamping; all nonfinite values default to the target. Real factory BufferGeometry tests retain an independent 1e-9 particle position budget and leave loop/frame budgets unchanged."
+    },
+    {
+      "defect": "Factory Float32BufferAttribute copied the positions array subsequently written by the eruption animator",
+      "id": "SCN-042",
+      "repair": "Use BufferAttribute with the same Float32 storage so animation writes reach actual uploaded geometry; first failing run reproduced stale geometry before the alpha fix."
+    },
+    {
+      "defect": "The retained real NSO/GONG map was rejected before offline PFSS ingestion",
+      "id": "SCN-041 bounded admission",
+      "repair": "Only its exact compressed and expanded SHA256 identities select the retained WSA correction metadata. Bounded polarity scaling permits abs(signed/unsigned) <= 0.05 and requires the original post-correction roundoff limit. Other nonroundoff maps still fail closed."
+    },
+    {
+      "defect": "The PFSS consumer understood only roundoff policy",
+      "id": "SCN-041 provenance",
+      "repair": "Parent applied narrow policy/quality guard and inverse-reconstruction metric validator. Authentic observed snapshot passes actual PFSS ingestion; finite and nonfinite metric forgeries reject independently at the full snapshot and flux-only contracts."
+    },
+    {
+      "defect": "The reusable branch changed legacy zero-map admission",
+      "id": "SCN-041 compatibility",
+      "repair": "Preserved zero-field roundoff behavior and the exact preexisting normalized content and snapshot hashes."
+    }
+  ],
+  "parentAppliedFiles": [
+    "backend/sim/pfss_magnetogram.py"
+  ],
+  "sourceAndArtifactSha256": {
+    "backend/sim/gong_magnetogram.py": "66cf2588f2a6f878aefd347b670155c943d338431400b7f31c018532e7cf4649",
+    "backend/sim/pfss_magnetogram.py": "12a3e4767b27cd3cc4c65aa703130ac0c97cc65e9398a290378b4406dd53e111",
+    "backend/tests/fixtures/solar/observational_20261012/manifest.json": "c4646bc2c77a89528a8104aa3545cb32ba6424fd8f023d4c3cc37afc5c7dfbf2",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz": "e405550e1f8844bf5556419e7137aa6eb9bce79e0292a628df2c1ece28872ee8",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz.headers": "130e939ac6bce777302edcfd6cc775528ec738b2dec27c4626ec959e1439d66b",
+    "backend/tests/fixtures/solar/observational_20261012/real_map_application_diagnostic.json": "0e4e3abcfab0e744345607743280cfca7628a85e9961ab29d15e389b04ac16cb",
+    "backend/tests/fixtures/solar/observational_20261012/report.json": "1a6b2b0f955f1da1207b1b9b142e8f99d42446d903edbd791665cd5571f96a42",
+    "backend/tests/solar_observational_acceptance.py": "a5b9d62428d6b92e6964d8548282afaed3e45daa17f9c76ca55b4ab1b7beaf84",
+    "backend/tests/test_solar_observational_acceptance.py": "e317303ee81280967ac53dab17a1b5bcdaecff27419bd3708e4c905870a4b698",
+    "backend/tests/test_solar_observational_consumer.py": "da4cc52448a4dbb7aef745b4e5a122c11c2e44c685ec08a962b1f3400c68df99",
+    "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts": "c533bbf0847e6e718b8623c97ef29dd7f38c62b8f1ebca6a33bdce550937a92c",
+    "src/frontend/features/solar/sunVisuals.ts": "266bab0575a1ece1d43e953a3c692907846e4709f01929b27a0bd7e16f1daddb"
+  },
+  "sourceCommitsReused": [
+    "052550a1c8964474a33889696217a62e7520b8a9",
+    "3942bd039bcb5bffc92ee2ee42cf5d60f414aa15"
+  ],
+  "status": "owned repairs implemented and scoped combined-source verification passed; scientific and rendered acceptance remain partial",
+  "verificationLimits": "The 345- and 52-test commands ran against actual combined source after the parent-applied guard. Earlier overlay exploration is not used as final evidence. No full-repository suite or final build/browser gate was run by this scoped worker.",
+  "workerChangedFiles": [
+    "src/frontend/features/solar/sunVisuals.ts",
+    "src/frontend/features/solar/sunVisuals.blendAlpha.test.ts",
+    "backend/sim/gong_magnetogram.py",
+    "backend/tests/solar_observational_acceptance.py",
+    "backend/tests/test_solar_observational_acceptance.py",
+    "backend/tests/test_solar_observational_consumer.py",
+    "backend/tests/fixtures/solar/observational_20261012/manifest.json",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz",
+    "backend/tests/fixtures/solar/observational_20261012/nso_gong_zqs_202610121744.fits.gz.headers",
+    "backend/tests/fixtures/solar/observational_20261012/real_map_application_diagnostic.json",
+    "backend/tests/fixtures/solar/observational_20261012/report.json"
+  ],
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030"
+}

@@ -1,0 +1,80 @@
+uvicorn pid 1588980
+t=   1.98 probe -> 200 2.115814
+t=   2.02 probe -> 200 0.020641
+== wait idle
+t=   3.06 probe -> 200 0.023265
+t=   3.10 probe -> 200 0.022769
+== phase C: 4 concurrent default requests + /health pings
+t=   3.12 health 200 0.002081
+t=   3.14 con33 jd=2461308.60330000 -> 503 0.001351 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=   3.14 con32 jd=2461308.60320000 -> 503 0.000926 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=   3.64 health 200 0.002211
+t=   4.17 health 200 0.002454
+t=   4.70 health 200 0.002154
+t=   5.22 health 200 0.001521
+t=   5.74 health 200 0.002166
+t=   6.27 health 200 0.002836
+t=   6.80 health 200 0.040876
+t=  16.84 con31 jd=2461308.60310000 -> 503 12.284696 65 curl_rc=0 detail="detail":"Solar physics generation timed out. Try again later."
+t=  16.85 con34 jd=2461308.60340000 -> 503 12.294634 65 curl_rc=0 detail="detail":"Solar physics generation timed out. Try again later."
+== wait idle
+t=  16.97 idle-poll 503
+t=  18.99 idle-poll 503
+t=  21.02 idle-poll 503
+t=  23.04 idle-poll 503
+t=  25.06 idle-poll 503
+t=  27.08 idle-poll 503
+t=  29.10 idle-poll 503
+t=  31.13 idle-poll 503
+t=  33.19 idle-poll 200
+t=  33.24 probe -> 200 0.036326
+t=  33.29 probe -> 200 0.033758
+== draining the 60 s rate-limit window (36/min/IP)
+t=  86.96 probe -> 200 0.017374
+== phase A: 2 client-aborted requests (curl -m 2), then a third immediately, then probe every 0.5 s
+t=  88.94 abort1 jd=2461308.60410000 -> 000 2.050173 0 curl_rc=28 detail=
+t=  88.94 abort2 jd=2461308.60420000 -> 000 2.051229 0 curl_rc=28 detail=
+t=  88.96 both aborted clients have exited (2.00 s after launch)
+t=  88.99 third jd=2461308.60430000 -> 503 0.000896 77 curl_rc=0 detail="detail":"Solar physics requests are temporarily saturated. Retry shortly."
+t=  89.02 probe -> 503 0.010232
+t=  89.56 probe -> 503 0.012985
+t=  90.17 probe -> 503 0.100157
+t=  90.75 probe -> 503 0.056865
+t=  91.36 probe -> 503 0.097910
+t=  91.97 probe -> 503 0.098672
+t=  92.53 probe -> 503 0.040849
+t=  93.13 probe -> 503 0.087265
+t=  93.67 probe -> 503 0.028450
+t=  94.22 probe -> 503 0.033735
+t=  94.79 probe -> 503 0.049085
+t=  95.32 probe -> 503 0.011018
+t=  95.89 probe -> 503 0.053609
+t=  96.41 probe -> 503 0.001825
+t=  96.93 probe -> 503 0.001834
+t=  97.46 probe -> 503 0.001578
+t=  97.98 probe -> 503 0.001681
+t=  98.50 probe -> 503 0.001369
+t=  99.02 probe -> 503 0.001489
+t=  99.54 probe -> 503 0.001225
+t= 100.06 probe -> 503 0.001699
+t= 100.58 probe -> 503 0.001337
+t= 101.10 probe -> 503 0.001603
+t= 101.62 probe -> 503 0.002024
+t= 102.14 probe -> 503 0.001344
+t= 102.66 probe -> 503 0.001650
+t= 103.18 probe -> 503 0.001517
+t= 103.71 probe -> 503 0.002277
+t= 104.23 probe -> 503 0.001733
+t= 104.75 probe -> 503 0.001695
+t= 105.27 probe -> 503 0.001999
+t= 105.79 probe -> 503 0.001579
+t= 106.31 probe -> 429 0.001751
+t= 106.83 probe -> 429 0.001079
+t= 107.35 probe -> 429 0.001720
+t= 107.87 probe -> 429 0.001573
+t= 108.40 probe -> 429 0.001393
+t= 108.92 probe -> 429 0.001925
+t= 109.44 probe -> 429 0.001400
+t= 109.96 probe -> 429 0.001524
+== rate limit bookkeeping: server log tail
+uvicorn stopped (pid 1588980)

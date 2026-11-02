@@ -1,0 +1,12 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-close-partials-20261031
+
+
+ Test Files  111 passed | 1 skipped (112)
+      Tests  1725 passed | 2 skipped (1727)
+   Start at  05:12:11
+   Duration  27.92s (tests 61%, import 28%, transform 10%, worker 1%)
+
+    Isolate  112 workers spawned · ~136ms startup each (spawn + environment, per file)
+             at least ~7.46s faster with isolate: false — reuses workers across files instead of one per file
+

@@ -1,23 +1,19 @@
-"""TOOL-050 missing-target preflight regression; owned fixtures only.
+"""TOOL-050 under permanent publisher retirement, using owned fixtures only.
 
-The non-dry-run no-row cases pin the parent's selected early-rejection policy,
-not additional observed catalog corruption. This does not promise atomic writes
-when two existing regular targets later fail publication or marker validation.
-No product edits, live providers, or replacement planets.ts target are used.
+Old target-preflight and successful append cases now require refusal before any
+acquisition/cache work, even for a valid pair or symlink. Explicit --dry-run is
+still a legacy preview (query caches are permitted); source publication belongs
+to the maintained pinned-source builder. Query isolation is covered separately
+by backend/tests/test_fetch_jpl_sbdb_cache.py.
 """
 from __future__ import annotations
 
-# Regression: TOOL-050-MISSING-TARGET /qa 2026-10-24.
-# Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
-
-import ast
 import importlib.util
-import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
-import traceback
 
 import pytest
 
@@ -28,12 +24,11 @@ ROW = dict(spkid='29999999', full_name='9999999 AuditFixture', a='2.7', e='0.1',
            **{'class': 'MBA'})
 PY = 'ASTEROID_BELT_OBJECTS = [\n]\nKUIPER_BELT_OBJECTS = []\nALL_BODIES = ASTEROID_BELT_OBJECTS + KUIPER_BELT_OBJECTS\n'
 JS = 'export const ASTEROID_BELT_OBJECTS = [\n];\nexport const KUIPER_BELT_OBJECTS = [];\n'
-TS = '// Owned sentinel: never redirect the legacy updater to planets.ts.\n'
+TS = '// Owned sentinel: never redirect the retired updater to planets.ts.\n'
 CACHE = '{"owned":"unchanged"}\n'
 
 
 def save_fixture(path: Path, text: str) -> None:
-    """Create only owned pytest fixtures, without an external editing tool."""
     assert not path.is_relative_to(ROOT)
     assert not path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +36,6 @@ def save_fixture(path: Path, text: str) -> None:
 
 
 def load_script():
-    # The real script inserts its own directory on import; restore caller state.
     previous = sys.path[:]
     try:
         spec = importlib.util.spec_from_file_location('tool050_owned_candidate', SOURCE)
@@ -79,6 +73,7 @@ def snapshot(target_paths):
     return {
         key: ('file', path.read_bytes()) if path.is_file()
         else ('directory', tuple(sorted(p.name for p in path.iterdir()))) if path.is_dir()
+        else ('socket', None) if path.is_socket()
         else ('missing', None)
         for key, path in target_paths.items()
     }
@@ -98,7 +93,6 @@ def configure(module, root: Path, calls: list, *, no_rows: bool = False, trace: 
 
     def ensure():
         record('ensure_cache_dir')
-        # Existing owned cache only; never call imported default real-cache path.
         assert module.CACHE_DIR.is_dir()
         return module.CACHE_DIR
 
@@ -116,6 +110,14 @@ def configure(module, root: Path, calls: list, *, no_rows: bool = False, trace: 
     module.http_get_json = no_network
 
 
+@pytest.fixture(autouse=True)
+def forbid_network(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Live network is forbidden in publisher contract tests')
+    monkeypatch.setattr(socket.socket, 'connect', forbidden)
+    monkeypatch.setattr(socket, 'getaddrinfo', forbidden)
+
+
 def invoke(monkeypatch, module, argv=()):
     monkeypatch.setattr(sys, 'argv', ['fetch_jpl_sbdb.py', *argv])
     return module.main()
@@ -125,56 +127,66 @@ def expected_calls(limits=(100, 30, 20)):
     return [('ensure_cache_dir', None), ('top', limits[0]), ('neo', limits[1]), ('trojan', limits[2])]
 
 
-@pytest.mark.parametrize('invalid', ['missing-backend', 'missing-frontend', 'directory-backend', 'directory-frontend'])
-def test_invalid_non_dry_run_targets_fail_before_side_effects(tmp_path, monkeypatch, invalid):
+def assert_refused(monkeypatch, capsys, module, calls, targets, argv=()):
+    before = snapshot(targets)
+    cache_before = tuple(sorted(module.CACHE_DIR.iterdir()))
+
+    def forbidden_read(*args):
+        raise AssertionError('Publication refusal must precede even reading source IDs')
+
+    monkeypatch.setattr(module, 'get_existing_body_names', forbidden_read)
+    with pytest.raises(SystemExit) as failure:
+        invoke(monkeypatch, module, argv)
+    assert failure.value.code == 2
+    assert snapshot(targets) == before
+    assert tuple(sorted(module.CACHE_DIR.iterdir())) == cache_before
+    assert calls == []
+    captured = capsys.readouterr()
+    assert captured.out == ''
+    assert 'Legacy source publication is retired' in captured.err
+    assert '--dry-run' in captured.err
+    assert 'scripts/build_asteroid_phase1_dataset.py' in captured.err
+
+
+@pytest.mark.parametrize('invalid', [None, 'missing-backend', 'missing-frontend', 'directory-backend', 'directory-frontend'])
+@pytest.mark.parametrize('argv', [[], ['--write'], ['--dry-run', '--write']])
+def test_publication_is_permanently_refused_regardless_of_target_state(tmp_path, monkeypatch, capsys, invalid, argv):
+    targets = prepare(tmp_path, invalid)
+    calls = []
+    module = load_script()
+    configure(module, tmp_path, calls)
+    assert_refused(monkeypatch, capsys, module, calls, targets, argv)
+
+
+@pytest.mark.parametrize('no_rows,duplicate', [(True, False), (False, True)])
+def test_empty_or_existing_identity_cannot_bypass_publication_refusal(tmp_path, monkeypatch, capsys, no_rows, duplicate):
+    targets = prepare(tmp_path, duplicate=duplicate)
+    calls = []
+    module = load_script()
+    configure(module, tmp_path, calls, no_rows=no_rows)
+    assert_refused(monkeypatch, capsys, module, calls, targets)
+
+
+@pytest.mark.parametrize('invalid', [None, 'missing-backend', 'missing-frontend', 'directory-frontend'])
+@pytest.mark.parametrize('argv,limits', [([], (100, 30, 20)), (['--limit', '7', '--neo-limit', '3', '--trojan-limit', '2'], (7, 3, 2))])
+def test_only_explicit_dry_run_generates_samples_and_forwards_limits(tmp_path, monkeypatch, capsys, invalid, argv, limits):
     targets = prepare(tmp_path, invalid)
     before = snapshot(targets)
     calls = []
     module = load_script()
     configure(module, tmp_path, calls)
-    exception_class = FileNotFoundError if invalid.startswith('missing-') else IsADirectoryError
-    with pytest.raises(exception_class) as failure:
-        invoke(monkeypatch, module)
-    # Both existing source bytes and the prior cache must survive unchanged.
+    assert invoke(monkeypatch, module, ['--dry-run', *argv]) is None
     assert snapshot(targets) == before
-    assert calls == []
-    diagnostic = ''.join(traceback.format_exception_only(failure.type, failure.value))
-    assert str(targets[invalid.split('-', 1)[1]]) in diagnostic
-    assert '--dry-run' in diagnostic
-
-
-@pytest.mark.parametrize('invalid', ['missing-backend', 'missing-frontend'])
-def test_selected_policy_rejects_missing_target_even_when_provider_would_return_no_rows(tmp_path, monkeypatch, invalid):
-    targets = prepare(tmp_path, invalid)
-    before = snapshot(targets)
-    calls = []
-    module = load_script()
-    configure(module, tmp_path, calls, no_rows=True)
-    with pytest.raises(FileNotFoundError):
-        invoke(monkeypatch, module)
-    assert calls == []
-    assert snapshot(targets) == before
-
-
-@pytest.mark.parametrize('invalid', ['missing-backend', 'missing-frontend', 'directory-frontend'])
-def test_dry_run_still_generates_samples_with_unavailable_write_target(tmp_path, monkeypatch, capsys, invalid):
-    targets = prepare(tmp_path, invalid)
-    before = snapshot(targets)
-    calls = []
-    module = load_script()
-    configure(module, tmp_path, calls)
-    assert invoke(monkeypatch, module, ['--dry-run']) is None
-    assert snapshot(targets) == before
-    assert calls == expected_calls()
+    assert calls == expected_calls(limits)
     output = capsys.readouterr().out
-    assert '=== Dry Run - Sample entries ===' in output
+    assert 'Legacy preview - sample entries (source publication retired)' in output
     assert 'Python:' in output and 'JavaScript:' in output
     assert 'auditfixture-9999999' in output
+    assert '"period_days": 1600.0' in output and 'periodDays: 1600.0' in output
     assert 'Updated ' not in output
 
 
-def test_dry_run_preserves_existing_backend_directory_read_failure(tmp_path, monkeypatch):
-    # --dry-run still reads existing backend IDs; no new parser policy is chosen.
+def test_dry_run_retains_existing_backend_directory_read_failure(tmp_path, monkeypatch):
     targets = prepare(tmp_path, 'directory-backend')
     before = snapshot(targets)
     calls = []
@@ -186,54 +198,45 @@ def test_dry_run_preserves_existing_backend_directory_read_failure(tmp_path, mon
     assert snapshot(targets) == before
 
 
-@pytest.mark.parametrize('argv,limits', [([], (100, 30, 20)), (['--limit', '7', '--neo-limit', '3', '--trojan-limit', '2'], (7, 3, 2))])
-def test_valid_legacy_pair_preserves_native_output_and_limit_forwarding(tmp_path, monkeypatch, capsys, argv, limits):
-    targets = prepare(tmp_path)
-    calls = []
-    module = load_script()
-    configure(module, tmp_path, calls)
-    assert invoke(monkeypatch, module, argv) is None
-    assert calls == expected_calls(limits)
-    tree = ast.parse(targets['backend'].read_text())
-    assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and node.targets[0].id == 'ASTEROID_BELT_OBJECTS')
-    bodies = ast.literal_eval(assignment.value)
-    assert len(bodies) == 1
-    assert bodies[0]['id'] == 'auditfixture-9999999'
-    assert bodies[0]['orbit'] == {
-        'epoch_jd': 2461000.5, 'a_au': 2.7, 'e': 0.1, 'i_deg': 1.0,
-        'ascending_node_deg': 2.0, 'arg_periapsis_deg': 3.0,
-        'mean_anomaly_deg': 4.0, 'period_days': 1600.0,
-    }
-    javascript = targets['frontend'].read_text()
-    assert "id: 'auditfixture-9999999'" in javascript
-    assert 'epochJd: 2461000.5' in javascript
-    cached = json.loads(targets['cache'].read_text())
-    assert len(cached) == 1 and cached[0]['id'] == bodies[0]['id']
-    assert cached[0]['orbit'] == bodies[0]['orbit']
-    assert targets['typescript'].read_text() == TS
-    output = capsys.readouterr().out
-    assert 'Updated backend/data/bodies.py: +1 entries' in output
-    assert 'Updated src/data/planets.js: +1 entries' in output
-    assert 'Total new asteroids: 1' in output
-    assert 'Files modified: bodies.py, planets.js' in output
-
-
 @pytest.mark.parametrize('no_rows,duplicate', [(True, False), (False, True)])
-def test_valid_pair_preserves_empty_or_existing_identity_no_new_behavior(tmp_path, monkeypatch, capsys, no_rows, duplicate):
+def test_dry_run_with_no_new_rows_preserves_sources_and_legacy_catalog_cache(tmp_path, monkeypatch, capsys, no_rows, duplicate):
     targets = prepare(tmp_path, duplicate=duplicate)
     before = snapshot(targets)
     calls = []
     module = load_script()
     configure(module, tmp_path, calls, no_rows=no_rows)
-    assert invoke(monkeypatch, module) is None
+    invoke(monkeypatch, module, ['--dry-run'])
     assert calls == expected_calls()
-    after = snapshot(targets)
-    for name in ('backend', 'frontend', 'typescript'):
-        assert after[name] == before[name]
-    assert json.loads(targets['cache'].read_text()) == []
+    assert snapshot(targets) == before
     output = capsys.readouterr().out
-    assert 'No new bodies to add. Done.' in output
-    assert 'Updated ' not in output
+    assert 'New bodies to add: 0' in output
+    assert 'Python:' not in output and 'Updated ' not in output
+
+
+def test_dry_run_may_populate_query_caches_but_never_publish_sources(tmp_path, monkeypatch):
+    targets = prepare(tmp_path)
+    before = snapshot(targets)
+    module = load_script()
+    wrappers = {name: getattr(module, name) for name in ('fetch_top_asteroids', 'fetch_notable_neos', 'fetch_trojans')}
+    configure(module, tmp_path, [])
+    for name, wrapper in wrappers.items():
+        monkeypatch.setattr(module, name, wrapper)
+    requests = []
+
+    def offline_response(url, *, params, timeout):
+        requests.append(dict(params))
+        assert url == module.SBDB_API_URL and timeout == 30.0
+        fields = module.SBDB_FIELDS.split(',')
+        return {'fields': fields, 'data': [[ROW.get(field.lower()) for field in fields]]}
+
+    monkeypatch.setattr(module, 'http_get_json', offline_response)
+    invoke(monkeypatch, module, ['--dry-run'])
+    assert len(requests) == 3
+    assert len(list(module.CACHE_DIR.glob('*_query_v2_*.json'))) == 3
+    assert snapshot(targets) == before
+    invoke(monkeypatch, module, ['--dry-run'])
+    assert len(requests) == 3
+    assert snapshot(targets) == before
 
 
 def test_import_and_shared_query_helper_remain_usable_without_legacy_target():
@@ -249,23 +252,23 @@ def test_import_and_shared_query_helper_remain_usable_without_legacy_target():
     }
 
 
-def test_owned_cli_missing_frontend_preserves_error_exit_without_partial_publication(tmp_path):
+def test_owned_cli_refuses_before_any_acquisition_or_partial_publication(tmp_path):
     targets = prepare(tmp_path, 'missing-frontend')
     before = snapshot(targets)
     result = subprocess.run(
-        [sys.executable, str(Path(__file__).resolve()), '--owned-cli', str(tmp_path)],
+        [sys.executable, '-B', str(Path(__file__).resolve()), '--owned-cli', str(tmp_path)],
         text=True, capture_output=True, timeout=10,
         env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'},
     )
-    assert result.returncode == 1
-    assert 'FileNotFoundError' in result.stderr
+    assert result.returncode == 2
     assert snapshot(targets) == before
-    assert 'OWNED_SIDE_EFFECT_ATTEMPT:' not in result.stdout
-    assert str(targets['frontend']) in result.stderr
+    assert result.stdout == ''
+    assert 'Legacy source publication is retired' in result.stderr
     assert '--dry-run' in result.stderr
+    assert 'build_asteroid_phase1_dataset.py' in result.stderr
 
 
-def test_help_remains_available_before_target_validation(tmp_path, monkeypatch, capsys):
+def test_python_help_remains_available_without_acquisition(tmp_path, monkeypatch, capsys):
     targets = prepare(tmp_path, 'missing-frontend')
     before = snapshot(targets)
     calls = []
@@ -277,12 +280,43 @@ def test_help_remains_available_before_target_validation(tmp_path, monkeypatch, 
     assert calls == []
     assert snapshot(targets) == before
     output = capsys.readouterr().out
-    assert 'Fetch JPL SBDB asteroid data' in output
-    assert '--dry-run' in output
+    assert 'source publication is retired' in output
+    assert '--dry-run' in output and '--write' in output
+    assert 'query caches' in ' '.join(output.split())
+
+
+@pytest.mark.parametrize('target_name', ['backend', 'frontend'])
+def test_existing_symlink_targets_cannot_reenable_publication(tmp_path, monkeypatch, capsys, target_name):
+    targets = prepare(tmp_path, f'missing-{target_name}')
+    target = targets[target_name]
+    backing = target.with_name(target.name + '.owned-regular')
+    save_fixture(backing, PY if target_name == 'backend' else JS)
+    target.symlink_to(backing.name)
+    before_link, before_bytes = target.readlink(), backing.read_bytes()
+    calls = []
+    module = load_script()
+    configure(module, tmp_path, calls)
+    assert_refused(monkeypatch, capsys, module, calls, targets)
+    assert target.is_symlink() and target.readlink() == before_link
+    assert backing.read_bytes() == before_bytes
+
+
+def test_socket_target_refuses_before_any_cache_or_acquisition_work(tmp_path, monkeypatch, capsys):
+    if not hasattr(socket, 'AF_UNIX'):
+        pytest.skip('Unix-domain filesystem sockets are unavailable on this platform')
+    targets = prepare(tmp_path, 'missing-frontend')
+    target = targets['frontend']
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as owned_socket:
+        owned_socket.bind(str(target))
+        calls = []
+        module = load_script()
+        configure(module, tmp_path, calls)
+        assert_refused(monkeypatch, capsys, module, calls, targets)
+        assert target.is_socket()
 
 
 if __name__ == '__main__':
-    # Deliberately uncaught product exceptions preserve the real CLI exit path.
     assert len(sys.argv) == 3 and sys.argv[1] == '--owned-cli'
     root = Path(sys.argv[2]).resolve()
     assert not root.is_relative_to(ROOT)
@@ -290,57 +324,3 @@ if __name__ == '__main__':
     configure(module, root, [], trace=True)
     sys.argv = ['fetch_jpl_sbdb.py']
     module.main()
-
-
-# Append-only supplemental policy/compatibility cases; original seventeen intact.
-@pytest.mark.parametrize('target_name', ['backend', 'frontend'])
-def test_valid_owned_symlink_target_preserves_existing_follow_behavior(tmp_path, monkeypatch, capsys, target_name):
-    targets = prepare(tmp_path, f'missing-{target_name}')
-    target = targets[target_name]
-    backing = target.with_name(target.name + '.owned-regular')
-    save_fixture(backing, PY if target_name == 'backend' else JS)
-    target.symlink_to(backing.name)
-    before_link = target.readlink()
-    assert target.is_symlink() and target.is_file()
-    calls = []
-    module = load_script()
-    configure(module, tmp_path, calls)
-    assert invoke(monkeypatch, module) is None
-    assert calls == expected_calls()
-    assert target.is_symlink() and target.readlink() == before_link
-    assert target.read_bytes() == backing.read_bytes()
-    assert 'auditfixture-9999999' in backing.read_text()
-    assert 'auditfixture-9999999' in targets['backend'].read_text()
-    assert "id: 'auditfixture-9999999'" in targets['frontend'].read_text()
-    cached = json.loads(targets['cache'].read_text())
-    assert len(cached) == 1 and cached[0]['id'] == 'auditfixture-9999999'
-    assert targets['typescript'].read_text() == TS
-    output = capsys.readouterr().out
-    assert 'Updated backend/data/bodies.py: +1 entries' in output
-    assert 'Updated src/data/planets.js: +1 entries' in output
-
-
-def test_owned_unix_socket_target_rejects_before_non_dry_run_side_effects(tmp_path, monkeypatch):
-    import socket
-    if not hasattr(socket, 'AF_UNIX'):
-        pytest.skip('Unix-domain filesystem sockets are unavailable on this platform')
-    targets = prepare(tmp_path, 'missing-frontend')
-    target = targets['frontend']
-    target.parent.mkdir(parents=True, exist_ok=True)
-    # Filesystem-only owned endpoint; never listen/connect or contact any provider.
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as owned_socket:
-        owned_socket.bind(str(target))
-        assert target.is_socket() and not target.is_file()
-        before = snapshot(targets)
-        calls = []
-        module = load_script()
-        configure(module, tmp_path, calls)
-        with pytest.raises(OSError) as failure:
-            invoke(monkeypatch, module)
-        # Deliberate preflight OSError, not the later incidental open(socket) error.
-        assert snapshot(targets) == before
-        assert calls == []
-        assert target.is_socket()
-        diagnostic = ''.join(traceback.format_exception_only(failure.type, failure.value))
-        assert str(target) in diagnostic
-        assert '--dry-run' in diagnostic

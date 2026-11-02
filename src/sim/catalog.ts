@@ -1,9 +1,9 @@
 import rawMoons from '../data/moons.json';
+import physicalMoonRadii from '../data/moonPhysicalRadii.json';
 import { AU_KM, MAJOR_BODY_IDS, clamp, parseEpochDateToJulian, sanitizeIdPart } from '../constants';
 import {
-  MAJOR_MOON_RADII_KM,
+  MOON_DISPLAY_RADIUS_ESTIMATES_KM,
   MOON_ROTATION_PERIOD_HOURS,
-  MAJOR_MOON_SHAPE_KM,
   MAJOR_MOONS,
   PLANETS,
   SUN
@@ -69,14 +69,16 @@ export interface CatalogBody {
   name: string;
   type: string;
   massKg: number | null;
-  radiusKm: number;
-  /** Moon radius selection source; a catalog entry is not a measurement claim. */
-  radiusSource?: 'catalog-table' | 'synthetic';
+  radiusKm: number | null;
+  /** Illustrative sizing only; never a physical measurement. */
+  displayRadiusEstimateKm?: number;
+  sourceId?: string;
+  radiusProvenance?: { sourceUrl: string; sourceSha256: string; capturedUtc: string; reference: string; definition: string; uncertaintyKm: number | null };
   color: string;
-  equatorialRadiusKm: number;
-  polarRadiusKm: number;
+  equatorialRadiusKm: number | null;
+  polarRadiusKm: number | null;
   displayRadiusAu: number;
-  realRadiusAu: number;
+  realRadiusAu: number | null;
   parentId: string | null;
   isMajor: boolean;
   rotationPeriodHours: number | null;
@@ -592,10 +594,10 @@ function stableHash(input: string): number {
   return Math.abs(hash);
 }
 
-function resolveMoonRadius(moon: RawMoonRecord): { radiusKm: number; radiusSource: 'catalog-table' | 'synthetic' } {
-  const knownRadius = (MAJOR_MOON_RADII_KM as Record<string, number | undefined>)[moon.name];
+function estimateMoonDisplayRadiusKm(moon: RawMoonRecord): number {
+  const knownRadius = (MOON_DISPLAY_RADIUS_ESTIMATES_KM as Record<string, number | undefined>)[moon.name];
   if (knownRadius) {
-    return { radiusKm: knownRadius, radiusSource: 'catalog-table' };
+    return knownRadius;
   }
 
   const hash = stableHash(`${moon.planet}:${moon.name}`);
@@ -615,7 +617,7 @@ function resolveMoonRadius(moon: RawMoonRecord): { radiusKm: number; radiusSourc
 
   // Distant irregular moons tend to be small; taper with semimajor axis.
   const distanceFactor = Math.max(0.25, 1 / Math.sqrt(Math.max(1, moon.aKm / 400_000)));
-  return { radiusKm: Math.max(1.5, base * distanceFactor), radiusSource: 'synthetic' };
+  return Math.max(1.5, base * distanceFactor);
 }
 
 function displayRadiusAu(radiusKm: number, type: string): number {
@@ -659,22 +661,13 @@ function selectRuntimeMoons(
   sourceMoons: readonly RawMoonRecord[],
   planetNameToId: ReadonlyMap<string, string>
 ): readonly RawMoonRecord[] {
-  const isPuck = (moon: RawMoonRecord) =>
-    planetNameToId.get(moon.planet) === 'uranus' && moon.iauCode === '715';
-  const preferredPuck = sourceMoons.find(moon =>
-    isPuck(moon) && moon.id === 378 && moon.ephemeris === 'URA182');
-  if (!preferredPuck && sourceMoons.some(isPuck)) {
-    throw new Error('Puck requires the preferred row 378 / URA182 source model');
-  }
-
-  // Raw rows retain alternate source models; runtime bodies represent identities.
-  // Filter in source order so the preferred record keeps its own position.
+  // Keep the canonical source order; runtime bodies represent exact parent/IAU
+  // identities. Do not select a retired source row for any named moon.
   const emitted = new Set<string>();
   return sourceMoons.filter(moon => {
     const parentId = planetNameToId.get(moon.planet);
     if (!parentId) return false;
     if (typeof moon.iauCode !== 'string' || moon.iauCode.trim().length === 0) return true;
-    if (isPuck(moon) && moon !== preferredPuck) return false;
     const key = JSON.stringify([parentId, moon.iauCode]);
     if (emitted.has(key)) return false;
     emitted.add(key);
@@ -692,7 +685,7 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boole
 
     // Keep moons smaller than their parent-relative orbit scale so they remain distinct objects.
     const moonMaxRadius = body.orbit.aAu * 0.18;
-    const moonMinRadius = body.realRadiusAu * 2.5;
+    const moonMinRadius = (body.realRadiusAu ?? 0) * 2.5;
     body.displayRadiusAu = Math.max(moonMinRadius, Math.min(body.displayRadiusAu, moonMaxRadius));
 
     const parentId = body.parentId;
@@ -712,7 +705,7 @@ function applyDisplayScaleConstraints(bodies: CatalogBody[], moonsVisible: boole
 
     // Prevent inflated planet radii from swallowing inner moons in display mode.
     const parentMaxRadius = closestMoonOrbit * 0.65;
-    const parentMinRadius = body.realRadiusAu * 1.1;
+    const parentMinRadius = (body.realRadiusAu ?? 0) * 1.1;
     body.displayRadiusAu = Math.max(parentMinRadius, Math.min(body.displayRadiusAu, parentMaxRadius));
   }
 }
@@ -835,10 +828,12 @@ export function createSolarSystemCatalog(
       continue;
     }
 
-    const { radiusKm, radiusSource } = resolveMoonRadius(moon);
-    const moonShape = (MAJOR_MOON_SHAPE_KM as Record<string, { equatorialRadiusKm: number; polarRadiusKm: number } | undefined>)[moon.name];
-    const equatorialRadiusKm = Number.isFinite(moonShape?.equatorialRadiusKm) ? moonShape!.equatorialRadiusKm : radiusKm;
-    const polarRadiusKm = Number.isFinite(moonShape?.polarRadiusKm) ? moonShape!.polarRadiusKm : radiusKm;
+    const displayRadiusEstimateKm = estimateMoonDisplayRadiusKm(moon);
+    const physical = (physicalMoonRadii.bodies as Record<string, { name: string; parent: string; radiusKm: number; uncertaintyKm: number | null; reference: string }>)[moon.iauCode];
+    if (physical && (physical.name !== moon.name || physical.parent !== moon.planet)) {
+      throw new Error(`Moon physical radius identity differs: ${moon.name}`);
+    }
+    const radiusKm = physical?.radiusKm ?? null;
     const id = makeMoonId(moon, usedIds);
     const frameNormalized = normalizeMoonOrbitFrame(moon, parentId);
     const sourceFrame = `${moon.frame ?? ''}`.trim().toLowerCase();
@@ -856,11 +851,19 @@ export function createSolarSystemCatalog(
       parentId,
       massKg: null,
       radiusKm,
-      radiusSource,
-      equatorialRadiusKm,
-      polarRadiusKm,
-      displayRadiusAu: displayRadiusAu(radiusKm, 'moon'),
-      realRadiusAu: radiusKm / AU_KM,
+      sourceId: moon.iauCode,
+      displayRadiusEstimateKm,
+      radiusProvenance: physical ? {
+        sourceUrl: physicalMoonRadii.source.sourceUrl, sourceSha256: physicalMoonRadii.source.sha256,
+        capturedUtc: physicalMoonRadii.source.capturedUtc, definition: physicalMoonRadii.definition,
+        uncertaintyKm: physical.uncertaintyKm,
+        reference: (physicalMoonRadii.references as Record<string, string>)[physical.reference],
+      } : undefined,
+      // The pinned source supplies mean radii, not measured shape axes.
+      equatorialRadiusKm: null,
+      polarRadiusKm: null,
+      displayRadiusAu: displayRadiusAu(displayRadiusEstimateKm, 'moon'),
+      realRadiusAu: radiusKm === null ? null : radiusKm / AU_KM,
       color: moonColor(moon.planet),
       isMajor: MAJOR_MOONS.has(moon.name),
       rotationPeriodHours: resolveMoonRotationPeriodHours(moon),

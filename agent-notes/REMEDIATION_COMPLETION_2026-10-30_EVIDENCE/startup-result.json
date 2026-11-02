@@ -1,0 +1,321 @@
+{
+  "domain": "startup",
+  "status": "Assigned implementation and scoped verification ready; outside-scope constructor cleanup and final integration remain with parent",
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "recordedAt": "2026-10-30T05:18:34.936772+00:00",
+  "gitHeadAtResult": "2527db6dd32b5339190ded6d980ef7005ac2592d",
+  "nodeExecutable": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+  "nodeVersion": "22.23.2",
+  "subprocessPathPrefix": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin",
+  "changedFiles": [
+    "src/main.ts",
+    "src/frontend/features/asteroids/startupBelt.ts",
+    "src/frontend/features/asteroids/startupBelt.test.ts",
+    "src/frontend/app/runtimeLifetime.ts",
+    "src/frontend/app/runtimeLifetime.test.ts",
+    "src/frontend/app/rendererRecovery.ts",
+    "src/frontend/app/rendererRecovery.test.ts",
+    "src/frontend/app/timeController.ts",
+    "src/frontend/app/timeController.test.ts",
+    "src/main.asteroidRefresh.test.ts",
+    "tests/browser/startup-ownership.spec.ts"
+  ],
+  "changedFileSha256": {
+    "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+    "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+    "src/frontend/features/asteroids/startupBelt.test.ts": "be2d328f9cf64659838bb8138dd3f4fa7a7f7e256337895c4fc42372340e8885",
+    "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+    "src/frontend/app/runtimeLifetime.test.ts": "b28db9f4020afe5fbf330cc5855d3d02d8a7475b065f46c83e2508fd8907472b",
+    "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+    "src/frontend/app/rendererRecovery.test.ts": "05701d3cb018675bc7325aadab91d8f3da52eeae4fa6cfcf974c30eeaa66dfbf",
+    "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4",
+    "src/frontend/app/timeController.test.ts": "90f4b61df8915881d4956f33e0bb0001db5d61a46d34f097a3d6250ecdcce44d",
+    "src/main.asteroidRefresh.test.ts": "b9c88e7debe91c97e418c3304b980073ef7419e5c5380d2af3f7589e8dde45d3",
+    "tests/browser/startup-ownership.spec.ts": "4c41c669d8384670d19f63f376a6711adacfab1719f9ec58ef90731a7804bae5"
+  },
+  "commandsAndResults": [
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/frontend/features/asteroids/startupBelt.test.ts",
+      "stage": "RED",
+      "result": "4 novel cancellation/final-scale failures against the adapted original candidate; missing cancellation settled too late, preaborted fallback allocated, reentrant cancellation returned renderer, final scale stayed display",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/belt-red.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/main.asteroidRefresh.test.ts src/frontend/app/timeController.test.ts",
+      "stage": "RED",
+      "result": "4 expected failures: quadtree faces remained6 after owner disposal (normal and later label failure); cancelled time listeners still changed state (live and preaborted)",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/main-quadtree-time-red.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test -c /tmp/solar-remediation-completion-20261030/startup/playwright.config.mjs startup-ownership.spec.ts --grep \"latest scale\" --reporter=line",
+      "stage": "RED",
+      "result": "Actual main full-scene scale was0.007585397 instead of physical0.00000313975057 after checkbox changed during pending verification",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/main-latest-scale-red.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vitest/vitest.mjs run src/main.asteroidRefresh.test.ts src/main.resizeRenderer.test.ts src/main.bodyInfo.test.ts src/frontend/app/timeController.test.ts src/frontend/app/runtimeLifetime.test.ts src/frontend/app/rendererRecovery.test.ts src/frontend/features/asteroids/startupBelt.test.ts src/frontend/app/rendererWarmup.test.ts src/frontend/app/frameLifecycle.test.ts",
+      "stage": "GREEN",
+      "exitCode": 0,
+      "result": "84 passed across9 files",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/scoped-final-tests.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/@playwright/test/cli.js test -c /tmp/solar-remediation-completion-20261030/startup/playwright.config.mjs startup-ownership.spec.ts --reporter=line",
+      "stage": "GREEN",
+      "exitCode": 0,
+      "result": "5 passed in35.0s using actual main, real100k catalog, software WebGL; healthy/latest-scale unload, rejected fallback, pending unload/late source, early texture failure, final compile failure",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/browser-green.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/typescript/bin/tsc --project tsconfig.json --strict --noEmit --pretty false",
+      "exitCode": 0,
+      "result": "strict source TypeScript passed; earlier concurrent solar test typing error resolved by solar worker",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/types-source.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/typescript/bin/tsc -p tsconfig.ui-tests.json --noEmit --pretty false",
+      "exitCode": 0,
+      "result": "strict browser test TypeScript passed",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/types-browser.log"
+    },
+    {
+      "command": "VITE_BACKEND_ORIGIN=http://127.0.0.1:9401 /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node node_modules/vite/bin/vite.js build --outDir /tmp/solar-remediation-completion-20261030/startup/dist",
+      "exitCode": 0,
+      "result": "74 modules; index bundle980.46kB/253.70kB gzip; existing >500kB chunk warning and external output directory warning retained",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/build.log"
+    },
+    {
+      "command": "STARTUP_HARDWARE=1 GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-remediation-completion-20261030/startup/complete-scene-probe.mjs http://127.0.0.1:5401/ bounded-dev-hardware",
+      "exitCode": 0,
+      "result": "bounded actual DEV full-scene native fence observed; complete catalog/workload/hash preserved",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/bounded-dev-hardware.log"
+    },
+    {
+      "command": "STARTUP_HARDWARE=1 GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA LD_LIBRARY_PATH=/usr/lib/wsl/lib /home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-remediation-completion-20261030/startup/complete-scene-probe.mjs http://127.0.0.1:4401/ bounded-preview-hardware",
+      "exitCode": 0,
+      "result": "bounded actual production PREVIEW full-scene native fence observed; complete catalog/workload/hash preserved",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/bounded-preview-hardware.log"
+    },
+    {
+      "command": "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node /tmp/solar-remediation-completion-20261030/startup/scene-setup-boundary-probe.mjs",
+      "exitCode": 0,
+      "result": "Diagnostic reproduction: initial createSceneSetup setPixelRatio failure yields rendererCreated1/rendererDisposals0/recoveryShowntrue/pageErrors[]; parent-owned helper repair remains",
+      "log": "/tmp/solar-remediation-completion-20261030/startup/scene-setup-boundary.log"
+    },
+    {
+      "command": "git diff --check -- src/main.ts src/frontend/features/asteroids/startupBelt.ts src/frontend/features/asteroids/startupBelt.test.ts src/frontend/app/runtimeLifetime.ts src/frontend/app/runtimeLifetime.test.ts src/frontend/app/rendererRecovery.ts src/frontend/app/rendererRecovery.test.ts src/frontend/app/timeController.ts src/frontend/app/timeController.test.ts src/main.asteroidRefresh.test.ts tests/browser/startup-ownership.spec.ts",
+      "exitCode": 0,
+      "result": "Scoped tracked diff whitespace passed"
+    }
+  ],
+  "originalDefectsClosed": [
+    {
+      "ids": [
+        "SCN-005 duplicate construction"
+      ],
+      "change": "Catalog fetch and unchanged integrity/timing work starts before textures; source is resolved before exactly one population and renderer allocation; removed initial procedural construction and replacement path",
+      "evidence": [
+        "startupBelt.test.ts instrumented real population/renderer call counts",
+        "startup-ownership.spec.ts success and rejected fallback",
+        "bounded hardware catalog request precedes texture allocation"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-005 known candidate identifier"
+      ],
+      "change": "Uses phaseOneCatalog.acceptance rather than unrelated solar-system catalog.acceptance; complete identity/hash/taxonomy/timing log retained",
+      "evidence": [
+        "strict TypeScript",
+        "both bounded hardware accepted catalog logs"
+      ]
+    },
+    {
+      "ids": [
+        "B019 latest scale"
+      ],
+      "change": "Deferred belt adopts current native checkbox scale; initialize reconciles full scene/Kuiper scale before compile and first draw",
+      "evidence": [
+        "helper deferred-scale test",
+        "actual-main RED/GREEN physical radius check"
+      ]
+    },
+    {
+      "ids": [
+        "SCN-049 quadtree unload owner"
+      ],
+      "change": "Registers real PlanetQuadtree owner immediately after acquisition; cleanup clears faces/children and disposes material once, even after later setup failure",
+      "evidence": [
+        "main.asteroidRefresh.test.ts normal/later label failure RED/GREEN",
+        "startup-ownership.spec.ts unload and compile failure both retire Earth/Mars owners"
+      ]
+    },
+    {
+      "ids": [
+        "FE-STARTUP-ESCAPE post-createSceneSetup acquisition prefix"
+      ],
+      "change": "Stable lifetime aborts before reverse cleanup and covers returned renderer/controls, viewport controller, main materials/geometries, Sun controller, belts, worker, runtime UI listeners, observers and frame lifecycle; catch reports setup failures through early recovery surface",
+      "evidence": [
+        "runtimeLifetime.test.ts",
+        "rendererRecovery.test.ts",
+        "actual-browser early texture/final compile failure and pending unload tests"
+      ],
+      "limitation": "Does not cover failures inside createSceneSetup before resource return; demonstrated separate parent handoff"
+    },
+    {
+      "ids": [
+        "startup cancellation/disposal"
+      ],
+      "change": "Pending source selection cancels promptly; late acceptance cannot allocate/adopt/restart; shared bounded catalog transport remains independently owned; repeated disposal remains idempotent",
+      "evidence": [
+        "helper cancellation/preabort/reentrant tests",
+        "actual browser unload followed by joined real late catalog success"
+      ]
+    },
+    {
+      "ids": [
+        "browser main.ts handoff"
+      ],
+      "change": "Supplies innerWidth<=1100 layout reader; shares updateZoomStatus between onActionApplied and frame stage",
+      "evidence": [
+        "main.bodyInfo.test.ts passes with browser worker harness",
+        "strict TypeScript"
+      ]
+    }
+  ],
+  "preservedFixes": [
+    "90fe726 Sun visual disposal remains active via sunCtrl.disposeSolarDelivery lifetime callback",
+    "4e27f64 DPR-reset fix preserved; all actual main resize regression cases pass"
+  ],
+  "boundedCompleteSceneEvidence": [
+    {
+      "report": "/tmp/solar-remediation-completion-20261030/startup/bounded-dev-hardware.json",
+      "screenshot": "/tmp/solar-remediation-completion-20261030/startup/bounded-dev-hardware.png",
+      "gitHeadAtObservation": "d0875c8cc3a4aa158425ed6d7bea3e843e704ac0",
+      "startupSourceHashes": {
+        "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+        "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+        "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+        "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+        "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4"
+      },
+      "catalogLoadMs": 471.1,
+      "firstFullSceneSubmissionMs": 2727.1999999284744,
+      "firstFullSceneFenceObservedMs": 9898.100000023842,
+      "sourceRows": 100000,
+      "parsedRows": 100000,
+      "catalogSha256": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a",
+      "belts": [
+        {
+          "count": 50000,
+          "kuiper": false
+        },
+        {
+          "count": 5000,
+          "kuiper": true
+        },
+        {
+          "count": 83,
+          "kuiper": true
+        }
+      ],
+      "graphics": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "antialias": true,
+        "samples": 4,
+        "parallelCompile": true
+      },
+      "renderStats": {
+        "frame": 1,
+        "calls": 41,
+        "triangles": 619144,
+        "points": 14360,
+        "lines": 1143
+      },
+      "nativeWebglError": 0,
+      "pageErrors": [],
+      "backendDelivery": "backend absent at reserved port9401; explicit procedural fallback observed",
+      "scope": "one bounded observation before combined source freeze; fresh browser/context and HTTP cache disabled; driver shader cache not reset; machine not exclusive; fence observation includes callback delay and is not compositor presentation"
+    },
+    {
+      "report": "/tmp/solar-remediation-completion-20261030/startup/bounded-preview-hardware.json",
+      "screenshot": "/tmp/solar-remediation-completion-20261030/startup/bounded-preview-hardware.png",
+      "gitHeadAtObservation": "8be083ccf766d262cba4cb43f25a1c9c60f2fd7f",
+      "startupSourceHashes": {
+        "src/main.ts": "1e507d2b050c6a5ba9780d1eea0707b323dbb310af71d99f0334fc3512f2f9e5",
+        "src/frontend/features/asteroids/startupBelt.ts": "87862911a41c3d3e483eee7280957fc13f61271adf3ebf004d1ff4953e466410",
+        "src/frontend/app/runtimeLifetime.ts": "f19e7d2c6f60a7d599d4912de2c3bfb5834d8348c2b52e37080ce15b17449718",
+        "src/frontend/app/rendererRecovery.ts": "4cd952dbc3804b8df6df310b948b54ae2202e641c753f2daebb08f1c0f5d8c16",
+        "src/frontend/app/timeController.ts": "c07dbf492fef87d8b21e4827a2032587d358505f20ae7948e91f70d5f3b2d8a4"
+      },
+      "catalogLoadMs": 499.6,
+      "firstFullSceneSubmissionMs": 3048,
+      "firstFullSceneFenceObservedMs": 11085,
+      "sourceRows": 100000,
+      "parsedRows": 100000,
+      "catalogSha256": "f4debc48eea13a3be43eb69d7d70e8920ece7aa5e7e6dd0490c870bc83cb222a",
+      "belts": [
+        {
+          "count": 50000,
+          "kuiper": false
+        },
+        {
+          "count": 5000,
+          "kuiper": true
+        },
+        {
+          "count": 83,
+          "kuiper": true
+        }
+      ],
+      "graphics": {
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "antialias": true,
+        "samples": 4,
+        "parallelCompile": true
+      },
+      "renderStats": {
+        "frame": 1,
+        "calls": 41,
+        "triangles": 619144,
+        "points": 14360,
+        "lines": 1143
+      },
+      "nativeWebglError": 0,
+      "pageErrors": [],
+      "backendDelivery": "backend absent at reserved port9401; explicit procedural fallback observed",
+      "scope": "one bounded observation before combined source freeze; fresh browser/context and HTTP cache disabled; driver shader cache not reset; machine not exclusive; fence observation includes callback delay and is not compositor presentation"
+    }
+  ],
+  "exactRemainingBoundaries": [
+    "Parent must fix out-of-scope src/frontend/app/sceneSetup.ts internal allocation failure cleanup. Actual browser probe demonstrates a renderer leak when initial setPixelRatio throws after construction. Main owns resources only after this helper returns. Probe and proposed repair are in startup/handoffs.md.",
+    "Final combined integration/full frontend/backend/science/browser/hardware checks remain parent-owned; no worker-wide100% completion claim.",
+    "Do not run or claim final cold DEV/PREVIEW five-minute delivery before combined source freeze. It was intentionally not run here.",
+    "SCN-005 full responsiveness/release acceptance is not established by these one-sample prefreeze observations. No new complete-scene budget was approved or introduced; measured fences were9898.1ms DEV and11085ms PREVIEW.",
+    "Native fence observation is an upper bound on GPU completion including scheduling delay, not compositor presentation or interactive responsiveness. Driver shader cache was not reset; shared host load was not exclusive.",
+    "Solar backend9401 was absent during bounded hardware observations, yielding explicit procedural fallback. These are not successful backend-delivery observations.",
+    "The catalog loader has independently shared bounded10s transport ownership, without a caller abort API. Startup detaches its adoption and prevents allocation; it intentionally does not cancel other consumers shared fetch.",
+    "Warmup asynchronous polling remains bounded by its existing timeout. Synchronous compile/link calls cannot be preempted by a JavaScript timer."
+  ],
+  "notesFullyEligibleForRetirement": [],
+  "notesRetirementReason": "Parent owns combined evidence, requirement reconciliation and note deletion; SCN-005 final complete-scene/delivery acceptance and the constructor helper boundary still prevent blanket retirement.",
+  "handoffs": [
+    {
+      "owner": "parent",
+      "path": "/tmp/solar-remediation-completion-20261030/startup/handoffs.md",
+      "action": "Fix and regression-test createSceneSetup acquired renderer/controls cleanup on internal exceptions, then rerun supplied scene-setup-boundary probe; expected rendererDisposals1."
+    },
+    {
+      "owner": "browser",
+      "status": "Main wiring implemented; original handoff fully consumed",
+      "path": "/tmp/solar-remediation-completion-20261030/browser/main-handoff.md"
+    },
+    {
+      "owner": "parent",
+      "action": "Freeze only after all workers ready; then final combined tests and five-minute cold DEV/PREVIEW delivery; preserve evidence and retire only fully closed notes."
+    }
+  ],
+  "permissionsAndScope": "Only assigned startup source/tests edited; read-only references in candidate worktree and d13d7d6; no commits/cherry-picks/branch switches, note deletions, original-worktree edits, or subagents.",
+  "ports": "Owned dev5401 and preview4401 servers stopped; backend9401 was not started.",
+  "selfReview": "Worker self-review only; parent owns independent overall review."
+}

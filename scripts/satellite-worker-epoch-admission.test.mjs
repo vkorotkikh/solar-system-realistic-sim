@@ -7,8 +7,9 @@ import { OrbitalSatelliteSystem } from '../src/frontend/features/planetary/satel
 import { createMutableVec3, propagateAroundPrimary } from '../src/frontend/features/planetary/satellitePropagationCore.ts';
 
 // MOON034: retained callable owner/worker, not native Worker scheduling or current-page reach.
-// Root selected exact JD plus explicit boolean J2 admission; no interpolation accuracy tolerance.
+// Bounded interpolation plus explicit boolean J2 admission; long spans use CPU propagation.
 const JD = 0;
+const INTERPOLATION_SPAN = 1 / 256; // Fastest fixture orbit is one day.
 const RADIUS_AU = 7000 / AU_KM;
 const circular = { id: 'owned-circle', name: 'Owned circular probe', category: 'synthetic',
   epochJd: JD, aKm: 7000, e: 0, iDeg: 0, ascendingNodeDeg: 0,
@@ -124,7 +125,7 @@ function assertPublished(system, expected) {
   } else assert.deepEqual(system.meshByIndex[0].position.toArray(), expected);
 }
 function controlledProvenance(message, value) {
-  // Isolate owner admission before the worker gains its additive echo.
+  // Isolate owner admission from the normalized worker echo.
   // Coordinates still come from the actual worker. Separate cases test the actual echo.
   const result = { ...message };
   if (value === undefined) delete result.applyJ2;
@@ -164,10 +165,10 @@ for (const instanced of [true, false]) test(`control direct unready propagation 
 }));
 
 for (const [label, jd0, jd1, jd, instanced] of [
-  ['forward first', JD, JD + 2, JD, true],
-  ['forward second', JD + .125, JD + .375, JD + .375, false],
-  ['reverse first', JD + 2, JD, JD + 2, false],
-  ['reverse second', JD + .375, JD + .125, JD + .125, true],
+  ['forward first', JD, JD + INTERPOLATION_SPAN, JD, true],
+  ['forward second', JD + .125, JD + .125 + INTERPOLATION_SPAN, JD + .125 + INTERPOLATION_SPAN, false],
+  ['reverse first', JD + INTERPOLATION_SPAN, JD, JD + INTERPOLATION_SPAN, false],
+  ['reverse second', JD + .125 + INTERPOLATION_SPAN, JD + .125, JD + .125, true],
   ['paused zero span', JD + .125, JD + .125, JD + .125, true],
 ]) test(`control matching false-J2 exact endpoint is usable: ${label}`, () => withOwner({ instanced }, f => {
   const message = controlledProvenance(f.packet(jd0, jd1), false);
@@ -180,10 +181,12 @@ for (const [label, jd0, jd1, jd, instanced] of [
 }));
 
 for (const [label, jd0, jd1, jd, instanced] of [
+  ['oversized forward endpoint', JD, JD + 2, JD, true],
+  ['oversized reverse endpoint', JD + 2, JD, JD, false],
   ['forward multi-cycle interior', JD, JD + 2, JD + .25, true],
   ['reverse multi-cycle interior', JD + 2, JD, JD + 1.75, false],
-  ['after snapshot window', JD, JD + .25, JD + 1, true],
-  ['before reverse window', JD + .25, JD, JD - .25, false],
+  ['after snapshot window', JD, JD + INTERPOLATION_SPAN, JD + 1, true],
+  ['before reverse window', JD + INTERPOLATION_SPAN, JD, JD - .25, false],
   ['stale zero span', JD + .125, JD + .125, JD + .25, true],
 ]) test(`decline without mutation and use current-JD fallback: ${label}`, () => withOwner({ instanced }, f => {
   f.deliver(controlledProvenance(f.packet(jd0, jd1), false));
@@ -201,12 +204,34 @@ for (const [label, jd0, jd1, jd, instanced] of [
   assert.equal(f.requests.length, 1, 'Busy acquisition does not stop direct propagation');
 }));
 
+for (const direction of [-1, 1]) for (const instanced of [true, false]) {
+  test(`actual worker supports bounded interior interpolation: direction=${direction}, instanced=${instanced}`, () => withOwner({ instanced }, f => {
+    const start = JD + .125;
+    const end = start + direction * INTERPOLATION_SPAN;
+    const message = f.packet(start, end);
+    f.deliver(message);
+    for (const fraction of [.25, .5, .75]) {
+      const jd = start + (end - start) * fraction;
+      const expected = [...message.positions0].map((value, axis) =>
+        value + (message.positions1[axis] - value) * fraction);
+      assert.equal(f.system.applyWorkerSnapshot(jd), true);
+      assertPublished(f.system, expected);
+      const exact = direct(f.system, jd);
+      const errorKm = Math.hypot(...expected.map((value, axis) => (value - exact[axis]) * AU_KM));
+      assert.ok(errorKm < .55, `circular interpolation error ${errorKm} km`);
+      f.system.workerBusy = true;
+      f.system.update(jd);
+      assertPublished(f.system, expected);
+    }
+  }));
+}
+
 for (const [label, provenance, current] of [
   ['missing', undefined, false], ['numeric false', 0, false], ['truthy string', 'false', true],
   ['old true setting', true, false], ['old false setting', false, true],
 ]) test(`matching epoch rejects unproven or mismatched J2: ${label}`, () => withOwner({ record: inclined, useJ2: current }, f => {
   const jd = JD + .5;
-  f.deliver(controlledProvenance(f.packet(jd, jd + .25, current), provenance));
+  f.deliver(controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, current), provenance));
   const before = state(f.system);
   const accepted = f.system.applyWorkerSnapshot(jd);
   assert.deepEqual(state(f.system), before);
@@ -218,7 +243,7 @@ for (const [label, provenance, current] of [
 
 for (const oldSetting of [false, true]) test(`delayed reply cannot cross a J2 toggle: ${oldSetting} to ${!oldSetting}`, () => withOwner({ record: inclined, useJ2: oldSetting, instanced: !oldSetting }, f => {
   const jd = JD + .5;
-  const pending = controlledProvenance(f.packet(jd, jd + .25, oldSetting), oldSetting);
+  const pending = controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, oldSetting), oldSetting);
   const oldCoordinates = direct(f.system, jd, oldSetting).map(Math.fround);
   const newCoordinates = direct(f.system, jd, !oldSetting).map(Math.fround);
   assert.notDeepEqual(oldCoordinates, newCoordinates, 'The fixture must expose J2 away from its epoch');
@@ -231,17 +256,17 @@ for (const oldSetting of [false, true]) test(`delayed reply cannot cross a J2 to
   f.system.workerBusy = true;
   f.system.update(jd);
   assertPublished(f.system, direct(f.system, jd));
-  const current = controlledProvenance(f.packet(jd, jd + .25, !oldSetting), !oldSetting);
+  const current = controlledProvenance(f.packet(jd, jd + INTERPOLATION_SPAN, !oldSetting), !oldSetting);
   f.deliver(current);
   assert.equal(f.system.applyWorkerSnapshot(jd), true);
   assertPublished(f.system, [...current.positions0]);
 }));
 
-for (const rate of [4, -4]) test(`control forecast and acquisition policy stay unchanged at rate ${rate}`, () => withOwner({}, f => {
+for (const rate of [4, -4]) test(`control forecast is period-bounded and acquisition cadence is preserved at rate ${rate}`, () => withOwner({}, f => {
   f.system.estimatedJdRate = rate;
   f.system.requestWorkerSnapshot(JD);
   assert.equal(f.requests.length, 2);
-  assert.deepEqual(f.requests[1], { type: 'snapshot', jd0: JD, jd1: JD + Math.sign(rate) * 1.8, applyJ2: false });
+  assert.deepEqual(f.requests[1], { type: 'snapshot', jd0: JD, jd1: JD + Math.sign(rate) * INTERPOLATION_SPAN, applyJ2: false });
   assert.equal(f.system.workerBusy, true);
   f.system.requestWorkerSnapshot(JD + 5);
   assert.equal(f.requests.length, 2);
@@ -278,7 +303,7 @@ test('control equal-date receiver contract prefers endpoint0 without blending', 
 }));
 
 for (const field of ['jd0', 'jd1']) test(`control nonfinite ${field} remains rejected without mutation`, () => withOwner({}, f => {
-  const message = controlledProvenance(f.packet(JD, JD + .5), false);
+  const message = controlledProvenance(f.packet(JD + .25, JD + .25 + INTERPOLATION_SPAN), false);
   message[field] = NaN; // Receiver admission probe; worker-side finite validation stays separate.
   f.deliver(message);
   const before = state(f.system);
@@ -291,7 +316,7 @@ for (const field of ['jd0', 'jd1']) test(`control nonfinite ${field} remains rej
 }));
 
 test('control different satellite count remains rejected without mutation', () => withOwner({}, f => {
-  const message = controlledProvenance(f.packet(JD, JD + .5), false);
+  const message = controlledProvenance(f.packet(JD + .25, JD + .25 + INTERPOLATION_SPAN), false);
   message.count = 2;
   message.positions0 = new Float32Array([...message.positions0, ...message.positions0]);
   message.positions1 = new Float32Array([...message.positions1, ...message.positions1]);

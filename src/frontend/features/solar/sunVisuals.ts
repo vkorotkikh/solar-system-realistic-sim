@@ -1,14 +1,17 @@
 import {
   AdditiveBlending,
   BackSide,
+  BufferAttribute,
   BufferGeometry,
   Camera,
   CanvasTexture,
   Color,
+  DataTexture,
   Float32BufferAttribute,
   Group,
   Line,
   LineBasicMaterial,
+  LinearFilter,
   Mesh,
   Object3D,
   Points,
@@ -17,9 +20,11 @@ import {
   Sprite,
   SpriteMaterial,
   Texture,
+  Vector3,
   Vector4
 } from 'three';
 import { SOLAR_RADIUS_AU, coronalToDisplay } from './solarDisplayScale';
+import { SOLAR_ROTATION_COEFFICIENTS_DEG_DAY, SOLAR_ROTATION_REFERENCE } from './solarRotation';
 import { clampUnit, solarFeatureEntryBrightness, sampleSolarFeatureEntryPoint } from './solarFeatureBlending';
 import type { SolarFeatureBlendView, SolarPhysicsStateLike } from './solarFeatureBlending';
 
@@ -49,6 +54,7 @@ void main() {
 
 export const SUN_SURFACE_FRAGMENT_SHADER = `
 uniform float time;
+uniform vec3 rotationCoefficientsDegDay;
 uniform float activity;
 uniform sampler2D baseMap;
 uniform sampler2D observationMap;
@@ -120,13 +126,13 @@ vec3 neckellLimbDarkRGB(float mu) {
   return vec3(ldR, ldG, ldB);
 }
 
-// ─── Phase A3: Snodgrass Differential Rotation ───────────────────────────────
-// Snodgrass (1983): omega(lat) = 14.44 - 2.87*sin^2(lat) - 0.36*sin^4(lat)  [deg/day]
+// Snodgrass & Ulrich (1990), Table 1 Doppler residuals; DOI 10.1086/168467.
+// The sidereal coefficient shape matches the synthetic backend; time is decorative.
 float snodgrassRotationOffset(float latRad, float timeDays) {
   float sinLat = sin(latRad);
   float sin2 = sinLat * sinLat;
   float sin4 = sin2 * sin2;
-  float degPerDay = 14.44 - 2.87 * sin2 - 0.36 * sin4;
+  float degPerDay = dot(rotationCoefficientsDegDay, vec3(1.0, sin2, sin4));
   return radians(degPerDay * timeDays);  // total longitude offset in radians
 }
 
@@ -251,9 +257,8 @@ void main() {
   
   // ─── Phase A3: Differential Rotation UV ────────────────────────────────────
   // time uniform = timeSec * 0.4 (see updateSunMaterialUniforms).
-  // Solar synodic rotation: ~27 days. In the simulation 1 display-second ≈ some sim-days.
-  // We use a small perceptual scale so the differential pattern is visible without racing.
-  // 0.00012 keeps equator completing one rotation in ~8300 display-time-units (~23h at 0.4x)
+  // 0.00012 is a perceptual factor, not elapsed physical days or a synodic rate.
+  // Its input is the bounded pause/reverse/reduced-motion-aware decorative clock.
   float lonOffset = snodgrassRotationOffset(vLatitude, time * 0.00012);
   vec2 uvRotated = vUv + vec2(lonOffset / (2.0 * 3.14159265), 0.0);
   
@@ -590,6 +595,7 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
     fragmentShader: SUN_SURFACE_FRAGMENT_SHADER,
     uniforms: {
       time: { value: 0 },
+      rotationCoefficientsDegDay: { value: new Vector3(...SOLAR_ROTATION_COEFFICIENTS_DEG_DAY) },
       activity: { value: 0.55 },
       baseMap: { value: sunMap },
       observationMap: { value: sunMap },
@@ -614,6 +620,9 @@ export function createSunSurfaceMaterial(sunMap: Texture | null | undefined): Sh
     }
   });
   material.toneMapped = false;
+  material.userData.rotationProfile = {
+    reference: SOLAR_ROTATION_REFERENCE, coefficientFrame: 'sidereal', displayClock: 'decorative'
+  };
   return material;
 }
 
@@ -1014,8 +1023,13 @@ export function createSunCoronaShell(
   });
   const mesh = new Mesh(geometry, material);
   mesh.userData.bodyId = 'sun-corona';
-  // Expanded to ~4 solar radii for physical K-corona radial falloff
+  // Four displayed Sun radii bound an illustrative glow, including in realistic
+  // scale. This radial falloff is not a measured coronal edge or emissivity.
   mesh.userData.surfaceScale = 4.0;
+  mesh.userData.displayScope = {
+    kind: 'illustrative_corona_glow', radiusUnits: 'display_sun_radius',
+    outerRadius: 4, physicalRadiusCalibrated: false
+  };
   return mesh;
 }
 
@@ -1196,9 +1210,32 @@ export function updateTransitionRegionShell(
     : 0.12 + activity * 0.08;
 }
 
+// Without an alpha map every point rasterizes as a hard square. PointsMaterial
+// multiplies alpha by the map's green channel, so the falloff is written to RGB.
+function createSoftDiscAlphaMap(size = 64): DataTexture {
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const dx = ((x + 0.5) / size) * 2 - 1;
+      const dy = ((y + 0.5) / size) * 2 - 1;
+      const level = Math.round(255 * Math.max(0, 1 - (dx * dx + dy * dy)) ** 2);
+      data.fill(level, (y * size + x) * 4, (y * size + x) * 4 + 3);
+      data[(y * size + x) * 4 + 3] = 255;
+    }
+  }
+  const texture = new DataTexture(data, size, size);
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createSunEruptionLayer(sunDisplayRadius: number): Points {
-  const burstCount = 360;
+  // About ten particles per admitted feature (at most 220), so each feature
+  // reads as a stream of plasma rather than one marker.
+  const burstCount = 2400;
   const positions = new Float32Array(burstCount * 3);
+  const colors = new Float32Array(burstCount * 3);
   const directions = new Float32Array(burstCount * 3);
   const tangents = new Float32Array(burstCount * 3);
   const speeds = new Float32Array(burstCount);
@@ -1247,11 +1284,17 @@ export function createSunEruptionLayer(sunDisplayRadius: number): Points {
   }
 
   const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  // Particle updates write this array directly; Float32BufferAttribute copies
+  // its input, so bind the upload to the same storage before animating it.
+  geometry.setAttribute('position', new BufferAttribute(positions, 3));
+  // Per-particle intensity; additive blending turns it into opacity.
+  geometry.setAttribute('color', new BufferAttribute(colors, 3));
 
   const material = new PointsMaterial({
     color: new Color('#ffbf74'),
-    size: sunDisplayRadius * 0.65,
+    alphaMap: createSoftDiscAlphaMap(),
+    vertexColors: true,
+    size: sunDisplayRadius * 0.08,
     transparent: true,
     opacity: 0.34,
     blending: AdditiveBlending,
@@ -1261,9 +1304,14 @@ export function createSunEruptionLayer(sunDisplayRadius: number): Points {
 
   const points = new Points(geometry, material);
   points.userData.bodyId = 'sun-eruptions';
+  points.userData.displayScope = {
+    kind: 'illustrative_eruption_streams', clock: 'decorative_time_lapse',
+    physicalVelocityCalibrated: false
+  };
   points.userData.sunBursts = {
     burstCount,
     positions,
+    colors,
     directions,
     tangents,
     speeds,
@@ -1299,9 +1347,10 @@ export function setSunEruptionBaseRadius(sunEruptionLayer: Points | null | undef
     bursts.positions[base + 2] = bursts.directions[base + 2] * radius * 1.03;
   }
   positionAttr.needsUpdate = true;
+  geometry.computeBoundingSphere();
   const eruptionMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
   if (eruptionMaterial?.isPointsMaterial) {
-    eruptionMaterial.size = Math.max(0.0000035, radius * 0.65);
+    eruptionMaterial.size = Math.max(0.0000035, radius * 0.08);
   }
 }
 
@@ -1652,7 +1701,10 @@ export function updateSunEruptionLayerFromBlendView({
 
   const blendedFeatures = Array.isArray(blendView?.entries) ? blendView.entries : [];
   if (blendedFeatures.length > 0) {
-    const blendAlpha = clampUnit(Number(blendView?.blendAlpha) || 1);
+    const rawBlendAlpha = blendView?.blendAlpha;
+    const blendAlpha = clampUnit(
+      typeof rawBlendAlpha === 'number' && Number.isFinite(rawBlendAlpha) ? rawBlendAlpha : 1
+    );
     bursts.baseRadius = sunRadiusAu;
     for (let i = 0; i < bursts.burstCount; i += 1) {
       const base = i * 3;
@@ -1665,10 +1717,14 @@ export function updateSunEruptionLayerFromBlendView({
         bursts.positions[base] = bursts.directions[base] * sunRadiusAu * 1.03;
         bursts.positions[base + 1] = bursts.directions[base + 1] * sunRadiusAu * 1.03;
         bursts.positions[base + 2] = bursts.directions[base + 2] * sunRadiusAu * 1.03;
+        bursts.colors.fill(0, base, base + 3);
         continue;
       }
 
       const brightness = solarFeatureEntryBrightness(featureEntry, blendAlpha);
+      // Fade in and out along the path so a particle never pops at its restart.
+      const glow = Math.max(0, Math.sin(Math.PI * phase)) * (0.3 + 0.7 * clampUnit(brightness));
+      bursts.colors.fill(glow, base, base + 3);
       const radialBoost = 1 + brightness * 0.065;
       const sampledLen = Math.hypot(sampled[0], sampled[1], sampled[2]) || 1;
       const displayScale = (coronalToDisplay(sampledLen, sunRadiusAu) / sampledLen) * radialBoost;
@@ -1689,14 +1745,19 @@ export function updateSunEruptionLayerFromBlendView({
       bursts.positions[base] = bursts.directions[base] * radius + bursts.tangents[base] * tangentOffset;
       bursts.positions[base + 1] = bursts.directions[base + 1] * radius + bursts.tangents[base + 1] * tangentOffset;
       bursts.positions[base + 2] = bursts.directions[base + 2] * radius + bursts.tangents[base + 2] * tangentOffset;
+      // Dark while resting on the surface, so idle particles do not pile up as a ring.
+      bursts.colors.fill(Math.max(0, wave), base, base + 3);
     }
   }
 
   positionAttr.needsUpdate = true;
+  const colorAttr = geometry.getAttribute('color');
+  if (colorAttr) colorAttr.needsUpdate = true;
+  geometry.computeBoundingSphere();
   const burstMaterial = sunEruptionLayer.material as PointsMaterial | undefined;
   if (burstMaterial?.isPointsMaterial) {
     burstMaterial.opacity = Math.max(0.1, 0.14 + activity * 0.27);
-    burstMaterial.size = Math.max(0.0000024, bursts.baseRadius * (0.28 + activity * 0.2));
+    burstMaterial.size = Math.max(0.0000024, bursts.baseRadius * (0.07 + activity * 0.04));
   }
 }
 

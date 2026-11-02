@@ -1,0 +1,160 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/h1/tests/vitest
+
+ ❯ solarPhysicsClient.h1.test.ts (8 tests | 7 failed) 83ms
+   × H-1 SolarPhysicsClient contract > accepts a response that arrives at the measured cold-miss latency (client timeout > server p95) 8ms
+     → expected false to be true // Object.is equality
+   × H-1 SolarPhysicsClient contract > an aborted, superseded request does not overwrite the newer in-flight request state 4ms
+     → expected false to be true // Object.is equality
+   × H-1 SolarPhysicsClient contract > failure backoff honours Retry-After and grows on consecutive failures; success resets it 11ms
+     → expected 6000 to be greater than 6000
+   × H-1 SolarPhysicsClient contract > status() exposes a machine-readable state the UI can render (timeout vs saturated vs unreachable) 1ms
+     → expected undefined to be 'timeout' // Object.is equality
+   × H-1 SolarPhysicsClient contract > quantises jd so that successive frames inside one bucket share one server cache key 3ms
+     → expected '2461308.50000001' to be '2461308.50000000' // Object.is equality
+   × H-1 SolarPhysicsClient contract > when the server is fast, a 60 s frame loop stays under the server rate limit (36/min) 53ms
+     → expected 66 to be less than or equal to 36
+   × H-1 SolarPhysicsClient contract > schedules the next poll from completion, not from start (no back-to-back requests after a slow reply) 1ms
+     → expected 2 to be 1 // Object.is equality
+   ✓ H-1 SolarPhysicsClient contract > regression guard (green today): timeout aborts a hung request and records an error 1ms
+ ❯ sunController.h1.test.ts (2 tests | 1 failed) 16ms
+   ✓ H-1 sunController physics -> AIA chain > regression guard (green today): first physics success requests the AIA tile via the backend proxy 7ms
+   × H-1 sunController physics -> AIA chain > while physics keeps timing out, no AIA tile is requested AND the controller exposes a status for the UI 8ms
+     → expected 'undefined' to be 'function' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > accepts a response that arrives at the measured cold-miss latency (client timeout > server p95)
+AssertionError: expected false to be true // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > an aborted, superseded request does not overwrite the newer in-flight request state
+AssertionError: expected false to be true // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+ ❯ solarPhysicsClient.h1.test.ts:86:29
+     84|     const second = client.maybeRefresh(2_461_308.6, true); // force: a…
+     85|     await vi.advanceTimersByTimeAsync(10); // let `first` reject + run…
+     86|     expect(client.inFlight).toBe(true); // `second` is still running
+       |                             ^
+     87|     expect(client.lastError).toBeNull(); // an intentional supersede i…
+     88|     void first;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > failure backoff honours Retry-After and grows on consecutive failures; success resets it
+AssertionError: expected 6000 to be greater than 6000
+ ❯ solarPhysicsClient.h1.test.ts:104:21
+    102|     }
+    103|     expect(gaps[0]).toBeGreaterThanOrEqual(2_000); // at least Retry-A…
+    104|     expect(gaps[1]).toBeGreaterThan(gaps[0]); // exponential (or at le…
+       |                     ^
+    105|     expect(gaps[2]).toBeGreaterThan(gaps[1]);
+    106|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > status() exposes a machine-readable state the UI can render (timeout vs saturated vs unreachable)
+AssertionError: expected undefined to be 'timeout' // Object.is equality
+
+[32m- Expected:[39m 
+"timeout"
+
+[31m+ Received:[39m 
+undefined
+
+ ❯ solarPhysicsClient.h1.test.ts:115:26
+    113|     await p;
+    114|     const status = client.status() as Record<string, unknown>;
+    115|     expect(status.state).toBe('timeout');
+       |                          ^
+    116|     expect(status.consecutiveFailures).toBe(1);
+    117|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > quantises jd so that successive frames inside one bucket share one server cache key
+AssertionError: expected '2461308.50000001' to be '2461308.50000000' // Object.is equality
+
+Expected: [32m"2461308.5000000[7m0[27m"[39m
+Received: [31m"2461308.5000000[7m1[27m"[39m
+
+ ❯ solarPhysicsClient.h1.test.ts:130:28
+    128|     const jdOf = (u: string) => new URL(u).searchParams.get('jd');
+    129|     expect(calls).toHaveLength(2);
+    130|     expect(jdOf(calls[1])).toBe(jdOf(calls[0]));
+       |                            ^
+    131|   });
+    132| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > when the server is fast, a 60 s frame loop stays under the server rate limit (36/min)
+AssertionError: expected 66 to be less than or equal to 36
+ ❯ solarPhysicsClient.h1.test.ts:140:26
+    138|       await vi.advanceTimersByTimeAsync(16);
+    139|     }
+    140|     expect(calls.length).toBeLessThanOrEqual(SERVER_RATE_LIMIT_PER_MIN…
+       |                          ^
+    141|   });
+    142| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  solarPhysicsClient.h1.test.ts > H-1 SolarPhysicsClient contract > schedules the next poll from completion, not from start (no back-to-back requests after a slow reply)
+AssertionError: expected 2 to be 1 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 2[39m
+
+ ❯ solarPhysicsClient.h1.test.ts:153:31
+    151|     await vi.advanceTimersByTimeAsync(2_010); // settle whatever was s…
+    152|     await immediate;
+    153|     expect(issuedImmediately).toBe(1);
+       |                               ^
+    154|   });
+    155| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  sunController.h1.test.ts > H-1 sunController physics -> AIA chain > while physics keeps timing out, no AIA tile is requested AND the controller exposes a status for the UI
+AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+Expected: [32m"[7mf[27mun[7mction[27m"[39m
+Received: [31m"un[7mdefined[27m"[39m
+
+ ❯ sunController.h1.test.ts:77:30
+     75|     expect(load).not.toHaveBeenCalled();
+     76|     const getStatus = (ctrl as unknown as { getPhysicsStatus?: () => {…
+     77|     expect(typeof getStatus).toBe('function'); // no status accessor e…
+       |                              ^
+     78|     expect(getStatus?.().state).toBe('timeout');
+     79|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  8 failed | 2 passed (10)
+   Start at  22:16:24
+   Duration  755ms (transform 315ms, setup 0ms, collect 431ms, tests 99ms, environment 0ms, prepare 193ms)
+
+
+real	0m1.457s
+user	0m4.457s
+sys	0m1.462s

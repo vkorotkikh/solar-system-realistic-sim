@@ -1,0 +1,50 @@
+INFO:     Started server process [1572921]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8073 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52176 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:38662 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38678 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44614 - "GET /solar/physics?jd=2461414.65345741&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33406 - "GET /solar/physics?jd=2461435.78585741&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:52442 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:44616 - "GET /solar/physics?jd=2461384.12322458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60034 - "GET /solar/physics?jd=2461467.58642457&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:59944 - "GET /solar/physics?jd=2461544.18322458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37324 - "GET /solar/physics?jd=2461628.51322457&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53424 - "GET /solar/physics?jd=2461652.57882458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53430 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:41610 - "GET /solar/physics?jd=2461731.24242458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:41622 - "GET /solar/physics?jd=2461752.97522458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48372 - "GET /solar/physics?jd=2461778.77362458&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:48548 - "GET /solar/physics?jd=2461859.10402457&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58350 - "GET /solar/physics?jd=2461356.72591014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33632 - "GET /solar/physics?jd=2461462.65551014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40106 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:50950 - "GET /solar/physics?jd=2461540.58511014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50960 - "GET /solar/physics?jd=2461562.31791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35840 - "GET /solar/physics?jd=2461643.84791014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39332 - "GET /solar/physics?jd=2461670.51351014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33278 - "GET /solar/physics?jd=2461743.91071014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:33292 - "GET /solar/physics?jd=2461771.97631014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39452 - "GET /solar/physics?jd=2461856.03951014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:35378 - "GET /solar/physics?jd=2461881.23831014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51380 - "GET /solar/physics?jd=2461906.50391014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:44846 - "GET /solar/physics?jd=2461978.10111014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37884 - "GET /solar/physics?jd=2462004.50031014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39996 - "GET /solar/physics?jd=2462079.69711014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:54414 - "GET /solar/physics?jd=2462107.82911014&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:32894 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:47142 - "GET /solar/physics?jd=2461308.51&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53954 - "GET /solar/physics?jd=2461308.52&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40792 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1572921]

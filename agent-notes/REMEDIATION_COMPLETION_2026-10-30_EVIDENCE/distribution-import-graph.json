@@ -1,0 +1,647 @@
+{
+  "entry": "src/main.ts",
+  "qualification": "Syntax graph includes dynamic imports behind disabled guards; no tree-shaking or runtime execution claim.",
+  "files": [
+    "backend/data/ephemerides/planet_secular_model.json",
+    "src/constants.ts",
+    "src/data/asteroidCatalogLoader.ts",
+    "src/data/moonEphemerisChebyshev.json",
+    "src/data/moonEphemerisDaphnis.json",
+    "src/data/moonEphemerisRepairs.json",
+    "src/data/moonEphemerisS2023S38.json",
+    "src/data/moonEphemerisSpkRepairs.json",
+    "src/data/moons.json",
+    "src/data/planetaryRotation.ts",
+    "src/data/planets.ts",
+    "src/frontend/app/bodyManager.ts",
+    "src/frontend/app/bodyPickerPresentation.ts",
+    "src/frontend/app/experimentController.ts",
+    "src/frontend/app/explorerController.ts",
+    "src/frontend/app/frameLifecycle.ts",
+    "src/frontend/app/panelController.ts",
+    "src/frontend/app/rendererRecovery.ts",
+    "src/frontend/app/rendererWarmup.ts",
+    "src/frontend/app/runtimeConfig.ts",
+    "src/frontend/app/runtimeLifetime.ts",
+    "src/frontend/app/sceneSetup.ts",
+    "src/frontend/app/stateStore.ts",
+    "src/frontend/app/textureManager.ts",
+    "src/frontend/app/timeController.ts",
+    "src/frontend/app/viewportCameraController.ts",
+    "src/frontend/features/asteroids/beltRenderer.ts",
+    "src/frontend/features/asteroids/catalogSourceStatus.ts",
+    "src/frontend/features/asteroids/kuiperBeltUpdater.ts",
+    "src/frontend/features/asteroids/startupBelt.ts",
+    "src/frontend/features/planetary/bodySpin.ts",
+    "src/frontend/features/planetary/planetShaders.ts",
+    "src/frontend/features/planetary/planetView.ts",
+    "src/frontend/features/planetary/quadtreeLOD.ts",
+    "src/frontend/features/solar/gravitationalWaves.ts",
+    "src/frontend/features/solar/solarDataStatus.ts",
+    "src/frontend/features/solar/solarDisplayScale.ts",
+    "src/frontend/features/solar/solarFeatureBlending.ts",
+    "src/frontend/features/solar/solarFlares.ts",
+    "src/frontend/features/solar/solarFrame.ts",
+    "src/frontend/features/solar/solarGeometryContract.ts",
+    "src/frontend/features/solar/solarMagnetics.ts",
+    "src/frontend/features/solar/solarObservationTexture.ts",
+    "src/frontend/features/solar/solarPhysicsClient.ts",
+    "src/frontend/features/solar/solarRealtimeClient.ts",
+    "src/frontend/features/solar/sunVisuals.ts",
+    "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+    "src/frontend/features/superluminal-modeling/h29DisplayScale.ts",
+    "src/frontend/features/superluminal-modeling/metricDisplay.ts",
+    "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+    "src/frontend/features/superluminal-modeling/smbhPropagation.ts",
+    "src/frontend/features/superluminal-modeling/sourceCoordinates.ts",
+    "src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts",
+    "src/main.ts",
+    "src/sim/asteroidBelt.ts",
+    "src/sim/catalog.ts",
+    "src/sim/kuiperBelt.ts",
+    "src/sim/lazyMoonEphemerides.ts",
+    "src/sim/loadMoonEphemerides.ts",
+    "src/sim/moonEphemeris.ts",
+    "src/sim/orbitMath.ts",
+    "src/sim/phase1AsteroidCatalog.ts",
+    "src/sim/solarSystemModel.ts",
+    "src/sim/sourceFrameOrbit.ts",
+    "src/style.css",
+    "src/sunController.ts",
+    "src/textures.ts",
+    "src/workers/modelWorker.ts",
+    "src/workers/modelWorkerContract.ts"
+  ],
+  "edges": [
+    {
+      "from": "src/main.ts",
+      "to": "src/style.css",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/panelController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/explorerController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/bodyPickerPresentation.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/viewportCameraController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/experimentController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/rendererRecovery.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/runtimeLifetime.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/frameLifecycle.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/sceneSetup.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/runtimeConfig.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/catalog.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/orbitMath.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/solarSystemModel.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/superluminal-modeling/metricDisplay.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/textures.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/bodyManager.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/stateStore.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/planetary/quadtreeLOD.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/planetary/bodySpin.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/planetary/planetView.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/workers/modelWorkerContract.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/sceneSetup.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/textureManager.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/rendererWarmup.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/app/timeController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sunController.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/kuiperBelt.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/asteroids/kuiperBeltUpdater.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/phase1AsteroidCatalog.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/asteroids/beltRenderer.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/asteroids/startupBelt.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/asteroids/catalogSourceStatus.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/frontend/features/solar/solarDataStatus.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/sim/loadMoonEphemerides.ts",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/main.ts",
+      "to": "src/workers/modelWorker.ts",
+      "kind": "URL-import-meta"
+    },
+    {
+      "from": "src/workers/modelWorker.ts",
+      "to": "src/sim/solarSystemModel.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/workers/modelWorker.ts",
+      "to": "src/workers/modelWorkerContract.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/solarSystemModel.ts",
+      "to": "src/sim/orbitMath.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/orbitMath.ts",
+      "to": "src/sim/moonEphemeris.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/orbitMath.ts",
+      "to": "src/sim/sourceFrameOrbit.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/moonEphemeris.ts",
+      "to": "src/data/moons.json",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/sim/moonEphemeris.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/data/moonEphemerisChebyshev.json",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/data/moonEphemerisRepairs.json",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/data/moonEphemerisSpkRepairs.json",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/data/moonEphemerisDaphnis.json",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/data/moonEphemerisS2023S38.json",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/loadMoonEphemerides.ts",
+      "to": "src/sim/lazyMoonEphemerides.ts",
+      "kind": "dynamic-import"
+    },
+    {
+      "from": "src/sim/lazyMoonEphemerides.ts",
+      "to": "src/data/moons.json",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/lazyMoonEphemerides.ts",
+      "to": "src/sim/moonEphemeris.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarDataStatus.ts",
+      "to": "src/frontend/features/solar/solarPhysicsClient.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarPhysicsClient.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/asteroids/startupBelt.ts",
+      "to": "src/sim/asteroidBelt.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/asteroids/startupBelt.ts",
+      "to": "src/frontend/features/asteroids/beltRenderer.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/asteroids/beltRenderer.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/asteroidBelt.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/asteroidBelt.ts",
+      "to": "src/sim/orbitMath.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/phase1AsteroidCatalog.ts",
+      "to": "src/sim/asteroidBelt.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/phase1AsteroidCatalog.ts",
+      "to": "src/data/asteroidCatalogLoader.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/asteroids/kuiperBeltUpdater.ts",
+      "to": "src/sim/kuiperBelt.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/kuiperBelt.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/kuiperBelt.ts",
+      "to": "src/sim/orbitMath.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarFrame.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarGeometryContract.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarPhysicsClient.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarRealtimeClient.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/sunVisuals.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarFlares.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarMagnetics.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarFeatureBlending.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/gravitationalWaves.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarObservationTexture.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sunController.ts",
+      "to": "src/frontend/features/solar/solarDataStatus.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarObservationTexture.ts",
+      "to": "src/frontend/features/solar/solarFeatureBlending.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/agnShockwaveEngine.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPropagation.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/smbhPropagation.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "to": "src/frontend/features/superluminal-modeling/sourceCoordinates.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts",
+      "to": "src/frontend/features/superluminal-modeling/h29DisplayScale.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/warpSlipstreamVisuals.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarMagnetics.ts",
+      "to": "src/frontend/features/solar/solarDisplayScale.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarMagnetics.ts",
+      "to": "src/frontend/features/solar/solarFrame.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarDisplayScale.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarDisplayScale.ts",
+      "to": "src/data/planets.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/data/planets.ts",
+      "to": "backend/data/ephemerides/planet_secular_model.json",
+      "kind": "import"
+    },
+    {
+      "from": "src/data/planets.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarFlares.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarFlares.ts",
+      "to": "src/frontend/features/solar/solarDisplayScale.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/sunVisuals.ts",
+      "to": "src/frontend/features/solar/solarDisplayScale.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/sunVisuals.ts",
+      "to": "src/frontend/features/solar/solarFeatureBlending.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarRealtimeClient.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarRealtimeClient.ts",
+      "to": "src/frontend/features/solar/solarObservationTexture.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/solar/solarGeometryContract.ts",
+      "to": "src/frontend/features/solar/solarFrame.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/app/sceneSetup.ts",
+      "to": "src/frontend/app/runtimeConfig.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/app/sceneSetup.ts",
+      "to": "src/frontend/app/runtimeConfig.ts",
+      "kind": "export"
+    },
+    {
+      "from": "src/frontend/features/planetary/quadtreeLOD.ts",
+      "to": "src/frontend/features/planetary/planetShaders.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/textures.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/metricDisplay.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/metricDisplay.ts",
+      "to": "src/frontend/features/superluminal-modeling/smbhPropagation.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/features/superluminal-modeling/metricDisplay.ts",
+      "to": "src/frontend/features/superluminal-modeling/h29DisplayScale.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/catalog.ts",
+      "to": "src/data/moons.json",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/catalog.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/catalog.ts",
+      "to": "src/data/planets.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/sim/catalog.ts",
+      "to": "src/data/planetaryRotation.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/data/planetaryRotation.ts",
+      "to": "src/constants.ts",
+      "kind": "import"
+    },
+    {
+      "from": "src/frontend/app/frameLifecycle.ts",
+      "to": "src/workers/modelWorkerContract.ts",
+      "kind": "import"
+    }
+  ]
+}

@@ -79,9 +79,9 @@ interface NormalizedSatellite extends PropagatedSatellite {
 }
 
 interface SatelliteWorkerSnapshot {
+  applyJ2: boolean;
   jd0: number;
   jd1: number;
-  applyJ2?: unknown;
   positions0: Float32Array;
   positions1: Float32Array;
   count: number;
@@ -94,9 +94,9 @@ interface SatelliteWorkerReadyMessage {
 
 interface SatelliteWorkerSnapshotMessage {
   type: 'snapshot';
+  applyJ2: boolean;
   jd0: number;
   jd1: number;
-  applyJ2?: unknown;
   count: number;
   positions0: Float32Array | ArrayLike<number>;
   positions1: Float32Array | ArrayLike<number>;
@@ -125,6 +125,10 @@ interface OrbitalSatelliteSystemOptions {
   markerPixelSize?: Partial<MarkerPixelSize> | null;
   markerBaseScaleAu?: number | null;
   markerColorOverrides?: MarkerColorOverrides | null;
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 function nowMs() {
@@ -227,6 +231,11 @@ function parseTleElements(
   category: string,
   primaryModel: PrimaryModel
 ): NormalizedSatellite | null {
+  const catalogFields = [line1.slice(2, 7).trim(), line2.slice(2, 7).trim()];
+  if (!catalogFields.every(value => /^[a-z0-9]{1,5}$/i.test(value))) return null;
+  const [catalogId, secondCatalogId] = catalogFields.map(value => /^\d+$/.test(value)
+    ? String(Number(value)) : value.toLowerCase());
+  if (catalogId !== secondCatalogId) return null;
   const epochYear = Number(line1.slice(18, 20));
   const epochDay = Number(line1.slice(20, 32));
   const iDeg = Number(line2.slice(8, 16));
@@ -254,7 +263,9 @@ function parseTleElements(
   const aKm = Math.cbrt(primaryModel.muKm3S2 / (meanMotionRadSec * meanMotionRadSec));
 
   return {
-    id: `sat-${sanitizeId(name)}`,
+    // Feed-local counters and display names are not physical identities. TLE
+    // IDs intentionally migrate to catalog identity for named records as well.
+    id: `sat-norad-${catalogId}`,
     name,
     category,
     epochJd: tleEpochToJulian(epochYear, epochDay),
@@ -270,7 +281,7 @@ function parseTleElements(
   };
 }
 
-function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryModel): NormalizedSatellite[] {
+export function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryModel): NormalizedSatellite[] {
   const lines = tleText
     .split('\n')
     .map((line: string) => line.trim())
@@ -279,29 +290,22 @@ function parseTleBlock(tleText: string, category: string, primaryModel: PrimaryM
   const satellites: NormalizedSatellite[] = [];
 
   for (let i = 0; i < lines.length;) {
-    let name = lines[i];
-    let line1 = lines[i + 1];
-    let line2 = lines[i + 2];
-    let recordLength = 3;
+    const unnamed = lines[i].startsWith('1 ');
+    const name = unnamed ? `Satellite ${satellites.length + 1}` : lines[i];
+    const line1 = lines[i + (unnamed ? 0 : 1)];
+    const line2 = lines[i + (unnamed ? 1 : 2)];
 
-    if (lines[i].startsWith('1 ') && lines[i + 1]?.startsWith('2 ')) {
-      line1 = lines[i];
-      line2 = lines[i + 1];
-      name = `Satellite ${satellites.length + 1}`;
-      recordLength = 2;
-    }
-
-    if (!line1?.startsWith('1 ') || !line2?.startsWith('2 ')) {
+    if ((!unnamed && name.startsWith('2 ')) || !line1?.startsWith('1 ') || !line2?.startsWith('2 ')) {
       i += 1;
       continue;
     }
+    // Consume each complete record exactly once, including a final two-line set.
+    i += unnamed ? 2 : 3;
 
     const parsed = parseTleElements(name, line1, line2, category, primaryModel);
     if (parsed) {
       satellites.push(parsed);
     }
-
-    i += recordLength;
   }
 
   return satellites;
@@ -722,9 +726,9 @@ export class OrbitalSatelliteSystem {
         }
 
         this.workerSnapshot = {
+          applyJ2: message.applyJ2,
           jd0: Number(message.jd0),
           jd1: Number(message.jd1),
-          applyJ2: message.applyJ2,
           positions0,
           positions1,
           count
@@ -940,14 +944,23 @@ export class OrbitalSatelliteSystem {
     if (!Number.isFinite(jd) || !Number.isFinite(snapshot.jd0) || !Number.isFinite(snapshot.jd1)) return false;
     if (snapshot.count !== this.satellites.length) return false;
     if (typeof snapshot.applyJ2 !== 'boolean' || snapshot.applyJ2 !== this.useJ2) return false;
+    // Validate the entire snapshot before touching any marker. A bad later
+    // coordinate must not leave earlier markers at a partially applied epoch.
+    if (!(snapshot.positions0 instanceof Float32Array) || !(snapshot.positions1 instanceof Float32Array)
+      || snapshot.positions0.length !== snapshot.count * 3 || snapshot.positions1.length !== snapshot.count * 3
+      || !snapshot.positions0.every(Number.isFinite) || !snapshot.positions1.every(Number.isFinite)) return false;
 
-    const positions = jd === snapshot.jd0 ? snapshot.positions0
-      : jd === snapshot.jd1 ? snapshot.positions1 : null;
-    if (!positions) return false;
+    const span = snapshot.jd1 - snapshot.jd0;
+    if (Math.abs(span) > this.workerInterpolationLimitDays() + 1e-9) return false;
+    if (jd < Math.min(snapshot.jd0, snapshot.jd1) || jd > Math.max(snapshot.jd0, snapshot.jd1)) return false;
+    const alpha = Math.abs(span) < 1e-12 ? 0 : clamp01((jd - snapshot.jd0) / span);
 
     for (let i = 0; i < this.satellites.length; i += 1) {
       const base = i * 3;
-      this.applyMarkerPositionByIndex(i, positions[base], positions[base + 1], positions[base + 2]);
+      const x = snapshot.positions0[base] + (snapshot.positions1[base] - snapshot.positions0[base]) * alpha;
+      const y = snapshot.positions0[base + 1] + (snapshot.positions1[base + 1] - snapshot.positions0[base + 1]) * alpha;
+      const z = snapshot.positions0[base + 2] + (snapshot.positions1[base + 2] - snapshot.positions0[base + 2]) * alpha;
+      this.applyMarkerPositionByIndex(i, x, y, z);
     }
 
     this.flushMarkerPositionUpdates();
@@ -967,6 +980,15 @@ export class OrbitalSatelliteSystem {
     return jd <= minJd + margin || jd >= maxJd - margin;
   }
 
+  private workerInterpolationLimitDays(): number {
+    // A circular orbit's midpoint chord error is r*(1-cos(pi/256)),
+    // about 0.527 km at r=7000 km. Use the fastest satellite in the batch;
+    // outside this short interval update() propagates at the display epoch.
+    const periods = this.satellites.map(satellite => 1 / satellite.meanMotionRevDay)
+      .filter(period => Number.isFinite(period) && period > 0);
+    return periods.length ? Math.min(...periods) / 256 : 0;
+  }
+
   requestWorkerSnapshot(jd: number): void {
     if (!this.worker || !this.workerReady || this.workerBusy) return;
 
@@ -975,7 +997,7 @@ export class OrbitalSatelliteSystem {
     if (!this.shouldRequestWorkerSnapshot(jd)) return;
 
     const speed = Math.abs(this.estimatedJdRate);
-    const leadDays = Math.max(2 / DAY_SECONDS, speed * this.workerLeadSeconds);
+    const leadDays = Math.min(this.workerInterpolationLimitDays(), Math.max(2 / DAY_SECONDS, speed * this.workerLeadSeconds));
     const direction = this.estimatedJdRate < -1e-9 ? -1 : 1;
 
     this.worker.postMessage({

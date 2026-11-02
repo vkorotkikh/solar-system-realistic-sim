@@ -10,7 +10,7 @@ interface Draw {
   bodyWorld: XYZ; labelWorld: XYZ; bodyView: XYZ; labelView: XYZ;
   bodyNdc: XYZ; labelNdc: XYZ; viewDelta: XYZ; worldMagnitude: number;
   localMagnitude: number; scale: number[]; visible: boolean; parentVisible: boolean;
-  materialId: string; mapId: string; imageSize: number[];
+  materialId: string; mapId: string; imageSize: number[]; pixelHeight: number;
 }
 interface Probe {
   rendererCount: number; draws: number; first: Draw | null; latest: Draw | null;
@@ -105,8 +105,14 @@ async function routeAndObserve(page: Page, baseURL: string) {
           const labelWorld: XYZ = [labelMatrix[12]!, labelMatrix[13]!, labelMatrix[14]!];
           const bodyView = transformed(view, bodyWorld), labelView = transformed(view, labelWorld);
           const viewDelta: XYZ = [labelView[0] - bodyView[0], labelView[1] - bodyView[1], labelView[2] - bodyView[2]];
+          // Measure the rendered billboard edges through the camera projection.
+          // CSS height, not the scaled WebGL drawing buffer, is the label contract.
+          const viewportHeight = renderer.domElement.clientHeight;
+          const top = transformed(projection, [labelView[0], labelView[1] + sprite.scale.y / 2, labelView[2]]);
+          const bottom = transformed(projection, [labelView[0], labelView[1] - sprite.scale.y / 2, labelView[2]]);
+          const pixelHeight = (top[1] - bottom[1]) * viewportHeight / 2;
           const image = map.image as HTMLCanvasElement;
-          const draw: Draw = { index: probe.draws, sunName: sun.name, candidates: candidates.length,
+          const draw: Draw = { pixelHeight, index: probe.draws, sunName: sun.name, candidates: candidates.length,
             cameraQuaternion: camera.quaternion.toArray(), bodyWorld, labelWorld, bodyView, labelView,
             bodyNdc: transformed(projection, bodyView), labelNdc: transformed(projection, labelView), viewDelta,
             worldMagnitude: Math.hypot(...labelWorld.map((v, i) => v - bodyWorld[i]!)),
@@ -139,11 +145,13 @@ function healthy(probe: Probe, errors: Awaited<ReturnType<typeof routeAndObserve
 function compatible(draw: Draw, first: Draw) {
   expect([...draw.bodyWorld, ...draw.labelWorld, ...draw.bodyView, ...draw.labelView, ...draw.bodyNdc, ...draw.labelNdc].every(Number.isFinite)).toBe(true);
   expect(draw.visible).toBe(true); expect(draw.parentVisible).toBe(true);
-  expect(draw.scale).toEqual([0.12, 0.03, 1]); expect(draw.imageSize).toEqual([256, 64]);
+  expect(draw.pixelHeight, `draw ${draw.index}: constant CSS-pixel label height`).toBeCloseTo(40, 6);
+  expect(draw.scale[0]! / draw.scale[1]!).toBeCloseTo(4, 10); expect(draw.scale[2]).toBe(1);
+  expect(draw.imageSize).toEqual([256, 64]);
   expect(draw.materialId).toBe(first.materialId); expect(draw.mapId).toBe(first.mapId);
   expect(draw.materialId.length).toBeGreaterThan(0); expect(draw.mapId.length).toBeGreaterThan(0);
-  expect(Math.abs(draw.localMagnitude - first.localMagnitude)).toBeLessThan(1e-10);
-  expect(Math.abs(draw.worldMagnitude - first.worldMagnitude)).toBeLessThan(1e-10);
+  expect(draw.localMagnitude).toBeGreaterThan(0);
+  expect(Math.abs(draw.worldMagnitude - draw.localMagnitude)).toBeLessThan(1e-10);
   expect(Math.abs(draw.bodyNdc[0])).toBeLessThan(0.01); expect(Math.abs(draw.bodyNdc[1])).toBeLessThan(0.01);
 }
 function screenUp(draw: Draw) {
@@ -155,7 +163,7 @@ function screenUp(draw: Draw) {
   expect.soft(draw.labelNdc[1] - draw.bodyNdc[1], `draw ${draw.index}: projected label is above body`).toBeGreaterThan(1e-8);
 }
 async function retain(page: Page, testInfo: TestInfo, errors: Awaited<ReturnType<typeof routeAndObserve>>) {
-  const body = Buffer.from(JSON.stringify({ fixtureScope: 'FE041 passive actual-render geometry; synthetic services; no pixel/science/font claim',
+  const body = Buffer.from(JSON.stringify({ fixtureScope: 'FE041 passive actual-render geometry; synthetic services; projected geometry only; no raster/science/font claim',
     probe: await snapshot(page), ...errors }, null, 2));
   await writeFile(testInfo.outputPath('label-observations.json'), body);
   await testInfo.attach('label-observations.json', { body, contentType: 'application/json' });

@@ -1,3 +1,5 @@
+> Historical development record. For current composition see [ADR 0006](docs/adr/0006-runtime-composition-and-retained-apis.md); for active repairs see [the closure ledger](agent-notes/AUGUST_PARTIALS_CLOSURE_2026-10-31.md). Dated feature claims below are not current acceptance evidence.
+
 # Development History Context
 
 ## 1) Instruction Layer

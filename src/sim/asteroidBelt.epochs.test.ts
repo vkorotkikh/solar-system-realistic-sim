@@ -3,13 +3,14 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
-import * as ts from 'typescript';
 import { describe, expect, it, vi } from 'vitest';
 import { AU_KM } from '../constants';
 import { ASTEROID_BELT_OBJECTS } from '../data/planets';
 import { generateAsteroidBelt, NAMED_ASTEROIDS, propagateBeltPositions } from './asteroidBelt';
 import { propagateKeplerOrbit, type KeplerOrbit } from './orbitMath';
 import { loadPhase1AsteroidCatalog } from './phase1AsteroidCatalog';
+import { createStartupAsteroidBelt } from '../frontend/features/asteroids/startupBelt';
+import type { BeltRendererHandle } from '../frontend/features/asteroids/beltRenderer';
 
 interface RetainedSource {
   elements_raw_response: string;
@@ -89,46 +90,23 @@ describe('SMB061 named fallback asteroid epochs', () => {
   });
 
   it('retains corrected fallback positions when the production catalog initialization fails', async () => {
-    // Execute the actual main.ts initialization declaration without importing the
-    // browser/WebGL application. Only the external fetch boundary is replaced.
-    const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-    const file = ts.createSourceFile('main.ts', mainSource, ts.ScriptTarget.ESNext, true);
-    let declaration: ts.FunctionDeclaration | undefined;
-    const visit = (node: ts.Node) => {
-      if (ts.isFunctionDeclaration(node) && node.name?.text === 'initPhaseOneAsteroids') declaration = node;
-      else ts.forEachChild(node, visit);
-    };
-    visit(file);
-    if (!declaration) throw new Error('Production asteroid initialization is unavailable');
-    const javascript = ts.transpileModule(declaration.getText(file), {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
-    }).outputText;
-    const population = generateAsteroidBelt(10);
-    const observed: { population: typeof population; status?: unknown } = { population };
-    const bindings: Record<string, unknown> = {
-      loadPhase1AsteroidCatalog: (options: Parameters<typeof loadPhase1AsteroidCatalog>[0]) =>
-        loadPhase1AsteroidCatalog({ ...options, cache: false, url: '/smb061-failed.bin' }),
-      ASTEROID_BELT_PHASE1_SOURCE_LIMIT: 100_000,
-      PHASE1_LOAD_LATENCY_BUDGET_MS: 2000,
-      PHASE1_CATALOG_META_URL: '/smb061-failed.meta.json',
-      startup: { signal: new AbortController().signal }, recovery: { available: true },
-      dom: { statusCatalog: {} },
-      renderAsteroidCatalogSourceStatus: (_element: unknown, status: unknown) => { observed.status = status; },
-      failedAsteroidCatalogStatus: () => 'procedural-fallback',
-      refreshAsteroidBeltRenderer: (next: typeof population) => { observed.population = next; },
-    };
-    const initialize = Function(...Object.keys(bindings), `${javascript}; return initPhaseOneAsteroids;`)(
-      ...Object.values(bindings),
-    ) as () => Promise<void>;
+    // Exercise PR22's actual startup owner and loader; only fetch is replaced.
+    // The owner allocates the fallback after failure, retaining corrected epochs.
     vi.stubGlobal('fetch', async () => new Response('unavailable', { status: 503 }));
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let renderer: BeltRendererHandle | undefined;
     try {
-      await initialize();
-      expect(observed.status).toBe('procedural-fallback');
-      expect(observed.population).toBe(population);
-      expectFallbackPositions(observed.population);
+      const result = await createStartupAsteroidBelt(loadPhase1AsteroidCatalog({
+        cache: false, url: '/smb061-failed.bin', metaUrl: '/smb061-failed.meta.json',
+        maxRecords: 100_000, loadLatencyBudgetMs: 2000,
+      }), { targetCount: 10, seed: 42 });
+      renderer = result.renderer;
+      expect(result.source).toBe('failed');
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.catalog).toBeNull();
+      expect(result.population.asteroids).toEqual(NAMED_ASTEROIDS);
+      expectFallbackPositions(result.population);
     } finally {
-      warning.mockRestore();
+      renderer?.dispose();
       vi.unstubAllGlobals();
     }
   });

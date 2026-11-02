@@ -14,7 +14,7 @@ import server
 
 NOW = 2_460_500.7508007
 EPOCH = 2_460_000.5
-KNOWN = {"jd_tdb", "jd", "fidelity", "max_features", "forcing", "live_data", "force_data_refresh"}
+KNOWN = {"jd_tdb", "jd", "fidelity", "max_features", "forcing", "live_data", "force_data_refresh", "delivery", "geometry_version"}
 
 
 @pytest.fixture
@@ -24,7 +24,11 @@ def route(monkeypatch):
     class FakeRunner:
         async def run(self, payload, *, timeout_seconds):
             events["runs"].append((dict(payload), timeout_seconds))
-            return {"test_only_non_science": True, "received": dict(payload)}
+            return {
+                "test_only_non_science": True, "received": dict(payload),
+                "corona": {"features": []}, "pfss_field_lines": {"lines": []},
+                "heliosphere": {"parker_spiral": {"lines": []}},
+            }
 
     runner = FakeRunner()
 
@@ -76,6 +80,7 @@ def test_unknown_query_rejected_before_admission_and_runner(route, query):
 @pytest.mark.parametrize(("query", "expected"), [
     ("", {"epoch_jd_tdb": NOW, "fidelity": "operational", "max_features": 220, "forcing": "synthetic", "live_data": False}),
     ("jd_tdb=2460000.5", {"epoch_jd_tdb": EPOCH}),
+    ("delivery=full&geometry_version=" + "a" * 64, {"epoch_jd_tdb": NOW}),
     ("jd=2460000.5", {"epoch_jd_tdb": EPOCH}),
     ("jd_tdb=2460000.5&jd=2460000.5", {"epoch_jd_tdb": EPOCH}),
     ("jd_tdb=2460000.5&jd=2460000.5&fidelity=preview&max_features=8&forcing=synthetic&live_data=false&force_data_refresh=false", {"epoch_jd_tdb": EPOCH, "fidelity": "preview", "max_features": 8, "forcing": "synthetic", "live_data": False}),
@@ -124,7 +129,7 @@ def test_existing_declared_validation_and_admission_order(route, query, status, 
     assert events == {"rate": rate, "get_runner": 0, "runs": []}
 
 
-def test_openapi_declares_exact_seven_query_names_and_legacy_alias(route):
+def test_openapi_declares_exact_nine_query_names_and_legacy_alias(route):
     client, events = route
     response = client.get("/openapi.json")
     assert response.status_code == 200
@@ -213,4 +218,26 @@ def test_unknown_key_does_not_preempt_network_auth_or_refresh(route, monkeypatch
     assert response.status_code == status
     if code is not None:
         assert response.json()["detail"]["code"] == code
+    assert events == {"rate": 0, "get_runner": 0, "runs": []}
+
+
+@pytest.mark.parametrize("version", [None, "a" * 64])
+def test_render_delivery_query_keys_are_admitted(route, version):
+    client, events = route
+    params = {"jd_tdb": EPOCH, "delivery": "render-v1"}
+    if version is not None:
+        params["geometry_version"] = version
+    response = client.get("/solar/physics", params=params)
+    assert response.status_code == 200, response.text
+    assert response.json()["delivery"]["schema"] == {"name": "solar_render_delivery", "version": 1}
+    assert len(events["runs"]) == 1
+    payload, _timeout = events["runs"][0]
+    assert "delivery" not in payload and "geometry_version" not in payload
+
+
+@pytest.mark.parametrize("version", ["short", "A" * 64, "g" * 64, "a" * 65])
+def test_invalid_geometry_versions_rejected_before_runner(route, version):
+    client, events = route
+    response = client.get("/solar/physics", params={"delivery": "render-v1", "geometry_version": version})
+    assert response.status_code == 422
     assert events == {"rate": 0, "get_runner": 0, "runs": []}

@@ -245,7 +245,7 @@ def test_openapi_retains_existing_query_bounds_and_names(route):
     response = client.get("/openapi.json")
     assert response.status_code == 200
     params = {item["name"]: item for item in response.json()["paths"][PATH]["get"]["parameters"] if item["in"] == "query"}
-    assert set(params) == {"channel", "image_id", "jd_tdb", "jd", "force_refresh"}
+    assert set(params) == {"channel", "image_id", "jd_tdb", "jd", "jd_tdb1", "jd_tdb2", "force_refresh"}
     image_schema = next(item for item in params["image_id"]["schema"]["anyOf"] if item.get("type") == "string")
     assert image_schema["minLength"] == 1
     assert image_schema["maxLength"] == 128

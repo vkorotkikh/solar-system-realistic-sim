@@ -1,0 +1,576 @@
+{
+ "tag": "dev-gpu-dpr1",
+ "url": "http://127.0.0.1:5173/",
+ "dpr": 1,
+ "loadMs": 6652,
+ "firstFrames": {
+  "stableAfterMs": 523.6999999940399,
+  "frames": 17
+ },
+ "ui": {
+  "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+  "timerQuery": true,
+  "canvas": [
+   1248,
+   900
+  ],
+  "statusCatalog": "Asteroids: verified Phase-1 catalog (100,000 rows, SHA-256)",
+  "statusBodies": "Bodies · 55,010",
+  "experiment": "Standard compound transport model selected.",
+  "date": "2026-11-23",
+  "bodyOptions": 10,
+  "solarText": []
+ },
+ "steady": {
+  "frames": 1799,
+  "fps_p50": 59.9,
+  "frameMs": {
+   "p50": 16.7,
+   "p95": 16.8,
+   "p99": 16.8,
+   "max": 16.8
+  },
+  "jsMs": {
+   "p50": 2.4,
+   "p95": 2.8,
+   "max": 3.4
+  },
+  "gpuMs": {
+   "p50": 0.53,
+   "p95": 0.57,
+   "n": 1800
+  },
+  "drawsPerFrame": 44,
+  "instancesPerFrame": 55083,
+  "bufBytesPerFrame": {
+   "p50": 329632,
+   "max": 329632
+  },
+  "texUploadsPerFrame": 0,
+  "sizeWritesInWindow": 0,
+  "workerRttMs": {
+   "p50": 3.8,
+   "p95": 4.4,
+   "n": 1800
+  },
+  "workerPosts": {
+   "init": 1,
+   "tick": 2297
+  }
+ },
+ "series": [
+  {
+   "t": 0,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 42.7,
+   "frames": 1800,
+   "sizeWrites": 14
+  },
+  {
+   "t": 15,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 54.1,
+   "frames": 2700,
+   "sizeWrites": 14
+  },
+  {
+   "t": 30,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 50.8,
+   "frames": 3600,
+   "sizeWrites": 14
+  },
+  {
+   "t": 45,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 46.3,
+   "frames": 4500,
+   "sizeWrites": 14
+  },
+  {
+   "t": 60,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 54.3,
+   "frames": 5400,
+   "sizeWrites": 14
+  },
+  {
+   "t": 75,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 62.3,
+   "frames": 6300,
+   "sizeWrites": 14
+  },
+  {
+   "t": 90,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 54.3,
+   "frames": 7200,
+   "sizeWrites": 14
+  },
+  {
+   "t": 105,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 53.6,
+   "frames": 8100,
+   "sizeWrites": 14
+  },
+  {
+   "t": 120,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 46.2,
+   "frames": 9000,
+   "sizeWrites": 14
+  },
+  {
+   "t": 135,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 54.1,
+   "frames": 9897,
+   "sizeWrites": 14
+  },
+  {
+   "t": 150,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 58.5,
+   "frames": 10797,
+   "sizeWrites": 14
+  },
+  {
+   "t": 165,
+   "live": {
+    "buf": 57,
+    "tex": 14,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 14,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 61.4,
+   "frames": 11697,
+   "sizeWrites": 14
+  },
+  {
+   "t": 180,
+   "live": {
+    "buf": 57,
+    "tex": 15,
+    "prog": 14,
+    "fb": 0
+   },
+   "created": {
+    "buf": 63,
+    "tex": 15,
+    "prog": 15
+   },
+   "deleted": {
+    "buf": 6,
+    "tex": 0,
+    "prog": 1
+   },
+   "heapMB": 55.8,
+   "frames": 12597,
+   "sizeWrites": 14
+  }
+ ],
+ "perf": [
+  {
+   "name": "LayoutCount",
+   "value": 13114
+  },
+  {
+   "name": "RecalcStyleCount",
+   "value": 13116
+  },
+  {
+   "name": "ScriptDuration",
+   "value": 39.114554
+  },
+  {
+   "name": "TaskDuration",
+   "value": 59.089952
+  },
+  {
+   "name": "JSHeapUsedSize",
+   "value": 37794016
+  }
+ ],
+ "requests": 86,
+ "transferKB": 7115.7,
+ "byType": {
+  "Document": {
+   "n": 1,
+   "bytes": 18346
+  },
+  "Script": {
+   "n": 40,
+   "bytes": 3627098
+  },
+  "Stylesheet": {
+   "n": 1,
+   "bytes": 1100
+  },
+  "Fetch": {
+   "n": 13,
+   "bytes": 3605921
+  },
+  "other": {
+   "n": 28,
+   "bytes": 0
+  },
+  "Font": {
+   "n": 3,
+   "bytes": 34049
+  }
+ },
+ "backendCalls": [
+  {
+   "url": "/solar/physics?jd=2461448.91200495&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461544.93680501&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461677.43800511&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461749.45640516&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461815.34040521&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461887.35920526&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2461953.24320529&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2462025.26160534&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2462091.27880539&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2462115.28520541&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  },
+  {
+   "url": "/solar/physics?jd=2462187.30400546&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "status": 503
+  }
+ ],
+ "failures": [
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  },
+  {
+   "url": "",
+   "failed": "net::ERR_ABORTED"
+  }
+ ],
+ "logs": [
+  "[debug] [vite] connecting...",
+  "[debug] [vite] connected.",
+  "[warning] [phase-1] Catalog load exceeded its performance budget: loadMs=5772.2 exceeded budgetMs=2000",
+  "[info] [phase-1] Loaded deterministic catalog from /data/asteroid-phase1/asteroid_phase1_main_100000.bin (100,000 source rows, 100,000 parsed records, version=1, checksum=a0b8328ca9b74399df500b1fa463e1157b9c30983cbf967c774745d78c08823d, load=5772.2ms (budget 2",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "[error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+ ]
+}

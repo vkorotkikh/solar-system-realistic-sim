@@ -1261,3 +1261,184 @@ describe('SolarPhysicsClient failure classification', () => {
     expect(client.status().nextRefreshMs - 1_000_000).toBe(waitMs);
   });
 });
+
+describe('versioned render delivery', () => {
+  const version = 'a'.repeat(64);
+  function geometryPayload(epoch = 2_460_000.5) {
+    return {
+      ...validPayload(epoch),
+      delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: version, geometry_included: true },
+      corona: { features: [{ id: 'loop-1', arc: [[1, 0, 0], [1.2, 0.1, 0]] }] },
+      pfss_field_lines: { lines: [{ id: 'field-1', arc: [[1, 0, 0], [2.5, 0, 0]] }] },
+      heliosphere: { parker_spiral: { lines: [{ arc: [[1, 0, 0], [200, 1, 0]] }] } }
+    };
+  }
+
+  it('reuses identical arrays while refreshing the latest scalar state, and reconnects with full geometry', async () => {
+    const urls: string[] = [];
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      urls.push(String(input));
+      count++;
+      if (count === 2) return responseWith({
+        ...validPayload(), activity_index: 0.9, wall_epoch_jd_tdb: 2460001.5, wall_epoch_jd: 2460001.5,
+        delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: version, geometry_included: false },
+        corona: {}, pfss_field_lines: {}, heliosphere: { parker_spiral: {} }
+      });
+      return responseWith(geometryPayload());
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const oldFeatures = client.latestState()?.corona?.features;
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(client.latestState()?.activity_index).toBe(0.9);
+    expect(client.latestState()?.wall_epoch_jd_tdb).toBe(2460001.5);
+    expect(client.latestState()?.corona?.features).toBe(oldFeatures);
+    expect(new URL(urls[0]).searchParams.get('delivery')).toBe('render-v1');
+    expect(new URL(urls[1]).searchParams.get('geometry_version')).toBe(version);
+    client.dispose();
+    const reconnected = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await reconnected.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(new URL(urls[2]).searchParams.has('geometry_version')).toBe(false);
+  });
+
+  it('rejects reuse with the wrong version, retains the last state, and asks for full geometry next', async () => {
+    const urls: string[] = [];
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      urls.push(String(input));
+      count++;
+      if (count === 2) return responseWith({
+        ...validPayload(), activity_index: 0.99,
+        delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: 'b'.repeat(64), geometry_included: false },
+        corona: {}, pfss_field_lines: {}, heliosphere: { parker_spiral: {} }
+      });
+      return responseWith(geometryPayload());
+    }));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const previous = client.latestState();
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(false);
+    expect(client.latestState()).toBe(previous);
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    expect(new URL(urls[2]).searchParams.has('geometry_version')).toBe(false);
+  });
+});
+
+describe('solar HTTP body bounds', () => {
+  it('rejects a decompressed body above two MiB and keeps the previous state', async () => {
+    let count = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => ++count === 1
+      ? new Response(JSON.stringify(validPayload()))
+      : new Response(JSON.stringify({ ...validPayload(), oversized: 'x'.repeat(2 * 1024 * 1024) }))));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+    const previous = client.latestState();
+    expect(await client.maybeRefresh(2460000.5, true)).toBe(false);
+    expect(client.latestState()).toBe(previous);
+    expect(client.lastError).toContain('decoded byte budget');
+  });
+});
+
+it('accepts a bounded complete legacy response when render delivery is unsupported', async () => {
+  const body = JSON.stringify({ ...validPayload(), legacyMetadata: 'x'.repeat(600_000) });
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(body, {
+    headers: { 'Content-Length': `${body.length}` }
+  })));
+  const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+  expect(await client.maybeRefresh(2460000.5, true)).toBe(true);
+  expect(client.latestState()?.activity_index).toBe(0.42);
+});
+
+describe('bounded render reader ownership', () => {
+  const epoch = 2460000.5;
+  const versionA = 'a'.repeat(64), versionB = 'b'.repeat(64);
+  const payload = (version = versionA, included = true) => ({
+    ...validPayload(epoch),
+    delivery: { schema: { name: 'solar_render_delivery', version: 1 }, geometry_version: version, geometry_included: included },
+    corona: included ? { features: [] } : {},
+    pfss_field_lines: included ? { lines: [] } : {},
+    heliosphere: { parker_spiral: included ? { lines: [] } : {} },
+  });
+  const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
+
+  it.each(['deadline', 'force', 'dispose'] as const)('%s cancels and unlocks a stalled native body reader', async action => {
+    vi.useFakeTimers();
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ cancel });
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(body))
+      .mockResolvedValue(new Response(JSON.stringify(payload(versionB))));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    try {
+      const old = client.maybeRefresh(epoch, true);
+      await flush(); expect(body.locked).toBe(true);
+      if (action === 'deadline') await vi.advanceTimersByTimeAsync(client.timeoutMs);
+      if (action === 'force') expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      if (action === 'dispose') client.dispose();
+      expect(await old).toBe(false); await flush();
+      expect(cancel).toHaveBeenCalledOnce(); expect(body.locked).toBe(false);
+      if (action === 'deadline') expect(client.status().lastFailure?.kind).toBe('timeout');
+      if (action === 'force') expect(client.latestState()?.delivery).toMatchObject({ geometry_version: versionB });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { client.dispose(); vi.useRealTimers(); }
+  });
+
+  it.each(['valid', 'invalid', 'rejected'] as const)('late %s stream completion cannot replace or clear newer geometry reuse', async late => {
+    const pending = deferred<ReadableStreamReadResult<Uint8Array>>();
+    const read = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue({ done: true });
+    const cancel = vi.fn(async () => {}), releaseLock = vi.fn();
+    const oldResponse = { ok: true, headers: new Headers(), body: { getReader: () => ({ read, cancel, releaseLock }) } } as unknown as Response;
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(payload())))
+      .mockResolvedValueOnce(oldResponse)
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload(versionB))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload(versionB, false))));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    try {
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      const old = client.maybeRefresh(epoch, true); await flush(); expect(read).toHaveBeenCalledOnce();
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      const latest = client.latestState();
+      if (late === 'rejected') pending.reject(new Error('retired stream'));
+      else pending.resolve({ done: false, value: new TextEncoder().encode(late === 'valid' ? JSON.stringify(payload()) : '{invalid') });
+      expect(await old).toBe(false); await flush();
+      expect(client.latestState()).toBe(latest);
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      expect(client.latestState()?.corona?.features).toBe(latest?.corona?.features);
+      expect(new URL(String(fetchMock.mock.calls[3][0])).searchParams.get('geometry_version')).toBe(versionB);
+      expect(releaseLock).toHaveBeenCalledOnce();
+    } finally { client.dispose(); }
+  });
+
+  it('does not offer or accept geometry from a different captured backend origin', async () => {
+    let base = 'http://a.test';
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(payload())))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload(versionA, false))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload(versionB))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload(versionB, false))));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new SolarPhysicsClient({ baseUrl: () => base });
+    try {
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      const previous = client.latestState(); base = 'http://b.test';
+      expect(await client.maybeRefresh(epoch, true)).toBe(false);
+      expect(client.latestState()).toBe(previous);
+      expect(new URL(String(fetchMock.mock.calls[1][0])).searchParams.has('geometry_version')).toBe(false);
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      expect(new URL(String(fetchMock.mock.calls[2][0])).searchParams.has('geometry_version')).toBe(false);
+      expect(await client.maybeRefresh(epoch, true)).toBe(true);
+      expect(new URL(String(fetchMock.mock.calls[3][0])).searchParams.get('geometry_version')).toBe(versionB);
+    } finally { client.dispose(); }
+  });
+
+  it('rejects render-v1 encoded size above 512 KiB even within the decoded budget', async () => {
+    const body = JSON.stringify({ ...payload(), padding: 'x'.repeat(512 * 1024) });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { headers: { 'Content-Length': String(body.length) } })));
+    const client = new SolarPhysicsClient({ baseUrl: () => 'http://backend.test' });
+    try {
+      expect(await client.maybeRefresh(epoch, true)).toBe(false);
+      expect(client.lastError).toContain('encoded byte budget'); expect(client.latestState()).toBeNull();
+    } finally { client.dispose(); }
+  });
+});

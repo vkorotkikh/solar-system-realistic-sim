@@ -1,0 +1,235 @@
+{
+ "tag": "step1",
+ "tLoad": 3139,
+ "physics": {
+  "n": 7,
+  "by": {
+   "http_200": 4,
+   "http_503": 3
+  },
+  "okDurMs": {
+   "n": 4,
+   "min": 11583,
+   "p50": 12335,
+   "p95": 13103,
+   "max": 13103
+  },
+  "inFlightAtEnd": 0
+ },
+ "aia": {
+  "n": 1,
+  "by": {
+   "http_200": 1
+  },
+  "okDurMs": {
+   "n": 1,
+   "min": 1828,
+   "p50": 1828,
+   "p95": 1828,
+   "max": 1828
+  },
+  "inFlightAtEnd": 0
+ },
+ "nTimings": 8,
+ "timings": [
+  {
+   "t": 14219,
+   "phase": "fetch",
+   "headersAfterMs": 13662,
+   "bodyReadMs": 6.3,
+   "jsonParseMs": 2,
+   "chars": 660298,
+   "requestJd": 2461308.6034513935
+  },
+  {
+   "t": 14227,
+   "phase": "apply",
+   "aiaKickMs": 0.8,
+   "normalizeMs": 2.3,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.7,
+   "totalMs": 5.8,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5474276504048037,
+   "epochJd": 2461308.60345139,
+   "simJd": 2461350.3292273935
+  },
+  {
+   "t": 43949,
+   "phase": "fetch",
+   "headersAfterMs": 12341,
+   "bodyReadMs": 2.7,
+   "jsonParseMs": 2.3,
+   "chars": 645435,
+   "requestJd": 2461423.459227394
+  },
+  {
+   "t": 43954,
+   "phase": "apply",
+   "aiaKickMs": 0,
+   "normalizeMs": 3,
+   "blendMs": 0,
+   "rebuildFieldMs": 1.7,
+   "totalMs": 4.7,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.5432354304493219,
+   "epochJd": 2461423.45922739,
+   "simJd": 2461462.591227394
+  },
+  {
+   "t": 73814,
+   "phase": "fetch",
+   "headersAfterMs": 11588,
+   "bodyReadMs": 6.9,
+   "jsonParseMs": 2.3,
+   "chars": 656014,
+   "requestJd": 2461538.654827395
+  },
+  {
+   "t": 73817,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 0.3,
+   "blendMs": 0,
+   "rebuildFieldMs": 2.6,
+   "totalMs": 3,
+   "features": 180,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.49309317939734926,
+   "epochJd": 2461538.65482739,
+   "simJd": 2461580.0532273953
+  },
+  {
+   "t": 105108,
+   "phase": "fetch",
+   "headersAfterMs": 12036,
+   "bodyReadMs": 4.7,
+   "jsonParseMs": 2.1,
+   "chars": 603251,
+   "requestJd": 2461654.9836273957
+  },
+  {
+   "t": 105111,
+   "phase": "apply",
+   "aiaKickMs": 0.1,
+   "normalizeMs": 0.2,
+   "blendMs": 0.1,
+   "rebuildFieldMs": 2.7,
+   "totalMs": 3.1,
+   "features": 144,
+   "fieldChildren": 120,
+   "pfssSource": "synthetic",
+   "activity": 0.4169054737622486,
+   "epochJd": 2461654.9836274,
+   "simJd": 2461700.181627396
+  }
+ ],
+ "firstSamples": [
+  {
+   "t": 56031,
+   "date": "2027-04-18",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790303312844,
+     "lastRefreshMs": 1790303300502,
+     "lastLatencyMs": 12342,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790303330502
+    },
+    "hasState": true,
+    "epochJd": 2461423.45922739,
+    "activity": 0.5432354304493219,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408524",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "7:pfss:synthetic:2320:tube-0351:0.98|tube-0223:0.94|tube-0163:0.94|tube-0367:0.85|tube-0023:0.77|tube-0007:0.78|tube-0139:0.67|tube-0179:0.66|tube-0123:0.65|tube-0419:0.63|tube-0131:0.63|tube-0347:0.69"
+   }
+  },
+  {
+   "t": 84433,
+   "date": "2027-08-02",
+   "scale": "+4.0 d/s",
+   "spike": {
+    "status": {
+     "lastError": null,
+     "lastSuccessMs": 1790303342708,
+     "lastRefreshMs": 1790303331120,
+     "lastLatencyMs": 11588,
+     "pollIntervalMs": 30000,
+     "nextRefreshMs": 1790303361120
+    },
+    "hasState": true,
+    "epochJd": 2461538.65482739,
+    "activity": 0.49309317939734926,
+    "obsTexture": true,
+    "obsChannel": "aia_304",
+    "obsImageId": "192408524",
+    "fieldChildren": 120,
+    "fieldVisible": false,
+    "fieldSig": "6:pfss:synthetic:2324:tube-0123:0.83|tube-0359:0.82|tube-0007:0.79|tube-0147:0.66|tube-0179:0.65|tube-0135:0.66|tube-0435:0.63|tube-0111:0.63|tube-0283:0.68|tube-0327:0.62|tube-0339:0.69|tube-0431:0.65"
+   }
+  }
+ ],
+ "lastSample": {
+  "t": 186494,
+  "date": "2028-08-24",
+  "scale": "+4.0 d/s",
+  "spike": {
+   "status": {
+    "lastError": "Solar physics request failed (503)",
+    "lastSuccessMs": 1790303374003,
+    "lastRefreshMs": 1790303426712,
+    "lastLatencyMs": 12036,
+    "pollIntervalMs": 30000,
+    "nextRefreshMs": 1790303456712
+   },
+   "hasState": true,
+   "epochJd": 2461654.9836274,
+   "activity": 0.4169054737622486,
+   "obsTexture": true,
+   "obsChannel": "aia_304",
+   "obsImageId": "192408524",
+   "fieldChildren": 120,
+   "fieldVisible": false,
+   "fieldSig": "5:pfss:synthetic:2328:tube-0499:0.88|tube-0383:0.91|tube-0235:0.76|tube-0463:0.85|tube-0067:0.76|tube-0155:0.76|tube-0243:0.64|tube-0327:0.62|tube-0451:0.59|tube-0146:0.64|tube-0131:0.59|tube-0419:0.59"
+  }
+ },
+ "shots": [
+  "firstSuccessPlus4s",
+  "t8",
+  "t160",
+  "end"
+ ],
+ "errorLogCount": 4,
+ "errorLogsHead": [
+  {
+   "t": 3308,
+   "type": "warning",
+   "text": "[phase-1] Catalog load exceeded its performance budget: loadMs=2815.3 exceeded budgetMs=2000"
+  },
+  {
+   "t": 136285,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 169823,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+   "t": 205716,
+   "type": "error",
+   "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+ ]
+}

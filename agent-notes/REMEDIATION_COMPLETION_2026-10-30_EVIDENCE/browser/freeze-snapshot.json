@@ -1,0 +1,53 @@
+{
+  "capturedAt": "2026-10-30T05:19:52.403749+00:00",
+  "head": "2527db6dd32b5339190ded6d980ef7005ac2592d",
+  "workspace": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "changedFiles": [
+    ".github/workflows/frontend-ui.yml",
+    "playwright.config.ts",
+    "src/frontend/app/panelController.ts",
+    "src/frontend/app/viewportCameraController.ts",
+    "src/frontend/app/viewportCameraController.test.ts",
+    "src/main.bodyInfo.test.ts",
+    "tests/browser/panel.spec.ts",
+    "tests/browser/camera.spec.ts",
+    "tests/browser/startup-warmup.spec.ts",
+    "tests/browser/scn049-kuiper-subscription.spec.ts",
+    "tests/browser/fixtures/ui-shell.ts"
+  ],
+  "files": {
+    ".github/workflows/frontend-ui.yml": "1d63e67c55ad7f272849f0cd88366e68bb6c381196532372fb2aaf75b782035d",
+    "playwright.config.ts": "c22ac0cb7e62f68979763ad70355c82d130caa72aed70e208a5fabed2ab79885",
+    "src/frontend/app/panelController.ts": "d0cdd704883a053723d301c899f4da9f316707731a756614180b85f73b84c633",
+    "src/frontend/app/viewportCameraController.ts": "11e5145a0fca5452b74264e85032d13a0c0e0024fccc54a6d51737dda9a4bd64",
+    "src/frontend/app/viewportCameraController.test.ts": "5f3ea37bca5df3c9f9790f4a687017ead37b020865f6bfa6663c1019127a48ed",
+    "src/main.bodyInfo.test.ts": "85ced7c7a9403c13ffb5c7ad0de7b472bdc0c60b5f7b9160af6c40fc2e9f78a2",
+    "tests/browser/panel.spec.ts": "2e32b0a241388e290a96847eb1bf849fc3db5b07cd12912c30861d9c526e2834",
+    "tests/browser/camera.spec.ts": "f39704450491d9d6f86e609e7b5aa36e134aa93c6619ae007512c67571e46624",
+    "tests/browser/startup-warmup.spec.ts": "207e44e65513281edb3222d08cfe6aff28f924879c8f6caf9b093adc1f1268e6",
+    "tests/browser/scn049-kuiper-subscription.spec.ts": "1963a0fa91a27824917a8f3a0f419596542bc10e73293f48fb03fde4c95ce0c4",
+    "tests/browser/fixtures/ui-shell.ts": "f646b0363c65270c09d5d55cdad88430c8c7232e7b028daaa97118a0ec9d1085"
+  },
+  "capture": {
+    "path": "src/frontend/app/fixtures/kuiper-subscription-ordering.json",
+    "sha256": "78c739e806808c0491bf2f05fd487473ee1b49ea2e0b995dfc45580b2606f1b4"
+  },
+  "status": "Stable for parent commit; matrix running; no planned further edits unless a real matrix defect is found.",
+  "validation": {
+    "directControllerBodyInfo": {
+      "passed": 18
+    },
+    "clientPinnedUnit": {
+      "passed": 59
+    },
+    "currentScopedChromium": {
+      "passed": 17
+    },
+    "fullChromium": {
+      "passed": 42,
+      "skipped": 1,
+      "sourceLimit": "Ran before the final settled-width timer and automatic legacy fixture changes. Parent final combined Chromium run after source freeze remains required."
+    },
+    "nativeZoomFirefoxWebKit": "Final matrix running; result pending."
+  }
+}

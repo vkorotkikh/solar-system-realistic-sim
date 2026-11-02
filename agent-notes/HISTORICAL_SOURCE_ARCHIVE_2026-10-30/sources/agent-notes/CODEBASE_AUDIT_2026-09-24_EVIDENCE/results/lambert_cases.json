@@ -1,0 +1,91 @@
+[
+ {
+  "case": "short-way 110deg",
+  "status": "ok",
+  "closureKm": 16.311424464882716,
+  "residS": 0.8143575222675281,
+  "revs": 0,
+  "angle": 110.0,
+  "bracketed": true
+ },
+ {
+  "case": "long-way 250deg (prograde)",
+  "status": "ok",
+  "closureKm": 190.220901344574,
+  "residS": 8.588850122941949,
+  "revs": 0,
+  "angle": 250.00000000000003,
+  "bracketed": true
+ },
+ {
+  "case": "same geometry, retrograde",
+  "status": "ok",
+  "closureKm": 18.596198327596404,
+  "residS": 0.9239245490789472,
+  "revs": 0,
+  "angle": 250.00000000000003,
+  "bracketed": true
+ },
+ {
+  "case": "near-collinear 0.5deg",
+  "status": "ok",
+  "closureKm": 84.80601249993231,
+  "residS": 5.733461729141709,
+  "revs": 0,
+  "angle": 0.4999999999991335,
+  "bracketed": true
+ },
+ {
+  "case": "near-collinear 179.5deg",
+  "status": "ok",
+  "closureKm": 0.003961967017681576,
+  "residS": 1.7164893506560475e-05,
+  "revs": 0,
+  "angle": 179.50000000000088,
+  "bracketed": true
+ },
+ {
+  "case": "exact 180deg",
+  "status": "no_solution"
+ },
+ {
+  "case": "3-D, 60deg incl",
+  "status": "ok",
+  "closureKm": 4.690810300298763e-05,
+  "residS": 2.1339474187698215e-06,
+  "revs": 0,
+  "angle": 65.1912519461732,
+  "bracketed": true
+ },
+ {
+  "case": "hyperbolic (fast, 20 d, 1->1.5AU)",
+  "status": "ok",
+  "closureKm": 217.035075313572,
+  "residS": 1.9231699170518368,
+  "revs": 0,
+  "angle": 59.99999999999999,
+  "bracketed": true
+ },
+ {
+  "case": "very long 3000 d",
+  "status": "ok",
+  "closureKm": 0.020914474521984375,
+  "residS": 0.0017346610547974706,
+  "revs": 0,
+  "angle": 199.99999999999997,
+  "bracketed": true
+ },
+ {
+  "case": "TOF too short 0.5 d",
+  "status": "no_solution"
+ },
+ {
+  "case": "multi-rev candidate: TOF 900 d, 90deg",
+  "status": "ok",
+  "closureKm": 0.0023965794820730853,
+  "residS": 7.041780918370932e-05,
+  "revs": 0,
+  "angle": 90.0,
+  "bracketed": true
+ }
+]

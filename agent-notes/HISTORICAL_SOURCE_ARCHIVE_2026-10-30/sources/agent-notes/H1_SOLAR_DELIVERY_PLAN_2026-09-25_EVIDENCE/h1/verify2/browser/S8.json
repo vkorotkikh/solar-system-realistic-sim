@@ -1,0 +1,806 @@
+{
+ "scen": "S8",
+ "url": "http://127.0.0.1:5191/",
+ "t0wall": 1790351195950,
+ "t0iso": "2026-09-25T15:46:35.950Z",
+ "seconds": 90,
+ "phase2": 0,
+ "loadedAt": 1.1,
+ "killedAt": null,
+ "chipLog": [
+  {
+   "t": 0.01,
+   "why": "initial",
+   "state": "connecting",
+   "text": "Sun: procedural fallback (connecting to solar model server)",
+   "titleMatches": null
+  },
+  {
+   "t": 0.99,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "titleMatches": true
+  },
+  {
+   "t": 18.01,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "titleMatches": true
+  },
+  {
+   "t": 31.04,
+   "why": "mutation",
+   "state": "error",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "titleMatches": true
+  }
+ ],
+ "chipChanges": 4,
+ "textFlips": 3,
+ "stateFlips": 1,
+ "rawChipMutationRecords": 9,
+ "distinctTexts": [
+  "Sun: procedural fallback (connecting to solar model server)",
+  "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+  "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+  "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))"
+ ],
+ "announcements": [
+  {
+   "t": 0.99,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server not reachable. Showing the procedural Sun."
+  },
+  {
+   "t": 24.57,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 37.98,
+   "why": "mutation",
+   "text": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  }
+ ],
+ "solarConsole": [
+  {
+   "t": 0.99,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)"
+  },
+  {
+   "t": 24.57,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server did not answer within 2.6 s)"
+  },
+  {
+   "t": 37.98,
+   "type": "warning",
+   "text": "[solar] Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))"
+  }
+ ],
+ "finalChip": {
+  "t": 91.1,
+  "label": "phase1",
+  "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+  "state": "error",
+  "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+ },
+ "samples": [
+  {
+   "t": 6.11,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server not reachable. Showing the procedural Sun."
+  },
+  {
+   "t": 11.11,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server not reachable. Showing the procedural Sun."
+  },
+  {
+   "t": 16.11,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server not reachable. Showing the procedural Sun."
+  },
+  {
+   "t": 21.12,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server not reachable. Showing the procedural Sun."
+  },
+  {
+   "t": 26.12,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server did not answer within 2.6 s)",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 33.15,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server too slow or busy. Showing the procedural Sun."
+  },
+  {
+   "t": 38.15,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 43.16,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 48.16,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 53.16,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 58.17,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 65.09,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 70.09,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 75.1,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 80.1,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 85.1,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 90.11,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  },
+  {
+   "t": 91.1,
+   "label": "phase1",
+   "text": "Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))",
+   "state": "error",
+   "ann": "Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+  }
+ ],
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ },
+ "requestTally": {
+  "physics ? failed:net::ERR_CONNECTION_REFUSED": 2,
+  "health ? failed:net::ERR_CONNECTION_REFUSED": 2,
+  "physics cors aborted(net::ERR_ABORTED)": 11,
+  "physics cors cors:MissingAllowOriginHeader": 4,
+  "health cors cors:MissingAllowOriginHeader": 3,
+  "health no-cors aborted(net::ERR_ABORTED)": 3
+ },
+ "probesPerAttempt": [
+  {
+   "t": 0.95,
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "ms": 510,
+   "probes": [
+    "null:failed:net::ERR_CONNECTION_REFUSED",
+    "null:failed:net::ERR_CONNECTION_REFUSED"
+   ]
+  },
+  {
+   "t": 7.62,
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "ms": 2,
+   "probes": []
+  },
+  {
+   "t": 15.41,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 21.98,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 31.03,
+   "outcome": "cors:MissingAllowOriginHeader",
+   "ms": 4,
+   "probes": [
+    "cors:cors:MissingAllowOriginHeader",
+    "no-cors:aborted(net::ERR_ABORTED)"
+   ]
+  },
+  {
+   "t": 37.98,
+   "outcome": "cors:MissingAllowOriginHeader",
+   "ms": 4,
+   "probes": []
+  },
+  {
+   "t": 44.76,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 52.49,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 59.73,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2601,
+   "probes": [
+    "cors:cors:MissingAllowOriginHeader",
+    "no-cors:aborted(net::ERR_ABORTED)"
+   ]
+  },
+  {
+   "t": 65.83,
+   "outcome": "cors:MissingAllowOriginHeader",
+   "ms": 14,
+   "probes": []
+  },
+  {
+   "t": 72.42,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 78.88,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 86.82,
+   "outcome": "cors:MissingAllowOriginHeader",
+   "ms": 3,
+   "probes": []
+  },
+  {
+   "t": 93.83,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2601,
+   "probes": [
+    "cors:cors:MissingAllowOriginHeader",
+    "no-cors:aborted(net::ERR_ABORTED)"
+   ]
+  },
+  {
+   "t": 101.15,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 108.94,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  },
+  {
+   "t": 115.27,
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "ms": 2600,
+   "probes": []
+  }
+ ],
+ "requests": [
+  {
+   "t": 0.95,
+   "tEnd": 0.97,
+   "k": "physics",
+   "mode": null,
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461309.15816252&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 510,
+   "origin": null
+  },
+  {
+   "t": 0.97,
+   "tEnd": 0.98,
+   "k": "health",
+   "mode": null,
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 7,
+   "origin": null
+  },
+  {
+   "t": 0.98,
+   "tEnd": 0.99,
+   "k": "health",
+   "mode": null,
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 10,
+   "origin": null
+  },
+  {
+   "t": 7.62,
+   "tEnd": 7.62,
+   "k": "physics",
+   "mode": null,
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461335.82337852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "failed:net::ERR_CONNECTION_REFUSED",
+   "status": null,
+   "acao": null,
+   "ms": 2,
+   "origin": null
+  },
+  {
+   "t": 15.41,
+   "tEnd": 18.01,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461366.95537852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 21.98,
+   "tEnd": 24.57,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461393.22137852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 31.03,
+   "tEnd": 31.03,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461421.35377852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 31.03,
+   "tEnd": 31.04,
+   "k": "health",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 5,
+   "origin": null
+  },
+  {
+   "t": 31.04,
+   "tEnd": 31.05,
+   "k": "health",
+   "mode": "no-cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": 200,
+   "acao": null,
+   "ms": 6,
+   "origin": null
+  },
+  {
+   "t": 37.98,
+   "tEnd": 37.98,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461449.15217852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 4,
+   "origin": null
+  },
+  {
+   "t": 44.76,
+   "tEnd": 47.35,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461476.28457852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 52.49,
+   "tEnd": 55.09,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461507.14977852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 59.73,
+   "tEnd": 62.33,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461536.14897852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "origin": null
+  },
+  {
+   "t": 62.33,
+   "tEnd": 64.3,
+   "k": "health",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 56,
+   "origin": null
+  },
+  {
+   "t": 64.3,
+   "tEnd": 64.35,
+   "k": "health",
+   "mode": "no-cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": 200,
+   "acao": null,
+   "ms": 54,
+   "origin": null
+  },
+  {
+   "t": 65.83,
+   "tEnd": 65.84,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461552.88137852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 14,
+   "origin": null
+  },
+  {
+   "t": 72.42,
+   "tEnd": 75.01,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461579.21377852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 78.88,
+   "tEnd": 81.48,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461605.07977852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 86.82,
+   "tEnd": 86.82,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461636.81177852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 3,
+   "origin": null
+  },
+  {
+   "t": 93.83,
+   "tEnd": 96.43,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461664.87697852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2601,
+   "origin": null
+  },
+  {
+   "t": 96.43,
+   "tEnd": 96.48,
+   "k": "health",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "cors:MissingAllowOriginHeader",
+   "status": null,
+   "acao": null,
+   "ms": 49,
+   "origin": null
+  },
+  {
+   "t": 96.48,
+   "tEnd": 96.51,
+   "k": "health",
+   "mode": "no-cors",
+   "type": "Fetch",
+   "url": "/health",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": 200,
+   "acao": null,
+   "ms": 35,
+   "origin": null
+  },
+  {
+   "t": 101.15,
+   "tEnd": 103.75,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461694.20897852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 108.94,
+   "tEnd": 111.54,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461725.34137852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  },
+  {
+   "t": 115.27,
+   "tEnd": 117.87,
+   "k": "physics",
+   "mode": "cors",
+   "type": "Fetch",
+   "url": "/solar/physics?jd=2461739.54057852&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "outcome": "aborted(net::ERR_ABORTED)",
+   "status": null,
+   "acao": null,
+   "ms": 2600,
+   "origin": null
+  }
+ ],
+ "bodies": [],
+ "consoleWarnErrorOther": [
+  {
+   "t": 0.97,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 0.98,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 0.99,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 7.62,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+  },
+  {
+   "t": 31.03,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461421.35377852&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 31.03,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 31.04,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/health' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 31.04,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 37.98,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461449.15217852&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 37.98,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 64.3,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/health' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 64.3,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 65.84,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461552.88137852&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 65.84,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 86.82,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/solar/physics?jd=2461636.81177852&fidelity=high&max_features=180&forcing=hybrid&live_data=true' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 86.82,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+   "t": 96.48,
+   "type": "error",
+   "text": "Access to fetch at 'http://127.0.0.1:8042/health' from origin 'http://127.0.0.1:5191' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+   "t": 96.48,
+   "type": "error",
+   "text": "Failed to load resource: net::ERR_FAILED"
+  }
+ ],
+ "pageErrors": [],
+ "externalRequests": [
+  {
+   "url": "https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Oxanium:wght@500;600;700&display=swap",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkeQI51R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/chakrapetch/v13/cIflMapbsEk7TDLdtEz1BwkebIl1R5_F.woff2",
+   "status": 200
+  },
+  {
+   "url": "https://fonts.gstatic.com/s/oxanium/v21/RrQQboN_4yJ0JmiMe2LE0Q.woff2",
+   "status": 200
+  }
+ ]
+}

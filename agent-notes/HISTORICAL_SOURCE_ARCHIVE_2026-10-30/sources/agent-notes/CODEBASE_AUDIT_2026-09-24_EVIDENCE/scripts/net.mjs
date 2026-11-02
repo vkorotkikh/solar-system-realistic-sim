@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ headless: true, args: ['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
+const p = await b.newPage(); const got = [];
+p.on('response', async r => { let n = 0; try { n = (await r.body()).length; } catch {} got.push({ url: r.url(), status: r.status(), bytes: n, type: r.request().resourceType() }); });
+await p.goto('http://127.0.0.1:4173/', { waitUntil: 'load' }); await p.waitForTimeout(20000);
+const imgs = got.filter(g => /\.(jpg|jpeg|png|webp|ktx2|hdr)(\?|$)/i.test(g.url));
+console.log('total responses', got.length, '| total bytes', (got.reduce((a, g) => a + g.bytes, 0) / 1048576).toFixed(2), 'MB');
+console.log('image/texture responses:', imgs.length); imgs.forEach(g => console.log('  ', g.status, (g.bytes / 1024).toFixed(0).padStart(7), 'KB', g.url.replace(/^https?:\/\/[^/]+/, '')));
+const big = got.filter(g => !/\.(jpg|jpeg|png)/i.test(g.url)).sort((a, b) => b.bytes - a.bytes).slice(0, 6);
+console.log('largest non-image:'); big.forEach(g => console.log('  ', (g.bytes / 1024).toFixed(0).padStart(7), 'KB', g.url.replace(/^https?:\/\/[^/]+/, '').slice(0, 90)));
+await b.close();

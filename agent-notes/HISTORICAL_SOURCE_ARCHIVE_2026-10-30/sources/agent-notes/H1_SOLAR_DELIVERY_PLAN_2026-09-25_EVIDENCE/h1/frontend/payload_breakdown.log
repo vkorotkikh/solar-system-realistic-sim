@@ -1,0 +1,11 @@
+total                                           654838  100.0%
+corona.features                                 490507   74.9%
+  corona arcs                                   343596   52.5%
+  of which fields never read by frontend         74284   11.3%
+pfss_field_lines                                131127   20.0%
+  pfss arcs                                     116789   17.8%
+heliosphere.parker_spiral                        30927    4.7%
+  parker arcs                                    29701    4.5%
+coronal_holes                                      927    0.1%
+data_assimilation                                  347    0.1%
+surface (never read)                               323    0.0%

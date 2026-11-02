@@ -1,13 +1,14 @@
 // FE-LABEL-SCALE transition-only probe. Actual main slices and actual catalog/Three;
 // renderer, quadtree and other nonlabel dependencies are explicitly inert doubles.
-// This asserts the existing radius*2.5+.03 anchor policy, not physical text size.
+// Current sceneAnnotations owns screen-up placement, a 40 CSS-pixel height,
+// and an 8 CSS-pixel gap outside the displayed radius in either scale mode.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { test } from 'vitest';
 import { createSolarSystemCatalog } from '../src/sim/catalog';
 import { createBodyIdResolver } from '../src/frontend/app/stateStore';
+import { updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +29,7 @@ const end = statements.indexOf(fn('createBodyNode'));
 assert.ok(begin >= 0 && end > begin);
 const bodySource = statements.slice(begin, end + 1).map(text).join('\n');
 const radiusSource = text(fn('bodyBaseRadiusAu'));
+const labelSource = [variable('labelWorldPosition'), fn('updateLabels')].map(text).join('\n');
 const scaleSource = text(fn('applyScaleMode'));
 const assembly = statements.find(n => ts.isForOfStatement(n) && text(n).includes('createBodyNode(body);') && text(n).includes('solarSystemGroup.add(bodyNodes.get(body.id));'));
 assert.ok(assembly);
@@ -45,11 +47,6 @@ const selected = ['sun', 'venus', 'earth'].map(id => {
   assert.notEqual(body.displayRadiusAu, body.realRadiusAu);
   return body;
 });
-console.log(JSON.stringify({
-  mainSha256: crypto.createHash('sha256').update(source).digest('hex'),
-  slices: Object.fromEntries(Object.entries({bodySource, radiusSource, scaleSource, assembly:text(assembly), listener:text(listener), stageSource}).map(([k,v]) => [k,crypto.createHash('sha256').update(v).digest('hex')])),
-  actualRadii: selected.map(({id,displayRadiusAu,realRadiusAu}) => ({id,displayRadiusAu,realRadiusAu,displayOffset:displayRadiusAu*2.5+.03,realOffset:realRadiusAu*2.5+.03})),
-}));
 
 function harness(realistic = false) {
   const noop = () => {};
@@ -78,7 +75,7 @@ function harness(realistic = false) {
     assert.equal(event, 'change'); assert.equal(options.signal, startup.signal);
     assert.equal(onScaleChange, undefined); onScaleChange = handler;
   } };
-  const bindings = { ...THREE, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
+  const bindings = { ...THREE, updateBodyLabel, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
     isEarthMoonBody: createBodyIdResolver(catalog).isEarthMoonBody,
     bodyById: new Map(selected.map(b => [b.id,b])),
     document: { createElement: () => ({ width:0, height:0, getContext:() => null }) },
@@ -93,20 +90,24 @@ function harness(realistic = false) {
     model:{update:noop}, updateFollowTarget:noop, viewportCamera:{applyPendingActions:noop},
     backgroundStars:{position:new THREE.Vector3()}, controls:{ target:new THREE.Vector3(), update:()=>onControls() },
     updateCameraClipPlanes:noop, refreshBodyInfoDistance:noop, AU_KM:149597870.7,
-    dom:{toggleRealisticScale:toggle,statusZoom:null},
-    renderer:{render() {
+    dom:{toggleRealisticScale:toggle,toggleLabels:{checked:true},statusZoom:null},
+    renderer:{domElement:{clientHeight:900},render() {
       scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
       draws = runtime.labels.map(entry => {
         const node = runtime.bodyNodes.get(entry.bodyId), sprite = entry.sprite;
-        return { id:entry.bodyId, magnitude:sprite.position.length(), scale:sprite.scale.toArray(),
+        return { id:entry.bodyId, ...labelMetrics(sprite, node, camera,
+          runtime.bodyMeshes.get(entry.bodyId).userData.isQuadtree
+            ? runtime.bodyMeshes.get(entry.bodyId).userData.quadtree.radius
+            : runtime.bodyMeshes.get(entry.bodyId).scale.x, 900),
           delta:sprite.getWorldPosition(new THREE.Vector3()).applyMatrix4(camera.matrixWorldInverse).sub(node.getWorldPosition(new THREE.Vector3()).applyMatrix4(camera.matrixWorldInverse)) };
       });
     }},
   };
-  const js = ts.transpileModule(`${radiusSource}\n${bodySource}\n${text(assembly)}\n${scaleSource}\n${text(listener)}\nconst frameStages=${stageSource};\nreturn {labels,bodyNodes,bodyMeshes,frameStages};`, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
+  const js = ts.transpileModule(`${radiusSource}\n${bodySource}\n${labelSource}\n${text(assembly)}\n${scaleSource}\n${text(listener)}\nconst frameStages=${stageSource};\nreturn {labels,bodyNodes,bodyMeshes,frameStages};`, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
   runtime = Function(...Object.keys(bindings),js)(...Object.values(bindings));
   assert.equal(runtime.labels.length,3);
   return { runtime, simState, calls, camera,
+    setLabelsVisible(value) { bindings.dom.toggleLabels.checked = value; },
     toggle(value) { toggle.checked=value; onScaleChange(); assert.equal(simState.useRealisticScale,value); },
     frame(change=noop) { onControls=change; for(const stage of runtime.frameStages)stage.run({timestamp:100,deltaSeconds:0}); return draws; },
     radius(id) { const mesh=runtime.bodyMeshes.get(id); return mesh.userData.isQuadtree ? mesh.userData.quadtree.radius : mesh.scale.x; },
@@ -115,55 +116,74 @@ function harness(realistic = false) {
 }
 function run(realistic, exercise) { const h=harness(realistic); try { exercise(h); } finally { h.dispose(); } }
 function above(draw) { assert.ok(Math.abs(draw.delta.x)<1e-12); assert.ok(draw.delta.y>0); assert.ok(Math.abs(draw.delta.z)<1e-12); }
-function close(actual, expected, why) { assert.ok(Math.abs(actual-expected)<1e-12, `${why}: actual=${actual}, expected=${expected}`); }
-function expected(body,realistic) { return (realistic?body.realRadiusAu:body.displayRadiusAu)*2.5+.03; }
-
-for (const id of ['sun','venus','earth']) {
-  test(`transition: actual checkbox updates ${id} label clearance with its changed body radius`,()=>run(false,h=>{
-    const body=selected.find(b=>b.id===id);
-    h.toggle(true);
-    assert.equal(h.radius(id),body.realRadiusAu,'actual applyScaleMode changes mesh/quadtree radius');
-    // Observe the actual frame's render stage, not a direct call to a proposed helper.
-    const draw=h.frame(()=>{h.camera.position.set(-10,4,6);h.camera.lookAt(0,0,0);}).find(d=>d.id===id);
-    above(draw); assert.deepEqual(draw.scale,[.12,.03,1]);
-    close(draw.magnitude,expected(body,true),'same existing clearance policy after scale transition');
+for (const initial of [false, true]) {
+  for (const id of ['sun', 'venus', 'earth']) {
+    test(`actual checkbox changes ${id} from ${initial ? 'realistic to display' : 'display to realistic'} clearance`, () => run(initial, h => {
+      const body = selected.find(b => b.id === id);
+      const first = h.frame().find(d => d.id === id); above(first); footprint(first);
+      h.toggle(!initial);
+      assert.equal(h.radius(id), initial ? body.displayRadiusAu : body.realRadiusAu);
+      const draw = h.frame(() => { h.camera.position.set(-10, 4, 6); h.camera.lookAt(0, 0, 0); }).find(d => d.id === id);
+      above(draw); footprint(draw);
+    }));
+  }
+}
+for (const realistic of [false, true]) {
+  test(`initial ${realistic ? 'realistic' : 'display'} labels clear the current rendered radius`, () => run(realistic, h => {
+    for (const draw of h.frame()) {
+      const body = selected.find(b => b.id === draw.id);
+      assert.equal(h.radius(body.id), realistic ? body.realRadiusAu : body.displayRadiusAu);
+      above(draw); footprint(draw);
+    }
   }));
 }
-for(const realistic of [false,true]) {
-  test(`control: initial ${realistic?'realistic':'display'} creation already uses current radius`,()=>run(realistic,h=>{
-    const draws=h.frame();
-    for(const body of selected) { const draw=draws.find(d=>d.id===body.id); assert.equal(h.radius(body.id),realistic?body.realRadiusAu:body.displayRadiusAu); close(draw.magnitude,expected(body,realistic),'initial policy'); above(draw); }
-  }));
-}
-test('control: scale change preserves Sun/belt/focus notifications and changes all rendered radii',()=>run(false,h=>{
+test('scale change preserves Sun/belt/focus notifications and changes all rendered radii', () => run(false, h => {
   h.toggle(true);
-  assert.deepEqual(h.calls,[['sun'],['asteroids',true],['kuiper',true],['focus','sun',true]]);
-  for(const body of selected)assert.equal(h.radius(body.id),body.realRadiusAu);
+  assert.deepEqual(h.calls, [['sun'], ['asteroids', true], ['kuiper', true], ['focus', 'sun', true]]);
+  for (const body of selected) assert.equal(h.radius(body.id), body.realRadiusAu);
 }));
-test('control: repeated unchanged display-mode events preserve clearance and direction',()=>run(false,h=>{
-  for(let i=0;i<3;i++){ h.toggle(false); for(const draw of h.frame()){ above(draw); close(draw.magnitude,expected(selected.find(b=>b.id===draw.id),false),'same-mode policy'); } }
+test('repeated unchanged display events preserve projected clearance and direction', () => run(false, h => {
+  for (let i = 0; i < 3; i++) { h.toggle(false); for (const draw of h.frame()) { above(draw); footprint(draw); } }
 }));
-test('control: returning to startup display mode restores matching clearance',()=>run(false,h=>{
-  h.toggle(true);h.frame();h.toggle(false);
-  for(const draw of h.frame()){above(draw);close(draw.magnitude,expected(selected.find(b=>b.id===draw.id),false),'roundtrip policy');}
+test('returning to startup display mode restores placement', () => run(false, h => {
+  const first = h.frame(); h.toggle(true); h.frame(); h.toggle(false);
+  const restored = h.frame();
+  for (let i = 0; i < restored.length; i++) {
+    above(restored[i]); footprint(restored[i]);
+    assert.ok(restored[i].delta.distanceTo(first[i].delta) < 1e-12);
+  }
 }));
-test('control: toggles retain sprite dimensions/material/map/visibility/identity and catalog inputs',()=>run(false,h=>{
-  const before=JSON.stringify(selected);
-  const entries=h.runtime.labels.map(({sprite,bodyId})=>{sprite.visible=false;return {bodyId,sprite,material:sprite.material,map:sprite.material.map,parent:sprite.parent};});
-  for(const mode of [true,false,true]){h.toggle(mode);h.frame();for(const old of entries){const entry=h.runtime.labels.find(e=>e.bodyId===old.bodyId);assert.equal(entry.sprite,old.sprite);assert.equal(entry.sprite.material,old.material);assert.equal(entry.sprite.material.map,old.map);assert.equal(entry.sprite.parent,old.parent);assert.equal(entry.sprite.visible,false);assert.deepEqual(entry.sprite.scale.toArray(),[.12,.03,1]);}}
-  assert.equal(JSON.stringify(selected),before);
+test('toggles preserve label identity, resources, hidden-label choice and catalog inputs', () => run(false, h => {
+  const before = JSON.stringify(selected);
+  h.frame();
+  const entries = h.runtime.labels.map(({ sprite, bodyId }) => ({ bodyId, sprite, material: sprite.material, map: sprite.material.map, parent: sprite.parent }));
+  h.setLabelsVisible(false);
+  for (const mode of [true, false, true]) {
+    h.toggle(mode); h.frame();
+    for (const old of entries) {
+      const entry = h.runtime.labels.find(e => e.bodyId === old.bodyId);
+      assert.equal(entry.sprite, old.sprite); assert.equal(entry.sprite.material, old.material);
+      assert.equal(entry.sprite.material.map, old.map); assert.equal(entry.sprite.parent, old.parent);
+      assert.equal(entry.sprite.visible, false);
+    }
+  }
+  h.setLabelsVisible(true);
+  for (const draw of h.frame()) { above(draw); footprint(draw); }
+  assert.equal(JSON.stringify(selected), before);
 }));
 
-// Append-only root-requested inverse transition. Original9 above is immutable.
-for (const id of ['sun','venus','earth']) {
-  test(`reverse transition: actual checkbox updates ${id} clearance from realistic to display`,()=>run(true,h=>{
-    const body=selected.find(b=>b.id===id);
-    const first=h.frame().find(d=>d.id===id);
-    above(first);close(first.magnitude,expected(body,true),'healthy initial realistic draw');
-    h.toggle(false);
-    assert.equal(h.radius(id),body.displayRadiusAu,'actual applyScaleMode restores display radius');
-    const draw=h.frame(()=>{h.camera.position.set(4,-10,6);h.camera.lookAt(0,0,0);}).find(d=>d.id===id);
-    above(draw);assert.deepEqual(draw.scale,[.12,.03,1]);
-    close(draw.magnitude,expected(body,false),'same clearance policy after reverse transition');
-  }));
+function labelMetrics(sprite, node, camera, radius, viewportHeight) {
+  const center = sprite.getWorldPosition(new THREE.Vector3());
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const top = center.clone().addScaledVector(up, sprite.scale.y / 2).project(camera);
+  const bottom = center.clone().addScaledVector(up, -sprite.scale.y / 2).project(camera);
+  const bodyTop = node.getWorldPosition(new THREE.Vector3()).addScaledVector(up, radius).project(camera);
+  return { pixelHeight: (top.y - bottom.y) * viewportHeight / 2,
+    gapPixels: (bottom.y - bodyTop.y) * viewportHeight / 2,
+    aspect: sprite.scale.x / sprite.scale.y };
+}
+function footprint(draw) {
+  assert.ok(Math.abs(draw.pixelHeight - 40) < 1e-8, `label height=${draw.pixelHeight} CSS px`);
+  assert.ok(Math.abs(draw.gapPixels - 8) < 1e-8, `body clearance=${draw.gapPixels} CSS px`);
+  assert.equal(draw.aspect, 4);
 }

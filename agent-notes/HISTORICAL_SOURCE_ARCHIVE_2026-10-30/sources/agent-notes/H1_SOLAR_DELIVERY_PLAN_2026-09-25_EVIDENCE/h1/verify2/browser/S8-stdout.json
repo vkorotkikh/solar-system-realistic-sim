@@ -1,0 +1,79 @@
+{
+ "scen": "S8",
+ "t0iso": "2026-09-25T15:46:35.950Z",
+ "loadedAt": 1.1,
+ "killedAt": null,
+ "chipChanges": 4,
+ "textFlips": 3,
+ "stateFlips": 1,
+ "chipLog": [
+  "0.01s [connecting] Sun: procedural fallback (connecting to solar model server)",
+  "0.99s [error] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+  "18.01s [error] Sun: procedural fallback (solar server did not answer within 2.6 s)",
+  "31.04s [error] Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))"
+ ],
+ "announcements": [
+  "0.99s mutation: Sun data unavailable: solar server not reachable. Showing the procedural Sun.",
+  "24.57s mutation: Sun data unavailable: solar server too slow or busy. Showing the procedural Sun.",
+  "37.98s mutation: Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+ ],
+ "solarConsole": [
+  "0.99s warning [solar] Sun: procedural fallback (solar server not reachable at http://127.0.0.1:8042)",
+  "24.57s warning [solar] Sun: procedural fallback (solar server did not answer within 2.6 s)",
+  "37.98s warning [solar] Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:5191 (CORS))"
+ ],
+ "requestTally": {
+  "physics ? failed:net::ERR_CONNECTION_REFUSED": 2,
+  "health ? failed:net::ERR_CONNECTION_REFUSED": 2,
+  "physics cors aborted(net::ERR_ABORTED)": 11,
+  "physics cors cors:MissingAllowOriginHeader": 4,
+  "health cors cors:MissingAllowOriginHeader": 3,
+  "health no-cors aborted(net::ERR_ABORTED)": 3
+ },
+ "probesPerAttempt": [
+  "0.95s failed:net::ERR_CONNECTION_REFUSED 510ms probes=[null:failed:net::ERR_CONNECTION_REFUSED, null:failed:net::ERR_CONNECTION_REFUSED]",
+  "7.62s failed:net::ERR_CONNECTION_REFUSED 2ms probes=[]",
+  "15.41s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "21.98s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "31.03s cors:MissingAllowOriginHeader 4ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "37.98s cors:MissingAllowOriginHeader 4ms probes=[]",
+  "44.76s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "52.49s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "59.73s aborted(net::ERR_ABORTED) 2601ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "65.83s cors:MissingAllowOriginHeader 14ms probes=[]",
+  "72.42s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "78.88s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "86.82s cors:MissingAllowOriginHeader 3ms probes=[]",
+  "93.83s aborted(net::ERR_ABORTED) 2601ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "101.15s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "108.94s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "115.27s aborted(net::ERR_ABORTED) 2600ms probes=[]"
+ ],
+ "bodies": 0,
+ "pageErrors": [],
+ "externalN": 4,
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ }
+}

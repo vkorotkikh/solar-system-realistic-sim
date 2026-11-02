@@ -493,3 +493,54 @@ def test_replacement_retires_storage_held_by_an_old_cold_owner(owned, alternativ
         assert current is not retired
         assert current.runner is replacement
         assert current.active is True
+
+
+@pytest.mark.parametrize("initial_delivery", ["full", "render-v1"])
+def test_ready_cache_applies_requested_delivery_without_losing_full_geometry(owned, initial_delivery):
+    first = ok(get(owned, {"delivery": initial_delivery}))
+    expected = physical(first)
+    expected.pop("delivery", None)
+    owned["clock"]["jd"] += 0.75
+
+    response = get(owned, {"delivery": "render-v1"})
+    complete = ok(response)
+    assert response.headers["content-encoding"] == "gzip"
+    assert int(response.headers["content-length"]) <= 512 * 1024
+    assert complete["delivery"]["geometry_included"] is True
+    version = complete["delivery"]["geometry_version"]
+    assert len(version) == 64
+    assert complete["wall_epoch_jd_tdb"] == complete["wall_epoch_jd"] == WALL + 0.75
+    for key in expected:
+        assert complete[key] == expected[key]
+
+    reused = ok(get(owned, {"delivery": "render-v1", "geometry_version": version}))
+    assert reused["delivery"]["geometry_version"] == version
+    assert reused["delivery"]["geometry_included"] is False
+    assert "features" not in reused["corona"]
+    assert "lines" not in reused["pfss_field_lines"]
+    assert "lines" not in reused["heliosphere"]["parker_spiral"]
+    assert reused["activity_index"] == first["activity_index"]
+    assert reused["epoch_jd_tdb"] == EPOCH
+    assert reused["wall_epoch_jd_tdb"] == WALL + 0.75
+
+    unknown_version = "0" * 64 if version != "0" * 64 else "1" * 64
+    recovered = ok(get(owned, {"delivery": "render-v1", "geometry_version": unknown_version}))
+    assert recovered == complete
+    full = ok(get(owned, {"delivery": "full", "geometry_version": version}))
+    assert "delivery" not in full
+    assert physical(full) == expected
+    assert full["wall_epoch_jd_tdb"] == WALL + 0.75
+    assert len(owned["runner"].calls) == len(owned["calculations"]) == 1
+
+
+@pytest.mark.parametrize("limit", ["MAX_ENCODED_BYTES", "MAX_DECODED_BYTES"])
+def test_ready_render_delivery_still_enforces_response_budget(owned, limit):
+    import solar_delivery
+
+    full = ok(get(owned))
+    owned["monkeypatch"].setattr(solar_delivery, limit, 1)
+    response = get(owned, {"delivery": "render-v1"})
+    assert response.status_code == 413, response.text
+    assert response.json()["detail"]["code"] == "solar_delivery_budget_exceeded"
+    assert ok(get(owned)) == full
+    assert len(owned["runner"].calls) == 1

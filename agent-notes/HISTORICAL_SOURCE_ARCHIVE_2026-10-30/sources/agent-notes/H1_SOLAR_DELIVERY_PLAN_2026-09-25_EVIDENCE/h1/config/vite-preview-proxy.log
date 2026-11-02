@@ -1,0 +1,7 @@
+  ➜  Local:   http://localhost:4184/
+  ➜  Network: use --host to expose
+[h1-proxy] 200 /solar/physics?jd=2461308.5&fidelity=preview&max_features=64&forcing=synthetic&l
+[h1-proxy] 200 /solar/physics?jd=2461308.59877114&fidelity=high&max_features=180&forcing=hybrid
+[h1-proxy] 200 /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248
+[h1-proxy] 503 /solar/physics?jd=2461360.66317114&fidelity=high&max_features=180&forcing=hybrid
+[h1-proxy] 200 /solar/physics?jd=2461409.26157114&fidelity=high&max_features=180&forcing=hybrid

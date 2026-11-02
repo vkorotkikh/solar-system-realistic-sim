@@ -1,0 +1,9 @@
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030
+
+
+ Test Files  4 passed (4)
+      Tests  59 passed (59)
+   Start at  01:14:15
+   Duration  227ms (transform 46%, tests 38%, import 12%, worker 4%)
+

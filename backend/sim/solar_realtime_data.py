@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
-from .solar_time import jd_tdb_to_utc_datetime
+from .solar_time import TwoPartJD, jd_tdb_to_utc_datetime
 from .solar_http_transport import DeadlineHttpResponse, SolarHttpError
 
 
@@ -215,10 +215,10 @@ class SolarRealtimeDataProvider:
         self._acquisition_state = threading.local()
         self._lock = threading.Lock()
         self._snapshot_cache: OrderedDict[
-            tuple[str, str, float | None], tuple[float, dict[str, Any]]
+            tuple[str, str, float | TwoPartJD | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
         self._aia_bundle_cache: OrderedDict[
-            tuple[str, str, float | None], tuple[float, dict[str, Any]]
+            tuple[str, str, float | TwoPartJD | None], tuple[float, dict[str, Any]]
         ] = OrderedDict()
         self._binary_cache: OrderedDict[
             str, tuple[float, bytes, int]
@@ -231,7 +231,7 @@ class SolarRealtimeDataProvider:
         self._silso_cache: _SilsoCacheEntry | None = None
         self._silso_failure: _FetchFailureDescriptor | None = None
         self._swpc_last_good: OrderedDict[
-            tuple[str, str, float | None], tuple[float, dict[str, Any], dict[str, Any]]
+            tuple[str, str, float | TwoPartJD | None], tuple[float, dict[str, Any], dict[str, Any]]
         ] = OrderedDict()
 
     @contextmanager
@@ -343,9 +343,9 @@ class SolarRealtimeDataProvider:
 
     @staticmethod
     def _resolve_jd_tdb_alias(
-        jd_tdb: float | None,
+        jd_tdb: float | TwoPartJD | None,
         jd: float | None,
-    ) -> float | None:
+    ) -> float | TwoPartJD | None:
         def validate(value: float, name: str) -> float:
             if isinstance(value, bool):
                 raise ValueError(f"{name} must be a finite Julian date in TDB")
@@ -357,6 +357,12 @@ class SolarRealtimeDataProvider:
                 raise ValueError(f"{name} must be a finite Julian date in TDB")
             return parsed
 
+        # Keep the two components intact through cache keys and both AIA UTC
+        # conversions. Casting to float here loses ordinary-midnight identity.
+        if isinstance(jd_tdb, TwoPartJD):
+            if jd is not None:
+                raise ValueError("two-part JDTDB cannot be combined with a scalar jd alias")
+            return jd_tdb
         canonical = validate(jd_tdb, "jd_tdb") if jd_tdb is not None else None
         # Deprecated `jd` is interpreted as JDTDB for one compatibility window.
         legacy = validate(jd, "jd") if jd is not None else None
@@ -387,7 +393,7 @@ class SolarRealtimeDataProvider:
         snapshot: Mapping[str, Any],
         *,
         now_utc: datetime,
-        requested_jd_tdb: float | None = None,
+        requested_jd_tdb: float | TwoPartJD | None = None,
     ) -> float:
         """Retry degraded snapshots promptly, without extending source freshness."""
 
@@ -553,7 +559,7 @@ class SolarRealtimeDataProvider:
         snapshot: dict[str, Any],
         *,
         now_utc: datetime,
-        requested_jd_tdb: float | None,
+        requested_jd_tdb: float | TwoPartJD | None,
     ) -> None:
         """Validate every channel against this request, independently of age."""
         statuses = snapshot.get("source_status")
@@ -602,7 +608,7 @@ class SolarRealtimeDataProvider:
         snapshot: dict[str, Any],
         *,
         now_utc: datetime,
-        requested_jd_tdb: float | None = None,
+        requested_jd_tdb: float | TwoPartJD | None = None,
     ) -> dict[str, Any]:
         """Return a delivery-time view whose source ages cannot freeze in cache."""
 
@@ -791,7 +797,7 @@ class SolarRealtimeDataProvider:
 
     def latest(
         self,
-        jd_tdb: float | None = None,
+        jd_tdb: float | TwoPartJD | None = None,
         force_refresh: bool = False,
         *,
         jd: float | None = None,
@@ -805,7 +811,7 @@ class SolarRealtimeDataProvider:
 
     def _latest(
         self,
-        jd_tdb: float | None = None,
+        jd_tdb: float | TwoPartJD | None = None,
         force_refresh: bool = False,
         *,
         jd: float | None = None,
@@ -875,7 +881,7 @@ class SolarRealtimeDataProvider:
     def _latest_aia_bundle(
         self,
         *,
-        jd_tdb: float | None,
+        jd_tdb: float | TwoPartJD | None,
         force_refresh: bool,
         channel: str,
         image_id: str | None,
@@ -1012,7 +1018,7 @@ class SolarRealtimeDataProvider:
     def latest_aia_tile(
         self,
         channel: str = "aia_193",
-        jd_tdb: float | None = None,
+        jd_tdb: float | TwoPartJD | None = None,
         force_refresh: bool = False,
         *,
         image_id: str | None = None,
@@ -1030,7 +1036,7 @@ class SolarRealtimeDataProvider:
     def _latest_aia_tile(
         self,
         channel: str = "aia_193",
-        jd_tdb: float | None = None,
+        jd_tdb: float | TwoPartJD | None = None,
         force_refresh: bool = False,
         *,
         image_id: str | None = None,
@@ -2815,13 +2821,13 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _fetch_sdo_aia(self, jd_tdb: float | None) -> dict[str, Any]:
+    def _fetch_sdo_aia(self, jd_tdb: float | TwoPartJD | None) -> dict[str, Any]:
         with self._acquisition_scope():
             return self._fetch_sdo_aia_with_deadline(jd_tdb)
 
     def _fetch_sdo_aia_with_deadline(
         self,
-        jd_tdb: float | None,
+        jd_tdb: float | TwoPartJD | None,
     ) -> dict[str, Any]:
         if jd_tdb is None:
             request_date = datetime.now(timezone.utc)
@@ -2897,13 +2903,13 @@ class SolarRealtimeDataProvider:
             },
         }
 
-    def _fetch_snapshot(self, jd_tdb: float | None) -> dict[str, Any]:
+    def _fetch_snapshot(self, jd_tdb: float | TwoPartJD | None) -> dict[str, Any]:
         with self._acquisition_scope():
             return self._fetch_snapshot_with_deadline(jd_tdb)
 
     def _fetch_snapshot_with_deadline(
         self,
-        jd_tdb: float | None,
+        jd_tdb: float | TwoPartJD | None,
     ) -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "schema": {"name": "solar_realtime_context", "version": 1},

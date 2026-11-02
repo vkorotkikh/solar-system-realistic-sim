@@ -1,0 +1,43 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1
+
+ ✓ src/frontend/app/stateStore.test.ts (2 tests) 2ms
+ ✓ src/constants.test.ts (3 tests) 2ms
+ ✓ src/sim/orbitMath.test.ts (1 test) 1ms
+ ✓ src/workers/modelWorkerContract.test.ts (6 tests) 12ms
+ ✓ src/sim/sourceFrameOrbit.test.ts (4 tests) 4ms
+ ✓ src/sim/phase1AsteroidCatalog.test.ts (10 tests) 19ms
+ ✓ src/sim/planetPositions.horizons.test.ts (66 tests) 7ms
+ ✓ src/sim/moonEphemeris.test.ts (10 tests) 6ms
+ ✓ src/sim/catalog.test.ts (5 tests) 21ms
+ ✓ src/sim/solarSystemModel.test.ts (2 tests) 19ms
+ ✓ src/sim/moonFrames.horizons.test.ts (27 tests) 16ms
+
+ Test Files  11 passed (11)
+      Tests  136 passed (136)
+   Start at  22:07:52
+   Duration  556ms (transform 789ms, setup 0ms, collect 2.32s, tests 107ms, environment 2ms, prepare 730ms)
+
+	Command being timed: "npx vitest run"
+	User time (seconds): 5.64
+	System time (seconds): 2.40
+	Percent of CPU this job got: 679%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.18
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 195596
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 25
+	Minor (reclaiming a frame) page faults: 580864
+	Voluntary context switches: 8605
+	Involuntary context switches: 925
+	Swaps: 0
+	File system inputs: 77328
+	File system outputs: 10536
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -11,6 +11,7 @@ import type {
   Mesh,
   Object3D,
   Points,
+  PointsMaterial,
   ShaderMaterial,
   Sprite,
   Texture,
@@ -941,6 +942,8 @@ export function createSunController({
       sunTransitionRegionMesh.removeFromParent();
       sunTransitionRegionMesh = null;
     }
+    // Generated per eruption layer, so owned here; material disposal leaves maps alone.
+    (sunEruptionLayer?.material as PointsMaterial | undefined)?.alphaMap?.dispose();
     for (const layer of [sunEruptionLayer, sunChromosphereLayer]) {
       if (!layer) continue;
       layer.geometry.dispose();

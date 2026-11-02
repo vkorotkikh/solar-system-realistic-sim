@@ -1,0 +1,73 @@
+{
+ "scen": "S7",
+ "t0iso": "2026-09-25T15:40:01.126Z",
+ "loadedAt": 4.21,
+ "killedAt": null,
+ "chipChanges": 2,
+ "textFlips": 1,
+ "stateFlips": 1,
+ "chipLog": [
+  "0.01s [connecting] Sun: procedural fallback (connecting to solar model server)",
+  "4.24s [error] Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:4191 (CORS))"
+ ],
+ "announcements": [
+  "4.24s mutation: Sun data unavailable: solar server does not allow this page's origin. Showing the procedural Sun."
+ ],
+ "solarConsole": [
+  "4.24s warning [solar] Sun: procedural fallback (solar server does not allow this page's origin http://127.0.0.1:4191 (CORS))"
+ ],
+ "requestTally": {
+  "physics cors aborted(net::ERR_ABORTED)": 12,
+  "health cors cors:MissingAllowOriginHeader": 4,
+  "health no-cors aborted(net::ERR_ABORTED)": 4,
+  "physics cors cors:MissingAllowOriginHeader": 5,
+  "physics cors pending": 1
+ },
+ "probesPerAttempt": [
+  "1.09s aborted(net::ERR_ABORTED) 3690ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "6.57s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "14s cors:MissingAllowOriginHeader 19ms probes=[]",
+  "20.89s cors:MissingAllowOriginHeader 5ms probes=[]",
+  "28.96s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "35.75s aborted(net::ERR_ABORTED) 2601ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "42.7s cors:MissingAllowOriginHeader 3ms probes=[]",
+  "49.25s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "56.83s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "64.86s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "71.17s aborted(net::ERR_ABORTED) 2601ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "77.51s cors:MissingAllowOriginHeader 17ms probes=[]",
+  "84.29s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "91s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "98.27s aborted(net::ERR_ABORTED) 2600ms probes=[]",
+  "104.68s aborted(net::ERR_ABORTED) 2601ms probes=[cors:cors:MissingAllowOriginHeader, no-cors:aborted(net::ERR_ABORTED)]",
+  "111.53s cors:MissingAllowOriginHeader 5ms probes=[]",
+  "119.8s pending nullms probes=[]"
+ ],
+ "bodies": 0,
+ "pageErrors": [],
+ "externalN": 4,
+ "attrs": {
+  "chip": {
+   "role": null,
+   "live": null,
+   "atomic": null,
+   "cls": "",
+   "x": 1088,
+   "y": 840,
+   "w": 336,
+   "h": 44,
+   "inStatusBar": true
+  },
+  "announcer": {
+   "role": "status",
+   "live": null,
+   "atomic": null,
+   "cls": "visually-hidden",
+   "x": 351,
+   "y": 899,
+   "w": 1,
+   "h": 1,
+   "inStatusBar": false
+  }
+ }
+}

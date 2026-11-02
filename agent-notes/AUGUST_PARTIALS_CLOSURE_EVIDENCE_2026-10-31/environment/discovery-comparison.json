@@ -1,0 +1,28 @@
+{
+  "qualification": "Comparison of existing discovery outputs only; no tests were executed to produce this archived comparison. Discovery status labels are not execution results.",
+  "repository_discovery_source": "/home/nomad/.cache/solar-webkit-noble-20261101/discovery-repository.json",
+  "repository_discovery_sha256": "e397a4836ac6c660e0d42e1ad8f3030bec867a5b1754ff1fbe0979f6a5fe29b7",
+  "qualified_discovery_source": "/home/nomad/.cache/solar-webkit-noble-20261101/discovery-qualified.json",
+  "qualified_discovery_sha256": "1d02a60691f7c643a4e368e59541224abc8fa7d967533b56bf9f66078a3d1dbe",
+  "equal_selected_cases_and_contract_fields": true,
+  "case_count": 170,
+  "cases_per_project": {
+    "chromium": 57,
+    "chromium-tab-zoom": 3,
+    "firefox": 55,
+    "webkit": 55
+  },
+  "compared_fields": [
+    "project",
+    "file",
+    "line",
+    "column",
+    "title_path",
+    "timeout_ms",
+    "expected_status",
+    "annotations",
+    "tags"
+  ],
+  "normalized_cases_file": "discovered-cases.jsonl",
+  "normalized_cases_sha256": "92e59589d42b957b8272363e1eef7e980e40a446bd1777cb99dfa946480e77e4"
+}

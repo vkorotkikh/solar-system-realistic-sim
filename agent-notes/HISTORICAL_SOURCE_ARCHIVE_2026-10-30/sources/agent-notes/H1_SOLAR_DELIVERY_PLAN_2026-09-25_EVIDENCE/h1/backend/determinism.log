@@ -1,0 +1,18 @@
+hybrid_same_inputs {
+ "activity_1": 0.5467460395365648,
+ "activity_2": 0.546762752590737,
+ "observed_confidence_1": 0.4619136793936966,
+ "observed_confidence_2": 0.4618205616319444,
+ "blend_weight_1": 0.41166978778779384,
+ "blend_weight_2": 0.41163719657118053,
+ "pfss_computes_for_2_calls": 2,
+ "json_identical": false
+}
+1e-8 d (0.86 ms, toFixed(8) step) {"activity_delta": 1.0771605829518194e-10, "feature_count": [180, 180], "feature_id_jaccard": 1.0, "feature_arc_max_disp_Rsun_median": 0.0, "feature_arc_max_disp_Rsun_max": 4e-06, "coronal_holes_identical": true, "pfss_lines_endpoint_disp_Rsun_max": 0.0, "pfss_topology_flips": 0, "pfss_open_counts": [24, 24], "parker_spiral_max_disp_Rsun": 0.0, "parker_mean_wind": [390.90000000000003, 390.90000000000003], "pfss_recomputed": 1, "wall_s": 4.156}
+0.001 d (86 s) {"activity_delta": 1.1014558557453924e-05, "feature_count": [180, 180], "feature_id_jaccard": 0.978, "feature_arc_max_disp_Rsun_median": 0.001561, "feature_arc_max_disp_Rsun_max": 0.449561, "coronal_holes_identical": false, "pfss_lines_endpoint_disp_Rsun_max": 3.400415, "pfss_topology_flips": 20, "pfss_open_counts": [24, 28], "parker_spiral_max_disp_Rsun": 544.2069, "parker_mean_wind": [390.90000000000003, 368.18333333333334], "pfss_recomputed": 1, "wall_s": 4.168}
+0.01 d (14.4 min) {"activity_delta": 0.00011015176331952148, "feature_count": [180, 180], "feature_id_jaccard": 0.8653, "feature_arc_max_disp_Rsun_median": 0.01785, "feature_arc_max_disp_Rsun_max": 2.119358, "coronal_holes_identical": false, "pfss_lines_endpoint_disp_Rsun_max": 3.356585, "pfss_topology_flips": 20, "pfss_open_counts": [24, 28], "parker_spiral_max_disp_Rsun": 577.4895, "parker_mean_wind": [390.90000000000003, 367.31666666666666], "pfss_recomputed": 1, "wall_s": 3.969}
+0.1 d (2.4 h) {"activity_delta": 0.0011020468271870643, "feature_count": [180, 180], "feature_id_jaccard": 0.7225, "feature_arc_max_disp_Rsun_median": 0.124621, "feature_arc_max_disp_Rsun_max": 2.000775, "coronal_holes_identical": false, "pfss_lines_endpoint_disp_Rsun_max": 4.203073, "pfss_topology_flips": 32, "pfss_open_counts": [24, 28], "parker_spiral_max_disp_Rsun": 398.3354, "parker_mean_wind": [390.90000000000003, 370.56666666666666], "pfss_recomputed": 1, "wall_s": 3.818}
+1 d {"activity_delta": 0.010982708414826736, "feature_count": [180, 180], "feature_id_jaccard": 0.7143, "feature_arc_max_disp_Rsun_median": 0.632694, "feature_arc_max_disp_Rsun_max": 2.126444, "coronal_holes_identical": false, "pfss_lines_endpoint_disp_Rsun_max": 4.039358, "pfss_topology_flips": 27, "pfss_open_counts": [24, 29], "parker_spiral_max_disp_Rsun": 738.5332, "parker_mean_wind": [390.90000000000003, 371.40000000000003], "pfss_recomputed": 1, "wall_s": 4.527}
+1 Carrington rotation {"activity_delta": -0.013399066507339463, "feature_count": [180, 180], "feature_id_jaccard": 0.6364, "feature_arc_max_disp_Rsun_median": 1.396076, "feature_arc_max_disp_Rsun_max": 3.254996, "coronal_holes_identical": false, "pfss_lines_endpoint_disp_Rsun_max": 3.40251, "pfss_topology_flips": 28, "pfss_open_counts": [24, 36], "parker_spiral_max_disp_Rsun": 688.4824, "parker_mean_wind": [390.90000000000003, 428.5833333333333], "pfss_recomputed": 1, "wall_s": 5.488}
+gil {'one_alone_s': 6.556, 'two_concurrent_each_s': [21.018, 21.923], 'two_concurrent_wall_s': 21.934}
+pfss entry {'wsa_numpy_bytes': 107136, 'lines_json_bytes': 165770, 'cache_len': 3, 'cache_max': 3}

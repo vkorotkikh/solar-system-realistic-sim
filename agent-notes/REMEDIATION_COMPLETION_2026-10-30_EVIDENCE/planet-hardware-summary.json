@@ -1,0 +1,14 @@
+{
+  "flat": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "cases": 12,
+    "allAssertionsPassed": true,
+    "raw": "planet-hardware-flat-final.log"
+  },
+  "relief": {
+    "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+    "cases": 12,
+    "allAssertionsPassed": true,
+    "raw": "planet-hardware-relief-final.log"
+  }
+}

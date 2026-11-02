@@ -1,0 +1,31 @@
+[WebServer] (node:2842985) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 1 test using 1 worker
+
+(node:2842997) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+[chromium-tab-zoom] › tests/browser/tab-zoom.spec.ts:11:5 › native Chromium tab zoom › 400% genuine tab zoom preserves reflow and keyboard focus
+  pw:browser <launching> /home/nomad/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --window-size=1280,960 --disable-extensions-except=/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser/fixtures/tab-zoom-extension --load-extension=/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/tests/browser/fixtures/tab-zoom-extension --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --user-data-dir=/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/test-results/4197/tab-zoom-native-Chromium-t-da461-s-reflow-and-keyboard-focus-chromium-tab-zoom/isolated-zoom-profile-eig6t1 --remote-debugging-pipe about:blank +0ms
+
+  pw:browser <launched> pid=2843027 +4ms
+
+  pw:browser [pid=2843027][err] [2843027:2843027:1030/012423.987961:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.Properties.GetAll: object_path= /org/freedesktop/UPower/devices/DisplayDevice: org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.UPower was not provided by any .service files +163ms
+
+Native tab zoom evidence: {"factor":4,"browserVersion":"156.0.8078.4","renderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","before":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"zoomed":{"width":320,"height":218,"outerWidth":1280,"outerHeight":960,"dpr":4,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":320},"reset":{"width":1280,"height":873,"outerWidth":1280,"outerHeight":960,"dpr":1,"visualScale":1,"rootFontSize":"16px","rootZoom":"1","bodyZoom":"1","scrollWidth":1280},"tabZoomSettings":{"defaultZoomFactor":1,"mode":"automatic","scope":"per-tab"},"keyboardStops":["panel-close","SUMMARY:Time","toggle-play","now-time","time-scale","SUMMARY:Display","toggle-orbits","toggle-magnetic-field","toggle-labels","toggle-realistic-scale","aia-channel","SUMMARY:Navigation","zoom-sensitivity","SUMMARY:Explorer","body-search","body-list","focus-body","follow-body","clear-follow","SUMMARY:Cataclysmic Events\n            \n            Advanced","agn-source","agn-preset","agn-hypothesis","agn-stochastic","trigger-agn-shockwave"],"siblingZoom":1}
+
+  pw:browser [pid=2843027] <gracefully close start> +31s
+
+  pw:browser [pid=2843027] <process did exit: exitCode=0, signal=null> +1s
+
+  pw:browser [pid=2843027] starting temporary directories cleanup +1ms
+
+  pw:browser [pid=2843027] finished temporary directories cleanup +0ms
+
+  pw:browser [pid=2843027] <gracefully close end> +0ms
+
+  1 passed (32.6s)

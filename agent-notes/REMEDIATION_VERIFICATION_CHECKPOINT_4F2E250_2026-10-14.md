@@ -1,5 +1,7 @@
 # Canonical remediation verification checkpoint: 4f2e250
 
+> **Current status (2026-10-30):** See the [verified remediation status](REMEDIATION_STATUS_2026-10-30.md) for all 83 dispositions, branch-specific fixes, remaining acceptance gates and the 25 completed working-note removals. The dated content below is historical evidence; it does not describe current main.
+
 Date: 2026-10-14. Branch: `remediation/canonical-register-20261014`.
 Tested production revision: `4f2e2507797eb73d50443711df433e10032cc3fd`.
 Later evidence/documentation commits do not change this tested production code.

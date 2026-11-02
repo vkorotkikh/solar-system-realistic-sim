@@ -1,0 +1,57 @@
+{
+ "label": "R6-dev-envallowlist-t20000",
+ "pageUrl": "http://localhost:5184/",
+ "rewritePort": "8074",
+ "seconds": 40,
+ "pageOrigin": "http://localhost:5184",
+ "backendRequestOrigins": [
+  "http://localhost:8042"
+ ],
+ "summary": {
+  "/solar/physics :: http 503 acao=http://localhost:5184": 3,
+  "/solar/physics :: pending": 1
+ },
+ "requests": [
+  {
+   "t": 2005,
+   "dur": 12063,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "http 503",
+   "acao": "http://localhost:5184"
+  },
+  {
+   "t": 19216,
+   "dur": 12069,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "http 503",
+   "acao": "http://localhost:5184"
+  },
+  {
+   "t": 32554,
+   "dur": 12066,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "http 503",
+   "acao": "http://localhost:5184"
+  },
+  {
+   "t": 45642,
+   "dur": null,
+   "url": "http://localhost:8042/solar/physics?jd=…&fidelity=high&max_features=180&forcing=hybrid&live_data=true",
+   "type": "fetch",
+   "origin": "http://localhost:5184",
+   "outcome": "pending",
+   "acao": null
+  }
+ ],
+ "console": [
+  "14019ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "31233ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "44571ms [error] Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+ ]
+}

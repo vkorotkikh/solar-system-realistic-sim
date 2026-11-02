@@ -1,0 +1,2 @@
+INFO:     198.51.100.7:0 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.0.0.1:0 - "GET /info HTTP/1.1" 200 OK

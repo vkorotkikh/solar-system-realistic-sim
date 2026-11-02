@@ -1,199 +1,34 @@
-# Asteroid Source Acquisition Scripts
+# Asteroid catalog maintenance
 
-This folder contains a retained TypeScript source-acquisition tool. Its raw output defaults to
-`public/data/asteroid-phase2`; it does not automatically publish a runtime catalog.
-The Phase 1 dataset builder is the separate `scripts/build_asteroid_phase1_dataset.py` path
-(`npm run phase1:asteroid-dataset`).
-That Phase 1 command validates and serializes without publication by default.
-Use `npm run phase1:asteroid-dataset -- --write` to publish its bundle, including
-when selecting an external `--output-dir`. Its `--write`, `--check` and
-`--dry-run` modes are mutually exclusive. These Phase 1 modes do not change the
-source-acquisition tool described below.
+The former TypeScript acquisition command is retired. Its composition assignments
+from orbital radius, ambiguous spectral labels and synthetic albedos were not
+observations. Invoking `catalog_fetcher.ts` now fails before acquisition or writes
+and prints the supported replacement. The unused `asteroidTaxonomyResolver.ts`
+module has been removed; it had no runtime importers.
 
-## `catalog_fetcher.ts`
+Use the maintained Python pipeline with committed, hash-checked provider inputs:
 
-`catalog_fetcher.ts` fetches asteroid source catalogs from:
-
-- JPL SBDB API (`sbdb_query.api`)
-- MPCORB (`MPCORB.DAT`)
-
-It applies normalization, schema alignment, deterministic ID assignment, de-duplication, and emits:
-
-- a raw normalized snapshot
-- provenance metadata describing fetch jobs, retries, cache state, checksums, and run schedule
-
-## Offline help and type checking
-
-Use the repository-pinned Node.js `22.23.2` and npm `10.9.8`. Help runs without
-fetching catalogs or writing files:
-
-```bash
-node scripts/asteroid/catalog_fetcher.ts --help
-node scripts/asteroid/catalog_fetcher.ts -h
+```sh
+python3 scripts/build_asteroid_phase1_dataset.py --offline --check
+python3 scripts/build_asteroid_phase1_dataset.py --offline --dry-run
+python3 scripts/build_asteroid_phase1_dataset.py --offline --write
 ```
 
-No extra TypeScript runtime or transform flag is required. Native type stripping
-does not type-check the script. Run the dedicated strict Node-compatible check,
-or the combined frontend/script check:
+The default command previews without publishing. `--write` atomically publishes
+binary, metadata and the sample as one directory generation. `--output-dir` can
+select an external destination. Source acquisition is an explicit, separate
+maintenance operation: inspect `python3 scripts/capture_catalog_sources.py --help`
+and review the updated pinned responses and manifest before rebuilding.
 
-```bash
-npm run typecheck:scripts
-npm run typecheck
-```
+The supported catalog is a largest-first prefix of diameter-bearing main-belt
+asteroids, rather than a representative population. Missing taxonomy stays unknown
+at every orbital radius. Ambiguous X/E/O types do not imply metallic composition;
+only unambiguous Tholen M maps to M. Albedo is the observed source value or unknown.
+No fallback generates a physical measurement. Coarse C/S/M visual families support
+illustrative rendering and do not establish material composition.
 
-Acquisition commands, including `--dry-run`, can contact JPL/MPC and write cache
-files. `--dry-run` skips only final snapshot and provenance publication; it is
-not an offline or no-filesystem-effects mode.
-
-## CLI
-
-| Flag | Description |
-|---|---|
-| `--source <jpl|mpc|jpl,mpc>` | Comma-separated source set.
-| `--jpl-main-limit <n>` | JPL main/bright query row cap (default `4000`). |
-| `--jpl-neo-limit <n>` | JPL near-Earth query row cap (default `800`). |
-| `--jpl-trojan-limit <n>` | JPL Trojan query row cap (default `400`). |
-| `--mpc-limit <n>` | MPC top rows kept after sort/filter (default `1200`). |
-| `--mpc-max-h <value|null>` | Max absolute magnitude filter (`null` disables). |
-| `--request-interval-ms <ms>` | Minimum interval between outbound requests.
-| `--retry-attempts <n>` | Max retry count on transient errors.
-| `--retry-timeout-ms <ms>` | Request timeout.
-| `--retry-initial-delay-ms <ms>` | Retry initial backoff.
-| `--retry-max-delay-ms <ms>` | Retry max backoff.
-| `--cache-dir <path>` | Cache directory path (default `scripts/.cache/asteroid-fetcher`). |
-| `--cache-ttl-hours <n>` | Cache validity window.
-| `--output-dir <path>` | Output directory (`public/data/asteroid-phase2` default). |
-| `--raw-output <path>` | Raw snapshot output path override.
-| `--meta-output <path>` | Provenance JSON output path override.
-| `--interval-minutes <n>` | Delay between cycles. `0` means single run.
-| `--max-runs <n>` | Number of schedule cycles to execute.
-| `--dry-run` | Fetch/cache and compute records, but skip final snapshot and provenance writes. |
-| `--help` | Print full CLI help and exit.
-
-## Source jobs (scheduler model)
-
-Jobs are deterministic and reported in provenance as schedule entries:
-
-- `jpl-main-belt`: JPL top targets by absolute magnitude
-- `jpl-neo`: JPL near-Earth candidates
-- `jpl-trojans`: JPL Jupiter Trojan candidates
-- `mpc-orb`: MPCORB raw feed normalized and ranked by H
-
-Each job record stores:
-- `cadenceMinutes`
-- `requestedAt` / `completedAt`
-- `query`
-- `responseBytes`
-- `responseChecksum`
-- `cacheHit` and `attempts`
-
-## Normalization output (raw snapshot)
-
-Default output: `public/data/asteroid-phase2/asteroid_raw_snapshot.json`
-
-Top-level shape:
-
-```json
-{
-  "version": 1,
-  "generatedAt": "2026-03-04T...Z",
-  "snapshotVersion": "catalog-fetcher-ts-1.0.0",
-  "source": "jpl+mpc",
-  "records": [
-    {
-      "id": "jpl:00001",
-      "source": "jpl",
-      "sourceBodyId": "00001",
-      "displayName": "Ceres",
-      "fullName": "(1) Ceres",
-      "absMag": 3.35,
-      "slopeG": 0.15,
-      "diameterKm": 939.4,
-      "albedo": null,
-      "taxonomy": { "inferred": "C", "specB": null, "specT": null },
-      "orbitClass": "main-belt",
-      "selectionPriority": 1330,
-      "orbit": {
-        "epochJd": 2458000,
-        "epochPacked": null,
-        "aAu": 2.7656157,
-        "e": 0.0795763,
-        "iDeg": 10.58789,
-        "ascendingNodeDeg": 80.24963,
-        "argPeriapsisDeg": 73.29974,
-        "meanAnomalyDeg": 231.53975,
-        "periodDays": 1600.0,
-        "epochSource": "jpl"
-      },
-      "raw": { "sourceRecord": {}, "sourceVersion": "JPL SBDB" },
-      "sourceMeta": {
-        "queryId": "jpl-main",
-        "sourceVersion": "JPL SBDB",
-        "normalizedAt": "2026-03-04T...Z"
-      }
-    }
-  ],
-  "counts": {
-    "total": 1,
-    "bySource": { "jpl": 1, "mpc": 0 },
-    "byOrbitClass": { "main-belt": 1 },
-    "byTaxonomy": { "C": 1, "S": 0, "M": 0 }
-  },
-  "schema": { ... }
-}
-```
-
-## Provenance metadata output
-
-Default output: `public/data/asteroid-phase2/asteroid_raw_snapshot.provenance.json`
-
-```json
-{
-  "pipelineVersion": "catalog-fetcher-ts-1.0.0",
-  "generatedAt": "2026-03-04T...Z",
-  "runTag": "2026-03-04T...-...",
-  "source": "jpl+mpc",
-  "config": {
-    "sources": ["jpl", "mpc"],
-    "jplMainLimit": 4000,
-    "mpcLimit": 1200,
-    "cacheDir": "scripts/.cache/asteroid-fetcher",
-    "requestIntervalMs": 1100,
-    "intervalMinutes": 0,
-    "maxRuns": 1
-  },
-  "schedule": [
-    {
-      "id": "jpl-main-belt",
-      "source": "jpl",
-      "cadenceMinutes": 1440,
-      "description": "JPL SBDB top targets",
-      "lastRunAt": "2026-03-04T...Z"
-    }
-  ],
-  "sourceRuns": [
-    {
-      "source": "jpl",
-      "taskId": "jpl-main-belt",
-      "requestedAt": "2026-03-04T...Z",
-      "completedAt": "2026-03-04T...Z",
-      "query": "https://ssd-api.jpl.nasa.gov/sbdb_query.api?...",
-      "sourceVersion": "sbdb_query.api",
-      "cacheHit": false,
-      "attempts": 1,
-      "rawRows": 4000,
-      "normalizedRows": 3921,
-      "status": "ok",
-      "responseBytes": 123456,
-      "responseChecksum": "...sha256..."
-    }
-  ]
-}
-```
-
-## Determinism notes for downstream targets
-
-- IDs are stable by source + normalized body identifier.
-- Rows are sorted by `selectionPriority` before persistence.
-- Duplicate IDs are merged deterministically by higher priority.
-- `selectionPriority` is currently source-biased (`jpl` > `mpc`) with magnitude/orbit heuristics for repeatable ranking.
+Old normalized Phase 2 snapshots are unsupported inputs to the maintained builder.
+Migrate consumers to the ACBF loader and its source metadata rather than translating
+legacy `taxonomy.inferred` fields into measured properties. The current ACBF v2
+bundle preserves source doubles; v1/ASPH reading remains available for historical
+artifacts. See `src/data/asteroidCatalogBinaryFormat.md` for the native layouts.

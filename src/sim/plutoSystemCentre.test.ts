@@ -378,7 +378,7 @@ test('default compact worker preserves hidden companions through structured clon
 });
 
 test('partial source catalogs preserve unrelated bodies while fixed missing slots make only the Pluto system unavailable', async () => {
-  const puck = raw.find(row => row.id === 378)!;
+  const puck = raw.find(row => row.id === 388)!;
   const plutoRows = raw.filter(row => row.planet === 'Pluto');
   for (const rows of [[puck], [puck, ...plutoRows.filter(row => row.iauCode !== '905')]]) {
     const catalog = await catalogFromRows(rows);
@@ -393,18 +393,29 @@ test('partial source catalogs preserve unrelated bodies while fixed missing slot
 });
 
 test('source order and display names cannot replace the exact parent/IAU binding or first-selected identity', async () => {
-  const rows = raw.filter(row => row.planet === 'Pluto').map(row => ({ ...row, name: `Owned-${row.iauCode}` }));
+  const rows = raw.filter(row => row.planet === 'Pluto');
   const duplicate = { ...rows.find(row => row.iauCode === '901')!, id: 90001, name: 'Wrong duplicate', aKm: 1e7 };
-  const catalog = await catalogFromRows([...rows].reverse().concat(duplicate));
+  // A same-name impostor must not own a required component; keep measured
+  // source names intact so physical-radius identity checks remain active.
+  const impostor = { ...rows.find(row => row.iauCode === '901')!, id: 90002, iauCode: 'owned-901', aKm: 1e7 };
+  const catalog = await catalogFromRows([impostor, ...[...rows].reverse(), duplicate]);
   const selected = companions(body(catalog, 'pluto').orbit!);
   COMPONENTS.forEach(([identity, , gm], i) => {
-    const moon = catalog.bodies.find(item => item.parentId === 'pluto' && item.name === `Owned-${identity}`)!;
+    const moon = catalog.bodies.find(item => item.parentId === 'pluto' && item.sourceId === identity)!;
     assert(moon);
     assert.equal(selected[i].orbit, moon.orbit);
     assert.equal(selected[i].massFraction, gm / SYSTEM_GM);
     assert.equal(moon.orbit!.aAu, rows.find(row => row.iauCode === identity)!.aKm / AU_KM);
   });
   assert.equal(catalog.bodies.some(item => item.name === 'Wrong duplicate'), false);
+  assert.equal(catalog.bodies.filter(item => item.parentId === 'pluto' && item.name === 'Charon').length, 2);
+  assert.notEqual(selected[0].orbit, catalog.bodies.find(item => item.sourceId === 'owned-901')!.orbit);
+});
+
+test('measured Pluto moon identity mismatches still reject before physical radius assignment', async () => {
+  const charon = raw.find(row => row.planet === 'Pluto' && row.iauCode === '901')!;
+  await assert.rejects(() => catalogFromRows([{ ...charon, name: 'Owned wrong label' }]),
+    /Moon physical radius identity differs/);
 });
 
 test('actual opt-in loader and injected fit bind the runtime orbit instances without new acquisition', async () => {

@@ -1,0 +1,314 @@
+[
+ {
+  "mode": "no Origin header (curl / proxy hop)",
+  "origin": null,
+  "physics": {
+   "get_status": 200,
+   "get_acao": null
+  },
+  "aia": null
+ },
+ {
+  "mode": "npm run dev (vite default host)",
+  "origin": "http://localhost:5173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 13.2,
+   "get_acao": "http://localhost:5173",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://localhost:5173",
+   "preflight_body": "OK"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": "http://localhost:5173",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://localhost:5173",
+   "preflight_body": "OK"
+  }
+ },
+ {
+  "mode": "dev:ui default / dev via 127.0.0.1",
+  "origin": "http://127.0.0.1:5173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.8,
+   "get_acao": "http://127.0.0.1:5173",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://127.0.0.1:5173",
+   "preflight_body": "OK"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": "http://127.0.0.1:5173",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://127.0.0.1:5173",
+   "preflight_body": "OK"
+  }
+ },
+ {
+  "mode": "dev via IPv6 loopback",
+  "origin": "http://[::1]:5173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 12.4,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "vite port fallback when 5173 busy",
+  "origin": "http://localhost:5174",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.6,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "dev:full --frontend-port 5180",
+  "origin": "http://localhost:5180",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.9,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "dev:full --host 0.0.0.0 opened from LAN IP",
+  "origin": "http://192.168.1.10:5173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.7,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "npm run preview (default)",
+  "origin": "http://localhost:4173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.9,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "npm run preview via 127.0.0.1",
+  "origin": "http://127.0.0.1:4173",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.7,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "legacy port 3000 http",
+  "origin": "http://localhost:3000",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.8,
+   "get_acao": "http://localhost:3000",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://localhost:3000",
+   "preflight_body": "OK"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.4,
+   "get_acao": "http://localhost:3000",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "http://localhost:3000",
+   "preflight_body": "OK"
+  }
+ },
+ {
+  "mode": "legacy port 3000 https",
+  "origin": "https://localhost:3000",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.6,
+   "get_acao": "https://localhost:3000",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "https://localhost:3000",
+   "preflight_body": "OK"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": "https://localhost:3000",
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 200,
+   "preflight_acao": "https://localhost:3000",
+   "preflight_body": "OK"
+  }
+ },
+ {
+  "mode": "static prod build on another host",
+  "origin": "https://solar.example.com",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.7,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.4,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ },
+ {
+  "mode": "file:// or sandboxed iframe",
+  "origin": "null",
+  "physics": {
+   "get_status": 200,
+   "get_ms": 11.6,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  },
+  "aia": {
+   "get_status": 400,
+   "get_ms": 0.5,
+   "get_acao": null,
+   "get_acac": "true",
+   "get_vary": "Origin",
+   "preflight_status": 400,
+   "preflight_acao": null,
+   "preflight_body": "Disallowed CORS origin"
+  }
+ }
+]
+
+SUMMARY (browser verdict: allowed iff ACAO echoes the Origin)
+origin                           phys GET     ACAO  pre aia GET     ACAO  pre
+http://localhost:5173                 200     echo  200     400     echo  200
+http://127.0.0.1:5173                 200     echo  200     400     echo  200
+http://[::1]:5173                     200        -  400     400        -  400
+http://localhost:5174                 200        -  400     400        -  400
+http://localhost:5180                 200        -  400     400        -  400
+http://192.168.1.10:5173              200        -  400     400        -  400
+http://localhost:4173                 200        -  400     400        -  400
+http://127.0.0.1:4173                 200        -  400     400        -  400
+http://localhost:3000                 200     echo  200     400     echo  200
+https://localhost:3000                200     echo  200     400     echo  200
+https://solar.example.com             200        -  400     400        -  400
+null                                  200        -  400     400        -  400

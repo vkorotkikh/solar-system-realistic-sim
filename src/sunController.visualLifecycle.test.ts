@@ -5,7 +5,7 @@
 // why_new=existing delivery tests do not observe private visual dispose events; seam=none;
 // no_claim=GPU memory/performance or scientific calibration.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BufferGeometry, Group, Material, Mesh, MeshBasicMaterial, PerspectiveCamera, ShaderMaterial, SphereGeometry, Sprite, SpriteMaterial, Texture, type Object3D, type TextureLoader } from 'three';
+import { BufferGeometry, Group, Material, Mesh, MeshBasicMaterial, PerspectiveCamera, ShaderMaterial, SphereGeometry, Sprite, SpriteMaterial, Texture, type Object3D, type Points, type PointsMaterial, type TextureLoader } from 'three';
 import { createSunController } from './sunController';
 import captured from '../backend/tests/fixtures/solar_frames/synthetic_state_2451552.json';
 
@@ -69,7 +69,8 @@ function fixture({ initialize = true, failRadiusCall = 0 } = {}) {
     return {
       glow: [...drawable('glow', sprite, false), watch('glow:texture', (sprite as Sprite).material.map!)],
       corona: drawable('corona', corona, false), transition: drawable('transition', transition, false),
-      eruption: drawable('eruption', eruption), chromosphere: drawable('chromosphere', chromosphere),
+      eruption: [...drawable('eruption', eruption), watch('eruption:alpha-map', (eruption as Points<BufferGeometry, PointsMaterial>).material.alphaMap!)],
+      chromosphere: drawable('chromosphere', chromosphere),
     };
   };
   const lines = (bodyId: string) => {
@@ -214,7 +215,7 @@ describe('Sun controller private resource lifetime', () => {
   it('retires private outputs acquired before a controlled initialization dependency fails', () => {
     const f = fixture({ initialize: false, failRadiusCall: 2 });
     expect(f.initializeVisuals).toThrow('owned partial-init radius failure');
-    const resources = Object.values(f.staticOwned()).flat(); expect(resources).toHaveLength(8);
+    const resources = Object.values(f.staticOwned()).flat(); expect(resources).toHaveLength(9);
     f.controller.disposeSolarDelivery(); f.controller.disposeSolarDelivery();
     expect(counts(resources)).toEqual(once(resources));
     expect(f.borrowed.every(record => record.count === 0)).toBe(true);

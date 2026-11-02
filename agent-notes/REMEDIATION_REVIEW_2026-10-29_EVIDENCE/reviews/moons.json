@@ -1,0 +1,224 @@
+{
+  "domain": "moons",
+  "notesCovered": [
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_REPAIR_PLAN_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_SOURCE_EXCEPTIONS_AND_PROMOTION_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_INDEPENDENT_SOURCE_EXCEPTION_REVIEW_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_INDEPENDENT_FIXTURE_FOLLOWUP_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_INDEPENDENT_RECHECK_041abfb_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_INDEPENDENT_FINAL_RECHECK_86ac5fe_2026-10-14.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_ACCEPTANCE_2026-10-15.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_INDEPENDENT_REVIEW_2026-10-15.md",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/EPHEMERIS_ALL_MOON_ASSESSMENT_2026-10-14.json",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_EVIDENCE_2026-10-15/FILE_HASH_INVENTORY.json",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_EVIDENCE_2026-10-15/sizes.json",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_EVIDENCE_2026-10-15/node22/build-integrity.json",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/agent-notes/SCN043_LAZY_PROMOTION_READY_FILES_2026-10-15.json",
+    "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/moon-lazy-inputs/README.md",
+    "95dda999d42eb0b6d26e52565f6716cde84435fa:agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md (moon-related changed claims only; read as git diff, not a full-note audit)"
+  ],
+  "issues": [
+    {
+      "id": "SCN-043",
+      "verdict": "PARTIAL",
+      "fix": "Main contains the original four models, six Cartesian repairs, native S/2025 U 1 repair, Daphnis legacy piecewise-SPK model, and S2023_S38 Cartesian model: 13 models covering 13 of 424 catalog records. The original source-integrity repairs F1-F4 and deferred catalog identity initialization are landed with targeted regressions. Full-catalog publication remains local/uncommitted; current main still has incomplete certificate admission checks.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/loadMoonEphemerides.ts:4-21 -- five artifact imports; no additional-body argument, HTTP manifest, or lazy shard loader",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/loadMoonEphemerides.test.ts:9-17 -- preservation and union of all five base artifacts",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisChebyshev.json:1 -- 4 bodies",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisRepairs.json:1 -- 6 bodies",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisSpkRepairs.json:1 -- s2025_u_1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisDaphnis.json:1 -- daphnis",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/data/moonEphemerisS2023S38.json:1 -- s2023_s38",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonCatalogRepair.horizons.test.ts:18-21,39-50 -- 424-record denominator retained; absent fits explicitly skipped; candidate override remains test-only",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:215-243,325-366 -- catalog identity, exceptional source domains, post-selection audit, and native handoff rejection",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/generate_s2023_s38_ephemeris.py:149-215 -- pinned-input schema, identity, provider header, digest and query-epoch replay validation",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonSourceExceptionIndependentReview.test.ts:57-101,105-138 -- original-source runtime comparisons and original parser rejection regressions",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/test_moon_source_exception_independent_review.py:252-268,271-314 -- offline reproduction, no adaptation to failed audit, and four provenance rejection mutations",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:279-284,306-323 -- endpoint errors only checked for finiteness; aggregate acceptance only compares maxima",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/main.ts:179-189 -- shipped UI sets showMoons=false, so default application does not load or propagate the fitted moon catalog"
+      ],
+      "remaining": [
+        "Integrate reviewed lazy code, source pins and published shards before claiming coverage beyond 13/424. Static main inventory leaves 411 records without a fitted artifact; duplicate Puck makes these 410 additional unique models.",
+        "Resolve the current main endpoint/aggregate certificate gap. Existing fixes with regression tests on fix/markdown-audit-20261024 are not in origin/main.",
+        "Before lazy promotion, enforce the independent vectorOracle certificate (alias IDs, seven samples per alias, nonnegative ordered statistics within fixed caps) and endpoint error limits.",
+        "Before lazy promotion, cancel or abort HTTP-failure and advertised-size-rejected response bodies before returning a concurrency slot; add targeted cleanup assertions.",
+        "Resolve storage/publication integration for 396307773 bytes of source pins plus published lazy assets, exclusive of the source README. Historical bulk approval remains false in the local handoff; no integration-ready lazy commit exists.",
+        "Current baseline frontend/backend results are centrally pending. Historical passes and local all-424 candidate acceptance are not fresh main acceptance."
+      ],
+      "branchEvidence": [
+        {
+          "scope": "landed source and packaging repairs",
+          "verdict": "CODE_CONFIRMED",
+          "commitsOnMain": [
+            "6d92ad8",
+            "041abfbfd972b9355d7bb316a90f32131e5a5109",
+            "4f2e2507797eb73d50443711df433e10032cc3fd"
+          ],
+          "detail": "Read-only merge-base ancestry confirms these commits belong to origin/main. git cherry marks acc9cebb, 95ecbaf and 86ac5fe patch-equivalent to main changes. Do not classify their old worktree SHAs alone as unlanded fixes. Current targeted tests were inspected, not executed."
+        },
+        {
+          "scope": "all-424 lazy preparation",
+          "verdict": "FIX_LOCAL_ONLY",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris",
+          "head": "86ac5fe0bad35d5bed4a2a18df82cfc6d453d6f6",
+          "detail": "Two tracked working-file changes add keyed lazy loading and remove all-catalog skips. New lazy loader/generator/tests and all 822 bulk files are local working files absent from main; git log --all for the lazy production paths has no committed history. Local index has 424 records, 13 base models and 410 lazy models for 411 additional records (423 unique models total).",
+          "evidence": [
+            "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/loadMoonEphemerides.ts:5-8,25-31",
+            "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.ts:4-8,52-96,99-223",
+            "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/generate_moon_lazy_ephemerides.py:34-52,189-275",
+            "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/test_moon_lazy_ephemerides.py:47-115",
+            "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/public/moon-ephemerides/manifest.json:1"
+          ]
+        },
+        {
+          "scope": "endpoint and aggregate certificate repair",
+          "verdict": "FIX_LOCAL_ONLY",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2",
+          "branch": "fix/markdown-audit-20261024",
+          "commits": [
+            "bf924676d52ea8fd9946b5686b28272d237d9298",
+            "f02d63e840a80d589ef7713746f6f8d2eec6b7c9"
+          ],
+          "detail": "Both commits fail ancestor-of-origin/main checks. They enforce endpoint bounds, nonnegative/ordered aggregate statistics, endpoint-versus-aggregate consistency and safe sample counts; targeted regression tests exist. They do not implement the uncommitted lazy loader vectorOracle contract or response cancellation.",
+          "evidence": [
+            "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/src/sim/moonEphemeris.ts:264-270,291-342",
+            "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/src/sim/moonEphemeris.validation.test.ts:20-75,79-203,206-215"
+          ]
+        },
+        {
+          "scope": "independent moon source review worktree",
+          "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-moon-source-review",
+          "head": "abc79646988014cbb9e91523b9366d884fb63bdf",
+          "detail": "Its merge-base with origin/main is the full audit baseline bb29d4be. Remaining branch commits are independent review/evidence commits. Selected production and independent test files have no diff from main; this worktree is not an additional unlanded product repair."
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "name": "The bounded source-exception repairs are landed, with meaningful regression coverage",
+      "verdict": "CODE_CONFIRMED",
+      "scope": "origin/main at bb29d4be; current tests centrally pending",
+      "detail": "Daphnis keeps the dated 2016 source domain, exactly two native fit handoffs, right-hand endpoint ownership and no cross-fade at the native jumps. S2023_S38 retains Cartesian states, exceptional source identity, and disjoint post-selection audit; generator rejects a failed audit without refitting. Earlier F1-F4 failure reports are superseded for these precise contracts.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:20-26,215-243,327-366,449-461,725-740",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/repair_spk_moon_ephemeris.py:174-211",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/generate_s2023_s38_ephemeris.py:227-255",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonSourceExceptionIndependentReview.test.ts:57-138",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/scripts/test_moon_source_exception_independent_review.py:271-314"
+      ]
+    },
+    {
+      "name": "Full-catalog acceptance describes local preparation, not main delivery",
+      "verdict": "FIX_LOCAL_ONLY",
+      "scope": "local ephemeris worktree only",
+      "detail": "Main ships 13 fitted models for 13 records; no lazy manifest, loader, generator or shards exist in the audit snapshot. Its normal all-catalog regression still has 411 skip conditions for absent fits. Locally, 410 shards cover 411 additional records and both Puck IDs 378/388 share one model constrained to 86.004 km / 10 m/s. The all-424 local gate is a historical acceptance claim, not a current test result.",
+      "counts": {
+        "mainCatalogRecords": 424,
+        "mainFittedModels": 13,
+        "mainRecordsWithFits": 13,
+        "mainRecordsWithoutFits": 411,
+        "localAdditionalModels": 410,
+        "localAdditionalRecords": 411,
+        "localPreparedUniqueModels": 423,
+        "localPreparedRecords": 424
+      },
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/loadMoonEphemerides.ts:4-21",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonCatalogRepair.horizons.test.ts:39-50",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonRepairTestInputs.mjs:7-18",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/public/moon-ephemerides/manifest.json:1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.test.ts:42-51",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_ACCEPTANCE_2026-10-15.md:20-35,150-154"
+      ]
+    },
+    {
+      "name": "Main accepts failed endpoint and internally inconsistent accuracy certificates",
+      "verdict": "FIX_LOCAL_ONLY",
+      "severity": "P2",
+      "scope": "concrete open admission defect on origin/main; repair exists only on another local branch",
+      "detail": "Changing titan.validation.coverageEndpointErrors[0].positionErrorKm to 1e9 while preserving JD, coefficients and aggregate fields passes every current parser predicate: per-endpoint errors are finite-only and never compared with the 50 km cap. Negative endpoint errors, unordered/negative aggregate percentiles, and negative or unsafe integer sample counts can also pass appropriately consistent mutations. This is an artifact acceptance defect; it is not evidence of wrong coefficients in the unmodified shipped data.",
+      "targetedTestStatus": "Main tests cover valid endpoint JDs and aggregate maxima but omit these rejection mutations. Branch regression file covers them and preserves all 13 artifact positive controls. No tests executed in this audit.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:264-270,279-284,296-323",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.test.ts:163-191",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/src/sim/moonEphemeris.ts:264-270,291-342",
+        "/home/nomad/ai/projects/worktrees/solar-five-audit-bugs-v2/src/sim/moonEphemeris.validation.test.ts:20-75,79-215"
+      ],
+      "remaining": "Integrate the existing endpoint/consistency fix and its regression coverage, then obtain current central results. Preserve original accuracy limits and artifact bytes."
+    },
+    {
+      "name": "The local lazy loader still ignores independent vector-oracle certification",
+      "verdict": "OPEN",
+      "severity": "P2",
+      "scope": "uncommitted lazy promotion; not a shipped main fetch path",
+      "detail": "The local loader verifies digest, exact bytes, identity, domain and declared caps, then freezes/caches the model. Neither it nor the main/old-local parser checks validation.vectorOracle. Deleting the certificate or raising its maxima to 1e9 and recomputing the shard digest/manifest remains admissible by inspection. The same old-local parser also retains the endpoint gap. Local generation checks real vector-oracle errors before publication, so this is a missing runtime semantic rejection boundary rather than proof of invalid current numerical fits.",
+      "targetedTestStatus": "Existing 25 local loader cases test content-address-consistent identity/cap/coverage mutations but have no missing/failed vectorOracle or endpoint-error mutations. The independent review records three accepted controls; no probe was rerun.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.ts:175-190",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/src/sim/moonEphemeris.ts:251-345",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.test.ts:149-160",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/generate_moon_lazy_ephemerides.py:204-234",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_INDEPENDENT_REVIEW_2026-10-15.md:15-37,199-203"
+      ],
+      "remaining": "Require expected alias catalogIds, sampleCount=7 per alias, finite nonnegative ordered oracle statistics within the unchanged caps, and endpoint limits; add content-address-consistent rejection cases. The separate MOON-056 branch does not check vectorOracle."
+    },
+    {
+      "name": "Early rejected lazy responses can outlive the concurrency permit",
+      "verdict": "OPEN",
+      "severity": "P2",
+      "scope": "uncommitted lazy promotion only",
+      "detail": "HTTP status and invalid/oversized Content-Length branches throw before acquiring a reader and never cancel response.body. withSlot releases or transfers the concurrency permit on rejection. Sequential failures can therefore leave body transfers active outside the configured accounting. Only the decoded-stream-overflow branch calls reader.cancel().",
+      "targetedTestStatus": "Existing local tests assert rejection and count fetch invocations, not stream cancellation before permit release. The historical controlled Response/ReadableStream probe recorded 3 transfers and 0 cancellations with concurrency=1; this is not a fresh deployed socket measurement.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.ts:116-138,159-167",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.test.ts:54-68,124-136",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_INDEPENDENT_REVIEW_2026-10-15.md:39-54,177-203"
+      ],
+      "remaining": "Cancel/abort every early rejected response before releasing its permit; assert cleanup for non-OK status and malformed/oversized advertised length with repeated loads."
+    },
+    {
+      "name": "Bulk storage/publication decision remains outstanding and the 396 MB label needs qualification",
+      "verdict": "DECISION_REQUIRED",
+      "scope": "local pending bulk assets, not main or per-user runtime transfer",
+      "detail": "The handoff still marks bulkCommitAuthorized=false. All 410 source archives and all 410 public shards plus manifests are present locally. Source pins are 336049237 bytes, public assets 60258536 bytes: 396307773 combined, excluding the 2852-byte source README. The complete two directories observed now total 396310625 bytes including that README. The approximately 396 MB figure is not source-only storage and not a cold browser download.",
+      "bytes": {
+        "compressedSourceArchives": 330929304,
+        "sourceManifest": 5119933,
+        "sourcePinsExcludingReadme": 336049237,
+        "publishedModelShards": 59955387,
+        "publishedManifest": 303149,
+        "publishedAssets": 60258536,
+        "pendingSourcePinsPlusPublishedAssets": 396307773,
+        "sourceReadme": 2852,
+        "observedDirectoriesIncludingReadme": 396310625,
+        "uncompressedNormalizedRowsHistorical": 505630272,
+        "baseArtifactsOnDisk": 6765158
+      },
+      "runtimeQualification": "Local code caps manifest at 1 MiB and each shard at 2 MiB, defaults to 4 concurrent requests and 8 MiB retained serialized JSON. Metadata declares Amalthea cold index+shard=706733 bytes and largest Metis=1927669 bytes; these exclude application/base modules and are not measured wire transfers. Cache accounting is not a total heap/caller retention bound.",
+      "evidence": [
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/agent-notes/SCN043_LAZY_PROMOTION_READY_FILES_2026-10-15.json:1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/moon-lazy-inputs/manifest.json:1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/public/moon-ephemerides/manifest.json:1",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/scripts/moon-lazy-inputs/README.md:17-22,49-52",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029/agent-notes/SCN043_LAZY_PROMOTION_ACCEPTANCE_2026-10-15.md:48-67,84-103,124-154",
+        "/home/nomad/ai/projects/worktrees/solar-remediation-20261014-ephemeris/src/sim/lazyMoonEphemerides.ts:6-8,99-108,190-197"
+      ],
+      "remaining": "Choose and authorize the source storage/publication integration route, then land the matching code and complete assets together after rejection defects are repaired. The code-only handoff cannot pass its full-catalog/offline tests without the assets."
+    }
+  ],
+  "caveats": [
+    "Scope is read-only against audit HEAD and origin/main bb29d4be393c9dedca7049fc9b83511ed955be40. No network, fetch, tests, installs, product changes, existing-report edits, or git-state mutations were performed. Only this requested /tmp JSON is written. Static JSON inventory/hash/stat calculations are not numerical regression execution.",
+    "All eight assigned SCN043_*.md notes and the all-moon assessment were covered. The assessment JSON was parsed for its summary and representative record; its complete 424-record numerical comparisons were not recomputed. REMEDIATION_EPHEMERIS content was left to the assigned mission reviewer; its inventory metadata was inspected, not its text.",
+    "Claim reconciliation: the 2026-10-14 source-exceptions note explicitly reports 13 shipped records and 411 pending. The 2026-10-15 acceptance note reports all 424 only in an uncommitted local worktree and explicitly disclaims main integration. The subsequent independent lazy review and persisted FILE_HASH_INVENTORY qualify that acceptance with two open P2 findings and pending approvals. These claims describe different scopes; none establishes 424-record main coverage.",
+    "Claim reconciliation: the initial independent source-exception review and fixture-only follow-up preserve ten failures. The 041abfb recheck resolves F1-F4 but leaves packaging open; the 86ac5fe/4f2e250 follow-up resolves deferred identity-map initialization. Both repair stages are in main. Their 22-case historical pass is dated 2026-10-14, not a current baseline pass.",
+    "Claim reconciliation: the 2026-10-24 consolidated audit diff labels MOON-056 FIXED_HERE using bf92467 and f02d63e. Both are confined to fix/markdown-audit-20261024. Main still has the finite-only endpoint and incomplete aggregate predicates. That local label must not be imported as a landed fix.",
+    "Source-footprint distinctions: the earlier promotion recommendation measures different candidate/combined JSON envelopes; the later locally published 410-shard set includes its own certificate/provenance metadata and totals 59955387 bytes. Use actual local manifests for that stage, not old candidate sizes or their gzip estimates as current transfer evidence.",
+    "The original all-moon assessment (190 records above one semimajor axis; 399 above ten percent) is an earlier mean-element comparison, not a fresh error survey of these 13 repaired models. Main still permits a test-only SCN043_CANDIDATE_DIR override, so a candidate-assisted all-424 pass must not be called main delivery acceptance.",
+    "Daphnis is explicitly a discontinuous legacy Cassini fit released 2016-10-11 with observations through 2016-07-16, not a contemporary continuous observational solution. S2023_S38 allows positive instantaneous two-body energy; it does not claim permanent escape. Main replaces S/2025 U 1 reference lookup with pinned native NAIF evidence instead of mistaking Horizons asteroid 75052 for the satellite (moonCatalogRepair.horizons.test.ts:26-35).",
+    "The S2023_S38 offline repair checks normalized row bytes, retained headers, query grids and digest syntax. It does not independently rehash the original 115 raw response envelopes. The historical review had 0/115 available, and scripts/test_moon_source_exception_independent_review.py:202-205 still writes an availability value of 0 literally. No fresh cache-envelope inventory was performed here; normalized pin tests do not erase that provenance qualification.",
+    "Local 410-archive payloads were inventoried by filename/size and manifest metadata, not independently decompressed/refitted or freshly hashed in bulk. The historical offline 410-model rebuild and 517-case pinned-Node acceptance remain dated evidence. Current frontend/backend suites are centrally pending; the native independent-review module can skip without SpiceyPy unless SOLAR_MOON_REVIEW_REQUIRE_NATIVE=1 (scripts/test_moon_source_exception_independent_review.py:25-31).",
+    "No browser or deployed HTTP endpoint validation was performed. The application currently hides moon rendering and does not invoke the optional fitted-model loader; loader findings matter at artifact admission and prospective full-catalog integration. No changed unmodified coefficients or newly measured celestial-state regression is claimed."
+  ]
+}

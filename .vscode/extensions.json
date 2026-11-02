@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "henrikdev.ag-quota"
+        "ms-python.python",
+        "ms-playwright.playwright"
     ]
 }

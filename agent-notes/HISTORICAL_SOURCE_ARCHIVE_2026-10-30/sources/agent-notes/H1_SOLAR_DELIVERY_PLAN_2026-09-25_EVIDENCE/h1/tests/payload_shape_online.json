@@ -1,0 +1,397 @@
+{
+ "mode": "online",
+ "status": 200,
+ "seconds": 10.497,
+ "bytes": 553528,
+ "schema": {
+  "name": "solar_physics_state",
+  "version": 1
+ },
+ "data_assimilation": {
+  "mode": "hybrid",
+  "applied": true,
+  "synthetic_activity_index": 0.7570007454959887,
+  "observed_activity_index": 0.24192328432553314,
+  "blended_activity_index": 0.5580948529612105,
+  "observed_confidence": 0.38904843046207266,
+  "blend_weight": 0.38616695066172546,
+  "live_data_available": true,
+  "source_status": "<dict>",
+  "proxy_breakdown": "<dict>",
+  "sources": "<dict>"
+ },
+ "sources_keys": [
+  "swpc",
+  "silso",
+  "sdo_aia"
+ ],
+ "sdo_aia_keys": [
+  "request_date_utc",
+  "channels",
+  "channel_activity_proxy",
+  "latest_image_date_utc",
+  "freshness_s",
+  "freshness_proxy",
+  "activity_proxy",
+  "coronal_holes",
+  "visualization"
+ ],
+ "sdo_aia_channels": {
+  "aia_094": {
+   "image_id": "192406538",
+   "image_date": "2026-09-25 00:17:47",
+   "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192406538&x=-1&y=-1&imageScale=0.601789"
+  },
+  "aia_171": {
+   "image_id": "192406694",
+   "image_date": "2026-09-25 00:17:57",
+   "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192406694&x=-1&y=-1&imageScale=0.601789"
+  },
+  "aia_193": {
+   "image_id": "192406635",
+   "image_date": "2026-09-25 00:17:53",
+   "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192406635&x=-1&y=-1&imageScale=0.601789"
+  },
+  "aia_211": {
+   "image_id": "192406603",
+   "image_date": "2026-09-25 00:18:10",
+   "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192406603&x=-1&y=-1&imageScale=0.601789"
+  },
+  "aia_304": {
+   "image_id": "192406727",
+   "image_date": "2026-09-25 00:17:29",
+   "tile_url": "https://api.helioviewer.org/v2/getTile/?id=192406727&x=-1&y=-1&imageScale=0.601789"
+  }
+ },
+ "source_status": {
+  "swpc": {
+   "ok": false,
+   "error": "HTTP Error 404: Not Found",
+   "endpoint": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+  },
+  "silso": {
+   "ok": true,
+   "updated": "2026-08-31",
+   "endpoint": "https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv"
+  },
+  "sdo_aia": {
+   "ok": true,
+   "updated": "2026-09-25T00:18:10Z",
+   "endpoint": "https://api.helioviewer.org/v2/getClosestImage/"
+  },
+  "gong_synoptic": {
+   "ok": true,
+   "updated": "2026-09-25T02:12:38.053439Z",
+   "endpoint": "https://gong.nso.edu/data/magmap/QR/bqs/"
+  }
+ },
+ "pfss_source": "synthetic",
+ "shape": {
+  "schema": {
+   "name": "str",
+   "version": "int"
+  },
+  "model": "str",
+  "epoch_jd": "float",
+  "wall_epoch_jd": "float",
+  "fidelity": "str",
+  "solar_radius_km": "float",
+  "solar_radius_au": "float",
+  "activity_index": "float",
+  "synthetic_activity_index": "float",
+  "cycle_phase_rad": "float",
+  "data_assimilation": {
+   "mode": "str",
+   "applied": "bool",
+   "synthetic_activity_index": "float",
+   "observed_activity_index": "float",
+   "blended_activity_index": "float",
+   "observed_confidence": "float",
+   "blend_weight": "float",
+   "live_data_available": "bool",
+   "source_status": {
+    "swpc": {
+     "ok": "bool",
+     "error": "str",
+     "endpoint": "str"
+    },
+    "silso": {
+     "ok": "bool",
+     "updated": "str",
+     "endpoint": "str"
+    },
+    "sdo_aia": {
+     "ok": "bool",
+     "updated": "str",
+     "endpoint": "str"
+    },
+    "gong_synoptic": {
+     "ok": "bool",
+     "updated": "str",
+     "endpoint": "str"
+    }
+   },
+   "proxy_breakdown": {
+    "combined": "float"
+   },
+   "sources": {
+    "swpc": "NoneType",
+    "silso": {
+     "date": "str",
+     "daily_sunspot_number": "float",
+     "stdev": "float",
+     "observation_count": "float",
+     "provisional_flag": "str",
+     "activity_proxy": "float"
+    },
+    "sdo_aia": {
+     "request_date_utc": "str",
+     "channels": {
+      "aia_094": {
+       "source_id": "int",
+       "image_id": "str",
+       "image_date": "str",
+       "name": "str",
+       "scale": "float",
+       "width": "float",
+       "height": "float",
+       "solar_radius_px": "float",
+       "rotation_deg": "float",
+       "jp2_url": "str",
+       "tile_url": "str",
+       "analysis": "dict"
+      },
+      "aia_171": {
+       "source_id": "int",
+       "image_id": "str",
+       "image_date": "str",
+       "name": "str",
+       "scale": "float",
+       "width": "float",
+       "height": "float",
+       "solar_radius_px": "float",
+       "rotation_deg": "float",
+       "jp2_url": "str",
+       "tile_url": "str",
+       "analysis": "dict"
+      },
+      "aia_193": {
+       "source_id": "int",
+       "image_id": "str",
+       "image_date": "str",
+       "name": "str",
+       "scale": "float",
+       "width": "float",
+       "height": "float",
+       "solar_radius_px": "float",
+       "rotation_deg": "float",
+       "jp2_url": "str",
+       "tile_url": "str",
+       "analysis": "dict"
+      },
+      "aia_211": {
+       "source_id": "int",
+       "image_id": "str",
+       "image_date": "str",
+       "name": "str",
+       "scale": "float",
+       "width": "float",
+       "height": "float",
+       "solar_radius_px": "float",
+       "rotation_deg": "float",
+       "jp2_url": "str",
+       "tile_url": "str",
+       "analysis": "dict"
+      },
+      "aia_304": {
+       "source_id": "int",
+       "image_id": "str",
+       "image_date": "str",
+       "name": "str",
+       "scale": "float",
+       "width": "float",
+       "height": "float",
+       "solar_radius_px": "float",
+       "rotation_deg": "float",
+       "jp2_url": "str",
+       "tile_url": "str",
+       "analysis": "dict"
+      }
+     },
+     "channel_activity_proxy": {
+      "aia_094": "float",
+      "aia_171": "float",
+      "aia_193": "float",
+      "aia_211": "float",
+      "aia_304": "float"
+     },
+     "latest_image_date_utc": "str",
+     "freshness_s": "float",
+     "freshness_proxy": "float",
+     "activity_proxy": "float",
+     "coronal_holes": {
+      "source": "str",
+      "threshold": "float",
+      "median_intensity": "float",
+      "coverage_fraction": "float",
+      "polar_open_flux_north": "float",
+      "polar_open_flux_south": "float",
+      "hole_count": "int",
+      "holes": [
+       "empty"
+      ]
+     },
+     "visualization": {
+      "preferred_channel": "str",
+      "preferred_image_id": "str",
+      "preferred_tile_url": "str",
+      "preferred_proxy_path": "str"
+     }
+    }
+   }
+  },
+  "surface": {
+   "differential_rotation_model": "str",
+   "activity_cycle_model": "str",
+   "activity_cycle_params": {
+    "b_months": "float",
+    "c_asymmetry": "float",
+    "reference_cycle_start_jd": "float"
+   },
+   "estimated_equatorial_rotation_days": "float",
+   "estimated_polar_rotation_days": "float",
+   "active_region_count": "int"
+  },
+  "corona": {
+   "feature_count": "int",
+   "max_extent_solar_radii": "float",
+   "topology_model": "str",
+   "features": [
+    {
+     "id": "str",
+     "kind": "str",
+     "region_id": "int",
+     "active_region_id": "str",
+     "source_polarity": "str",
+     "source_role": "str",
+     "leading_polarity_sign": "float",
+     "polarity": "float",
+     "base_dir": [
+      "float",
+      "len=3"
+     ],
+     "paired_dir": [
+      "float",
+      "len=3"
+     ],
+     "tangent_dir": [
+      "float",
+      "len=3"
+     ],
+     "binormal_dir": [
+      "float",
+      "len=3"
+     ],
+     "field_strength_gauss": "float",
+     "temperature_mk": "float",
+     "electron_density_m3": "float",
+     "alfven_speed_kms": "float",
+     "expansion_speed_kms": "float",
+     "brightness": "float",
+     "emergence": "float",
+     "peak_extent_solar_radii": "float",
+     "arc": [
+      [
+       "float",
+       "len=3"
+      ],
+      "len=30"
+     ]
+    },
+    "len=152"
+   ]
+  },
+  "coronal_holes": {
+   "source": "str",
+   "coverage_fraction": "float",
+   "polar_open_flux_north": "float",
+   "polar_open_flux_south": "float",
+   "hole_count": "int",
+   "holes": [
+    {
+     "center_lat_rad": "float",
+     "center_lon_rad": "float",
+     "extent_lat_rad": "float",
+     "extent_lon_rad": "float",
+     "area_fraction": "float",
+     "type": "str"
+    },
+    "len=4"
+   ]
+  },
+  "heliosphere": {
+   "parker_spiral": {
+    "line_count": "int",
+    "point_count": "int",
+    "source_surface_radii": "float",
+    "max_extent_au": "float",
+    "max_extent_solar_radii": "float",
+    "wind_speed_kms": "float",
+    "wind_speed_model": "str",
+    "omega_sun_rad_day": "float",
+    "lines": [
+     {
+      "id": "str",
+      "polarity": "float",
+      "source_lat_deg": "float",
+      "wind_speed_kms": "float",
+      "wind_speed_source": "str",
+      "in_coronal_hole": "bool",
+      "arc": [
+       [
+        "float",
+        "len=3"
+       ],
+       "len=80"
+      ]
+     },
+     "len=6"
+    ]
+   }
+  },
+  "pfss_field_lines": {
+   "source": "str",
+   "carrington_rotation": "int",
+   "source_surface_radii": "float",
+   "lmax": "int",
+   "line_count": "int",
+   "open_line_count": "int",
+   "closed_line_count": "int",
+   "lines": [
+    {
+     "id": "str",
+     "is_open": "bool",
+     "polarity": "int",
+     "footpoint_lat_deg": "float",
+     "footpoint_lon_deg": "float",
+     "arc": [
+      [
+       "float",
+       "len=3"
+      ],
+      "len=8"
+     ]
+    },
+    "len=120"
+   ],
+   "wsa": {
+    "mean_velocity_kms": "float",
+    "grid_resolution": "str",
+    "model": "str"
+   }
+  },
+  "forcing": "str",
+  "live_data_enabled": "bool",
+  "source": "str"
+ }
+}

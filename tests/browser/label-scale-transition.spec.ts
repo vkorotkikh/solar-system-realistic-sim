@@ -10,9 +10,9 @@ interface Draw {
   bodyWorld: XYZ; labelWorld: XYZ; bodyView: XYZ; labelView: XYZ;
   bodyNdc: XYZ; labelNdc: XYZ; viewDelta: XYZ; worldMagnitude: number;
   localMagnitude: number; scale: number[]; visible: boolean; parentVisible: boolean;
-  materialId: string; mapId: string; imageSize: number[];
+  materialId: string; mapId: string; imageSize: number[]; pixelHeight: number;
   bodyRadiusAu: number; geometryRadius: number; meshScale: number[]; bodyMeshId: string;
-  realistic: boolean; scaleSerial: number;
+  realistic: boolean; scaleSerial: number; gapPixels: number;
 }
 interface Probe {
   rendererCount: number; draws: number; first: Draw | null; latest: Draw | null;
@@ -125,8 +125,16 @@ async function routeAndObserve(page: Page, baseURL: string) {
           const labelWorld: XYZ = [labelMatrix[12]!, labelMatrix[13]!, labelMatrix[14]!];
           const bodyView = transformed(view, bodyWorld), labelView = transformed(view, labelWorld);
           const viewDelta: XYZ = [labelView[0] - bodyView[0], labelView[1] - bodyView[1], labelView[2] - bodyView[2]];
+          // Measure the rendered billboard edges through the camera projection.
+          // CSS height, not the scaled WebGL drawing buffer, is the label contract.
+          const viewportHeight = renderer.domElement.clientHeight;
+          const top = transformed(projection, [labelView[0], labelView[1] + sprite.scale.y / 2, labelView[2]]);
+          const bottom = transformed(projection, [labelView[0], labelView[1] - sprite.scale.y / 2, labelView[2]]);
+          const pixelHeight = (top[1] - bottom[1]) * viewportHeight / 2;
+          const bodyTop = transformed(projection, [bodyView[0], bodyView[1] + geometryRadius * surface.scale.x, bodyView[2]]);
+          const gapPixels = (bottom[1] - bodyTop[1]) * viewportHeight / 2;
           const image = map.image as HTMLCanvasElement;
-          const draw: Draw = { index: probe.draws, sunName: sun.name, candidates: candidates.length,
+          const draw: Draw = { pixelHeight, gapPixels, index: probe.draws, sunName: sun.name, candidates: candidates.length,
             bodyRadiusAu: geometryRadius * surface.scale.x, geometryRadius, meshScale: surface.scale.toArray(), bodyMeshId: surface.uuid,
             realistic: toggle.checked, scaleSerial: probe.scaleChanges.length,
             cameraQuaternion: camera.quaternion.toArray(), bodyWorld, labelWorld, bodyView, labelView,
@@ -159,16 +167,16 @@ function healthy(probe: Probe, errors: Awaited<ReturnType<typeof routeAndObserve
   expect(probe.first?.sunName).toBe('Sun'); expect(probe.first?.candidates).toBe(1);
   expect(probe.first?.localMagnitude).toBeGreaterThan(0);
 }
-function compatible(draw: Draw, first: Draw, preserveMagnitude = true) {
+function compatible(draw: Draw, first: Draw) {
   expect([...draw.bodyWorld, ...draw.labelWorld, ...draw.bodyView, ...draw.labelView, ...draw.bodyNdc, ...draw.labelNdc].every(Number.isFinite)).toBe(true);
   expect(draw.visible).toBe(true); expect(draw.parentVisible).toBe(true);
-  expect(draw.scale).toEqual([0.12, 0.03, 1]); expect(draw.imageSize).toEqual([256, 64]);
+  expect(draw.pixelHeight, `draw ${draw.index}: constant CSS-pixel label height`).toBeCloseTo(40, 6);
+  expect(draw.scale[0]! / draw.scale[1]!).toBeCloseTo(4, 10); expect(draw.scale[2]).toBe(1);
+  expect(draw.imageSize).toEqual([256, 64]);
   expect(draw.materialId).toBe(first.materialId); expect(draw.mapId).toBe(first.mapId);
   expect(draw.materialId.length).toBeGreaterThan(0); expect(draw.mapId.length).toBeGreaterThan(0);
-  if (preserveMagnitude) {
-    expect(Math.abs(draw.localMagnitude - first.localMagnitude)).toBeLessThan(1e-10);
-    expect(Math.abs(draw.worldMagnitude - first.worldMagnitude)).toBeLessThan(1e-10);
-  }
+  expect(draw.localMagnitude).toBeGreaterThan(0);
+  expect(Math.abs(draw.worldMagnitude - draw.localMagnitude)).toBeLessThan(1e-10);
   expect(Math.abs(draw.bodyNdc[0])).toBeLessThan(0.01); expect(Math.abs(draw.bodyNdc[1])).toBeLessThan(0.01);
 }
 function screenUp(draw: Draw) {
@@ -180,7 +188,7 @@ function screenUp(draw: Draw) {
   expect.soft(draw.labelNdc[1] - draw.bodyNdc[1], `draw ${draw.index}: projected label is above body`).toBeGreaterThan(1e-8);
 }
 async function retain(page: Page, testInfo: TestInfo, errors: Awaited<ReturnType<typeof routeAndObserve>>) {
-  const body = Buffer.from(JSON.stringify({ fixtureScope: 'FE-LABEL-SCALE passive actual-render radius/offset; synthetic services; no pixel/science/font claim',
+  const body = Buffer.from(JSON.stringify({ fixtureScope: 'FE-LABEL-SCALE passive actual-render radius/offset; synthetic services; projected geometry only; no raster/science/font claim',
     probe: await snapshot(page), ...errors }, null, 2));
   await writeFile(testInfo.outputPath('label-observations.json'), body);
   await testInfo.attach('label-observations.json', { body, contentType: 'application/json' });
@@ -194,13 +202,12 @@ function sameRadiusPolicy(draw: Draw) {
   expect(draw.bodyRadiusAu).toBeGreaterThan(0);
   expect(draw.geometryRadius).toBe(1);
   expect(draw.meshScale).toEqual([draw.meshScale[0], draw.meshScale[0], draw.meshScale[0]]);
-  const expected = draw.bodyRadiusAu * 2.5 + 0.03;
-  expect.soft(Math.abs(draw.localMagnitude - expected), `draw ${draw.index}: current-radius local clearance`).toBeLessThan(1e-10);
-  expect.soft(Math.abs(draw.worldMagnitude - expected), `draw ${draw.index}: current-radius world clearance`).toBeLessThan(1e-10);
+  expect(draw.gapPixels, `draw ${draw.index}: CSS-pixel gap outside the current body radius`).toBeCloseTo(8, 6);
+  expect(draw.worldMagnitude).toBeGreaterThan(draw.bodyRadiusAu);
   screenUp(draw);
 }
 
-test('supported scale toggle keeps Sun label on the same radius policy through a real roundtrip', async ({ page, baseURL }, testInfo) => {
+test('supported scale toggle preserves Sun label pixel size and clearance through a real roundtrip', async ({ page, baseURL }, testInfo) => {
   const errors = await routeAndObserve(page, baseURL!);
   try {
     await open(page);
@@ -221,7 +228,7 @@ test('supported scale toggle keeps Sun label on the same radius policy through a
     expect(realDraw.index).toBeGreaterThan(real.scaleChanges[0]!.atDraw);
     expect(realDraw.realistic).toBe(true); expect(realDraw.bodyMeshId).toBe(before.first!.bodyMeshId);
     expect(realDraw.bodyRadiusAu).toBeLessThan(before.first!.bodyRadiusAu);
-    compatible(realDraw, before.first!, false); sameRadiusPolicy(realDraw);
+    compatible(realDraw, before.first!); sameRadiusPolicy(realDraw);
     await label.click(); await expect(toggle).not.toBeChecked();
     await expect.poll(async () => (await snapshot(page)).firstScaleDraws['2']?.index ?? 0, { timeout: 15_000 }).toBeGreaterThan(realDraw.index);
     const returned = await snapshot(page); healthy(returned, errors);

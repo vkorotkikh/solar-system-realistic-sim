@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="1.038" timestamp="2026-10-30T05:24:10.297296+00:00" hostname="Athena"><testcase classname="backend.tests.test_ephemeris_remediation" name="test_scn055_scn077_native_tudat_chunk_and_energy_gate" time="0.965" /></testsuite></testsuites>

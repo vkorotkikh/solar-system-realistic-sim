@@ -89,6 +89,7 @@ function fixture(withVisuals = false) {
   const textures: Array<{ url: string; onLoad: (texture: Texture) => void }> = [];
   const simState = { julianDate: 2451552, paused: true, timeScaleDaysPerSec: 0, timeScaleDirty: false };
   const hooks: { onStatus?: () => void; onClientSettled?: (call: ClientCall) => void } = {};
+  const observation = realtimePayload();
   const realRefresh = SolarPhysicsClient.prototype.maybeRefresh;
   // Call through: counts distinguish wrapper reentry from actual transport.
   vi.spyOn(SolarPhysicsClient.prototype, 'maybeRefresh').mockImplementation(function (this: SolarPhysicsClient, jd, force = false) {
@@ -129,12 +130,12 @@ function fixture(withVisuals = false) {
     await flushMicrotasks();
   });
   return {
-    controller, simState, physics, realtime, calls, textures, publications, hooks, root,
+    controller, simState, physics, realtime, calls, textures, publications, hooks, root, observation,
     refresh(force = true) { controller.maybeRefreshPhysics(Date.now(), force); },
     succeed(index: number, jd = simState.julianDate) { physics[index].delivery.resolve(responseWith(physicsPayload(jd))); },
     async bindObservation() {
       controller.maybeRefreshRealtime(Date.now(), true);
-      realtime[0].delivery.resolve(responseWith(realtimePayload())); await flushMicrotasks();
+      realtime[0].delivery.resolve(responseWith(observation)); await flushMicrotasks();
       expect(textures).toHaveLength(1);
       const texture = new Texture(); const dispose = vi.spyOn(texture, 'dispose');
       textures[0].onLoad(texture);
@@ -314,9 +315,13 @@ describe('solar physics wrapper request ownership', () => {
     };
     const accepted = structuredClone(capturedPhysics); accepted.activity_index = 0.9;
     accepted.corona.features[0].arc[0] = [1, 0, 0]; accepted.pfss_field_lines.lines[0].arc[0] = [1, 0, 0];
+    // Revoke the controlled source metadata after client admission, before the
+    // wrapper applies A. This targets its synchronous observation callback
+    // independently of how many awaits the bounded HTTP reader requires.
+    f.hooks.onClientSettled = call => {
+      if (call.result) f.observation.snapshot.sdo_aia.channels.aia_193.spatial_use.eligible = false;
+    };
     f.physics[0].delivery.resolve(responseWith(accepted));
-    await flushMicrotasks(1);
-    f.realtime[1].delivery.resolve(responseWith(realtimePayload(false)));
     await flushMicrotasks();
     expect(reentered).toBe(true);
     expect(epochAtNotification).toBe(2451552);

@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-30",
+  "kind": "complete_selected_historical_retention_and_retirement_mapping_integrity",
+  "scope": "Archive worker only; SCN040 selected local retention complete. Parent overall code/application assessment and note retirement remain separate.",
+  "retention": {
+    "status": "complete",
+    "selectedFiles": 577,
+    "exactCopiesVerified": 577,
+    "selectedBytes": 10581836,
+    "exactBytesRetained": 10581836,
+    "metadataOnlyEntries": 0,
+    "originalBytesMtimesModesAndSelectedGitStatusUnchanged": true,
+    "olderArchivesMutated": false
+  },
+  "results": [
+    {
+      "name": "complete_archive_and_unchanged_origins",
+      "result": "pass",
+      "detail": {
+        "selected": 577,
+        "copiedHashesMatched": 577,
+        "metadataOnly": 0,
+        "unselectedSourceCopies": 0,
+        "originBytesAndMetadataUnchanged": true
+      }
+    },
+    {
+      "name": "reject_changed_byte",
+      "result": "pass",
+      "detail": {
+        "rejection": "hash mismatch: sources/agent-notes/CODEBASE_AUDIT_2026-09-24_EVIDENCE/README.md"
+      }
+    },
+    {
+      "name": "reject_missing_copy",
+      "result": "pass",
+      "detail": {
+        "rejection": "missing or nonregular copy: sources/agent-notes/CODEBASE_AUDIT_2026-09-24_EVIDENCE/README.md"
+      }
+    },
+    {
+      "name": "reject_checksum_entry_removed",
+      "result": "pass",
+      "detail": {
+        "rejection": "checksum manifest inconsistent"
+      }
+    },
+    {
+      "name": "reject_inventoried_omission_secretly_copied",
+      "result": "pass",
+      "detail": {
+        "rejection": "omitted content copied"
+      }
+    },
+    {
+      "name": "reject_unselected_copy",
+      "result": "pass",
+      "detail": {
+        "rejection": "unselected or missing archive source files"
+      }
+    },
+    {
+      "name": "reject_unsafe_origin",
+      "result": "pass",
+      "detail": {
+        "rejection": "unsafe relative origin"
+      }
+    },
+    {
+      "name": "complete_and_conservative_retirement_mapping",
+      "result": "pass",
+      "detail": {
+        "filenames": 46,
+        "originalVersions": 62,
+        "canonicalItems": 83,
+        "section7Children": 12,
+        "topLevelTargets": 45,
+        "narrowCandidatesAfterParentProof": 13,
+        "eligibleNow": 0,
+        "immutableGitBlobHashesVerified": 46
+      }
+    },
+    {
+      "name": "all_selected_copies_are_git_addable",
+      "result": "pass",
+      "detail": {
+        "exactCopies": 577,
+        "ignored": 0
+      }
+    }
+  ],
+  "sha256sum": {
+    "command": "sha256sum --check --quiet SHA256SUMS",
+    "cwd": "agent-notes/HISTORICAL_SOURCE_ARCHIVE_2026-10-30",
+    "exitCode": 0,
+    "matchingExactCopies": 577
+  },
+  "redGreen": {
+    "red": {
+      "command": "python3 /tmp/solar-remediation-completion-20261030/archive/verify_complete_retention.py",
+      "exitCode": 1,
+      "exactFailure": "SCN-040 retention incomplete: 520/577 exact copies",
+      "log": "/tmp/solar-remediation-completion-20261030/archive/red-complete-retention.log"
+    },
+    "green": {
+      "command": "python3 /tmp/solar-remediation-completion-20261030/archive/verify_complete_retention.py",
+      "exitCode": 0,
+      "result": "577/577 exact copies; zero metadata-only entries; selected original bytes and metadata unchanged.",
+      "log": "/tmp/solar-remediation-completion-20261030/archive/green-complete-retention.log"
+    }
+  },
+  "credentialScan": {
+    "scannedCopiedFiles": 577,
+    "gzipExpansionsScanned": 4,
+    "gzipExpansionBytes": 4027264,
+    "detectors": [
+      "private_key",
+      "cloud_access_key",
+      "github_token",
+      "api_key",
+      "jwt",
+      "url_credential",
+      "authorization_value",
+      "credential_assignment",
+      "set_cookie_header",
+      "cookie_header",
+      "standalone_authorization",
+      "credential_query",
+      "slack_token",
+      "google_api_key",
+      "stripe_live_key"
+    ],
+    "findings": [],
+    "matchedValuesPrintedOrRecorded": false
+  },
+  "localPreservationAuthorization": "Explicit user authorization covers the selected PNG/PYC bytes. No actual credential evidence was detected; no per-file local archival clearance gate remains.",
+  "separateDistributionRequirement": "SCN035 rights/code-license/distribution requirements are unchanged by local archival.",
+  "noTestSubstitution": "No backend/frontend/science/browser suites were run by the archive worker. Existing code assessment and remaining note-specific original children are not inferred from retention integrity.",
+  "supportingCommandsDirectory": "/tmp/solar-remediation-completion-20261030/archive",
+  "artifactSha256": {
+    ".gitignore": "dee1d2b958cd2b5898bec749e89c0cd7385804d51432d1a7f2f106f099860d94",
+    "README.md": "e38ba670d6303a973acade51c954ca6b60127841fe58686f2f99afa2b44b96ff",
+    "manifest.json": "8da3278bfc0f5a363e78a3f602e51813bd11af1358f8009ae3427100ae68a14e",
+    "SHA256SUMS": "a79df4269c4ca1d3d28cbc2cf57fd748c838126a9371fe290ce36fd476249a54",
+    "note-requirements.json": "198f29b9b57bf5b3f7306c203164892facb3bed8761c7efd39e00221396aa8b9"
+  }
+}

@@ -8,6 +8,8 @@ import { test, vi } from 'vitest';
 import { createSolarSystemCatalog, type CatalogBody, type RawMoonRecord, type SolarCatalog } from './catalog';
 import { moonsByName } from './moonFrameCheck';
 import { parseMoonEphemerisArtifact } from './moonEphemeris';
+import { loadMoonEphemerides } from './loadMoonEphemerides';
+import { publicShardFetch } from './moonRepairTestInputs.mjs';
 
 // MOON-NAME-SPELLING /qa 2026-10-24: runtime display with legacy identity/model contracts.
 // Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
@@ -17,11 +19,15 @@ interface AssessmentRecord {
  catalogId: number; name: string; parent: string; targetId: string;
  referenceStatus: string; samples: AssessmentSample[];
 }
-interface AssessmentOutput { expectedCatalogCount: number; records: AssessmentRecord[] }
+interface AssessmentOutput {
+ expectedCatalogCount: number;
+ historicalOracleCount: number;
+ retiredOracleRecords: { catalogId: number; activeCatalogId: number; name: string; parent: string; targetId: string }[];
+ records: AssessmentRecord[];
+}
 
 const sha=(p: string)=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const assetHashes={
- 'src/data/moons.json':'3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a',
  'backend/tests/fixtures/all_moons_horizons_oracle.json':'71943bc60c7c542a8e4845c86cad2812382bd5d29a44db4e9af32f0f4ce8ad5c',
  'src/data/moonEphemerisChebyshev.json':'9331771c6ae51983c21efcea2bb07191055c2d7891db5f702006487f54e0b9f4',
  'src/data/moonEphemerisRepairs.json':'d65c466ce3fb84a46f15af89388abe34f0239df3382de4de59a9af3e6a8cb3d7',
@@ -39,21 +45,21 @@ async function createFixture(rows: readonly unknown[]): Promise<typeof createSol
  try { return (await import('./catalog')).createSolarSystemCatalog; }
  finally { vi.doUnmock('../data/moons.json');vi.resetModules(); }
 }
-// Only the nonphysical identity code differs: raw name, ID, epoch, physical and
-// provenance inputs are identical. This detects accidental radius/name-hash changes.
+// Only the source identity code differs: raw name, ID, epoch and radius inputs
+// are identical. Compare separately from the deliberately changed sourceId.
 const controlRaw=raw.map(row=>row===sourceRow?{...row,iauCode:'owned-nonmatching-519'}:row);
 const createControl=await createFixture(controlRaw);
 const catalogs=new Map([false,true].map(visible=>[visible,createSolarSystemCatalog({moonsVisible:visible})]));
 const omitTargetDisplay=(catalog: SolarCatalog)=>({...catalog,bodies:catalog.bodies.map(body=>{
  if(body.id!==stableId)return body;
- const {name,...unchanged}=body;return unchanged;
+ const {name,sourceId,...unchanged}=body;return unchanged;
 })});
 const actual=selected(catalogs.get(false)!);
 const canonicalBody={...actual,name:'Megaclite'};
 const minimalCatalog=(bodies: readonly unknown[]): SolarCatalog=>({bodies:bodies as CatalogBody[],jumpBodyIds:[],plannerBodyIds:[]});
 
-test('control raw424/oracle/five fit assets keep exact source bytes',()=>{
- assert.equal(raw.length,424);
+test('control canonical423 source and immutable oracle/five fit assets',()=>{
+ assert.equal(raw.length,423);
  assert.equal(sourceRow.name,'Magaclite');
  assert.equal(sourceRow.id,21);
  for(const [path,expected]of Object.entries(assetHashes))assert.equal(sha(path),expected,path);
@@ -75,7 +81,10 @@ for(const visible of [false,true]) {
   assert.equal(selected(catalogs.get(visible)!).name,'Megaclite');
  });
  test(`control every model and other display field is retained: visible=${visible}`,()=>{
-  assert.deepEqual(omitTargetDisplay(catalogs.get(visible)!),omitTargetDisplay(createControl({moonsVisible:visible})));
+  const control=createControl({moonsVisible:visible});
+  assert.equal(selected(catalogs.get(visible)!).sourceId,'519');
+  assert.equal(selected(control).sourceId,'owned-nonmatching-519');
+  assert.deepEqual(omitTargetDisplay(catalogs.get(visible)!),omitTargetDisplay(control));
  });
  test(`regression actual runtime has canonical and legacy name keys: visible=${visible}`,()=>{
   const catalog=catalogs.get(visible)!,body=selected(catalog),index=moonsByName(catalog);
@@ -97,8 +106,10 @@ test('regression display mapping uses exact physical identity, not source typo t
  assert.equal(body.name,'Megaclite');
  assert.equal(body.id,'moon-jupiter-owned-source-spelling');
  const control=(await createFixture([{...row,iauCode:'owned-519'}]))().bodies.find(body=>body.type==='moon')!;
- const {name:actualName,...actualFields}=body;
- const {name:controlName,...controlFields}=control;
+ const {name:actualName,sourceId:actualSource,...actualFields}=body;
+ assert.equal(actualSource,'519');
+ const {name:controlName,sourceId:controlSource,...controlFields}=control;
+ assert.equal(controlSource,'owned-519');
  assert.deepEqual(actualFields,controlFields);
 });
 
@@ -183,7 +194,7 @@ for(const [label,target,parent]of [['wrong target','520','599'],['wrong parent',
   assert.throws(()=>parseMoonEphemerisArtifact(artifact('magaclite',target,parent)),/contradicts its catalog target or parent center/);
  });
 
-test('control no shipped fit exists under either name and no fit is invented',()=>{
+test('control no eager fit exists under either name and default construction invents none',()=>{
  for(const path of Object.keys(assetHashes).filter(path=>path.startsWith('src/data/moonEphemeris'))) {
   const bodies=JSON.parse(fs.readFileSync(path) as unknown as string).bodies;
   assert.equal(Object.hasOwn(bodies,'magaclite'),false);
@@ -192,22 +203,41 @@ test('control no shipped fit exists under either name and no fit is invented',()
  assert.equal(actual.orbit!.ephemeris,undefined);
 });
 
-test('control real all-source assessment retains424 raw labels and parent/target identities',()=>{
+test('published lazy fit retains the source key and exact target while displaying Megaclite',async()=>{
+ const fits=await loadMoonEphemerides({additionalBodyKeys:['magaclite'],lazyOptions:{fetch:publicShardFetch}});
+ assert.equal(fits.magaclite.provenance.targetId,'519');
+ assert.equal(fits.magaclite.provenance.centerId,'599');
+ assert.equal(fits.megaclite,undefined);
+ const body=selected(createSolarSystemCatalog({moonEphemerides:fits}));
+ assert.equal(body.name,'Megaclite');
+ assert.equal(body.sourceId,'519');
+ assert.equal(body.orbit!.ephemeris,fits.magaclite);
+ assert.equal(body.radiusKm,null);
+ assert.equal(body.realRadiusAu,null);
+ assert.ok(Number.isFinite(body.displayRadiusEstimateKm));
+});
+
+test('control real all-source assessment retains423 raw labels and parent/target identities',()=>{
  const child=spawnSync(process.execPath,['scripts/assess_all_moon_oracle.mjs'],{
   cwd:process.cwd(),encoding:'utf8',timeout:20000,maxBuffer:8*1024*1024,
  });
  assert.ifError(child.error);
- assert.equal(child.status,0,child.stderr);
+ assert.equal(child.status,0,child.stderr.replace(/data:text\/javascript;base64,[A-Za-z0-9+/=]+/g,'<assessment bundle>'));
  assert.equal(child.signal,null);
  assert.equal(child.stderr,'');
  const output=JSON.parse(child.stdout) as AssessmentOutput;
- assert.equal(output.expectedCatalogCount,424);
- assert.equal(output.records.length,424);
+ assert.equal(output.expectedCatalogCount,423);
+ assert.equal(output.historicalOracleCount,424);
+ assert.deepEqual(output.retiredOracleRecords,[{catalogId:378,activeCatalogId:388,name:'Puck',parent:'Uranus',targetId:'715'}]);
+ assert.equal(output.records.length,423);
+ assert.equal(new Set(output.records.map(row=>row.catalogId)).size,423);
+ assert.equal(new Set(output.records.map(row=>JSON.stringify([row.parent,row.targetId]))).size,423);
+ assert.equal(output.records.some(row=>row.catalogId===378),false);
  assert.deepEqual(output.records.map(row=>({id:row.catalogId,name:row.name,parent:row.parent,target:row.targetId})),
   raw.map(row=>({id:row.id,name:row.name,parent:row.planet,target:row.iauCode})));
  const row=output.records.find(row=>row.catalogId===21)!;
  assert.equal(row.name,'Magaclite');assert.equal(row.parent,'Jupiter');assert.equal(row.targetId,'519');
  assert.equal(row.referenceStatus,'captured');assert.equal(row.samples.length,7);
  assert.ok(row.samples.every(sample=>sample.status==='compared'&&Number.isFinite(sample.positionErrorKm)&&Number.isFinite(sample.velocityErrorMs)));
- assert.deepEqual(output.records.filter(row=>row.parent==='Uranus'&&row.targetId==='715').map(row=>row.catalogId),[378,388]);
+ assert.deepEqual(output.records.filter(row=>row.parent==='Uranus'&&row.targetId==='715').map(row=>row.catalogId),[388]);
 });

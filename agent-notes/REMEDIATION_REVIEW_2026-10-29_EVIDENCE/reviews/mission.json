@@ -1,0 +1,703 @@
+{
+  "domain": "mission",
+  "notesCovered": [
+    "agent-notes/REMEDIATION_MISSION_2026-10-14.md",
+    "agent-notes/REMEDIATION_OPERATIONAL_2026-10-14.md",
+    "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md",
+    "agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md"
+  ],
+  "issues": [
+    {
+      "id": "SCN-020",
+      "verdict": "PARTIAL",
+      "fix": "Landed staged-budget reclosure counts infeasible samples as failures. Usable margin excludes protected reserves and fuel on jettisoned stages, with separate onboard/reserved/discarded ledgers.",
+      "evidence": [
+        "backend/mission/vehicle_service.py:86 (reserve floor)",
+        "backend/mission/vehicle_service.py:141 (onboard/protected/discarded accounting)",
+        "backend/mission/vehicle_service.py:160 (usable margin)",
+        "backend/mission/risk_service.py:84 (sample-specific reclosure)",
+        "backend/mission/risk_service.py:90 (failure counting)",
+        "backend/mission/risk_service.py:95 (BUG: uncapped positive payload appended even on failure)",
+        "backend/tests/test_mission_mass_flow.py:150 (infeasible-plan regression)",
+        "backend/tests/test_mission_propulsion_contract.py:21 (mass/margin regressions)",
+        "backend/tests/test_mission_propulsion_contract.py:38 (zero exhausted margin)"
+      ],
+      "remaining": "Returned-payload envelopes remain incorrect: with positive base cargo, zero dispersions and every reclosure infeasible, failureProbability is 1 but all returnedPayloadKg quantiles equal the positive base cargo. Successful positive extraction excursions also exceed the cargo actually passed to reclosure. Original failure-probability/margin roots are repaired; realized-yield reporting is not. Uncertainty factors remain a declared heuristic rather than an independently calibrated mission uncertainty model. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "56ac52a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "abf916c",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "9b7f9fd8040eb11f3798ef05b56372f3efee43fb",
+          "branch": "fix/markdown-audit-20261024",
+          "relationship": "not_ancestor_and_git_cherry_plus_against_origin/main",
+          "status": "FIX_LOCAL_ONLY",
+          "summary": "Caps cargo at planned load and records zero returned cargo on failed deliveries; absent from baseline.",
+          "evidence": [
+            "9b7f9fd:backend/mission/risk_service.py:87",
+            "9b7f9fd:backend/tests/test_mission_mass_flow.py:236",
+            "9b7f9fd:backend/tests/test_mission_mass_flow.py:258"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SCN-021",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Both SMBH Schwarzschild radii are calculated from 2GM/c^2 in consistent CGS units; Sgr A* ISCO and photon radii derive from that radius.",
+      "evidence": [
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:54",
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:68",
+        "src/frontend/features/superluminal-modeling/smbhPhysicsConstants.ts:169",
+        "src/frontend/features/superluminal-modeling/smbhPhysics.test.ts:6 (independent solar-GM/c oracle)",
+        "src/frontend/features/superluminal-modeling/smbhPhysics.test.ts:10"
+      ],
+      "remaining": "Scope is radius/unit arithmetic; source direction and jet kinematics belong to SCN-069. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "eef8945",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-022",
+      "verdict": "PARTIAL",
+      "fix": "The CPU fast helper replaces six Newton steps from M with a Danby-style starter and up to 50 iterations. Its committed eccentricity/angle sweep covers e through 0.9999.",
+      "evidence": [
+        "src/sim/orbitMath.ts:181 (landed fast helper)",
+        "src/sim/orbitMath.test.ts:74 (fast-helper residual sweep)",
+        "src/sim/orbitMath.ts:193 (general direct helper)",
+        "src/sim/orbitMath.ts:199 (BUG: silently clamps valid e above 0.9999999)",
+        "src/sim/orbitMath.ts:202 (uncertified iteration exhaustion)",
+        "src/sim/orbitMath.ts:212 (unconditional result)",
+        "src/sim/orbitMath.ts:355 (production propagation calls general helper)",
+        "backend/mission/orbital.py:35 (analogous direct helper)"
+      ],
+      "remaining": "The original fast-helper improvement is landed, but broad CPU solver closure is incomplete. Exported solveKepler changes a valid e=0.99999999 to 0.9999999; it therefore solves a different equation even when a tighter tolerance is requested. It also returns after an exhausted/zero iteration budget without a convergence certificate. For example maxIterations=0, M=0.1, e=0.99 returns the starter pi. The production general propagation path calls this helper. GLSL verification is a separate SCN-049 child; no GPU claim is made. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "7a21468",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "736c57cec18bcc6c5bd4f10bb869da4e64d61987",
+          "branch": "fix/markdown-audit-20261024",
+          "relationship": "not_ancestor_and_git_cherry_plus_against_origin/main",
+          "status": "FIX_LOCAL_ONLY",
+          "summary": "Adds validation, bounded/bracketed direct solving and independent high-precision regression cases; not landed.",
+          "evidence": [
+            "736c57c:scripts/kepler-direct-contract.test.mjs:24",
+            "736c57c:scripts/kepler-direct-contract.test.mjs:119",
+            "736c57c:scripts/kepler-direct-stagnation.test.mjs:55"
+          ]
+        },
+        {
+          "commit": "137ad15b89d21d8af9399c29a9f7b2a0d94ceed0",
+          "branch": "fix/markdown-audit-20261024",
+          "relationship": "not_ancestor_and_git_cherry_plus_against_origin/main",
+          "status": "FIX_LOCAL_ONLY",
+          "summary": "Analogous backend direct-helper repair and regression file are local only.",
+          "evidence": [
+            "137ad15:backend/mission/orbital.py:35",
+            "137ad15:backend/tests/test_mission_orbital_solver.py:1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SCN-023",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Metric kinematics return independent display offsets. The live scene composes offsets on Object3D nodes, and the worker emits canonical model state without consuming metric inputs.",
+      "evidence": [
+        "src/sim/solarSystemModel.ts:169 (offset map, no canonical writes)",
+        "src/sim/solarSystemModel.ts:201",
+        "src/frontend/features/superluminal-modeling/metricDisplay.ts:46",
+        "src/frontend/features/superluminal-modeling/metricDisplay.ts:56 (node-only writes)",
+        "src/main.ts:1254 (live integration)",
+        "src/workers/modelWorker.ts:99",
+        "src/frontend/features/superluminal-modeling/metricDisplay.test.ts:85 (toggle/no-drift/canonical-invariance regression)"
+      ],
+      "remaining": "H29 remains an illustrative display deformation. No new canonical-state mutation found in the inspected production/worker path. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "32da51b",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-024",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Kuiper updater skips identical Julian dates before primary/companion propagation or renderer calls. Renderer independently avoids matrix writes/uploads for equal Float32 positions.",
+      "evidence": [
+        "src/frontend/features/asteroids/kuiperBeltUpdater.ts:13",
+        "src/frontend/features/asteroids/kuiperBeltUpdater.ts:15",
+        "src/main.ts:1251",
+        "src/frontend/features/asteroids/beltRenderer.ts:660",
+        "src/frontend/features/asteroids/beltRenderer.ts:687",
+        "src/frontend/features/asteroids/beltRenderer.ts:693",
+        "src/frontend/features/asteroids/kuiperPaused.test.ts:7 (600 unchanged frames)",
+        "src/frontend/features/asteroids/kuiperPaused.test.ts:42 (unchanged-buffer upload regression)"
+      ],
+      "remaining": "Regression covers propagation, matrix-write and upload-request counters; it is not a fresh browser/GPU bandwidth measurement. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "32da51b",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-044",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Bounded beam search certifies unpowered flyby speed continuity and body-specific periapsis floors, reports truncation/termination honestly, and has a dated independently closed two-assist quality witness.",
+      "evidence": [
+        "backend/trajectory/mga.py:134 (explicit bounded/nonoptimal telemetry)",
+        "backend/trajectory/mga.py:536 (unpowered flyby validation)",
+        "backend/trajectory/mga.py:568 (periapsis policy)",
+        "backend/trajectory/mga.py:578 (feasibility conjunction)",
+        "backend/tests/test_mga_independent_window.py:13 (Earth-Jupiter-Venus-Mars witness/score floor)",
+        "backend/tests/test_mga_independent_window.py:25 (speed continuity)",
+        "backend/tests/test_mga_independent_window.py:32 (independent physical floors)",
+        "backend/tests/test_mga_independent_window.py:35 (DOP853 endpoint checks)",
+        "backend/tests/test_mga_independent_window.py:44 (budget-exhaustion regression)",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:87 (oracle provenance and witness scope)"
+      ],
+      "remaining": "Acceptance establishes a feasible quality floor for frozen approximate catalog geometry, not global optimization, exhaustive windows, or precision ephemeris validation. Current witness result awaits central execution. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "838e7bf",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-045",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Universal-variable solver explicitly rejects exactly collinear endpoints without a supplied plane, brackets/certifies roots, separates multi-revolution branches and handles hyperbolic cases. Independent endpoint propagation covers rotated boundaries and both senses/branches for 1-3 revolutions.",
+      "evidence": [
+        "backend/trajectory/lambert.py:620 (no uncertified root fallback)",
+        "backend/trajectory/lambert.py:733 (capability and exact-collinearity contract)",
+        "backend/trajectory/lambert.py:772 (revolution/branch controls)",
+        "backend/trajectory/lambert.py:803 (exact-collinearity rejection)",
+        "backend/trajectory/lambert.py:884 (hyperbolic bracket extension)",
+        "backend/tests/test_lambert_independent_boundaries.py:20",
+        "backend/tests/test_lambert_independent_boundaries.py:41",
+        "backend/tests/test_lambert_independent_boundaries.py:54",
+        "backend/tests/test_lambert_solver_reference.py:251 (independent Izzo values)",
+        "backend/server.py:3630 (public plane policy)"
+      ],
+      "remaining": "No exact-180-degree plane-selection feature is claimed. Near-zero retrograde Sun-intersecting arcs are intentionally rejected under the default solar-radius floor. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "62fd99a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-052",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Protected reserve is a fixed fraction of each stage initial propellant, rather than a shrinking fraction of remaining fuel; exhausted stages retain that reserve when discarded.",
+      "evidence": [
+        "backend/mission/vehicle_service.py:86",
+        "backend/mission/vehicle_service.py:87",
+        "backend/mission/vehicle_service.py:114",
+        "backend/tests/test_mission_reserve_partition.py:31 (partition invariant)",
+        "backend/tests/test_mission_reserve_partition.py:48 (initial reserve floor)",
+        "backend/tests/test_mission_reserve_partition.py:56 (unequal stages/cargo)",
+        "backend/tests/test_mission_reserve_partition.py:71 (exact/near jettison boundaries)"
+      ],
+      "remaining": "Discarded-fuel margin and risk-yield reporting are separately assessed under SCN-020. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "44503ec",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "56ac52a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-053",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "REBOUND step validates the derived target JD against the same finite inclusive interval as seeks before integration, preserving state on rejection.",
+      "evidence": [
+        "backend/sim/rebound_nbody.py:122",
+        "backend/sim/rebound_nbody.py:471",
+        "backend/sim/rebound_nbody.py:475",
+        "backend/tests/test_rebound_epoch_contract.py:18 (both interval boundaries)",
+        "backend/tests/test_rebound_epoch_contract.py:28 (rejection without epoch mutation)",
+        "backend/tests/test_rebound_epoch_contract.py:35 (forward/backward in-range stepping)"
+      ],
+      "remaining": "This is playback epoch enforcement, distinct from planning epochs in SCN-072. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "9102c18",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-054",
+      "verdict": "PARTIAL",
+      "fix": "Backend binary initializer removes separation-cubed flooring, uses q/(1+q) mass weighting, validates positive separation/ratio and serializes tight-binary state with adequate precision and an explicit massless-model label.",
+      "evidence": [
+        "backend/sim/kuiper.py:128",
+        "backend/sim/kuiper.py:161",
+        "backend/sim/kuiper.py:178",
+        "backend/sim/kuiper.py:375 (massless primaries)",
+        "backend/sim/kuiper.py:415 (massless companions)",
+        "backend/sim/kuiper.py:468 (wire precision)",
+        "backend/sim/kuiper.py:484 (initial-state-only label)",
+        "backend/tests/test_ephemeris_remediation.py:19 (nine vis-viva/angular-momentum/barycenter cases)",
+        "backend/tests/test_ephemeris_remediation.py:33 (1000 km serialization)",
+        "src/sim/kuiperBelt.ts:285 (phase-dependent axes)",
+        "src/sim/kuiperBelt.ts:340 (phase applied again)",
+        "src/sim/kuiperBelt.ts:346 (barycentric offset definitions)",
+        "src/sim/kuiperBelt.ts:467 (primary already shifted)",
+        "src/sim/kuiperBelt.ts:510 (BUG: companion offset added to shifted primary)"
+      ],
+      "remaining": "Frontend production companion path adds a barycenter-relative companion offset to an already primary-offset position. The rendered relative separation is the companion barycentric share, r/(1+q), instead of r: equal masses give half the intended separation (before Float32 rounding). The mutual anomaly also appears in both orientation axes and Cartesian coordinates, producing phase distortion. Backend invariant tests do not exercise this frontend consumer. Both backend members remain massless, so mutual binary persistence is not implemented; initial-osculating-state closure must not be promoted to sustained physical binary dynamics. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "f1624215aecdb4ad5daa96dcdfc9e9961542b973",
+          "branch": "fix/markdown-audit-20261024",
+          "relationship": "not_ancestor_and_git_cherry_plus_against_origin/main",
+          "status": "FIX_LOCAL_ONLY",
+          "summary": "Corrects companion origin by subtracting primaryOffset and fixes phase-dependent basis; not landed.",
+          "evidence": [
+            "f162421:src/sim/kuiperBelt.ts:285",
+            "f162421:scripts/kuiper-binary-origin.test.mjs:1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SCN-055",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Tudat energy reconstructs Sun-relative states into one SSB origin for kinetic/potential terms and uses native force-model GMs, including Pluto-system GM.",
+      "evidence": [
+        "backend/sim/tudatpy_hooks.py:553",
+        "backend/sim/tudatpy_hooks.py:561",
+        "backend/sim/tudatpy_hooks.py:570",
+        "backend/tests/test_ephemeris_remediation.py:105 (synthetic translation invariance)",
+        "backend/tests/test_ephemeris_remediation.py:163 (native chunk/energy gate)",
+        "backend/tests/test_tudat_science_review.py:43 (independent native-GM energy reconstruction)",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:46",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:74"
+      ],
+      "remaining": "Diagnostic is explicitly point-mass energy excluding harmonic potential; it is not exact conservation for J2/J4 dynamics. Native acceptance is historical and limited to the recorded TudatPy 1.0.0/resources 2.4 environment. No fresh native run or older-SDK compatibility acceptance. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "6f7ec2a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "5e29af9",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-056",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "run_family registers its family policy before executing episodes; run_families delegates to that same path.",
+      "evidence": [
+        "backend/mission/epo/runners.py:71",
+        "backend/mission/epo/runners.py:79",
+        "backend/tests/test_epo_single_family_policy.py:30 (direct/aggregate policy parity)"
+      ],
+      "remaining": "Historical tracker assertion that this fix is unmerged is stale: commit 2605f25 is an ancestor of the audited origin/main. Smoke truth is separately SCN-079. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2605f25",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-057",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "SRP/tidal callbacks dereference the supported REBOUND ctypes pointer; beta values come from a caller-owned index mapping, and the combined callback passes that mapping through.",
+      "evidence": [
+        "backend/sim/radiation_pressure.py:178",
+        "backend/sim/radiation_pressure.py:187 (map ownership/reordering limitation)",
+        "backend/sim/radiation_pressure.py:193",
+        "backend/sim/galactic_tide.py:140",
+        "backend/sim/galactic_tide.py:162",
+        "backend/tests/test_ephemeris_remediation.py:67 (actual REBOUND SRP/tide/combined acceleration cases)"
+      ],
+      "remaining": "Dormant callbacks were not activated in the production engine. Caller must rebuild beta_by_index after particle removal/reordering; PR drag is not installed by the SRP callback. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-064",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Transfer angle uses atan2 of cross magnitude and dot product, and near-collinear A recovery uses stable normalized-vector geometry, preserving velocity recovery near pi/zero.",
+      "evidence": [
+        "backend/trajectory/lambert.py:519",
+        "backend/trajectory/lambert.py:523",
+        "backend/trajectory/lambert.py:806",
+        "backend/tests/test_lambert_near_antiparallel.py:72 (analytic circular velocity controls)",
+        "backend/tests/test_lambert_near_antiparallel.py:80 (independent endpoint propagation)",
+        "backend/tests/test_lambert_near_antiparallel.py:92 (near-zero state recovery)",
+        "backend/tests/test_lambert_near_antiparallel.py:113 (collinear refusal retained)"
+      ],
+      "remaining": "Exact collinearity remains the declared SCN-045 capability boundary. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "3927ab7",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-072",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Core/HTTP planning enforce the inclusive [2447892.5,2469807.5] JDTDB interval for supplied/derived epochs, including mission dwell. MGA skips search-generated arrivals beyond the interval before charging work.",
+      "evidence": [
+        "backend/trajectory/contracts.py:17",
+        "backend/trajectory/contracts.py:36 (structured trajectory_epoch_out_of_range)",
+        "backend/trajectory/mga.py:285 (generated out-of-window legs skipped)",
+        "backend/mission/agents.py:323",
+        "backend/mission/agents.py:482 (actual return departure sent through planner)",
+        "backend/server.py:2468",
+        "backend/server.py:3840",
+        "backend/server.py:3954",
+        "backend/tests/test_planning_epoch_contract.py:9",
+        "backend/tests/test_planning_epoch_contract.py:35",
+        "backend/tests/test_planning_epoch_contract.py:50",
+        "backend/tests/test_planning_epoch_contract.py:69",
+        "backend/tests/test_planning_epoch_contract.py:76"
+      ],
+      "remaining": "Current behavior is more nuanced than the original note: malformed supplied epochs get typed 422; generated infeasible arrival candidates are skipped, and a completed search with no route returns trajectory_no_feasible_route. The interval is computational scope, not continuous scientific validation. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-074",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Each explicit-element-epoch fallback body is inserted in an evolved active-system copy at its declared epoch, integrated back to the common seed epoch, then integrated to the requested epoch. Approximate quality and exact-configuration sampled caps survive serialization.",
+      "evidence": [
+        "backend/sim/rebound_nbody.py:354 (caps only for matching orbit/IAS15/active model)",
+        "backend/sim/rebound_nbody.py:369",
+        "backend/sim/rebound_nbody.py:408",
+        "backend/sim/rebound_nbody.py:416",
+        "backend/sim/rebound_nbody.py:436",
+        "backend/sim/rebound_nbody.py:450",
+        "backend/sim/rebound_nbody.py:490",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:16 (all 13 body caps)",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:22 (four independent epochs)",
+        "backend/tests/test_fallback_ephemeris_accuracy.py:44 (modified inputs lose canonical claims)",
+        "backend/tests/test_ephemeris_remediation.py:183",
+        "backend/tests/test_ephemeris_remediation.py:204"
+      ],
+      "remaining": "Claims cover the 13 named canonical fallback bodies at sampled epochs under IAS15/full active-body conditions. They are not continuous bounds or guarantees for altered inputs/other fallback bodies. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-076",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "PR drag restores the radial term: -beta*GM/(r^2*c)*(v_r*r_hat+v), independently separated from static outward SRP.",
+      "evidence": [
+        "backend/sim/radiation_pressure.py:102",
+        "backend/sim/radiation_pressure.py:134",
+        "backend/sim/radiation_pressure.py:138",
+        "backend/tests/test_ephemeris_remediation.py:51 (independent polar components)",
+        "backend/tests/test_ephemeris_remediation.py:53 (circular, inward/outward radial and eccentric cases)",
+        "backend/tests/test_ephemeris_remediation.py:64 (dissipated-power invariant)"
+      ],
+      "remaining": "Formula repair does not activate PR drag in production or constitute a broader radiation-force validation. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-077",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Tudat chunks continue from integrated boundary states in either direction with one SPICE seed per initialization, signed steps/exact termination and TDB metadata. Later repairs support current SDK namespace, explicit Saturn gravity, Pluto-system identity, bounded transactional seeks and fail-closed solver histories.",
+      "evidence": [
+        "backend/sim/tudatpy_hooks.py:76 (SDK imports)",
+        "backend/sim/tudatpy_hooks.py:295 (transactional initialization)",
+        "backend/sim/tudatpy_hooks.py:354 (Saturn gravity)",
+        "backend/sim/tudatpy_hooks.py:421 (TDB state contract)",
+        "backend/sim/tudatpy_hooks.py:514 (transactional bounded seeks)",
+        "backend/sim/tudatpy_hooks.py:704 (continuous boundary handoff)",
+        "backend/sim/tudatpy_hooks.py:714 (initial-only SPICE seed)",
+        "backend/sim/tudatpy_hooks.py:735 (signed integration/exact termination)",
+        "backend/sim/tudatpy_hooks.py:759 (validate successful complete finite history)",
+        "backend/tests/test_tudat_native_runtime.py:16 (require-native mode fails instead of skipping)",
+        "backend/tests/test_tudat_native_runtime.py:41 (ten-body advance/reverse)",
+        "backend/tests/test_tudat_native_runtime.py:61 (real harmonics and single-seed gate)",
+        "backend/tests/test_tudat_science_review.py:85",
+        "backend/tests/test_tudat_science_review.py:114",
+        "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md:48"
+      ],
+      "remaining": "Native acceptance is dated/version-bounded (TudatPy 1.0.0, resources 2.4). Old SDK fallback unexecuted; default-suite optional skips do not renew native acceptance. Linear interpolation, force truncation, kernel coverage and approximate Pluto-system representation remain explicit limitations. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "6f7ec2a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "5e29af9",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "fad1f71",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-078",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Mass closure consumes four chronological impulsive circular-parking patched-conic burns: outbound departure, target capture, target departure and return capture. Cargo loads before burn index 2, after target capture.",
+      "evidence": [
+        "backend/mission/propulsion.py:18 (unsupported mass/radius rejection)",
+        "backend/mission/propulsion.py:33 (energy-derived burn)",
+        "backend/mission/propulsion.py:42 (four-event schedule)",
+        "backend/mission/propulsion.py:62 (chronology and assumptions)",
+        "backend/mission/agents.py:527 (planner uses schedule)",
+        "backend/mission/agents.py:557 (risk uses propulsive burns)",
+        "backend/tests/test_mission_propulsion_contract.py:14",
+        "backend/tests/test_mission_propulsion_contract.py:48 (independent specific-energy cases)",
+        "backend/tests/test_mission_propulsion_contract.py:60 (four burns and cargo ordering)",
+        "backend/mission/schemas.py:116 (200 km default)"
+      ],
+      "remaining": "Model assumes aligned circular parking planes and cargo supplied in target orbit; no surface ascent/descent, finite thrust, plane changes or aerocapture. Unsupported body mass/radius is rejected. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "56ac52a",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        },
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-079",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "EPO verifier reads recommendation.verification; sample objectives are supported; runner converts typed unsupported requests to failed episodes; smoke exits nonzero for empty, failed or exceptional totals.",
+      "evidence": [
+        "backend/mission/epo/verifier.py:30",
+        "backend/mission/epo/verifier.py:48",
+        "backend/mission/epo/runners.py:34",
+        "backend/mission/epo/smoke_test.py:50",
+        "backend/tests/test_epo_smoke_contract.py:11 (conflicting top-level/nested verification)",
+        "backend/tests/test_epo_smoke_contract.py:21 (sample objective policy)",
+        "backend/tests/test_epo_smoke_contract.py:27 (real known-pass/known-fail missions)",
+        "backend/tests/test_epo_smoke_contract.py:43 (process exit policy)",
+        "agent-notes/REMEDIATION_MISSION_2026-10-14.md:51 (historical 0/30 feasible, exit 1)"
+      ],
+      "remaining": "The documented default campaign was 0/30 feasible with exit 1; it is retained as dated failure evidence, not a successful campaign or a fresh run. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2613436",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-080",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Frontend/backend share secular coefficient data. Backend differentiates changing elements and rotating bases, emits approximate barycenter/model metadata and rejects extrapolation outside supported 1900-2050 interval.",
+      "evidence": [
+        "backend/data/secular_planets.py:5",
+        "backend/data/secular_planets.py:17",
+        "src/data/planets.ts:1",
+        "backend/mission/orbital.py:108 (full state derivative)",
+        "backend/mission/orbital.py:143",
+        "backend/mission/orbital.py:153",
+        "backend/mission/ephemeris_service.py:918 (range rejection)",
+        "backend/mission/ephemeris_service.py:938 (metadata)",
+        "backend/data/ephemerides/planet_secular_model.json:5 (Pluto provenance)",
+        "backend/data/ephemerides/planet_secular_model.json:10 (supported interval)",
+        "backend/data/ephemerides/planet_secular_model.json:21 (sampled-only accuracy)",
+        "backend/tests/test_secular_ephemeris.py:22 (nine targets/five independent epochs)",
+        "backend/tests/test_secular_ephemeris.py:41 (range)",
+        "backend/tests/test_secular_ephemeris.py:49 (finite-difference state derivative)"
+      ],
+      "remaining": "These are sampled approximate-model gates, not continuous precision mission ephemerides. Earth is EMB; Pluto legacy coefficients are separately gated against target 9. Broad direct-Kepler edge defects are recorded under SCN-022 rather than treating nine low-e planet tests as universal solver certification. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    },
+    {
+      "id": "SCN-081",
+      "verdict": "CODE_CONFIRMED",
+      "fix": "Generic moon node direction is -sign(cos(native inclination)), zero at polar inclination, with measured signed overrides retained.",
+      "evidence": [
+        "src/sim/catalog.ts:505",
+        "src/sim/catalog.ts:515",
+        "src/sim/catalog.ts:520",
+        "src/sim/catalog.ts:522",
+        "src/sim/catalog.ts:831 (native source-frame elements)",
+        "src/sim/secularRemediation.test.ts:43",
+        "src/sim/secularRemediation.test.ts:60 (independent Carme/Himalia element slopes)",
+        "src/sim/secularRemediation.test.ts:74 (prograde/retrograde/polar synthetic cases)",
+        "src/sim/secularRemediation.test.ts:81 (catalog signs/Triton override)"
+      ],
+      "remaining": "Representative nodal direction/rate validation does not establish full position accuracy for every moon. SCN-043 completeness remains assigned to the separate agent. Current frontend/backend suites are centrally pending; no tests were run for this audit.",
+      "branchEvidence": [
+        {
+          "commit": "2005a1f",
+          "relationship": "ancestor_of_origin/main_bb29d4b",
+          "status": "LANDED"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "MISSION-F01",
+      "severity": "P2",
+      "issues": [
+        "SCN-020"
+      ],
+      "title": "Failed deliveries and unloaded extraction excursions inflate returned-cargo envelopes",
+      "bug": "risk_service re-closes min(sampled cargo, planned cargo), counts infeasibility, then appends the original positive sampled cargo regardless of feasibility. With base cargo 1000 kg, zero dispersions and all reclosures false, all returnedPayloadKg quantiles statically equal 1000 kg despite failureProbability=1. No test execution was performed.",
+      "evidence": [
+        "backend/mission/risk_service.py:81",
+        "backend/mission/risk_service.py:87",
+        "backend/mission/risk_service.py:90",
+        "backend/mission/risk_service.py:95"
+      ],
+      "localFix": "9b7f9fd8040eb11f3798ef05b56372f3efee43fb is FIX_LOCAL_ONLY; git cherry reports +; matching current baseline still contains the old implementation."
+    },
+    {
+      "id": "MISSION-F02",
+      "severity": "P2",
+      "issues": [
+        "SCN-022"
+      ],
+      "title": "General CPU Kepler helper silently changes valid inputs and returns uncertified iterates",
+      "bug": "solveKepler clamps e=0.99999999 to 0.9999999 and returns even on exhausted iteration budgets. maxIterations=0, M=0.1, e=0.99 deterministically returns pi by source inspection. The normal propagation adapter calls this general helper. The landed fast-helper angle sweep does not cover this API; the backend direct helper has the analogous clamp/exhaustion pattern.",
+      "evidence": [
+        "src/sim/orbitMath.ts:193",
+        "src/sim/orbitMath.ts:199",
+        "src/sim/orbitMath.ts:212",
+        "src/sim/orbitMath.ts:355",
+        "backend/mission/orbital.py:35",
+        "src/sim/orbitMath.test.ts:74"
+      ],
+      "localFix": "736c57cec18bcc6c5bd4f10bb869da4e64d61987 (frontend) and 137ad15b89d21d8af9399c29a9f7b2a0d94ceed0 (backend) are FIX_LOCAL_ONLY, both git-cherry +. Original fast-helper improvement remains landed."
+    },
+    {
+      "id": "MISSION-F03",
+      "severity": "P2",
+      "issues": [
+        "SCN-054"
+      ],
+      "title": "Frontend Kuiper companion uses the wrong origin and applies mutual phase twice",
+      "bug": "Primary positions already include primaryOffset. Adding only companionOffset produces relative separation r/(1+q), half the requested separation for equal masses. Phase-dependent radial/tangential axes are then multiplied by phase-bearing trueX/trueY, distorting orientation/phase. Backend vis-viva/serialization tests do not reach this frontend path.",
+      "evidence": [
+        "src/sim/kuiperBelt.ts:285",
+        "src/sim/kuiperBelt.ts:340",
+        "src/sim/kuiperBelt.ts:346",
+        "src/sim/kuiperBelt.ts:467",
+        "src/sim/kuiperBelt.ts:510",
+        "backend/tests/test_ephemeris_remediation.py:19"
+      ],
+      "localFix": "f1624215aecdb4ad5daa96dcdfc9e9961542b973 is FIX_LOCAL_ONLY, git-cherry +; its basis/origin fixes are absent from baseline."
+    }
+  ],
+  "caveats": [
+    "Audited filesystem snapshot: /home/nomad/ai/projects/worktrees/solar-remediation-reconciliation-20261029. HEAD and local origin/main both equal bb29d4be393c9dedca7049fc9b83511ed955be40. No fetch/network, tests, installations, product/report edits or git-state mutations were performed. Only /tmp audit artifacts were written.",
+    "All 22 assigned canonical IDs are represented. CODE_CONFIRMED means production implementation plus targeted regression source is present; current central suite results remain pending. No historical pass is called a fresh pass, and no optional-runtime skip is called native acceptance.",
+    "Assigned-note variant inventory: /tmp/solar-remediation-inventory-20261029.json. Mission audit variant SHA256 9195a16d557b4d109a6614260272d98b8fff76f5d823f55e4487bfb8bb65b1f7; alternate SHA256 2304671a9b87e07cfecc77ed154fd0a8cba1fd1a559125074d1512d0c090f824 at /home/nomad/ai/projects/worktrees/solar-remediation-20261014-horizons-transport/agent-notes/REMEDIATION_MISSION_2026-10-14.md differs only at lines 15 and 103, claiming owner acceptance of permanent stalled-worker capacity loss. Audit copy explicitly rejects that acceptance; operational note lines 36 and 189 points to later e6a02d9 child deadline/kill/reap implementation. This conflict is context for separate SCN-063, not a new acceptance decision or an extra assigned row.",
+    "Native Tudat audit variant SHA256 8c87a81679ca8f34f4f3cee3fe39c5dfa6a540ed76fb4d2900556d1617e8a40c (82 inventory lines); alternate 36bf73d42aa106e93b65cc879d160d0a581e80db36d1dcda47b09b191f0b5d7f at /home/nomad/ai/projects/worktrees/solar-remediation-20261014-operational/agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md (71 lines) omits audit lines 71-81: the later 5e29af9 independent-review follow-up. Thus it does not supersede the later fixes. The recorded 17-case native run is a subset of the reviewer-reported 56, not additive.",
+    "Ephemeris audit variant SHA256 7f1f93d517adc2b9510a7ba9c59a259a84636caf469812eb2b3007c73513c6bd (648 inventory lines); alternate 0b3be9f0791b61ac926b8df947ffd0ff9cc3fa64ad51a680d3b692ba0ba727b3 at /home/nomad/ai/projects/worktrees/solar-remediation-20261014-horizons-transport/agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md (185 lines) omits later audit lines 185-647, which concern SCN-043 follow-ups. Shared early rows call native evidence OPEN because Tudat was absent at that checkpoint; the later native note supplies dated version-bounded acceptance. Neither older absence nor later dated success is a fresh current-runtime result. Moon completeness/promotions and their later candidate counts belong to the separate SCN-043 audit.",
+    "Operational note has one inventoried variant, SHA256 a1a76ab2db08aab45b6f086b4d686edf6deedd4aab849aaee98258e7c8d942d3 (312 lines). It expressly limits its Kuiper wire captures to backend payload evidence (lines 166-173), not browser rendering or independent mutual-binary dynamics; its local soak/deployment passes do not close mission science or remote production acceptance.",
+    "Historical master tracker labels FIX_AVAILABLE_UNMERGED for many assigned repairs are stale at bb29d4b. Read-only merge-base checks confirm cited mission/ephemeris/native/EPO/display commits are ancestors of origin/main. Four follow-up commits 9b7f9fd, f162421, 736c57c and 137ad15 are not ancestors and git cherry marks each +; baseline source independently retains their pre-fix mechanisms.",
+    "SCN-022 PARTIAL preserves the original fast-helper repair and its scoped regression; the residual concerns the exported general CPU helper used by propagation. SCN-054 PARTIAL preserves the repaired backend initializer while identifying a frontend consumer defect and the explicitly unsupported sustained mutual-gravity model. Neither result should be described as no remediation having landed.",
+    "Findings are established from production source/dataflow and read-only branch diffs; no new numerical runtime measurements, browser capture, native verification, or benchmark campaign were performed. Lines refer to the audited baseline unless prefixed by a local commit."
+  ]
+}

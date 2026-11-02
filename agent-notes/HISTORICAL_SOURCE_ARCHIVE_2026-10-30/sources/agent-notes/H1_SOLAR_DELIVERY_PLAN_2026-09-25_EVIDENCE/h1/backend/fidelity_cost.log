@@ -1,0 +1,5 @@
+loadavg (33.21142578125, 25.59033203125, 12.62158203125)
+preview total_s 1.734 second_jd+1e-8_s 1.422 pfss_lines 40 lmax 9 bytes 366881
+operational total_s 3.205 second_jd+1e-8_s 3.542 pfss_lines 80 lmax 12 bytes 512128
+high total_s 6.02 second_jd+1e-8_s 6.386 pfss_lines 120 lmax 15 bytes 650921
+ultra total_s 9.412 second_jd+1e-8_s 9.503 pfss_lines 180 lmax 15 bytes 928265

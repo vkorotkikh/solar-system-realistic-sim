@@ -1,0 +1,3 @@
+n=151 loop/cme features
+backend |lat| (asin z): p50=16.8 p95=30.8 max=33.5 deg
+frontend |lat| (asin y): p50=41.5 p95=72.0 max=81.0 deg; share above 40 deg: 0.54

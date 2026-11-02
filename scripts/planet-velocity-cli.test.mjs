@@ -17,7 +17,7 @@ const BASELINE_POSITION_SHA = '5c67a64c2214f7e9dc4ba4548aec914cbe6f39dd9284b03ca
 const MUTANT_POSITION_SHA = 'a5e3e990781a816a4507f985ebcb149e92320838b8e37789b9e81747e68ddc52';
 const INPUTS = [
   'scripts/verify-planet-positions.mjs', 'scripts/fixtures/planet-positions-horizons.json',
-  'src/data/moons.json', 'src/constants.ts', 'backend/data/ephemerides/planet_secular_model.json',
+  'src/data/moons.json', 'src/data/moonPhysicalRadii.json', 'src/constants.ts', 'backend/data/ephemerides/planet_secular_model.json',
   'src/data/namedAsteroidOrbits.ts', 'src/data/planets.ts', 'src/data/planetaryRotation.ts',
   'src/sim/moonDisplayName.ts', 'src/sim/catalog.ts', 'src/sim/moonEphemeris.ts',
   'src/sim/sourceFrameOrbit.ts', 'src/sim/orbitMath.ts', 'src/sim/planetPositionCheck.ts',

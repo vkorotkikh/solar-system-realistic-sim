@@ -1,4 +1,4 @@
-// MOON037 consumer-cancellation regression. Immutable native16 promotion.
+// MOON037 consumer-cancellation regression against the retained curated catalog.
 // Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 import assert from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
@@ -11,10 +11,11 @@ import { moonTextureCatalogEntryForBody } from '../src/frontend/features/planeta
 // transport-abort claim. The actual class, Promise jobs, AbortController and
 // Texture objects run unchanged; only TextureLoader's transport is controlled.
 const PHOBOS = { id: 'moon-mars-phobos', parentId: 'mars', name: 'Phobos' };
-const DEIMOS = { id: 'moon-mars-deimos', parentId: 'mars', name: 'Deimos' };
+// PR22 retired the Deimos asset; use a retained curated source for sharing tests.
+const EUROPA = { id: 'moon-jupiter-europa', parentId: 'jupiter', name: 'Europa' };
 const UNKNOWN = { id: 'owned-unknown', parentId: 'mars', name: 'Owned unknown' };
 const PHOBOS_SOURCE = moonTextureCatalogEntryForBody(PHOBOS);
-const DEIMOS_SOURCE = moonTextureCatalogEntryForBody(DEIMOS);
+const EUROPA_SOURCE = moonTextureCatalogEntryForBody(EUROPA);
 const listeners = signal => getEventListeners(signal, 'abort').length;
 
 async function withFixture(label, run, { useDefaultConfigure = false } = {}) {
@@ -51,9 +52,11 @@ async function withFixture(label, run, { useDefaultConfigure = false } = {}) {
     await Promise.resolve();
   };
   try {
+    assert.ok(PHOBOS_SOURCE); assert.ok(EUROPA_SOURCE);
     assert.equal(PHOBOS_SOURCE.key, 'mars:phobos');
     assert.equal(PHOBOS_SOURCE.publicPath, '/textures/moons/moon_mars_phobos_usgs_1024.jpg');
-    assert.equal(DEIMOS_SOURCE.key, 'mars:deimos');
+    assert.equal(EUROPA_SOURCE.key, 'jupiter:europa');
+    assert.equal(EUROPA_SOURCE.publicPath, '/textures/moons/moon_jupiter_europa_usgs_1024.jpg');
     await run(fixture);
   } finally {
     // Retire only this fixture's consumers, settle only this fixture's transport,
@@ -228,15 +231,15 @@ test('control healthy cache hit returns synchronously and later abort cannot rev
 
 test('control preload coalesces keys and preserves curated source and attribution', async () => {
   await withFixture('preload', async f => {
-    const promise = f.pipeline.preloadForBodies([PHOBOS, PHOBOS, DEIMOS, UNKNOWN]);
+    const promise = f.pipeline.preloadForBodies([PHOBOS, PHOBOS, EUROPA, UNKNOWN]);
     assert.equal(f.jobs.length, 2);
-    assert.deepEqual(f.jobs.map(job => job.url), [PHOBOS_SOURCE.publicPath, DEIMOS_SOURCE.publicPath]);
+    assert.deepEqual(f.jobs.map(job => job.url), [PHOBOS_SOURCE.publicPath, EUROPA_SOURCE.publicPath]);
     f.jobs.forEach(job => job.succeed()); await promise; await f.drain();
     assert.equal(f.pipeline.requestTexture(PHOBOS), f.jobs[0].texture);
-    assert.equal(f.pipeline.requestTexture(DEIMOS), f.jobs[1].texture);
+    assert.equal(f.pipeline.requestTexture(EUROPA), f.jobs[1].texture);
     assert.equal(f.pipeline.attributionForBody(PHOBOS), PHOBOS_SOURCE.source);
     assert.equal(f.pipeline.sourceForBody(PHOBOS), PHOBOS_SOURCE);
-    await f.pipeline.preloadForBodies([]); await f.pipeline.preloadForBodies([PHOBOS, DEIMOS]);
+    await f.pipeline.preloadForBodies([]); await f.pipeline.preloadForBodies([PHOBOS, EUROPA]);
     assert.equal(f.jobs.length, 2); assert.equal(f.configured.length, 2);
     assert.ok(f.jobs.every(job => job.disposals === 0));
   });
@@ -256,8 +259,15 @@ test('control omitted and explicit null signals retain shared callback ordering'
 test('control missing source or loader returns null without listeners or transport', async () => {
   await withFixture('missing-input-support', async f => {
     const c = f.controller(); let calls = 0;
-    assert.equal(f.pipeline.requestTexture(UNKNOWN, () => { calls++; }, c.signal), null);
-    assert.equal(f.pipeline.hasCuratedSource(UNKNOWN), false); assert.equal(f.pipeline.attributionForBody(UNKNOWN), null);
+    const retiredDeimos = { id: 'moon-mars-deimos', parentId: 'mars', name: 'Deimos' };
+    for (const unsupported of [UNKNOWN, retiredDeimos]) {
+      assert.equal(moonTextureCatalogEntryForBody(unsupported), null);
+      assert.equal(f.pipeline.requestTexture(unsupported, () => { calls++; }, c.signal), null);
+      assert.equal(f.pipeline.hasCuratedSource(unsupported), false);
+      assert.equal(f.pipeline.attributionForBody(unsupported), null);
+    }
+    await f.pipeline.preloadForBodies([retiredDeimos]);
+    assert.equal(f.pipeline.cache.size, 0); assert.equal(f.pipeline.inFlight.size, 0);
     const noLoader = new MoonTexturePipeline();
     assert.equal(noLoader.requestTexture(PHOBOS, () => { calls++; }, c.signal), null);
     assert.equal(noLoader.inFlight.size, 0); assert.equal(f.jobs.length, 0); assert.equal(listeners(c.signal), 0);

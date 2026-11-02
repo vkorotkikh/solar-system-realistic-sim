@@ -88,7 +88,7 @@ describe.each(['earth', 'mars'])('%s quadtree regressions', (id) => {
     const reliefFraction = id === 'earth' ? 0.02 : 0.06;
     expect(typeof tree.setRadius).toBe('function');
     let count = 0;
-    for (const radius of [body.displayRadiusAu, body.realRadiusAu, body.displayRadiusAu, body.realRadiusAu]) {
+    for (const radius of [body.displayRadiusAu, body.realRadiusAu!, body.displayRadiusAu, body.realRadiusAu!]) {
       camera.position.set(0, 0, radius * 1.08);
       tree.setRadius(radius);
       tree.update();
@@ -111,7 +111,7 @@ describe.each(['earth', 'mars'])('%s quadtree regressions', (id) => {
     parent.rotation.set(0.7, -0.5, 0.3);
     const tree = new PlanetQuadtree(id, body.displayRadiusAu, camera);
     parent.add(tree.group);
-    for (const radius of [body.displayRadiusAu, body.realRadiusAu]) {
+    for (const radius of [body.displayRadiusAu, body.realRadiusAu!]) {
       if (typeof tree.setRadius === 'function') tree.setRadius(radius);
       for (const distance of [1.08, 20]) {
         camera.position.copy(parent.position).add(new Vector3(0, 0, radius * distance));

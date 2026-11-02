@@ -10,7 +10,8 @@ import { generateKuiperBelt, NAMED_KBOS } from '../src/sim/kuiperBelt';
 
 // SMB056 selected synthetic-period contract, not observed-body ephemeris accuracy.
 // Full pre-change populations and capture provenance are retained in the owned
-// preparation root. These hashes retain ALL values except generated orbit.periodDays.
+// preparation root. These hashes retain ALL original values except generated
+// orbit.periodDays; PR22 population metadata is asserted separately, not rehashed.
 const SEEDS = [0, 42, 137];
 const BASELINES = [
   { asteroid: '70cc1a3b8f3db67e52297385f8424691638e9540e953db59d2af2785e99c1652',
@@ -76,8 +77,13 @@ for (const [index, seed] of SEEDS.entries()) {
       'asteroids', NAMED_ASTEROIDS.length)), BASELINES[index].asteroid);
   });
 
-  test('control complete Kuiper non-generated-period projection seed ' + seed, () => {
-    assert.equal(hash(withoutGeneratedPeriods(generateKuiperBelt(256, seed),
+  test('control Kuiper non-generated-period projection and population metadata seed ' + seed, () => {
+    const { seed: actualSeed, populationModel, ...originalFields } = generateKuiperBelt(256, seed);
+    assert.equal(actualSeed, seed);
+    assert.equal(populationModel, 'synthetic_orbit_candidates_not_resonance_verified');
+    // Preserve the original numeric oracle. Only the two explicitly checked
+    // metadata fields are outside its pre-PR22 population envelope.
+    assert.equal(hash(withoutGeneratedPeriods(originalFields,
       'kbos', NAMED_KBOS.length)), BASELINES[index].kuiper);
   });
 }

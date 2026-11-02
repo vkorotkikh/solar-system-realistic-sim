@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-30",
+  "source": "Read-only public GitHub API; connector normalized metadata omits deployment fields.",
+  "results": [
+    {
+      "url": "https://api.github.com/repos/vkorotkikh/solar-system-realistic-sim",
+      "status": 200,
+      "data": {
+        "full_name": "vkorotkikh/solar-system-realistic-sim",
+        "homepage": null,
+        "has_pages": false,
+        "default_branch": "main"
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/vkorotkikh/solar-system-realistic-sim/deployments?per_page=10",
+      "status": 200,
+      "data": []
+    },
+    {
+      "url": "https://api.github.com/repos/vkorotkikh/solar-system-realistic-sim/pages",
+      "status": 404,
+      "error": "HTTP Error 404: Not Found"
+    }
+  ]
+}

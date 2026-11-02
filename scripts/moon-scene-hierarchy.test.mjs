@@ -12,9 +12,10 @@ import { createBodyIdResolver } from '../src/frontend/app/stateStore.ts';
 import { SolarSystemModel } from '../src/sim/solarSystemModel.ts';
 import { propagateKeplerOrbit } from '../src/sim/orbitMath.ts';
 import { updateSceneBodiesFromModel } from '../src/frontend/app/bodyManager.ts';
+import { createModelWorkerController } from '../src/frontend/app/modelWorkerController.ts';
 import { PlanetQuadtree } from '../src/frontend/features/planetary/quadtreeLOD.ts';
 import { applyBodySpin } from '../src/frontend/features/planetary/bodySpin.ts';
-import { buildModelWorkerCatalog, buildCatalogIndexContract, isValidModelWorkerAvailabilityArray, MODEL_WORKER_RECORD_SIZE } from '../src/workers/modelWorkerContract.ts';
+import { buildModelWorkerCatalog, buildCatalogIndexContract, isValidModelWorkerAvailabilityArray, MODEL_WORKER_RECORD_SIZE, MODEL_WORKER_STATE_SCHEMA_VERSION } from '../src/workers/modelWorkerContract.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const JD = 2461000.5;
@@ -40,7 +41,7 @@ const mainCode = [...declarations.values()].map(text).join('\n') + '\n' + assemb
 return {
   fallback: applyModelSceneAndStateFallback,
   rotate: updateBodyRotations,
-  worker(message) { latestModelWorkerState = message; return applyLatestWorkerSnapshot(); },
+  worker(message) { deliverWorkerState(message); return applyLatestWorkerSnapshot(); },
   appliedSequence() { return lastModelWorkerAppliedSequence; }
 };`;
 const js = ts.transpileModule(mainCode, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None}}).outputText;
@@ -71,6 +72,26 @@ function withScene({showMoons = true} = {}, inspect) {
   const contract = buildCatalogIndexContract(workerCatalog);
   const model = new SolarSystemModel({bodies: workerCatalog.bodies.map(body => selected[body.sourceIndex])});
   const producer = new SolarSystemModel({bodies: workerCatalog.bodies});
+  // Use the retained owner with a synchronous transport double. The actual
+  // packer below supplies replies to its exact sequence/epoch requests.
+  let requestJd = JD, pendingTick = null;
+  const transport = {
+    onmessage: null, onerror: null, onmessageerror: null,
+    postMessage(message) {
+      if (message.type === 'init') this.onmessage({data: {
+        type: 'ready', bodyCount: message.catalog.bodies.length, schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION,
+      }});
+      else if (message.type === 'tick') pendingTick = structuredClone(message);
+    },
+    terminate() {},
+  };
+  const modelWorkerController = ownDisposable(createModelWorkerController({
+    catalog: workerCatalog, createWorker: () => transport, getJulianDate: () => requestJd, maxRestarts: 0,
+  }));
+  const deliverWorkerState = message => {
+    transport.onmessage({data: message});
+    if (modelWorkerController.latestState === message) pendingTick = null;
+  };
   const geometryCache = Object.fromEntries(['sun', 'planet', 'moon'].map(key => [key, ownDisposable(new THREE.SphereGeometry(1, 8, 6))]));
   const bindings = {
     ...THREE, PlanetQuadtree, applyBodySpin, propagateKeplerOrbit, updateSceneBodiesFromModel,
@@ -82,21 +103,27 @@ function withScene({showMoons = true} = {}, inspect) {
     solarSystemGroup: new THREE.Group(), orbitLines: [], orbitLineByBodyId: new Map(),
     createLabelSprite: () => new THREE.Sprite(ownDisposable(new THREE.SpriteMaterial())),
     sunCtrl: {createSunMaterial: () => null, initSunVisuals() {}, updateSurfaceFrame() {}}, sunTexture: null,
-    dom: {toggleOrbits: {checked: true}}, latestModelWorkerState: null, modelWorkerReady: true,
+    dom: {toggleOrbits: {checked: true}}, modelWorkerController, deliverWorkerState,
     modelWorkerBodyCount: contract.idByIndex.length, MODEL_WORKER_RECORD_SIZE,
     modelWorkerSourceIndexByIndex: contract.sourceIndexByIndex, modelWorkerParentIndexByIndex: contract.parentIndexByIndex,
     isValidModelWorkerAvailabilityArray, lastModelWorkerAppliedSequence: -1,
     modelWorkerPositionsDirty: new Uint8Array(contract.idByIndex.length),
   };
   for (const suffix of ['X', 'Y', 'Z', 'Vx', 'Vy', 'Vz']) bindings[`modelWorkerWorld${suffix}`] = new Float64Array(contract.idByIndex.length);
-  let sequence = 0;
   try {
+    modelWorkerController.start();
+    expect(modelWorkerController.ready).toBe(true);
     const runtime = Function(...Object.keys(bindings), js)(...Object.values(bindings));
     const f = {...bindings, runtime, producer, contract,
       pack(jd = JD) {
+        // Request time may precede display time to exercise delayed snapshots.
+        requestJd = jd;
+        modelWorkerController.tick(1 / 60);
+        expect(pendingTick?.simState.julianDate).toBe(jd);
         producer.update(jd);
         const packed = Function('contract', 'model', 'MODEL_WORKER_RECORD_SIZE', packJs)(contract, producer, MODEL_WORKER_RECORD_SIZE);
-        return {...packed, sequence: ++sequence, tickJd: jd};
+        return {type: 'state', schemaVersion: MODEL_WORKER_STATE_SCHEMA_VERSION, ...packed,
+          sequence: pendingTick.sequence, tickJd: jd};
       },
       apply(path, jd = JD) {
         bindings.simState.julianDate = jd;

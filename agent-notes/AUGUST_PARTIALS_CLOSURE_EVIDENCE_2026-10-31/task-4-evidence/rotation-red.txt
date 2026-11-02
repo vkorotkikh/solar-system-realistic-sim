@@ -1,0 +1,67 @@
+
+> solar-system-realistic-sim@0.0.0 test
+> vitest run src/frontend/features/solar/solarRotation.test.ts
+
+
+ RUN  v5.0.4 /home/nomad/ai/projects/worktrees/solar-partials-solar-20261031
+
+ ❯ src/frontend/features/solar/solarRotation.test.ts (2 tests | 2 failed) 9ms
+   ❯ solar rotation and illustrative display contracts (2)
+     × binds the published sidereal coefficient shape to the actual surface material 4ms
+     × identifies the four-display-radius glow and particle time-lapse as illustrative at either scale 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/frontend/features/solar/solarRotation.test.ts > solar rotation and illustrative display contracts > binds the published sidereal coefficient shape to the actual surface material
+AssertionError: expected undefined to deeply equal [ 14.713, -2.396, -1.787 ]
+
+- Expected:
+[
+  14.713,
+  -2.396,
+  -1.787,
+]
+
++ Received:
+undefined
+
+ ❯ src/frontend/features/solar/solarRotation.test.ts:11:39
+      9|     try {
+     10|       const coefficients = material.uniforms.rotationCoefficientsDegDa…
+     11|       expect(coefficients?.toArray()).toEqual([14.713, -2.396, -1.787]…
+       |                                       ^
+     12|       // Independent latitude fixtures: equator, 30°, 60°, pole.
+     13|       for (const [sin2, expected] of [[0, 14.713], [0.25, 14.0023125],…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/frontend/features/solar/solarRotation.test.ts > solar rotation and illustrative display contracts > identifies the four-display-radius glow and particle time-lapse as illustrative at either scale
+AssertionError: expected undefined to deeply equal { …(4) }
+
+- Expected:
+{
+  "kind": "illustrative_corona_glow",
+  "outerRadius": 4,
+  "physicalRadiusCalibrated": false,
+  "radiusUnits": "display_sun_radius",
+}
+
++ Received:
+undefined
+
+ ❯ src/frontend/features/solar/solarRotation.test.ts:32:44
+     30|     const eruptions = createSunEruptionLayer(0.00465047, 16);
+     31|     try {
+     32|       expect(corona.userData.displayScope).toEqual({
+       |                                            ^
+     33|         kind: 'illustrative_corona_glow', radiusUnits: 'display_sun_ra…
+     34|         outerRadius: 4, physicalRadiusCalibrated: false
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  05:05:26
+   Duration  144ms (import 42%, transform 41%, tests 13%, worker 3%, environment 1%)
+

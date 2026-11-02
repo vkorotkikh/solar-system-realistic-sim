@@ -1,0 +1,159 @@
+{
+ "refused./solar/realtime": {
+  "status": 200,
+  "elapsed_s": 0.013,
+  "source_ok": {
+   "swpc": false,
+   "silso": false,
+   "sdo_aia": false,
+   "gong_synoptic": true
+  },
+  "errors": {
+   "swpc": "<urlopen error [Errno 111] Connection refused>",
+   "silso": "<urlopen error [Errno 111] Connection refused>",
+   "sdo_aia": "<urlopen error [Errno 111] Connection refused>"
+  },
+  "combined_activity_proxy": null
+ },
+ "refused./solar/realtime/aia-tile": {
+  "status": 503,
+  "elapsed_s": 0.004,
+  "body": {
+   "detail": "AIA tile unavailable: SDO/AIA snapshot unavailable"
+  }
+ },
+ "refused_then_recovered_within_ttl./solar/realtime": {
+  "status": 200,
+  "elapsed_s": 0.002,
+  "source_ok": {
+   "swpc": false,
+   "silso": false,
+   "sdo_aia": false,
+   "gong_synoptic": true
+  },
+  "errors": {
+   "swpc": "<urlopen error [Errno 111] Connection refused>",
+   "silso": "<urlopen error [Errno 111] Connection refused>",
+   "sdo_aia": "<urlopen error [Errno 111] Connection refused>"
+  },
+  "combined_activity_proxy": null
+ },
+ "refused_then_recovered_within_ttl./solar/realtime/aia-tile": {
+  "status": 503,
+  "elapsed_s": 0.003,
+  "body": {
+   "detail": "AIA tile unavailable: SDO/AIA snapshot unavailable"
+  }
+ },
+ "stale_then_down./solar/realtime": {
+  "status": 200,
+  "elapsed_s": 0.006,
+  "source_ok": {
+   "swpc": false,
+   "silso": false,
+   "sdo_aia": false,
+   "gong_synoptic": true
+  },
+  "errors": {
+   "swpc": "<urlopen error [Errno 111] Connection refused>",
+   "silso": "<urlopen error [Errno 111] Connection refused>",
+   "sdo_aia": "<urlopen error [Errno 111] Connection refused>"
+  },
+  "combined_activity_proxy": null
+ },
+ "stale_then_down./solar/realtime/aia-tile": {
+  "status": 503,
+  "elapsed_s": 0.006,
+  "body": {
+   "detail": "AIA tile unavailable: SDO/AIA snapshot unavailable"
+  }
+ },
+ "tiles_502./solar/realtime": {
+  "status": 200,
+  "elapsed_s": 0.007,
+  "source_ok": {
+   "swpc": true,
+   "silso": true,
+   "sdo_aia": true,
+   "gong_synoptic": true
+  },
+  "errors": {},
+  "combined_activity_proxy": 0.33436620837537956
+ },
+ "tiles_502./solar/realtime/aia-tile": {
+  "status": 503,
+  "elapsed_s": 0.003,
+  "body": {
+   "detail": "AIA tile unavailable: HTTP Error 502: Bad Gateway"
+  }
+ },
+ "tiles_502.immediate_retry.aia-tile": {
+  "status": 503,
+  "elapsed_s": 0.004,
+  "body": {
+   "detail": "AIA tile unavailable: HTTP Error 502: Bad Gateway"
+  }
+ },
+ "hang./solar/realtime": {
+  "status": 200,
+  "elapsed_s": 11.405,
+  "source_ok": {
+   "swpc": false,
+   "silso": false,
+   "sdo_aia": false,
+   "gong_synoptic": true
+  },
+  "errors": {
+   "swpc": "timed out",
+   "silso": "timed out",
+   "sdo_aia": "timed out"
+  },
+  "combined_activity_proxy": null
+ },
+ "hang./solar/realtime/aia-tile#1": {
+  "status": 503,
+  "elapsed_s": 4.006,
+  "body": {
+   "detail": "AIA tile generation timed out. Try again later."
+  }
+ },
+ "hang./solar/realtime/aia-tile#2_immediately_after": {
+  "status": 503,
+  "elapsed_s": 2.443,
+  "body": {
+   "detail": "AIA tile generation timed out. Try again later."
+  }
+ },
+ "hang./solar/realtime/aia-tile#3_immediately_after": {
+  "status": 503,
+  "elapsed_s": 4.005,
+  "body": {
+   "detail": "AIA tile generation timed out. Try again later."
+  }
+ },
+ "hang.aia_slots_all_free_after_s": 11.46,
+ "hang.concurrent_/solar/realtime": {
+  "reader0": {
+   "status": 200,
+   "elapsed_s": 11.405,
+   "source_ok": {
+    "swpc": false,
+    "silso": false,
+    "sdo_aia": false,
+    "gong_synoptic": true
+   },
+   "errors": {
+    "swpc": "timed out",
+    "silso": "timed out",
+    "sdo_aia": "timed out"
+   },
+   "combined_activity_proxy": null
+  }
+ },
+ "hang./solar/physics(preview)": {
+  "status": 503,
+  "elapsed_s": 12.012,
+  "assimilation_applied": null,
+  "detail": "Solar physics generation timed out. Try again later."
+ }
+}

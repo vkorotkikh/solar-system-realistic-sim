@@ -1,0 +1,150 @@
+INFO:     Started server process [1599737]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8073 (Press CTRL+C to quit)
+INFO:     127.0.0.1:35896 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35904 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35904 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46510 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36294 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37138 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36106 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:57626 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57626 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52558 - "GET /solar/physics?jd=2461427.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52558 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408802&v=192408802 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57668 - "GET /spike/physics-cache-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33262 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:43902 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 429 Too Many Requests
+INFO:     127.0.0.1:60270 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 429 Too Many Requests
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36152 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 429 Too Many Requests
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36254 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53458 - "POST /trajectory/porkchop HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53480 - "POST /trajectory/porkchop HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53462 - "GET /solar/physics?jd=2470000.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53464 - "GET /solar/physics?jd=2470001.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50896 - "GET /solar/physics?jd=2470002.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+Future exception was never retrieved
+future: <Future finished exception=PorkchopScanCancelled('porkchop scan cancelled by request owner')>
+Traceback (most recent call last):
+  File "/home/nomad/miniconda3/envs/icl-vram-py312-cu132/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1-spike/backend/trajectory/planner.py", line 184, in run_porkchop_scan
+    result = scan_porkchop_window(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-h1-spike/backend/trajectory/lambert.py", line 409, in scan_porkchop_window
+    raise PorkchopScanCancelled("porkchop scan cancelled by request owner")
+trajectory.lambert.PorkchopScanCancelled: porkchop scan cancelled by request owner
+INFO:     127.0.0.1:32980 - "GET /spike/physics-cache-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32984 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32984 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32996 - "GET /solar/physics?jd=2461308.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32996 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192406756&v=192406756 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37290 - "GET /solar/physics?jd=2461425.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:37296 - "GET /solar/physics?jd=2461424.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:58966 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:51712 - "GET /solar/physics?jd=2461554.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:39504 - "GET /solar/physics?jd=2461550.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:36864 - "GET /solar/physics?jd=2461686.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:46464 - "GET /solar/physics?jd=2461679.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:40996 - "GET /solar/physics?jd=2461814.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:55462 - "GET /solar/physics?jd=2461808.50000000&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:60250 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:56144 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:46580 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:55182 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:45288 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:38230 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:45938 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:44302 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1599737]

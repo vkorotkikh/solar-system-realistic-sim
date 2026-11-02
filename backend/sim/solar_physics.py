@@ -10,6 +10,7 @@ from .solar_time import CARRINGTON_SIDEREAL_ROTATION_RATE_DEG_PER_DAY, current_j
 from .solar_frames import synthetic_geometry_frame
 from .solar_active_regions import (
     ActiveRegionSeed, build_active_regions, differential_rotation_rad_day,
+    DIFFERENTIAL_ROTATION_COEFFICIENTS_DEG_DAY, DIFFERENTIAL_ROTATION_REFERENCE,
     region_lifetime, region_polarity_dirs,
 )
 
@@ -1068,14 +1069,17 @@ class SolarCoronaPhysicsModel:
             "data_assimilation": assimilation,
             "surface": {
                 "differential_rotation_model": "snodgrass_ulrich_1990",
+                "differential_rotation_coefficients_deg_day": list(DIFFERENTIAL_ROTATION_COEFFICIENTS_DEG_DAY),
+                "differential_rotation_reference": DIFFERENTIAL_ROTATION_REFERENCE,
+                "differential_rotation_frame": "sidereal",
                 "activity_cycle_model": "hathaway_2015_normalized",
                 "activity_cycle_params": {
                     "b_months": HATHAWAY_B,
                     "c_asymmetry": HATHAWAY_C,
                     "reference_cycle_start_jd": CYCLE_25_START_JD,
                 },
-                "estimated_equatorial_rotation_days": 24.47,
-                "estimated_polar_rotation_days": 34.3,
+                "estimated_equatorial_rotation_days": 2.0 * math.pi / differential_rotation_rad_day(0.0),
+                "estimated_polar_rotation_days": 2.0 * math.pi / differential_rotation_rad_day(math.pi / 2.0),
                 "active_region_count": len(self.active_regions),
             },
             "corona": {

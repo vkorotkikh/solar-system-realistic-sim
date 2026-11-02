@@ -1,0 +1,38 @@
+[
+ {
+  "pageOrigin": "http://localhost:5184",
+  "img": {
+   "ok": true,
+   "ms": 2931,
+   "w": 512,
+   "taintFree": true
+  },
+  "fetch": {
+   "ok": true,
+   "status": 200,
+   "retryAfterReadable": null
+  }
+ },
+ {
+  "pageOrigin": "http://127.0.0.1:5184",
+  "img": {
+   "ok": false,
+   "ms": 3
+  },
+  "fetch": {
+   "ok": false,
+   "error": "TypeError: Failed to fetch"
+  }
+ },
+ {
+  "pageOrigin": "http://localhost:4184",
+  "img": {
+   "ok": false,
+   "ms": 3
+  },
+  "fetch": {
+   "ok": false,
+   "error": "TypeError: Failed to fetch"
+  }
+ }
+]

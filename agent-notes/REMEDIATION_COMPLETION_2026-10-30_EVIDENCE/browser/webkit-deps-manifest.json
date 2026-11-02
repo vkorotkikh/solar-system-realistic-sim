@@ -1,0 +1,160 @@
+{
+  "source": "apt-get download from configured Ubuntu Noble repositories; dpkg-deb extraction only; no global install",
+  "packages": [
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libabsl20220623t64_20220623.1-3.1ubuntu3.2_amd64.deb",
+      "sha256": "dec97687bc3bc4edbd1c26bc9182f7584e3ff1c36a9bb7ce80211951e5a5893d",
+      "package": "Package: libabsl20220623t64\nVersion: 20220623.1-3.1ubuntu3.2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libavif16_1.0.4-1ubuntu3_amd64.deb",
+      "sha256": "b295a9954a4b756af05ff381d9808f3c0c582a111b7e4c7678cfe13de9ae8818",
+      "package": "Package: libavif16\nVersion: 1.0.4-1ubuntu3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libcairo-script-interpreter2_1.18.0-3build1_amd64.deb",
+      "sha256": "e104466e7d816672a711db42746af528d210197231f12e3c712c06ac9a79b214",
+      "package": "Package: libcairo-script-interpreter2\nVersion: 1.18.0-3build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libdav1d7_1.4.1-1build1_amd64.deb",
+      "sha256": "7246303bd3ed4b99a2fb98e6199950ceb2520e7572265aefa0a6e44352adb3f0",
+      "package": "Package: libdav1d7\nVersion: 1.4.1-1build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libenchant-2-2_2.3.3-2build2_amd64.deb",
+      "sha256": "4faecb5cee57ff00649b3ea4d83c072d9da2670797b7d2854708ff60cef17426",
+      "package": "Package: libenchant-2-2\nVersion: 2.3.3-2build2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libevdev2_1.13.1+dfsg-1build1_amd64.deb",
+      "sha256": "a14b1ea7b3220a063458590734920879cec8431b4fc5160eb0f044dfb8d76515",
+      "package": "Package: libevdev2\nVersion: 1.13.1+dfsg-1build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libevent-2.1-7t64_2.1.12-stable-9ubuntu2.2_amd64.deb",
+      "sha256": "083ced6efb23476cb4de4e441b741af02db5653e67fa7fcd6cf7e5f7b78f6101",
+      "package": "Package: libevent-2.1-7t64\nVersion: 2.1.12-stable-9ubuntu2.2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libflite1_2.2-6build3_amd64.deb",
+      "sha256": "367f1d0da5cd38759a0515eafc27aa133b2d7bf99308cac34831df0212e96b75",
+      "package": "Package: libflite1\nVersion: 2.2-6build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgav1-1_0.18.0-1build3_amd64.deb",
+      "sha256": "428f353f449e6b15cdcf5823215416e36adcfba75fe9f0fedc1cd132d68e6b3f",
+      "package": "Package: libgav1-1\nVersion: 0.18.0-1build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgles2_1.7.0-1build1_amd64.deb",
+      "sha256": "9dec2d79a2eebb80522f7cce77995f7a8ded22f0e3916f13353d066c62f97fac",
+      "package": "Package: libgles2\nVersion: 1.7.0-1build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgraphene-1.0-0_1.10.8-3build2_amd64.deb",
+      "sha256": "5276c4173bff30bd2a368cce30639227089512aad85fc4af87c284456bafe8ff",
+      "package": "Package: libgraphene-1.0-0\nVersion: 1.10.8-3build2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgstreamer-gl1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "sha256": "fb87a72e431d2c57c35b0b2bd4189bb6a6e771788c3ba389a9e3623886486b22",
+      "package": "Package: libgstreamer-gl1.0-0\nVersion: 1.24.2-1ubuntu0.5"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgstreamer-plugins-bad1.0-0_1.24.2-1ubuntu4_amd64.deb",
+      "sha256": "6e8da41c0cbb2070f3477cf02360c2ce2eb55e825ba09e12b4270b3254e04f45",
+      "package": "Package: libgstreamer-plugins-bad1.0-0\nVersion: 1.24.2-1ubuntu4"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgstreamer-plugins-base1.0-0_1.24.2-1ubuntu0.5_amd64.deb",
+      "sha256": "3c5826eee14cb5077c7e53707fbe86cc0882c787ffe79b330cad636c0009473d",
+      "package": "Package: libgstreamer-plugins-base1.0-0\nVersion: 1.24.2-1ubuntu0.5"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgtk-4-1_4.14.5+ds-0ubuntu0.10_amd64.deb",
+      "sha256": "2361861e33d34a26f3d6c4906935fd9e6241eb44ff30564cb493b5671111a24f",
+      "package": "Package: libgtk-4-1\nVersion: 4.14.5+ds-0ubuntu0.10"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libgudev-1.0-0_1%3a238-5ubuntu1_amd64.deb",
+      "sha256": "8bdd42c584a8d18759df2311b126dc679d438e9780038743b792cf5315f248dc",
+      "package": "Package: libgudev-1.0-0\nVersion: 1:238-5ubuntu1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libharfbuzz-icu0_8.3.0-2build2_amd64.deb",
+      "sha256": "9098670758e60b190d7edf367ad57e954bfc1b2a616def3f4e281062e036a843",
+      "package": "Package: libharfbuzz-icu0\nVersion: 8.3.0-2build2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libhyphen0_2.8.8-7build3_amd64.deb",
+      "sha256": "b508d3a5da168ddb2ae6e79ea0521ba64cd121285db0ece438d0bd56ba628556",
+      "package": "Package: libhyphen0\nVersion: 2.8.8-7build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libmanette-0.2-0_0.2.7-1build2_amd64.deb",
+      "sha256": "8fbb67e94abf563c01398ad7458df1a6824f19a0b4337f67d61c0889771805db",
+      "package": "Package: libmanette-0.2-0\nVersion: 0.2.7-1build2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libopus0_1.4-1build1_amd64.deb",
+      "sha256": "6d8da32a832e655c9603543b47a0bc90c6f60bdee0c00fe7499bd50acad566cf",
+      "package": "Package: libopus0\nVersion: 1.4-1build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/liborc-0.4-0t64_1%3a0.4.38-1ubuntu0.1_amd64.deb",
+      "sha256": "a546ca6e237748693596ba469e84a2e0581bc39113abc62b718931df00a4c682",
+      "package": "Package: liborc-0.4-0t64\nVersion: 1:0.4.38-1ubuntu0.1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/librav1e0_0.7.1-2_amd64.deb",
+      "sha256": "be10d7e2dc028d9d7791997a8710b7a9a3147151613750f0f08963fbe9ac993c",
+      "package": "Package: librav1e0\nVersion: 0.7.1-2"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libsecret-1-0_0.21.4-1build3_amd64.deb",
+      "sha256": "7d7263ffc92c33042328f99c93433a846e8d9e549876dab18ba18606e6541ecd",
+      "package": "Package: libsecret-1-0\nVersion: 0.21.4-1build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libsoup-3.0-0_3.4.4-5ubuntu0.9_amd64.deb",
+      "sha256": "cd6bab2b426b0c81b0f7856df11f3633df118df33517378049545ff440751fcc",
+      "package": "Package: libsoup-3.0-0\nVersion: 3.4.4-5ubuntu0.9"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libsvtav1enc1d1_1.7.0+dfsg-2build1_amd64.deb",
+      "sha256": "bac5f768bff928e85cecb39da8e37276a579639ef884692b089ed2de6c1cd2ad",
+      "package": "Package: libsvtav1enc1d1\nVersion: 1.7.0+dfsg-2build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libwayland-server0_1.22.0-2.1build1_amd64.deb",
+      "sha256": "edbfa4b6857691ae922cc768a753fab230eee9e956aa2ce4f2eaa8d9ad777dca",
+      "package": "Package: libwayland-server0\nVersion: 1.22.0-2.1build1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libwebpdemux2_1.3.2-0.4build3_amd64.deb",
+      "sha256": "15e98f127e1fdbf0889cf4b2f5604b60a6da0b988f20bf34731c9a2307d490d6",
+      "package": "Package: libwebpdemux2\nVersion: 1.3.2-0.4build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libwebpmux3_1.3.2-0.4build3_amd64.deb",
+      "sha256": "0dd0f2de0fbbda7239209332ddfe512f4383d0489dd3f9fb25398f58c1621724",
+      "package": "Package: libwebpmux3\nVersion: 1.3.2-0.4build3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libx264-164_2%3a0.164.3108+git31e19f9-1_amd64.deb",
+      "sha256": "7a410be6797c32357a2b7f0cc68ee14ae0e3b652bb17d16cdc941e4d830c7842",
+      "package": "Package: libx264-164\nVersion: 2:0.164.3108+git31e19f9-1"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libxslt1.1_1.1.39-0exp1ubuntu0.24.04.3_amd64.deb",
+      "sha256": "e716daf96ea2526cab92e5cc4708739d5f2f4b89fb76782dfda7f49283eeeb40",
+      "package": "Package: libxslt1.1\nVersion: 1.1.39-0exp1ubuntu0.24.04.3"
+    },
+    {
+      "file": "/tmp/solar-remediation-completion-20261030/browser/webkit-deps/debs/libyuv0_0.0~git202401110.af6ac82-1_amd64.deb",
+      "sha256": "88bd472e50a7e45469e31f8e0ba232b4d8ed30322f5badb285c58cc1ba0d2176",
+      "package": "Package: libyuv0\nVersion: 0.0~git202401110.af6ac82-1"
+    }
+  ]
+}

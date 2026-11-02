@@ -11,7 +11,17 @@ function loadZoomStage(dom: { statusZoom: CountingText | null }, camera: { posit
   const source = readFileSync(mainPath, 'utf8');
   const parsed = ts.createSourceFile('main.ts', source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
   const matches: ts.Expression[] = [];
+  let update: ts.FunctionDeclaration | undefined;
+  let actionCallback: ts.Expression | undefined;
   function visit(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'updateZoomStatus') update = node;
+    if (ts.isCallExpression(node) && node.expression.getText(parsed) === 'createViewportCameraController') {
+      const options = node.arguments[0];
+      if (ts.isObjectLiteralExpression(options)) {
+        const callback = options.properties.find(p => ts.isPropertyAssignment(p) && p.name.getText(parsed) === 'onActionApplied');
+        if (callback && ts.isPropertyAssignment(callback)) actionCallback = callback.initializer;
+      }
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'frameLifecycle'
       && node.initializer && ts.isCallExpression(node.initializer)) {
       const options = node.initializer.arguments[0];
@@ -31,8 +41,9 @@ function loadZoomStage(dom: { statusZoom: CountingText | null }, camera: { posit
     ts.forEachChild(node, visit);
   }
   visit(parsed);
-  if (matches.length !== 1 || !ts.isArrowFunction(matches[0])) throw new Error('Expected one actual registered zoom-status stage');
-  const javascript = ts.transpileModule(`const run = ${matches[0].getText(parsed)};`, {
+  if (matches.length !== 1 || !update || matches[0].getText(parsed) !== 'updateZoomStatus'
+    || actionCallback?.getText(parsed) !== 'updateZoomStatus') throw new Error('Expected the same HUD updater for frames and immediate camera actions');
+  const javascript = ts.transpileModule(`${update.getText(parsed)}\nconst run = ${matches[0].getText(parsed)};`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   return Function('dom', 'camera', 'controls', 'AU_KM', `${javascript}\nreturn run;`)(dom, camera, controls, AU_KM) as () => void;

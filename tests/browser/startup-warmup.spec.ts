@@ -20,17 +20,14 @@ async function instrument(page: Page, mode: 'failed-link' | 'pending' | 'no-para
         if (parameter === this.LINK_STATUS && mode === 'failed-link') return false;
         return get.call(this, program, parameter);
       };
-      if (mode === 'no-parallel' || mode === 'pending') {
-        const extension = prototype.getExtension;
-        prototype.getExtension = function (this: WebGLRenderingContext | WebGL2RenderingContext, name: string) {
-          if (name === 'KHR_parallel_shader_compile') {
-            // Own the injected pending state even on drivers without native KHR
-            // support. Actual GL programs/context loss still use the browser.
-            return mode === 'pending' ? { COMPLETION_STATUS_KHR: 37297 } : null;
-          }
-          return Reflect.apply(extension, this, [name]);
-        } as typeof extension;
-      }
+      const extension = prototype.getExtension;
+      prototype.getExtension = function (this: WebGLRenderingContext | WebGL2RenderingContext, name: string) {
+        if (name === 'KHR_parallel_shader_compile') {
+          if (mode === 'no-parallel') return null;
+          if (mode === 'pending') return { COMPLETION_STATUS_KHR: 37297 };
+        }
+        return Reflect.apply(extension, this, [name]);
+      } as typeof extension;
       for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced'] as const) {
         const owner = prototype as unknown as Record<string, (...args: unknown[]) => unknown>;
         const draw = owner[name];

@@ -1,0 +1,576 @@
+{
+  "schema_version": 1,
+  "assembled_date": "2026-11-01",
+  "integrated_implementation_head": "8b4d3207a33a8e5cdcb0276183ec93e7e66ddaf8",
+  "baseline": "8d330a073faf011b1764f77d444019aed8f9c54a",
+  "branch": "fix/close-august-partials-20261031",
+  "qualification": "Archival documentation only. Final integration logs and final independent review were still owned by active coordinator/review tasks at assembly.",
+  "excluded_live_records": [
+    "browser-final-nov01.txt",
+    "review-retained-apis.md",
+    "final-sweep.md",
+    "other active or future final validation logs"
+  ],
+  "commit_mapping": [
+    {
+      "task": 1,
+      "finding": "F-012",
+      "source_commit": "131debe09645bc891290985a497c8806c821f9ad",
+      "integrated_commit": "e02b8b1db0d9aaddfe97fb604ee9a48fc7ba66f1",
+      "stable_patch_id": "fa1fbc531c015a0aefd57256d4e532bc5c6b5a6b",
+      "same_patch": true,
+      "subject": "fix(catalog): preserve source precision in ACBF v2"
+    },
+    {
+      "task": 1,
+      "finding": "F-026",
+      "source_commit": "5f6c22aad84f5e32f6e90864e66fbd76b838b0c5",
+      "integrated_commit": "ddd49a0003e6e352b0bedecd6cfbb6c0641b65ef",
+      "stable_patch_id": "499badca3dbef3786ff1fce5ebde3605f0fc79be",
+      "same_patch": true,
+      "subject": "fix(catalog): retire fabricated legacy taxonomy paths"
+    },
+    {
+      "task": 1,
+      "finding": "F-027",
+      "source_commit": "359cb577caf19b71fb7f3fd819f1c88ea146ee92",
+      "integrated_commit": "1660173ee7119e21a573a90ba85f50320e272a12",
+      "stable_patch_id": "33da3f62eeb26bacb60a4bf5c7c5c690bde489f1",
+      "same_patch": true,
+      "subject": "fix(moons): canonicalize identities and source nullable physical radii"
+    },
+    {
+      "task": 2,
+      "finding": "F-013",
+      "source_commit": "6224b863e2a1591687de3fe3457549781e30c456",
+      "integrated_commit": "e2d4a4c4adec2ac87dae42cea7d55f1795005046",
+      "stable_patch_id": "916a8fe65a8420e6cd74054fb712eee9a9e8df4c",
+      "same_patch": true,
+      "subject": "Bound REBOUND seek integration segments for responsive cancellation"
+    },
+    {
+      "task": 2,
+      "finding": "F-018",
+      "source_commit": "b35ebdb5719bcc825c04d56df73815b0bf1c42a2",
+      "integrated_commit": "f88686d87cd8aba1ac93a963a482f522f8f0eb2b",
+      "stable_patch_id": "bc319b4ad9c4041a332ad7a92ff47363f6395800",
+      "same_patch": true,
+      "subject": "Give EPO smoke explicit physical outcomes and preserve stress failures"
+    },
+    {
+      "task": 2,
+      "finding": "F-021",
+      "source_commit": "22d2c6e76b7aa73b5c6baddaf76c94e3d84c70f5",
+      "integrated_commit": "40a9830231a42f1575870870fc17447210a896c7",
+      "stable_patch_id": "9e140aeb6a9238b1703e9ae440981bff700c4131",
+      "same_patch": true,
+      "subject": "Retire unsafe legacy SBDB source publication before side effects"
+    },
+    {
+      "task": 2,
+      "finding": "F-018 review repair",
+      "source_commit": "197bd6948a2bdcb26166fa685beeabc2de011d3b",
+      "integrated_commit": "4fab6ae3407c8d717c1179ed13ed9e2c0ff70581",
+      "stable_patch_id": "9549ac3446ed060809316943aa5ef19c2cd82274",
+      "same_patch": true,
+      "subject": "Fail closed on incomplete EPO search evidence and malformed negative results"
+    },
+    {
+      "task": 3,
+      "finding": "F-022",
+      "source_commit": "fef6c5b4f23471784613a3ce5649a75a22b59980",
+      "integrated_commit": "fef6c5b4f23471784613a3ce5649a75a22b59980",
+      "stable_patch_id": "86d55326b1ffcfd2769f47a07fa674d15a160554",
+      "same_patch": true,
+      "subject": "fix(F-022): recover silent orbital workers with bounded lifecycle"
+    },
+    {
+      "task": 3,
+      "finding": "F-023",
+      "source_commit": "640bf15407f38f278d5d8593d41e6921061052f0",
+      "integrated_commit": "640bf15407f38f278d5d8593d41e6921061052f0",
+      "stable_patch_id": "872487c44df22de4e45c9f9b4565dea2875e72b4",
+      "same_patch": true,
+      "subject": "fix(F-023): keep close-focus labels and background stars visible"
+    },
+    {
+      "task": 3,
+      "finding": "F-028",
+      "source_commit": "08a6d8e4fe6ac074d130d7213fcce04f4156aeb6",
+      "integrated_commit": "08a6d8e4fe6ac074d130d7213fcce04f4156aeb6",
+      "stable_patch_id": "4c32f98eef17f49476ff8a9214b13ef7202814db",
+      "same_patch": true,
+      "subject": "fix(F-028): suspend hidden Kuiper work and seed synthetic populations"
+    },
+    {
+      "task": 3,
+      "finding": "F-030",
+      "source_commit": "692457c2e56d2bddf36def7872cf0e44f1d6e86a",
+      "integrated_commit": "692457c2e56d2bddf36def7872cf0e44f1d6e86a",
+      "stable_patch_id": "4a0993917f30196e446b7e393ad852cb54913b32",
+      "same_patch": true,
+      "subject": "docs(F-030): define runtime owners and retained integration boundaries"
+    },
+    {
+      "task": 4,
+      "finding": "F-009",
+      "source_commit": "0b4095492679e0ac50a20e8ee9d651f870b3099e",
+      "integrated_commit": "3e9297f779f7544b27055d9cfff329bddfa0c19c",
+      "stable_patch_id": "1d01c071e44a7c56b0a93e011114a3d3841006bc",
+      "same_patch": true,
+      "subject": "fix(solar): bound lossless state delivery and reuse unchanged geometry"
+    },
+    {
+      "task": 4,
+      "finding": "F-025",
+      "source_commit": "97b514ed110eff3d89ab6df0ccd955b951eb6cc0",
+      "integrated_commit": "d8eae548c0e27dacf37ca29d488728f563e2767d",
+      "stable_patch_id": "f6f6d28895c067e7f9a24e0c46b3f4296a813f4f",
+      "same_patch": true,
+      "subject": "fix(solar): align cited rotation profile and qualify illustrative display"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 TLE iteration",
+      "source_commit": "9d455bb9fd9cdec694c8245bc28827a4f91a6896",
+      "integrated_commit": "e8387d8fc5ea0b41de807aa3261bc72e54713383",
+      "stable_patch_id": "7f41ef1ad4c8791581cddc71ffc4893841a611e5",
+      "same_patch": true,
+      "subject": "Retain every complete mixed named and unnamed TLE record"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 interpolation",
+      "source_commit": "5cdab12e0c053c2dda3dc0630fd1131101f84b7e",
+      "integrated_commit": "b026c21fad5455074202441ee8b8dfe7dedb61e0",
+      "stable_patch_id": "59de4856cf385deec14e60ce18cdd2c156196a78",
+      "same_patch": true,
+      "subject": "Bound satellite worker interpolation by orbital period and display epoch"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 DOM capabilities",
+      "source_commit": "ce24b9ac2171e85d9bfbac012ad6a24b64c93bbd",
+      "integrated_commit": "3ea320d89adf1f67135af363a15634c8640438a7",
+      "stable_patch_id": "62e990ae4b309fbfa4d7290270494a6b141dec1a",
+      "same_patch": true,
+      "subject": "Validate optional legacy DOM capabilities before binding side effects"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 client APIs",
+      "source_commit": "93e5064440323787c3326a0bd0eb2ed3e9e92d81",
+      "integrated_commit": "581b1621fc6e88331f22816b53a0a149d8e5cbf3",
+      "stable_patch_id": "8ec08b79ba313edbdc840a85ac85cc062518fb56",
+      "same_patch": true,
+      "subject": "Complete retained client orbital elements and TDB seek protocol"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 reentrant seek",
+      "source_commit": "a2f95e6d716a978bd6e8220232611d0f29014131",
+      "integrated_commit": "eb7977aab0a2ab8699f1f3681e1d82571677784b",
+      "stable_patch_id": "7171d45dc157b177c2f0b6ac51a9f46c4083c40b",
+      "same_patch": true,
+      "subject": "Fence incoming epoch state against reentrant seek observers"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 TLE identity",
+      "source_commit": "37140fb6faa5248450ccc8dcc2f42d8c514bff12",
+      "integrated_commit": "7e49b5f7d36498fb7da7afbb205867a709143de6",
+      "stable_patch_id": "a07d879b963abd3cfa569957ffacda48a1e0ac59",
+      "same_patch": true,
+      "subject": "Deduplicate TLE satellites by validated catalog identity across feeds"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 snapshot validation",
+      "source_commit": "b9ebcc0651fe0e90987a725619d94a39033f3b4c",
+      "integrated_commit": "7abcce125f2af9dcbb82adae58c49367761c07a0",
+      "stable_patch_id": "9058353830c6013b83d5a6140c8fd98da869dabb",
+      "same_patch": true,
+      "subject": "Reject malformed satellite snapshots before any marker mutation"
+    },
+    {
+      "task": 5,
+      "finding": "F-029 handshake ordering",
+      "source_commit": "58ee0e14c070511b825803e2fad0f4bdbad75add",
+      "integrated_commit": "8b4d3207a33a8e5cdcb0276183ec93e7e66ddaf8",
+      "stable_patch_id": "239c51fdebe4ae4818ad3ad873c57e0cf8990321",
+      "same_patch": true,
+      "subject": "Commit handshake readiness and epoch state before notifying observers"
+    },
+    {
+      "task": 6,
+      "finding": "F-001 script gate",
+      "source_commit": "5a37287a19f7b7569989a02025aa33cc83d50c35",
+      "integrated_commit": "5a37287a19f7b7569989a02025aa33cc83d50c35",
+      "stable_patch_id": "a02153f7e7f4e0d6c443ad3f449c814016d0ec4a",
+      "same_patch": true,
+      "subject": "fix(F-001): gate maintained script types alongside source and browser checks"
+    },
+    {
+      "task": 6,
+      "finding": "F-021 scratch entrypoints",
+      "source_commit": "a472f596550755df3f1b742c7e2908d51858da3b",
+      "integrated_commit": "a472f596550755df3f1b742c7e2908d51858da3b",
+      "stable_patch_id": "0f38b48d7134fdfd7419192303dab6e98182bec9",
+      "same_patch": true,
+      "subject": "fix(F-021): retire nonportable undeclared Puppeteer scratch commands"
+    },
+    {
+      "task": 6,
+      "finding": "F-031 distribution",
+      "source_commit": "fd8d1492ed4270ff5043cd81a9ccfa7381b6d2df",
+      "integrated_commit": "fd8d1492ed4270ff5043cd81a9ccfa7381b6d2df",
+      "stable_patch_id": "14d61d8a98b1c509b0e9925da753b36e5b8ad924",
+      "same_patch": true,
+      "subject": "fix(F-031): enforce distribution notices and retire unlicensed orphan assets"
+    },
+    {
+      "task": 6,
+      "finding": "F-031 test runner",
+      "source_commit": "ebc81a411252d0aeb34ee43f9226e17749d777c3",
+      "integrated_commit": "ebc81a411252d0aeb34ee43f9226e17749d777c3",
+      "stable_patch_id": "087744a1de20646b859156652ff67f3f4b79c200",
+      "same_patch": true,
+      "subject": "test(F-031): run distribution checks in the configured test runner"
+    },
+    {
+      "task": 6,
+      "finding": "F-006 docs",
+      "source_commit": "23fb74dc3f86ce6cb813a17d34faa0d971e39500",
+      "integrated_commit": "23fb74dc3f86ce6cb813a17d34faa0d971e39500",
+      "stable_patch_id": "1ea923ce63a22c710adca8231c40f24a1cc32187",
+      "same_patch": true,
+      "subject": "docs(F-006): align shipped scope and maintenance commands with repairs"
+    },
+    {
+      "task": 6,
+      "finding": "F-031 notice links",
+      "source_commit": "2b5ccaaef3a128f24205d2fe0eebbd209e19da45",
+      "integrated_commit": "2b5ccaaef3a128f24205d2fe0eebbd209e19da45",
+      "stable_patch_id": "8ffce8bfe35cd0b0acc861cd86642d3a18b32320",
+      "same_patch": true,
+      "subject": "fix(F-031): preserve notice links in standalone build output"
+    },
+    {
+      "task": 6,
+      "finding": "F-001 browser timeout",
+      "source_commit": "7938f543a09f662196870fc907df5ac89dc7bb22",
+      "integrated_commit": "7938f543a09f662196870fc907df5ac89dc7bb22",
+      "stable_patch_id": "4eb42d0b4db2910a927e9aa54da998ba7e7cfc12",
+      "same_patch": true,
+      "subject": "test(F-001): apply WebGL smoke timeout before context setup"
+    },
+    {
+      "task": 6,
+      "finding": "F-001 browser disposal",
+      "source_commit": "1f12d7b62764aa562b0a81362567578bc21343cb",
+      "integrated_commit": "1f12d7b62764aa562b0a81362567578bc21343cb",
+      "stable_patch_id": "f6023506fd474b5ed6a2745e91c7072cf4fa5a3f",
+      "same_patch": true,
+      "subject": "test(F-001): retire real WebGL resources before fixture teardown"
+    },
+    {
+      "task": 6,
+      "finding": "F-001 browser observation",
+      "source_commit": "24802ffd35cc0d403438013b98f3034260b23a3a",
+      "integrated_commit": "24802ffd35cc0d403438013b98f3034260b23a3a",
+      "stable_patch_id": "701ccafe4dd22c7608b71c975db979b6badc0c06",
+      "same_patch": true,
+      "subject": "test(F-001): observe frame bounds independently of software GPU throughput"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "task-1-report.md",
+      "bytes": 10263,
+      "sha256": "63bd51154269de49d5171ec1fdb2d7fb614f6732e2fb077f801bfae5baf26aea",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-1-report.md",
+      "source_sha256": "aa659677b624127a927d39d5bb03323e3b70ddeb2b6ad964c8bf2ae2af0a7509",
+      "transformation": "Historical-scope notice added; report facts retained.",
+      "category": "historical_implementation_report"
+    },
+    {
+      "path": "task-2-report.md",
+      "bytes": 14073,
+      "sha256": "e7cccb5555c0b8e8cb76976df85a3612605190a3ff8546595502264a7096c84b",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-2-report.md",
+      "source_sha256": "7965e9039bf9e37d17b16b5076cac52db71b62cc6d62d08ce088ba3f094230ce",
+      "transformation": "Historical-scope notice and spacing corrections; report facts retained.",
+      "category": "historical_implementation_report"
+    },
+    {
+      "path": "task-3-report.md",
+      "bytes": 3288,
+      "sha256": "a338a2c5e5faf83ba8b6e9b62df39310efe2649498be5ed503cabe5dc4fefb37",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-3-report.md",
+      "source_sha256": "5536b8401a86ac0880ba2f89e9a18c7674a93bb514a332c23a00aded642ae06d",
+      "transformation": "Readable archival transcription of compressed original; report facts and pending handoff status retained.",
+      "category": "historical_implementation_report"
+    },
+    {
+      "path": "task-4-report.md",
+      "bytes": 7970,
+      "sha256": "1a756170fcacf2f9ef75325789611a7af5ef2e568dde07938b7a554f14f422fc",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-report.md",
+      "source_sha256": "8dcbddbdff61cb60e89ad2bdca4fffb8a8b74e8f4bd2fbffe03aa6fcce697e48",
+      "transformation": "Historical-scope notice added; report facts retained.",
+      "category": "historical_implementation_report"
+    },
+    {
+      "path": "task-5-report.md",
+      "bytes": 6853,
+      "sha256": "e253dddbd6594f3b0786f9110ee9faecb7aaf7010f10f0fef23e64239991dc19",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-5-report.md",
+      "source_sha256": "e569db67d4395cf1eb73beec0dcf81c40e0e1679c9bb8468a4b186b5ceec0a43",
+      "transformation": "Reconstructed report from eight commits and historical retained-API review; archival notice added to copy.",
+      "category": "reconstructed_implementation_report"
+    },
+    {
+      "path": "task-6-report.md",
+      "bytes": 3229,
+      "sha256": "5bb5200c184447b05a0f0f93e2fc4dae66330a22a8817c972d1f4a6ad3156189",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-6-report.md",
+      "source_sha256": "27d14e5d9aa2a9ad1c1d75800fc9cedf30d128b7b3cb914657fbd603b7da7919",
+      "transformation": "Readable archival transcription of compressed original; historical handoff status retained; later portable-link follow-up explicitly identified.",
+      "category": "historical_implementation_report"
+    },
+    {
+      "path": "review-catalog-backend.md",
+      "bytes": 11444,
+      "sha256": "028fe67d9880cb072f699f29be7aa5578208741d2b70b6ed2e206e62a331335c",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/review-catalog-backend.md",
+      "source_sha256": "028fe67d9880cb072f699f29be7aa5578208741d2b70b6ed2e206e62a331335c",
+      "transformation": "None; byte-identical copy.",
+      "category": "completed_review_snapshot"
+    },
+    {
+      "path": "review-runtime-delivery.md",
+      "bytes": 12753,
+      "sha256": "94a181e7cb80a4e188bfd163c5f901a89065a50b44b42bd59a8e8ffa35540fc8",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/review-runtime-delivery.md",
+      "source_sha256": "94a181e7cb80a4e188bfd163c5f901a89065a50b44b42bd59a8e8ffa35540fc8",
+      "transformation": "None; byte-identical copy.",
+      "category": "completed_review_snapshot"
+    },
+    {
+      "path": "review-label-pixels.json",
+      "bytes": 1187,
+      "sha256": "b34156603aedc3f6e6217b30189a1bb11f3d6873a8f5470bc5f8815ae7c0a4a1",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/review-label-pixels.json",
+      "source_sha256": "b34156603aedc3f6e6217b30189a1bb11f3d6873a8f5470bc5f8815ae7c0a4a1",
+      "transformation": "None; byte-identical copy.",
+      "category": "completed_review_snapshot"
+    },
+    {
+      "path": "task-4-evidence/backend-focused.txt",
+      "bytes": 1217,
+      "sha256": "725690c17d2f4675a7319d1b529d34e43d1640838ed9b9f68b7274a911769b5b",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/backend-focused.txt",
+      "source_sha256": "725690c17d2f4675a7319d1b529d34e43d1640838ed9b9f68b7274a911769b5b",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/backend-full.txt",
+      "bytes": 6121,
+      "sha256": "2e281c3c2ac338e5b5fefa84317824b5da80d522c9253115da16b0ddcadc7ebc",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/backend-full.txt",
+      "source_sha256": "2e281c3c2ac338e5b5fefa84317824b5da80d522c9253115da16b0ddcadc7ebc",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/build.txt",
+      "bytes": 800,
+      "sha256": "6cf557806c11f5c5d4cda3d3f26d1461bc1da1321fb6b75c28f1789dd0bbe85b",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/build.txt",
+      "source_sha256": "6cf557806c11f5c5d4cda3d3f26d1461bc1da1321fb6b75c28f1789dd0bbe85b",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/client-delivery-red.txt",
+      "bytes": 2686,
+      "sha256": "517291e7f33360d73614b3e1a30f6906c3a6f07c7252c4e8f59228f6ceeccfef",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/client-delivery-red.txt",
+      "source_sha256": "517291e7f33360d73614b3e1a30f6906c3a6f07c7252c4e8f59228f6ceeccfef",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/client-legacy-red.txt",
+      "bytes": 1299,
+      "sha256": "b620f118ca21e379a3f98e58fd38fa4183e40396e2c18f5ab8a549a85e0dd494",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/client-legacy-red.txt",
+      "source_sha256": "b620f118ca21e379a3f98e58fd38fa4183e40396e2c18f5ab8a549a85e0dd494",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/delivery-green.txt",
+      "bytes": 1136,
+      "sha256": "32c20318ee09e3a87fec8349f1de68efcdd53092ff88a7a52f410e697cd83599",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/delivery-green.txt",
+      "source_sha256": "32c20318ee09e3a87fec8349f1de68efcdd53092ff88a7a52f410e697cd83599",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/delivery-red.txt",
+      "bytes": 4390,
+      "sha256": "a6290f7a39162259eafdb24e47d0004d9ffb9227a7876342afeaa4014c0d6525",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/delivery-red.txt",
+      "source_sha256": "a6290f7a39162259eafdb24e47d0004d9ffb9227a7876342afeaa4014c0d6525",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/frontend-full.txt",
+      "bytes": 514,
+      "sha256": "803de346ab9fe47d78a978e68e2867624d6a1d27c24c4b3eea0e363b003668e2",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/frontend-full.txt",
+      "source_sha256": "803de346ab9fe47d78a978e68e2867624d6a1d27c24c4b3eea0e363b003668e2",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/rotation-backend-red.txt",
+      "bytes": 1475,
+      "sha256": "8faf2d0884661e8871945e87ec6dea5cf04b87a06dde7708713b8778bb7e4491",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/rotation-backend-red.txt",
+      "source_sha256": "8faf2d0884661e8871945e87ec6dea5cf04b87a06dde7708713b8778bb7e4491",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/rotation-red.txt",
+      "bytes": 2562,
+      "sha256": "62f0e839f0e9251f71cd0717be333d1d4daa5d7ef76f512834dffeb675c4f161",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/rotation-red.txt",
+      "source_sha256": "62f0e839f0e9251f71cd0717be333d1d4daa5d7ef76f512834dffeb675c4f161",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/typecheck.txt",
+      "bytes": 196,
+      "sha256": "eb754d6ac79de23737aef21224d3cfcbd5ae67ae509cb349b741c251ec87fcc4",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/typecheck.txt",
+      "source_sha256": "eb754d6ac79de23737aef21224d3cfcbd5ae67ae509cb349b741c251ec87fcc4",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/wire-probe-f009.json",
+      "bytes": 1047,
+      "sha256": "ee8eb7e5cff066097106f134f43b2aa579f44b5b456c1a2872e49df29d8a5aee",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/wire-probe-f009.json",
+      "source_sha256": "ee8eb7e5cff066097106f134f43b2aa579f44b5b456c1a2872e49df29d8a5aee",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/wire-probe-final.json",
+      "bytes": 1047,
+      "sha256": "cce69d0065b238d3ce560f39dba723f67db68031763a2c751abac658750d5860",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/wire-probe-final.json",
+      "source_sha256": "cce69d0065b238d3ce560f39dba723f67db68031763a2c751abac658750d5860",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/wire-probe-final.txt",
+      "bytes": 1106,
+      "sha256": "6cccae06c6465e68abe21f93832c829f525caaae4e2361d96a27c9b52c3a4a3a",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/wire-probe-final.txt",
+      "source_sha256": "6cccae06c6465e68abe21f93832c829f525caaae4e2361d96a27c9b52c3a4a3a",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/wire-probe.py",
+      "bytes": 1987,
+      "sha256": "f671c90f7aeaeca1e4bf41dabd8dd7309929e8699b4d9f05b85886a5a1095d7a",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/wire-probe.py",
+      "source_sha256": "f671c90f7aeaeca1e4bf41dabd8dd7309929e8699b4d9f05b85886a5a1095d7a",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "task-4-evidence/wire-server-final.txt",
+      "bytes": 1367,
+      "sha256": "9fb344e88c83c80be24df1dbcc3a4316051f96473f71565b135bcc868fd483b9",
+      "source_path": ".superpowers/sdd/2026-10-31-close-august-partials/task-4-evidence/wire-server-final.txt",
+      "source_sha256": "9fb344e88c83c80be24df1dbcc3a4316051f96473f71565b135bcc868fd483b9",
+      "transformation": "None; byte-identical copy.",
+      "category": "historical_solar_implementation_evidence"
+    },
+    {
+      "path": "frontend-suite.txt",
+      "bytes": 460,
+      "sha256": "8c7855102453ba86be9a5f34002d19e2cdb1b88ec3c65dde0af65fedcaa02919",
+      "nul_bytes": 0,
+      "category": "historical_integration_log",
+      "status": "Historical passing frontend run; predates final retained-API implementation.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "backend-suite.txt",
+      "bytes": 11035,
+      "sha256": "e46b0dd22dc6739b017ab68a30c665c71612d027b75160b8ace69c2e8939734d",
+      "nul_bytes": 0,
+      "category": "historical_integration_log",
+      "status": "Historical failed full backend run: 2 failed, 4493 passed, 13 skipped.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "backend-deadline-rerun.txt",
+      "bytes": 157,
+      "sha256": "88c2fb5a0cd46bb3b761f1cb347bee476a167bc0e29a6f5b80c3b35d37474c9c",
+      "nul_bytes": 0,
+      "category": "historical_integration_log",
+      "status": "Targeted unchanged-case rerun: 2 passed; not a full-suite pass.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "browser-matrix.txt",
+      "bytes": 11362,
+      "sha256": "9643c70ebbae77bbb67347e2b2630bab79341f6686f80363fbb5b712131fe540",
+      "nul_bytes": 1247,
+      "category": "historical_integration_log",
+      "status": "Interrupted original matrix with failures and NUL padding; no final successful result.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "browser-hardware.txt",
+      "bytes": 4615,
+      "sha256": "3aae7d520440b0c51b0f0eefd37c8cb9118c7c4bd95f71613a1702a686139ee6",
+      "nul_bytes": 0,
+      "category": "historical_integration_log",
+      "status": "Historical failed hardware qualification: 1 failed, 4 passed.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "browser-hardware-qualified.txt",
+      "bytes": 1395,
+      "sha256": "bdd3cc435fef063ca19e51302e1c7f4461730b1a601ced4c138767e197cb9501",
+      "nul_bytes": 0,
+      "category": "historical_integration_log",
+      "status": "Historical qualified NVIDIA RTX 5090 Chromium actual-app run: 5 passed.",
+      "transformation": "None; existing raw log preserved."
+    },
+    {
+      "path": "clean-install-nov01.txt",
+      "bytes": 140,
+      "sha256": "13bcfd91021faf4f75b9b735b453ebbdcd01ecbae230421ab6af1a3ae263a099",
+      "nul_bytes": 0,
+      "category": "completed_install_log",
+      "status": "Completed install output only: 51 added, 52 audited, zero reported vulnerabilities.",
+      "transformation": "None; existing raw log preserved."
+    }
+  ]
+}

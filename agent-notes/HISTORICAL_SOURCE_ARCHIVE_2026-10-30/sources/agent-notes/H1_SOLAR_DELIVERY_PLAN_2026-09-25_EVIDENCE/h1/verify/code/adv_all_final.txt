@@ -1,0 +1,125 @@
+
+ RUN  v3.2.4 /tmp/claude-1000/-home-nomad-ai-projects-repositories-solar-system-realistic-sim/3e06ef45-898e-459a-9e2c-307d6a081174/scratchpad/wt-notice-adv
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-1 dispose() while the no-cors probe is running > should not record a server failure, and should cancel the probe
+[ADV-1] probe aborted by dispose: [33mfalse[39m | lastFailure: "blocked" | consecutiveFailures: [33m1[39m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-2 dispose() while the 200 body is being read > should not record invalid-response
+[ADV-2] lastFailure after dispose mid-body: {"kind":"invalid-response","message":"Solar physics response was not valid JSON (AbortError: This operation was aborted)","httpStatus":null,"atMs":1790319681335}
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-3 dispose() while a 503 error body is being read > should not record busy
+[ADV-3] lastFailure after dispose mid-error-body: "busy"
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs and does not hang
+[HOLD-1] settled before timeout: [33mfalse[39m | kind: busy | msg: Solar physics request failed (503)
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-2 timeout firing while the probe runs > keeps the probe verdict (the TypeError came first) and is bounded by probe timeout
+[HOLD-2] settled after ms: [33m4000[39m | kind: unreachable
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite the newer success
+[HOLD-3] superseded probe signal aborted: [33mfalse[39m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-4 own-abort never misclassified > a supersede abort that surfaces as TypeError still starts a probe (extra request)
+[HOLD-4b] probes after a TypeError-shaped supersede abort: [33m1[39m | lastFailure: [1mnull[22m
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-4 payload shape check > a JSON array is accepted as a valid solar payload
+[ADV-4] [] accepted: [33mtrue[39m | latest: []
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-5 a CORS-refused origin is reported as a timeout while compute takes 8-10 s > the TypeError only arrives with the (slow) response, after our 2.6 s abort
+[ADV-5] disallowed origin + 9 s compute -> timeout
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > ADV-6 server-timeout (503 "timed out") cannot be observed with timeoutMs 2.6 s < server budget 12 s > the 503 arrives at 12 s, 9.4 s after the client gave up
+[ADV-6] server compute budget exhausted -> timeout
+
+stdout | src/frontend/features/solar/h1v-adv-client.test.ts > HOLD-6 no supersede re-check after the 200 body is read > a superseded request whose body still completes overwrites latest (only if the body ignores abort)
+[HOLD-6] superseded request returned [33mtrue[39m latest = {"activity_index":0.99,"stale":true}
+
+ ❯ src/frontend/features/solar/h1v-adv-client.test.ts (21 tests | 7 failed) 47ms
+   × ADV-1 dispose() while the no-cors probe is running > should not record a server failure, and should cancel the probe 11ms
+     → expected { kind: 'blocked', …(3) } to be null
+   × ADV-2 dispose() while the 200 body is being read > should not record invalid-response 4ms
+     → expected { kind: 'invalid-response', …(3) } to be null
+   × ADV-3 dispose() while a 503 error body is being read > should not record busy 2ms
+     → expected { kind: 'busy', …(3) } to be null
+   ✓ HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs and does not hang 4ms
+   ✓ HOLD-1 the timeout bounds a stalled error-detail body read > settles at timeoutMs when a 200 body stalls, and classifies as timeout 4ms
+   ✓ HOLD-2 timeout firing while the probe runs > keeps the probe verdict (the TypeError came first) and is bounded by probe timeout 1ms
+   ✓ HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite the newer success 2ms
+   ✓ HOLD-3 forced refresh superseding a request that is mid-probe > the old probe verdict does not overwrite a newer, different failure 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with DOMException AbortError (Chrome/Firefox/Safari default reason) 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with custom non-DOMException reason 1ms
+   ✓ HOLD-4 own-abort never misclassified > timeout -> timeout kind when fetch rejects with a TypeError as abort reason (hypothetical engine) 0ms
+   ✓ HOLD-4 own-abort never misclassified > a supersede abort that surfaces as TypeError still starts a probe (extra request) 1ms
+   ✓ HOLD-5 probe only after TypeError > timeout does not probe 3ms
+   ✓ HOLD-5 probe only after TypeError > 503 busy does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > 429 does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > 500 with CORS headers does not probe 1ms
+   ✓ HOLD-5 probe only after TypeError > invalid json does not probe 1ms
+   × ADV-4 payload shape check > a JSON array is accepted as a valid solar payload 2ms
+     → expected true to be false // Object.is equality
+   × ADV-5 a CORS-refused origin is reported as a timeout while compute takes 8-10 s > the TypeError only arrives with the (slow) response, after our 2.6 s abort 3ms
+     → expected 'timeout' to be 'blocked' // Object.is equality
+   × ADV-6 server-timeout (503 "timed out") cannot be observed with timeoutMs 2.6 s < server budget 12 s > the 503 arrives at 12 s, 9.4 s after the client gave up 1ms
+     → expected 'timeout' to be 'server-timeout' // Object.is equality
+   × HOLD-6 no supersede re-check after the 200 body is read > a superseded request whose body still completes overwrites latest (only if the body ignores abort) 1ms
+     → expected true to be false // Object.is equality
+stdout | src/h1v-adv-controller.test.ts > C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading
+[C1] before: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC 
+[C1] while replacement loads: Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+[C1] after: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image
+[C2] 20 live-region updates in 120 s, 10 image attempts. First 4:
+  Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image failed to load) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image
+[C3] 10 live-region updates in 10 min with nothing changing but the clock. e.g.
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:01 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:02 UTC
+  Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:03 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes
+[C4] 21 requests, 20 live-region updates, 20 console.warn in 120 s. First 3:
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+  Sun: procedural fallback (solar server busy, HTTP 503)
+  Sun: procedural fallback (solar server did not answer within 2.6 s)
+[C4] request start offsets (ms): 0, 6000, 12000, 18000, 24000, 30000, 36000, 42000, 48000, 54000, 60000, 66000
+
+stdout | src/h1v-adv-controller.test.ts > C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed
+[C5] after 304 loaded then 171 failed: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 171 image failed to load) · updated 14:00 UTC
+
+stdout | src/h1v-adv-controller.test.ts > C6 transitions > connecting -> error -> backend -> stale -> backend
+[C6] sequence:
+  connecting: Sun: procedural fallback (connecting to solar model server)
+  error: Sun: procedural fallback (solar server rate limit reached, HTTP 429)
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%) · updated 14:00 UTC
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+  stale: Sun: backend state from 14:00 UTC (refresh failing: solar server busy, HTTP 503)
+  backend: Sun: backend solar model (hybrid forcing, observations blended 41%; AIA 304 image) · updated 14:00 UTC
+[C6] console.warn calls: [
+  [32m'[solar] Sun: procedural fallback (solar server rate limit reached, HTTP 429)'[39m,
+  [32m'[solar] Sun: backend state from 14:00 UTC (refresh failing: solar server busy, HTTP 503)'[39m
+]
+
+ ❯ src/h1v-adv-controller.test.ts (7 tests | 5 failed) 10956ms
+   ✓ C0 initial publish (TDZ / construction order) > publishes connecting synchronously during construction, exactly once 7ms
+   × C1 image rotation drops the image from the text while the old image is still drawn > reports the displayed AIA image while its replacement is loading 255ms
+     → expected 'Sun: backend solar model (hybrid forc…' to contain 'AIA 304'
+   × C2 a persistently failing AIA image makes the live region flip-flop > counts text changes over 120 s of healthy physics with a failing image 1921ms
+     → expected 20 to be less than or equal to 3
+   × C3 healthy path: the "updated HH:MM" minute tick re-announces the whole chip > counts text changes over 10 minutes with a stable payload and image 8687ms
+     → expected 10 to be less than or equal to 1
+   × C4 flip-flopping failure kinds spam the live region and console.warn > alternating timeout / 503 busy over 2 minutes 12ms
+     → expected 20 to be less than or equal to 2
+   × C5 channel override fails while an earlier channel image is still drawn > text says only that the new channel failed 15ms
+     → expected 'Sun: backend solar model (hybrid forc…' to contain '304'
+   ✓ C6 transitions > connecting -> error -> backend -> stale -> backend 57ms
+
+ Test Files  2 failed (2)
+      Tests  12 failed | 16 passed (28)
+   Start at  03:01:20
+   Duration  11.76s (transform 301ms, setup 0ms, collect 468ms, tests 11.00s, environment 0ms, prepare 185ms)
+

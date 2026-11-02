@@ -52,7 +52,7 @@ function runChild(cli, args) {
 export async function runBrowserDiagnostic(scenario, args = process.argv.slice(2)) {
   const name = COMMANDS[scenario];
   if (!name) throw new Error('Unknown fixed browser diagnostic scenario.');
-  const usage = `Usage: node ${name} [--output EXISTING_PARENT] | --help | --list`;
+  const usage = `Usage: node scripts/run-browser-diagnostic.mjs ${scenario} [--output EXISTING_PARENT] | --help | --list`;
   if (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) {
     console.log(usage);
     return 0;
@@ -86,5 +86,16 @@ export async function runBrowserDiagnostic(scenario, args = process.argv.slice(2
   } catch (error) {
     console.error(`Cannot run ${name}: ${error.message}`);
     return 1;
+  }
+}
+
+// Maintained CLI for fixed diagnostics; retired root scratch commands stay retired.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [scenario, ...args] = process.argv.slice(2);
+  if (!Object.hasOwn(COMMANDS, scenario)) {
+    console.error('Usage: node scripts/run-browser-diagnostic.mjs <warp|scale|debug> [--output EXISTING_PARENT] | --help | --list');
+    process.exitCode = 2;
+  } else {
+    process.exitCode = await runBrowserDiagnostic(scenario, args);
   }
 }

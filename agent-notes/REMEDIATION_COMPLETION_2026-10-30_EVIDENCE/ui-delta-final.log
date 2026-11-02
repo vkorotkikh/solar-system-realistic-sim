@@ -1,0 +1,5 @@
+
+> solar-system-realistic-sim@0.0.0 typecheck:ui-delta
+> node scripts/check-ui-types.mjs
+
+UI type delta passed: 0 legacy diagnostics; no new or increased identities.

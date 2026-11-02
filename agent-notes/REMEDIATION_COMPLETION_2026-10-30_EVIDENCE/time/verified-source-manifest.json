@@ -1,0 +1,14 @@
+{
+  "worktree": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030",
+  "head": "ed70aea3ea46e4045adcee201492cdd9c12d14f9",
+  "originMain": "bb29d4be393c9dedca7049fc9b83511ed955be40",
+  "files": {
+    "backend/sim/solar_time.py": "32b9b3ca714fc66ad953a521ba4cc64f4c1053dc93fb49fc892363d3f3b1c11c",
+    "backend/server.py": "f313424e1b95b1b7b9211ca51f89681c034a30352db4a823427ece0628135004",
+    "backend/sim/solar_realtime_data.py": "78d9b1f608de91e2c3797c20eda0d77de68beb88edbdf5f7e4ca0715941d2a50",
+    "backend/tests/test_solar_time_contract.py": "9471eb1ba798b9e8eaa3bbee6c640548ecbfc1ea599ef5329606b0ddd0c65862",
+    "backend/tests/test_solar_time_ingress.py": "2524bc90098ee9c5b45cb2a76aa3ee6158244651dcaced6a14734d93389fff7a"
+  },
+  "sourceFreeze": false,
+  "providerPatchAppliedBy": "parent"
+}

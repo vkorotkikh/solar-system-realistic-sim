@@ -1,0 +1,10 @@
+{"t": 1790350316.903, "path": "/health", "origin": null, "status": 200, "acao": false, "mode": "array"}
+{"t": 1790350317.687, "path": "/solar/physics?jd=2461309.14799211&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350323.688, "path": "/solar/physics?jd=2461331.08028011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350331.685, "path": "/solar/physics?jd=2461363.07908011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350338.195, "path": "/solar/physics?jd=2461381.67828011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350346.183, "path": "/solar/physics?jd=2461413.61028011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350353.212, "path": "/solar/physics?jd=2461441.74268011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350359.274, "path": "/solar/physics?jd=2461466.00828011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350366.057, "path": "/solar/physics?jd=2461493.14028011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}
+{"t": 1790350372.801, "path": "/solar/physics?jd=2461512.07308011&fidelity=high&max_features=180&forcing=hybrid", "origin": "http://127.0.0.1:5191", "status": 200, "acao": true, "mode": "array"}

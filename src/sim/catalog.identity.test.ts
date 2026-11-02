@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { test, vi } from 'vitest';
 import { Vector3 } from 'three';
@@ -8,16 +7,16 @@ import { createSolarSystemCatalog, type RawMoonRecord, type SolarCatalog } from 
 import { buildModelWorkerCatalog, buildCatalogIndexContract } from '../workers/modelWorkerContract';
 import { propagateKeplerOrbit } from './orbitMath';
 
-// MOON-RUNTIME-PUCK /qa 2026-10-24: one runtime identity, distinct raw source models.
+// MOON-RUNTIME-PUCK: canonical PR22 source, one runtime body per exact identity.
 // Report: agent-notes/CONSOLIDATED_MARKDOWN_ISSUE_AUDIT_2026-10-24.md
 // Exact model compatibility only, not an independent astronomical accuracy certificate.
 const rawPath = new URL('../data/moons.json', import.meta.url);
 const rawBytes = readFileSync(rawPath);
 const raw = JSON.parse(rawBytes.toString('utf8')) as RawMoonRecord[];
-const RAW_SHA256 = '3fab19c00fd86b35bb262135eb048b4f0bd376d9dd8104da9416bb09bc96143a';
 const AU_KM = 149597870.7;
-const canonical = raw.find(row => row.id === 378)!;
-const alternate = raw.find(row => row.id === 388)!;
+const canonical = raw.find(row => row.id === 388)!;
+// Synthetic duplicate probes selection without reviving a retired source model.
+const alternate = { ...canonical, id: 90001, aKm: 90000, reference: 'owned alternate' };
 
 async function loadCatalog(rows: readonly unknown[]): Promise<typeof createSolarSystemCatalog> {
   vi.resetModules();
@@ -30,7 +29,7 @@ async function loadCatalog(rows: readonly unknown[]): Promise<typeof createSolar
   }
 }
 
-const projectedRows = raw.filter(row => row.id !== 388);
+const projectedRows = [...raw, alternate];
 const createProjected = await loadCatalog(projectedRows);
 const createCanonicalOnly = await loadCatalog([canonical]);
 const canonicalBody = createCanonicalOnly().bodies.find(body => body.type === 'moon')!;
@@ -41,22 +40,15 @@ const puckBodies = (catalog: SolarCatalog) => catalog.bodies.filter(body => body
 const fixtureCatalog = async (rows: readonly unknown[]) => (await loadCatalog(rows))();
 const sourceIdentity = (row: RawMoonRecord) => JSON.stringify([row.planet, row.iauCode]);
 
-test('raw424 keeps both distinct Puck source models and exactly423 physical identities', () => {
-  assert.equal(createHash('sha256').update(rawBytes).digest('hex'), RAW_SHA256);
-  assert.equal(raw.length, 424);
+test('raw423 contains unique physical identities and only Puck388/URA184', () => {
+  assert.equal(raw.length, 423);
   assert.equal(new Set(raw.map(sourceIdentity)).size, 423);
-  const groups = new Map<string, number[]>();
-  for (const row of raw) groups.set(sourceIdentity(row), [...(groups.get(sourceIdentity(row)) || []), row.id]);
-  assert.deepEqual([...groups].filter(([, ids]) => ids.length > 1), [['["Uranus","715"]', [378, 388]]]);
-  const provenance = (row: RawMoonRecord) => ({ id: row.id, planet: row.planet, iauCode: row.iauCode,
-    ephemeris: row.ephemeris, frame: row.frame, epochTdb: row.epochTdb, reference: row.reference,
-    aKm: row.aKm, e: row.e });
-  assert.deepEqual([canonical, alternate].map(provenance), [
-    { id: 378, planet: 'Uranus', iauCode: '715', ephemeris: 'URA182', frame: 'equatorial',
-      epochTdb: '2000-01-01.5', reference: '45', aKm: 86004, e: 0 },
+  assert.deepEqual(raw.filter(row => row.planet === 'Uranus' && row.iauCode === '715'), [canonical]);
+  assert.equal(raw.some(row => row.id === 378), false);
+  const { id, planet, iauCode, ephemeris, frame, epochTdb, reference, aKm, e } = canonical;
+  assert.deepEqual({ id, planet, iauCode, ephemeris, frame, epochTdb, reference, aKm, e },
     { id: 388, planet: 'Uranus', iauCode: '715', ephemeris: 'URA184', frame: 'Laplace',
-      epochTdb: '2025-01-01.0', reference: '10', aKm: 86007, e: 0.009 },
-  ]);
+      epochTdb: '2025-01-01.0', reference: '10', aKm: 86007, e: 0.009 });
 });
 
 test('runtime construction never mutates or removes raw provenance rows', async () => {
@@ -68,11 +60,11 @@ test('runtime construction never mutates or removes raw provenance rows', async 
   create({ moonsVisible: false });
   create({ moonsVisible: true });
   assert.deepEqual(owned, before);
-  assert.equal(createHash('sha256').update(readFileSync(rawPath)).digest('hex'), RAW_SHA256);
+  assert.deepEqual(readFileSync(rawPath), rawBytes);
 });
 
 for (const moonsVisible of [false, true]) {
-  test(`runtime has423 moons/433 total, not424 physical moons: visible=${moonsVisible}`, () => {
+  test(`runtime has423 moons/433 total: visible=${moonsVisible}`, () => {
     const catalog = runtime.get(moonsVisible)!;
     assert.equal(moonBodies(catalog).length, 423);
     assert.equal(catalog.bodies.length, 433);
@@ -86,20 +78,20 @@ for (const moonsVisible of [false, true]) {
     assert.equal(catalog.bodies.some(body => body.id === 'moon-uranus-puck-2'), false);
   });
 
-  test(`canonical Puck retains row378 source-model fields: visible=${moonsVisible}`, () => {
+  test(`canonical Puck retains row388 source-model fields: visible=${moonsVisible}`, () => {
     const body = puckBodies(runtime.get(moonsVisible)!)[0];
     assert.equal(body.id, 'moon-uranus-puck');
-    assert.equal(body.reference, '45');
-    assert.equal(body.orbitFrameSource, 'equatorial');
-    assert.equal(body.orbit!.aAu, 86004 / AU_KM);
-    assert.equal(body.orbit!.epochJd, 2451545);
-    assert.equal(body.orbit!.e, 0);
-    assert.equal(body.orbit!.meanAnomalyDeg, 50.1);
+    assert.equal(body.reference, '10');
+    assert.equal(body.orbitFrameSource, 'laplace');
+    assert.equal(body.orbit!.aAu, 86007 / AU_KM);
+    assert.equal(body.orbit!.epochJd, 2460676.5);
+    assert.equal(body.orbit!.e, 0.009);
+    assert.equal(body.orbit!.meanAnomalyDeg, 264.1);
     assert.equal(body.orbit!.ephemeris, undefined);
     assert.deepEqual(body, canonicalBody);
   });
 
-  test(`surviving runtime body objects equal explicit row388-free projection: visible=${moonsVisible}`, () => {
+  test(`later duplicate does not change surviving runtime body objects: visible=${moonsVisible}`, () => {
     // The same strict structural comparison, with a bounded diagnostic rather
     // than printing two complete 400-body catalogs on the expected RED run.
     assert.equal(isDeepStrictEqual(runtime.get(moonsVisible)!.bodies, projected.get(moonsVisible)!.bodies), true);
@@ -142,7 +134,7 @@ for (const includeMoons of [false, true]) {
   });
 }
 
-test('reversed source rows cannot silently replace preferred row378 with row388', async () => {
+test('reversed canonical source rows preserve the Puck388 model', async () => {
   const catalog = await fixtureCatalog([...raw].reverse());
   const body = puckBodies(catalog)[0];
   assert.deepEqual(body, canonicalBody);
@@ -195,7 +187,7 @@ test('optional fitted lookup retains lowercase puck key without inventing a fit'
 });
 
 for (const jd of [2451545, 2457023.5, 2461041.5]) {
-  test(`canonical fallback state stays exactly row378-compatible at JDTDB ${jd}`, () => {
+  test(`canonical fallback state stays exactly row388-compatible at JDTDB ${jd}`, () => {
     const body = puckBodies(runtime.get(false)!)[0];
     const actualP = new Vector3(), actualV = new Vector3(), expectedP = new Vector3(), expectedV = new Vector3();
     assert.equal(propagateKeplerOrbit(body.orbit!, jd - body.orbit!.epochJd, actualP, actualV), true);
@@ -206,7 +198,7 @@ for (const jd of [2451545, 2457023.5, 2461041.5]) {
 }
 
 // Independent review supplement: approved source-selection safety, not accuracy.
-// The original31 assertions above retain their oracles; fixture imports are asynchronous.
+// Fixture imports remain isolated; malformed identities are not normalized.
 test('review opaque nonblank whitespace in an IAU code is not normalized', async () => {
   const other = { ...canonical, id: 1002, iauCode: ' 715 ' };
   const bodies = moonBodies(await fixtureCatalog([canonical, other]));
@@ -225,19 +217,16 @@ for (const [label, iauCode] of [['number', 715], ['boolean', true]]) {
   });
 }
 
-for (const [label, rows] of [
-  ['missing', [alternate]],
-  ['changed ephemeris', [{ ...canonical, ephemeris: 'OWNED-CHANGED' }, alternate]],
-  ['changed source row ID', [{ ...canonical, id: 1001 }, alternate]],
+for (const [label, row] of [
+  ['canonical only', canonical],
+  ['changed ephemeris', { ...canonical, ephemeris: 'OWNED-CHANGED' }],
+  ['changed source row ID', { ...canonical, id: 1001 }],
 ] as const) {
-  test(`review known Uranus/715 fails closed when preferred source is ${label}`, async () => {
-    // Pin a deliberate source-selection error, not incidental range/typing failure.
-    await assert.rejects(() => fixtureCatalog(rows), error =>
-      error instanceof Error &&
-      !(error instanceof RangeError) &&
-      !(error instanceof TypeError) &&
-      /Puck/i.test(error.message) &&
-      /URA182/.test(error.message));
+  test(`review Puck admission does not depend on a retired source selector: ${label}`, async () => {
+    const body = puckBodies(await fixtureCatalog([row]))[0];
+    assert.equal(body.sourceId, '715');
+    assert.equal(body.orbit!.aAu, row.aKm / AU_KM);
+    assert.equal(body.reference, row.reference);
   });
 }
 
@@ -248,21 +237,21 @@ test('review a catalog without the known Puck identity needs no preferred source
   assert.equal(catalog.bodies.length, 11);
   assert.equal(bodies.length, 1);
   assert.equal(bodies[0].name, 'Owned other moon');
-  assert.equal(bodies[0].orbit!.aAu, 86004 / AU_KM);
-  assert.equal(bodies[0].reference, '45');
+  assert.equal(bodies[0].orbit!.aAu, 86007 / AU_KM);
+  assert.equal(bodies[0].reference, '10');
 });
 
-test('review unresolved parents remain skipped without triggering the Puck source guard', async () => {
+test('review unresolved parents remain skipped without creating an unresolved moon', async () => {
   const catalog = await fixtureCatalog([{ ...alternate, planet: 'Owned unknown parent' }]);
   assert.equal(catalog.bodies.length, 10);
   assert.equal(moonBodies(catalog).length, 0);
 });
 
-// Root-approved selected-record order control; original39 above remains unchanged.
-test('review preferred source retains its own selected-record position', async () => {
+// Exact duplicate identities retain their first selected source position.
+test('review first-selected source retains its own position', async () => {
   const before = { ...canonical, id: 1001, name: 'Owned before', iauCode: 'owned-before' };
   const after = { ...canonical, id: 1002, name: 'Owned after', iauCode: 'owned-after' };
-  const catalog = await fixtureCatalog([alternate, before, canonical, after]);
+  const catalog = await fixtureCatalog([before, canonical, after, alternate]);
   assert.deepEqual(moonBodies(catalog).map(body => body.name), ['Owned before', 'Puck', 'Owned after']);
   assert.deepEqual(puckBodies(catalog)[0], canonicalBody);
 });

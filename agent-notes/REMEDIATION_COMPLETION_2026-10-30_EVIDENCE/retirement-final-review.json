@@ -1,0 +1,509 @@
+{
+  "status": "APPROVED_EXACT_25_SCOPED_RETIREMENTS",
+  "reviewedAtUtc": "2026-10-30T06:25:30.389027+00:00",
+  "applicationCodeHead": "09421c9b379debb9c944fc60ec8a0b67bd07cff4",
+  "manifest": {
+    "path": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/agent-notes/REMEDIATION_COMPLETION_2026-10-30_EVIDENCE/note-retirement.json",
+    "sha256": "7105ad030e9d66ff10e5a2d4e85dc24149da11789ceba6bae8d458604d331095",
+    "stateReviewed": "PREPARED_FOR_FINAL_INDEPENDENT_REVIEW"
+  },
+  "approvedCount": 25,
+  "approvedList": [
+    "REMEDIATION_75052_REFERENCE_2026-10-14.md",
+    "REMEDIATION_AIA_EPOCH_COVERAGE_2026-10-14.md",
+    "REMEDIATION_ASTEROID_RESIDUALS_2026-10-14.md",
+    "REMEDIATION_ASTEROID_TIME_2026-10-14.md",
+    "REMEDIATION_CATALOGS_2026-10-14.md",
+    "REMEDIATION_CATALOG_MAPPING_2026-10-17.md",
+    "REMEDIATION_DELIVERY_2026-10-14.md",
+    "REMEDIATION_EPHEMERIS_2026-10-14.md",
+    "REMEDIATION_EVENTS_2026-10-14.md",
+    "REMEDIATION_FORMAT_2026-10-14.md",
+    "REMEDIATION_HARDWARE_2026-10-14.md",
+    "REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+    "REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md",
+    "REMEDIATION_MISSION_2026-10-14.md",
+    "REMEDIATION_NATIVE_TUDAT_2026-10-14.md",
+    "REMEDIATION_PLANETS_2026-10-14.md",
+    "REMEDIATION_RUNTIME_2026-10-14.md",
+    "REMEDIATION_RUNTIME_CLIENT_2026-10-14.md",
+    "REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+    "REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md",
+    "REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md",
+    "REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md",
+    "REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md",
+    "REMEDIATION_STARTUP_CPU_2026-10-15.md",
+    "REMEDIATION_TOOLCHAIN_2026-10-14.md"
+  ],
+  "approvedTopLevelTargets": [
+    "agent-notes/REMEDIATION_75052_REFERENCE_2026-10-14.md",
+    "agent-notes/REMEDIATION_AIA_EPOCH_COVERAGE_2026-10-14.md",
+    "agent-notes/REMEDIATION_ASTEROID_RESIDUALS_2026-10-14.md",
+    "agent-notes/REMEDIATION_ASTEROID_TIME_2026-10-14.md",
+    "agent-notes/REMEDIATION_CATALOGS_2026-10-14.md",
+    "agent-notes/REMEDIATION_CATALOG_MAPPING_2026-10-17.md",
+    "agent-notes/REMEDIATION_DELIVERY_2026-10-14.md",
+    "agent-notes/REMEDIATION_EPHEMERIS_2026-10-14.md",
+    "agent-notes/REMEDIATION_EVENTS_2026-10-14.md",
+    "agent-notes/REMEDIATION_FORMAT_2026-10-14.md",
+    "agent-notes/REMEDIATION_HARDWARE_2026-10-14.md",
+    "agent-notes/REMEDIATION_HORIZONS_TRANSPORT_2026-10-14.md",
+    "agent-notes/REMEDIATION_LIFECYCLE_OWNERSHIP_REVIEW_2026-10-14.md",
+    "agent-notes/REMEDIATION_MISSION_2026-10-14.md",
+    "agent-notes/REMEDIATION_NATIVE_TUDAT_2026-10-14.md",
+    "agent-notes/REMEDIATION_PLANETS_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_CLIENT_2026-10-14.md",
+    "agent-notes/REMEDIATION_RUNTIME_REVIEW_2026-10-14.md",
+    "agent-notes/REMEDIATION_SCN049_KUIPER_REACTIVATION_2026-10-15.md",
+    "agent-notes/REMEDIATION_SOLAR_FRAME_REVIEW_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN041_DEGREE90_2026-10-14.md",
+    "agent-notes/REMEDIATION_SOLAR_SCN049_NUMERICAL_POLICY_2026-10-14.md",
+    "agent-notes/REMEDIATION_STARTUP_CPU_2026-10-15.md",
+    "agent-notes/REMEDIATION_TOOLCHAIN_2026-10-14.md"
+  ],
+  "remainingCount": 20,
+  "remaining": [
+    {
+      "filename": "REMEDIATION_ACCESSIBILITY_2026-10-14.md",
+      "openGates": [
+        "accessibility-manual"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_CATALOG_STARTUP_2026-10-14.md",
+      "openGates": [
+        "startup"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_CLOSURE_CHECKPOINT_6539902_2026-10-15.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_CLOSURE_PLAN_2026-10-15.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_DEPLOYMENT_2026-10-14.md",
+      "openGates": [
+        "deployed-auth-tls"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_EFFORT_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "operational-architecture",
+        "deployed-auth-tls",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "agn-render",
+        "event-capacity"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_INTEGRATION_CHECKPOINT_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_INTEGRATION_CHECKPOINT_A51BEBC_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_OPERATIONAL_2026-10-14.md",
+      "openGates": [
+        "operational-architecture",
+        "deployed-auth-tls"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_PROVENANCE_2026-10-14.md",
+      "openGates": [
+        "license"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_SOLAR_2026-10-14.md",
+      "openGates": [
+        "solar-full-science",
+        "solar-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_SOLAR_SCN041_COMPARISON_2026-10-14.md",
+      "openGates": [
+        "solar-full-science"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_SOLAR_SCN042_FRAMES_2026-10-14.md",
+      "openGates": [
+        "solar-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_SOLAR_SCN042_PRODUCTION_2026-10-14.md",
+      "openGates": [
+        "solar-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_SOLAR_WIND_OVERLAP_2026-10-14.md",
+      "openGates": [
+        "solar-full-science"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_STARTUP_WARMUP_2026-10-17.md",
+      "openGates": [
+        "startup"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_VERIFICATION_CHECKPOINT_4728428_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_VERIFICATION_CHECKPOINT_4B55DFF_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_VERIFICATION_CHECKPOINT_4F2E250_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    },
+    {
+      "filename": "REMEDIATION_WAVE3_2026-10-14.md",
+      "openGates": [
+        "startup",
+        "accessibility-manual",
+        "license",
+        "solar-full-science",
+        "solar-render",
+        "deployed-auth-tls",
+        "event-capacity",
+        "operational-architecture",
+        "agn-render"
+      ]
+    }
+  ],
+  "historicalSourceRetained": [
+    "REMEDIATION_SCN049_BROWSER_ACCEPTANCE_2026-10-17.md"
+  ],
+  "blocks": [],
+  "missingFacts": [],
+  "verification": {
+    "uniqueFinalReceiptPathsAndHashesRecomputed": 37,
+    "receiptFailures": [],
+    "sourceFilesRehashed": 1472,
+    "sourceIdentityScopeMatchesTrackedPathSet": true,
+    "sourceMismatches": [],
+    "finalSourceIdentitySha256": "cf5970489f02632d5f924912f187dc71c9dda583158f2e3797630f47c03afafe",
+    "lockfileSha256": "6f54638d28e8ed20cb8e036a52ca75f1c0687594af7bd82f3f123edcd6182702",
+    "packageJsonSha256": "2f1de6751bd4bf97440977c77b1345b60e6c072b861bf7663b86decf1b083693",
+    "backendAndScienceInputsUnchangedSinceRecordedRun": true,
+    "twoActualBuildTreesRehashed": {
+      "oldFileCount": 431,
+      "finalFileCount": 431,
+      "changedFiles": [
+        "index.html"
+      ],
+      "exactMarkupDelta": "Two role=\"group\" additions only; JS/CSS/public files byte-identical."
+    },
+    "browserResultsRead": {
+      "browser-chromium-after-aria.json": {
+        "passed": 54,
+        "skipped": 1,
+        "failed": 0,
+        "flaky": 0
+      },
+      "browser-native-final.json": {
+        "passed": 4,
+        "skipped": 0,
+        "failed": 0,
+        "flaky": 0
+      },
+      "accessibility-aria-green.json": {
+        "passed": 5,
+        "skipped": 0,
+        "failed": 0,
+        "flaky": 0
+      },
+      "accessibility-firefox-final.json": {
+        "passed": 5,
+        "skipped": 0,
+        "failed": 0,
+        "flaky": 0
+      },
+      "accessibility-webkit-final.json": {
+        "passed": 5,
+        "skipped": 0,
+        "failed": 0,
+        "flaky": 0
+      }
+    },
+    "singleChromiumHiddenTabSkipMatchedDedicatedNativePass": true,
+    "defaultNativeSkipsMatchedFreshNativePasses": 12,
+    "physicalPlanetRawReports": {
+      "flat": {
+        "cases": 12,
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "rawReport": "planet-hardware-flat-final.log",
+        "summaryAndRawAgree": true
+      },
+      "relief": {
+        "cases": 12,
+        "renderer": "ANGLE (Microsoft Corporation, D3D12 (NVIDIA GeForce RTX 5090), OpenGL 4.6)",
+        "rawReport": "planet-hardware-relief-final.log",
+        "summaryAndRawAgree": true
+      }
+    },
+    "planetHarnessScope": "Only unattended-launch flags and bounded diagnostics/timer cleanup changed; original20s startup deadline and geometry assertions preserved. No AGN requirement on HARDWARE.",
+    "coldDelivery": "Both DEV and PREVIEW actual reports pass11/11 physics,3/3 realtime,11 uniform/activity matches at original budgets; final build equivalence verified.",
+    "frontend": "1672 recorded passes, two original optional skips covered by separate two-pass GPU lane; strict types/build/audit records have zero exit codes.",
+    "all46RequiredGateSetsMatchIndependentScopeReview": true,
+    "aggregateNotes": {
+      "count": 9,
+      "childrenRetainedPerAggregate": 12
+    },
+    "childGateFieldInterpretation": "For DELIVERY and EVENTS, reviewedRequiredGates contains the approved corrected slice; legacy requiredGates retains the older mapping for provenance. Broad aggregate children remain unchanged.",
+    "ephemerisAndMission": "Earlier independent full-original-scope approval retained; final receipts/source identities now verified. No further scope reduction."
+  },
+  "boundaries": [
+    "Approval is for these exact top-level notes at the reviewed construction source and manifest hash. No main/remote landing, deployment or broader canonical completion is inferred.",
+    "Retain all20 incomplete notes and the one immutable historical-only source. Startup performance, manual AT/touch/OS resizing/gradient contrast, deployed TLS/auth, third-party rights, broad solar/AGN rendering/science, event capacity and architecture remain open as recorded.",
+    "Prior native screenshot/startup failures and the hardware unattended-launch diagnosis remain historical evidence; later recorded passes do not rewrite them."
+  ],
+  "readOnlyReview": {
+    "repositoryEdits": false,
+    "commits": false,
+    "deletions": false,
+    "browserLaunches": false,
+    "subagents": false,
+    "broadTests": false,
+    "onlyOutputWritten": "/tmp/solar-remediation-completion-20261030/retirement-final-review.json",
+    "repositoryStatusUnchangedDuringValidation": true
+  },
+  "receiptHashes": [
+    {
+      "path": "../artifacts/events-scn042/after/result.json",
+      "sha256": "1960086d786769c85982701b2368ade3bd53c1682cbe9ea0160f13ba92b43f36"
+    },
+    {
+      "path": "accessibility-aria-green.json",
+      "sha256": "2b05ab2dbebefe87950feab7884a9b412c8906dbf8bbda48fbff122df08161da"
+    },
+    {
+      "path": "accessibility-firefox-final.json",
+      "sha256": "2a92019eb09f621d0833d920bf8903e7dfbe0fda4fc396d4fb9861c5e2fa3fa2"
+    },
+    {
+      "path": "accessibility-webkit-final.json",
+      "sha256": "c2caf18b92ca949a0d81b36dbde01d7930d853d15968397653ba622b487a6ca7"
+    },
+    {
+      "path": "after-aria-checks.json",
+      "sha256": "f92b8b709ea66de19ff186f42b482ba1fd7a08e321eede6b72c8a6d79140ab62"
+    },
+    {
+      "path": "asteroid-hardware-final.log",
+      "sha256": "6332ec12c17d1f8d6045244acdf24a0a75a16fcb14552dd932421871d843562b"
+    },
+    {
+      "path": "backend-final.xml",
+      "sha256": "e9aca9bff1f9ae7612757a77079ea3da58f260e1a8198028682f6fd6ae02c70a"
+    },
+    {
+      "path": "browser-chromium-after-aria.json",
+      "sha256": "7725ae93f75697a0b1b370a63a8b66894b1e8bd076c90404611b07bb295e757b"
+    },
+    {
+      "path": "browser-native-final.json",
+      "sha256": "656cb17912faa5eb2badf6c05168da5074e894ec4fef546cf8ba41148ef83cd5"
+    },
+    {
+      "path": "delivery-dev/report.json",
+      "sha256": "eb78fdd1b64324fba2ee225685e5ba3d3f789ad6b23d9433a34b12cfd62817ac"
+    },
+    {
+      "path": "delivery-preview/report.json",
+      "sha256": "5fd097ba3acd5ad22bba1cd6728d910db6a11a7dbaeb79215333d2fe76e485e7"
+    },
+    {
+      "path": "final-source-identity.json",
+      "sha256": "cf5970489f02632d5f924912f187dc71c9dda583158f2e3797630f47c03afafe"
+    },
+    {
+      "path": "final-verified-checks.json",
+      "sha256": "aaab123c4693cae6a9049a8fc35e2ab64186f39b06e7484e8206233ab2f91714"
+    },
+    {
+      "path": "frontend-final-verified.json",
+      "sha256": "4acbce98c52ed03357b57765a4562d6e0efc85f1414f38cf2c7053a68005c6fc"
+    },
+    {
+      "path": "moon-encoding-green.json",
+      "sha256": "b3bc7a7dc6a1c3f275c8db1d88674c8aaabe1278280df095fc340fe7d33ac282"
+    },
+    {
+      "path": "moon-independent-followup.json",
+      "sha256": "000132822796113027b49b2ee115e6a43e7039f42a82524ac21d31f06a43c61a"
+    },
+    {
+      "path": "moons-result.json",
+      "sha256": "a54e7636c218aa250e56fba0438e757f1422760e9ba3968e66038983ab1027e6"
+    },
+    {
+      "path": "moons/python-junit.xml",
+      "sha256": "9fb7c4f4a2979c47658184495a7baf0ad91f20f77777f700406e98d545490cf9"
+    },
+    {
+      "path": "moons/source-audit.json",
+      "sha256": "d31a380c5fa6599ca9c80d8388bfb247265e6799a2c35a532834b842641c4ca3"
+    },
+    {
+      "path": "owner-decisions.json",
+      "sha256": "7568e546b46136026f6e4ad4c6874fc6b90c63951e7fe639025bf9ca78d33bbe"
+    },
+    {
+      "path": "planet-gpu-final.json",
+      "sha256": "4e2b82a2f477a4a0f770d0207f8a0ba4411d8b76b88df742782c3a0a1f31db6d"
+    },
+    {
+      "path": "planet-hardware-flat-final.log",
+      "sha256": "4cef0e30e8e6aef7bb9998e043aa577fdf92b8efaf22afc72e811a643e378cf7"
+    },
+    {
+      "path": "planet-hardware-relief-final.log",
+      "sha256": "e2436ae366491fc2af982f38c283893922d48681c27825bc3aacc8f1eb86e2cc"
+    },
+    {
+      "path": "planet-hardware-summary.json",
+      "sha256": "f316acf4730ecbe024876947cffc994d750e3a2279bef1b7c761c7dc2e8eb3da"
+    },
+    {
+      "path": "production-build-after-aria-equivalence.json",
+      "sha256": "9d86882d3c24f40c8a3b80f52de106e90f21d2c9a0e419dfb1b564c01cf82cb6"
+    },
+    {
+      "path": "retirement-independent-review.json",
+      "sha256": "824e21e7968b608211fcd628e97fcd25d805593a3047db9e4e0f0dee19f6dfa2"
+    },
+    {
+      "path": "science-final/summary.json",
+      "sha256": "6ec0e9e53399795bb9451bc8e3ad3063d6d710f4fc715adff2880d53ec85bbc4"
+    },
+    {
+      "path": "solar-main-frame-final/results.json",
+      "sha256": "f9929c260412e7f99a072f48b20047a98aa58a187e431f566832a2939dcded85"
+    },
+    {
+      "path": "solar-result.json",
+      "sha256": "00248c099464b8a9bd98954170c420dae00a98a87b40a6bf3b0b3fe80c504c17"
+    },
+    {
+      "path": "solar-time-client-independent-review.json",
+      "sha256": "87d9ffee4e00fabc155f242922e9db660047730ccdd9cfc322829ca102957ec6"
+    },
+    {
+      "path": "startup/final-quiet-dev.json",
+      "sha256": "e2e95fc89568797e7ad332a50340211ca5e9a7a7e4e595b45256ad77fa286b4c"
+    },
+    {
+      "path": "startup/final-quiet-preview.json",
+      "sha256": "694e6af69fd65362d2658fdbb8e1222ccc421e418ce7ae86e5929d7f3f4bb633"
+    },
+    {
+      "path": "time-result.json",
+      "sha256": "0cd34ce4a32148bf7598e008999b7170c1229b0c689114a487a042e159e17363"
+    },
+    {
+      "path": "time/verified-source-manifest.json",
+      "sha256": "189ab1e321e7f1de069e315139130cf467dbac9a29d33f6f242ac765e1f1efd6"
+    },
+    {
+      "path": "tudat-epoch.xml",
+      "sha256": "7f1c1d214665de5991dbb516c78ae967bc106e78969f455b4da9bbde975bbbd2"
+    },
+    {
+      "path": "tudat-native.xml",
+      "sha256": "2f983c76a953035dd065756559d913315a9573fa196b27cde79be8cb960a7126"
+    },
+    {
+      "path": "tudat-versions.json",
+      "sha256": "36529209c9b198f25b9e6171b769ec0343f41fc6da16876ce8079bde19050191"
+    }
+  ]
+}

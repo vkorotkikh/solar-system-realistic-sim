@@ -1,0 +1,217 @@
+{
+  "kind": "bounded fault probe; renderer double plus real OrbitControls; actual extracted createSceneSetup",
+  "sourceSha256": "7984f156fc8c0b8a83dd75b3506dadb7fd52db23e17edd1cf71d2437d5e4191e",
+  "sourcePath": "/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/src/frontend/app/sceneSetup.ts",
+  "currentPassed": 7,
+  "baselineLeaksReproduced": 6,
+  "currentResults": [
+    {
+      "phase": "pixel-ratio",
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 0,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "pixel-ratio",
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 0,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": false,
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "controls",
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": false,
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "controls",
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": true,
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "controls",
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": true,
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "controls",
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "healthy",
+      "controlsThrow": false,
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [
+        "controls",
+        "renderer"
+      ],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    }
+  ],
+  "baselineResults": [
+    {
+      "phase": "pixel-ratio",
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 0,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "pixel-ratio",
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 0,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "renderer"
+      ],
+      "canvasListenersRemaining": 0,
+      "documentListenersRemaining": 0
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": false,
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 4,
+      "documentListenersRemaining": 1
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": false,
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 4,
+      "documentListenersRemaining": 1
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": true,
+      "rendererThrows": false,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 4,
+      "documentListenersRemaining": 1
+    },
+    {
+      "phase": "controls-config",
+      "controlsThrow": true,
+      "rendererThrows": true,
+      "rendererCount": 1,
+      "controlCount": 1,
+      "originalErrorPreserved": true,
+      "disposals": [],
+      "expectedDisposals": [
+        "controls",
+        "renderer"
+      ],
+      "canvasListenersRemaining": 4,
+      "documentListenersRemaining": 1
+    }
+  ]
+}

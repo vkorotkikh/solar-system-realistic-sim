@@ -20,6 +20,36 @@ class EpisodeRunRecord:
     timing_ms: float
     error: str | None = None
     decision_payload: dict[str, Any] | None = None
+    expected_outcome: str = "verified"
+
+    def as_dict(self) -> dict[str, Any]:
+        payload = self.decision_payload or {}
+        alternatives = payload.get("alternatives")
+        candidates = [payload.get("recommendation"), *(alternatives if isinstance(alternatives, list) else [])]
+        candidate_reasons = set()
+        for candidate in candidates:
+            verification = candidate.get("verification") if isinstance(candidate, dict) else None
+            reasons = verification.get("reasons") if isinstance(verification, dict) else None
+            if isinstance(reasons, list):
+                candidate_reasons.update(reason for reason in reasons if isinstance(reason, str))
+        pending = [payload.get("trajectorySearch") or {}, *[
+            candidate.get("trajectorySearch") or {} for candidate in candidates if isinstance(candidate, dict)]]
+        terminations = set()
+        while pending:
+            node = pending.pop()
+            if isinstance(node, dict):
+                if node.get("terminationReason"):
+                    terminations.add(str(node["terminationReason"]))
+                pending.extend(node.values())
+            elif isinstance(node, list):
+                pending.extend(node)
+        diagnostics = {"candidateVerificationReasons": sorted(candidate_reasons),
+                       "searchTerminationReasons": sorted(terminations)}
+        if payload.get("error"):
+            diagnostics["requestRejection"] = payload["error"]
+        return {"episodeId": self.episode_id, "expectedOutcome": self.expected_outcome,
+                "status": self.status, "passed": self.verifier_passed,
+                "reasons": self.reasons, "diagnostics": diagnostics, "error": self.error}
 
 
 @dataclass
@@ -70,6 +100,7 @@ class EpisodeFamilyMetrics:
             "exception_count": self.exception_count,
             "average_score": self.average_score,
             "reason_counts": dict(self.reason_counts),
+            "episodes": [record.as_dict() for record in self.records],
         }
 
 

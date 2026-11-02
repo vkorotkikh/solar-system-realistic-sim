@@ -1,0 +1,18 @@
+WARN `--no-project` was provided, but no project was found
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ test_sampled_surface_declares_the_actual_sidereal_rotation_profile ______
+
+    def test_sampled_surface_declares_the_actual_sidereal_rotation_profile():
+        state = SolarCoronaPhysicsModel(seed=17, base_tube_count=64).sample_state(
+            2460000.5, fidelity='preview', max_features=8, forcing='synthetic')
+        surface = state['surface']
+>       assert surface.get('differential_rotation_coefficients_deg_day') == [14.713, -2.396, -1.787]
+E       AssertionError: assert None == [14.713, -2.396, -1.787]
+E        +  where None = <built-in method get of dict object at 0x7e55ec03cfc0>('differential_rotation_coefficients_deg_day')
+E        +    where <built-in method get of dict object at 0x7e55ec03cfc0> = {'differential_rotation_model': 'snodgrass_ulrich_1990', 'activity_cycle_model': 'hathaway_2015_normalized', 'activity...': 54.0, 'c_asymmetry': 0.71, 'reference_cycle_start_jd': 2458849.5}, 'estimated_equatorial_rotation_days': 24.47, ...}.get
+
+backend/tests/test_solar_rotation_profile.py:12: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_solar_rotation_profile.py::test_sampled_surface_declares_the_actual_sidereal_rotation_profile
+1 failed in 1.63s

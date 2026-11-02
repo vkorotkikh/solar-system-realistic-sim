@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { createBodyIdResolver } from '../src/frontend/app/stateStore';
+import { updateBodyLabel } from '../src/frontend/app/sceneAnnotations';
 import fs from 'node:fs';
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +27,7 @@ const end = statements.indexOf(fn('createBodyNode'));
 assert.ok(begin >= 0 && end > begin);
 const bodySource = statements.slice(begin, end + 1).map(text).join('\n');
 const radiusSource = text(fn('bodyBaseRadiusAu'));
+const labelSource = [variable('labelWorldPosition'), fn('updateLabels')].map(text).join('\n');
 const lifecycle = variable('frameLifecycle').declarationList.declarations[0].initializer;
 assert.ok(ts.isCallExpression(lifecycle) && ts.isObjectLiteralExpression(lifecycle.arguments[0]));
 const stages = lifecycle.arguments[0].properties.find(p => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'stages');
@@ -42,7 +43,6 @@ const initializationSource = statements.slice(initBegin, initEnd).map(text).join
 const initialTry = statements.find(n => ts.isTryStatement(n) && text(n).includes('await warmupRenderer(') && text(n).includes('frameLifecycle.start();'));
 assert.ok(initialTry, 'actual warmup/render/start try block exists');
 const initialTrySource = text(initialTry);
-console.log(JSON.stringify({ sourceSha256: crypto.createHash('sha256').update(source).digest('hex'), slices: Object.fromEntries(Object.entries({ bodySource, radiusSource, stageSource, assembly: text(assembly), initializationSource, initialTrySource }).map(([k,v]) => [k, crypto.createHash('sha256').update(v).digest('hex')])) }));
 
 function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'owned-label-planet', isMajor = false } = {}) {
   const noop = () => {};
@@ -59,12 +59,11 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
   const draws = [];
   let runtime;
   const milestones = [];
-  let releaseCatalog, releaseWarmup, announceWarmup;
-  const catalogReady = new Promise(resolve => { releaseCatalog = resolve; });
+  let releaseWarmup, announceWarmup;
   const warmupReady = new Promise(resolve => { releaseWarmup = resolve; });
   const warmupEntered = new Promise(resolve => { announceWarmup = resolve; });
   const startup = { signal: { aborted: false } };
-  const renderer = { render() {
+  const renderer = { domElement: { clientHeight: 900 }, render() {
     milestones.push('render');
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
     const label = runtime.labels[0]?.sprite;
@@ -73,30 +72,30 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
       label: label.getWorldPosition(new THREE.Vector3()).project(camera),
       body: node.getWorldPosition(new THREE.Vector3()).project(camera),
       cameraDelta: label.getWorldPosition(new THREE.Vector3()).applyMatrix4(camera.matrixWorldInverse).sub(node.getWorldPosition(new THREE.Vector3()).applyMatrix4(camera.matrixWorldInverse)),
-      magnitude: label.position.length(), scale: label.scale.toArray(),
+      ...labelMetrics(label, node, camera, realistic ? body.realRadiusAu : body.displayRadiusAu, renderer.domElement.clientHeight),
     });
   } };
-  const bindings = { ...THREE, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
+  const bindings = { ...THREE, updateBodyLabel, updateZoomStatus: noop, ownDisposable, geometryCache, simState, camera, scene, solarSystemGroup,
     isEarthMoonBody: createBodyIdResolver({ bodies: [body] }).isEarthMoonBody,
     document: { createElement: () => ({ width: 0, height: 0, getContext: () => null }) },
     BODY_LOCAL_SPIN_AXIS: new THREE.Vector3(0, 1, 0), PLANET_COLORS: {}, sunTexture: null,
-    catalog: { bodies: [body] }, showMoons: true,
+    catalog: { bodies: [body] }, bodyById: new Map([[body.id, body]]), showMoons: true,
     sunCtrl: { createSunMaterial: () => null, initSunVisuals: noop, update: noop, getWarpState: () => null, maybeRefreshPhysics: noop },
     timeController: { advanceLocalTime: noop, updateHud: noop }, updateModelState: noop, updateBodyRotations: noop,
     syncAsteroidBeltInputs: noop, kuiperBeltUpdater: { update: noop }, applyMetricDisplayOffsets: noop,
     model: { update: noop }, updateFollowTarget: noop, viewportCamera: { applyPendingActions: noop },
     backgroundStars: { position: new THREE.Vector3() }, controls: { target: new THREE.Vector3(), update: () => onControls() },
     updateCameraClipPlanes: noop, renderer, refreshBodyInfoDistance: noop, dom: { statusZoom: null, toggleLabels: { checked: true }, toggleOrbits: { checked: false } }, AU_KM: 149597870.7,
-    refillBodyList: noop, initializeModelWorker: noop, updateSceneBodies: noop, focusBody: noop,
+    refillBodyList: noop, window: {}, modelWorkerController: { start: noop }, updateSceneBodies: noop, focusBody: noop,
     updateCameraMode: noop, updateBodyInfoPanel: noop, updatePlayButton: noop, resizeRenderer: noop,
-    catalogReady, startup, recovery: { available: true, reportFailure: message => { throw new Error(message); } },
+    startup, recovery: { available: true, reportFailure: message => { throw new Error(message); } },
     warmupRenderer: (actualRenderer, actualScene, actualCamera, options) => {
       assert.equal(actualRenderer, renderer); assert.equal(actualScene, scene); assert.equal(actualCamera, camera);
       assert.equal(options.signal, startup.signal); milestones.push('warmup'); announceWarmup(); return warmupReady;
     },
     frameLifecycle: { start: () => { milestones.push('start'); } },
   };
-  const js = ts.transpileModule(`${radiusSource}\n${bodySource}\n${text(assembly)}\nconst frameStages = ${stageSource};\nasync function initialize() {\n${initializationSource}\n${initialTrySource}\n}\nreturn { labels, bodyNodes, bodyMeshes, bodySpinGroups, frameStages, initialize };`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const js = ts.transpileModule(`${radiusSource}\n${bodySource}\n${labelSource}\n${text(assembly)}\nconst frameStages = ${stageSource};\nasync function initialize() {\n${initializationSource}\n${initialTrySource}\n}\nreturn { labels, bodyNodes, bodyMeshes, bodySpinGroups, frameStages, initialize };`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   runtime = Function(...Object.keys(bindings), js)(...Object.values(bindings));
   const node = runtime.bodyNodes.get(body.id);
   node.position.set(3, -2, 4);
@@ -112,7 +111,8 @@ function harness({ realistic = false, axialTiltDeg = 0, type = 'planet', id = 'o
     assert.equal(draws.length > 0, runtime.labels.length > 0, 'actual render stage executed');
     return draws.at(-1);
   }
-  return { body, node, camera, runtime, view, frame, draws, renderer, milestones, releaseCatalog, releaseWarmup, warmupEntered, dispose() { for (const item of owned) item.dispose(); } };
+  return { body, node, camera, runtime, view, frame, draws, renderer, milestones, releaseWarmup, warmupEntered,
+    setLabelsVisible(value) { bindings.dom.toggleLabels.checked = value; }, dispose() { for (const item of owned) item.dispose(); } };
 }
 function above(draw) {
   assert.ok(draw && [...draw.body, ...draw.label].every(Number.isFinite));
@@ -122,27 +122,27 @@ function above(draw) {
 }
 function run(options, exercise) { const h = harness(options); try { exercise(h); } finally { h.dispose(); } }
 
-test('control: identity camera preserves centered-above anchor and existing size/magnitude', () => run({}, h => {
-  h.view([0, 0, 10], [0, 1, 0]); const initial = h.runtime.labels[0].sprite.position.length();
-  const draw = h.frame(); above(draw); assert.equal(draw.magnitude, initial); assert.deepEqual(draw.scale, [0.12, 0.03, 1]);
+test('identity camera uses a centered label with the current CSS-pixel footprint', () => run({}, h => {
+  h.view([0, 0, 10], [0, 1, 0]); const draw = h.frame(); above(draw); footprint(draw);
 }));
 for (const [name, offset] of [['east', [10, 0, 0]], ['west', [-10, 0, 0]], ['north', [0, 10, 6]], ['south', [0, -10, 6]]]) {
   test(`screen-up: active Z-up orbital view ${name}`, () => run({}, h => {
-    h.view(offset, [0, 0, 1]); above(h.frame());
+    h.view(offset, [0, 0, 1]); const draw = h.frame(); above(draw); footprint(draw);
   }));
 }
-test('screen-up: same-frame controls movement reaches placement before render', () => run({}, h => {
+test('same-frame controls movement reaches the actual label owner before render', () => run({}, h => {
   h.view([0, 0, 10], [0, 1, 0]); above(h.frame());
-  above(h.frame(() => h.view([10, 0, 0], [0, 0, 1])));
+  const draw = h.frame(() => h.view([10, 0, 0], [0, 0, 1])); above(draw); footprint(draw);
 }));
 for (const realistic of [false, true]) {
-  test(`control: initial ${realistic ? 'real' : 'display'} radius matches body mesh`, () => run({ realistic }, h => {
+  test(`first ${realistic ? 'real' : 'display'} frame clears the current body mesh`, () => run({ realistic }, h => {
     const radius = realistic ? h.body.realRadiusAu : h.body.displayRadiusAu;
     assert.equal(h.runtime.bodyMeshes.get(h.body.id).scale.x, radius);
-    assert.equal(h.runtime.labels[0].sprite.position.length(), radius * 2.5 + 0.03);
+    h.view([0, 0, 10], [0, 1, 0]); footprint(h.frame());
   }));
 }
-test('control: label is outside the tilted/spinning mesh group', () => run({ axialTiltDeg: 98 }, h => {
+test('label stays outside the tilted/spinning mesh group', () => run({ axialTiltDeg: 98 }, h => {
+  h.view([0, 0, 10], [0, 1, 0]); above(h.frame());
   const label = h.runtime.labels[0].sprite;
   const spin = h.runtime.bodySpinGroups.get(h.body.id);
   assert.equal(label.parent, h.node); assert.equal(spin.parent, h.node);
@@ -151,59 +151,54 @@ test('control: label is outside the tilted/spinning mesh group', () => run({ axi
   const before = label.getWorldPosition(new THREE.Vector3());
   spin.rotateY(1.234); assert.deepEqual(label.getWorldPosition(new THREE.Vector3()).toArray(), before.toArray());
 }));
-test('control: minor moon still has no label', () => run({ type: 'moon' }, h => { assert.equal(h.runtime.labels.length, 0); }));
-test('control: immutable body inputs survive creation and frame', () => run({}, h => {
+test('minor moon still has no label', () => run({ type: 'moon' }, h => { assert.equal(h.runtime.labels.length, 0); }));
+test('immutable body inputs survive creation and frame', () => run({}, h => {
   const before = JSON.stringify(h.body); h.view([0, 0, 10], [0, 1, 0]); h.frame(); assert.equal(JSON.stringify(h.body), before);
 }));
-
-
-// New controls retain initialized scalar magnitude, not scale-transition policy.
 for (const realistic of [false, true]) {
-  test(`supplement control: rotated repeated frames preserve ${realistic ? 'real' : 'display'} offset and sprite properties`, () => run({ realistic }, h => {
-    const sprite = h.runtime.labels[0].sprite;
-    const magnitude = sprite.position.length();
-    const scale = sprite.scale.toArray();
-    const material = sprite.material;
-    const texture = material.map;
-    sprite.visible = false;
+  test(`rotated repeated ${realistic ? 'real' : 'display'} frames retain label resources and pixel size`, () => run({ realistic }, h => {
+    const sprite = h.runtime.labels[0].sprite, material = sprite.material, texture = material.map;
     const views = [[[10, 0, 0], [0, 0, 1]], [[0, 10, 6], [0, 0, 1]], [[-10, 0, 0], [0, 0, 1]], [[0, -10, 6], [0, 0, 1]], [[0, 0, 10], [0, 1, 0]]];
-    for (let repetition = 0; repetition < 3; repetition += 1) {
+    for (let repetition = 0; repetition < 3; repetition++) {
       for (const [offset, up] of views) {
-        h.view(offset, up);
-        const draw = h.frame();
-        assert.ok(Math.abs(draw.magnitude - magnitude) < 1e-12, 'initialized scalar offset preserved');
-        assert.deepEqual(draw.scale, scale);
-        assert.deepEqual(draw.scale, [0.12, 0.03, 1]);
-        assert.equal(sprite.material, material);
-        assert.equal(sprite.material.map, texture);
-        assert.equal(sprite.visible, false);
+        h.view(offset, up); const draw = h.frame(); above(draw); footprint(draw);
+        assert.equal(sprite.material, material); assert.equal(sprite.material.map, texture);
+        assert.equal(sprite.visible, true);
       }
     }
+    h.setLabelsVisible(false); h.frame(); assert.equal(sprite.visible, false);
+    h.setLabelsVisible(true); footprint(h.frame()); assert.equal(sprite.visible, true);
   }));
 }
-
-// Both cases execute actual initialization and await-warmup/render/start statements.
+// The startup belt owner separately covers deferred catalog adoption. Here the
+// actual final warmup/render/start block must place labels before the first draw.
 for (const rotated of [false, true]) {
-  test(`${rotated ? 'screen-up' : 'supplement control'}: actual deferred initial render ${rotated ? 'uses camera screen-up' : 'waits then starts with healthy geometry'}`, async () => {
+  test(`deferred initial render places ${rotated ? 'rotated' : 'identity'} labels before starting frames`, async () => {
     const h = harness();
     try {
       h.view(rotated ? [10, 0, 0] : [0, 0, 10], rotated ? [0, 0, 1] : [0, 1, 0]);
-      const magnitude = h.runtime.labels[0].sprite.position.length();
       const pending = h.runtime.initialize();
-      assert.deepEqual(h.milestones, [], 'catalog pending: no warmup/render/start');
-      assert.equal(h.draws.length, 0);
-      h.releaseCatalog();
       await h.warmupEntered;
-      assert.deepEqual(h.milestones, ['warmup'], 'warmup pending: no render/start');
-      assert.equal(h.draws.length, 0);
-      h.releaseWarmup();
-      await pending;
+      assert.deepEqual(h.milestones, ['warmup']); assert.equal(h.draws.length, 0);
+      h.releaseWarmup(); await pending;
       assert.deepEqual(h.milestones, ['warmup', 'render', 'start']);
-      assert.equal(h.draws.length, 1, 'exact first pre-frame draw observed');
-      const draw = h.draws[0];
-      assert.ok(Math.abs(draw.magnitude - magnitude) < 1e-12);
-      assert.deepEqual(draw.scale, [0.12, 0.03, 1]);
-      above(draw);
-    } finally { h.releaseCatalog(); h.releaseWarmup(); h.dispose(); }
+      assert.equal(h.draws.length, 1); above(h.draws[0]); footprint(h.draws[0]);
+    } finally { h.releaseWarmup(); h.dispose(); }
   });
+}
+
+function labelMetrics(sprite, node, camera, radius, viewportHeight) {
+  const center = sprite.getWorldPosition(new THREE.Vector3());
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const top = center.clone().addScaledVector(up, sprite.scale.y / 2).project(camera);
+  const bottom = center.clone().addScaledVector(up, -sprite.scale.y / 2).project(camera);
+  const bodyTop = node.getWorldPosition(new THREE.Vector3()).addScaledVector(up, radius).project(camera);
+  return { pixelHeight: (top.y - bottom.y) * viewportHeight / 2,
+    gapPixels: (bottom.y - bodyTop.y) * viewportHeight / 2,
+    aspect: sprite.scale.x / sprite.scale.y };
+}
+function footprint(draw) {
+  assert.ok(Math.abs(draw.pixelHeight - 40) < 1e-8, `label height=${draw.pixelHeight} CSS px`);
+  assert.ok(Math.abs(draw.gapPixels - 8) < 1e-8, `body clearance=${draw.gapPixels} CSS px`);
+  assert.equal(draw.aspect, 4);
 }

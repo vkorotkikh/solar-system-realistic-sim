@@ -1,0 +1,1515 @@
+{
+  "config": {
+    "argv": [
+      "/home/nomad/.npm/_npx/f4985f1adc097c41/node_modules/node/bin/node",
+      "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/node_modules/@playwright/test/cli.js",
+      "test",
+      "--project=webkit",
+      "--reporter=list,json"
+    ],
+    "configFile": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/playwright.config.ts",
+    "rootDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "testIgnore": [
+          "**/tab-zoom.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-tab-zoom",
+        "name": "chromium-tab-zoom",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/tab-zoom.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "testIgnore": [
+          "**/app-smoke.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "testIgnore": [
+          "**/app-smoke.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "webkit",
+        "testDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "snapshotDir": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser",
+        "testIgnore": "**/app-smoke.spec.ts",
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4190",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "reducedMotion": "reduce",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "browserName": "webkit"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "webkit"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4190 --strictPort",
+      "url": "http://127.0.0.1:4190",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_BACKEND_ORIGIN": "http://127.0.0.1:9142"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "accessibility-audit.spec.ts",
+      "file": "accessibility-audit.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "rendered accessibility rule contracts",
+          "file": "accessibility-audit.spec.ts",
+          "line": 58,
+          "column": 6,
+          "specs": [
+            {
+              "title": "desktop controls and expanded camera tools",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 30126,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts",
+                            "column": 14,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:4190/\", waiting until \"load\"\u001b[22m\n\n\n   at helpers.ts:7\n\n   5 |     contentType: 'application/javascript', body: \"import '/tests/browser/fixtures/ui-shell.ts'\",\n   6 |   }));\n>  7 |   await page.goto('/');\n     |              ^\n   8 |   await page.waitForFunction(() => Boolean(window.__uiFixture));\n   9 | }\n  10 |\n    at loadShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts:7:14)\n    at loadAuditShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:8:3)\n    at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:61:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "text": "Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-11-01T05:53:58.941Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-a5a08-s-and-expanded-camera-tools-webkit/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "133fb274c06e7193ffc5-2ba0e0d238cee861b42a",
+              "file": "accessibility-audit.spec.ts",
+              "line": 59,
+              "column": 3
+            },
+            {
+              "title": "mobile drawer closed exposes expanded camera tools",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "interrupted",
+                      "duration": 28897,
+                      "error": {
+                        "message": "Error: page.goto: Test ended.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:4190/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: Test ended.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:4190/\", waiting until \"load\"\u001b[22m\n\n    at loadShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts:7:14)\n    at loadAuditShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:8:3)\n    at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:72:5",
+                        "location": {
+                          "file": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts",
+                          "column": 14,
+                          "line": 7
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers.ts:7\n\n   5 |     contentType: 'application/javascript', body: \"import '/tests/browser/fixtures/ui-shell.ts'\",\n   6 |   }));\n>  7 |   await page.goto('/');\n     |              ^\n   8 |   await page.waitForFunction(() => Boolean(window.__uiFixture));\n   9 | }\n  10 |"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts",
+                            "column": 14,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: Test ended.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:4190/\", waiting until \"load\"\u001b[22m\n\n\n   at helpers.ts:7\n\n   5 |     contentType: 'application/javascript', body: \"import '/tests/browser/fixtures/ui-shell.ts'\",\n   6 |   }));\n>  7 |   await page.goto('/');\n     |              ^\n   8 |   await page.waitForFunction(() => Boolean(window.__uiFixture));\n   9 | }\n  10 |\n    at loadShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts:7:14)\n    at loadAuditShell (/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:8:3)\n    at /home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/accessibility-audit.spec.ts:72:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "text": "Skipping host requirements validation logic because `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS` env variable is set.\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-11-01T05:54:29.666Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/test-results/4190/accessibility-audit-render-21101-poses-expanded-camera-tools-webkit/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/nomad/ai/projects/worktrees/solar-close-partials-20261031/tests/browser/helpers.ts",
+                        "column": 14,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "133fb274c06e7193ffc5-f22b60d9d448dd51b3c9",
+              "file": "accessibility-audit.spec.ts",
+              "line": 70,
+              "column": 3
+            },
+            {
+              "title": "mobile drawer open exposes all control disclosures",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "133fb274c06e7193ffc5-80fd6ba919d52eaf229b",
+              "file": "accessibility-audit.spec.ts",
+              "line": 80,
+              "column": 3
+            },
+            {
+              "title": "desktop-recovery exposes the recovery surface",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "133fb274c06e7193ffc5-5fbd9c896cfcaef1a868",
+              "file": "accessibility-audit.spec.ts",
+              "line": 94,
+              "column": 5
+            },
+            {
+              "title": "mobile-closed-recovery exposes the recovery surface",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "133fb274c06e7193ffc5-8524561a63c719c6f95b",
+              "file": "accessibility-audit.spec.ts",
+              "line": 94,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "accessibility.spec.ts",
+      "file": "accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "mobile drawer isolates the viewport and restores focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-ae8661295f67d54b04b3",
+          "file": "accessibility.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "195px viewport reflows the production page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "ddd864604af8a6a0198f-b45b33eeb1113ddee070",
+          "file": "accessibility.spec.ts",
+          "line": 11,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "asteroid-shader.spec.ts",
+      "file": "asteroid-shader.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "actual main links the assembled asteroid material with production antialiasing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "1168b0a5f847251852ef-2224647029b12f3ef07c",
+          "file": "asteroid-shader.spec.ts",
+          "line": 7,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "camera.spec.ts",
+      "file": "camera.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real OrbitControls accept keyboard and tap parity, modifiers, bounds, flags and disposal",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-92047c59c582e1aba99e",
+          "file": "camera.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "follow centers each frame, orbit/zoom persist and Free cam retains pan",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-abbad677f655df758190",
+          "file": "camera.spec.ts",
+          "line": 25,
+          "column": 1
+        },
+        {
+          "title": "pointer drag damping and wheel still work alongside keyboard navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-846c2c117eb96867861f",
+          "file": "camera.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "single touch activates native camera buttons and retains mobile context",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46b3768d175a3aa7b8eb-18f2d6fa250ce3158f39",
+          "file": "camera.spec.ts",
+          "line": 40,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "experiment.spec.ts",
+      "file": "experiment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "exact presentation and dispatch preserve source, energy and model",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46dcba3ff919c7312c3d-8ba6ad76000128753a47",
+          "file": "experiment.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "events resolver owns preset selection, source notes and restored hypothesis copy",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "46dcba3ff919c7312c3d-33856fa6d4983ee87b91",
+          "file": "experiment.spec.ts",
+          "line": 24,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "explorer.spec.ts",
+      "file": "explorer.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "preferred selection survives filtering, no matches and native presentation switches",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-375885258cc08c9d7372",
+          "file": "explorer.spec.ts",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "search announces only changed counts, card updates without a live region and solar output remains separate",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-c55b12d8b3a996f92d79",
+          "file": "explorer.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "unchanged time values produce no real DOM mutations; rollover, reverse and Jump to now remain usable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "3409f8ab2ee04d46f500-e561166bc33ad64a0323",
+          "file": "explorer.spec.ts",
+          "line": 25,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "frame-lifecycle.spec.ts",
+      "file": "frame-lifecycle.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "active app frame lifecycle",
+          "file": "frame-lifecycle.spec.ts",
+          "line": 71,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a foreground timestamp stall cannot create an unbounded local simulation jump",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9ace432a8f968007e760-10817e44366fa80836a5",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 76,
+              "column": 3
+            },
+            {
+              "title": "a nonfinite available worker state is quarantined without stopping the actual scene",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9ace432a8f968007e760-521b77dd4c7260065905",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 94,
+              "column": 3
+            },
+            {
+              "title": "a persistently failing stage cannot starve camera, render, HUD, or later frames",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9ace432a8f968007e760-469ec889c9a1fad21a88",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 112,
+              "column": 3
+            },
+            {
+              "title": "native hidden-tab resume discards hidden elapsed time",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9ace432a8f968007e760-dc85ec521e203e0f7a1d",
+              "file": "frame-lifecycle.spec.ts",
+              "line": 147,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "panel.spec.ts",
+      "file": "panel.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "remembers desktop=false, mobile=false across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-0fd38cf5c4e5cf3bebd6",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=false, mobile=true across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-ce0b1eae57a6a818f61e",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=true, mobile=false across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-393e555ef869b8c3edbd",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "remembers desktop=true, mobile=true across both breakpoint directions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-53d30543290974f7f0e9",
+          "file": "panel.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "stale media queries cannot overwrite width-based state or lose modal focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-2f9432c3ffc8212dc768",
+          "file": "panel.spec.ts",
+          "line": 26,
+          "column": 1
+        },
+        {
+          "title": "a delayed media-query change cannot undo current width modality",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-ce45f4bfd22b0f52f859",
+          "file": "panel.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "a resize delivered before window width settles cannot leave desktop controls closed",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-2493e15428d040128ca5",
+          "file": "panel.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "disposed panels do not restore modality or move focus on later resizes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-3e9f4249d4bb1122941c",
+          "file": "panel.spec.ts",
+          "line": 97,
+          "column": 1
+        },
+        {
+          "title": "modal Tab trap, search Escape precedence, backdrop and close use real focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-8b71935a180717caa42b",
+          "file": "panel.spec.ts",
+          "line": 117,
+          "column": 1
+        },
+        {
+          "title": "focus guarding and empty trap recover to the panel when close is unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-77131151de42fac1e0ed",
+          "file": "panel.spec.ts",
+          "line": 133,
+          "column": 1
+        },
+        {
+          "title": "synchronous panel writes never hide the active focus owner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c365b39ce12eb9f42248-334d98171397aa868ac6",
+          "file": "panel.spec.ts",
+          "line": 142,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "reflow.spec.ts",
+      "file": "reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "reflow and reachable controls at 195x422",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-9a5b4d1bb63547be2d0c",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 320x568",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-b53434bfaae19e9de7d3",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 390x844",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-484083759860658db046",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 844x390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-43f22fdfa86c3eab9082",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1100x800",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-26fdc8895621ccc73cab",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1101x800",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-2c979306aef131cf1d5f",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "reflow and reachable controls at 1440x900",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-c6dd05f1c3b1ad4ca635",
+          "file": "reflow.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "200 percent text sizing preserves access to the final action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "4543a68c4d6be6beda01-d75c95624f369da1706a",
+          "file": "reflow.spec.ts",
+          "line": 29,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "scn049-kuiper-subscription.spec.ts",
+      "file": "scn049-kuiper-subscription.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (versioned) while retaining body updates",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "569b53beca5e8cdd1a6e-7194e5a86fa1868b8612",
+          "file": "scn049-kuiper-subscription.spec.ts",
+          "line": 56,
+          "column": 1
+        },
+        {
+          "title": "SCN-049 captured REBOUND/WHFast client rejects stale Kuiper (legacy) while retaining body updates",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "569b53beca5e8cdd1a6e-a50d6461f27334ce4537",
+          "file": "scn049-kuiper-subscription.spec.ts",
+          "line": 56,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "shell.spec.ts",
+      "file": "shell.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production HTML exposes the named controls and native inputs",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "3420664513cb0bae123e-ce54058db5a68f0cb591",
+          "file": "shell.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "startup-ownership.spec.ts",
+      "file": "startup-ownership.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "one source-selected full scene uses the latest scale and retires its quadtree owners on unload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "51ee773243f812d5dd81-7f6f202fd5000f30b22b",
+          "file": "startup-ownership.spec.ts",
+          "line": 109,
+          "column": 1
+        },
+        {
+          "title": "rejected catalog builds a single visible procedural fallback scene",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "51ee773243f812d5dd81-a1db9d85e8adb2eefb16",
+          "file": "startup-ownership.spec.ts",
+          "line": 139,
+          "column": 1
+        },
+        {
+          "title": "unload while catalog verification is pending prevents all late renderer adoption",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "51ee773243f812d5dd81-ab3d1d3028732676e1ed",
+          "file": "startup-ownership.spec.ts",
+          "line": 153,
+          "column": 1
+        },
+        {
+          "title": "texture allocation failure exposes recovery and retires the acquired renderer once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "51ee773243f812d5dd81-b033afe3775bcde8e36b",
+          "file": "startup-ownership.spec.ts",
+          "line": 176,
+          "column": 1
+        },
+        {
+          "title": "final compile failure retires workers and quadtrees while keeping restoration and retry messaging",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "51ee773243f812d5dd81-e3d2fe1ef8480c0be712",
+          "file": "startup-ownership.spec.ts",
+          "line": 187,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "startup-warmup.spec.ts",
+      "file": "startup-warmup.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "a startup shader failure exposes accessible recovery before any scene draw",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-ea85bf31a488b9d1c77f",
+          "file": "startup-warmup.spec.ts",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "context loss cancels pending warmup and restoration cannot restart it",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-66ae6fea02ae2c855a65",
+          "file": "startup-warmup.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "unload disposes materials only after cancelling pending warmup",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-104a62c24f75995969dd",
+          "file": "startup-warmup.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "the complete catalog scene still draws without parallel compilation support",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "efd240f1531ef803e09f-36d57c58daadb60514d4",
+          "file": "startup-warmup.spec.ts",
+          "line": 93,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "tab-zoom.spec.ts",
+      "file": "tab-zoom.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "native Chromium tab zoom",
+          "file": "tab-zoom.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "200% genuine tab zoom preserves reflow and keyboard focus",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "594d4593c21704809465-14b99d0f80ca0bab6ece",
+              "file": "tab-zoom.spec.ts",
+              "line": 11,
+              "column": 5
+            },
+            {
+              "title": "400% genuine tab zoom preserves reflow and keyboard focus",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "594d4593c21704809465-0aee60e04215d6eeb622",
+              "file": "tab-zoom.spec.ts",
+              "line": 11,
+              "column": 5
+            },
+            {
+              "title": "zoom evidence rejects viewport-only, CSS and pinch substitutes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "594d4593c21704809465-f97d72fcef09db8a9666",
+              "file": "tab-zoom.spec.ts",
+              "line": 154,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-01T05:53:57.797Z",
+    "duration": 60970.299999999996,
+    "expected": 0,
+    "skipped": 54,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

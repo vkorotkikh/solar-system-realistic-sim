@@ -1,0 +1,24 @@
+INFO:     Started server process [1573501]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8072 (Press CTRL+C to quit)
+INFO:     127.0.0.1:53300 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46678 - "GET /solar/physics?jd=2461308.58951915&fidelity=high&max_features=180&forcing=hybrid&live_data=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34756 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42176 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56002 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:34994 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34996 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34998 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35006 - "GET /solar/realtime/aia-tile?channel=aia_304&image_id=192408248&v=192408248 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45192 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:59222 - "WebSocket /wyvrn/Synapse" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     127.0.0.1:35602 - "GET /solar/realtime HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35606 - "GET /solar/capabilities HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1573501]

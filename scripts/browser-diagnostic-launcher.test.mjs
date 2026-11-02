@@ -9,8 +9,8 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 
 // TOOL045 selected replacement contract, not browser/science acceptance.
-// Real root entrypoints are copied unchanged; declared Playwright CLI alone is fake.
-// Current missing-Puppeteer import failures are not independent historical bugs.
+// The maintained diagnostic CLI is copied unchanged; only its Playwright child is fake.
+// Current retired scratch entrypoints are not independent historical bugs.
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const LAUNCHER = 'scripts/run-browser-diagnostic.mjs';
 const SPEC = 'tests/browser/legacy-diagnostics.spec.ts';
@@ -57,6 +57,7 @@ function withFixture(name, dependency, callback) {
   try {
     fs.writeFileSync(path.join(repo, 'package.json'), '{"type":"module"}\n');
     copy(name);
+    const scenario = CASES.find(([entry]) => entry === name)[1];
     // Future additive shared module/spec may be absent during honest current RED.
     for (const relative of [LAUNCHER, SPEC, 'playwright.config.ts']) {
       if (fs.existsSync(path.join(ROOT, relative))) copy(relative);
@@ -74,15 +75,15 @@ function withFixture(name, dependency, callback) {
     }
     fs.writeFileSync(path.join(outputParent, 'existing-user-sentinel.txt'), 'preserve me\n');
     const invoke = (args, env = {}, syntaxOnly = false) => {
-      const result = spawnSync(process.execPath, [...(syntaxOnly ? ['--check'] : []), path.join(repo, name), ...args], {
+      const result = spawnSync(process.execPath, [...(syntaxOnly ? ['--check'] : []), path.join(repo, LAUNCHER), ...(syntaxOnly ? [] : [scenario]), ...args], {
         cwd: foreign,
         env: { PATH: process.env.PATH, LANG: 'C', TMPDIR: tmp, TEMP: tmp, TMP: tmp,
           UI_TEST_PORT: '4399', PLAYWRIGHT_BROWSERS_PATH: path.join(owned, 'browser install'), UI_HARDWARE_WEBGL: '0',
           TOOL045_TRACE: trace, TOOL045_OWNED: owned, ...env },
         encoding: 'utf8', timeout: 4000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024,
       });
-      assert.equal(result.error, undefined, 'native entrypoint must finish within its owned bound');
-      assert.throws(() => process.kill(result.pid, 0), { code: 'ESRCH' }, 'owned entrypoint must be reaped');
+      assert.equal(result.error, undefined, 'diagnostic CLI must finish within its owned bound');
+      assert.throws(() => process.kill(result.pid, 0), { code: 'ESRCH' }, 'owned diagnostic CLI must be reaped');
       return result;
     };
     const records = () => fs.existsSync(trace) ? fs.readFileSync(trace, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
@@ -137,7 +138,8 @@ for (const [name, scenario] of CASES) {
       const result = f.invoke([flag]);
       assert.equal(result.status, 0, result.stderr);
       assert.match(result.stdout, /usage/i);
-      assert(result.stdout.includes(name));
+      assert(result.stdout.includes(LAUNCHER));
+      assert(result.stdout.includes(scenario));
       assert(result.stdout.includes('--output'));
       noStartup(f);
     }));
@@ -200,3 +202,17 @@ test('selected API supplement: missing declared CLI fails before output allocati
   assert.match(result.stderr, /@playwright\/test/);
   noStartup(f);
 }));
+
+for (const name of ['testWarp.js', 'testRealisticScale.mjs']) {
+  test(`retired root ${name} never launches browser tooling`, () => {
+    for (const args of [[], ['--help'], ['--output', 'must-not-be-created']]) {
+      const result = spawnSync(process.execPath, [path.join(ROOT, name), ...args], {
+        cwd: ROOT, encoding: 'utf8', timeout: 4000,
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, args[0] === '--help' ? 0 : 2);
+      assert.match(result.stdout + result.stderr, /Retired scratch script/);
+      assert.match(result.stdout + result.stderr, /npm run test:browser/);
+    }
+  });
+}

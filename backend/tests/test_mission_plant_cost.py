@@ -162,4 +162,3 @@ def test_http_zero_cost_is_already_rejected_before_admission(monkeypatch):
     assert any(error['location'] == ['body', 'power_required_kw_per_kg_day']
                for error in detail['context']['errors'])
     assert observed == []
-

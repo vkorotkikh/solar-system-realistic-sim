@@ -1,0 +1,11 @@
+swpc_rtsw_wind_1m records 3461 by (source,active): {('ACE', False): 1243, ('SOLAR1', True): 1209, ('IMAP', False): 899, ('SOLAR1', False): 9, ('ACE', True): 101}
+ order newest-first? True
+ newest active: 2026-09-25T01:59:00 SOLAR1 {'proton_speed': 424.8, 'proton_density': 6.85, 'proton_temperature': 138901}
+ newest inactive: 2026-09-25T02:01:00 ACE {'proton_speed': 425.45, 'proton_density': 0.17, 'proton_temperature': 139446}
+ active rows with a null in ['proton_speed', 'proton_density', 'proton_temperature'] : 1 of 1310
+swpc_rtsw_mag_1m records 3458 by (source,active): {('ACE', False): 1221, ('SOLAR1', True): 1225, ('IMAP', False): 907, ('ACE', True): 95, ('SOLAR1', False): 10}
+ order newest-first? True
+ newest active: 2026-09-25T00:22:00 SOLAR1 {'bt': 6.74, 'bz_gsm': -4.07}
+ newest inactive: 2026-09-25T01:58:00 ACE {'bt': 7.35, 'bz_gsm': -0.45}
+ active rows with a null in ['bt', 'bz_gsm'] : 0 of 1320
+repo _latest_noaa_row on new wind format -> None

@@ -169,4 +169,3 @@ def test_http_seed_strict_type_compatibility(endpoint, seed):
     assert response.status_code == 422
     assert parsed == []
     assert observed == []
-

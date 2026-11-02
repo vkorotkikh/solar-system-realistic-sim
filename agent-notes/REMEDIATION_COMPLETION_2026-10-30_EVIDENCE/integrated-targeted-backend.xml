@@ -1,0 +1,881 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="20" failures="9" skipped="0" tests="343" time="7.070" timestamp="2026-10-30T05:07:35.713038+00:00" hostname="Athena"><testcase classname="backend.tests.test_mission_mass_flow" name="test_return_burn_carries_the_mined_cargo" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_max_closable_cargo_is_the_largest_cargo_that_closes" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_nominal_cargo_capacity_has_no_delta_v_dispersion_margin" time="0.046" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_cargo_sizing_factor_tracks_risk_threshold[0.05-1.0822426813475736]" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_cargo_sizing_factor_tracks_risk_threshold[0.45-1.0062830673427536]" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_cargo_sizing_factor_tracks_risk_threshold[0.5-1.0]" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_cargo_sizing_factor_tracks_risk_threshold[1.0-1.0]" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_zero_risk_threshold_uses_a_finite_fail_closed_cargo_factor" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_max_closable_cargo_terminates_for_infinite_available_cargo" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_max_closable_cargo_terminates_when_midpoint_cannot_progress" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_return_propellant_is_not_subtracted_from_the_cargo_again" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_fails_every_sample_of_a_plan_short_of_delta_v[default-dispersion]" time="0.002" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_fails_every_sample_of_a_plan_short_of_delta_v[zero-dispersion]" time="0.003" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_includes_failed_delivery_zeros[all-success]" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_includes_failed_delivery_zeros[mixed-delivery]" time="0.001" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_includes_failed_delivery_zeros[zero-cargo]" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_includes_failed_delivery_zeros[missing-feasibility]" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_matches_capped_reclosed_cargo_and_lower_mining_draws" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_returned_yield_fix_preserves_other_envelopes_and_callback_draws" time="0.000" /><testcase classname="backend.tests.test_mission_mass_flow" name="test_risk_is_low_for_a_plan_with_real_margin" time="0.002" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[ordinary]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[no-transit]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[no-loss]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[tiny-x]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[zero-duration]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[zero-grade]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[zero-yield]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[zero-power]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[power-limited]" time="0.002" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[rate-first-underflow]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[x-overflow]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[x-underflow]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_continuous_arithmetic[full-transit-decay]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[ordinary]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[no-transit]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[no-loss]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[tiny-x]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[zero-duration]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[zero-grade]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[zero-yield]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[zero-power]" time="0.002" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[power-limited]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[rate-first-underflow]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[x-overflow]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[x-underflow]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_campaign_metadata[full-transit-decay]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_capacity_before_transit_and_handling_once[600.0-0.1-300.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_capacity_before_transit_and_handling_once[2000.0-0.1-450.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_capacity_before_transit_and_handling_once[600.0-0.0-300.0]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_capacity_before_transit_and_handling_once[600.0-0.6-200.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_capacity_before_transit_and_handling_once[0.0-0.1-0.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_departure_helper_and_legacy_fallback[mining0-480.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_departure_helper_and_legacy_fallback[mining1-0.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_departure_helper_and_legacy_fallback[mining2-960.0]" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">mining = {'storablePayloadKg': 500.0, 'departureStockKg': 1000.0, 'transportSurvivalFraction': 0.5}
+expected = 960.0
+
+    @pytest.mark.parametrize("mining, expected", [
+        ({"storablePayloadKg": 500.0}, 480.0), ({}, 0.0),
+        ({"storablePayloadKg": 500.0, "departureStockKg": 1000.0,
+          "transportSurvivalFraction": 0.5}, 960.0),
+        ({"storablePayloadKg": 0.0, "departureStockKg": 1000.0,
+          "transportSurvivalFraction": 0.0}, 960.0),
+    ])
+    def test_selected_departure_helper_and_legacy_fallback(mining, expected):
+&gt;       assert MiningService.departure_cargo_kg(mining) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend/tests/test_mission_storage_transport.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'storablePayloadKg': 500.0, 'departureStockKg': 1000.0, 'transportSurvivalFraction': 0.5}
+handling_loss_fraction = 0.04
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_departure_helper_and_legacy_fallback[mining3-960.0]" time="0.000"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">mining = {'storablePayloadKg': 0.0, 'departureStockKg': 1000.0, 'transportSurvivalFraction': 0.0}
+expected = 960.0
+
+    @pytest.mark.parametrize("mining, expected", [
+        ({"storablePayloadKg": 500.0}, 480.0), ({}, 0.0),
+        ({"storablePayloadKg": 500.0, "departureStockKg": 1000.0,
+          "transportSurvivalFraction": 0.5}, 960.0),
+        ({"storablePayloadKg": 0.0, "departureStockKg": 1000.0,
+          "transportSurvivalFraction": 0.0}, 960.0),
+    ])
+    def test_selected_departure_helper_and_legacy_fallback(mining, expected):
+&gt;       assert MiningService.departure_cargo_kg(mining) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend/tests/test_mission_storage_transport.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'storablePayloadKg': 0.0, 'departureStockKg': 1000.0, 'transportSurvivalFraction': 0.0}
+handling_loss_fraction = 0.04
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-missing-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-missing-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-negative-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-nan-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-infinite-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-negative-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-above-one-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-nan-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[departure-infinite-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-missing-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-missing-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-negative-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-nan-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-infinite-stock]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-negative-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-above-one-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-nan-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_invalid_metadata_rejected[closure-infinite-survival]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_closure_exact_seven_keys[mining0-600.0-0.1]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_closure_exact_seven_keys[mining1-300.0-0.1]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_closure_exact_seven_keys[mining2-600.0-0.04]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_closure_exact_seven_keys[mining3-600.0-0.6]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_risk_rng_and_failure_zeros[success]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_risk_rng_and_failure_zeros[mixed]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_risk_rng_and_failure_zeros[failed]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_legacy_risk_rng_and_failure_zeros[zero-yield]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_two_masses_rng_and_failure_zeros[success]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_two_masses_rng_and_failure_zeros[mixed]" time="0.001" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_two_masses_rng_and_failure_zeros[departure-threshold]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_two_masses_rng_and_failure_zeros[full-decay]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_two_masses_rng_and_failure_zeros[equal-masses]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[-1.0-0.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[100.0--1.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[100.0-101.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[nan-0.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[inf-0.0]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[100.0-nan]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_risk_invalid_opt_in_pair_before_rng_or_callback[100.0-inf]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_real_planner_two_mass_wiring[return-delay]" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c13a17900e0&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+contract = 'return-delay'
+
+    @pytest.mark.parametrize("contract", ["return-delay", "departure-load", "delivered-mass", "risk-load"])
+    def test_current_real_planner_two_mass_wiring(planner, contract):
+        run, seen = planner
+&gt;       result, candidate = run()
+                            ^^^^^
+
+backend/tests/test_mission_storage_transport.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_real_planner_two_mass_wiring[departure-load]" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c13a1791300&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+contract = 'departure-load'
+
+    @pytest.mark.parametrize("contract", ["return-delay", "departure-load", "delivered-mass", "risk-load"])
+    def test_current_real_planner_two_mass_wiring(planner, contract):
+        run, seen = planner
+&gt;       result, candidate = run()
+                            ^^^^^
+
+backend/tests/test_mission_storage_transport.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_real_planner_two_mass_wiring[delivered-mass]" time="0.002"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c13a1757ec0&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+contract = 'delivered-mass'
+
+    @pytest.mark.parametrize("contract", ["return-delay", "departure-load", "delivered-mass", "risk-load"])
+    def test_current_real_planner_two_mass_wiring(planner, contract):
+        run, seen = planner
+&gt;       result, candidate = run()
+                            ^^^^^
+
+backend/tests/test_mission_storage_transport.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_real_planner_two_mass_wiring[risk-load]" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c13a1788860&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+contract = 'risk-load'
+
+    @pytest.mark.parametrize("contract", ["return-delay", "departure-load", "delivered-mass", "risk-load"])
+    def test_current_real_planner_two_mass_wiring(planner, contract):
+        run, seen = planner
+&gt;       result, candidate = run()
+                            ^^^^^
+
+backend/tests/test_mission_storage_transport.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_current_outbound_duration_does_not_age_future_product" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c139ac3e840&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+
+    def test_current_outbound_duration_does_not_age_future_product(planner):
+        run, _seen = planner
+&gt;       _, first = run(100.0)
+                   ^^^^^^^^^^
+
+backend/tests/test_mission_storage_transport.py:344: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_control_real_planner_four_burns_and_score_still_use_nominal_delivery" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c139ac3f7e0&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+
+    def test_control_real_planner_four_burns_and_score_still_use_nominal_delivery(planner):
+        run, seen = planner
+&gt;       _, candidate = run(storage_loss_rate_per_day=0.0)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend/tests/test_mission_storage_transport.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_full_decay_planner_still_loads_real_mass_and_rejects_no_yield" time="0.001"><failure message="NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined">planner = (&lt;function planner.&lt;locals&gt;.run at 0x7c139b118680&gt;, {'risk': [], 'parse': [MissionRequestSchema(from_id='earth', targe...g': [{'target_body_id': 'mars', 'mining_days': 180.0, 'ore_grade': 0.18, 'extraction_rate_kg_day': 1200.0, ...}], ...})
+
+    def test_selected_full_decay_planner_still_loads_real_mass_and_rejects_no_yield(planner):
+        run, seen = planner
+&gt;       result, candidate = run(storage_loss_rate_per_day=10.0)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend/tests/test_mission_storage_transport.py:368: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+backend/tests/test_mission_storage_transport.py:311: in run
+    result = agents.MissionPlannerAgent(ALL_BODIES).plan({**deepcopy(PAYLOAD), **overrides})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/mission/agents.py:530: in plan
+    return_cargo_available_kg=MiningService.departure_cargo_kg(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+mining_result = {'targetBodyId': 'mars', 'miningDays': 180.0, 'oreGrade': 0.18, 'extractionRateKgDay': 1200.0, ...}
+handling_loss_fraction = 0.1
+
+    @staticmethod
+    def departure_cargo_kg(mining_result: Dict[str, Any], handling_loss_fraction: float = 0.04) -&gt; float:
+        """Available cargo before transit; legacy results retain their one-mass meaning."""
+        metadata = MiningService._departure_metadata(mining_result)
+        if metadata is None:
+            return MiningService.deliverable_cargo_kg(mining_result, handling_loss_fraction)
+        stock, _survival = metadata
+&gt;       return stock * (1.0 - max(0.0, min(MAX_MISSION_HANDLING_LOSS_FRACTION, float(handling_loss_fraction))))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       NameError: name 'MAX_MISSION_HANDLING_LOSS_FRACTION' is not defined
+
+backend/mission/mining_service.py:104: NameError</failure></testcase><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_real_logistics_capacity_closes_departure_before_survival" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_none_metadata_is_value_error[departure-departureStockKg]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_none_metadata_is_value_error[departure-transportSurvivalFraction]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_none_metadata_is_value_error[closure-departureStockKg]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_none_metadata_is_value_error[closure-transportSurvivalFraction]" time="0.000" /><testcase classname="backend.tests.test_mission_storage_transport" name="test_selected_none_returned_mass_rejected_before_rng_or_callback" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_control_three_argument_api_keeps_default24_without_tolerance_knob" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_default_budget_never_returns_unchecked_unwrapped_iterate" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_representable_direct_cases_succeed_with_explicit_adequate_budget[unwrapped1000]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_representable_direct_cases_succeed_with_explicit_adequate_budget[negative1000]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_representable_direct_cases_succeed_with_explicit_adequate_budget[aboveClamp]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_representable_direct_cases_succeed_with_explicit_adequate_budget[nearUnityTiny]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_representable_direct_cases_succeed_with_explicit_adequate_budget[nearWrappedEnd]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_control_positive_python_integer_budget_has_no_new_arbitrary_cap" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_control_actual_normalized_catalog_caller_retains_default24[earth-123.5]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_control_actual_normalized_catalog_caller_retains_default24[ceres-137.25]" time="0.001" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_circular_identities_are_exact_including_signed_zero_and_large_turns" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_zero_anomaly_is_exact_with_high_e_after_validation[positive_zero]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_zero_anomaly_is_exact_with_high_e_after_validation[negative_zero]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_control_large_non_circular_small_e_is_not_rejected_by_ulp_alone" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_unrepresentable_whole_anomaly_precision_raises_runtime_error[24]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_unrepresentable_whole_anomaly_precision_raises_runtime_error[64]" time="0.001" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_explicit_one_iteration_budget_reports_exhaustion" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_invalid_arguments_raise_value_error_before_identity_shortcuts[mean_before_circular_identity]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_invalid_arguments_raise_value_error_before_identity_shortcuts[eccentricity_before_zero_identity]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_invalid_arguments_raise_value_error_before_identity_shortcuts[budget_before_circular_identity]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_original_real_identities_and_analytic_bound_do_not_require_float_conversion" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_lossless_real_conversion_retains_the_original_equation" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_valid_but_nonlossless_real_arguments_report_unestablishable_precision[mean0-eccentricity0]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_valid_but_nonlossless_real_arguments_report_unestablishable_precision[9007199254740993-0.99]" time="0.001" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_valid_but_nonlossless_real_arguments_report_unestablishable_precision[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000-0.5]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_valid_but_nonlossless_real_arguments_report_unestablishable_precision[0.1-eccentricity3]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_valid_but_nonlossless_real_arguments_report_unestablishable_precision[0.1-eccentricity4]" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_original_domain_and_budget_validation_precede_large_exact_identities" time="0.000" /><testcase classname="backend.tests.test_mission_orbital_solver" name="test_unrepresentable_result_with_huge_valid_budget_settles_in_owned_child" time="0.102" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_magnetogram_is_continuous_across_old_random_seed_boundary" time="0.032" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate[0.0-0-1.0-0.0]" time="0.007" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate[0.25-24-0.0-1.0]" time="0.002" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate[0.5-48--1.0-0.0]" time="0.002" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate[-0.25--24-0.0--1.0]" time="0.002" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_synthetic_tilted_dipole_rotates_at_the_sidereal_rate[1.0-96-1.0-0.0]" time="0.002" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_zero_activity_synthetic_background_is_epoch_invariant" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_scales_feature_score_once_without_changing_alive_phase[1.0]" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_scales_feature_score_once_without_changing_alive_phase[0.5]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_scales_feature_score_once_without_changing_alive_phase[0.25]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_scales_feature_score_once_without_changing_alive_phase[0.02]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_scales_feature_score_once_without_changing_alive_phase[0.0]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_fades_cme_outputs_and_geometry_once[1.0]" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_fades_cme_outputs_and_geometry_once[0.5]" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_fades_cme_outputs_and_geometry_once[0.25]" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_fades_cme_outputs_and_geometry_once[0.02]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_envelope_fades_cme_outputs_and_geometry_once[0.0]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_dormant_regions_are_omitted_from_the_serialized_corona" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_pfss_snapshot_depends_on_the_coronal_region_seed" time="0.082" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[24-1--1]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[24--1-1]" time="0.001" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[25-1-1]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[25--1--1]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[26-1--1]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_generated_regions_obey_absolute_hale_polarity[26--1-1]" time="0.000" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[24-1--1]" time="0.015" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[24--1-1]" time="0.015" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[25-1-1]" time="0.015" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[25--1--1]" time="0.016" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[26-1--1]" time="0.015" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_map_polarities_and_feature_footpoints_agree[26--1-1]" time="0.015" /><testcase classname="backend.tests.test_solar_region_consistency" name="test_region_rotation_lifetime_and_cycle_transition_are_continuous" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_identity_includes_every_output_affecting_input[jd-2460011.0]" time="0.299" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_identity_includes_every_output_affecting_input[activity-0.75]" time="0.288" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_identity_includes_every_output_affecting_input[n_lines-80]" time="0.136" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_identity_includes_every_output_affecting_input[lmax-12]" time="0.141" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_dipole_phase_has_a_versioned_cache_identity" time="0.015" /><testcase classname="backend.tests.test_pfss_cache" name="test_hale_corrected_snapshot_reuses_identity_without_reusing_inverted_content" time="0.103" /><testcase classname="backend.tests.test_pfss_cache" name="test_timeout_is_request_metadata_not_solution_identity" time="0.061" /><testcase classname="backend.tests.test_pfss_cache" name="test_effective_scalar_inputs_are_canonicalized" time="0.007" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates1]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates2]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates3]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates4]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_noncanonical_scientific_inputs[updates5]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_rejects_nonfinite_or_nonpositive_inflight_wait[0.0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_rejects_nonfinite_or_nonpositive_inflight_wait[-1.0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_rejects_nonfinite_or_nonpositive_inflight_wait[nan]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_rejects_nonfinite_or_nonpositive_inflight_wait[inf]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_rejects_nonfinite_or_nonpositive_inflight_wait[-inf]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[jd-nan]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[activity-inf]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[n_lines-nan]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[lmax-0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[lmax-9.5]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[gong_timeout_s-0.0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_request_commits_nothing[gong_timeout_s-inf]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_solution_reuses_within_provider_lookback_independent_of_attempt_metadata" time="0.045" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_snapshot_rejects_ineligible_attempt_before_cache_lookup[future]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_snapshot_rejects_ineligible_attempt_before_cache_lookup[stale]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_provider_time_is_part_of_observed_identity" time="0.058" /><testcase classname="backend.tests.test_pfss_cache" name="test_provider_coverage_and_rotation_are_part_of_observed_identity[time_and_coverage]" time="0.077" /><testcase classname="backend.tests.test_pfss_cache" name="test_provider_coverage_and_rotation_are_part_of_observed_identity[rotation]" time="0.059" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_identity_excludes_retrieval_metadata" time="0.048" /><testcase classname="backend.tests.test_pfss_cache" name="test_each_cache_hit_attaches_current_attempt_provenance" time="0.046" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[provider-fake]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[source_kind-synthetic]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[product-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[product_revision-fake]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[product_token-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[source_url-https://example.invalid/fake.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[filename-fake.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[request_jd_tdb-nan]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[reference_native_ut-not-native-time]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[time_scale_assumption-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[coverage_warning-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[native_bunit-m]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[canonical_bunit-T]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[gauss_conversion_factor-2.0]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[physical_quantity-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[radial_assumption-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[polar_fill_status-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[zero_point_status-fake]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[native_header_bytes-fake-header]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[native_header_sha256-0000000000000000000000000000000000000000000000000000000000000000]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[expanded_fits_sha256-0000000000000000000000000000000000000000000000000000000000000000]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[compressed_sha256-not-a-sha256]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[retrieved_at_utc-not-a-time]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[retrieval_timeout_s--1.0]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_provider_field_is_validated_before_caching[quality_flags-value24]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[http://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu:443/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu:444/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://GONG.NSO.EDU/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202608/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/wrong-day/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/./mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/../mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/%2e/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609\\mrzqs260925/mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925//mrzqs260925t2304c2316_301.fits.gz]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_source_url_must_be_the_exact_filename_derived_archive_url[https://gong.nso.edu/data/magmap/QR/zqs/202609/mrzqs260925/mrzqs260925t2304c2316_301.fits.gz\n]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_reconstructed_fits_replays_bounded_parser_gates[naxis]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_reconstructed_fits_replays_bounded_parser_gates[stale_checksum]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_reconstructed_fits_replays_bounded_parser_gates[oversized_header]" time="0.034" /><testcase classname="backend.tests.test_pfss_cache" name="test_reconstructed_fits_rejects_trailing_blocks_and_hdus[padding-block]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_reconstructed_fits_rejects_trailing_blocks_and_hdus[image-hdu]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_ctype]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_cunit]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_crpix]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_crval]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_cdelt]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_pv2_1]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[native_lonpole_deg]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[normalized_cunit]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[normalized_cdelt]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[normalized_lonpole_deg]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[row_order]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[left_edge_longitude_deg]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[transform_version]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[normalized_header_bytes]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[coordinate_sentinels]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_wcs_field_is_validated_before_caching[edge_sentinels]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[pre_signed_flux_g_sr]" time="0.021" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[pre_unsigned_flux_g_sr]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[acceptance_limit_g_sr]" time="0.023" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[removed_mean_g]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[removed_g00_g]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[post_signed_flux_g_sr]" time="0.023" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[post_unsigned_flux_g_sr]" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_every_published_flux_field_is_validated_before_caching[policy_version]" time="0.013" /><testcase classname="backend.tests.test_pfss_cache" name="test_changed_observed_contract_recomputes[content]" time="0.059" /><testcase classname="backend.tests.test_pfss_cache" name="test_changed_observed_contract_recomputes[revision]" time="0.061" /><testcase classname="backend.tests.test_pfss_cache" name="test_changed_observed_contract_recomputes[grid]" time="0.059" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_is_part_of_identity[source_surface_radii-3.0]" time="0.046" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_is_part_of_identity[wsa_n_lat-18]" time="0.046" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_is_part_of_identity[wsa_n_lon-24]" time="0.046" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[schema_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[seeding_policy_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[preprocessing_policy_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[decomposition_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[solver_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[tracer_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[wsa_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[harmonic_convention_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_config_rejects_unimplemented_version_labels[wsa_boundary_distance_version]" time="0.000" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_snapshot_rejects_unimplemented_transform_version" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[reference_time]" time="0.014" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[coverage_start]" time="0.014" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[coverage_end]" time="0.014" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[crnow]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[current_cr]" time="0.014" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[credge]" time="0.002" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[car_rot]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_paired_but_scientifically_incoherent_observation_commits_nothing[car_rot_credge]" time="0.001" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_and_synthetic_never_collide" time="0.159" /><testcase classname="backend.tests.test_pfss_cache" name="test_invalid_observed_snapshot_commits_nothing" time="0.014" /><testcase classname="backend.tests.test_pfss_cache" name="test_observed_snapshot_rederives_flux_metrics_before_caching" time="0.022" /><testcase classname="backend.tests.test_pfss_cache" name="test_cache_is_bounded_lru_and_returns_defensive_copies" time="0.613" /><testcase classname="backend.tests.test_pfss_cache" name="test_snapshot_and_solution_lru_eviction_are_independent" time="0.503" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_follower_timeout_preserves_leader_inflight_state" time="0.053" /><testcase classname="backend.tests.test_pfss_cache" name="test_snapshot_follower_timeout_preserves_leader_inflight_state" time="0.144" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_flight_propagates_leader_error_cleans_up_and_retries" time="0.436" /><testcase classname="backend.tests.test_pfss_cache" name="test_snapshot_flight_propagates_leader_error_cleans_up_and_retries" time="0.158" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_singleflights_32_identical_observed_misses" time="0.881" /><testcase classname="backend.tests.test_pfss_cache" name="test_solution_waiters_receive_their_own_attempt_envelope" time="0.049" /><testcase classname="backend.tests.test_pfss_cache" name="test_synthetic_snapshot_resolution_singleflights" time="0.151" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_default_does_not_publish[False]" time="0.010" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_default_does_not_publish[True]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_selection_flags_do_not_authorize_publication" time="0.001" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_dry_run_preserves_explicit_destination[False]" time="0.003" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_dry_run_preserves_explicit_destination[True]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_check_byte_identical_does_not_republish" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_check_mismatch_does_not_repair" time="0.004" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_help_does_not_generate" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_existing_modes_remain_exclusive" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_phase_direct_api_still_publishes" time="0.011" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_default_does_not_publish_catalogs[stars-False]" time="0.005"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_default_does_not_pub0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afd6a50&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b026980&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_default_does_not_publish_catalogs[stars-True]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_default_does_not_pub1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afd7680&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b027600&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_default_does_not_publish_catalogs[nearby-False]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_default_does_not_pub2')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139aff7560&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139ad96700&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_default_does_not_publish_catalogs[nearby-True]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_default_does_not_pub3')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afb6ae0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139ad965c0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_save_fallback_only_does_not_authorize_catalog_publication" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_save_fallback_only_d0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afb4f80&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfc7c0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_selection_flags_do_not_authorize_publication" time="0.004"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_selection_flags_do_n0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afb5130&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfc860&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_still_acquires_and_populates_query_cache" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_still_acquir0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af9daf0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfe840&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_explicit_fallback_still_writes" time="0.004"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_explicit_fal0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afb4f20&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139ad97ce0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_does_not_implicitly_save_fallback" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_does_not_imp0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afb5580&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139ad96840&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_no_nearby_data_preserves_csv" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_no_nearby_da0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afd66c0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139ad94f40&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_direct_writers_remain_available" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_direct_write0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139afd6330&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b0259e0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_help_does_not_acquire_or_write" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_help_does_no0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139aff78c0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b027d80&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_explicit_write_publishes_selected_destination[False-False]" time="0.012" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_explicit_write_publishes_selected_destination[False-True]" time="0.012" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_explicit_write_publishes_selected_destination[True-False]" time="0.011" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_explicit_write_publishes_selected_destination[True-True]" time="0.014" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_output_selection_alone_does_not_authorize_publication[False]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_output_selection_alone_does_not_authorize_publication[True]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_write_conflicts_fail_before_generation[--check]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_write_conflicts_fail_before_generation[--dry-run]" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_explicit_write_publishes_catalogs_and_only_requested_fallback[False-False]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_explicit_write_publi0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af890d0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b055bc0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_explicit_write_publishes_catalogs_and_only_requested_fallback[False-True]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_explicit_write_publi1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af8bbf0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfe160&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_explicit_write_publishes_catalogs_and_only_requested_fallback[True-False]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_explicit_write_publi2')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af88920&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfc7c0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_explicit_write_publishes_catalogs_and_only_requested_fallback[True-True]" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_explicit_write_publi3')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af9f680&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b055a80&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_write_without_nearby_data_preserves_csv" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_write_without_nearby0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af94d10&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139b056de0&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_help_documents_write_opt_in" time="0.004" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_help_documents_write_and_cache_effects" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_help_documents_write0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af89d90&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfc360&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_phase_default_output_explains_publication_opt_in" time="0.002" /><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_gaia_default_output_explains_publication_opt_in" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_gaia_default_output_expla0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af9dbb0&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfe200&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase><testcase classname="backend.tests.test_catalog_cli_write_policy" name="test_control_gaia_preview_still_builds_and_cross_matches" time="0.003"><error message="failed on setup with &quot;AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'&quot;">tmp_path = PosixPath('/tmp/pytest-of-nomad/pytest-1129/test_control_gaia_preview_stil0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7c139af9f410&gt;
+no_network = &lt;function no_network.&lt;locals&gt;.denied at 0x7c139adfe980&gt;
+
+    @pytest.fixture
+    def gaia(tmp_path, monkeypatch, no_network):
+        module = load_script("fetch_gaia_catalog", monkeypatch)
+        owner = tmp_path / "gaia"
+        stars = owner / "src/data/stars_catalog.json"
+        nearby = owner / "solar-systems/nearby.csv"
+        stars.parent.mkdir(parents=True)
+        nearby.parent.mkdir(parents=True)
+        cache = owner / "query-cache"
+        fallback = owner / "fallback"
+        for name, value in {"PROJECT_ROOT": owner, "STARS_JSON_PATH": stars, "NEARBY_CSV_PATH": nearby, "CACHE_DIR": cache, "FALLBACK_DIR": fallback}.items():
+            monkeypatch.setattr(module, name, value)
+        original_ensure = module.ensure_cache_dir
+        monkeypatch.setattr(module, "ensure_cache_dir", lambda: original_ensure(cache))
+        monkeypatch.setattr(module, "http_get", no_network)
+        calls = []
+        responses = {"bright": TAP_HEADER + TAP_ROW, "nearby": TAP_HEADER + TAP_ROW}
+    
+        def tap(request, endpoint, timeout=120.0):
+            kind = "nearby" if "SELECT source_id" in request["QUERY"] else "bright"
+            calls.append((kind, dict(request), endpoint, timeout))
+            return responses[kind]
+    
+&gt;       monkeypatch.setattr(module, "_run_tap_request", tap)
+E       AttributeError: &lt;module 'tool056_owned_fetch_gaia_catalog' from '/home/nomad/ai/projects/worktrees/solar-remediation-completion-20261030/scripts/fetch_gaia_catalog.py'&gt; has no attribute '_run_tap_request'
+
+backend/tests/test_catalog_cli_write_policy.py:170: AttributeError</error></testcase></testsuite></testsuites>

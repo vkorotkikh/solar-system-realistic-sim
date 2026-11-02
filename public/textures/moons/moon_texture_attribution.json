@@ -2,8 +2,8 @@
   "generatedAtUtc": "2026-02-16T09:40:02.602Z",
   "generatedBy": "scripts/ingest-moon-textures.mjs",
   "forceRefresh": false,
-  "entryCount": 9,
-  "successCount": 9,
+  "entryCount": 8,
+  "successCount": 8,
   "failureCount": 0,
   "entries": [
     {
@@ -17,26 +17,10 @@
         "provider": "USGS Astrogeology",
         "dataset": "Phobos Viking Global Mosaic 5m",
         "productPage": "https://astrogeology.usgs.gov/search/map/phobos_viking_global_mosaic_5m",
-        "credit": "NASA/USGS",
+        "credit": "NASA/USGS; Phobos mosaic author Phil Stooke",
         "license": "Public domain"
       },
       "downloadUrl": "https://astrogeology.usgs.gov/ckan/dataset/85290c2c-7524-44ba-9251-61ea69fcd9dd/resource/876ae3aa-ac7b-434c-86f4-a2e50cc9826d/download/phobos_viking_mosaic_dlrcontrol_1024.jpg"
-    },
-    {
-      "key": "mars:deimos",
-      "status": "downloaded",
-      "assetFile": "moon_mars_deimos_solarviews_1440.jpg",
-      "assetPath": "/textures/moons/moon_mars_deimos_solarviews_1440.jpg",
-      "bytes": 49550,
-      "sha256": "f41bb886271848b2652ceffbc50e5b800992f590de2c6684b62f708a78c82678",
-      "source": {
-        "provider": "Solarviews",
-        "dataset": "Deimos cylindrical map (Viking-derived)",
-        "productPage": "https://www.solarviews.com/eng/deimos.htm",
-        "credit": "Solarviews / Viking-era source imagery",
-        "license": "Unspecified by provider; verify for redistribution"
-      },
-      "downloadUrl": "https://www.solarviews.com/raw/mars/deimoscyl2.jpg"
     },
     {
       "key": "jupiter:europa",
@@ -151,5 +135,7 @@
       "downloadUrl": "https://astrogeology.usgs.gov/ckan/dataset/22bc1015-d9c9-4212-86c3-e42061b204d4/resource/77fa77f8-6d6b-4072-9360-17138caa6e7d/download/full.jpg"
     }
   ],
-  "failures": []
+  "failures": [],
+  "reviewedAtUtc": "2026-10-31",
+  "reviewNote": "Removed Solarviews Deimos pending redistribution permission; procedural fallback applies."
 }

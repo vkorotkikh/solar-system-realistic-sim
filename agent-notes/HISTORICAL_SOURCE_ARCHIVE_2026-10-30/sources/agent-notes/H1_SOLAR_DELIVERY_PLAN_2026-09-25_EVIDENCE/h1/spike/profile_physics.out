@@ -1,0 +1,22 @@
+realtime snapshot fetch s 2.96 status {'swpc': False, 'silso': True, 'sdo_aia': True, 'gong_synoptic': True}
+    (0.047, 'ERR HTTPError:HTTP Error 404: Not Found', 'https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json')
+    (0.268, 'ok', 'https://www.sidc.be/SILSO/DATA/SN_d_tot_V2.0.csv')
+    (0.165, 'ok', 'https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A24%3A00Z&sourceId=8&verbose=true')
+    (0.137, 'ok', 'https://api.helioviewer.org/v2/getTile/?id=192408322&x=-1&y=-1&imageScale=0.601836')
+    (0.15, 'ok', 'https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A24%3A00Z&sourceId=10&verbose=true')
+    (0.137, 'ok', 'https://api.helioviewer.org/v2/getTile/?id=192408218&x=-1&y=-1&imageScale=0.601831')
+    (0.167, 'ok', 'https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A24%3A00Z&sourceId=11&verbose=true')
+    (0.135, 'ok', 'https://api.helioviewer.org/v2/getTile/?id=192408172&x=-1&y=-1&imageScale=0.601831')
+    (0.172, 'ok', 'https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A24%3A00Z&sourceId=12&verbose=true')
+    (0.135, 'ok', 'https://api.helioviewer.org/v2/getTile/?id=192408145&x=-1&y=-1&imageScale=0.601832')
+    (0.165, 'ok', 'https://api.helioviewer.org/v2/getClosestImage/?date=2026-09-25T02%3A24%3A00Z&sourceId=13&verbose=true')
+    (0.14, 'ok', 'https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832')
+gong fetch s 0.16 map None
+    (0.163, 'ok', 'https://gong.nso.edu/data/magmap/QR/bqs/202608/')
+sample_state #1 (pfss miss) s 6.49 pfss source synthetic lines 120
+    (0.148, 'ok', 'https://gong.nso.edu/data/magmap/QR/bqs/202608/')
+sample_state #2 same jd (pfss hit) s 6.391
+sample_state #3 jd+0.0001 (pfss miss again) s 6.63 net calls 2
+json bytes 701533 dumps s 0.013
+top-level sizes [('corona', 491300), ('pfss_field_lines', 172571), ('heliosphere', 30886), ('data_assimilation', 5222), ('coronal_holes', 771), ('surface', 323)]
+sdo_aia preferred {'preferred_channel': 'aia_304', 'preferred_image_id': '192408248', 'preferred_tile_url': 'https://api.helioviewer.org/v2/getTile/?id=192408248&x=-1&y=-1&imageScale=0.601832', 'preferred_proxy_path': '/solar/realtime/aia-tile?channel=aia_304'}
