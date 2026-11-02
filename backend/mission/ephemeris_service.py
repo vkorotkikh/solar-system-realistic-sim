@@ -23,6 +23,7 @@ import urllib.request
 from collections import OrderedDict
 from contextlib import closing
 from dataclasses import asdict, dataclass, field
+from fractions import Fraction
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from sim.solar_http_transport import DeadlineHttpResponse, SolarHttpError
@@ -1543,8 +1544,49 @@ def _numeric_id_from_header(header: str) -> str:
 
 
 _HORIZONS_COVERAGE_REFUSAL = re.compile(
-    r"^No ephemeris for target .+ (?:after|prior to) (?:A\.D\.|B\.C\.) \d"
+    r'^No ephemeris for target "(?P<target>[^"]+)" (?P<direction>after|prior to) '
+    r"(?P<era>A\.D\.|B\.C\.) (?P<year>[0-9]+)-(?P<month>[A-Z]{3})-(?P<day>[0-9]{2}) "
+    r"(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2}(?:\.[0-9]+)?) TDB"
 )
+_HORIZONS_MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+
+
+def _refusal_fits_request(refusal: re.Match[str], body_id: str, jd: float) -> bool:
+    """A refusal is request-scoped only if it names this target and its cutoff excludes this epoch."""
+    if refusal["target"].casefold() != body_id.casefold() or refusal["month"] not in _HORIZONS_MONTHS:
+        return False
+    year = int(refusal["year"])
+    if year == 0 or not math.isfinite(jd):
+        return False
+    # Horizons defaults to MIXED calendar output, with no historical year zero:
+    # https://ssd.jpl.nasa.gov/horizons/manual.html#gregorian-and-julian-calendar-dates
+    year = year if refusal["era"] == "A.D." else 1 - year
+    month = _HORIZONS_MONTHS.index(refusal["month"]) + 1
+    day = int(refusal["day"])
+    calendar_date = (year, month, day)
+    if (1582, 10, 5) <= calendar_date < (1582, 10, 15):
+        return False  # These date labels never occur in mixed-calendar output.
+    gregorian = calendar_date >= (1582, 10, 15)
+    leap = year % 4 == 0 and (not gregorian or year % 100 != 0 or year % 400 == 0)
+    month_days = (31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    hour, minute = int(refusal["hour"]), int(refusal["minute"])
+    second = Fraction(refusal["second"])
+    if not (1 <= day <= month_days[month - 1] and hour < 24 and minute < 60 and second < 60):
+        return False  # TDB is uniform: no leap seconds or rollover date normalization.
+
+    # Integer Julian day number at noon; shifting Jan/Feb to the previous year
+    # makes leap-day accounting valid even for negative astronomical years.
+    shift = (14 - month) // 12
+    y, m = year + 4800 - shift, month + 12 * shift - 3
+    jdn = day + (153 * m + 2) // 5 + 365 * y + y // 4
+    jdn += y // 400 - y // 100 - 32045 if gregorian else -32083
+    # Preserve printed subsecond precision rather than rounding the cutoff to
+    # a float JD. Equality cannot establish an "after" or "prior to" refusal.
+    cutoff = Fraction(2 * jdn - 1, 2) + (hour * 3600 + minute * 60 + second) / 86400
+    requested = Fraction(jd)
+    if refusal["direction"] == "after":
+        return requested > cutoff
+    return requested < cutoff
 
 
 def _parse_horizons_payload(
@@ -1567,9 +1609,11 @@ def _parse_horizons_payload(
 
         error = payload.get("error")
         if error:
-            # A validated provider refusing one target/epoch is not an outage.
-            # Unknown errors and untrusted envelopes retain protocol protection.
-            if isinstance(error, str) and _HORIZONS_COVERAGE_REFUSAL.match(error.strip()):
+            # A validated provider refusing this target at this epoch is not an outage.
+            # Unknown errors, untrusted envelopes and refusals that cannot apply to this
+            # request (another target, a cutoff the epoch does not cross) keep protocol protection.
+            refusal = _HORIZONS_COVERAGE_REFUSAL.fullmatch(error.strip()) if isinstance(error, str) else None
+            if refusal is not None and _refusal_fits_request(refusal, body_id, expected_jd):
                 raise EphemerisEpochUnsupported(
                     f"Horizons has no ephemeris for `{body_id}` at the requested epoch",
                     provider="horizons", body_id=body_id, jd=expected_jd,

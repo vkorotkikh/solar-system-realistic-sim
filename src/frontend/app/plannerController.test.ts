@@ -75,6 +75,30 @@ describe('planner UI trajectory outcomes', () => {
     );
   });
 
+  it.each([
+    ['ephemeris_epoch_unsupported', 'Horizons has no ephemeris for `earth` at the requested epoch'],
+    ['ephemeris_target_unsupported', 'Horizons has no explicit target mapping for `psyche`'],
+    [
+      'ephemeris_provider_not_supported_for_operation',
+      'Explicit Horizons ephemerides are temporarily limited to direct Lambert requests.'
+    ]
+  ])('reports request-scoped 422 %s as an invalid request, not an outage', (code, message) => {
+    const error = Object.assign(new Error(message), { status: 422, code });
+
+    expect(formatPlannerFailure(error, 'Lambert')).toBe(`Lambert request is invalid: ${message}`);
+  });
+
+  it('still reports an ephemeris provider outage as unavailable', () => {
+    const error = Object.assign(new Error('Horizons could not be reached'), {
+      status: 503,
+      code: 'ephemeris_provider_unavailable'
+    });
+
+    expect(formatPlannerFailure(error, 'Lambert')).toBe(
+      'The selected ephemeris provider is unavailable. Horizons could not be reached'
+    );
+  });
+
   it('shows saturation distinctly and retains the retry hint', async () => {
     const error = Object.assign(new Error('capacity occupied'), {
       status: 503,
