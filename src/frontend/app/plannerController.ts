@@ -222,6 +222,10 @@ export function formatPlannerFailure(error: unknown, operation: string): string 
   if (code.includes('deadline') || code.includes('timeout') || status === 504) {
     return `${operation} reached its execution deadline. Narrow the search or try again.`;
   }
+  // A 4xx rejects this request; an ephemeris code on it is not a provider outage.
+  if (status === 400 || status === 404 || status === 422) {
+    return `${operation} request is invalid: ${error.message}`;
+  }
   if (
     code.includes('provider') ||
     code.includes('ephemeris') ||
@@ -235,9 +239,6 @@ export function formatPlannerFailure(error: unknown, operation: string): string 
   }
   if (status === 413) {
     return `${operation} request is too large. Reduce the assist pool or search range.`;
-  }
-  if (status === 400 || status === 404 || status === 422) {
-    return `${operation} request is invalid: ${error.message}`;
   }
   if (status === 503) {
     return `${operation} is temporarily unavailable.${retryHint}`;
