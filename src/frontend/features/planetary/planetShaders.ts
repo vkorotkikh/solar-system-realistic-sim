@@ -109,7 +109,11 @@ uniform float uDisplacementScale;
 uniform mat4 uPatchToCube;
 uniform float uSkirtDepth;
 attribute float aSkirt;
-uniform int uPlanetType; // 0=Earth, 1=Moon, 2=Mars
+#ifdef PLANET_TYPE
+const int uPlanetType = PLANET_TYPE; // 0=Earth, 1=Moon, 2=Mars
+#else
+uniform int uPlanetType;
+#endif
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -209,7 +213,11 @@ void main() {
 
 export const planetFragmentShader = /* glsl */`
 uniform vec3 uColorBase;
+#ifdef PLANET_TYPE
+const int uPlanetType = PLANET_TYPE;
+#else
 uniform int uPlanetType;
+#endif
 uniform vec3 uLightDirection;
 uniform vec3 uCameraPositionLocal;
 
@@ -370,13 +378,16 @@ export function createPlanetShaderMaterial(planetId: string, radius: number): Sh
     return new ShaderMaterial({
         vertexShader: planetVertexShader,
         fragmentShader: planetFragmentShader,
+        // A material's body identity never changes. Specialize before driver
+        // compilation so every terrain/normal evaluation excludes the other
+        // planets' noise branches; geometry, octaves and shading stay intact.
+        defines: { PLANET_TYPE: planetType },
         uniforms: {
             uPatchToCube: { value: new Matrix4() },
             uSkirtDepth: { value: 0 },
             uCameraPositionLocal: { value: new Vector3() },
             uRadius: { value: radius },
             uDisplacementScale: { value: displacementScale },
-            uPlanetType: { value: planetType },
             uColorBase: { value: colorBase },
             uLightDirection: { value: new Vector3(1, 0, 0) } // Overwritten per frame
         },
