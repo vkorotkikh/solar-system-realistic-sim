@@ -73,7 +73,7 @@ Roles are responsibilities, not invented assignees. Missing release owners and d
 
 ## Engineering review and decision record
 
-**Scope:** retain all eight outcomes. Seven repository paths are planned, zero new runtime services/classes. This is one reviewable branch/PR candidate with multiple commits; no stacked-PR dependency. The existing architecture is retained, so there is no smaller runtime arrangement to select.
+**Scope:** retain all eight outcomes. Eight repository paths are planned, zero new runtime services/classes. This is one reviewable branch/PR candidate with multiple commits; no stacked-PR dependency. The existing architecture is retained, so there is no smaller runtime arrangement to select.
 
 **Architecture:** [CRITICAL, confidence 10/10] compiled-artifact coverage is missing: the configured server runs Vite's source transform, not preview. Task 2 adds the missing boundary using existing Playwright/Vite [Layer 1]. No deployment server is introduced. Vite preview is only a local acceptance server, not the proposed production host.
 
@@ -124,7 +124,8 @@ Reuse `tests/browser/webgl-cleanup.ts` only for its existing real-app teardown. 
 | `playwright.production.config.ts` (new) | Isolated strict-port compiled preview and Chromium project | 2 |
 | `tsconfig.ui-tests.json` | Include new config and production tests in strict checking | 2 |
 | `tests/production/frontend.spec.ts` (new) | Real compiled-app acceptance, evidence attachments and cleanup | 2, then 3 |
-| `scripts/frontendProductionGate.test.mjs` (new) | Explicit package/config/workflow contract regressions | 2, then 4 |
+| `scripts/frontendProductionGate.test.mjs` (new) | Execute production config and validate its boundaries | 2 |
+| `scripts/ci/tests/test_r3_r4_workflow.py` | Parse frontend workflow and verify blocking artifact-gate semantics with already pinned PyYAML | 4 |
 | `.github/workflows/frontend-ui.yml` | Separate blocking compiled-artifact job, retained artifacts | 4 |
 
 Task order: `1 -> 2 -> 3 -> 4 -> 5`. Shared configuration and test files make sequential implementation appropriate; independent reviewers can work alongside the coordinator. No simultaneous writers. No new package or lockfile change is expected.
@@ -167,14 +168,14 @@ Task order: `1 -> 2 -> 3 -> 4 -> 5`. Shared configuration and test files make se
 
 ## Task 4: Make compiled acceptance a release-blocking CI contract
 
-**Files:** workflow and `scripts/frontendProductionGate.test.mjs`.
+**Files:** workflow and `scripts/ci/tests/test_r3_r4_workflow.py`. The existing scientific CI invokes that test module on every push/PR; reuse its pinned PyYAML parser instead of adding a JavaScript YAML dependency or a text-matching imitation.
 
 **Interfaces:** new job `production-artifact`, separate from existing `ui` and browser matrix. Uses exact Node/npm, clean lock install, Chromium install, strict source check, `VITE_BACKEND_ORIGIN=` build and `npm run test:production` against that same output. Timeout 15 minutes is an execution budget, not a product performance promise. No environment secrets or publish permissions.
 
-- [ ] Add red contract assertions: job exists, no `continue-on-error`, clean install before build, build before compiled test, strict type check present, no disabled existing browser projects. Both workflow triggers must include `tests/production/**`, `public/**`, `LICENSE`, `NOTICE.md` and `docs/distribution-policy.md` so test-only and packaging-only changes run acceptance. Assertions protect named release guarantees, not incidental whitespace.
+- [ ] Add red semantic assertions to the existing Python workflow test module: parse YAML, then check job exists, no `continue-on-error`, clean install before build, build before compiled test, strict type check present, no disabled existing browser projects. Both workflow triggers must include `tests/production/**`, `public/**`, `LICENSE`, `NOTICE.md` and `docs/distribution-policy.md` so test-only and packaging-only changes run acceptance. Assertions protect named release guarantees, not incidental whitespace. Use the existing YAML `on` handling and CI pins (Python 3.12.13, pytest 9.1.1, PyYAML 6.0.3); no new dependency or lock edit.
 - [ ] Add the job with `permissions: contents: read`, strict toolchain and explicit build origin. Preserve science/backend workflow and the existing four-project browser matrix. Upload test report/trace/screenshots with `if: always()`, finite 14-day retention and missing-artifact warnings that cannot replace a failed test status.
 - [ ] Retain the tested `dist` directory with source SHA, lockfile SHA-256 and built asset hashes alongside results using existing shell/Node tooling in the job. Do not archive credentials, environment dumps or raw interactive user input. Keep an immutable artifact identity; a deployment must use the tested artifact, not an unverified rebuild.
-- [ ] Run contract tests, full unit/types/build and the compiled suite locally. Verify workflow syntax using existing supported tooling, if available; distinguish static validation from remote execution. Commit `ci(ui): gate compiled frontend acceptance`.
+- [ ] Run `python -m pytest --noconftest -q scripts/ci/tests/test_r3_r4_workflow.py` in the pinned environment, full unit/types/build and the compiled suite locally. Parsed semantic validation is not remote execution. Commit `ci(ui): gate compiled frontend acceptance`.
 
 ## Task 5: Record release evidence, manual acceptance and rollback
 
